@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "generate-fixtures.mjs / esbuild bundles unmodified original TypeScript",
+  "fixtureSha256": "a16c43a5cf80f4bdc90c072e6b6fea67203e5820d339d04c0246b38baeade907",
+  "sources": [
+    {
+      "path": "src/config.ts",
+      "sha256": "ab153b7074f7b2734db31e454bab33dad5305082a0a22a241e0e7fd5cbb69836"
+    },
+    {
+      "path": "src/models/competition.ts",
+      "sha256": "33f9bde148e5ab440bcb4581b256b9b410c10f316d462cab2521d6ce4c9ee873"
+    },
+    {
+      "path": "src/models/game-state.ts",
+      "sha256": "be5707c1c29b69aea22736d6789069606902cd013a76b576e796170f82e84b5d"
+    },
+    {
+      "path": "src/models/nomination-resolution.ts",
+      "sha256": "e4a0b7af5891205143f92561363686ca7666d25e6d13124e880a9d9a8903e911"
+    },
+    {
+      "path": "src/models/relationship-tier.ts",
+      "sha256": "d67123c231c1747b2cd8c127c10f54047ff50ab4dc3f81da9d42ec4d5be13424"
+    },
+    {
+      "path": "src/systems/accepted-consequences/deal-outcome.ts",
+      "sha256": "bc1001b8974e6c4ee83657087631a93e9ee46a2685752aa0bf0395c1d9570b63"
+    },
+    {
+      "path": "src/systems/accepted-consequences/evidence.ts",
+      "sha256": "f76c1520f36e1fe01bad29d8c7a20b2edb7114bf9c619b4da1b9515b50aec849"
+    },
+    {
+      "path": "src/systems/accepted-consequences/index.ts",
+      "sha256": "3903c22df4eb725fd5ef1d588e99fbbf8e8f11d4fa1a4652b7cc2eb979a9ce6c"
+    },
+    {
+      "path": "src/systems/accepted-consequences/nomination-direct.ts",
+      "sha256": "8c0a18e6ee7fe79c08af41213c2cb4d6e1dd52ba2d51adaf2e9caa297dd595eb"
+    },
+    {
+      "path": "src/systems/accepted-consequences/safety.ts",
+      "sha256": "a7ad4a79fa1e7009a0ec7a64bd986f021a76e79c9c94242f768270beb650c798"
+    },
+    {
+      "path": "src/systems/accepted-consequences/social-reactions.ts",
+      "sha256": "070d38984695f578f291eaabf9807d888a40b14cc13b365139adde5113ae25e4"
+    },
+    {
+      "path": "src/systems/accepted-consequences/types.ts",
+      "sha256": "fa231bb886838113e60b23cc5ba8f52746b4bc35283ca42803d73b72173eee0f"
+    },
+    {
+      "path": "src/systems/admin-config.ts",
+      "sha256": "94ff04bd5bf9df90a1ff50ce25049f44110dfe69db56f9c6316255289bc889d6"
+    },
+    {
+      "path": "src/systems/competition-result.ts",
+      "sha256": "f6c0e9baba2da96e692d0cba22752e9da6598b509f1196550f7dc5e37543e0dc"
+    },
+    {
+      "path": "src/systems/competition-system.ts",
+      "sha256": "0bdb325f3b11792550186d0f7bd6fb5a7502d9f94f73c226c207746466266c28"
+    },
+    {
+      "path": "src/systems/competition/competition-runner.ts",
+      "sha256": "c12b8406016fe8036fa0fcf6e0b48bdbb03738780bdae11fec25ebe3ded35db6"
+    },
+    {
+      "path": "src/systems/deal-action-rules.ts",
+      "sha256": "fded23fea12c34455d682c1c5ffadc0cbf94a76744b8865009b6dbbae7d81041"
+    },
+    {
+      "path": "src/systems/eviction-vote-evaluator.ts",
+      "sha256": "5a60f0b75e752e59b65f69ace04ad2fbb096e3c87f1757a644b1bba2e1d53e83"
+    },
+    {
+      "path": "src/systems/jury-sentiment-tracker.ts",
+      "sha256": "78ebcc2890b874a4e8561e221a0970335d71149af40c40fbd07fcd12fc442fe0"
+    },
+    {
+      "path": "src/systems/nomination-accounting.ts",
+      "sha256": "a3cda4eea20d50ecf0689aba20a1dba38d8a91323b8b8401e1d6736b99db4c48"
+    },
+    {
+      "path": "src/systems/nomination-evidence-record.ts",
+      "sha256": "51ea563f83dbf9f15a04f3879cd6a78d3c482fa3b4b48981a616f2afbc9e9616"
+    },
+    {
+      "path": "src/systems/nomination-receipts.ts",
+      "sha256": "5f8ef1ddba5a770033f350faf9e106bf28459de724f45f468ae06d40f6d7739e"
+    },
+    {
+      "path": "src/systems/nomination-veto.ts",
+      "sha256": "2418ee71966c19e0c77c77e0fd41ec77124273a54cddfd5bcddd886889b6c07b"
+    },
+    {
+      "path": "src/systems/pov-lineup.ts",
+      "sha256": "2aa7788062f291b3e5c68506434bb5efb8115ce08eb022a197a7ab761e772344"
+    },
+    {
+      "path": "src/systems/pov-selection.ts",
+      "sha256": "7042d8d9558c5a3bb88098401497b2545f9fb26dedc0e468b2ebe53c8360711b"
+    },
+    {
+      "path": "src/systems/promise/promise-effects.ts",
+      "sha256": "2f158e9571780bf869b67fc0382140b4c2e93776f5fb564e232cad2c5035889b"
+    },
+    {
+      "path": "src/systems/promise/promise-utils.ts",
+      "sha256": "35154c8e109497bd65d4f7b0772e6b3cf1a99a6ad55575dacf94ef4800ca53d0"
+    },
+    {
+      "path": "src/systems/relationship-arc-tracker.ts",
+      "sha256": "75390992ede5a314180cbf1e564ce8184eaea4efe54ecf1b4418ad5b7fef54a5"
+    },
+    {
+      "path": "src/systems/relationship-change.ts",
+      "sha256": "65d76f4b231de476e26415c2fe7ff619f0aa5996ff1e4e3657bf092525020c4b"
+    },
+    {
+      "path": "src/systems/simulation-plan.ts",
+      "sha256": "cec8010ab03f351ac4c95ba60818ca6dec41646ba7d8debad1d0700f5e675b76"
+    },
+    {
+      "path": "src/utils/hoh-eligibility.ts",
+      "sha256": "4b7b714aa1df5b17f65460e95d9528f734463ca301ba106f166f09df1414499d"
+    },
+    {
+      "path": "src/utils/random.ts",
+      "sha256": "cdd0f9420523c370b2eb1d6a040e56cdfe990e40918a003d614cbfcda54f2737"
+    },
+    {
+      "path": "src/utils/relationship-snapshot.ts",
+      "sha256": "d11e8344c1d7fb99ba67e630829555ce594747c84601a83217cdc05c83b8548b"
+    },
+    {
+      "path": "src/utils/stat-checks.ts",
+      "sha256": "a464b363fd501f809bbf61f24f4cb141c7fcb245660dfd014f36fa85abb55687"
+    },
+    {
+      "path": "../unity-port-reference/collect-fixtures.ts",
+      "sha256": "d890d4ecea502de5aa185b23ddab05bef8311883ed45f354967601c3d3026fb3"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "Gamesim.Editor",
+  "rootNamespace": "Gamesim.Editor",
+  "references": [
+    "Gamesim.Runtime",
+    "Gamesim.Simulation",
+    "Unity.AI.Navigation",
+    "Unity.InputSystem",
+    "UnityEngine.UI",
+    "UnityEditor.TestRunner",
+    "UnityEngine.TestRunner"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

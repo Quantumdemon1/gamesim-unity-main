@@ -1,0 +1,1935 @@
+{
+  "description": "Legal native command trace, evaluated by original TypeScript eviction-round and public/private explanation APIs. No invented founder/stability/grudges.",
+  "seed": 4,
+  "talks": 3,
+  "pactTarget": "maya-hassan",
+  "commands": [
+    {
+      "id": "test-0",
+      "actorId": "player",
+      "targetId": "maya-hassan",
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 0,
+      "expectedPhase": 0,
+      "kind": 6,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-1",
+      "actorId": "player",
+      "targetId": "maya-hassan",
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 1,
+      "expectedPhase": 0,
+      "kind": 6,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-2",
+      "actorId": "player",
+      "targetId": "maya-hassan",
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 2,
+      "expectedPhase": 0,
+      "kind": 6,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-3",
+      "actorId": "player",
+      "targetId": "maya-hassan",
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 3,
+      "expectedPhase": 0,
+      "kind": 10,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-4",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 4,
+      "expectedPhase": 0,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-5",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 5,
+      "expectedPhase": 1,
+      "kind": 1,
+      "useVeto": false,
+      "performance": 0.5
+    },
+    {
+      "id": "test-6",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 6,
+      "expectedPhase": 1,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-7",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 7,
+      "expectedPhase": 2,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-8",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 8,
+      "expectedPhase": 2,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-9",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 9,
+      "expectedPhase": 3,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-10",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 10,
+      "expectedPhase": 4,
+      "kind": 1,
+      "useVeto": false,
+      "performance": 0.5
+    },
+    {
+      "id": "test-11",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 11,
+      "expectedPhase": 4,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-12",
+      "actorId": "player",
+      "targetId": "player",
+      "secondTargetId": "maya-hassan",
+      "text": null,
+      "expectedRevision": 12,
+      "expectedPhase": 5,
+      "kind": 3,
+      "useVeto": true,
+      "performance": 0
+    },
+    {
+      "id": "test-13",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 13,
+      "expectedPhase": 5,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    },
+    {
+      "id": "test-14",
+      "actorId": "player",
+      "targetId": null,
+      "secondTargetId": null,
+      "text": null,
+      "expectedRevision": 14,
+      "expectedPhase": 6,
+      "kind": 0,
+      "useVeto": false,
+      "performance": 0
+    }
+  ],
+  "state": {
+    "schemaVersion": 5,
+    "sessionId": "gamesim-00000004",
+    "seed": 4,
+    "randomState": 2903413566,
+    "revision": 15,
+    "week": 1,
+    "nextSequence": 19,
+    "socialActions": 0,
+    "phase": 7,
+    "playerId": "player",
+    "hohId": "jamie-roberts",
+    "previousHohId": null,
+    "vetoHolderId": "player",
+    "winnerId": null,
+    "runnerUpId": null,
+    "finalPart1WinnerId": null,
+    "finalPart2WinnerId": null,
+    "competitionResolved": false,
+    "vetoResolved": true,
+    "evictionResolved": false,
+    "contestants": [
+      {
+        "id": "player",
+        "name": "You",
+        "pronouns": "they/them",
+        "motive": "Choose who to trust, survive the vote, and build a game you can explain.",
+        "homeRoom": "Living",
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": true,
+        "status": 0,
+        "stats": {
+          "physical": 6,
+          "mental": 6,
+          "endurance": 6,
+          "social": 6,
+          "luck": 6,
+          "competition": 6,
+          "strategic": 6,
+          "loyalty": 6
+        },
+        "traits": [],
+        "hohWins": 0,
+        "vetoWins": 1,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "maya-hassan",
+        "name": "Maya Hassan",
+        "pronouns": "she/her",
+        "motive": "Build a dependable voting partnership without making promises she cannot keep.",
+        "homeRoom": "Private",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 8,
+          "endurance": 4,
+          "social": 8,
+          "luck": 6,
+          "competition": 4,
+          "strategic": 6,
+          "loyalty": 4
+        },
+        "traits": [
+          "Strategic",
+          "Social"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "taylor-kim",
+        "name": "Taylor Kim",
+        "pronouns": "she/her",
+        "motive": "Prove she can win under pressure and earn safety without surrendering her independence.",
+        "homeRoom": "Yard",
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 10,
+          "mental": 4,
+          "endurance": 7,
+          "social": 4,
+          "luck": 4,
+          "competition": 4,
+          "strategic": 4,
+          "loyalty": 4
+        },
+        "traits": [
+          "Competitive",
+          "Confrontational"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "jamie-roberts",
+        "name": "Jamie Roberts",
+        "pronouns": "she/her",
+        "motive": "Protect people who treat her honestly while keeping the courage to make her own move.",
+        "homeRoom": "Kitchen",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 8,
+          "endurance": 4,
+          "social": 8,
+          "luck": 4,
+          "competition": 4,
+          "strategic": 6,
+          "loyalty": 6
+        },
+        "traits": [
+          "Emotional",
+          "Strategic"
+        ],
+        "hohWins": 1,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "casey-wilson",
+        "name": "Casey Wilson",
+        "pronouns": "she/her",
+        "motive": "Keep conversations light, compare what people say, and avoid becoming the obvious target.",
+        "homeRoom": "Living",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 8,
+          "endurance": 4,
+          "social": 8,
+          "luck": 6,
+          "competition": 4,
+          "strategic": 6,
+          "loyalty": 4
+        },
+        "traits": [
+          "Social",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "riley-johnson",
+        "name": "Riley Johnson",
+        "pronouns": "he/him",
+        "motive": "Turn careful observation into one reliable partnership and a well-timed competition win.",
+        "homeRoom": "Bedroom",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 10,
+          "endurance": 4,
+          "social": 4,
+          "luck": 4,
+          "competition": 4,
+          "strategic": 7,
+          "loyalty": 4
+        },
+        "traits": [
+          "Analytical",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      }
+    ],
+    "relationships": [
+      {
+        "fromId": "player",
+        "toId": "maya-hassan",
+        "score": 20,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "taylor-kim",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "jamie-roberts",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "casey-wilson",
+        "score": -14.942700945306571,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "You used POV forcing Casey Wilson on the block"
+        ],
+        "events": []
+      },
+      {
+        "fromId": "player",
+        "toId": "riley-johnson",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "player",
+        "score": 18.62725122757256,
+        "lastInteractionWeek": 1,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "taylor-kim",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "jamie-roberts",
+        "score": 15,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "casey-wilson",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "maya-hassan",
+        "toId": "riley-johnson",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "player",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "maya-hassan",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "jamie-roberts",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "casey-wilson",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "taylor-kim",
+        "toId": "riley-johnson",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "player",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "maya-hassan",
+        "score": 15,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "taylor-kim",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "casey-wilson",
+        "score": -19.37396813184023,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Jamie Roberts named Casey Wilson as replacement nominee"
+        ],
+        "events": []
+      },
+      {
+        "fromId": "jamie-roberts",
+        "toId": "riley-johnson",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "player",
+        "score": -15,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "You used POV forcing Casey Wilson on the block"
+        ],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "maya-hassan",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "taylor-kim",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "jamie-roberts",
+        "score": -20,
+        "lastInteractionWeek": 1,
+        "notes": [
+          "Jamie Roberts named Casey Wilson as replacement nominee"
+        ],
+        "events": []
+      },
+      {
+        "fromId": "casey-wilson",
+        "toId": "riley-johnson",
+        "score": -10,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "player",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "maya-hassan",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "taylor-kim",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "jamie-roberts",
+        "score": 0,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      },
+      {
+        "fromId": "riley-johnson",
+        "toId": "casey-wilson",
+        "score": -10,
+        "lastInteractionWeek": 0,
+        "notes": [],
+        "events": []
+      }
+    ],
+    "promises": [],
+    "alliances": [
+      {
+        "id": "alliance-5",
+        "name": "The Maya Pact",
+        "members": [
+          "player",
+          "maya-hassan"
+        ],
+        "active": true
+      }
+    ],
+    "memories": [
+      {
+        "ownerId": "maya-hassan",
+        "subjectId": "jamie-roberts",
+        "text": "Jamie checked in on me during arrival. I appreciated it.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "jamie-roberts",
+        "subjectId": "maya-hassan",
+        "text": "Maya listened when I talked about the pressure of moving in.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "casey-wilson",
+        "subjectId": "riley-johnson",
+        "text": "Riley questioned my first plan before hearing me out.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "riley-johnson",
+        "subjectId": "casey-wilson",
+        "text": "Casey's first plan moved faster than I was comfortable with.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "maya-hassan",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "maya-hassan",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "maya-hassan",
+        "subjectId": "player",
+        "text": "We spent time talking in week 1.",
+        "week": 1,
+        "isPrivate": true
+      },
+      {
+        "ownerId": "player",
+        "subjectId": "jamie-roberts",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "taylor-kim",
+        "subjectId": "jamie-roberts",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      },
+      {
+        "ownerId": "casey-wilson",
+        "subjectId": "jamie-roberts",
+        "text": "Nominated me in week 1.",
+        "week": 1,
+        "isPrivate": false
+      }
+    ],
+    "nominees": [
+      "taylor-kim",
+      "casey-wilson"
+    ],
+    "vetoPlayers": [
+      "player",
+      "maya-hassan",
+      "taylor-kim",
+      "jamie-roberts",
+      "casey-wilson",
+      "riley-johnson"
+    ],
+    "votes": [],
+    "competitionScores": [
+      {
+        "contestantId": "player",
+        "score": 10.804438306950033
+      },
+      {
+        "contestantId": "maya-hassan",
+        "score": 5.4205311639234415
+      },
+      {
+        "contestantId": "taylor-kim",
+        "score": 8.809109475545121
+      },
+      {
+        "contestantId": "jamie-roberts",
+        "score": 6.177275170478969
+      },
+      {
+        "contestantId": "casey-wilson",
+        "score": 5.8834294341504565
+      },
+      {
+        "contestantId": "riley-johnson",
+        "score": 6.505703852651641
+      }
+    ],
+    "events": [
+      {
+        "sequence": 1,
+        "week": 1,
+        "phase": 0,
+        "kind": "arrival",
+        "text": "Six housemates, one new game. Meet the cast, decide who to trust, and prepare for the first competition.",
+        "audienceIds": [
+          "player",
+          "maya-hassan",
+          "taylor-kim",
+          "jamie-roberts",
+          "casey-wilson",
+          "riley-johnson"
+        ]
+      },
+      {
+        "sequence": 2,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "Maya Hassan: Build a dependable voting partnership without making promises she cannot keep.",
+        "audienceIds": [
+          "player",
+          "maya-hassan"
+        ]
+      },
+      {
+        "sequence": 3,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "Maya Hassan: Build a dependable voting partnership without making promises she cannot keep.",
+        "audienceIds": [
+          "player",
+          "maya-hassan"
+        ]
+      },
+      {
+        "sequence": 4,
+        "week": 1,
+        "phase": 0,
+        "kind": "conversation",
+        "text": "Maya Hassan: Build a dependable voting partnership without making promises she cannot keep.",
+        "audienceIds": [
+          "player",
+          "maya-hassan"
+        ]
+      },
+      {
+        "sequence": 5,
+        "week": 1,
+        "phase": 0,
+        "kind": "alliance",
+        "text": "You and Maya Hassan formed a private alliance.",
+        "audienceIds": [
+          "player",
+          "maya-hassan"
+        ]
+      },
+      {
+        "sequence": 6,
+        "week": 1,
+        "phase": 1,
+        "kind": "phase",
+        "text": "Week 1 · HoH",
+        "audienceIds": []
+      },
+      {
+        "sequence": 7,
+        "week": 1,
+        "phase": 1,
+        "kind": "competition",
+        "text": "Competition winner: Jamie Roberts · Skill.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 8,
+        "week": 1,
+        "phase": 2,
+        "kind": "phase",
+        "text": "Week 1 · Nomination",
+        "audienceIds": []
+      },
+      {
+        "sequence": 9,
+        "week": 1,
+        "phase": 2,
+        "kind": "nomination",
+        "text": "Jamie Roberts nominates You and Taylor Kim.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 10,
+        "week": 1,
+        "phase": 3,
+        "kind": "phase",
+        "text": "Week 1 · VetoSelection",
+        "audienceIds": []
+      },
+      {
+        "sequence": 11,
+        "week": 1,
+        "phase": 3,
+        "kind": "veto-selection",
+        "text": "Everyone remaining in the house is eligible for the veto competition.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 12,
+        "week": 1,
+        "phase": 4,
+        "kind": "phase",
+        "text": "Week 1 · Veto",
+        "audienceIds": []
+      },
+      {
+        "sequence": 13,
+        "week": 1,
+        "phase": 4,
+        "kind": "competition",
+        "text": "Competition winner: You · Skill.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 14,
+        "week": 1,
+        "phase": 5,
+        "kind": "phase",
+        "text": "Week 1 · VetoMeeting",
+        "audienceIds": []
+      },
+      {
+        "sequence": 15,
+        "week": 1,
+        "phase": 5,
+        "kind": "veto",
+        "text": "You saves You; Casey Wilson is the replacement nominee.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 16,
+        "week": 1,
+        "phase": 6,
+        "kind": "phase",
+        "text": "Week 1 · Campaign",
+        "audienceIds": []
+      },
+      {
+        "sequence": 17,
+        "week": 1,
+        "phase": 6,
+        "kind": "campaign-close",
+        "text": "Campaigning has closed. The house votes privately to evict.",
+        "audienceIds": []
+      },
+      {
+        "sequence": 18,
+        "week": 1,
+        "phase": 7,
+        "kind": "phase",
+        "text": "Week 1 · Eviction",
+        "audienceIds": []
+      }
+    ],
+    "acceptedCommandIds": [
+      "test-0",
+      "test-1",
+      "test-2",
+      "test-3",
+      "test-4",
+      "test-5",
+      "test-6",
+      "test-7",
+      "test-8",
+      "test-9",
+      "test-10",
+      "test-11",
+      "test-12",
+      "test-13",
+      "test-14"
+    ],
+    "juryExchanges": [],
+    "juryQuestionIndex": 0,
+    "finalSpeeches": [],
+    "relationshipArcs": [
+      {
+        "npcId": "maya-hassan",
+        "npcName": "Maya Hassan",
+        "arcType": "friendship",
+        "intensity": 30,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": 4,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": 4,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": 4,
+            "reason": "Relationship changed by 4"
+          },
+          {
+            "week": 1,
+            "delta": 8,
+            "reason": "Relationship changed by 8"
+          }
+        ]
+      },
+      {
+        "npcId": "jamie-roberts",
+        "npcName": "Jamie Roberts",
+        "arcType": "rivalry",
+        "intensity": 27,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": -8,
+            "reason": "Nominated you in week 1"
+          },
+          {
+            "week": 1,
+            "delta": -20,
+            "reason": "Jamie Roberts named Casey Wilson as replacement nominee"
+          }
+        ]
+      },
+      {
+        "npcId": "casey-wilson",
+        "npcName": "Casey Wilson",
+        "arcType": "rivalry",
+        "intensity": 30,
+        "escalationLevel": 1,
+        "weeklyHistory": [
+          {
+            "week": 1,
+            "delta": -20,
+            "reason": "Jamie Roberts named Casey Wilson as replacement nominee"
+          },
+          {
+            "week": 1,
+            "delta": -15,
+            "reason": "You used POV forcing Casey Wilson on the block"
+          }
+        ]
+      }
+    ],
+    "playerPersona": {
+      "current": "Neutral",
+      "scores": [
+        {
+          "persona": "Neutral",
+          "score": 0
+        },
+        {
+          "persona": "Remorseful",
+          "score": 0
+        },
+        {
+          "persona": "Ruthless",
+          "score": 0
+        },
+        {
+          "persona": "Calculated",
+          "score": 0
+        },
+        {
+          "persona": "Social Butterfly",
+          "score": 0
+        }
+      ],
+      "history": []
+    },
+    "jurySentiment": {
+      "jurors": [],
+      "overallSentiment": 0
+    },
+    "pendingDiary": null,
+    "lastDiaryRoomWeek": 0,
+    "phaseEventSocialBonus": 0,
+    "phaseEventCompBonus": 0,
+    "resolvedDiaryIds": [],
+    "loyaltyOaths": [],
+    "oathOpportunities": [],
+    "shownOathMilestones": [],
+    "playerStudyBonus": 0,
+    "blocRulesStartWeek": 1,
+    "Active": [
+      {
+        "id": "player",
+        "name": "You",
+        "pronouns": "they/them",
+        "motive": "Choose who to trust, survive the vote, and build a game you can explain.",
+        "homeRoom": "Living",
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": true,
+        "status": 0,
+        "stats": {
+          "physical": 6,
+          "mental": 6,
+          "endurance": 6,
+          "social": 6,
+          "luck": 6,
+          "competition": 6,
+          "strategic": 6,
+          "loyalty": 6
+        },
+        "traits": [],
+        "hohWins": 0,
+        "vetoWins": 1,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "maya-hassan",
+        "name": "Maya Hassan",
+        "pronouns": "she/her",
+        "motive": "Build a dependable voting partnership without making promises she cannot keep.",
+        "homeRoom": "Private",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 8,
+          "endurance": 4,
+          "social": 8,
+          "luck": 6,
+          "competition": 4,
+          "strategic": 6,
+          "loyalty": 4
+        },
+        "traits": [
+          "Strategic",
+          "Social"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "taylor-kim",
+        "name": "Taylor Kim",
+        "pronouns": "she/her",
+        "motive": "Prove she can win under pressure and earn safety without surrendering her independence.",
+        "homeRoom": "Yard",
+        "mood": "Angry",
+        "stressLevel": "Stressed",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 10,
+          "mental": 4,
+          "endurance": 7,
+          "social": 4,
+          "luck": 4,
+          "competition": 4,
+          "strategic": 4,
+          "loyalty": 4
+        },
+        "traits": [
+          "Competitive",
+          "Confrontational"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "jamie-roberts",
+        "name": "Jamie Roberts",
+        "pronouns": "she/her",
+        "motive": "Protect people who treat her honestly while keeping the courage to make her own move.",
+        "homeRoom": "Kitchen",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 8,
+          "endurance": 4,
+          "social": 8,
+          "luck": 4,
+          "competition": 4,
+          "strategic": 6,
+          "loyalty": 6
+        },
+        "traits": [
+          "Emotional",
+          "Strategic"
+        ],
+        "hohWins": 1,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      },
+      {
+        "id": "casey-wilson",
+        "name": "Casey Wilson",
+        "pronouns": "she/her",
+        "motive": "Keep conversations light, compare what people say, and avoid becoming the obvious target.",
+        "homeRoom": "Living",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 8,
+          "endurance": 4,
+          "social": 8,
+          "luck": 6,
+          "competition": 4,
+          "strategic": 6,
+          "loyalty": 4
+        },
+        "traits": [
+          "Social",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 1,
+        "nominationWeeks": [
+          1
+        ]
+      },
+      {
+        "id": "riley-johnson",
+        "name": "Riley Johnson",
+        "pronouns": "he/him",
+        "motive": "Turn careful observation into one reliable partnership and a well-timed competition win.",
+        "homeRoom": "Bedroom",
+        "mood": "Neutral",
+        "stressLevel": "Normal",
+        "isPlayer": false,
+        "status": 0,
+        "stats": {
+          "physical": 4,
+          "mental": 10,
+          "endurance": 4,
+          "social": 4,
+          "luck": 4,
+          "competition": 4,
+          "strategic": 7,
+          "loyalty": 4
+        },
+        "traits": [
+          "Analytical",
+          "Strategic"
+        ],
+        "hohWins": 0,
+        "vetoWins": 0,
+        "timesNominated": 0,
+        "nominationWeeks": []
+      }
+    ]
+  },
+  "witnessVoter": "maya-hassan",
+  "decisions": [
+    {
+      "voterId": "maya-hassan",
+      "expected": {
+        "voterId": "maya-hassan",
+        "nomineeEvaluations": [
+          {
+            "nomineeId": "taylor-kim",
+            "score": -6.44,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:maya-hassan:taylor-kim"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -5.44,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:taylor-kim"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 4,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": -5,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:maya-hassan"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              }
+            ]
+          },
+          {
+            "nomineeId": "casey-wilson",
+            "score": -31.836199971074237,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:maya-hassan:casey-wilson"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -5.036199971074239,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:casey-wilson"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 3.2,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": 10,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:maya-hassan"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": -40,
+                "visibility": "private",
+                "evidenceIds": [
+                  "alliance-5"
+                ]
+              }
+            ]
+          }
+        ],
+        "selectedNomineeId": "casey-wilson",
+        "savedNomineeId": "taylor-kim",
+        "margin": 25.396199971074235,
+        "confidence": "decisive",
+        "publicReasonCodes": [],
+        "privateReasonCodes": [
+          "blocPressure",
+          "strategicValue"
+        ]
+      },
+      "uncoordinated": {
+        "voterId": "maya-hassan",
+        "nomineeEvaluations": [
+          {
+            "nomineeId": "taylor-kim",
+            "score": -6.44,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:maya-hassan:taylor-kim"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -5.44,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:taylor-kim"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 4,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": -5,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:maya-hassan"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              }
+            ]
+          },
+          {
+            "nomineeId": "casey-wilson",
+            "score": 8.163800028925762,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:maya-hassan:casey-wilson"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -5.036199971074239,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:casey-wilson"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 3.2,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": 10,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:maya-hassan"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              }
+            ]
+          }
+        ],
+        "selectedNomineeId": "taylor-kim",
+        "savedNomineeId": "casey-wilson",
+        "margin": 14.603800028925761,
+        "confidence": "leaning",
+        "publicReasonCodes": [
+          "threat"
+        ],
+        "privateReasonCodes": [
+          "personality",
+          "threat"
+        ]
+      },
+      "publicReason": "Keeping Taylor Kim is better for my game right now.",
+      "privateReason": "My alliance needs me to vote out Casey Wilson."
+    },
+    {
+      "voterId": "riley-johnson",
+      "expected": {
+        "voterId": "riley-johnson",
+        "nomineeEvaluations": [
+          {
+            "nomineeId": "taylor-kim",
+            "score": -0.7407407407407396,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:riley-johnson:taylor-kim"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -6.296296296296296,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:taylor-kim"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 5.555555555555556,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:riley-johnson"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              }
+            ]
+          },
+          {
+            "nomineeId": "casey-wilson",
+            "score": 2.7358796631085207,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": -0.7407407407407406,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:riley-johnson:casey-wilson"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -5.9678240405951835,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:casey-wilson"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 4.444444444444445,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": 5,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:riley-johnson"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              }
+            ]
+          }
+        ],
+        "selectedNomineeId": "taylor-kim",
+        "savedNomineeId": "casey-wilson",
+        "margin": 3.4766204038492603,
+        "confidence": "tossUp",
+        "publicReasonCodes": [
+          "threat"
+        ],
+        "privateReasonCodes": [
+          "personality",
+          "threat"
+        ]
+      },
+      "uncoordinated": {
+        "voterId": "riley-johnson",
+        "nomineeEvaluations": [
+          {
+            "nomineeId": "taylor-kim",
+            "score": -0.7407407407407396,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:riley-johnson:taylor-kim"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -6.296296296296296,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:taylor-kim"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 5.555555555555556,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:riley-johnson"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              }
+            ]
+          },
+          {
+            "nomineeId": "casey-wilson",
+            "score": 2.7358796631085207,
+            "factors": [
+              {
+                "code": "relationship",
+                "value": -0.7407407407407406,
+                "visibility": "private",
+                "evidenceIds": [
+                  "relationship:riley-johnson:casey-wilson"
+                ]
+              },
+              {
+                "code": "threat",
+                "value": -5.9678240405951835,
+                "visibility": "public",
+                "evidenceIds": [
+                  "resume:casey-wilson"
+                ]
+              },
+              {
+                "code": "alliance",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "deal",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "strategicValue",
+                "value": 4.444444444444445,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "history",
+                "value": 0,
+                "visibility": "playerKnown",
+                "evidenceIds": []
+              },
+              {
+                "code": "personality",
+                "value": 5,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "memory",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": [
+                  "memories:riley-johnson"
+                ]
+              },
+              {
+                "code": "persona",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              },
+              {
+                "code": "blocPressure",
+                "value": 0,
+                "visibility": "private",
+                "evidenceIds": []
+              }
+            ]
+          }
+        ],
+        "selectedNomineeId": "taylor-kim",
+        "savedNomineeId": "casey-wilson",
+        "margin": 3.4766204038492603,
+        "confidence": "tossUp",
+        "publicReasonCodes": [
+          "threat"
+        ],
+        "privateReasonCodes": [
+          "personality",
+          "threat"
+        ]
+      },
+      "publicReason": "Taylor Kim is the bigger threat and needs to go.",
+      "privateReason": "Keeping Casey Wilson is better for my game right now."
+    }
+  ],
+  "nativeCandidateSha256": "8f840a51965bc2be31b7bb638bae3197a6813de41a0f0198f9054f955f7093ae",
+  "sources": [
+    {
+      "path": "src/systems/voting-bloc-system.ts",
+      "sha256": "13fc78bad9346043d79ede126697cac5297e9111a58a4dc95d45d838c8466d6c"
+    },
+    {
+      "path": "src/systems/eviction-vote-round.ts",
+      "sha256": "a08888deb40354f22921a9034e495a29be3cbd5aa4c10991163b213542df0a7b"
+    },
+    {
+      "path": "src/systems/eviction-vote-evaluator.ts",
+      "sha256": "5a60f0b75e752e59b65f69ace04ad2fbb096e3c87f1757a644b1bba2e1d53e83"
+    },
+    {
+      "path": "src/systems/grudge-system.ts",
+      "sha256": "883b7882761b55dfe86e02272683320229c623b84262f5f2c633c1798b0a733c"
+    },
+    {
+      "path": "src/utils/random.ts",
+      "sha256": "cdd0f9420523c370b2eb1d6a040e56cdfe990e40918a003d614cbfcda54f2737"
+    },
+    {
+      "path": "src/utils/server-state-serializer.ts",
+      "sha256": "bb230c26f44c7775e22deda52879e3f9c4be0e93d7161b92f936bffc75491f9d"
+    },
+    {
+      "path": "src/utils/npc-memory-injector.ts",
+      "sha256": "9461992246e664cdd25c60d40edd4e0c2b313f2c78cbea82925c14674b4003af"
+    },
+    {
+      "path": "src/models/game-state.ts",
+      "sha256": "be5707c1c29b69aea22736d6789069606902cd013a76b576e796170f82e84b5d"
+    },
+    {
+      "path": "src/models/eviction-vote.ts",
+      "sha256": "98cb67bd9b81e23103ef6f017a84d710a1c30d19df4a244dd54f794179ac9cb4"
+    },
+    {
+      "path": "src/config.ts",
+      "sha256": "ab153b7074f7b2734db31e454bab33dad5305082a0a22a241e0e7fd5cbb69836"
+    },
+    {
+      "path": "src/systems/admin-config.ts",
+      "sha256": "94ff04bd5bf9df90a1ff50ce25049f44110dfe69db56f9c6316255289bc889d6"
+    }
+  ]
+}

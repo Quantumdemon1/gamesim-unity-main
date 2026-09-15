@@ -1,0 +1,5504 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "path": "src/utils/speech-generator.ts",
+      "sha256": "d8cbe66d3ddfae67fef4397d5e394094aa1771624d942f825813540ab9b2c550"
+    },
+    {
+      "path": "src/utils/random.ts",
+      "sha256": "cdd0f9420523c370b2eb1d6a040e56cdfe990e40918a003d614cbfcda54f2737"
+    }
+  ],
+  "cases": [
+    {
+      "name": "base-Strategic-0",
+      "traits": [
+        "Strategic",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence."
+    },
+    {
+      "name": "base-Strategic-0.4",
+      "traits": [
+        "Strategic",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "cerebral",
+      "expected": "My game was built on foresight. While others reacted, I planned. I positioned myself to survive every single eviction, and that's why I'm sitting here tonight."
+    },
+    {
+      "name": "base-Strategic-0.9",
+      "traits": [
+        "Strategic",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "cerebral",
+      "expected": "I played the most complete game in this house. I balanced relationships with strategy, and I always thought three steps ahead. That deserves your vote."
+    },
+    {
+      "name": "base-Analytical-0",
+      "traits": [
+        "Analytical",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence."
+    },
+    {
+      "name": "base-Analytical-0.4",
+      "traits": [
+        "Analytical",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "cerebral",
+      "expected": "My game was built on foresight. While others reacted, I planned. I positioned myself to survive every single eviction, and that's why I'm sitting here tonight."
+    },
+    {
+      "name": "base-Analytical-0.9",
+      "traits": [
+        "Analytical",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "cerebral",
+      "expected": "I played the most complete game in this house. I balanced relationships with strategy, and I always thought three steps ahead. That deserves your vote."
+    },
+    {
+      "name": "base-Social-0",
+      "traits": [
+        "Social",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "base-Social-0.4",
+      "traits": [
+        "Social",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "I won this game by being someone people wanted to work with. I was genuine, I was kind, and I built real relationships. That's how you survive Big Brother."
+    },
+    {
+      "name": "base-Social-0.9",
+      "traits": [
+        "Social",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "My game wasn't about backstabbing or manipulation — it was about connection. I earned people's trust and I honored it. I'm proud of the game I played."
+    },
+    {
+      "name": "base-Charming-0",
+      "traits": [
+        "Charming",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "base-Charming-0.4",
+      "traits": [
+        "Charming",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "I won this game by being someone people wanted to work with. I was genuine, I was kind, and I built real relationships. That's how you survive Big Brother."
+    },
+    {
+      "name": "base-Charming-0.9",
+      "traits": [
+        "Charming",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "My game wasn't about backstabbing or manipulation — it was about connection. I earned people's trust and I honored it. I'm proud of the game I played."
+    },
+    {
+      "name": "base-Funny-0",
+      "traits": [
+        "Funny",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "base-Funny-0.4",
+      "traits": [
+        "Funny",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "I won this game by being someone people wanted to work with. I was genuine, I was kind, and I built real relationships. That's how you survive Big Brother."
+    },
+    {
+      "name": "base-Funny-0.9",
+      "traits": [
+        "Funny",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "My game wasn't about backstabbing or manipulation — it was about connection. I earned people's trust and I honored it. I'm proud of the game I played."
+    },
+    {
+      "name": "base-Loyal-0",
+      "traits": [
+        "Loyal",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "base-Loyal-0.4",
+      "traits": [
+        "Loyal",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "I won this game by being someone people wanted to work with. I was genuine, I was kind, and I built real relationships. That's how you survive Big Brother."
+    },
+    {
+      "name": "base-Loyal-0.9",
+      "traits": [
+        "Loyal",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "My game wasn't about backstabbing or manipulation — it was about connection. I earned people's trust and I honored it. I'm proud of the game I played."
+    },
+    {
+      "name": "base-Competitive-0",
+      "traits": [
+        "Competitive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did."
+    },
+    {
+      "name": "base-Competitive-0.4",
+      "traits": [
+        "Competitive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "My game was all about power. I won HoH, I won Veto, and I controlled the direction of this house. If you respect gameplay, you respect what I did."
+    },
+    {
+      "name": "base-Competitive-0.9",
+      "traits": [
+        "Competitive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I played this game harder than anyone. Every competition, every eviction night — I brought everything I had. I didn't coast. I conquered."
+    },
+    {
+      "name": "base-Confrontational-0",
+      "traits": [
+        "Confrontational",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did."
+    },
+    {
+      "name": "base-Confrontational-0.4",
+      "traits": [
+        "Confrontational",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "My game was all about power. I won HoH, I won Veto, and I controlled the direction of this house. If you respect gameplay, you respect what I did."
+    },
+    {
+      "name": "base-Confrontational-0.9",
+      "traits": [
+        "Confrontational",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I played this game harder than anyone. Every competition, every eviction night — I brought everything I had. I didn't coast. I conquered."
+    },
+    {
+      "name": "base-Stubborn-0",
+      "traits": [
+        "Stubborn",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did."
+    },
+    {
+      "name": "base-Stubborn-0.4",
+      "traits": [
+        "Stubborn",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "My game was all about power. I won HoH, I won Veto, and I controlled the direction of this house. If you respect gameplay, you respect what I did."
+    },
+    {
+      "name": "base-Stubborn-0.9",
+      "traits": [
+        "Stubborn",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I played this game harder than anyone. Every competition, every eviction night — I brought everything I had. I didn't coast. I conquered."
+    },
+    {
+      "name": "base-Manipulative-0",
+      "traits": [
+        "Manipulative",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "You might not have seen my game, and that's exactly why it worked. I pulled strings from the shadows, and not a single person ever figured out my full strategy."
+    },
+    {
+      "name": "base-Manipulative-0.4",
+      "traits": [
+        "Manipulative",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "I played the most underrated game in this house. While others were loud, I was surgical. Every whispered conversation, every misdirection — it all led to this moment."
+    },
+    {
+      "name": "base-Manipulative-0.9",
+      "traits": [
+        "Manipulative",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "My game was invisible by design. I let others take the heat while I positioned myself perfectly. That takes more skill than winning any competition."
+    },
+    {
+      "name": "base-Deceptive-0",
+      "traits": [
+        "Deceptive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "You might not have seen my game, and that's exactly why it worked. I pulled strings from the shadows, and not a single person ever figured out my full strategy."
+    },
+    {
+      "name": "base-Deceptive-0.4",
+      "traits": [
+        "Deceptive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "I played the most underrated game in this house. While others were loud, I was surgical. Every whispered conversation, every misdirection — it all led to this moment."
+    },
+    {
+      "name": "base-Deceptive-0.9",
+      "traits": [
+        "Deceptive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "My game was invisible by design. I let others take the heat while I positioned myself perfectly. That takes more skill than winning any competition."
+    },
+    {
+      "name": "base-Sneaky-0",
+      "traits": [
+        "Sneaky",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "You might not have seen my game, and that's exactly why it worked. I pulled strings from the shadows, and not a single person ever figured out my full strategy."
+    },
+    {
+      "name": "base-Sneaky-0.4",
+      "traits": [
+        "Sneaky",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "I played the most underrated game in this house. While others were loud, I was surgical. Every whispered conversation, every misdirection — it all led to this moment."
+    },
+    {
+      "name": "base-Sneaky-0.9",
+      "traits": [
+        "Sneaky",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "My game was invisible by design. I let others take the heat while I positioned myself perfectly. That takes more skill than winning any competition."
+    },
+    {
+      "name": "base-Flexible-0",
+      "traits": [
+        "Flexible",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "You might not have seen my game, and that's exactly why it worked. I pulled strings from the shadows, and not a single person ever figured out my full strategy."
+    },
+    {
+      "name": "base-Flexible-0.4",
+      "traits": [
+        "Flexible",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "I played the most underrated game in this house. While others were loud, I was surgical. Every whispered conversation, every misdirection — it all led to this moment."
+    },
+    {
+      "name": "base-Flexible-0.9",
+      "traits": [
+        "Flexible",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "sneaky",
+      "expected": "My game was invisible by design. I let others take the heat while I positioned myself perfectly. That takes more skill than winning any competition."
+    },
+    {
+      "name": "base-Emotional-0",
+      "traits": [
+        "Emotional",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "This journey changed my life. I came in unsure of myself and I'm leaving as someone who survived the most intense experience imaginable. I played with my whole heart."
+    },
+    {
+      "name": "base-Emotional-0.4",
+      "traits": [
+        "Emotional",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "I know my emotions showed, but that's because this game meant everything to me. I fought through tears, through doubt, and I'm still standing. That's strength."
+    },
+    {
+      "name": "base-Emotional-0.9",
+      "traits": [
+        "Emotional",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "Being here was a dream, and I gave it absolutely everything. My passion drove my game. I hope you can see how much this means to me."
+    },
+    {
+      "name": "base-Impulsive-0",
+      "traits": [
+        "Impulsive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "This journey changed my life. I came in unsure of myself and I'm leaving as someone who survived the most intense experience imaginable. I played with my whole heart."
+    },
+    {
+      "name": "base-Impulsive-0.4",
+      "traits": [
+        "Impulsive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "I know my emotions showed, but that's because this game meant everything to me. I fought through tears, through doubt, and I'm still standing. That's strength."
+    },
+    {
+      "name": "base-Impulsive-0.9",
+      "traits": [
+        "Impulsive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "Being here was a dream, and I gave it absolutely everything. My passion drove my game. I hope you can see how much this means to me."
+    },
+    {
+      "name": "base-Introverted-0",
+      "traits": [
+        "Introverted",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "This journey changed my life. I came in unsure of myself and I'm leaving as someone who survived the most intense experience imaginable. I played with my whole heart."
+    },
+    {
+      "name": "base-Introverted-0.4",
+      "traits": [
+        "Introverted",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "I know my emotions showed, but that's because this game meant everything to me. I fought through tears, through doubt, and I'm still standing. That's strength."
+    },
+    {
+      "name": "base-Introverted-0.9",
+      "traits": [
+        "Introverted",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "Being here was a dream, and I gave it absolutely everything. My passion drove my game. I hope you can see how much this means to me."
+    },
+    {
+      "name": "base-Intuitive-0",
+      "traits": [
+        "Intuitive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "This journey changed my life. I came in unsure of myself and I'm leaving as someone who survived the most intense experience imaginable. I played with my whole heart."
+    },
+    {
+      "name": "base-Intuitive-0.4",
+      "traits": [
+        "Intuitive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "I know my emotions showed, but that's because this game meant everything to me. I fought through tears, through doubt, and I'm still standing. That's strength."
+    },
+    {
+      "name": "base-Intuitive-0.9",
+      "traits": [
+        "Intuitive",
+        "Ignored"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "emotional",
+      "expected": "Being here was a dream, and I gave it absolutely everything. My passion drove my game. I hope you can see how much this means to me."
+    },
+    {
+      "name": "fallback-[]",
+      "traits": [],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "fallback-[\"\"]",
+      "traits": [
+        ""
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "fallback-[null]",
+      "traits": [
+        null
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "fallback-[\"Unknown\"]",
+      "traits": [
+        "Unknown"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "fallback-[\"strategic\"]",
+      "traits": [
+        "strategic"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "fallback-[\" \",\"Strategic\"]",
+      "traits": [
+        " ",
+        "Strategic"
+      ],
+      "context": null,
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "full-Strategic-0",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 0,
+      "sampleTexts": [
+        "0.26642920868471265",
+        "0.0003297457005828619",
+        "0.2232720274478197",
+        "0.1462021479383111",
+        "0.46732782293111086",
+        "0.5450490827206522",
+        "0.6152513844426721",
+        "0.6489853798411787",
+        "0.45600721263326705",
+        "0.581218967679888"
+      ],
+      "sampleNumerators": [
+        1144304738,
+        1416247,
+        958946056,
+        627933444,
+        2007157716,
+        2340967985,
+        2642484575,
+        2787370982,
+        1958536065,
+        2496316458
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence. And what happened between me and Maya showed my true character. Some promises were made and broken in this house — but I own my decisions."
+    },
+    {
+      "name": "full-Strategic-1",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 1,
+      "sampleTexts": [
+        "0.6270739405881613",
+        "0.002735721180215478",
+        "0.5274470399599522",
+        "0.9810509674716741",
+        "0.9683778982143849",
+        "0.281103502959013",
+        "0.6128388606011868",
+        "0.7207431411370635",
+        "0.425796952098608",
+        "0.9948229456786066",
+        "0.45527112716808915",
+        "0.48878831742331386"
+      ],
+      "sampleNumerators": [
+        2693262067,
+        11749833,
+        2265367787,
+        4213581821,
+        4159151403,
+        1207330352,
+        2632122864,
+        3095568220,
+        1828783984,
+        4272732017,
+        1955374602,
+        2099329838
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "cerebral",
+      "expected": "My game was built on foresight. While others reacted, I planned. I positioned myself to survive every single eviction, and that's why I'm sitting here tonight. Going through \"Inner Strength\" showed me I'm stronger than I thought. I've honored my word, and that should count for something. My oath to Riley is something I take seriously."
+    },
+    {
+      "name": "full-Strategic-42",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 42,
+      "sampleTexts": [
+        "0.6011037519201636",
+        "0.44829055899754167",
+        "0.8524657934904099",
+        "0.6697340414393693",
+        "0.17481389874592423",
+        "0.5265925421845168",
+        "0.2732279943302274",
+        "0.6247446539346129",
+        "0.8654746483080089",
+        "0.4723170551005751",
+        "0.24992373422719538",
+        "0.8820588334929198"
+      ],
+      "sampleNumerators": [
+        2581720956,
+        1925393290,
+        3661312704,
+        2876485805,
+        750819978,
+        2261697747,
+        1173505300,
+        2683257857,
+        3717185310,
+        2028586305,
+        1073414265,
+        3788413843
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "cerebral",
+      "expected": "My game was built on foresight. While others reacted, I planned. I positioned myself to survive every single eviction, and that's why I'm sitting here tonight. \"Narrow Escape\" nearly broke me, but I'm still here. Some promises were made and broken in this house — but I own my decisions. I've honored my word, and that should count for something. My 4 wins weren't accidents — each one was part of a larger plan."
+    },
+    {
+      "name": "full-Strategic-987654321",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 987654321,
+      "sampleTexts": [
+        "0.9514403040520847",
+        "0.13489632960408926",
+        "0.01530607370659709",
+        "0.9139348547905684",
+        "0.6291038701310754",
+        "0.37711437582038343",
+        "0.4361245871987194",
+        "0.3972730883397162",
+        "0.26088262838311493",
+        "0.5640322368126363",
+        "0.9784534072969109",
+        "0.7232782787177712"
+      ],
+      "sampleNumerators": [
+        4086404990,
+        579375324,
+        65739086,
+        3925320312,
+        2701980548,
+        1619693911,
+        1873140839,
+        1706274922,
+        1120482357,
+        2422500011,
+        4202425385,
+        3106456553
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "cerebral",
+      "expected": "I played the most complete game in this house. I balanced relationships with strategy, and I always thought three steps ahead. That deserves your vote. After everything that went down with \"House Pressure,\" I think you all saw who I really am. My deal with Theo proves I'm trustworthy. Riley and I swore an oath. That's not something I break."
+    },
+    {
+      "name": "full-Strategic-4294967295",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 4294967295,
+      "sampleTexts": [
+        "0.8964226141106337",
+        "0.189478256739676",
+        "0.7156526781618595",
+        "0.9440599093213677",
+        "0.8452364315744489",
+        "0.5391399988438934",
+        "0.6804977387655526",
+        "0.4755720964167267",
+        "0.13585773925296962",
+        "0.9884445976931602"
+      ],
+      "sampleNumerators": [
+        3850105811,
+        813802916,
+        3073704848,
+        4054706436,
+        3630262831,
+        2315588663,
+        2922715533,
+        2042566601,
+        583504547,
+        4245337221
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "cerebral",
+      "expected": "I played the most complete game in this house. I balanced relationships with strategy, and I always thought three steps ahead. That deserves your vote. Going through \"Inner Strength\" showed me I'm stronger than I thought. My 4 wins weren't accidents — each one was part of a larger plan."
+    },
+    {
+      "name": "full-Social-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 0,
+      "sampleTexts": [
+        "0.26642920868471265",
+        "0.0003297457005828619",
+        "0.2232720274478197",
+        "0.1462021479383111",
+        "0.46732782293111086",
+        "0.5450490827206522",
+        "0.6152513844426721",
+        "0.6489853798411787",
+        "0.45600721263326705",
+        "0.581218967679888"
+      ],
+      "sampleNumerators": [
+        1144304738,
+        1416247,
+        958946056,
+        627933444,
+        2007157716,
+        2340967985,
+        2642484575,
+        2787370982,
+        1958536065,
+        2496316458
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And what happened between me and Maya showed my true character. Some promises were made and broken in this house — but I own my decisions."
+    },
+    {
+      "name": "full-Social-1",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 1,
+      "sampleTexts": [
+        "0.6270739405881613",
+        "0.002735721180215478",
+        "0.5274470399599522",
+        "0.9810509674716741",
+        "0.9683778982143849",
+        "0.281103502959013",
+        "0.6128388606011868",
+        "0.7207431411370635",
+        "0.425796952098608",
+        "0.9948229456786066",
+        "0.45527112716808915",
+        "0.48878831742331386"
+      ],
+      "sampleNumerators": [
+        2693262067,
+        11749833,
+        2265367787,
+        4213581821,
+        4159151403,
+        1207330352,
+        2632122864,
+        3095568220,
+        1828783984,
+        4272732017,
+        1955374602,
+        2099329838
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "social",
+      "expected": "I won this game by being someone people wanted to work with. I was genuine, I was kind, and I built real relationships. That's how you survive Big Brother. Going through \"Inner Strength\" showed me I'm stronger than I thought. I've honored my word, and that should count for something. My oath to Riley is something I take seriously."
+    },
+    {
+      "name": "full-Social-42",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 42,
+      "sampleTexts": [
+        "0.6011037519201636",
+        "0.44829055899754167",
+        "0.8524657934904099",
+        "0.6697340414393693",
+        "0.17481389874592423",
+        "0.5265925421845168",
+        "0.2732279943302274",
+        "0.6247446539346129",
+        "0.8654746483080089",
+        "0.4723170551005751",
+        "0.24992373422719538",
+        "0.8820588334929198"
+      ],
+      "sampleNumerators": [
+        2581720956,
+        1925393290,
+        3661312704,
+        2876485805,
+        750819978,
+        2261697747,
+        1173505300,
+        2683257857,
+        3717185310,
+        2028586305,
+        1073414265,
+        3788413843
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "social",
+      "expected": "I won this game by being someone people wanted to work with. I was genuine, I was kind, and I built real relationships. That's how you survive Big Brother. \"Narrow Escape\" nearly broke me, but I'm still here. Some promises were made and broken in this house — but I own my decisions. I've honored my word, and that should count for something. I may have 4 wins, but my real victories were the friendships I built."
+    },
+    {
+      "name": "full-Social-987654321",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 987654321,
+      "sampleTexts": [
+        "0.9514403040520847",
+        "0.13489632960408926",
+        "0.01530607370659709",
+        "0.9139348547905684",
+        "0.6291038701310754",
+        "0.37711437582038343",
+        "0.4361245871987194",
+        "0.3972730883397162",
+        "0.26088262838311493",
+        "0.5640322368126363",
+        "0.9784534072969109",
+        "0.7232782787177712"
+      ],
+      "sampleNumerators": [
+        4086404990,
+        579375324,
+        65739086,
+        3925320312,
+        2701980548,
+        1619693911,
+        1873140839,
+        1706274922,
+        1120482357,
+        2422500011,
+        4202425385,
+        3106456553
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "social",
+      "expected": "My game wasn't about backstabbing or manipulation — it was about connection. I earned people's trust and I honored it. I'm proud of the game I played. After everything that went down with \"House Pressure,\" I think you all saw who I really am. My deal with Theo proves I'm trustworthy. Riley and I swore an oath. That's not something I break."
+    },
+    {
+      "name": "full-Social-4294967295",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 4294967295,
+      "sampleTexts": [
+        "0.8964226141106337",
+        "0.189478256739676",
+        "0.7156526781618595",
+        "0.9440599093213677",
+        "0.8452364315744489",
+        "0.5391399988438934",
+        "0.6804977387655526",
+        "0.4755720964167267",
+        "0.13585773925296962",
+        "0.9884445976931602"
+      ],
+      "sampleNumerators": [
+        3850105811,
+        813802916,
+        3073704848,
+        4054706436,
+        3630262831,
+        2315588663,
+        2922715533,
+        2042566601,
+        583504547,
+        4245337221
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "social",
+      "expected": "My game wasn't about backstabbing or manipulation — it was about connection. I earned people's trust and I honored it. I'm proud of the game I played. Going through \"Inner Strength\" showed me I'm stronger than I thought. I may have 4 wins, but my real victories were the friendships I built."
+    },
+    {
+      "name": "full-Competitive-0",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 0,
+      "sampleTexts": [
+        "0.26642920868471265",
+        "0.0003297457005828619",
+        "0.2232720274478197",
+        "0.1462021479383111",
+        "0.46732782293111086",
+        "0.5450490827206522",
+        "0.6152513844426721",
+        "0.6489853798411787",
+        "0.45600721263326705",
+        "0.581218967679888"
+      ],
+      "sampleNumerators": [
+        1144304738,
+        1416247,
+        958946056,
+        627933444,
+        2007157716,
+        2340967985,
+        2642484575,
+        2787370982,
+        1958536065,
+        2496316458
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did. And what happened between me and Maya showed my true character. Some promises were made and broken in this house — but I own my decisions."
+    },
+    {
+      "name": "full-Competitive-1",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 1,
+      "sampleTexts": [
+        "0.6270739405881613",
+        "0.002735721180215478",
+        "0.5274470399599522",
+        "0.9810509674716741",
+        "0.9683778982143849",
+        "0.281103502959013",
+        "0.6128388606011868",
+        "0.7207431411370635",
+        "0.425796952098608",
+        "0.9948229456786066",
+        "0.45527112716808915",
+        "0.48878831742331386"
+      ],
+      "sampleNumerators": [
+        2693262067,
+        11749833,
+        2265367787,
+        4213581821,
+        4159151403,
+        1207330352,
+        2632122864,
+        3095568220,
+        1828783984,
+        4272732017,
+        1955374602,
+        2099329838
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "aggressive",
+      "expected": "My game was all about power. I won HoH, I won Veto, and I controlled the direction of this house. If you respect gameplay, you respect what I did. Going through \"Inner Strength\" showed me I'm stronger than I thought. I've honored my word, and that should count for something. My oath to Riley is something I take seriously."
+    },
+    {
+      "name": "full-Competitive-42",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 42,
+      "sampleTexts": [
+        "0.6011037519201636",
+        "0.44829055899754167",
+        "0.8524657934904099",
+        "0.6697340414393693",
+        "0.17481389874592423",
+        "0.5265925421845168",
+        "0.2732279943302274",
+        "0.6247446539346129",
+        "0.8654746483080089",
+        "0.4723170551005751",
+        "0.24992373422719538",
+        "0.8820588334929198"
+      ],
+      "sampleNumerators": [
+        2581720956,
+        1925393290,
+        3661312704,
+        2876485805,
+        750819978,
+        2261697747,
+        1173505300,
+        2683257857,
+        3717185310,
+        2028586305,
+        1073414265,
+        3788413843
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "aggressive",
+      "expected": "My game was all about power. I won HoH, I won Veto, and I controlled the direction of this house. If you respect gameplay, you respect what I did. \"Narrow Escape\" nearly broke me, but I'm still here. Some promises were made and broken in this house — but I own my decisions. I've honored my word, and that should count for something. I proved myself in 4 competitions — that's not luck, that's skill."
+    },
+    {
+      "name": "full-Competitive-987654321",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 987654321,
+      "sampleTexts": [
+        "0.9514403040520847",
+        "0.13489632960408926",
+        "0.01530607370659709",
+        "0.9139348547905684",
+        "0.6291038701310754",
+        "0.37711437582038343",
+        "0.4361245871987194",
+        "0.3972730883397162",
+        "0.26088262838311493",
+        "0.5640322368126363",
+        "0.9784534072969109",
+        "0.7232782787177712"
+      ],
+      "sampleNumerators": [
+        4086404990,
+        579375324,
+        65739086,
+        3925320312,
+        2701980548,
+        1619693911,
+        1873140839,
+        1706274922,
+        1120482357,
+        2422500011,
+        4202425385,
+        3106456553
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "aggressive",
+      "expected": "I played this game harder than anyone. Every competition, every eviction night — I brought everything I had. I didn't coast. I conquered. After everything that went down with \"House Pressure,\" I think you all saw who I really am. My deal with Theo proves I'm trustworthy. Riley and I swore an oath. That's not something I break."
+    },
+    {
+      "name": "full-Competitive-4294967295",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 4294967295,
+      "sampleTexts": [
+        "0.8964226141106337",
+        "0.189478256739676",
+        "0.7156526781618595",
+        "0.9440599093213677",
+        "0.8452364315744489",
+        "0.5391399988438934",
+        "0.6804977387655526",
+        "0.4755720964167267",
+        "0.13585773925296962",
+        "0.9884445976931602"
+      ],
+      "sampleNumerators": [
+        3850105811,
+        813802916,
+        3073704848,
+        4054706436,
+        3630262831,
+        2315588663,
+        2922715533,
+        2042566601,
+        583504547,
+        4245337221
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "aggressive",
+      "expected": "I played this game harder than anyone. Every competition, every eviction night — I brought everything I had. I didn't coast. I conquered. Going through \"Inner Strength\" showed me I'm stronger than I thought. I proved myself in 4 competitions — that's not luck, that's skill."
+    },
+    {
+      "name": "full-Sneaky-0",
+      "traits": [
+        "Sneaky"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 0,
+      "sampleTexts": [
+        "0.26642920868471265",
+        "0.0003297457005828619",
+        "0.2232720274478197",
+        "0.1462021479383111",
+        "0.46732782293111086",
+        "0.5450490827206522",
+        "0.6152513844426721",
+        "0.6489853798411787",
+        "0.45600721263326705",
+        "0.581218967679888"
+      ],
+      "sampleNumerators": [
+        1144304738,
+        1416247,
+        958946056,
+        627933444,
+        2007157716,
+        2340967985,
+        2642484575,
+        2787370982,
+        1958536065,
+        2496316458
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "sneaky",
+      "expected": "You might not have seen my game, and that's exactly why it worked. I pulled strings from the shadows, and not a single person ever figured out my full strategy. And what happened between me and Maya showed my true character. Some promises were made and broken in this house — but I own my decisions."
+    },
+    {
+      "name": "full-Sneaky-1",
+      "traits": [
+        "Sneaky"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 1,
+      "sampleTexts": [
+        "0.6270739405881613",
+        "0.002735721180215478",
+        "0.5274470399599522",
+        "0.9810509674716741",
+        "0.9683778982143849",
+        "0.281103502959013",
+        "0.6128388606011868",
+        "0.7207431411370635",
+        "0.425796952098608",
+        "0.9948229456786066",
+        "0.45527112716808915",
+        "0.48878831742331386"
+      ],
+      "sampleNumerators": [
+        2693262067,
+        11749833,
+        2265367787,
+        4213581821,
+        4159151403,
+        1207330352,
+        2632122864,
+        3095568220,
+        1828783984,
+        4272732017,
+        1955374602,
+        2099329838
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "sneaky",
+      "expected": "I played the most underrated game in this house. While others were loud, I was surgical. Every whispered conversation, every misdirection — it all led to this moment. Going through \"Inner Strength\" showed me I'm stronger than I thought. I've honored my word, and that should count for something. My oath to Riley is something I take seriously."
+    },
+    {
+      "name": "full-Sneaky-42",
+      "traits": [
+        "Sneaky"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 42,
+      "sampleTexts": [
+        "0.6011037519201636",
+        "0.44829055899754167",
+        "0.8524657934904099",
+        "0.6697340414393693",
+        "0.17481389874592423",
+        "0.5265925421845168",
+        "0.2732279943302274",
+        "0.6247446539346129",
+        "0.8654746483080089",
+        "0.4723170551005751",
+        "0.24992373422719538",
+        "0.8820588334929198"
+      ],
+      "sampleNumerators": [
+        2581720956,
+        1925393290,
+        3661312704,
+        2876485805,
+        750819978,
+        2261697747,
+        1173505300,
+        2683257857,
+        3717185310,
+        2028586305,
+        1073414265,
+        3788413843
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "sneaky",
+      "expected": "I played the most underrated game in this house. While others were loud, I was surgical. Every whispered conversation, every misdirection — it all led to this moment. \"Narrow Escape\" nearly broke me, but I'm still here. Some promises were made and broken in this house — but I own my decisions. I've honored my word, and that should count for something. Some people brag about wins. I won 4 times, but my real game happened between competitions."
+    },
+    {
+      "name": "full-Sneaky-987654321",
+      "traits": [
+        "Sneaky"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 987654321,
+      "sampleTexts": [
+        "0.9514403040520847",
+        "0.13489632960408926",
+        "0.01530607370659709",
+        "0.9139348547905684",
+        "0.6291038701310754",
+        "0.37711437582038343",
+        "0.4361245871987194",
+        "0.3972730883397162",
+        "0.26088262838311493",
+        "0.5640322368126363",
+        "0.9784534072969109",
+        "0.7232782787177712"
+      ],
+      "sampleNumerators": [
+        4086404990,
+        579375324,
+        65739086,
+        3925320312,
+        2701980548,
+        1619693911,
+        1873140839,
+        1706274922,
+        1120482357,
+        2422500011,
+        4202425385,
+        3106456553
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "sneaky",
+      "expected": "My game was invisible by design. I let others take the heat while I positioned myself perfectly. That takes more skill than winning any competition. After everything that went down with \"House Pressure,\" I think you all saw who I really am. My deal with Theo proves I'm trustworthy. Riley and I swore an oath. That's not something I break."
+    },
+    {
+      "name": "full-Sneaky-4294967295",
+      "traits": [
+        "Sneaky"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 4294967295,
+      "sampleTexts": [
+        "0.8964226141106337",
+        "0.189478256739676",
+        "0.7156526781618595",
+        "0.9440599093213677",
+        "0.8452364315744489",
+        "0.5391399988438934",
+        "0.6804977387655526",
+        "0.4755720964167267",
+        "0.13585773925296962",
+        "0.9884445976931602"
+      ],
+      "sampleNumerators": [
+        3850105811,
+        813802916,
+        3073704848,
+        4054706436,
+        3630262831,
+        2315588663,
+        2922715533,
+        2042566601,
+        583504547,
+        4245337221
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "sneaky",
+      "expected": "My game was invisible by design. I let others take the heat while I positioned myself perfectly. That takes more skill than winning any competition. Going through \"Inner Strength\" showed me I'm stronger than I thought. Some people brag about wins. I won 4 times, but my real game happened between competitions."
+    },
+    {
+      "name": "full-Emotional-0",
+      "traits": [
+        "Emotional"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 0,
+      "sampleTexts": [
+        "0.26642920868471265",
+        "0.0003297457005828619",
+        "0.2232720274478197",
+        "0.1462021479383111",
+        "0.46732782293111086",
+        "0.5450490827206522",
+        "0.6152513844426721",
+        "0.6489853798411787",
+        "0.45600721263326705",
+        "0.581218967679888"
+      ],
+      "sampleNumerators": [
+        1144304738,
+        1416247,
+        958946056,
+        627933444,
+        2007157716,
+        2340967985,
+        2642484575,
+        2787370982,
+        1958536065,
+        2496316458
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "emotional",
+      "expected": "This journey changed my life. I came in unsure of myself and I'm leaving as someone who survived the most intense experience imaginable. I played with my whole heart. And what happened between me and Maya showed my true character. Some promises were made and broken in this house — but I own my decisions."
+    },
+    {
+      "name": "full-Emotional-1",
+      "traits": [
+        "Emotional"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 1,
+      "sampleTexts": [
+        "0.6270739405881613",
+        "0.002735721180215478",
+        "0.5274470399599522",
+        "0.9810509674716741",
+        "0.9683778982143849",
+        "0.281103502959013",
+        "0.6128388606011868",
+        "0.7207431411370635",
+        "0.425796952098608",
+        "0.9948229456786066",
+        "0.45527112716808915",
+        "0.48878831742331386"
+      ],
+      "sampleNumerators": [
+        2693262067,
+        11749833,
+        2265367787,
+        4213581821,
+        4159151403,
+        1207330352,
+        2632122864,
+        3095568220,
+        1828783984,
+        4272732017,
+        1955374602,
+        2099329838
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "emotional",
+      "expected": "I know my emotions showed, but that's because this game meant everything to me. I fought through tears, through doubt, and I'm still standing. That's strength. Going through \"Inner Strength\" showed me I'm stronger than I thought. I've honored my word, and that should count for something. My oath to Riley is something I take seriously."
+    },
+    {
+      "name": "full-Emotional-42",
+      "traits": [
+        "Emotional"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 42,
+      "sampleTexts": [
+        "0.6011037519201636",
+        "0.44829055899754167",
+        "0.8524657934904099",
+        "0.6697340414393693",
+        "0.17481389874592423",
+        "0.5265925421845168",
+        "0.2732279943302274",
+        "0.6247446539346129",
+        "0.8654746483080089",
+        "0.4723170551005751",
+        "0.24992373422719538",
+        "0.8820588334929198"
+      ],
+      "sampleNumerators": [
+        2581720956,
+        1925393290,
+        3661312704,
+        2876485805,
+        750819978,
+        2261697747,
+        1173505300,
+        2683257857,
+        3717185310,
+        2028586305,
+        1073414265,
+        3788413843
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "emotional",
+      "expected": "I know my emotions showed, but that's because this game meant everything to me. I fought through tears, through doubt, and I'm still standing. That's strength. \"Narrow Escape\" nearly broke me, but I'm still here. Some promises were made and broken in this house — but I own my decisions. I've honored my word, and that should count for something. Every one of my 4 wins meant the world to me."
+    },
+    {
+      "name": "full-Emotional-987654321",
+      "traits": [
+        "Emotional"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 987654321,
+      "sampleTexts": [
+        "0.9514403040520847",
+        "0.13489632960408926",
+        "0.01530607370659709",
+        "0.9139348547905684",
+        "0.6291038701310754",
+        "0.37711437582038343",
+        "0.4361245871987194",
+        "0.3972730883397162",
+        "0.26088262838311493",
+        "0.5640322368126363",
+        "0.9784534072969109",
+        "0.7232782787177712"
+      ],
+      "sampleNumerators": [
+        4086404990,
+        579375324,
+        65739086,
+        3925320312,
+        2701980548,
+        1619693911,
+        1873140839,
+        1706274922,
+        1120482357,
+        2422500011,
+        4202425385,
+        3106456553
+      ],
+      "expectedDraws": 12,
+      "expectedFlavor": "emotional",
+      "expected": "Being here was a dream, and I gave it absolutely everything. My passion drove my game. I hope you can see how much this means to me. After everything that went down with \"House Pressure,\" I think you all saw who I really am. My deal with Theo proves I'm trustworthy. Riley and I swore an oath. That's not something I break."
+    },
+    {
+      "name": "full-Emotional-4294967295",
+      "traits": [
+        "Emotional"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": true,
+      "seed": 4294967295,
+      "sampleTexts": [
+        "0.8964226141106337",
+        "0.189478256739676",
+        "0.7156526781618595",
+        "0.9440599093213677",
+        "0.8452364315744489",
+        "0.5391399988438934",
+        "0.6804977387655526",
+        "0.4755720964167267",
+        "0.13585773925296962",
+        "0.9884445976931602"
+      ],
+      "sampleNumerators": [
+        3850105811,
+        813802916,
+        3073704848,
+        4054706436,
+        3630262831,
+        2315588663,
+        2922715533,
+        2042566601,
+        583504547,
+        4245337221
+      ],
+      "expectedDraws": 10,
+      "expectedFlavor": "emotional",
+      "expected": "Being here was a dream, and I gave it absolutely everything. My passion drove my game. I hope you can see how much this means to me. Going through \"Inner Strength\" showed me I'm stronger than I thought. Every one of my 4 wins meant the world to me."
+    },
+    {
+      "name": "story-social_drama-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And what happened between me and First Name showed my true character."
+    },
+    {
+      "name": "story-social_drama-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. After everything that went down with \"Exact Title,\" I think you all saw who I really am."
+    },
+    {
+      "name": "story-power_play-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I made bold moves when it counted — \"Exact Title\" proved that."
+    },
+    {
+      "name": "story-power_play-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. When the house needed someone to step up during \"Exact Title,\" I was the one who did."
+    },
+    {
+      "name": "story-personal_growth-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "personal_growth",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. \"Exact Title\" taught me something about myself that I'll carry beyond this house."
+    },
+    {
+      "name": "story-personal_growth-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "personal_growth",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Going through \"Exact Title\" showed me I'm stronger than I thought."
+    },
+    {
+      "name": "story-survival-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "survival",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Surviving \"Exact Title\" was one of the hardest things I've done in this game."
+    },
+    {
+      "name": "story-survival-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "survival",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. \"Exact Title\" nearly broke me, but I'm still here."
+    },
+    {
+      "name": "story-secret_scheme-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "secret_scheme",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. There are things about my game you don't even know yet."
+    },
+    {
+      "name": "story-secret_scheme-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "secret_scheme",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I played moves behind the scenes that changed the course of this game."
+    },
+    {
+      "name": "story-unknown_category-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "unknown_category",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And what happened between me and First Name showed my true character."
+    },
+    {
+      "name": "story-unknown_category-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Exact Title",
+            "category": "unknown_category",
+            "involvedNPCNames": [
+              "First Name",
+              "Ignored Name"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. After everything that went down with \"Exact Title,\" I think you all saw who I really am."
+    },
+    {
+      "name": "completed-story-discards-npc-names",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "completedStorylines": [
+          {
+            "title": "Past",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Ignored"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And what happened between me and them showed my true character."
+    },
+    {
+      "name": "active-story-empty-npc-fallback",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Active",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              ""
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And what happened between me and them showed my true character."
+    },
+    {
+      "name": "replacement-$& / $$ / $` / $' / $1",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "$& / $$ / $` / $' / $1",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "$& / $$ / $` / $'"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence. I made bold moves when it counted — \"{storyline} / $ /  I made bold moves when it counted — \" / \" proved that. / $1\" proved that."
+    },
+    {
+      "name": "replacement-{npc}",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "{npc}",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "$& / $$ / $` / $'"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence. I made bold moves when it counted — \"{npc} / $ /  I made bold moves when it counted — \" / \" proved that.\" proved that."
+    },
+    {
+      "name": "replacement-Unicode — 雨 🌧️",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "Unicode — 雨 🌧️",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "$& / $$ / $` / $'"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence. I made bold moves when it counted — \"Unicode — 雨 🌧️\" proved that."
+    },
+    {
+      "name": "npc-replacement-dollar-semantics",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "T",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "$& / $$ / $` / $'"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence. And what happened between me and {npc} / $ /  And what happened between me and  /  showed my true character. showed my true character."
+    },
+    {
+      "name": "broken-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And yes, I know a deal was broken. I won't pretend that didn't happen."
+    },
+    {
+      "name": "broken-0.4",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Some promises were made and broken in this house — but I own my decisions."
+    },
+    {
+      "name": "broken-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I know trust was damaged along the way, but that's the nature of this game."
+    },
+    {
+      "name": "active-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I've kept every promise I've made in this house."
+    },
+    {
+      "name": "active-0.3",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.3"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. My deal with Theo proves I'm trustworthy."
+    },
+    {
+      "name": "active-0.6",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.6"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I've honored my word, and that should count for something."
+    },
+    {
+      "name": "active-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. The deals I've made weren't just strategy — they were commitments I kept."
+    },
+    {
+      "name": "alliance-0-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. The First Circle has been my backbone in this game."
+    },
+    {
+      "name": "alliance-0-0.4",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Being part of First Circle defined my journey here."
+    },
+    {
+      "name": "alliance-0-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Everything I've done, I did for First Circle."
+    },
+    {
+      "name": "alliance-0.9-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. The Midnight Pact has been my backbone in this game."
+    },
+    {
+      "name": "alliance-0.9-0.4",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9",
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Being part of Midnight Pact defined my journey here."
+    },
+    {
+      "name": "alliance-0.9-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Everything I've done, I did for Midnight Pact."
+    },
+    {
+      "name": "oath-0-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I swore loyalty to Maya, and I meant every word."
+    },
+    {
+      "name": "oath-0-0.3",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.3"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. My oath to Maya is something I take seriously."
+    },
+    {
+      "name": "oath-0-0.6",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.6"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I made a promise of loyalty to Maya — that bond runs deep."
+    },
+    {
+      "name": "oath-0-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Maya and I swore an oath. That's not something I break."
+    },
+    {
+      "name": "oath-0.9-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I swore loyalty to Riley, and I meant every word."
+    },
+    {
+      "name": "oath-0.9-0.3",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9",
+        "0.3"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. My oath to Riley is something I take seriously."
+    },
+    {
+      "name": "oath-0.9-0.6",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9",
+        "0.6"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I made a promise of loyalty to Riley — that bond runs deep."
+    },
+    {
+      "name": "oath-0.9-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. Riley and I swore an oath. That's not something I break."
+    },
+    {
+      "name": "wins-Strategic-0",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence. My 4 wins weren't accidents — each one was part of a larger plan."
+    },
+    {
+      "name": "wins-Strategic-0.9",
+      "traits": [
+        "Strategic"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "cerebral",
+      "expected": "Every move I made was calculated. I studied the dynamics, I anticipated the blindsides, and I adapted my strategy week by week. I earned this seat through intelligence. My 4 wins weren't accidents — each one was part of a larger plan."
+    },
+    {
+      "name": "wins-Social-0",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I may have 4 wins, but my real victories were the friendships I built."
+    },
+    {
+      "name": "wins-Social-0.9",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I may have 4 wins, but my real victories were the friendships I built."
+    },
+    {
+      "name": "wins-Competitive-0",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did. My 4 competition wins speak for themselves."
+    },
+    {
+      "name": "wins-Competitive-0.9",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did. I proved myself in 4 competitions — that's not luck, that's skill."
+    },
+    {
+      "name": "wins-Sneaky-0",
+      "traits": [
+        "Sneaky"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "sneaky",
+      "expected": "You might not have seen my game, and that's exactly why it worked. I pulled strings from the shadows, and not a single person ever figured out my full strategy. Some people brag about wins. I won 4 times, but my real game happened between competitions."
+    },
+    {
+      "name": "wins-Sneaky-0.9",
+      "traits": [
+        "Sneaky"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "sneaky",
+      "expected": "You might not have seen my game, and that's exactly why it worked. I pulled strings from the shadows, and not a single person ever figured out my full strategy. Some people brag about wins. I won 4 times, but my real game happened between competitions."
+    },
+    {
+      "name": "wins-Emotional-0",
+      "traits": [
+        "Emotional"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "emotional",
+      "expected": "This journey changed my life. I came in unsure of myself and I'm leaving as someone who survived the most intense experience imaginable. I played with my whole heart. Every one of my 4 wins meant the world to me."
+    },
+    {
+      "name": "wins-Emotional-0.9",
+      "traits": [
+        "Emotional"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0.9"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "emotional",
+      "expected": "This journey changed my life. I came in unsure of myself and I'm leaving as someone who survived the most intense experience imaginable. I played with my whole heart. Every one of my 4 wins meant the world to me."
+    },
+    {
+      "name": "gate-activeStorylines-0.6999989999999999",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.6999989999999999",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And what happened between me and Maya showed my true character."
+    },
+    {
+      "name": "gate-activeStorylines-0.7",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.7"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-activeStorylines-0.700001",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.700001"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-brokenDeals-0.499999",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.499999",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. And yes, I know a deal was broken. I won't pretend that didn't happen."
+    },
+    {
+      "name": "gate-brokenDeals-0.5",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.5"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-brokenDeals-0.500001",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.500001"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-activeDeals-0.39999900000000005",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.39999900000000005",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I've kept every promise I've made in this house."
+    },
+    {
+      "name": "gate-activeDeals-0.4",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-activeDeals-0.400001",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.400001"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-allianceNames-0.349999",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.349999",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. The First Circle has been my backbone in this game."
+    },
+    {
+      "name": "gate-allianceNames-0.35",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.35"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-allianceNames-0.35000099999999995",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.35000099999999995"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-loyaltyOaths-0.44999900000000004",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.44999900000000004",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 4,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I swore loyalty to Maya, and I meant every word."
+    },
+    {
+      "name": "gate-loyaltyOaths-0.45",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.45"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-loyaltyOaths-0.450001",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ]
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.450001"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-compWins-0.39999900000000005",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.39999900000000005",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower. I may have 4 wins, but my real victories were the friendships I built."
+    },
+    {
+      "name": "gate-compWins-0.4",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.4"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "gate-compWins-0.400001",
+      "traits": [
+        "Social"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0.400001"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 2,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "win-count-0",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 0,
+          "pov": 0,
+          "other": 0
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did."
+    },
+    {
+      "name": "win-count-1",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 1,
+          "pov": 0,
+          "other": 0
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did."
+    },
+    {
+      "name": "win-count-2",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 2,
+          "pov": 0,
+          "other": 0
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did. My 2 competition wins speak for themselves."
+    },
+    {
+      "name": "win-count-3",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "compWins": {
+          "hoh": 3,
+          "pov": 0,
+          "other": 0
+        }
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 3,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did. My 3 competition wins speak for themselves."
+    },
+    {
+      "name": "empty-context-no-extra-rolls",
+      "traits": [
+        "Social"
+      ],
+      "context": {},
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 1,
+      "expectedFlavor": "social",
+      "expected": "The bonds I formed carried me here. I played with my heart, and I built trust with nearly everyone in this house. My social game was my superpower."
+    },
+    {
+      "name": "all-fragments-sequential-order",
+      "traits": [
+        "Competitive"
+      ],
+      "context": {
+        "activeStorylines": [
+          {
+            "title": "House Pressure",
+            "category": "social_drama",
+            "involvedNPCNames": [
+              "Maya",
+              "Theo"
+            ]
+          },
+          {
+            "title": "Bold Move",
+            "category": "power_play",
+            "involvedNPCNames": [
+              "Riley"
+            ]
+          }
+        ],
+        "completedStorylines": [
+          {
+            "title": "Inner Strength",
+            "category": "personal_growth"
+          },
+          {
+            "title": "Narrow Escape",
+            "category": "survival"
+          }
+        ],
+        "brokenDeals": [
+          {
+            "partnerName": "Ava",
+            "dealType": "target_agreement"
+          }
+        ],
+        "activeDeals": [
+          {
+            "partnerName": "Theo",
+            "dealType": "safety_agreement"
+          },
+          {
+            "partnerName": "Never selected second deal",
+            "dealType": "final_two"
+          }
+        ],
+        "allianceNames": [
+          "First Circle",
+          "Midnight Pact"
+        ],
+        "loyaltyOaths": [
+          {
+            "partnerName": "Maya"
+          },
+          {
+            "partnerName": "Riley"
+          }
+        ],
+        "compWins": {
+          "hoh": 2,
+          "pov": 1,
+          "other": 1
+        },
+        "week": 4
+      },
+      "useSeeded": false,
+      "seed": 0,
+      "sampleTexts": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0"
+      ],
+      "sampleNumerators": [],
+      "expectedDraws": 16,
+      "expectedFlavor": "aggressive",
+      "expected": "I dominated this game. I won competitions when I needed to, I made bold moves, and I never backed down from a fight. Champions play to win, and that's what I did. And what happened between me and Maya showed my true character. And yes, I know a deal was broken. I won't pretend that didn't happen. I've kept every promise I've made in this house. The First Circle has been my backbone in this game. I swore loyalty to Maya, and I meant every word. My 4 competition wins speak for themselves."
+    }
+  ]
+}

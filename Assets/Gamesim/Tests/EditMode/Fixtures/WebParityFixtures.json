@@ -1,0 +1,2675 @@
+{
+  "schemaVersion": 1,
+  "sourceFixtureSha256": "a16c43a5cf80f4bdc90c072e6b6fea67203e5820d339d04c0246b38baeade907",
+  "provenance": "Executed original TypeScript source; Node environment has no browser admin overrides. See source-manifest.json for hashes.",
+  "hashes": [
+    {
+      "input": "",
+      "expected": 2166136261
+    },
+    {
+      "input": "Gamesim",
+      "expected": 839238406
+    },
+    {
+      "input": "week:4:voter:alex",
+      "expected": 4141481587
+    },
+    {
+      "input": "māya:🎮",
+      "expected": 2346100183
+    },
+    {
+      "input": "A:B:C:D:E:F",
+      "expected": 308376436
+    }
+  ],
+  "random": [
+    {
+      "seed": 0,
+      "expected": [
+        0.26642920868471265,
+        0.0003297457005828619,
+        0.2232720274478197,
+        0.1462021479383111,
+        0.46732782293111086,
+        0.5450490827206522,
+        0.6152513844426721,
+        0.6489853798411787,
+        0.45600721263326705,
+        0.581218967679888,
+        0.24625753005966544,
+        0.09785169479437172
+      ],
+      "expectedUInt32": [
+        1144304738,
+        1416247,
+        958946056,
+        627933444,
+        2007157716,
+        2340967985,
+        2642484575,
+        2787370982,
+        1958536065,
+        2496316458,
+        1057668038,
+        420269829
+      ]
+    },
+    {
+      "seed": 1,
+      "expected": [
+        0.6270739405881613,
+        0.002735721180215478,
+        0.5274470399599522,
+        0.9810509674716741,
+        0.9683778982143849,
+        0.281103502959013,
+        0.6128388606011868,
+        0.7207431411370635,
+        0.425796952098608,
+        0.9948229456786066,
+        0.45527112716808915,
+        0.48878831742331386
+      ],
+      "expectedUInt32": [
+        2693262067,
+        11749833,
+        2265367787,
+        4213581821,
+        4159151403,
+        1207330352,
+        2632122864,
+        3095568220,
+        1828783984,
+        4272732017,
+        1955374602,
+        2099329838
+      ]
+    },
+    {
+      "seed": 42,
+      "expected": [
+        0.6011037519201636,
+        0.44829055899754167,
+        0.8524657934904099,
+        0.6697340414393693,
+        0.17481389874592423,
+        0.5265925421845168,
+        0.2732279943302274,
+        0.6247446539346129,
+        0.8654746483080089,
+        0.4723170551005751,
+        0.24992373422719538,
+        0.8820588334929198
+      ],
+      "expectedUInt32": [
+        2581720956,
+        1925393290,
+        3661312704,
+        2876485805,
+        750819978,
+        2261697747,
+        1173505300,
+        2683257857,
+        3717185310,
+        2028586305,
+        1073414265,
+        3788413843
+      ]
+    },
+    {
+      "seed": 99,
+      "expected": [
+        0.2604658124037087,
+        0.8048227655235678,
+        0.5408715349622071,
+        0.6902434257790446,
+        0.001138708321377635,
+        0.8175430877599865,
+        0.011350846383720636,
+        0.10543650342151523,
+        0.3965785033069551,
+        0.6709415460936725,
+        0.36619195039384067,
+        0.06438777828589082
+      ],
+      "expectedUInt32": [
+        1118692146,
+        3456687457,
+        2323025554,
+        2964572940,
+        4890715,
+        3511320825,
+        48751514,
+        452846334,
+        1703291702,
+        2881671998,
+        1572782451,
+        276543402
+      ]
+    },
+    {
+      "seed": 4294967295,
+      "expected": [
+        0.8964226141106337,
+        0.189478256739676,
+        0.7156526781618595,
+        0.9440599093213677,
+        0.8452364315744489,
+        0.5391399988438934,
+        0.6804977387655526,
+        0.4755720964167267,
+        0.13585773925296962,
+        0.9884445976931602,
+        0.8714674517977983,
+        0.18934845877811313
+      ],
+      "expectedUInt32": [
+        3850105811,
+        813802916,
+        3073704848,
+        4054706436,
+        3630262831,
+        2315588663,
+        2922715533,
+        2042566601,
+        583504547,
+        4245337221,
+        3742924205,
+        813245438
+      ]
+    }
+  ],
+  "shuffles": [
+    {
+      "seed": 0,
+      "input": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "expected": [
+        "F",
+        "C",
+        "D",
+        "E",
+        "A",
+        "B"
+      ]
+    },
+    {
+      "seed": 99,
+      "input": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "expected": [
+        "F",
+        "A",
+        "D",
+        "C",
+        "E",
+        "B"
+      ]
+    },
+    {
+      "seed": 12345,
+      "input": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "expected": [
+        "A",
+        "D",
+        "C",
+        "E",
+        "B",
+        "F"
+      ]
+    }
+  ],
+  "social": [
+    {
+      "input": {
+        "change": 10,
+        "social": 10,
+        "isPlayer": true,
+        "direct": 0,
+        "reciprocal": 0,
+        "roll": 0.5
+      },
+      "expected": {
+        "actualChange": 11,
+        "directScore": 11,
+        "reciprocalScore": 10,
+        "reciprocalEventImpact": 9,
+        "milestone": null
+      }
+    },
+    {
+      "input": {
+        "change": 5,
+        "social": 10,
+        "isPlayer": true,
+        "direct": 0,
+        "reciprocal": 0,
+        "roll": 0
+      },
+      "expected": {
+        "actualChange": 6,
+        "directScore": 6,
+        "reciprocalScore": 4,
+        "reciprocalEventImpact": 4.5,
+        "milestone": null
+      }
+    },
+    {
+      "input": {
+        "change": 10,
+        "social": 6,
+        "isPlayer": true,
+        "direct": 24,
+        "reciprocal": 24,
+        "roll": 0.75
+      },
+      "expected": {
+        "actualChange": 10,
+        "directScore": 34,
+        "reciprocalScore": 35,
+        "reciprocalEventImpact": 9,
+        "milestone": {
+          "playerId": "A",
+          "targetId": "B",
+          "targetName": "Actor B",
+          "threshold": 25,
+          "oldScore": 24,
+          "newScore": 34
+        }
+      }
+    },
+    {
+      "input": {
+        "change": 25,
+        "social": 10,
+        "isPlayer": false,
+        "direct": 10,
+        "reciprocal": 10,
+        "roll": 0.25
+      },
+      "expected": {
+        "actualChange": 25,
+        "directScore": 35,
+        "reciprocalScore": 32.5,
+        "reciprocalEventImpact": 22.5,
+        "milestone": null
+      }
+    },
+    {
+      "input": {
+        "change": -20,
+        "social": 10,
+        "isPlayer": true,
+        "direct": 10,
+        "reciprocal": 10,
+        "roll": 0
+      },
+      "expected": {
+        "actualChange": -20,
+        "directScore": -10,
+        "reciprocalScore": -6,
+        "reciprocalEventImpact": -18,
+        "milestone": null
+      }
+    },
+    {
+      "input": {
+        "change": 200,
+        "social": 10,
+        "isPlayer": true,
+        "direct": 0,
+        "reciprocal": 0,
+        "roll": 0.5
+      },
+      "expected": {
+        "actualChange": 220,
+        "directScore": 100,
+        "reciprocalScore": 100,
+        "reciprocalEventImpact": 180,
+        "milestone": {
+          "playerId": "A",
+          "targetId": "B",
+          "targetName": "Actor B",
+          "threshold": 25,
+          "oldScore": 0,
+          "newScore": 100
+        }
+      }
+    },
+    {
+      "input": {
+        "change": -200,
+        "social": 1,
+        "isPlayer": true,
+        "direct": 0,
+        "reciprocal": 0,
+        "roll": 0.5
+      },
+      "expected": {
+        "actualChange": -200,
+        "directScore": -100,
+        "reciprocalScore": -100,
+        "reciprocalEventImpact": -180,
+        "milestone": null
+      }
+    },
+    {
+      "input": {
+        "change": 0.5,
+        "social": 5,
+        "isPlayer": true,
+        "direct": 0,
+        "reciprocal": 0,
+        "roll": 0.5
+      },
+      "expected": {
+        "actualChange": 1,
+        "directScore": 1,
+        "reciprocalScore": 0.5,
+        "reciprocalEventImpact": 0.45,
+        "milestone": null
+      }
+    },
+    {
+      "input": {
+        "change": -0.5,
+        "social": 5,
+        "isPlayer": true,
+        "direct": 0,
+        "reciprocal": 0,
+        "roll": 0.5
+      },
+      "expected": {
+        "actualChange": -0.5,
+        "directScore": -0.5,
+        "reciprocalScore": -0.5,
+        "reciprocalEventImpact": -0.45,
+        "milestone": null
+      }
+    }
+  ],
+  "promiseImpacts": [
+    {
+      "type": "safety",
+      "status": "pending",
+      "loyalty": 1,
+      "expected": 0
+    },
+    {
+      "type": "safety",
+      "status": "pending",
+      "loyalty": 5,
+      "expected": 0
+    },
+    {
+      "type": "safety",
+      "status": "pending",
+      "loyalty": 10,
+      "expected": 0
+    },
+    {
+      "type": "safety",
+      "status": "fulfilled",
+      "loyalty": 1,
+      "expected": 9
+    },
+    {
+      "type": "safety",
+      "status": "fulfilled",
+      "loyalty": 5,
+      "expected": 23
+    },
+    {
+      "type": "safety",
+      "status": "fulfilled",
+      "loyalty": 10,
+      "expected": 39
+    },
+    {
+      "type": "safety",
+      "status": "broken",
+      "loyalty": 1,
+      "expected": -24
+    },
+    {
+      "type": "safety",
+      "status": "broken",
+      "loyalty": 5,
+      "expected": -47
+    },
+    {
+      "type": "safety",
+      "status": "broken",
+      "loyalty": 10,
+      "expected": -75
+    },
+    {
+      "type": "final_2",
+      "status": "pending",
+      "loyalty": 1,
+      "expected": 0
+    },
+    {
+      "type": "final_2",
+      "status": "pending",
+      "loyalty": 5,
+      "expected": 0
+    },
+    {
+      "type": "final_2",
+      "status": "pending",
+      "loyalty": 10,
+      "expected": 0
+    },
+    {
+      "type": "final_2",
+      "status": "fulfilled",
+      "loyalty": 1,
+      "expected": 12
+    },
+    {
+      "type": "final_2",
+      "status": "fulfilled",
+      "loyalty": 5,
+      "expected": 30
+    },
+    {
+      "type": "final_2",
+      "status": "fulfilled",
+      "loyalty": 10,
+      "expected": 53
+    },
+    {
+      "type": "final_2",
+      "status": "broken",
+      "loyalty": 1,
+      "expected": -32
+    },
+    {
+      "type": "final_2",
+      "status": "broken",
+      "loyalty": 5,
+      "expected": -62
+    },
+    {
+      "type": "final_2",
+      "status": "broken",
+      "loyalty": 10,
+      "expected": -100
+    },
+    {
+      "type": "vote",
+      "status": "pending",
+      "loyalty": 1,
+      "expected": 0
+    },
+    {
+      "type": "vote",
+      "status": "pending",
+      "loyalty": 5,
+      "expected": 0
+    },
+    {
+      "type": "vote",
+      "status": "pending",
+      "loyalty": 10,
+      "expected": 0
+    },
+    {
+      "type": "vote",
+      "status": "fulfilled",
+      "loyalty": 1,
+      "expected": 6
+    },
+    {
+      "type": "vote",
+      "status": "fulfilled",
+      "loyalty": 5,
+      "expected": 15
+    },
+    {
+      "type": "vote",
+      "status": "fulfilled",
+      "loyalty": 10,
+      "expected": 26
+    },
+    {
+      "type": "vote",
+      "status": "broken",
+      "loyalty": 1,
+      "expected": -16
+    },
+    {
+      "type": "vote",
+      "status": "broken",
+      "loyalty": 5,
+      "expected": -31
+    },
+    {
+      "type": "vote",
+      "status": "broken",
+      "loyalty": 10,
+      "expected": -50
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "pending",
+      "loyalty": 1,
+      "expected": 0
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "pending",
+      "loyalty": 5,
+      "expected": 0
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "pending",
+      "loyalty": 10,
+      "expected": 0
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "fulfilled",
+      "loyalty": 1,
+      "expected": 11
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "fulfilled",
+      "loyalty": 5,
+      "expected": 27
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "fulfilled",
+      "loyalty": 10,
+      "expected": 47
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "broken",
+      "loyalty": 1,
+      "expected": -29
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "broken",
+      "loyalty": 5,
+      "expected": -56
+    },
+    {
+      "type": "alliance_loyalty",
+      "status": "broken",
+      "loyalty": 10,
+      "expected": -90
+    },
+    {
+      "type": "information",
+      "status": "pending",
+      "loyalty": 1,
+      "expected": 0
+    },
+    {
+      "type": "information",
+      "status": "pending",
+      "loyalty": 5,
+      "expected": 0
+    },
+    {
+      "type": "information",
+      "status": "pending",
+      "loyalty": 10,
+      "expected": 0
+    },
+    {
+      "type": "information",
+      "status": "fulfilled",
+      "loyalty": 1,
+      "expected": 4
+    },
+    {
+      "type": "information",
+      "status": "fulfilled",
+      "loyalty": 5,
+      "expected": 11
+    },
+    {
+      "type": "information",
+      "status": "fulfilled",
+      "loyalty": 10,
+      "expected": 18
+    },
+    {
+      "type": "information",
+      "status": "broken",
+      "loyalty": 1,
+      "expected": -11
+    },
+    {
+      "type": "information",
+      "status": "broken",
+      "loyalty": 5,
+      "expected": -22
+    },
+    {
+      "type": "information",
+      "status": "broken",
+      "loyalty": 10,
+      "expected": -35
+    },
+    {
+      "type": "hoh_protection",
+      "status": "pending",
+      "loyalty": 1,
+      "expected": 0
+    },
+    {
+      "type": "hoh_protection",
+      "status": "pending",
+      "loyalty": 5,
+      "expected": 0
+    },
+    {
+      "type": "hoh_protection",
+      "status": "pending",
+      "loyalty": 10,
+      "expected": 0
+    },
+    {
+      "type": "hoh_protection",
+      "status": "fulfilled",
+      "loyalty": 1,
+      "expected": 10
+    },
+    {
+      "type": "hoh_protection",
+      "status": "fulfilled",
+      "loyalty": 5,
+      "expected": 24
+    },
+    {
+      "type": "hoh_protection",
+      "status": "fulfilled",
+      "loyalty": 10,
+      "expected": 42
+    },
+    {
+      "type": "hoh_protection",
+      "status": "broken",
+      "loyalty": 1,
+      "expected": -26
+    },
+    {
+      "type": "hoh_protection",
+      "status": "broken",
+      "loyalty": 5,
+      "expected": -50
+    },
+    {
+      "type": "hoh_protection",
+      "status": "broken",
+      "loyalty": 10,
+      "expected": -80
+    },
+    {
+      "type": "veto_use",
+      "status": "pending",
+      "loyalty": 1,
+      "expected": 0
+    },
+    {
+      "type": "veto_use",
+      "status": "pending",
+      "loyalty": 5,
+      "expected": 0
+    },
+    {
+      "type": "veto_use",
+      "status": "pending",
+      "loyalty": 10,
+      "expected": 0
+    },
+    {
+      "type": "veto_use",
+      "status": "fulfilled",
+      "loyalty": 1,
+      "expected": 8
+    },
+    {
+      "type": "veto_use",
+      "status": "fulfilled",
+      "loyalty": 5,
+      "expected": 21
+    },
+    {
+      "type": "veto_use",
+      "status": "fulfilled",
+      "loyalty": 10,
+      "expected": 37
+    },
+    {
+      "type": "veto_use",
+      "status": "broken",
+      "loyalty": 1,
+      "expected": -23
+    },
+    {
+      "type": "veto_use",
+      "status": "broken",
+      "loyalty": 5,
+      "expected": -44
+    },
+    {
+      "type": "veto_use",
+      "status": "broken",
+      "loyalty": 10,
+      "expected": -70
+    }
+  ],
+  "weightedCompetitionScores": [
+    {
+      "stats": {
+        "physical": 2,
+        "mental": 9,
+        "endurance": 3,
+        "social": 5,
+        "luck": 8,
+        "competition": 4,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Endurance",
+      "nominated": false,
+      "bonus": 1.5,
+      "roll": 0.484613380394876,
+      "luckRoll": 0,
+      "expected": 5.270765422750264
+    },
+    {
+      "stats": {
+        "physical": 3,
+        "mental": 8,
+        "endurance": 4,
+        "social": 5,
+        "luck": 7,
+        "competition": 5,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Endurance",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.35133381001651287,
+      "luckRoll": 0,
+      "expected": 6.572934382036329
+    },
+    {
+      "stats": {
+        "physical": 4,
+        "mental": 7,
+        "endurance": 5,
+        "social": 5,
+        "luck": 6,
+        "competition": 6,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Endurance",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.6993437665514648,
+      "luckRoll": 0,
+      "expected": 8.498359416378662
+    },
+    {
+      "stats": {
+        "physical": 5,
+        "mental": 6,
+        "endurance": 6,
+        "social": 5,
+        "luck": 5,
+        "competition": 7,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Endurance",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.0913451942615211,
+      "luckRoll": 0,
+      "expected": 4.455766543932259
+    },
+    {
+      "stats": {
+        "physical": 6,
+        "mental": 5,
+        "endurance": 7,
+        "social": 5,
+        "luck": 4,
+        "competition": 8,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Endurance",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.3929737426806241,
+      "luckRoll": 0,
+      "expected": 5.868218602309935
+    },
+    {
+      "stats": {
+        "physical": 7,
+        "mental": 4,
+        "endurance": 8,
+        "social": 5,
+        "luck": 3,
+        "competition": 9,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Endurance",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.6004851481411606,
+      "luckRoll": 0,
+      "expected": 7.141649503679946
+    },
+    {
+      "stats": {
+        "physical": 2,
+        "mental": 9,
+        "endurance": 3,
+        "social": 5,
+        "luck": 8,
+        "competition": 4,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Physical",
+      "nominated": false,
+      "bonus": 1.5,
+      "roll": 0.9498572824522853,
+      "luckRoll": 0,
+      "expected": 6.522207429027184
+    },
+    {
+      "stats": {
+        "physical": 3,
+        "mental": 8,
+        "endurance": 4,
+        "social": 5,
+        "luck": 7,
+        "competition": 5,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Physical",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.276325480081141,
+      "luckRoll": 0,
+      "expected": 6.496732330182567
+    },
+    {
+      "stats": {
+        "physical": 4,
+        "mental": 7,
+        "endurance": 5,
+        "social": 5,
+        "luck": 6,
+        "competition": 6,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Physical",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.9709053705446422,
+      "luckRoll": 0,
+      "expected": 9.053718157834375
+    },
+    {
+      "stats": {
+        "physical": 5,
+        "mental": 6,
+        "endurance": 6,
+        "social": 5,
+        "luck": 5,
+        "competition": 7,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Physical",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.38360815891064703,
+      "luckRoll": 0,
+      "expected": 4.991561621113215
+    },
+    {
+      "stats": {
+        "physical": 6,
+        "mental": 5,
+        "endurance": 7,
+        "social": 5,
+        "luck": 4,
+        "competition": 8,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Physical",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.2880564571823925,
+      "luckRoll": 0,
+      "expected": 5.095960902969819
+    },
+    {
+      "stats": {
+        "physical": 7,
+        "mental": 4,
+        "endurance": 8,
+        "social": 5,
+        "luck": 3,
+        "competition": 9,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Physical",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.13080909359268844,
+      "luckRoll": 0,
+      "expected": 4.973967735457699
+    },
+    {
+      "stats": {
+        "physical": 2,
+        "mental": 9,
+        "endurance": 3,
+        "social": 5,
+        "luck": 8,
+        "competition": 4,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Mental",
+      "nominated": false,
+      "bonus": 1.5,
+      "roll": 0.5438373878132552,
+      "luckRoll": 0,
+      "expected": 9.470965812471693
+    },
+    {
+      "stats": {
+        "physical": 3,
+        "mental": 8,
+        "endurance": 4,
+        "social": 5,
+        "luck": 7,
+        "competition": 5,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Mental",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.34959222935140133,
+      "luckRoll": 0,
+      "expected": 9.066052414197475
+    },
+    {
+      "stats": {
+        "physical": 4,
+        "mental": 7,
+        "endurance": 5,
+        "social": 5,
+        "luck": 6,
+        "competition": 6,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Mental",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.9424525368958712,
+      "luckRoll": 0,
+      "expected": 10.81584811806679
+    },
+    {
+      "stats": {
+        "physical": 5,
+        "mental": 6,
+        "endurance": 6,
+        "social": 5,
+        "luck": 5,
+        "competition": 7,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Mental",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.19807128561660647,
+      "luckRoll": 0,
+      "expected": 4.839503164007328
+    },
+    {
+      "stats": {
+        "physical": 6,
+        "mental": 5,
+        "endurance": 7,
+        "social": 5,
+        "luck": 4,
+        "competition": 8,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Mental",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.835145867895335,
+      "luckRoll": 0,
+      "expected": 5.837864669738337
+    },
+    {
+      "stats": {
+        "physical": 7,
+        "mental": 4,
+        "endurance": 8,
+        "social": 5,
+        "luck": 3,
+        "competition": 9,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Mental",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.6865394276101142,
+      "luckRoll": 0,
+      "expected": 4.701059769361747
+    },
+    {
+      "stats": {
+        "physical": 2,
+        "mental": 9,
+        "endurance": 3,
+        "social": 5,
+        "luck": 8,
+        "competition": 4,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Skill",
+      "nominated": false,
+      "bonus": 1.5,
+      "roll": 0.8996048194821924,
+      "luckRoll": 0,
+      "expected": 8.698814458446577
+    },
+    {
+      "stats": {
+        "physical": 3,
+        "mental": 8,
+        "endurance": 4,
+        "social": 5,
+        "luck": 7,
+        "competition": 5,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Skill",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.2595350674819201,
+      "luckRoll": 0,
+      "expected": 7.602651695697568
+    },
+    {
+      "stats": {
+        "physical": 4,
+        "mental": 7,
+        "endurance": 5,
+        "social": 5,
+        "luck": 6,
+        "competition": 6,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Skill",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.35442673810757697,
+      "luckRoll": 0,
+      "expected": 8.192394866701214
+    },
+    {
+      "stats": {
+        "physical": 5,
+        "mental": 6,
+        "endurance": 6,
+        "social": 5,
+        "luck": 5,
+        "competition": 7,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Skill",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.17213125061243773,
+      "luckRoll": 0,
+      "expected": 4.514754376653582
+    },
+    {
+      "stats": {
+        "physical": 6,
+        "mental": 5,
+        "endurance": 7,
+        "social": 5,
+        "luck": 4,
+        "competition": 8,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Skill",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.8835942526347935,
+      "luckRoll": 0,
+      "expected": 6.197345056850463
+    },
+    {
+      "stats": {
+        "physical": 7,
+        "mental": 4,
+        "endurance": 8,
+        "social": 5,
+        "luck": 3,
+        "competition": 9,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Skill",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.25561702833510935,
+      "luckRoll": 0,
+      "expected": 4.389042570837773
+    },
+    {
+      "stats": {
+        "physical": 2,
+        "mental": 9,
+        "endurance": 3,
+        "social": 5,
+        "luck": 8,
+        "competition": 4,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Crapshoot",
+      "nominated": false,
+      "bonus": 1.5,
+      "roll": 0.45729245827533305,
+      "luckRoll": 0.14803418260999024,
+      "expected": 9.87113700384507
+    },
+    {
+      "stats": {
+        "physical": 3,
+        "mental": 8,
+        "endurance": 4,
+        "social": 5,
+        "luck": 7,
+        "competition": 5,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Crapshoot",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.06019633333198726,
+      "luckRoll": 0.020710047567263246,
+      "expected": 8.100827126030344
+    },
+    {
+      "stats": {
+        "physical": 4,
+        "mental": 7,
+        "endurance": 5,
+        "social": 5,
+        "luck": 6,
+        "competition": 6,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Crapshoot",
+      "nominated": true,
+      "bonus": 0,
+      "roll": 0.9795770258642733,
+      "luckRoll": 0.9221046927850693,
+      "expected": 13.329024007241243
+    },
+    {
+      "stats": {
+        "physical": 5,
+        "mental": 6,
+        "endurance": 6,
+        "social": 5,
+        "luck": 5,
+        "competition": 7,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Crapshoot",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.2370559899136424,
+      "luckRoll": 0.3446049438789487,
+      "expected": 5.463307605916634
+    },
+    {
+      "stats": {
+        "physical": 6,
+        "mental": 5,
+        "endurance": 7,
+        "social": 5,
+        "luck": 4,
+        "competition": 8,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Crapshoot",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.8140215300954878,
+      "luckRoll": 0.8892180472612381,
+      "expected": 7.411398278479464
+    },
+    {
+      "stats": {
+        "physical": 7,
+        "mental": 4,
+        "endurance": 8,
+        "social": 5,
+        "luck": 3,
+        "competition": 9,
+        "strategic": 5,
+        "loyalty": 5
+      },
+      "category": "Crapshoot",
+      "nominated": false,
+      "bonus": 0,
+      "roll": 0.2147019796539098,
+      "luckRoll": 0.41739966231398284,
+      "expected": 3.9099870554055087
+    }
+  ],
+  "weightedCompetitions": [
+    {
+      "seed": 810,
+      "category": "Endurance",
+      "input": [
+        {
+          "id": "A",
+          "name": "Actor A",
+          "status": "Active",
+          "isPlayer": true,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 2,
+            "mental": 9,
+            "endurance": 3,
+            "social": 5,
+            "luck": 8,
+            "competition": 4,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "B",
+          "name": "Actor B",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 3,
+            "mental": 8,
+            "endurance": 4,
+            "social": 5,
+            "luck": 7,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "C",
+          "name": "Actor C",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 4,
+            "mental": 7,
+            "endurance": 5,
+            "social": 5,
+            "luck": 6,
+            "competition": 6,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "D",
+          "name": "Actor D",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 5,
+            "mental": 6,
+            "endurance": 6,
+            "social": 5,
+            "luck": 5,
+            "competition": 7,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "E",
+          "name": "Actor E",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 6,
+            "mental": 5,
+            "endurance": 7,
+            "social": 5,
+            "luck": 4,
+            "competition": 8,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "F",
+          "name": "Actor F",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 7,
+            "mental": 4,
+            "endurance": 8,
+            "social": 5,
+            "luck": 3,
+            "competition": 9,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        }
+      ],
+      "nominees": [
+        "B",
+        "C"
+      ],
+      "playerCompBonus": 1.5,
+      "draws": [
+        0.5497759343124926,
+        0.484613380394876,
+        0.35133381001651287,
+        0.6993437665514648,
+        0.0913451942615211,
+        0.3929737426806241,
+        0.6004851481411606
+      ],
+      "expected": {
+        "id": "golden-competition",
+        "name": "Hang in There",
+        "category": "Endurance",
+        "description": "Hang in There - Outlast the competition in this test of willpower!",
+        "week": 4,
+        "type": "PoV",
+        "participants": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F"
+        ],
+        "results": [
+          {
+            "houseguestId": "C",
+            "placement": 1,
+            "score": 8.498359416378662
+          },
+          {
+            "houseguestId": "F",
+            "placement": 2,
+            "score": 7.141649503679946
+          },
+          {
+            "houseguestId": "B",
+            "placement": 3,
+            "score": 6.572934382036329
+          },
+          {
+            "houseguestId": "E",
+            "placement": 4,
+            "score": 5.868218602309935
+          },
+          {
+            "houseguestId": "A",
+            "placement": 5,
+            "score": 5.270765422750264
+          },
+          {
+            "houseguestId": "D",
+            "placement": 6,
+            "score": 4.455766543932259
+          }
+        ],
+        "winnerId": "C",
+        "isComplete": true
+      }
+    },
+    {
+      "seed": 811,
+      "category": "Physical",
+      "input": [
+        {
+          "id": "A",
+          "name": "Actor A",
+          "status": "Active",
+          "isPlayer": true,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 2,
+            "mental": 9,
+            "endurance": 3,
+            "social": 5,
+            "luck": 8,
+            "competition": 4,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "B",
+          "name": "Actor B",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 3,
+            "mental": 8,
+            "endurance": 4,
+            "social": 5,
+            "luck": 7,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "C",
+          "name": "Actor C",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 4,
+            "mental": 7,
+            "endurance": 5,
+            "social": 5,
+            "luck": 6,
+            "competition": 6,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "D",
+          "name": "Actor D",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 5,
+            "mental": 6,
+            "endurance": 6,
+            "social": 5,
+            "luck": 5,
+            "competition": 7,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "E",
+          "name": "Actor E",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 6,
+            "mental": 5,
+            "endurance": 7,
+            "social": 5,
+            "luck": 4,
+            "competition": 8,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "F",
+          "name": "Actor F",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 7,
+            "mental": 4,
+            "endurance": 8,
+            "social": 5,
+            "luck": 3,
+            "competition": 9,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        }
+      ],
+      "nominees": [
+        "B",
+        "C"
+      ],
+      "playerCompBonus": 1.5,
+      "draws": [
+        0.2414594991132617,
+        0.9498572824522853,
+        0.276325480081141,
+        0.9709053705446422,
+        0.38360815891064703,
+        0.2880564571823925,
+        0.13080909359268844
+      ],
+      "expected": {
+        "id": "golden-competition",
+        "name": "Big Brother Knockout",
+        "category": "Physical",
+        "description": "Big Brother Knockout - Strength and agility will determine the winner!",
+        "week": 4,
+        "type": "PoV",
+        "participants": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F"
+        ],
+        "results": [
+          {
+            "houseguestId": "C",
+            "placement": 1,
+            "score": 9.053718157834375
+          },
+          {
+            "houseguestId": "A",
+            "placement": 2,
+            "score": 6.522207429027184
+          },
+          {
+            "houseguestId": "B",
+            "placement": 3,
+            "score": 6.496732330182567
+          },
+          {
+            "houseguestId": "E",
+            "placement": 4,
+            "score": 5.095960902969819
+          },
+          {
+            "houseguestId": "D",
+            "placement": 5,
+            "score": 4.991561621113215
+          },
+          {
+            "houseguestId": "F",
+            "placement": 6,
+            "score": 4.973967735457699
+          }
+        ],
+        "winnerId": "C",
+        "isComplete": true
+      }
+    },
+    {
+      "seed": 812,
+      "category": "Mental",
+      "input": [
+        {
+          "id": "A",
+          "name": "Actor A",
+          "status": "Active",
+          "isPlayer": true,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 2,
+            "mental": 9,
+            "endurance": 3,
+            "social": 5,
+            "luck": 8,
+            "competition": 4,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "B",
+          "name": "Actor B",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 3,
+            "mental": 8,
+            "endurance": 4,
+            "social": 5,
+            "luck": 7,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "C",
+          "name": "Actor C",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 4,
+            "mental": 7,
+            "endurance": 5,
+            "social": 5,
+            "luck": 6,
+            "competition": 6,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "D",
+          "name": "Actor D",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 5,
+            "mental": 6,
+            "endurance": 6,
+            "social": 5,
+            "luck": 5,
+            "competition": 7,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "E",
+          "name": "Actor E",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 6,
+            "mental": 5,
+            "endurance": 7,
+            "social": 5,
+            "luck": 4,
+            "competition": 8,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "F",
+          "name": "Actor F",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 7,
+            "mental": 4,
+            "endurance": 8,
+            "social": 5,
+            "luck": 3,
+            "competition": 9,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        }
+      ],
+      "nominees": [
+        "B",
+        "C"
+      ],
+      "playerCompBonus": 1.5,
+      "draws": [
+        0.5522837908938527,
+        0.5438373878132552,
+        0.34959222935140133,
+        0.9424525368958712,
+        0.19807128561660647,
+        0.835145867895335,
+        0.6865394276101142
+      ],
+      "expected": {
+        "id": "golden-competition",
+        "name": "What the Bleep?",
+        "category": "Mental",
+        "description": "What the Bleep? - Use your brain to solve puzzles and answer questions!",
+        "week": 4,
+        "type": "PoV",
+        "participants": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F"
+        ],
+        "results": [
+          {
+            "houseguestId": "C",
+            "placement": 1,
+            "score": 10.81584811806679
+          },
+          {
+            "houseguestId": "A",
+            "placement": 2,
+            "score": 9.470965812471693
+          },
+          {
+            "houseguestId": "B",
+            "placement": 3,
+            "score": 9.066052414197475
+          },
+          {
+            "houseguestId": "E",
+            "placement": 4,
+            "score": 5.837864669738337
+          },
+          {
+            "houseguestId": "D",
+            "placement": 5,
+            "score": 4.839503164007328
+          },
+          {
+            "houseguestId": "F",
+            "placement": 6,
+            "score": 4.701059769361747
+          }
+        ],
+        "winnerId": "C",
+        "isComplete": true
+      }
+    },
+    {
+      "seed": 813,
+      "category": "Skill",
+      "input": [
+        {
+          "id": "A",
+          "name": "Actor A",
+          "status": "Active",
+          "isPlayer": true,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 2,
+            "mental": 9,
+            "endurance": 3,
+            "social": 5,
+            "luck": 8,
+            "competition": 4,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "B",
+          "name": "Actor B",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 3,
+            "mental": 8,
+            "endurance": 4,
+            "social": 5,
+            "luck": 7,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "C",
+          "name": "Actor C",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 4,
+            "mental": 7,
+            "endurance": 5,
+            "social": 5,
+            "luck": 6,
+            "competition": 6,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "D",
+          "name": "Actor D",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 5,
+            "mental": 6,
+            "endurance": 6,
+            "social": 5,
+            "luck": 5,
+            "competition": 7,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "E",
+          "name": "Actor E",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 6,
+            "mental": 5,
+            "endurance": 7,
+            "social": 5,
+            "luck": 4,
+            "competition": 8,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "F",
+          "name": "Actor F",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 7,
+            "mental": 4,
+            "endurance": 8,
+            "social": 5,
+            "luck": 3,
+            "competition": 9,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        }
+      ],
+      "nominees": [
+        "B",
+        "C"
+      ],
+      "playerCompBonus": 1.5,
+      "draws": [
+        0.15241353050805628,
+        0.8996048194821924,
+        0.2595350674819201,
+        0.35442673810757697,
+        0.17213125061243773,
+        0.8835942526347935,
+        0.25561702833510935
+      ],
+      "expected": {
+        "id": "golden-competition",
+        "name": "Egg Head",
+        "category": "Skill",
+        "description": "Egg Head - Precision and focus are key to victory!",
+        "week": 4,
+        "type": "PoV",
+        "participants": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F"
+        ],
+        "results": [
+          {
+            "houseguestId": "A",
+            "placement": 1,
+            "score": 8.698814458446577
+          },
+          {
+            "houseguestId": "C",
+            "placement": 2,
+            "score": 8.192394866701214
+          },
+          {
+            "houseguestId": "B",
+            "placement": 3,
+            "score": 7.602651695697568
+          },
+          {
+            "houseguestId": "E",
+            "placement": 4,
+            "score": 6.197345056850463
+          },
+          {
+            "houseguestId": "D",
+            "placement": 5,
+            "score": 4.514754376653582
+          },
+          {
+            "houseguestId": "F",
+            "placement": 6,
+            "score": 4.389042570837773
+          }
+        ],
+        "winnerId": "A",
+        "isComplete": true
+      }
+    },
+    {
+      "seed": 814,
+      "category": "Crapshoot",
+      "input": [
+        {
+          "id": "A",
+          "name": "Actor A",
+          "status": "Active",
+          "isPlayer": true,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 2,
+            "mental": 9,
+            "endurance": 3,
+            "social": 5,
+            "luck": 8,
+            "competition": 4,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "B",
+          "name": "Actor B",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 3,
+            "mental": 8,
+            "endurance": 4,
+            "social": 5,
+            "luck": 7,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "C",
+          "name": "Actor C",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 4,
+            "mental": 7,
+            "endurance": 5,
+            "social": 5,
+            "luck": 6,
+            "competition": 6,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "D",
+          "name": "Actor D",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 5,
+            "mental": 6,
+            "endurance": 6,
+            "social": 5,
+            "luck": 5,
+            "competition": 7,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "E",
+          "name": "Actor E",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 6,
+            "mental": 5,
+            "endurance": 7,
+            "social": 5,
+            "luck": 4,
+            "competition": 8,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        },
+        {
+          "id": "F",
+          "name": "Actor F",
+          "status": "Active",
+          "isPlayer": false,
+          "isHoH": false,
+          "isPovHolder": false,
+          "isNominated": false,
+          "traits": [],
+          "stats": {
+            "physical": 7,
+            "mental": 4,
+            "endurance": 8,
+            "social": 5,
+            "luck": 3,
+            "competition": 9,
+            "strategic": 5,
+            "loyalty": 5
+          },
+          "competitionsWon": {
+            "hoh": 0,
+            "pov": 0,
+            "other": 0
+          },
+          "nominations": {
+            "times": 0,
+            "receivedOn": []
+          },
+          "mood": "Neutral",
+          "stressLevel": "Normal"
+        }
+      ],
+      "nominees": [
+        "B",
+        "C"
+      ],
+      "playerCompBonus": 1.5,
+      "draws": [
+        0.16203845175914466,
+        0.45729245827533305,
+        0.14803418260999024,
+        0.06019633333198726,
+        0.020710047567263246,
+        0.9795770258642733,
+        0.9221046927850693,
+        0.2370559899136424,
+        0.3446049438789487,
+        0.8140215300954878,
+        0.8892180472612381,
+        0.2147019796539098,
+        0.41739966231398284
+      ],
+      "expected": {
+        "id": "golden-competition",
+        "name": "Big Brother Roulette",
+        "category": "Crapshoot",
+        "description": "Big Brother Roulette - Anyone can win this game of chance!",
+        "week": 4,
+        "type": "PoV",
+        "participants": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F"
+        ],
+        "results": [
+          {
+            "houseguestId": "C",
+            "placement": 1,
+            "score": 13.329024007241243
+          },
+          {
+            "houseguestId": "A",
+            "placement": 2,
+            "score": 9.87113700384507
+          },
+          {
+            "houseguestId": "B",
+            "placement": 3,
+            "score": 8.100827126030344
+          },
+          {
+            "houseguestId": "E",
+            "placement": 4,
+            "score": 7.411398278479464
+          },
+          {
+            "houseguestId": "D",
+            "placement": 5,
+            "score": 5.463307605916634
+          },
+          {
+            "houseguestId": "F",
+            "placement": 6,
+            "score": 3.9099870554055087
+          }
+        ],
+        "winnerId": "C",
+        "isComplete": true
+      }
+    }
+  ],
+  "statChecks": [
+    {
+      "stat": 1,
+      "required": 5,
+      "expected": 10
+    },
+    {
+      "stat": 3,
+      "required": 5,
+      "expected": 30
+    },
+    {
+      "stat": 5,
+      "required": 5,
+      "expected": 60
+    },
+    {
+      "stat": 7,
+      "required": 5,
+      "expected": 90
+    },
+    {
+      "stat": 10,
+      "required": 5,
+      "expected": 100
+    }
+  ],
+  "failedInteraction": [
+    {
+      "change": -5,
+      "expected": -8
+    },
+    {
+      "change": -1,
+      "expected": -2
+    },
+    {
+      "change": 0,
+      "expected": 0
+    },
+    {
+      "change": 1,
+      "expected": -1
+    },
+    {
+      "change": 5,
+      "expected": -3
+    },
+    {
+      "change": 10,
+      "expected": -5
+    }
+  ]
+}

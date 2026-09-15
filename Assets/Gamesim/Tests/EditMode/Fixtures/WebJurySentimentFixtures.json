@@ -1,0 +1,3803 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "path": "src/systems/jury-sentiment-tracker.ts",
+    "sha256": "78ebcc2890b874a4e8561e221a0970335d71149af40c40fbd07fcd12fc442fe0"
+  },
+  "initial": {
+    "jurors": [],
+    "overallSentiment": 0
+  },
+  "programs": [
+    {
+      "name": "empty-ledger-never-banks-global-delta",
+      "steps": [
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "missing",
+            "delta": 10,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": true,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "new",
+            "jurorName": "new",
+            "relationshipScore": 0
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "new",
+                "jurorName": "new",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding--201",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": -201
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -95,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -95
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding--101",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": -101
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -45,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -45
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding--100",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": -100
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -45,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -45
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding--99",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": -99
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -49,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -49
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -49,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -49
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -44,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -44
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": -49,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -49
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding--1",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": -1
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [
+            "juror-a"
+          ],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding--0.5",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": -0.5
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [
+            "juror-a"
+          ],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding--0.1",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": -0.1
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [
+            "juror-a"
+          ],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-0",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 0
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-0.1",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 0.1
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-0.5",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 0.5
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-1",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 1
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 1
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 1
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 6,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 6
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 1
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-99",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 99
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 55,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 55
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-100",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 100
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 55,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 55
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-101",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 101
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 51,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 51
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 51,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 51
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 56,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 56
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 51,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 51
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "entry-rounding-201",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "juror-a",
+            "jurorName": "Juror A",
+            "relationshipScore": 201
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 101,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 101
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "juror-a",
+            "delta": 0,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "juror-a",
+                "jurorName": "Juror A",
+                "sentiment": 95,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 95
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "raw-deltas-at-both-clamps-and-average",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "positive",
+            "jurorName": "positive",
+            "relationshipScore": 100
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 50
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "negative",
+            "jurorName": "negative",
+            "relationshipScore": -100
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": 50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "positive",
+            "delta": 49,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": 99,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 49,
+                    "reason": "specific change"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": -50,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 25
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "negative",
+            "delta": -49,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": 99,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 49,
+                    "reason": "specific change"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": -99,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -49,
+                    "reason": "specific change"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": 100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": -94,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 3
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -10,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": 90,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 1000,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": 100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1000,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": 100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1000,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -1000,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1000,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -1000,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1000,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -1000,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 0,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "positive",
+                "jurorName": "positive",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1000,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -1000,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "negative",
+                "jurorName": "negative",
+                "sentiment": -100,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -49,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 5,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -10,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1000,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -1000,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -100
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "duplicate-add-resets-record-keeps-key-position",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "first",
+            "jurorName": "First original",
+            "relationshipScore": 10
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "First original",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 5
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "second",
+            "jurorName": "Second",
+            "relationshipScore": -10
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "First original",
+                "sentiment": 5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "Second",
+                "sentiment": -5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "first",
+            "delta": 7,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "First original",
+                "sentiment": 12,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 7,
+                    "reason": "specific change"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "Second",
+                "sentiment": -5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 4
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "first",
+            "jurorName": "First replacement",
+            "relationshipScore": -3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "First replacement",
+                "sentiment": -1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "Second",
+                "sentiment": -5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -3
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "unknown",
+            "delta": 2,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "First replacement",
+                "sentiment": -1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "Second",
+                "sentiment": -5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -3
+          },
+          "expectedSameReference": true,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -0.5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "First replacement",
+                "sentiment": -1.5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -0.5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "Second",
+                "sentiment": -5.5,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -0.5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": -3
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    },
+    {
+      "name": "rounding-average-toward-positive-infinity",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "first",
+            "jurorName": "first",
+            "relationshipScore": 0
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "first",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "second",
+            "jurorName": "second",
+            "relationshipScore": -2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "first",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "second",
+                "sentiment": -1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": true
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "third",
+            "jurorName": "third",
+            "relationshipScore": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "first",
+                "sentiment": 0,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "second",
+                "sentiment": -1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "third",
+                "jurorName": "third",
+                "sentiment": 1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "first",
+            "delta": -0.25,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "first",
+                "sentiment": -0.25,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -0.25,
+                    "reason": "specific change"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "second",
+                "sentiment": -1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "third",
+                "jurorName": "third",
+                "sentiment": 1,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": true
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 0.125,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "first",
+                "sentiment": -0.125,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -0.25,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "second",
+                "sentiment": -0.875,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "third",
+                "jurorName": "third",
+                "sentiment": 1.125,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "second",
+            "delta": 0.625,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "first",
+                "sentiment": -0.125,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -0.25,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "second",
+                "sentiment": -0.25,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0.625,
+                    "reason": "specific change"
+                  }
+                ]
+              },
+              {
+                "jurorId": "third",
+                "jurorName": "third",
+                "sentiment": 1.125,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": -0.5,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "first",
+                "jurorName": "first",
+                "sentiment": -0.625,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -0.25,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -0.5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "second",
+                "jurorName": "second",
+                "sentiment": -0.75,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 2,
+                    "delta": 0.625,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -0.5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "third",
+                "jurorName": "third",
+                "sentiment": 0.625,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 0.125,
+                    "reason": "Diary Room: Remorseful"
+                  },
+                  {
+                    "week": 3,
+                    "delta": -0.5,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 0
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": true
+        }
+      ]
+    },
+    {
+      "name": "insertion-order-retained-across-targeted-updates",
+      "steps": [
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "z-last-letter",
+            "jurorName": "z-last-letter",
+            "relationshipScore": 20
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "z-last-letter",
+                "jurorName": "z-last-letter",
+                "sentiment": 10,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 10
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "a-first-letter",
+            "jurorName": "a-first-letter",
+            "relationshipScore": 40
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "z-last-letter",
+                "jurorName": "z-last-letter",
+                "sentiment": 10,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "a-first-letter",
+                "jurorName": "a-first-letter",
+                "sentiment": 20,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 15
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "add",
+            "jurorId": "middle",
+            "jurorName": "middle",
+            "relationshipScore": -20
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "z-last-letter",
+                "jurorName": "z-last-letter",
+                "sentiment": 10,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "a-first-letter",
+                "jurorName": "a-first-letter",
+                "sentiment": 20,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "middle",
+                "jurorName": "middle",
+                "sentiment": -10,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 7
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "update",
+            "jurorId": "a-first-letter",
+            "delta": -3,
+            "reason": "specific change",
+            "week": 2
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "z-last-letter",
+                "jurorName": "z-last-letter",
+                "sentiment": 10,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              },
+              {
+                "jurorId": "a-first-letter",
+                "jurorName": "a-first-letter",
+                "sentiment": 17,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -3,
+                    "reason": "specific change"
+                  }
+                ]
+              },
+              {
+                "jurorId": "middle",
+                "jurorName": "middle",
+                "sentiment": -10,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 6
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        },
+        {
+          "input": {
+            "operation": "shift",
+            "delta": 1,
+            "reason": "Diary Room: Remorseful",
+            "week": 3
+          },
+          "expected": {
+            "jurors": [
+              {
+                "jurorId": "z-last-letter",
+                "jurorName": "z-last-letter",
+                "sentiment": 11,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "a-first-letter",
+                "jurorName": "a-first-letter",
+                "sentiment": 18,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 2,
+                    "delta": -3,
+                    "reason": "specific change"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              },
+              {
+                "jurorId": "middle",
+                "jurorName": "middle",
+                "sentiment": -9,
+                "events": [
+                  {
+                    "week": 0,
+                    "delta": 0,
+                    "reason": "Entered jury"
+                  },
+                  {
+                    "week": 3,
+                    "delta": 1,
+                    "reason": "Diary Room: Remorseful"
+                  }
+                ]
+              }
+            ],
+            "overallSentiment": 7
+          },
+          "expectedSameReference": false,
+          "expectedNegativeZeroJurorIds": [],
+          "expectedNegativeZeroOverall": false
+        }
+      ]
+    }
+  ]
+}

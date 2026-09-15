@@ -1,0 +1,255 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Gamesim.Simulation
+{
+    public enum EpisodePhase
+    {
+        Social, HoH, Nomination, VetoSelection, Veto, VetoMeeting, Campaign,
+        Eviction, FinalHoHPart1, FinalHoHPart2, FinalHoHPart3, FinalEviction, Jury, Finished,
+        JuryQuestioning, FinalSpeeches // Append: version-one ordinal values remain stable.
+    }
+
+    public enum ContestantStatus { Active, Evicted, Jury, Winner, RunnerUp }
+    public enum PromiseKind { Safety, Vote, FinalTwo, AllianceLoyalty, Information }
+    public enum PromiseStatus { Active, Fulfilled, Broken, Expired }
+
+    [Serializable]
+    public sealed class ContestantStats
+    {
+        public double physical = 5, mental = 5, endurance = 5, social = 5, luck = 5;
+        public double competition = 5, strategic = 5, loyalty = 5;
+        public ContestantStats Clone() => (ContestantStats)MemberwiseClone();
+    }
+
+    [Serializable]
+    public sealed class ContestantState
+    {
+        public string id, name, pronouns, motive, homeRoom;
+        public string mood = "Neutral", stressLevel = "Normal";
+        public bool isPlayer;
+        public ContestantStatus status;
+        public ContestantStats stats = new ContestantStats();
+        public List<string> traits = new List<string>();
+        public int hohWins, vetoWins, timesNominated;
+        public List<int> nominationWeeks = new List<int>();
+        public ContestantState Clone()
+        {
+            var copy = (ContestantState)MemberwiseClone();
+            copy.stats = stats.Clone(); copy.traits = new List<string>(traits);
+            copy.nominationWeeks = new List<int>(nominationWeeks);
+            return copy;
+        }
+    }
+
+    [Serializable]
+    public sealed class RelationshipState
+    {
+        public string fromId, toId;
+        public double score;
+        public int lastInteractionWeek;
+        public List<string> notes = new List<string>();
+        public List<RelationshipEventState> events = new List<RelationshipEventState>();
+        public RelationshipState Clone()
+        {
+            var copy = (RelationshipState)MemberwiseClone();
+            copy.notes = new List<string>(notes); copy.events = events.Select(item => item.Clone()).ToList();
+            return copy;
+        }
+    }
+
+    [Serializable] public sealed class RelationshipEventState
+    {
+        public int sequence, week;
+        public string type, description;
+        public double impactScore;
+        public bool decayable;
+        public RelationshipEventState Clone() => (RelationshipEventState)MemberwiseClone();
+    }
+
+    [Serializable] public sealed class JuryExchangeState
+    {
+        public string questionerId, finalistId, tone, question, optionA, optionB, correctChoice;
+        public string answerChoice, answer, opponentAnswer;
+        public bool completed;
+        public JuryExchangeState Clone() => (JuryExchangeState)MemberwiseClone();
+    }
+
+    [Serializable] public sealed class FinalSpeechState
+    {
+        public string speakerId, text;
+        public bool isPlayerAuthored;
+        public FinalSpeechState Clone() => (FinalSpeechState)MemberwiseClone();
+    }
+
+    [Serializable] public sealed class DiaryPromptState
+    {
+        public string id, trigger, evictedId;
+        public int week;
+        public bool isNominee;
+        public DiaryPromptState Clone() => (DiaryPromptState)MemberwiseClone();
+    }
+
+    [Serializable]
+    public sealed class PromiseState
+    {
+        public string id, fromId, toId, targetId;
+        public PromiseKind kind;
+        public PromiseStatus status;
+        public int week, expiresWeek;
+        public string impact = "medium";
+        public PromiseState Clone() => (PromiseState)MemberwiseClone();
+    }
+
+    [Serializable]
+    public sealed class AllianceState
+    {
+        public string id, name;
+        public List<string> members = new List<string>();
+        public bool active = true;
+        public AllianceState Clone()
+        {
+            var copy = (AllianceState)MemberwiseClone(); copy.members = new List<string>(members); return copy;
+        }
+    }
+
+    [Serializable]
+    public sealed class MemoryState
+    {
+        public string ownerId, subjectId, text;
+        public int week;
+        public bool isPrivate;
+        public MemoryState Clone() => (MemoryState)MemberwiseClone();
+    }
+
+    [Serializable]
+    public sealed class VoteState
+    {
+        public string voterId, targetId, reason;
+        public VoteState Clone() => (VoteState)MemberwiseClone();
+    }
+
+    [Serializable]
+    public sealed class CompetitionScore
+    {
+        public string contestantId;
+        public double score;
+        public CompetitionScore Clone() => (CompetitionScore)MemberwiseClone();
+    }
+
+    [Serializable]
+    public sealed class EpisodeEvent
+    {
+        public int sequence, week;
+        public EpisodePhase phase;
+        public string kind, text;
+        public List<string> audienceIds = new List<string>();
+        public EpisodeEvent Clone()
+        {
+            var copy = (EpisodeEvent)MemberwiseClone(); copy.audienceIds = new List<string>(audienceIds); return copy;
+        }
+    }
+
+    /// <summary>Portable save DTO. No Unity objects, wall-clock reads, network tokens or frame state.</summary>
+    [Serializable]
+    public sealed class EpisodeState
+    {
+        public int schemaVersion = 6;
+        public string sessionId;
+        public uint seed, randomState;
+        public int revision, week = 1, nextSequence = 1, socialActions;
+        public EpisodePhase phase = EpisodePhase.Social;
+        public string playerId, hohId, previousHohId, vetoHolderId, winnerId, runnerUpId;
+        public string finalPart1WinnerId, finalPart2WinnerId;
+        public bool competitionResolved, vetoResolved, evictionResolved;
+        public List<ContestantState> contestants = new List<ContestantState>();
+        public List<RelationshipState> relationships = new List<RelationshipState>();
+        public List<PromiseState> promises = new List<PromiseState>();
+        public List<AllianceState> alliances = new List<AllianceState>();
+        public List<MemoryState> memories = new List<MemoryState>();
+        public List<string> nominees = new List<string>();
+        public List<string> vetoPlayers = new List<string>();
+        public List<VoteState> votes = new List<VoteState>();
+        public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
+        public List<EpisodeEvent> events = new List<EpisodeEvent>();
+        public List<string> acceptedCommandIds = new List<string>();
+        public List<JuryExchangeState> juryExchanges = new List<JuryExchangeState>();
+        public int juryQuestionIndex;
+        public List<FinalSpeechState> finalSpeeches = new List<FinalSpeechState>();
+        public List<RelationshipArcState> relationshipArcs = new List<RelationshipArcState>();
+        public WebPersonaState playerPersona = WebDiaryRoom.CreateInitialPersonaState();
+        public WebJurySentimentState jurySentiment = WebJurySentiment.CreateInitial();
+        public DiaryPromptState pendingDiary;
+        public int lastDiaryRoomWeek, phaseEventSocialBonus, phaseEventCompBonus;
+        public List<string> resolvedDiaryIds = new List<string>();
+        public List<WebOathRecord> loyaltyOaths = new List<WebOathRecord>();
+        public List<string> oathOpportunities = new List<string>();
+        public List<string> shownOathMilestones = new List<string>();
+        // Persistent preparation; separate from phase-event counters and native precision input.
+        public int playerStudyBonus;
+        // Native rule-version boundary: existing/imported seasons retain their complete current week.
+        public int blocRulesStartWeek = 1;
+        public NpcSocialState npcSocial = NpcSocialState.Create(0);
+
+        public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
+        public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
+        public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
+        public bool Allied(string a, string b) => alliances.Any(x => x.active && x.members.Contains(a) && x.members.Contains(b));
+
+        public EpisodeState Clone()
+        {
+            var copy = (EpisodeState)MemberwiseClone();
+            copy.contestants = contestants.Select(x => x.Clone()).ToList();
+            copy.relationships = relationships.Select(x => x.Clone()).ToList();
+            copy.promises = promises.Select(x => x.Clone()).ToList();
+            copy.alliances = alliances.Select(x => x.Clone()).ToList();
+            copy.memories = memories.Select(x => x.Clone()).ToList();
+            copy.nominees = new List<string>(nominees); copy.vetoPlayers = new List<string>(vetoPlayers);
+            copy.votes = votes.Select(x => x.Clone()).ToList();
+            copy.competitionScores = competitionScores.Select(x => x.Clone()).ToList();
+            copy.events = events.Select(x => x.Clone()).ToList();
+            copy.acceptedCommandIds = new List<string>(acceptedCommandIds);
+            copy.juryExchanges = juryExchanges.Select(x => x.Clone()).ToList();
+            copy.finalSpeeches = finalSpeeches.Select(x => x.Clone()).ToList();
+            copy.relationshipArcs = relationshipArcs.Select(x => x.Clone()).ToList();
+            copy.playerPersona = playerPersona.Clone();
+            copy.jurySentiment = jurySentiment.Clone();
+            copy.pendingDiary = pendingDiary?.Clone();
+            copy.resolvedDiaryIds = new List<string>(resolvedDiaryIds);
+            copy.loyaltyOaths = loyaltyOaths.Select(x => new WebOathRecord { playerId = x.playerId, targetId = x.targetId, week = x.week, timestamp = x.timestamp }).ToList();
+            copy.oathOpportunities = new List<string>(oathOpportunities);
+            copy.shownOathMilestones = new List<string>(shownOathMilestones);
+            copy.npcSocial = npcSocial.Clone();
+            return copy;
+        }
+    }
+
+    public enum EpisodeCommandKind
+    {
+        Advance, Compete, Nominate, ResolveVeto, CastVote, FinalEvict,
+        Talk, PromiseSafety, PromiseVote, PromiseFinalTwo, FormAlliance, LeaveAlliance, ShareInformation,
+        AnswerJury, SkipQuestioning, SubmitSpeech, ReflectDiary, SkipDiary, SwearLoyalty, DeclineLoyalty,
+        StudyHouse, SimulateCompetition // Append: preserve every pre-v4 command ordinal.
+    }
+
+    [Serializable]
+    public sealed class EpisodeCommand
+    {
+        public string id, actorId, targetId, secondTargetId;
+        public string text;
+        public int expectedRevision;
+        public EpisodePhase expectedPhase;
+        public EpisodeCommandKind kind;
+        public bool useVeto;
+        // Optional human minigame input. The rules layer documents whether it affects scoring.
+        public double performance;
+    }
+
+    public sealed class CommandResult
+    {
+        public bool accepted, duplicate;
+        public string reason;
+        public EpisodeState state;
+    }
+}

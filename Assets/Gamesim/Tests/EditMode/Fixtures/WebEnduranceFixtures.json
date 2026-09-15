@@ -1,0 +1,1329 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "Original runEnduranceCompetition at default source configuration",
+  "cases": [
+    {
+      "name": "three-seed-0",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 0,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 8,
+      "expected": {
+        "winnerId": "A",
+        "scores": [
+          {
+            "contestantId": "A",
+            "score": 40.9075765684247
+          },
+          {
+            "contestantId": "C",
+            "score": 30.9075765684247
+          },
+          {
+            "contestantId": "B",
+            "score": 10.006594914011657
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "B",
+            "time": 10.006594914011657
+          },
+          {
+            "contestantId": "C",
+            "time": 30.9075765684247
+          }
+        ]
+      }
+    },
+    {
+      "name": "six-seed-0",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "D",
+          "stats": {
+            "physical": 9,
+            "endurance": 9,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "E",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "F",
+          "stats": {
+            "physical": 3,
+            "endurance": 4,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 0,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 26,
+      "expected": {
+        "winnerId": "D",
+        "scores": [
+          {
+            "contestantId": "D",
+            "score": 87.71397740580142
+          },
+          {
+            "contestantId": "C",
+            "score": 77.71397740580142
+          },
+          {
+            "contestantId": "A",
+            "score": 65.95737682655454
+          },
+          {
+            "contestantId": "B",
+            "score": 53.532650051638484
+          },
+          {
+            "contestantId": "F",
+            "score": 29.126739166676998
+          },
+          {
+            "contestantId": "E",
+            "score": 10.006594914011657
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "E",
+            "time": 10.006594914011657
+          },
+          {
+            "contestantId": "F",
+            "time": 29.126739166676998
+          },
+          {
+            "contestantId": "B",
+            "time": 53.532650051638484
+          },
+          {
+            "contestantId": "A",
+            "time": 65.95737682655454
+          },
+          {
+            "contestantId": "C",
+            "time": 77.71397740580142
+          }
+        ]
+      }
+    },
+    {
+      "name": "three-seed-1",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 1,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 8,
+      "expected": {
+        "winnerId": "A",
+        "scores": [
+          {
+            "contestantId": "A",
+            "score": 35.67678448278457
+          },
+          {
+            "contestantId": "C",
+            "score": 25.67678448278457
+          },
+          {
+            "contestantId": "B",
+            "score": 10.05471442360431
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "B",
+            "time": 10.05471442360431
+          },
+          {
+            "contestantId": "C",
+            "time": 25.67678448278457
+          }
+        ]
+      }
+    },
+    {
+      "name": "six-seed-1",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "D",
+          "stats": {
+            "physical": 9,
+            "endurance": 9,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "E",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "F",
+          "stats": {
+            "physical": 3,
+            "endurance": 4,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 1,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 26,
+      "expected": {
+        "winnerId": "D",
+        "scores": [
+          {
+            "contestantId": "D",
+            "score": 97.4109310284257
+          },
+          {
+            "contestantId": "A",
+            "score": 87.4109310284257
+          },
+          {
+            "contestantId": "B",
+            "score": 68.86329191271216
+          },
+          {
+            "contestantId": "C",
+            "score": 43.52113139349967
+          },
+          {
+            "contestantId": "F",
+            "score": 28.57065346557647
+          },
+          {
+            "contestantId": "E",
+            "score": 10.05471442360431
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "E",
+            "time": 10.05471442360431
+          },
+          {
+            "contestantId": "F",
+            "time": 28.57065346557647
+          },
+          {
+            "contestantId": "C",
+            "time": 43.52113139349967
+          },
+          {
+            "contestantId": "B",
+            "time": 68.86329191271216
+          },
+          {
+            "contestantId": "A",
+            "time": 87.4109310284257
+          }
+        ]
+      }
+    },
+    {
+      "name": "three-seed-7",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 7,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 8,
+      "expected": {
+        "winnerId": "A",
+        "scores": [
+          {
+            "contestantId": "A",
+            "score": 39.3495989125222
+          },
+          {
+            "contestantId": "C",
+            "score": 29.349598912522197
+          },
+          {
+            "contestantId": "B",
+            "score": 11.239165151491761
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "B",
+            "time": 11.239165151491761
+          },
+          {
+            "contestantId": "C",
+            "time": 29.349598912522197
+          }
+        ]
+      }
+    },
+    {
+      "name": "six-seed-7",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "D",
+          "stats": {
+            "physical": 9,
+            "endurance": 9,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "E",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "F",
+          "stats": {
+            "physical": 3,
+            "endurance": 4,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 7,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 26,
+      "expected": {
+        "winnerId": "D",
+        "scores": [
+          {
+            "contestantId": "D",
+            "score": 98.68049224372953
+          },
+          {
+            "contestantId": "C",
+            "score": 88.68049224372953
+          },
+          {
+            "contestantId": "A",
+            "score": 75.80734452232718
+          },
+          {
+            "contestantId": "B",
+            "score": 46.24842243269086
+          },
+          {
+            "contestantId": "F",
+            "score": 32.30567723046988
+          },
+          {
+            "contestantId": "E",
+            "score": 11.239165151491761
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "E",
+            "time": 11.239165151491761
+          },
+          {
+            "contestantId": "F",
+            "time": 32.30567723046988
+          },
+          {
+            "contestantId": "B",
+            "time": 46.24842243269086
+          },
+          {
+            "contestantId": "A",
+            "time": 75.80734452232718
+          },
+          {
+            "contestantId": "C",
+            "time": 88.68049224372953
+          }
+        ]
+      }
+    },
+    {
+      "name": "three-seed-99",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 99,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 8,
+      "expected": {
+        "winnerId": "A",
+        "scores": [
+          {
+            "contestantId": "A",
+            "score": 62.447317065671086
+          },
+          {
+            "contestantId": "B",
+            "score": 52.447317065671086
+          },
+          {
+            "contestantId": "C",
+            "score": 26.096455310471356
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "C",
+            "time": 26.096455310471356
+          },
+          {
+            "contestantId": "B",
+            "time": 52.447317065671086
+          }
+        ]
+      }
+    },
+    {
+      "name": "six-seed-99",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "D",
+          "stats": {
+            "physical": 9,
+            "endurance": 9,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "E",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "F",
+          "stats": {
+            "physical": 3,
+            "endurance": 4,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 99,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 26,
+      "expected": {
+        "winnerId": "A",
+        "scores": [
+          {
+            "contestantId": "A",
+            "score": 110.01889814157039
+          },
+          {
+            "contestantId": "D",
+            "score": 100.01889814157039
+          },
+          {
+            "contestantId": "C",
+            "score": 74.54893211368471
+          },
+          {
+            "contestantId": "F",
+            "score": 59.089018567465246
+          },
+          {
+            "contestantId": "B",
+            "score": 44.02802537661046
+          },
+          {
+            "contestantId": "E",
+            "score": 26.096455310471356
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "E",
+            "time": 26.096455310471356
+          },
+          {
+            "contestantId": "B",
+            "time": 44.02802537661046
+          },
+          {
+            "contestantId": "F",
+            "time": 59.089018567465246
+          },
+          {
+            "contestantId": "C",
+            "time": 74.54893211368471
+          },
+          {
+            "contestantId": "D",
+            "time": 100.01889814157039
+          }
+        ]
+      }
+    },
+    {
+      "name": "three-seed-4294967295",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 4294967295,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 8,
+      "expected": {
+        "winnerId": "A",
+        "scores": [
+          {
+            "contestantId": "A",
+            "score": 44.57236511167139
+          },
+          {
+            "contestantId": "C",
+            "score": 34.57236511167139
+          },
+          {
+            "contestantId": "B",
+            "score": 13.78956513479352
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "B",
+            "time": 13.78956513479352
+          },
+          {
+            "contestantId": "C",
+            "time": 34.57236511167139
+          }
+        ]
+      }
+    },
+    {
+      "name": "six-seed-4294967295",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 4,
+            "endurance": 8,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 10,
+            "endurance": 3,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "C",
+          "stats": {
+            "physical": 6,
+            "endurance": 6,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "D",
+          "stats": {
+            "physical": 9,
+            "endurance": 9,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "E",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "F",
+          "stats": {
+            "physical": 3,
+            "endurance": 4,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 4294967295,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 26,
+      "expected": {
+        "winnerId": "D",
+        "scores": [
+          {
+            "contestantId": "D",
+            "score": 100.91107728891075
+          },
+          {
+            "contestantId": "A",
+            "score": 90.91107728891075
+          },
+          {
+            "contestantId": "B",
+            "score": 63.86997162364423
+          },
+          {
+            "contestantId": "C",
+            "score": 46.026559714227915
+          },
+          {
+            "contestantId": "F",
+            "score": 26.506719919852912
+          },
+          {
+            "contestantId": "E",
+            "score": 13.78956513479352
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "E",
+            "time": 13.78956513479352
+          },
+          {
+            "contestantId": "F",
+            "time": 26.506719919852912
+          },
+          {
+            "contestantId": "C",
+            "time": 46.026559714227915
+          },
+          {
+            "contestantId": "B",
+            "time": 63.86997162364423
+          },
+          {
+            "contestantId": "A",
+            "time": 90.91107728891075
+          }
+        ]
+      }
+    },
+    {
+      "name": "equal-survival-stable-first-elimination",
+      "participants": [
+        {
+          "id": "C",
+          "stats": {
+            "physical": 5,
+            "endurance": 5,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "A",
+          "stats": {
+            "physical": 5,
+            "endurance": 5,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 5,
+            "endurance": 5,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 0,
+      "useConstant": true,
+      "constant": 0.5,
+      "expectedDraws": 8,
+      "expected": {
+        "winnerId": "B",
+        "scores": [
+          {
+            "contestantId": "B",
+            "score": 50
+          },
+          {
+            "contestantId": "A",
+            "score": 40
+          },
+          {
+            "contestantId": "C",
+            "score": 20
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "C",
+            "time": 20
+          },
+          {
+            "contestantId": "A",
+            "time": 40
+          }
+        ]
+      }
+    },
+    {
+      "name": "zero-stat-survival-ties",
+      "participants": [
+        {
+          "id": "Z",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "A",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "Y",
+          "stats": {
+            "physical": 0,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 0,
+      "useConstant": true,
+      "constant": 0,
+      "expectedDraws": 8,
+      "expected": {
+        "winnerId": "Y",
+        "scores": [
+          {
+            "contestantId": "Y",
+            "score": 30
+          },
+          {
+            "contestantId": "A",
+            "score": 20
+          },
+          {
+            "contestantId": "Z",
+            "score": 10
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "Z",
+            "time": 10
+          },
+          {
+            "contestantId": "A",
+            "time": 20
+          }
+        ]
+      }
+    },
+    {
+      "name": "single-participant",
+      "participants": [
+        {
+          "id": "only",
+          "stats": {
+            "physical": 5,
+            "endurance": 5,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 0,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 1,
+      "expected": {
+        "winnerId": "only",
+        "scores": [
+          {
+            "contestantId": "only",
+            "score": 10
+          }
+        ],
+        "eliminationOrder": []
+      }
+    },
+    {
+      "name": "two-participants",
+      "participants": [
+        {
+          "id": "A",
+          "stats": {
+            "physical": 10,
+            "endurance": 0,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        },
+        {
+          "id": "B",
+          "stats": {
+            "physical": 0,
+            "endurance": 10,
+            "mental": 5,
+            "social": 5,
+            "luck": 5,
+            "competition": 5,
+            "strategic": 5,
+            "loyalty": 5
+          }
+        }
+      ],
+      "seed": 42,
+      "useConstant": false,
+      "constant": 0,
+      "expectedDraws": 4,
+      "expected": {
+        "winnerId": "B",
+        "scores": [
+          {
+            "contestantId": "B",
+            "score": 28.965811179950833
+          },
+          {
+            "contestantId": "A",
+            "score": 18.965811179950833
+          }
+        ],
+        "eliminationOrder": [
+          {
+            "contestantId": "A",
+            "time": 18.965811179950833
+          }
+        ]
+      }
+    }
+  ],
+  "sources": [
+    {
+      "path": "src/models/competition.ts",
+      "sha256": "33f9bde148e5ab440bcb4581b256b9b410c10f316d462cab2521d6ce4c9ee873"
+    },
+    {
+      "path": "src/systems/competition/competition-runner.ts",
+      "sha256": "c12b8406016fe8036fa0fcf6e0b48bdbb03738780bdae11fec25ebe3ded35db6"
+    },
+    {
+      "path": "src/utils/random.ts",
+      "sha256": "cdd0f9420523c370b2eb1d6a040e56cdfe990e40918a003d614cbfcda54f2737"
+    },
+    {
+      "path": "src/utils/stat-checks.ts",
+      "sha256": "a464b363fd501f809bbf61f24f4cb141c7fcb245660dfd014f36fa85abb55687"
+    },
+    {
+      "path": "../unity-port-reference/collect-endurance-fixtures.ts",
+      "sha256": "3d345919174eac841462212c039be4443fb2a5106eaac12cc704052aa98a531b"
+    }
+  ]
+}

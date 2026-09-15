@@ -1,0 +1,7 @@
+{
+  "name": "Gamesim.Simulation",
+  "rootNamespace": "Gamesim.Simulation",
+  "references": [],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

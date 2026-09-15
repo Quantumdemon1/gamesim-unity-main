@@ -1,0 +1,4578 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "path": "src/components/game-phases/JuryQuestioningPhase.tsx",
+      "sha256": "973f86c2a0c68f62e7f48133ca546295d06a615d31341a4d2c8708b455a81a92"
+    },
+    {
+      "path": "src/utils/random.ts",
+      "sha256": "cdd0f9420523c370b2eb1d6a040e56cdfe990e40918a003d614cbfcda54f2737"
+    }
+  ],
+  "pairCases": [
+    {
+      "name": "Competitive-0-0.5",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "optionB": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "correctIs": "B",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-0-0.75",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "optionB": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "correctIs": "A",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-1-0.5",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Competitions weren't really my focus — I was more about the social connections.",
+        "optionB": "Every competition was a chance to prove myself, and I rose to the occasion.",
+        "correctIs": "B",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-1-0.75",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Every competition was a chance to prove myself, and I rose to the occasion.",
+        "optionB": "Competitions weren't really my focus — I was more about the social connections.",
+        "correctIs": "A",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-2-0.5",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Winning comps wasn't important to me. I relied on others to keep me safe.",
+        "optionB": "I fought hard for every victory and I'm proud of every single win.",
+        "correctIs": "B",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-2-0.75",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I fought hard for every victory and I'm proud of every single win.",
+        "optionB": "Winning comps wasn't important to me. I relied on others to keep me safe.",
+        "correctIs": "A",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-3-0.5",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "optionB": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "correctIs": "B",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-3-0.75",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "optionB": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "correctIs": "A",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-4-0.5",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Competitions weren't really my focus — I was more about the social connections.",
+        "optionB": "Every competition was a chance to prove myself, and I rose to the occasion.",
+        "correctIs": "B",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-4-0.75",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Every competition was a chance to prove myself, and I rose to the occasion.",
+        "optionB": "Competitions weren't really my focus — I was more about the social connections.",
+        "correctIs": "A",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-5-0.5",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Winning comps wasn't important to me. I relied on others to keep me safe.",
+        "optionB": "I fought hard for every victory and I'm proud of every single win.",
+        "correctIs": "B",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Competitive-5-0.75",
+      "traits": [
+        "Competitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I fought hard for every victory and I'm proud of every single win.",
+        "optionB": "Winning comps wasn't important to me. I relied on others to keep me safe.",
+        "correctIs": "A",
+        "trait": "Competitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-0-0.5",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I just followed my heart and hoped for the best. I didn't really plan ahead.",
+        "optionB": "Every decision I made was calculated to get me to this point. Nothing was by accident.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-0-0.75",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Every decision I made was calculated to get me to this point. Nothing was by accident.",
+        "optionB": "I just followed my heart and hoped for the best. I didn't really plan ahead.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-1-0.5",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-1-0.75",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-2-0.5",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I stuck with one alliance from day one and never wavered. Loyalty above all.",
+        "optionB": "I always had a plan B and C ready. Adaptability was my greatest weapon.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-2-0.75",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I always had a plan B and C ready. Adaptability was my greatest weapon.",
+        "optionB": "I stuck with one alliance from day one and never wavered. Loyalty above all.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-3-0.5",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I just followed my heart and hoped for the best. I didn't really plan ahead.",
+        "optionB": "Every decision I made was calculated to get me to this point. Nothing was by accident.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-3-0.75",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Every decision I made was calculated to get me to this point. Nothing was by accident.",
+        "optionB": "I just followed my heart and hoped for the best. I didn't really plan ahead.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-4-0.5",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-4-0.75",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-5-0.5",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I stuck with one alliance from day one and never wavered. Loyalty above all.",
+        "optionB": "I always had a plan B and C ready. Adaptability was my greatest weapon.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Strategic-5-0.75",
+      "traits": [
+        "Strategic",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I always had a plan B and C ready. Adaptability was my greatest weapon.",
+        "optionB": "I stuck with one alliance from day one and never wavered. Loyalty above all.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-0-0.5",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I made moves when the timing was right, regardless of promises I'd made.",
+        "optionB": "I always stayed true to the people I gave my word to. My alliances were real.",
+        "correctIs": "B",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-0-0.75",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I always stayed true to the people I gave my word to. My alliances were real.",
+        "optionB": "I made moves when the timing was right, regardless of promises I'd made.",
+        "correctIs": "A",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-1-0.5",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Every friendship was a calculated move to advance my position in the game.",
+        "optionB": "The relationships I built in this house were genuine, not just strategic tools.",
+        "correctIs": "B",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-1-0.75",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The relationships I built in this house were genuine, not just strategic tools.",
+        "optionB": "Every friendship was a calculated move to advance my position in the game.",
+        "correctIs": "A",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-2-0.5",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Promises are just part of the game — everyone knows they're meant to be broken.",
+        "optionB": "I kept my promises even when it would have been easier to break them.",
+        "correctIs": "B",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-2-0.75",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I kept my promises even when it would have been easier to break them.",
+        "optionB": "Promises are just part of the game — everyone knows they're meant to be broken.",
+        "correctIs": "A",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-3-0.5",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I made moves when the timing was right, regardless of promises I'd made.",
+        "optionB": "I always stayed true to the people I gave my word to. My alliances were real.",
+        "correctIs": "B",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-3-0.75",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I always stayed true to the people I gave my word to. My alliances were real.",
+        "optionB": "I made moves when the timing was right, regardless of promises I'd made.",
+        "correctIs": "A",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-4-0.5",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Every friendship was a calculated move to advance my position in the game.",
+        "optionB": "The relationships I built in this house were genuine, not just strategic tools.",
+        "correctIs": "B",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-4-0.75",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The relationships I built in this house were genuine, not just strategic tools.",
+        "optionB": "Every friendship was a calculated move to advance my position in the game.",
+        "correctIs": "A",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-5-0.5",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Promises are just part of the game — everyone knows they're meant to be broken.",
+        "optionB": "I kept my promises even when it would have been easier to break them.",
+        "correctIs": "B",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Loyal-5-0.75",
+      "traits": [
+        "Loyal",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I kept my promises even when it would have been easier to break them.",
+        "optionB": "Promises are just part of the game — everyone knows they're meant to be broken.",
+        "correctIs": "A",
+        "trait": "Loyal"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-0-0.5",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "At the end of the day, it's just a game. I didn't let feelings get in the way of winning.",
+        "optionB": "I want you to know that I genuinely cared about everyone in this house. This wasn't just a game to me.",
+        "correctIs": "B",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-0-0.75",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I want you to know that I genuinely cared about everyone in this house. This wasn't just a game to me.",
+        "optionB": "At the end of the day, it's just a game. I didn't let feelings get in the way of winning.",
+        "correctIs": "A",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-1-0.5",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "optionB": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "correctIs": "B",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-1-0.75",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "optionB": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "correctIs": "A",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-2-0.5",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Evictions were just part of the process. I didn't lose sleep over them.",
+        "optionB": "The hardest part was seeing people I cared about walk out that door.",
+        "correctIs": "B",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-2-0.75",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The hardest part was seeing people I cared about walk out that door.",
+        "optionB": "Evictions were just part of the process. I didn't lose sleep over them.",
+        "correctIs": "A",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-3-0.5",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "At the end of the day, it's just a game. I didn't let feelings get in the way of winning.",
+        "optionB": "I want you to know that I genuinely cared about everyone in this house. This wasn't just a game to me.",
+        "correctIs": "B",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-3-0.75",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I want you to know that I genuinely cared about everyone in this house. This wasn't just a game to me.",
+        "optionB": "At the end of the day, it's just a game. I didn't let feelings get in the way of winning.",
+        "correctIs": "A",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-4-0.5",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "optionB": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "correctIs": "B",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-4-0.75",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "optionB": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "correctIs": "A",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-5-0.5",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Evictions were just part of the process. I didn't lose sleep over them.",
+        "optionB": "The hardest part was seeing people I cared about walk out that door.",
+        "correctIs": "B",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Emotional-5-0.75",
+      "traits": [
+        "Emotional",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The hardest part was seeing people I cared about walk out that door.",
+        "optionB": "Evictions were just part of the process. I didn't lose sleep over them.",
+        "correctIs": "A",
+        "trait": "Emotional"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-0-0.5",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I isolated myself and focused on competitions. Social game wasn't my priority.",
+        "optionB": "I connected with people on a real, personal level — that's what kept me safe.",
+        "correctIs": "B",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-0-0.75",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I connected with people on a real, personal level — that's what kept me safe.",
+        "optionB": "I isolated myself and focused on competitions. Social game wasn't my priority.",
+        "correctIs": "A",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-1-0.5",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I controlled people through fear and intimidation. That's how you play this game.",
+        "optionB": "People wanted to work with me because I made them feel valued and heard.",
+        "correctIs": "B",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-1-0.75",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "People wanted to work with me because I made them feel valued and heard.",
+        "optionB": "I controlled people through fear and intimidation. That's how you play this game.",
+        "correctIs": "A",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-2-0.5",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I didn't bother with small talk or friendships. This is a strategy game, not summer camp.",
+        "optionB": "My social game was my superpower, and I'm proud of the bonds I built.",
+        "correctIs": "B",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-2-0.75",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My social game was my superpower, and I'm proud of the bonds I built.",
+        "optionB": "I didn't bother with small talk or friendships. This is a strategy game, not summer camp.",
+        "correctIs": "A",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-3-0.5",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I isolated myself and focused on competitions. Social game wasn't my priority.",
+        "optionB": "I connected with people on a real, personal level — that's what kept me safe.",
+        "correctIs": "B",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-3-0.75",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I connected with people on a real, personal level — that's what kept me safe.",
+        "optionB": "I isolated myself and focused on competitions. Social game wasn't my priority.",
+        "correctIs": "A",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-4-0.5",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I controlled people through fear and intimidation. That's how you play this game.",
+        "optionB": "People wanted to work with me because I made them feel valued and heard.",
+        "correctIs": "B",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-4-0.75",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "People wanted to work with me because I made them feel valued and heard.",
+        "optionB": "I controlled people through fear and intimidation. That's how you play this game.",
+        "correctIs": "A",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-5-0.5",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I didn't bother with small talk or friendships. This is a strategy game, not summer camp.",
+        "optionB": "My social game was my superpower, and I'm proud of the bonds I built.",
+        "correctIs": "B",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Charming-5-0.75",
+      "traits": [
+        "Charming",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My social game was my superpower, and I'm proud of the bonds I built.",
+        "optionB": "I didn't bother with small talk or friendships. This is a strategy game, not summer camp.",
+        "correctIs": "A",
+        "trait": "Charming"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-0-0.5",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was completely transparent with everyone about my plans and intentions.",
+        "optionB": "I influenced the house without anyone realizing it. Information was my currency.",
+        "correctIs": "B",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-0-0.75",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I influenced the house without anyone realizing it. Information was my currency.",
+        "optionB": "I was completely transparent with everyone about my plans and intentions.",
+        "correctIs": "A",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-1-0.5",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I won competitions and used that power directly. Subtlety is overrated.",
+        "optionB": "I planted seeds and watched them grow. The best moves are the ones no one sees.",
+        "correctIs": "B",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-1-0.75",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I planted seeds and watched them grow. The best moves are the ones no one sees.",
+        "optionB": "I won competitions and used that power directly. Subtlety is overrated.",
+        "correctIs": "A",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-2-0.5",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I said the same thing to everyone. Honesty was my policy from day one.",
+        "optionB": "I knew exactly what each person needed to hear to keep myself safe.",
+        "correctIs": "B",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-2-0.75",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I knew exactly what each person needed to hear to keep myself safe.",
+        "optionB": "I said the same thing to everyone. Honesty was my policy from day one.",
+        "correctIs": "A",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-3-0.5",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was completely transparent with everyone about my plans and intentions.",
+        "optionB": "I influenced the house without anyone realizing it. Information was my currency.",
+        "correctIs": "B",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-3-0.75",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I influenced the house without anyone realizing it. Information was my currency.",
+        "optionB": "I was completely transparent with everyone about my plans and intentions.",
+        "correctIs": "A",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-4-0.5",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I won competitions and used that power directly. Subtlety is overrated.",
+        "optionB": "I planted seeds and watched them grow. The best moves are the ones no one sees.",
+        "correctIs": "B",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-4-0.75",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I planted seeds and watched them grow. The best moves are the ones no one sees.",
+        "optionB": "I won competitions and used that power directly. Subtlety is overrated.",
+        "correctIs": "A",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-5-0.5",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I said the same thing to everyone. Honesty was my policy from day one.",
+        "optionB": "I knew exactly what each person needed to hear to keep myself safe.",
+        "correctIs": "B",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Manipulative-5-0.75",
+      "traits": [
+        "Manipulative",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I knew exactly what each person needed to hear to keep myself safe.",
+        "optionB": "I said the same thing to everyone. Honesty was my policy from day one.",
+        "correctIs": "A",
+        "trait": "Manipulative"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-0-0.5",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I just went with my gut feeling every week. Analysis paralysis is a real thing.",
+        "optionB": "I studied everyone's patterns and used that data to make optimal decisions.",
+        "correctIs": "B",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-0-0.75",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I studied everyone's patterns and used that data to make optimal decisions.",
+        "optionB": "I just went with my gut feeling every week. Analysis paralysis is a real thing.",
+        "correctIs": "A",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-1-0.5",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I'm more of a spontaneous player. Overthinking ruins the fun.",
+        "optionB": "I mapped out every possible outcome before making my moves.",
+        "correctIs": "B",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-1-0.75",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I mapped out every possible outcome before making my moves.",
+        "optionB": "I'm more of a spontaneous player. Overthinking ruins the fun.",
+        "correctIs": "A",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-2-0.5",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Numbers and odds don't matter when you have strong alliances.",
+        "optionB": "Understanding the probability of each scenario gave me a strategic edge.",
+        "correctIs": "B",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-2-0.75",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Understanding the probability of each scenario gave me a strategic edge.",
+        "optionB": "Numbers and odds don't matter when you have strong alliances.",
+        "correctIs": "A",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-3-0.5",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I just went with my gut feeling every week. Analysis paralysis is a real thing.",
+        "optionB": "I studied everyone's patterns and used that data to make optimal decisions.",
+        "correctIs": "B",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-3-0.75",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I studied everyone's patterns and used that data to make optimal decisions.",
+        "optionB": "I just went with my gut feeling every week. Analysis paralysis is a real thing.",
+        "correctIs": "A",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-4-0.5",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I'm more of a spontaneous player. Overthinking ruins the fun.",
+        "optionB": "I mapped out every possible outcome before making my moves.",
+        "correctIs": "B",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-4-0.75",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I mapped out every possible outcome before making my moves.",
+        "optionB": "I'm more of a spontaneous player. Overthinking ruins the fun.",
+        "correctIs": "A",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-5-0.5",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Numbers and odds don't matter when you have strong alliances.",
+        "optionB": "Understanding the probability of each scenario gave me a strategic edge.",
+        "correctIs": "B",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Analytical-5-0.75",
+      "traits": [
+        "Analytical",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Understanding the probability of each scenario gave me a strategic edge.",
+        "optionB": "Numbers and odds don't matter when you have strong alliances.",
+        "correctIs": "A",
+        "trait": "Analytical"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-0-0.5",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was a solo player. I didn't need anyone else to get to the end.",
+        "optionB": "My social connections were the foundation of everything I accomplished.",
+        "correctIs": "B",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-0-0.75",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My social connections were the foundation of everything I accomplished.",
+        "optionB": "I was a solo player. I didn't need anyone else to get to the end.",
+        "correctIs": "A",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-1-0.5",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I stayed in my room and avoided house drama. Less socializing, less trouble.",
+        "optionB": "Being in the center of the social web meant I always knew what was happening.",
+        "correctIs": "B",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-1-0.75",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Being in the center of the social web meant I always knew what was happening.",
+        "optionB": "I stayed in my room and avoided house drama. Less socializing, less trouble.",
+        "correctIs": "A",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-2-0.5",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Trust is a weakness in this game. I kept everyone at arm's length.",
+        "optionB": "People trusted me because I invested real time in getting to know them.",
+        "correctIs": "B",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-2-0.75",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "People trusted me because I invested real time in getting to know them.",
+        "optionB": "Trust is a weakness in this game. I kept everyone at arm's length.",
+        "correctIs": "A",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-3-0.5",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was a solo player. I didn't need anyone else to get to the end.",
+        "optionB": "My social connections were the foundation of everything I accomplished.",
+        "correctIs": "B",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-3-0.75",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My social connections were the foundation of everything I accomplished.",
+        "optionB": "I was a solo player. I didn't need anyone else to get to the end.",
+        "correctIs": "A",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-4-0.5",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I stayed in my room and avoided house drama. Less socializing, less trouble.",
+        "optionB": "Being in the center of the social web meant I always knew what was happening.",
+        "correctIs": "B",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-4-0.75",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 4,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Being in the center of the social web meant I always knew what was happening.",
+        "optionB": "I stayed in my room and avoided house drama. Less socializing, less trouble.",
+        "correctIs": "A",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-5-0.5",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Trust is a weakness in this game. I kept everyone at arm's length.",
+        "optionB": "People trusted me because I invested real time in getting to know them.",
+        "correctIs": "B",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Social-5-0.75",
+      "traits": [
+        "Social",
+        "IgnoredSecondTrait"
+      ],
+      "index": 5,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "People trusted me because I invested real time in getting to know them.",
+        "optionB": "Trust is a weakness in this game. I kept everyone at arm's length.",
+        "correctIs": "A",
+        "trait": "Social"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-0-0.5",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was all business, all the time. There's no room for jokes in this game.",
+        "optionB": "I kept the mood light and people wanted me around. Laughter is powerful.",
+        "correctIs": "B",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-0-0.75",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I kept the mood light and people wanted me around. Laughter is powerful.",
+        "optionB": "I was all business, all the time. There's no room for jokes in this game.",
+        "correctIs": "A",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-1-0.5",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I used confrontation and aggression to establish dominance in the house.",
+        "optionB": "Humor helped me defuse tense situations and keep my allies close.",
+        "correctIs": "B",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-1-0.75",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Humor helped me defuse tense situations and keep my allies close.",
+        "optionB": "I used confrontation and aggression to establish dominance in the house.",
+        "correctIs": "A",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-2-0.5",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was all business, all the time. There's no room for jokes in this game.",
+        "optionB": "I kept the mood light and people wanted me around. Laughter is powerful.",
+        "correctIs": "B",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-2-0.75",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I kept the mood light and people wanted me around. Laughter is powerful.",
+        "optionB": "I was all business, all the time. There's no room for jokes in this game.",
+        "correctIs": "A",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-3-0.5",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I used confrontation and aggression to establish dominance in the house.",
+        "optionB": "Humor helped me defuse tense situations and keep my allies close.",
+        "correctIs": "B",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Funny-3-0.75",
+      "traits": [
+        "Funny",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Humor helped me defuse tense situations and keep my allies close.",
+        "optionB": "I used confrontation and aggression to establish dominance in the house.",
+        "correctIs": "A",
+        "trait": "Funny"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-0-0.5",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was an open book the entire game. What you saw was what you got.",
+        "optionB": "The best deceptions are the ones people never discover. I played brilliantly.",
+        "correctIs": "B",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-0-0.75",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The best deceptions are the ones people never discover. I played brilliantly.",
+        "optionB": "I was an open book the entire game. What you saw was what you got.",
+        "correctIs": "A",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-1-0.5",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "optionB": "Misdirection was an art form for me. I controlled the narrative.",
+        "correctIs": "B",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-1-0.75",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Misdirection was an art form for me. I controlled the narrative.",
+        "optionB": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "correctIs": "A",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-2-0.5",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was an open book the entire game. What you saw was what you got.",
+        "optionB": "The best deceptions are the ones people never discover. I played brilliantly.",
+        "correctIs": "B",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-2-0.75",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The best deceptions are the ones people never discover. I played brilliantly.",
+        "optionB": "I was an open book the entire game. What you saw was what you got.",
+        "correctIs": "A",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-3-0.5",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "optionB": "Misdirection was an art form for me. I controlled the narrative.",
+        "correctIs": "B",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Deceptive-3-0.75",
+      "traits": [
+        "Deceptive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Misdirection was an art form for me. I controlled the narrative.",
+        "optionB": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "correctIs": "A",
+        "trait": "Deceptive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-0-0.5",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was always the loudest voice in every room. Big personalities win big games.",
+        "optionB": "I observed from the sidelines and struck at exactly the right moments.",
+        "correctIs": "B",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-0-0.75",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I observed from the sidelines and struck at exactly the right moments.",
+        "optionB": "I was always the loudest voice in every room. Big personalities win big games.",
+        "correctIs": "A",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-1-0.5",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I made sure everyone knew exactly where I stood at all times.",
+        "optionB": "While everyone else was arguing, I was quietly gathering information.",
+        "correctIs": "B",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-1-0.75",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "While everyone else was arguing, I was quietly gathering information.",
+        "optionB": "I made sure everyone knew exactly where I stood at all times.",
+        "correctIs": "A",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-2-0.5",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was always the loudest voice in every room. Big personalities win big games.",
+        "optionB": "I observed from the sidelines and struck at exactly the right moments.",
+        "correctIs": "B",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-2-0.75",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I observed from the sidelines and struck at exactly the right moments.",
+        "optionB": "I was always the loudest voice in every room. Big personalities win big games.",
+        "correctIs": "A",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-3-0.5",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I made sure everyone knew exactly where I stood at all times.",
+        "optionB": "While everyone else was arguing, I was quietly gathering information.",
+        "correctIs": "B",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Introverted-3-0.75",
+      "traits": [
+        "Introverted",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "While everyone else was arguing, I was quietly gathering information.",
+        "optionB": "I made sure everyone knew exactly where I stood at all times.",
+        "correctIs": "A",
+        "trait": "Introverted"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-0-0.5",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was upfront about every move I made. Transparency was my brand.",
+        "optionB": "I worked behind the scenes where the real power lives.",
+        "correctIs": "B",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-0-0.75",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I worked behind the scenes where the real power lives.",
+        "optionB": "I was upfront about every move I made. Transparency was my brand.",
+        "correctIs": "A",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-1-0.5",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I wanted everyone to know I was running the house. Fear is respect.",
+        "optionB": "The best player is the one nobody suspects. I stayed under the radar.",
+        "correctIs": "B",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-1-0.75",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The best player is the one nobody suspects. I stayed under the radar.",
+        "optionB": "I wanted everyone to know I was running the house. Fear is respect.",
+        "correctIs": "A",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-2-0.5",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was upfront about every move I made. Transparency was my brand.",
+        "optionB": "I worked behind the scenes where the real power lives.",
+        "correctIs": "B",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-2-0.75",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I worked behind the scenes where the real power lives.",
+        "optionB": "I was upfront about every move I made. Transparency was my brand.",
+        "correctIs": "A",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-3-0.5",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I wanted everyone to know I was running the house. Fear is respect.",
+        "optionB": "The best player is the one nobody suspects. I stayed under the radar.",
+        "correctIs": "B",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Sneaky-3-0.75",
+      "traits": [
+        "Sneaky",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "The best player is the one nobody suspects. I stayed under the radar.",
+        "optionB": "I wanted everyone to know I was running the house. Fear is respect.",
+        "correctIs": "A",
+        "trait": "Sneaky"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-0-0.5",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was always willing to flip my vote if someone made a good argument.",
+        "optionB": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "correctIs": "B",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-0-0.75",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "optionB": "I was always willing to flip my vote if someone made a good argument.",
+        "correctIs": "A",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-1-0.5",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Flexibility and going with the flow was my key strategy.",
+        "optionB": "My determination and refusal to quit is what got me to the finale.",
+        "correctIs": "B",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-1-0.75",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My determination and refusal to quit is what got me to the finale.",
+        "optionB": "Flexibility and going with the flow was my key strategy.",
+        "correctIs": "A",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-2-0.5",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I was always willing to flip my vote if someone made a good argument.",
+        "optionB": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "correctIs": "B",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-2-0.75",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "optionB": "I was always willing to flip my vote if someone made a good argument.",
+        "correctIs": "A",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-3-0.5",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "Flexibility and going with the flow was my key strategy.",
+        "optionB": "My determination and refusal to quit is what got me to the finale.",
+        "correctIs": "B",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Stubborn-3-0.75",
+      "traits": [
+        "Stubborn",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My determination and refusal to quit is what got me to the finale.",
+        "optionB": "Flexibility and going with the flow was my key strategy.",
+        "correctIs": "A",
+        "trait": "Stubborn"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-0-0.5",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I had one plan from day one and I never deviated from it.",
+        "optionB": "I adapted to every twist and turn. Rigidity gets you evicted.",
+        "correctIs": "B",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-0-0.75",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I adapted to every twist and turn. Rigidity gets you evicted.",
+        "optionB": "I had one plan from day one and I never deviated from it.",
+        "correctIs": "A",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-1-0.5",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I refused to change my approach regardless of what happened.",
+        "optionB": "When the house shifted, I shifted with it. That's smart gameplay.",
+        "correctIs": "B",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-1-0.75",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "When the house shifted, I shifted with it. That's smart gameplay.",
+        "optionB": "I refused to change my approach regardless of what happened.",
+        "correctIs": "A",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-2-0.5",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I had one plan from day one and I never deviated from it.",
+        "optionB": "I adapted to every twist and turn. Rigidity gets you evicted.",
+        "correctIs": "B",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-2-0.75",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I adapted to every twist and turn. Rigidity gets you evicted.",
+        "optionB": "I had one plan from day one and I never deviated from it.",
+        "correctIs": "A",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-3-0.5",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I refused to change my approach regardless of what happened.",
+        "optionB": "When the house shifted, I shifted with it. That's smart gameplay.",
+        "correctIs": "B",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Flexible-3-0.75",
+      "traits": [
+        "Flexible",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "When the house shifted, I shifted with it. That's smart gameplay.",
+        "optionB": "I refused to change my approach regardless of what happened.",
+        "correctIs": "A",
+        "trait": "Flexible"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-0-0.5",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I carefully deliberated every decision for hours before committing.",
+        "optionB": "I trusted my instincts and made bold moves when others hesitated.",
+        "correctIs": "B",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-0-0.75",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I trusted my instincts and made bold moves when others hesitated.",
+        "optionB": "I carefully deliberated every decision for hours before committing.",
+        "correctIs": "A",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-1-0.5",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I never made a move without running the numbers first.",
+        "optionB": "Sometimes you just have to go for it. My gut never steered me wrong.",
+        "correctIs": "B",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-1-0.75",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Sometimes you just have to go for it. My gut never steered me wrong.",
+        "optionB": "I never made a move without running the numbers first.",
+        "correctIs": "A",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-2-0.5",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I carefully deliberated every decision for hours before committing.",
+        "optionB": "I trusted my instincts and made bold moves when others hesitated.",
+        "correctIs": "B",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-2-0.75",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I trusted my instincts and made bold moves when others hesitated.",
+        "optionB": "I carefully deliberated every decision for hours before committing.",
+        "correctIs": "A",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-3-0.5",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I never made a move without running the numbers first.",
+        "optionB": "Sometimes you just have to go for it. My gut never steered me wrong.",
+        "correctIs": "B",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Impulsive-3-0.75",
+      "traits": [
+        "Impulsive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Sometimes you just have to go for it. My gut never steered me wrong.",
+        "optionB": "I never made a move without running the numbers first.",
+        "correctIs": "A",
+        "trait": "Impulsive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-0-0.5",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I relied purely on hard facts and data. Intuition is unreliable.",
+        "optionB": "I could read people and situations before anyone else saw what was coming.",
+        "correctIs": "B",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-0-0.75",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I could read people and situations before anyone else saw what was coming.",
+        "optionB": "I relied purely on hard facts and data. Intuition is unreliable.",
+        "correctIs": "A",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-1-0.5",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I ignored my feelings and made decisions based only on logic.",
+        "optionB": "My instincts told me who to trust and when to make my move.",
+        "correctIs": "B",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-1-0.75",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My instincts told me who to trust and when to make my move.",
+        "optionB": "I ignored my feelings and made decisions based only on logic.",
+        "correctIs": "A",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-2-0.5",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I relied purely on hard facts and data. Intuition is unreliable.",
+        "optionB": "I could read people and situations before anyone else saw what was coming.",
+        "correctIs": "B",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-2-0.75",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I could read people and situations before anyone else saw what was coming.",
+        "optionB": "I relied purely on hard facts and data. Intuition is unreliable.",
+        "correctIs": "A",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-3-0.5",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I ignored my feelings and made decisions based only on logic.",
+        "optionB": "My instincts told me who to trust and when to make my move.",
+        "correctIs": "B",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Intuitive-3-0.75",
+      "traits": [
+        "Intuitive",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "My instincts told me who to trust and when to make my move.",
+        "optionB": "I ignored my feelings and made decisions based only on logic.",
+        "correctIs": "A",
+        "trait": "Intuitive"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-0-0.5",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I avoided conflict at all costs. Keeping the peace was my priority.",
+        "optionB": "I wasn't afraid to call people out and fight for what I believed in.",
+        "correctIs": "B",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-0-0.75",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 0,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I wasn't afraid to call people out and fight for what I believed in.",
+        "optionB": "I avoided conflict at all costs. Keeping the peace was my priority.",
+        "correctIs": "A",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-1-0.5",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I told people what they wanted to hear to keep things smooth.",
+        "optionB": "Direct honesty, even when it's uncomfortable, earned me respect.",
+        "correctIs": "B",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-1-0.75",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 1,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Direct honesty, even when it's uncomfortable, earned me respect.",
+        "optionB": "I told people what they wanted to hear to keep things smooth.",
+        "correctIs": "A",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-2-0.5",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I avoided conflict at all costs. Keeping the peace was my priority.",
+        "optionB": "I wasn't afraid to call people out and fight for what I believed in.",
+        "correctIs": "B",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-2-0.75",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 2,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I wasn't afraid to call people out and fight for what I believed in.",
+        "optionB": "I avoided conflict at all costs. Keeping the peace was my priority.",
+        "correctIs": "A",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-3-0.5",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.5",
+      "expected": {
+        "optionA": "I told people what they wanted to hear to keep things smooth.",
+        "optionB": "Direct honesty, even when it's uncomfortable, earned me respect.",
+        "correctIs": "B",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "Confrontational-3-0.75",
+      "traits": [
+        "Confrontational",
+        "IgnoredSecondTrait"
+      ],
+      "index": 3,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "Direct honesty, even when it's uncomfortable, earned me respect.",
+        "optionB": "I told people what they wanted to hear to keep things smooth.",
+        "correctIs": "A",
+        "trait": "Confrontational"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-null-0",
+      "traits": null,
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-null-0.75",
+      "traits": null,
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[]-0",
+      "traits": [],
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[]-0.75",
+      "traits": [],
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[null]-0",
+      "traits": [
+        null
+      ],
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[null]-0.75",
+      "traits": [
+        null
+      ],
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"\"]-0",
+      "traits": [
+        ""
+      ],
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"\"]-0.75",
+      "traits": [
+        ""
+      ],
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"\",\"Loyal\"]-0",
+      "traits": [
+        "",
+        "Loyal"
+      ],
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"\",\"Loyal\"]-0.75",
+      "traits": [
+        "",
+        "Loyal"
+      ],
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"Unrecognized\",\"Loyal\"]-0",
+      "traits": [
+        "Unrecognized",
+        "Loyal"
+      ],
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "Unrecognized"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"Unrecognized\",\"Loyal\"]-0.75",
+      "traits": [
+        "Unrecognized",
+        "Loyal"
+      ],
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "Unrecognized"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\" \"]-0",
+      "traits": [
+        " "
+      ],
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": " "
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\" \"]-0.75",
+      "traits": [
+        " "
+      ],
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": " "
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"strategic\"]-0",
+      "traits": [
+        "strategic"
+      ],
+      "index": 7,
+      "flipRollText": "0",
+      "expected": {
+        "optionA": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "optionB": "I read the house dynamics each week and positioned myself perfectly.",
+        "correctIs": "B",
+        "trait": "strategic"
+      },
+      "expectedDraws": 1
+    },
+    {
+      "name": "fallback-[\"strategic\"]-0.75",
+      "traits": [
+        "strategic"
+      ],
+      "index": 7,
+      "flipRollText": "0.75",
+      "expected": {
+        "optionA": "I read the house dynamics each week and positioned myself perfectly.",
+        "optionB": "I won competitions and that's why I'm sitting here. Strategy wasn't really my thing.",
+        "correctIs": "A",
+        "trait": "strategic"
+      },
+      "expectedDraws": 1
+    }
+  ],
+  "toneCases": [
+    {
+      "rollText": "0",
+      "expected": "bitter",
+      "expectedDraws": 1
+    },
+    {
+      "rollText": "0.19999999999999998",
+      "expected": "bitter",
+      "expectedDraws": 1
+    },
+    {
+      "rollText": "0.2",
+      "expected": "supportive",
+      "expectedDraws": 1
+    },
+    {
+      "rollText": "0.39999999999999997",
+      "expected": "supportive",
+      "expectedDraws": 1
+    },
+    {
+      "rollText": "0.4",
+      "expected": "neutral",
+      "expectedDraws": 1
+    },
+    {
+      "rollText": "0.5",
+      "expected": "neutral",
+      "expectedDraws": 1
+    },
+    {
+      "rollText": "0.9999999999999999",
+      "expected": "neutral",
+      "expectedDraws": 1
+    }
+  ],
+  "finalistCases": [
+    {
+      "name": "seed-0-question-0",
+      "seed": 0,
+      "index": 0,
+      "traits": [
+        "Competitive"
+      ],
+      "sampleNumerators": [
+        1144304738,
+        1416247
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "supportive",
+        "question": "Walk us through your strategic masterplan.",
+        "optionA": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "optionB": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "correctIs": "B",
+        "trait": "Competitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 0 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 0 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-0-question-1",
+      "seed": 0,
+      "index": 1,
+      "traits": [
+        "Emotional"
+      ],
+      "sampleNumerators": [
+        958946056,
+        627933444
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "supportive",
+        "question": "How did you manage to stay so calm under pressure?",
+        "optionA": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "optionB": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "correctIs": "B",
+        "trait": "Emotional",
+        "opponentAnswer": "My strategy was always to stay adaptable while keeping my core alliances intact."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 1 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 1 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-0-question-2",
+      "seed": 0,
+      "index": 2,
+      "traits": [
+        "Analytical"
+      ],
+      "sampleNumerators": [
+        2007157716,
+        2340967985
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Who was the most influential player on your game?",
+        "optionA": "Understanding the probability of each scenario gave me a strategic edge.",
+        "optionB": "Numbers and odds don't matter when you have strong alliances.",
+        "correctIs": "A",
+        "trait": "Analytical",
+        "opponentAnswer": "I think my gameplay speaks for itself — I earned my spot in this final two."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 2 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 2 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-0-question-3",
+      "seed": 0,
+      "index": 3,
+      "traits": [
+        "Deceptive"
+      ],
+      "sampleNumerators": [
+        2642484575,
+        2787370982
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What would you have done differently?",
+        "optionA": "Misdirection was an art form for me. I controlled the narrative.",
+        "optionB": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "correctIs": "A",
+        "trait": "Deceptive",
+        "opponentAnswer": "I respected everyone in this house, even when I had to make tough calls."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 3 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 3 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-0-question-4",
+      "seed": 0,
+      "index": 4,
+      "traits": [
+        "Stubborn"
+      ],
+      "sampleNumerators": [
+        1958536065,
+        2496316458
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Describe your game in three words.",
+        "optionA": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "optionB": "I was always willing to flip my vote if someone made a good argument.",
+        "correctIs": "A",
+        "trait": "Stubborn",
+        "opponentAnswer": "I came here to win, and every move brought me one step closer."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 4 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 4 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-0-question-5",
+      "seed": 0,
+      "index": 5,
+      "traits": [
+        "Intuitive"
+      ],
+      "sampleNumerators": [
+        1057668038,
+        420269829
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "supportive",
+        "question": "Walk us through your strategic masterplan.",
+        "optionA": "I ignored my feelings and made decisions based only on logic.",
+        "optionB": "My instincts told me who to trust and when to make my move.",
+        "correctIs": "B",
+        "trait": "Intuitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 5 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 5 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-1-question-0",
+      "seed": 1,
+      "index": 0,
+      "traits": [
+        "Competitive"
+      ],
+      "sampleNumerators": [
+        2693262067,
+        11749833
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What was your biggest move in the game?",
+        "optionA": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "optionB": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "correctIs": "B",
+        "trait": "Competitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 0 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 0 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-1-question-1",
+      "seed": 1,
+      "index": 1,
+      "traits": [
+        "Emotional"
+      ],
+      "sampleNumerators": [
+        2265367787,
+        4213581821
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Why do you deserve to win over your opponent?",
+        "optionA": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "optionB": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "correctIs": "A",
+        "trait": "Emotional",
+        "opponentAnswer": "My strategy was always to stay adaptable while keeping my core alliances intact."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 1 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 1 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-1-question-2",
+      "seed": 1,
+      "index": 2,
+      "traits": [
+        "Analytical"
+      ],
+      "sampleNumerators": [
+        4159151403,
+        1207330352
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Who was the most influential player on your game?",
+        "optionA": "Numbers and odds don't matter when you have strong alliances.",
+        "optionB": "Understanding the probability of each scenario gave me a strategic edge.",
+        "correctIs": "B",
+        "trait": "Analytical",
+        "opponentAnswer": "I think my gameplay speaks for itself — I earned my spot in this final two."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 2 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 2 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-1-question-3",
+      "seed": 1,
+      "index": 3,
+      "traits": [
+        "Deceptive"
+      ],
+      "sampleNumerators": [
+        2632122864,
+        3095568220
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What would you have done differently?",
+        "optionA": "Misdirection was an art form for me. I controlled the narrative.",
+        "optionB": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "correctIs": "A",
+        "trait": "Deceptive",
+        "opponentAnswer": "I respected everyone in this house, even when I had to make tough calls."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 3 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 3 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-1-question-4",
+      "seed": 1,
+      "index": 4,
+      "traits": [
+        "Stubborn"
+      ],
+      "sampleNumerators": [
+        1828783984,
+        4272732017
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Describe your game in three words.",
+        "optionA": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "optionB": "I was always willing to flip my vote if someone made a good argument.",
+        "correctIs": "A",
+        "trait": "Stubborn",
+        "opponentAnswer": "I came here to win, and every move brought me one step closer."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 4 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 4 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-1-question-5",
+      "seed": 1,
+      "index": 5,
+      "traits": [
+        "Intuitive"
+      ],
+      "sampleNumerators": [
+        1955374602,
+        2099329838
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "How did you balance competition wins with social game?",
+        "optionA": "I ignored my feelings and made decisions based only on logic.",
+        "optionB": "My instincts told me who to trust and when to make my move.",
+        "correctIs": "B",
+        "trait": "Intuitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 5 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 5 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-42-question-0",
+      "seed": 42,
+      "index": 0,
+      "traits": [
+        "Competitive"
+      ],
+      "sampleNumerators": [
+        2581720956,
+        1925393290
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What was your biggest move in the game?",
+        "optionA": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "optionB": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "correctIs": "B",
+        "trait": "Competitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 0 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 0 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-42-question-1",
+      "seed": 42,
+      "index": 1,
+      "traits": [
+        "Emotional"
+      ],
+      "sampleNumerators": [
+        3661312704,
+        2876485805
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Why do you deserve to win over your opponent?",
+        "optionA": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "optionB": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "correctIs": "A",
+        "trait": "Emotional",
+        "opponentAnswer": "My strategy was always to stay adaptable while keeping my core alliances intact."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 1 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 1 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-42-question-2",
+      "seed": 42,
+      "index": 2,
+      "traits": [
+        "Analytical"
+      ],
+      "sampleNumerators": [
+        750819978,
+        2261697747
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "bitter",
+        "question": "How do you justify the lies you told in this game?",
+        "optionA": "Understanding the probability of each scenario gave me a strategic edge.",
+        "optionB": "Numbers and odds don't matter when you have strong alliances.",
+        "correctIs": "A",
+        "trait": "Analytical",
+        "opponentAnswer": "I think my gameplay speaks for itself — I earned my spot in this final two."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 2 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 2 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-42-question-3",
+      "seed": 42,
+      "index": 3,
+      "traits": [
+        "Deceptive"
+      ],
+      "sampleNumerators": [
+        1173505300,
+        2683257857
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "supportive",
+        "question": "When did you know you could win this game?",
+        "optionA": "Misdirection was an art form for me. I controlled the narrative.",
+        "optionB": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "correctIs": "A",
+        "trait": "Deceptive",
+        "opponentAnswer": "I respected everyone in this house, even when I had to make tough calls."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 3 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 3 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-42-question-4",
+      "seed": 42,
+      "index": 4,
+      "traits": [
+        "Stubborn"
+      ],
+      "sampleNumerators": [
+        3717185310,
+        2028586305
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Describe your game in three words.",
+        "optionA": "I was always willing to flip my vote if someone made a good argument.",
+        "optionB": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "correctIs": "B",
+        "trait": "Stubborn",
+        "opponentAnswer": "I came here to win, and every move brought me one step closer."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 4 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 4 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-42-question-5",
+      "seed": 42,
+      "index": 5,
+      "traits": [
+        "Intuitive"
+      ],
+      "sampleNumerators": [
+        1073414265,
+        3788413843
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "supportive",
+        "question": "Walk us through your strategic masterplan.",
+        "optionA": "My instincts told me who to trust and when to make my move.",
+        "optionB": "I ignored my feelings and made decisions based only on logic.",
+        "correctIs": "A",
+        "trait": "Intuitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 5 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 5 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-2147483648-question-0",
+      "seed": 2147483648,
+      "index": 0,
+      "traits": [
+        "Competitive"
+      ],
+      "sampleNumerators": [
+        3524353788,
+        1924613307
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What was your biggest move in the game?",
+        "optionA": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "optionB": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "correctIs": "B",
+        "trait": "Competitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 0 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 0 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-2147483648-question-1",
+      "seed": 2147483648,
+      "index": 1,
+      "traits": [
+        "Emotional"
+      ],
+      "sampleNumerators": [
+        3365584844,
+        2199219949
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Why do you deserve to win over your opponent?",
+        "optionA": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "optionB": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "correctIs": "A",
+        "trait": "Emotional",
+        "opponentAnswer": "My strategy was always to stay adaptable while keeping my core alliances intact."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 1 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 1 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-2147483648-question-2",
+      "seed": 2147483648,
+      "index": 2,
+      "traits": [
+        "Analytical"
+      ],
+      "sampleNumerators": [
+        3602660773,
+        1806097541
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Who was the most influential player on your game?",
+        "optionA": "Numbers and odds don't matter when you have strong alliances.",
+        "optionB": "Understanding the probability of each scenario gave me a strategic edge.",
+        "correctIs": "B",
+        "trait": "Analytical",
+        "opponentAnswer": "I think my gameplay speaks for itself — I earned my spot in this final two."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 2 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 2 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-2147483648-question-3",
+      "seed": 2147483648,
+      "index": 3,
+      "traits": [
+        "Deceptive"
+      ],
+      "sampleNumerators": [
+        3841765038,
+        4005884542
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What would you have done differently?",
+        "optionA": "Misdirection was an art form for me. I controlled the narrative.",
+        "optionB": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "correctIs": "A",
+        "trait": "Deceptive",
+        "opponentAnswer": "I respected everyone in this house, even when I had to make tough calls."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 3 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 3 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-2147483648-question-4",
+      "seed": 2147483648,
+      "index": 4,
+      "traits": [
+        "Stubborn"
+      ],
+      "sampleNumerators": [
+        2898195844,
+        1792511568
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Describe your game in three words.",
+        "optionA": "I was always willing to flip my vote if someone made a good argument.",
+        "optionB": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "correctIs": "B",
+        "trait": "Stubborn",
+        "opponentAnswer": "I came here to win, and every move brought me one step closer."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 4 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 4 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-2147483648-question-5",
+      "seed": 2147483648,
+      "index": 5,
+      "traits": [
+        "Intuitive"
+      ],
+      "sampleNumerators": [
+        3230041081,
+        2151949359
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "How did you balance competition wins with social game?",
+        "optionA": "My instincts told me who to trust and when to make my move.",
+        "optionB": "I ignored my feelings and made decisions based only on logic.",
+        "correctIs": "A",
+        "trait": "Intuitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 5 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 5 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-4294967295-question-0",
+      "seed": 4294967295,
+      "index": 0,
+      "traits": [
+        "Competitive"
+      ],
+      "sampleNumerators": [
+        3850105811,
+        813802916
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What was your biggest move in the game?",
+        "optionA": "I kept my head down and avoided drawing attention to myself. The quiet game got me here.",
+        "optionB": "I earned my spot here by winning when it mattered most. I never backed down from a challenge.",
+        "correctIs": "B",
+        "trait": "Competitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 0 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-0",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 0 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-4294967295-question-1",
+      "seed": 4294967295,
+      "index": 1,
+      "traits": [
+        "Emotional"
+      ],
+      "sampleNumerators": [
+        3073704848,
+        4054706436
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Why do you deserve to win over your opponent?",
+        "optionA": "I know I hurt people along the way, and I carry that with me. I'm truly sorry.",
+        "optionB": "I don't apologize for my game. Everyone signed up knowing what they were getting into.",
+        "correctIs": "A",
+        "trait": "Emotional",
+        "opponentAnswer": "My strategy was always to stay adaptable while keeping my core alliances intact."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 1 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-1",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 1 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-4294967295-question-2",
+      "seed": 4294967295,
+      "index": 2,
+      "traits": [
+        "Analytical"
+      ],
+      "sampleNumerators": [
+        3630262831,
+        2315588663
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "Who was the most influential player on your game?",
+        "optionA": "Understanding the probability of each scenario gave me a strategic edge.",
+        "optionB": "Numbers and odds don't matter when you have strong alliances.",
+        "correctIs": "A",
+        "trait": "Analytical",
+        "opponentAnswer": "I think my gameplay speaks for itself — I earned my spot in this final two."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 2 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-2",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 2 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-4294967295-question-3",
+      "seed": 4294967295,
+      "index": 3,
+      "traits": [
+        "Deceptive"
+      ],
+      "sampleNumerators": [
+        2922715533,
+        2042566601
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "What would you have done differently?",
+        "optionA": "I told the truth even when it hurt my game. Integrity above strategy.",
+        "optionB": "Misdirection was an art form for me. I controlled the narrative.",
+        "correctIs": "B",
+        "trait": "Deceptive",
+        "opponentAnswer": "I respected everyone in this house, even when I had to make tough calls."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 3 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-3",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 3 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-4294967295-question-4",
+      "seed": 4294967295,
+      "index": 4,
+      "traits": [
+        "Stubborn"
+      ],
+      "sampleNumerators": [
+        583504547,
+        4245337221
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "bitter",
+        "question": "What makes you think you deserve my vote after backstabbing me?",
+        "optionA": "I stuck to my convictions even when the whole house pressured me otherwise.",
+        "optionB": "I was always willing to flip my vote if someone made a good argument.",
+        "correctIs": "A",
+        "trait": "Stubborn",
+        "opponentAnswer": "I came here to win, and every move brought me one step closer."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 4 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-4",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 4 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    },
+    {
+      "name": "seed-4294967295-question-5",
+      "seed": 4294967295,
+      "index": 5,
+      "traits": [
+        "Intuitive"
+      ],
+      "sampleNumerators": [
+        3742924205,
+        813245438
+      ],
+      "expectedDraws": 2,
+      "expected": {
+        "tone": "neutral",
+        "question": "How did you balance competition wins with social game?",
+        "optionA": "I ignored my feelings and made decisions based only on logic.",
+        "optionB": "My instincts told me who to trust and when to make my move.",
+        "correctIs": "B",
+        "trait": "Intuitive",
+        "opponentAnswer": "I played the best game I could, and I stand by every decision I made."
+      },
+      "choices": [
+        {
+          "choice": "A",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": -10,
+            "note": "Juror 5 was unconvinced by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        },
+        {
+          "choice": "B",
+          "expected": {
+            "guestId1": "juror-5",
+            "guestId2": "player-finalist",
+            "change": 10,
+            "note": "Juror 5 was impressed by your response during jury questioning.",
+            "eventType": "general"
+          },
+          "expectedDraws": 0
+        }
+      ]
+    }
+  ],
+  "jurorOptionCases": [
+    {
+      "index": 0,
+      "expected": [
+        {
+          "tone": "neutral",
+          "text": "What was your biggest move in the game?"
+        },
+        {
+          "tone": "bitter",
+          "text": "Do you feel any remorse for how you played?"
+        },
+        {
+          "tone": "supportive",
+          "text": "What advice would you give to future players?"
+        }
+      ],
+      "expectedDraws": 0
+    },
+    {
+      "index": 1,
+      "expected": [
+        {
+          "tone": "neutral",
+          "text": "Why do you deserve to win over your opponent?"
+        },
+        {
+          "tone": "bitter",
+          "text": "How do you justify the lies you told in this game?"
+        },
+        {
+          "tone": "supportive",
+          "text": "When did you know you could win this game?"
+        }
+      ],
+      "expectedDraws": 0
+    },
+    {
+      "index": 2,
+      "expected": [
+        {
+          "tone": "neutral",
+          "text": "Who was the most influential player on your game?"
+        },
+        {
+          "tone": "bitter",
+          "text": "Did you ever consider how your actions affected others?"
+        },
+        {
+          "tone": "supportive",
+          "text": "Tell us about your proudest moment in the house."
+        }
+      ],
+      "expectedDraws": 0
+    },
+    {
+      "index": 5,
+      "expected": [
+        {
+          "tone": "neutral",
+          "text": "How did you balance competition wins with social game?"
+        },
+        {
+          "tone": "bitter",
+          "text": "Do you feel any remorse for how you played?"
+        },
+        {
+          "tone": "supportive",
+          "text": "What advice would you give to future players?"
+        }
+      ],
+      "expectedDraws": 0
+    },
+    {
+      "index": 6,
+      "expected": [
+        {
+          "tone": "neutral",
+          "text": "What was your biggest move in the game?"
+        },
+        {
+          "tone": "bitter",
+          "text": "How do you justify the lies you told in this game?"
+        },
+        {
+          "tone": "supportive",
+          "text": "When did you know you could win this game?"
+        }
+      ],
+      "expectedDraws": 0
+    },
+    {
+      "index": 29,
+      "expected": [
+        {
+          "tone": "neutral",
+          "text": "How did you balance competition wins with social game?"
+        },
+        {
+          "tone": "bitter",
+          "text": "Why should I vote for you after you betrayed our alliance?"
+        },
+        {
+          "tone": "supportive",
+          "text": "How did you manage to stay so calm under pressure?"
+        }
+      ],
+      "expectedDraws": 0
+    },
+    {
+      "index": 2147483647,
+      "expected": [
+        {
+          "tone": "neutral",
+          "text": "Why do you deserve to win over your opponent?"
+        },
+        {
+          "tone": "bitter",
+          "text": "Did you ever consider how your actions affected others?"
+        },
+        {
+          "tone": "supportive",
+          "text": "Tell us about your proudest moment in the house."
+        }
+      ],
+      "expectedDraws": 0
+    }
+  ],
+  "fallbackCases": [
+    {
+      "rollText": "0",
+      "expected": {
+        "answer": "I played the best game I could, and I stand by every decision I made.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.19999999999999998",
+      "expected": {
+        "answer": "I played the best game I could, and I stand by every decision I made.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.2",
+      "expected": {
+        "answer": "My strategy was always to stay adaptable while keeping my core alliances intact.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.39999999999999997",
+      "expected": {
+        "answer": "My strategy was always to stay adaptable while keeping my core alliances intact.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.4",
+      "expected": {
+        "answer": "I think my gameplay speaks for itself — I earned my spot in this final two.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.5999999999999999",
+      "expected": {
+        "answer": "I think my gameplay speaks for itself — I earned my spot in this final two.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.6",
+      "expected": {
+        "answer": "I respected everyone in this house, even when I had to make tough calls.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.7999999999999999",
+      "expected": {
+        "answer": "I respected everyone in this house, even when I had to make tough calls.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.8",
+      "expected": {
+        "answer": "I came here to win, and every move brought me one step closer.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    },
+    {
+      "rollText": "0.9999999999999999",
+      "expected": {
+        "answer": "I came here to win, and every move brought me one step closer.",
+        "tone": "confident"
+      },
+      "expectedDraws": 1,
+      "expectedDispatchCount": 0
+    }
+  ]
+}

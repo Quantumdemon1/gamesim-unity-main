@@ -1,0 +1,1995 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "positive escalation",
+      "steps": [
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 10,
+            "reason": "event 0",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 15,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 10,
+            "reason": "event 1",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 30,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 1"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": {
+            "type": "FRIENDSHIP_DEEPENED",
+            "npcName": "Maya Hassan",
+            "level": 1
+          },
+          "narrative": "A bond is forming between you and Maya Hassan."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 10,
+            "reason": "event 2",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 45,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 2"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "A bond is forming between you and Maya Hassan."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Renamed input",
+            "delta": 10,
+            "reason": "event 3",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 60,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 3"
+                }
+              ],
+              "escalationLevel": 2
+            }
+          ],
+          "escalationEvent": {
+            "type": "FRIENDSHIP_DEEPENED",
+            "npcName": "Maya Hassan",
+            "level": 2
+          },
+          "narrative": "Your friendship with Maya Hassan is becoming a powerful force in the house."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 10,
+            "reason": "event 4",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 75,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 4"
+                }
+              ],
+              "escalationLevel": 3
+            }
+          ],
+          "escalationEvent": {
+            "type": "FRIENDSHIP_DEEPENED",
+            "npcName": "Maya Hassan",
+            "level": 3
+          },
+          "narrative": "You and Maya Hassan have forged an unbreakable bond."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 10,
+            "reason": "event 5",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 90,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 5"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": {
+            "type": "FRIENDSHIP_DEEPENED",
+            "npcName": "Maya Hassan",
+            "level": 4
+          },
+          "narrative": "Your legendary alliance with Maya Hassan will go down in Big Brother history."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 10,
+            "reason": "event 6",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 10,
+                  "reason": "event 6"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "Your legendary alliance with Maya Hassan will go down in Big Brother history."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 10,
+            "reason": "event 7",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": 10,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 10,
+                  "reason": "event 6"
+                },
+                {
+                  "week": 3,
+                  "delta": 10,
+                  "reason": "event 7"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "Your legendary alliance with Maya Hassan will go down in Big Brother history."
+        }
+      ]
+    },
+    {
+      "name": "negative escalation",
+      "steps": [
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -10,
+            "reason": "event 0",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 15,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -10,
+            "reason": "event 1",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 30,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 1"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": {
+            "type": "RIVALRY_ESCALATION",
+            "npcName": "Maya Hassan",
+            "level": 1
+          },
+          "narrative": "Tensions are building between you and Maya Hassan."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -10,
+            "reason": "event 2",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 45,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 2"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "Tensions are building between you and Maya Hassan."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Renamed input",
+            "delta": -10,
+            "reason": "event 3",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 60,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 3"
+                }
+              ],
+              "escalationLevel": 2
+            }
+          ],
+          "escalationEvent": {
+            "type": "RIVALRY_ESCALATION",
+            "npcName": "Maya Hassan",
+            "level": 2
+          },
+          "narrative": "Your rivalry with Maya Hassan is becoming the talk of the house."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -10,
+            "reason": "event 4",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 75,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 4"
+                }
+              ],
+              "escalationLevel": 3
+            }
+          ],
+          "escalationEvent": {
+            "type": "RIVALRY_ESCALATION",
+            "npcName": "Maya Hassan",
+            "level": 3
+          },
+          "narrative": "Your bitter feud with Maya Hassan has reached a boiling point."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -10,
+            "reason": "event 5",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 90,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 5"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": {
+            "type": "RIVALRY_ESCALATION",
+            "npcName": "Maya Hassan",
+            "level": 4
+          },
+          "narrative": "Your legendary rivalry with Maya Hassan defines this season."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -10,
+            "reason": "event 6",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": -10,
+                  "reason": "event 6"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "Your legendary rivalry with Maya Hassan defines this season."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -10,
+            "reason": "event 7",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -10,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -10,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": -10,
+                  "reason": "event 6"
+                },
+                {
+                  "week": 3,
+                  "delta": -10,
+                  "reason": "event 7"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "Your legendary rivalry with Maya Hassan defines this season."
+        }
+      ]
+    },
+    {
+      "name": "sentiment reversal keeps intensity",
+      "steps": [
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -15,
+            "reason": "event 0",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 15,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -15,
+                  "reason": "event 0"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 15,
+            "reason": "event 1",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 30,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -15,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 15,
+                  "reason": "event 1"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 15,
+            "reason": "event 2",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 45,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -15,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 15,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 15,
+                  "reason": "event 2"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "A bond is forming between you and Maya Hassan."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Renamed input",
+            "delta": -45,
+            "reason": "event 3",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 60,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -15,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 15,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 15,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -45,
+                  "reason": "event 3"
+                }
+              ],
+              "escalationLevel": 2
+            }
+          ],
+          "escalationEvent": {
+            "type": "RIVALRY_ESCALATION",
+            "npcName": "Maya Hassan",
+            "level": 2
+          },
+          "narrative": "Your rivalry with Maya Hassan is becoming the talk of the house."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 45,
+            "reason": "event 4",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 75,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": -15,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 15,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 15,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -45,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 45,
+                  "reason": "event 4"
+                }
+              ],
+              "escalationLevel": 3
+            }
+          ],
+          "escalationEvent": {
+            "type": "FRIENDSHIP_DEEPENED",
+            "npcName": "Maya Hassan",
+            "level": 3
+          },
+          "narrative": "You and Maya Hassan have forged an unbreakable bond."
+        }
+      ]
+    },
+    {
+      "name": "neutral threshold crossings",
+      "steps": [
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 8,
+            "reason": "event 0",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 12,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -8,
+            "reason": "event 1",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 24,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 8,
+            "reason": "event 2",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 36,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Renamed input",
+            "delta": -8,
+            "reason": "event 3",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 48,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 8,
+            "reason": "event 4",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 60,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                }
+              ],
+              "escalationLevel": 2
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -8,
+            "reason": "event 5",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 72,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 5"
+                }
+              ],
+              "escalationLevel": 2
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 8,
+            "reason": "event 6",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 84,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 6"
+                }
+              ],
+              "escalationLevel": 3
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -8,
+            "reason": "event 7",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 96,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 6"
+                },
+                {
+                  "week": 3,
+                  "delta": -8,
+                  "reason": "event 7"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 8,
+            "reason": "event 8",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 6"
+                },
+                {
+                  "week": 3,
+                  "delta": -8,
+                  "reason": "event 7"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 8"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -8,
+            "reason": "event 9",
+            "week": 4
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 6"
+                },
+                {
+                  "week": 3,
+                  "delta": -8,
+                  "reason": "event 7"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 8"
+                },
+                {
+                  "week": 4,
+                  "delta": -8,
+                  "reason": "event 9"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 8,
+            "reason": "event 10",
+            "week": 4
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 6"
+                },
+                {
+                  "week": 3,
+                  "delta": -8,
+                  "reason": "event 7"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 8"
+                },
+                {
+                  "week": 4,
+                  "delta": -8,
+                  "reason": "event 9"
+                },
+                {
+                  "week": 4,
+                  "delta": 8,
+                  "reason": "event 10"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -8,
+            "reason": "event 11",
+            "week": 4
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 100,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": -8,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": 8,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": 8,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": -8,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 6"
+                },
+                {
+                  "week": 3,
+                  "delta": -8,
+                  "reason": "event 7"
+                },
+                {
+                  "week": 3,
+                  "delta": 8,
+                  "reason": "event 8"
+                },
+                {
+                  "week": 4,
+                  "delta": -8,
+                  "reason": "event 9"
+                },
+                {
+                  "week": 4,
+                  "delta": 8,
+                  "reason": "event 10"
+                },
+                {
+                  "week": 4,
+                  "delta": -8,
+                  "reason": "event 11"
+                }
+              ],
+              "escalationLevel": 4
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        }
+      ]
+    },
+    {
+      "name": "fractional and zero",
+      "steps": [
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 0,
+            "reason": "event 0",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 0,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 0,
+                  "reason": "event 0"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 0.5,
+            "reason": "event 1",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 0.75,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 0,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 0.5,
+                  "reason": "event 1"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -0.25,
+            "reason": "event 2",
+            "week": 1
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 1.125,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 0,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 0.5,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -0.25,
+                  "reason": "event 2"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Renamed input",
+            "delta": 14.75,
+            "reason": "event 3",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "friendship",
+              "intensity": 16.125,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 0,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 0.5,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -0.25,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 14.75,
+                  "reason": "event 3"
+                }
+              ],
+              "escalationLevel": 0
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -30,
+            "reason": "event 4",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 31.125,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 0,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 0.5,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -0.25,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 14.75,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": -30,
+                  "reason": "event 4"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": {
+            "type": "RIVALRY_ESCALATION",
+            "npcName": "Maya Hassan",
+            "level": 1
+          },
+          "narrative": "Tensions are building between you and Maya Hassan."
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": 1e-8,
+            "reason": "event 5",
+            "week": 2
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "neutral",
+              "intensity": 31.125000015,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 0,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 0.5,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -0.25,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 14.75,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": -30,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": 1e-8,
+                  "reason": "event 5"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": ""
+        },
+        {
+          "input": {
+            "npcId": "maya-hassan",
+            "npcName": "Maya Hassan",
+            "delta": -1e-8,
+            "reason": "event 6",
+            "week": 3
+          },
+          "arcs": [
+            {
+              "npcId": "maya-hassan",
+              "npcName": "Maya Hassan",
+              "arcType": "rivalry",
+              "intensity": 31.125000030000002,
+              "weeklyHistory": [
+                {
+                  "week": 1,
+                  "delta": 0,
+                  "reason": "event 0"
+                },
+                {
+                  "week": 1,
+                  "delta": 0.5,
+                  "reason": "event 1"
+                },
+                {
+                  "week": 1,
+                  "delta": -0.25,
+                  "reason": "event 2"
+                },
+                {
+                  "week": 2,
+                  "delta": 14.75,
+                  "reason": "event 3"
+                },
+                {
+                  "week": 2,
+                  "delta": -30,
+                  "reason": "event 4"
+                },
+                {
+                  "week": 2,
+                  "delta": 1e-8,
+                  "reason": "event 5"
+                },
+                {
+                  "week": 3,
+                  "delta": -1e-8,
+                  "reason": "event 6"
+                }
+              ],
+              "escalationLevel": 1
+            }
+          ],
+          "escalationEvent": null,
+          "narrative": "Tensions are building between you and Maya Hassan."
+        }
+      ]
+    }
+  ],
+  "thresholds": [
+    {
+      "value": -1,
+      "level": 0
+    },
+    {
+      "value": 0,
+      "level": 0
+    },
+    {
+      "value": 24.999,
+      "level": 0
+    },
+    {
+      "value": 25,
+      "level": 1
+    },
+    {
+      "value": 49.999,
+      "level": 1
+    },
+    {
+      "value": 50,
+      "level": 2
+    },
+    {
+      "value": 74.999,
+      "level": 2
+    },
+    {
+      "value": 75,
+      "level": 3
+    },
+    {
+      "value": 89.999,
+      "level": 3
+    },
+    {
+      "value": 90,
+      "level": 4
+    },
+    {
+      "value": 100,
+      "level": 4
+    }
+  ],
+  "labels": [
+    {
+      "value": 0,
+      "label": "Neutral"
+    },
+    {
+      "value": 1,
+      "label": "Mild"
+    },
+    {
+      "value": 2,
+      "label": "Moderate"
+    },
+    {
+      "value": 3,
+      "label": "Intense"
+    },
+    {
+      "value": 4,
+      "label": "Legendary"
+    },
+    {
+      "value": 5,
+      "label": "Legendary"
+    }
+  ],
+  "source": {
+    "path": "src/systems/relationship-arc-tracker.ts",
+    "sha256": "75390992ede5a314180cbf1e564ce8184eaea4efe54ecf1b4418ad5b7fef54a5"
+  }
+}

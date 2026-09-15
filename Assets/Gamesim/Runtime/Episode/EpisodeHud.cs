@@ -89,14 +89,28 @@ namespace Gamesim.Episode
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
-            var brand = Chrome("Brand", canvas.transform, Ink); Anchor(brand,new Vector2(0,1),new Vector2(0,1),new Vector2(24,-24),new Vector2(330,103));
+            // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
+            // silently assumed Brand's exact height; growing either one overlapped them. Stacking
+            // them in a column makes that impossible to get wrong.
+            var leftColumn = new GameObject("Left column",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>();
+            leftColumn.SetParent(canvas.transform,false);
+            leftColumn.anchorMin = new Vector2(0,1); leftColumn.anchorMax = new Vector2(0,1); leftColumn.pivot = new Vector2(0,1);
+            leftColumn.anchoredPosition = new Vector2(24,-24);
+            var columnLayout = leftColumn.GetComponent<VerticalLayoutGroup>();
+            columnLayout.spacing = 16; columnLayout.childControlWidth = true; columnLayout.childControlHeight = true;
+            columnLayout.childForceExpandWidth = false; columnLayout.childForceExpandHeight = false;
+            var columnFitter = leftColumn.GetComponent<ContentSizeFitter>();
+            columnFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            columnFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var brand = Chrome("Brand", leftColumn, Ink); Size(brand,330,103);
             FixedText(brand,"GAMESIM",32,Accent,new Vector2(18,-12),new Vector2(300,42));
             FixedText(brand,"THE HOUSE  /  A SIX-PERSON SEASON",14,Paper,new Vector2(19,-62),new Vector2(300,24));
             var controls = Chrome("Navigation",canvas.transform,Ink); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-24),new Vector2(465,64));
             FixedButton(controls,"Notebook [J]",new Vector2(10,-9),new Vector2(142,46),director.OpenJournal);
             FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);
             FixedButton(controls,"Settings",new Vector2(292,-9),new Vector2(162,46),director.OpenSettings);
-            var objective = Chrome("Objective",canvas.transform,Ink); Anchor(objective,new Vector2(0,1),new Vector2(0,1),new Vector2(24,-143),new Vector2(330,285));
+            var objective = Chrome("Objective",leftColumn,Ink); Size(objective,330,285);
             // Broadcast bug: the week reads as the headline and the phase as its strap, tied
             // together by an accent rule, the way a running TV graphic is built.
             var bug = Panel("Phase bug",objective,Accent,2); Anchor(bug,new Vector2(0,1),new Vector2(0,1),new Vector2(18,-14),new Vector2(4,52));
@@ -110,14 +124,19 @@ namespace Gamesim.Episode
                 director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
             var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
             FixedText(help,"Click floor: walk  ·  F: recenter\nWASD/arrows: camera pan\nRight-drag: orbit  ·  Wheel: zoom\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,97));
-            var status = Chrome("Status",canvas.transform,Ink); Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,20),new Vector2(1200,64));
+            // Spans the viewport with margins instead of assuming a 1200px width, so the caption
+            // still fits when the window is narrower than the reference resolution.
+            var status = Chrome("Status",canvas.transform,Ink);
+            status.anchorMin = new Vector2(0,0); status.anchorMax = new Vector2(1,0); status.pivot = new Vector2(.5f,0);
+            status.offsetMin = new Vector2(24,20); status.offsetMax = new Vector2(-24,84);
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.
             var rule = Panel("Caption rule",status,recovery ? UiTheme.Warning : Accent,2);
             Anchor(rule,new Vector2(0,1),new Vector2(0,1),new Vector2(16,-12),new Vector2(5,40));
             rule.GetComponent<Image>().raycastTarget = false;
-            FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
+            var caption = FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
+            Stretch(caption.rectTransform,32,9,24,7);
             var promptRoot = Chrome("Interaction prompt",canvas.transform,Ink); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);
@@ -547,6 +566,18 @@ namespace Gamesim.Episode
             var rect=Panel(name,parent,color,UiTheme.PanelRadius);
             UiTheme.AddBorder(rect,UiTheme.PanelRadius,UiTheme.Outline);
             return rect;
+        }
+        /// <summary>
+        /// Fixes the size of a layout-group child. The group reads LayoutElement rather than
+        /// sizeDelta, so both are set: the element drives layout, the sizeDelta keeps the panel's
+        /// own absolutely-positioned contents correct before the first rebuild.
+        /// </summary>
+        private static void Size(RectTransform rect,float width,float height)
+        {
+            rect.sizeDelta = new Vector2(width,height);
+            var element = rect.gameObject.GetComponent<LayoutElement>();
+            if (element == null) element = rect.gameObject.AddComponent<LayoutElement>();
+            element.preferredWidth = width; element.preferredHeight = height;
         }
         private static void Anchor(RectTransform rect,Vector2 anchor,Vector2 pivot,Vector2 position,Vector2 size)
         { rect.anchorMin=anchor; rect.anchorMax=anchor; rect.pivot=pivot; rect.anchoredPosition=position; rect.sizeDelta=size; }

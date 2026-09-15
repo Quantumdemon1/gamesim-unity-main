@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Gamesim.Simulation;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -37,9 +38,9 @@ namespace Gamesim.Episode
         private static readonly Color Paper = new Color(.95f,.96f,.98f,1);
         private EpisodeDirector director;
         private Canvas canvas;
-        private Font font;
+        private TMP_FontAsset font;
         private RectTransform content;
-        private Text prompt, challengeCaption;
+        private TMP_Text prompt, challengeCaption;
         private Slider challengeMeter;
         private RectTransform modal;
         private ScrollRect modalScroll;
@@ -49,7 +50,7 @@ namespace Gamesim.Episode
         private GameObject lastSelection;
         public float FontScale { get; set; } = 1;
         public bool IsTyping => EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null &&
-            EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null;
+            EventSystem.current.currentSelectedGameObject.GetComponent<TMP_InputField>() != null;
 
         public readonly struct Option
         {
@@ -59,7 +60,12 @@ namespace Gamesim.Episode
 
         public void Initialize(EpisodeDirector owner)
         {
-            director = owner; font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            director = owner;
+            // TMP_Settings carries the imported default; the explicit load is the fallback if a
+            // project ever ships without TMP Essential Resources.
+            font = TMP_Settings.defaultFontAsset != null
+                ? TMP_Settings.defaultFontAsset
+                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
             var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false); canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 70;
             var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -93,13 +99,15 @@ namespace Gamesim.Episode
             var status = Panel("Status",canvas.transform,Ink); Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,20),new Vector2(1200,64));
             FixedText(status,message,18,recovery ? new Color(1,.77f,.45f) : Paper,new Vector2(18,-9),new Vector2(1164,48));
             var promptRoot = Panel("Interaction prompt",canvas.transform,Ink); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
-            prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAnchor.MiddleCenter;
+            prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);
             content = null;
             if (!open && !recovery) return;
             modal = Panel("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(95,-10),new Vector2(790,680));
             FixedButton(modal,"Close  [Esc]",new Vector2(598,-15),new Vector2(174,45),director.ClosePanels);
-            FixedText(modal,"Tab / ↑ / ↓ select · Enter confirm · Scroll for more",15,Paper,new Vector2(24,-28),new Vector2(550,30));
+            // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
+            // would render as tofu. Words also read better to a screen reader.
+            FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,Paper,new Vector2(24,-28),new Vector2(550,30));
             var scrollRoot = new GameObject("Episode scroll",typeof(RectTransform),typeof(ScrollRect)); scrollRoot.transform.SetParent(modal,false);
             var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,75,20,22);
             var viewport = Panel("Viewport",scrollRect,new Color(0,0,0,0)); Stretch(viewport,0,0,18,0); viewport.gameObject.AddComponent<RectMask2D>();
@@ -217,11 +225,11 @@ namespace Gamesim.Episode
             rect.gameObject.AddComponent<LayoutElement>().minHeight = 210 * FontScale;
             var input = rect.gameObject.AddComponent<EpisodeSpeechInputField>();
             var text = NewText(rect,"",21,Paper); Stretch(text.rectTransform,14,12,14,12);
-            text.alignment = TextAnchor.UpperLeft;
+            text.alignment = TextAlignmentOptions.TopLeft;
             var hint = NewText(rect,"What do you want the jury to remember about your game?",21,new Color(.6f,.7f,.75f));
             Stretch(hint.rectTransform,14,12,14,12);
             input.textComponent = text; input.placeholder = hint;
-            input.characterLimit = 2000; input.lineType = InputField.LineType.MultiLineNewline;
+            input.characterLimit = 2000; input.lineType = TMP_InputField.LineType.MultiLineNewline;
             input.onValidateInput = (value,index,character) => character == '\t' ? '\0' : character;
             input.customCaretColor = true; input.caretColor = Accent;
             input.selectionColor = new Color(Accent.r,Accent.g,Accent.b,.3f);
@@ -232,7 +240,7 @@ namespace Gamesim.Episode
             Action(SpeechSubmitCaption,() => director.SubmitSpeech(input.text));
             Action(SpeechSkipCaption,() => director.SubmitSpeech(""));
         }
-        private Text FlowText(string value,int size,Color color)
+        private TMP_Text FlowText(string value,int size,Color color)
         {
             var text = NewText(content,value,size,color); var element = text.gameObject.AddComponent<LayoutElement>(); element.minHeight = size * FontScale + 8;
             return text;
@@ -267,9 +275,9 @@ namespace Gamesim.Episode
         public void PathInput(string placeholder,Action<string> submit)
         {
             var rect = Panel("Import path",content,Surface); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 58;
-            var input = rect.gameObject.AddComponent<InputField>(); var text = NewText(rect,"",19,Paper); Stretch(text.rectTransform,14,9,14,9);
+            var input = rect.gameObject.AddComponent<TMP_InputField>(); var text = NewText(rect,"",19,Paper); Stretch(text.rectTransform,14,9,14,9);
             var hint = NewText(rect,placeholder,19,new Color(.6f,.7f,.75f)); Stretch(hint.rectTransform,14,9,14,9);
-            input.textComponent = text; input.placeholder = hint; input.characterLimit = 1024; input.lineType = InputField.LineType.SingleLine;
+            input.textComponent = text; input.placeholder = hint; input.characterLimit = 1024; input.lineType = TMP_InputField.LineType.SingleLine;
             input.text = retainedImportPath;
             input.onValueChanged.AddListener(value => retainedImportPath = value);
             Action("Archive and import this file",() => submit(input.text));
@@ -303,7 +311,7 @@ namespace Gamesim.Episode
                     // text. Grow action rows after their final width is known; never clip choices.
                     foreach (var button in content.GetComponentsInChildren<Button>())
                     {
-                        var label = button.GetComponentInChildren<Text>();
+                        var label = button.GetComponentInChildren<TMP_Text>();
                         var element = button.GetComponent<LayoutElement>();
                         if (label != null && element != null)
                             element.preferredHeight = Mathf.Max(element.minHeight,label.preferredHeight + 14f);
@@ -344,7 +352,7 @@ namespace Gamesim.Episode
                     ? current.navigation.selectOnUp : current.navigation.selectOnDown;
                 if (next != null && next.IsActive() && next.IsInteractable())
                 {
-                    selected.GetComponent<InputField>()?.DeactivateInputField();
+                    selected.GetComponent<TMP_InputField>()?.DeactivateInputField();
                     events.SetSelectedGameObject(next.gameObject);
                     selected = next.gameObject;
                 }
@@ -382,29 +390,39 @@ namespace Gamesim.Episode
         {
             var rect=Panel(caption,parent,Surface); Anchor(rect,new Vector2(0,1),new Vector2(0,1),position,size);
             var button = FinishButton(rect,caption,action);
-            var label = button.GetComponentInChildren<Text>();
-            label.resizeTextForBestFit = true; label.resizeTextMinSize = Mathf.Min(18, label.fontSize); label.resizeTextMaxSize = label.fontSize;
+            var label = button.GetComponentInChildren<TMP_Text>();
+            AutoSize(label, 18);
             return button;
         }
         private Button FinishButton(RectTransform rect,string caption,Action action)
         {
             var button=rect.gameObject.AddComponent<Button>(); var colors=button.colors;
             colors.highlightedColor=new Color(1.2f,1.6f,1.45f); colors.selectedColor=colors.highlightedColor; colors.pressedColor=new Color(.65f,1.1f,.9f); button.colors=colors;
-            var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,16,5,16,5); text.alignment=TextAnchor.MiddleLeft;
+            var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,16,5,16,5); text.alignment=TextAlignmentOptions.Left;
             button.onClick.AddListener(()=>action()); return button;
         }
-        private Text FixedText(RectTransform parent,string value,int size,Color color,Vector2 position,Vector2 dimensions)
+        private TMP_Text FixedText(RectTransform parent,string value,int size,Color color,Vector2 position,Vector2 dimensions)
         {
             var text=NewText(parent,value,size,color); Anchor(text.rectTransform,new Vector2(0,1),new Vector2(0,1),position,dimensions);
             // Fixed chrome fits its bounds; scrollable panel copy keeps the full requested font scale.
-            text.resizeTextForBestFit = true; text.resizeTextMinSize = Mathf.Min(size, text.fontSize); text.resizeTextMaxSize = text.fontSize;
+            AutoSize(text, size);
             return text;
         }
-        private Text NewText(Transform parent,string value,int size,Color color)
+        /// <summary>TMP's auto-sizing replaces legacy best-fit; the floor keeps small chrome readable.</summary>
+        private static void AutoSize(TMP_Text text,float floor)
         {
-            var text=new GameObject("Text",typeof(RectTransform),typeof(Text)).GetComponent<Text>(); text.transform.SetParent(parent,false);
-            text.font=font; text.fontSize=Mathf.RoundToInt(size*FontScale); text.color=color; text.text=value; text.supportRichText=false; text.raycastTarget=false;
-            text.horizontalOverflow=HorizontalWrapMode.Wrap; text.verticalOverflow=VerticalWrapMode.Truncate; return text;
+            if (text == null) return;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = Mathf.Min(floor, text.fontSize);
+            text.fontSizeMax = text.fontSize;
+        }
+        private TMP_Text NewText(Transform parent,string value,int size,Color color)
+        {
+            var text=new GameObject("Text",typeof(RectTransform),typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>(); text.transform.SetParent(parent,false);
+            text.font=font;
+            // Rounded so the scaled size stays an exact integer, which the HUD scaling tests assert.
+            text.fontSize=Mathf.RoundToInt(size*FontScale); text.color=color; text.text=value; text.richText=false; text.raycastTarget=false;
+            text.textWrappingMode=TextWrappingModes.Normal; text.overflowMode=TextOverflowModes.Truncate; return text;
         }
         private static RectTransform Panel(string name,Transform parent,Color color)
         {
@@ -421,7 +439,7 @@ namespace Gamesim.Episode
     /// Runtime-created speech field. The director owns Escape and the HUD owns Tab; do not let
     /// uGUI's default Escape rollback discard the retained draft or Tab insert a literal tab.
     /// </summary>
-    public sealed class EpisodeSpeechInputField : InputField
+    public sealed class EpisodeSpeechInputField : TMP_InputField
     {
         public override void OnUpdateSelected(BaseEventData eventData)
         {

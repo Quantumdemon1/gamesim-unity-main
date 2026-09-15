@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,7 +8,7 @@ namespace Gamesim.Episode
     public sealed class HouseConversationCaption : MonoBehaviour
     {
         private GameObject root;
-        private Text label;
+        private TMP_Text label;
         public string CurrentText => root != null && root.activeSelf ? label.text : "";
 
         public void Show(string firstName, string secondName, string topic, float fontScale)
@@ -40,12 +41,15 @@ namespace Gamesim.Episode
             var rect = panel.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(.5f, 1);
             rect.pivot = new Vector2(.5f, 1); rect.anchoredPosition = new Vector2(0, -108); rect.sizeDelta = new Vector2(650, 70);
             var background = panel.GetComponent<Image>(); background.color = new Color(.035f, .055f, .085f, .95f); background.raycastTarget = false;
-            var text = new GameObject("Caption", typeof(RectTransform), typeof(Text)); text.transform.SetParent(panel.transform, false);
+            var text = new GameObject("Caption", typeof(RectTransform), typeof(TextMeshProUGUI)); text.transform.SetParent(panel.transform, false);
             var textRect = text.GetComponent<RectTransform>(); textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one;
             textRect.offsetMin = new Vector2(16, 6); textRect.offsetMax = new Vector2(-16, -6);
-            label = text.GetComponent<Text>(); label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            label.color = new Color(.95f, .96f, .98f); label.alignment = TextAnchor.MiddleCenter;
-            label.supportRichText = false; label.raycastTarget = false;
+            label = text.GetComponent<TextMeshProUGUI>();
+            label.font = TMP_Settings.defaultFontAsset != null
+                ? TMP_Settings.defaultFontAsset
+                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            label.color = new Color(.95f, .96f, .98f); label.alignment = TextAlignmentOptions.Center;
+            label.richText = false; label.raycastTarget = false;
         }
         private void OnDisable() => Hide();
         private void OnDestroy() { if (root != null) Destroy(root); }

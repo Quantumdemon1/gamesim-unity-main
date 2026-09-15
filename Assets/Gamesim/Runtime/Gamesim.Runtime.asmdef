@@ -1,7 +1,7 @@
 {
   "name": "Gamesim.Runtime",
   "rootNamespace": "Gamesim",
-  "references": ["Gamesim.Simulation", "Unity.InputSystem", "UnityEngine.UI"],
+  "references": ["Gamesim.Simulation", "Unity.InputSystem", "UnityEngine.UI", "Unity.TextMeshPro"],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

@@ -313,7 +313,7 @@ namespace Gamesim.Tests.PlayMode
             var expectedFocus = (player.transform.position + npc.transform.position) * 0.5f + Vector3.up;
             yield return WaitForCameraFocus(expectedFocus);
             Assert.That(Vector3.Distance(player.transform.position, stoppedPosition), Is.LessThan(0.05f));
-            var responseText = interaction.GetComponentsInChildren<Text>(true)
+            var responseText = interaction.GetComponentsInChildren<TMPro.TMP_Text>(true)
                 .Single(text => text.name == "Conversation text");
             var previousText = responseText.text;
             for (var response = 1; response <= 3; response++)

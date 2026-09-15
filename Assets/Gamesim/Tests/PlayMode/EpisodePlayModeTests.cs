@@ -245,11 +245,11 @@ namespace Gamesim.Tests.PlayMode
             Canvas.ForceUpdateCanvases();
             var modal = director.GetComponentsInChildren<RectTransform>(true)
                 .Single(rect => rect.name == "Episode panel" && rect.gameObject.activeInHierarchy);
-            Assert.That(modal.GetComponentsInChildren<Text>().Any(text => text.fontSize == Mathf.RoundToInt(21 * 1.2f)), Is.True,
+            Assert.That(modal.GetComponentsInChildren<TMPro.TMP_Text>().Any(text => text.fontSize == Mathf.RoundToInt(21 * 1.2f)), Is.True,
                 "Scrollable panel text must use the selected larger font size.");
             var chrome = director.GetComponentsInChildren<RectTransform>(true)
                 .Single(rect => rect.name == "Navigation" && rect.gameObject.activeInHierarchy);
-            Assert.That(chrome.GetComponentsInChildren<Text>().All(text => text.resizeTextForBestFit), Is.True,
+            Assert.That(chrome.GetComponentsInChildren<TMPro.TMP_Text>().All(text => text.enableAutoSizing), Is.True,
                 "Fixed navigation labels need bounded fitting at the larger text setting.");
             Assert.That(EventSystem.current.currentSelectedGameObject, Is.Not.Null);
             Assert.That(EventSystem.current.currentSelectedGameObject.transform.IsChildOf(modal), Is.True);
@@ -313,7 +313,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(File.Exists(director.SavePath + ".backup"), Is.True);
             Assert.That(director.TryOpenPhasePanel(), Is.True, "The completed season should expose its finale for review.");
             yield return null;
-            Assert.That(director.GetComponentsInChildren<Text>(true).Any(text => text.gameObject.activeInHierarchy
+            Assert.That(director.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.gameObject.activeInHierarchy
                 && text.text == "Winner: " + finale.Find(finale.winnerId).name
                     + ". Runner-up: " + finale.Find(finale.runnerUpId).name + "."), Is.True);
         }
@@ -361,7 +361,7 @@ namespace Gamesim.Tests.PlayMode
         private Button ButtonWithCaption(string caption)
         {
             return director.GetComponentsInChildren<Button>(true).Single(button => button.IsActive()
-                && button.GetComponentsInChildren<Text>(true).Any(text => text.text == caption));
+                && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
         }
 
         private static T[] SceneComponents<T>() where T : Component
@@ -495,7 +495,7 @@ namespace Gamesim.Tests.PlayMode
                 // A player who is both HoH and veto holder has one replacement group per saved nominee;
                 // the first group intentionally corresponds to NextCommand's first nominee.
                 var button = director.GetComponentsInChildren<Button>(true).FirstOrDefault(item => item.IsActive()
-                    && item.GetComponentsInChildren<Text>(true).Any(text => text.text == caption));
+                    && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
                 Assert.That(button, Is.Not.Null, before.phase + " is missing action: " + caption);
                 button.onClick.Invoke();
                 yield return null; yield return null;
@@ -533,7 +533,7 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(pending,director.Snapshot);
             yield return OpenFinalePanel();
             var question = pending.juryExchanges[pending.juryQuestionIndex];
-            var questionLabel = director.GetComponentsInChildren<Text>().Single(text => text.name == "Jury question");
+            var questionLabel = director.GetComponentsInChildren<TMPro.TMP_Text>().Single(text => text.name == "Jury question");
             Assert.That(questionLabel.text, Is.EqualTo(question.question));
             ButtonWithCaption("A · " + question.optionA).onClick.Invoke();
             yield return null; yield return null;
@@ -543,7 +543,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(answered.juryExchanges[answered.juryQuestionIndex].completed, Is.True);
             Assert.That(answered.juryExchanges[answered.juryQuestionIndex].answerChoice, Is.EqualTo("A"));
             Assert.That(answered.juryExchanges[answered.juryQuestionIndex].answer, Is.EqualTo(question.optionA));
-            Assert.That(director.GetComponentsInChildren<Text>().Single(text => text.name == "Jury answer").text, Is.EqualTo(question.optionA));
+            Assert.That(director.GetComponentsInChildren<TMPro.TMP_Text>().Single(text => text.name == "Jury answer").text, Is.EqualTo(question.optionA));
             yield return ReloadEpisode();
             AssertEquivalent(answered,director.Snapshot);
             yield return OpenFinalePanel();
@@ -575,7 +575,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             AssertEquivalent(after,director.Snapshot);
             yield return OpenFinalePanel();
-            Assert.That(director.GetComponentsInChildren<Text>().Single(text => text.name == "Jury answer").text, Is.EqualTo(exchange.answer));
+            Assert.That(director.GetComponentsInChildren<TMPro.TMP_Text>().Single(text => text.name == "Jury answer").text, Is.EqualTo(exchange.answer));
         }
 
         [UnityTest]

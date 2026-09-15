@@ -310,7 +310,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             yield return null;
 
-            string visible = string.Join("\n", director.GetComponentsInChildren<Text>(true)
+            string visible = string.Join("\n", director.GetComponentsInChildren<TMPro.TMP_Text>(true)
                 .Where(text => text.gameObject.activeInHierarchy).Select(text => text.text));
             Assert.That(visible, Does.Contain("YOUR NOTEBOOK"));
             Assert.That(visible, Does.Contain(knownEvent), "The privacy check must inspect the real populated notebook.");

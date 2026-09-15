@@ -395,7 +395,7 @@ namespace Gamesim.Episode
         {
             CheckSeasonDeadline();
             var buttons = seasonDirector.GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.IsInteractable()
-                && button.GetComponentsInChildren<Text>().Any(label => label.text == caption)).ToArray();
+                && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
             RequireSeason(buttons.Length > 0 && (allowFirstEquivalent || buttons.Length == 1),"Expected a reachable actual button: " + caption + " (found " + buttons.Length + ").");
             // Selection exercises the modal's keyboard-focus/scroll adapter before activation;
             // do not invoke an off-screen content button without bringing it into view first.

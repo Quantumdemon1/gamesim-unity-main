@@ -400,7 +400,7 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             var npc = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
             yield return OpenNearbyNpc(npc);
-            Assert.That(director.GetComponentsInChildren<Text>().Single(label => label.name == "NPC spoken dialogue").text,
+            Assert.That(director.GetComponentsInChildren<TMPro.TMP_Text>().Single(label => label.name == "NPC spoken dialogue").text,
                 Does.Not.Contain(choice.text), "Private player answers must not be presented as an NPC's own knowledge.");
         }
 
@@ -532,7 +532,7 @@ namespace Gamesim.Tests.PlayMode
         private bool DiaryHasButton(string caption) => director.GetComponentsInChildren<Button>()
             .Any(button => button.IsActive() && button.name == caption);
 
-        private string ActiveDiaryText() => string.Join("\n",director.GetComponentsInChildren<Text>()
+        private string ActiveDiaryText() => string.Join("\n",director.GetComponentsInChildren<TMPro.TMP_Text>()
             .Where(label => label.gameObject.activeInHierarchy).Select(label => label.text));
 
         private IEnumerator InstallDiaryFixture(Func<EpisodeState,bool> eligible, string description)

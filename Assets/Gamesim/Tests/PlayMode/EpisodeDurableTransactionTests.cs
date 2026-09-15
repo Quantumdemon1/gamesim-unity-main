@@ -479,7 +479,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         private Button ButtonWithCaption(string caption) => director.GetComponentsInChildren<Button>(true)
-            .Single(button => button.IsActive() && button.GetComponentsInChildren<Text>(true).Any(text => text.text == caption));
+            .Single(button => button.IsActive() && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
         private static T[] SceneObjects<T>() where T : Component => SceneManager.GetSceneByName(EpisodeScene).GetRootGameObjects()
             .SelectMany(root => root.GetComponentsInChildren<T>(true)).ToArray();
     }

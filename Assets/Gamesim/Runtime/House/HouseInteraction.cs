@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -21,13 +22,13 @@ namespace Gamesim.House
 
         private readonly RaycastHit[] sightHits = new RaycastHit[32];
         private Canvas hud;
-        private Font font;
+        private TMP_FontAsset font;
         private GameObject prompt;
-        private Text promptText;
+        private TMP_Text promptText;
         private GameObject conversation;
         private RectTransform conversationRect;
-        private Text conversationName;
-        private Text conversationText;
+        private TMP_Text conversationName;
+        private TMP_Text conversationText;
         private Button[] choices;
         private Button exitButton;
         private bool restorePlayerInput;
@@ -214,7 +215,9 @@ namespace Gamesim.House
                 return;
             }
 
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = TMP_Settings.defaultFontAsset != null
+                ? TMP_Settings.defaultFontAsset
+                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
             GameObject canvasObject = new GameObject("Gamesim House HUD", typeof(RectTransform),
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObject.transform.SetParent(transform, false);
@@ -247,7 +250,7 @@ namespace Gamesim.House
             prompt = promptRect.gameObject;
             promptText = Label("Prompt text", promptRect, "", 21, Mint,
                 new Vector2(16f, -8f), new Vector2(298f, 38f));
-            promptText.alignment = TextAnchor.MiddleCenter;
+            promptText.alignment = TextAlignmentOptions.Center;
             prompt.SetActive(false);
 
             conversationRect = Panel("Conversation", hud.transform, Ink);
@@ -333,10 +336,10 @@ namespace Gamesim.House
             colors.selectedColor = colors.highlightedColor;
             colors.colorMultiplier = 1f;
             button.colors = colors;
-            Text text = Label("Caption", rect, caption, 18, foreground,
+            TMP_Text text = Label("Caption", rect, caption, 18, foreground,
                 new Vector2(14f, -2f), new Vector2(644f, 39f));
             StretchWidth(text.rectTransform, 14f, 14f);
-            text.alignment = TextAnchor.MiddleLeft;
+            text.alignment = TextAlignmentOptions.Left;
             return button;
         }
 
@@ -351,20 +354,20 @@ namespace Gamesim.House
             return panel.GetComponent<RectTransform>();
         }
 
-        private Text Label(string name, Transform parent, string value, int size, Color color,
+        private TMP_Text Label(string name, Transform parent, string value, int size, Color color,
             Vector2 position, Vector2 dimensions)
         {
-            GameObject label = new GameObject(name, typeof(RectTransform), typeof(Text));
+            GameObject label = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
             label.transform.SetParent(parent, false);
-            Text text = label.GetComponent<Text>();
+            TMP_Text text = label.GetComponent<TextMeshProUGUI>();
             text.font = font;
             text.fontSize = size;
             text.color = color;
             text.text = value;
-            text.supportRichText = false;
+            text.richText = false;
             text.raycastTarget = false;
-            text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Truncate;
+            text.textWrappingMode = TextWrappingModes.Normal;
+            text.overflowMode = TextOverflowModes.Truncate;
             Anchor(text.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), position, dimensions);
             return text;
         }

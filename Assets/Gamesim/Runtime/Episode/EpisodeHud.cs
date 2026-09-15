@@ -288,11 +288,13 @@ namespace Gamesim.Episode
         public void ChoosePair(Option[] options,Action<string,string> commit,string commitCaption = "Commit nominations")
         {
             string first = null, second = null;
+            // Same framing the notebook uses, so a trust number is never mistaken for fact.
+            Paragraph("Trust readings are your own perspective; another housemate may feel differently.");
             var selection = FlowText("Choose two houseguests below.",21,Accent);
             foreach (var option in options)
             {
                 var captured = option;
-                Action(option.Label,Portrait(option.Id),() =>
+                var row = Action(option.Label,Portrait(option.Id),() =>
                 {
                     if (first == captured.Id) first = null;
                     else if (second == captured.Id) second = null;
@@ -301,6 +303,7 @@ namespace Gamesim.Episode
                     string Label(string id) => Array.Find(options,o=>o.Id==id).Label ?? "—";
                     selection.text = "Selected: " + Label(first) + " and " + Label(second);
                 });
+                Annotate(row, captured.Id);
             }
             Action(commitCaption,() => commit(first,second));
         }
@@ -310,7 +313,49 @@ namespace Gamesim.Episode
         /// contestant id rather than a texture so portrait resolution stays in one place.
         /// </summary>
         public Button ActionFor(string contestantId,string caption,Action action)
-            => Action(caption,Portrait(contestantId),action);
+        {
+            var button = Action(caption,Portrait(contestantId),action);
+            Annotate(button,contestantId);
+            return button;
+        }
+
+        /// <summary>
+        /// Adds the player's own read of a houseguest to a decision row: their trust score and,
+        /// when it applies, an alliance tag.
+        ///
+        /// Strictly bounded by what the character knows, matching the notebook: the score is
+        /// <c>Score(player -> them)</c>, the player's own feeling, never theirs in return, and the
+        /// alliance tag only covers alliances the player is actually in. Nothing here exposes
+        /// NPC-to-NPC bonds, hidden blocs, or promises the player is not party to.
+        /// </summary>
+        private void Annotate(Button button,string contestantId)
+        {
+            var state = director != null ? director.Snapshot : null;
+            if (state == null || string.IsNullOrEmpty(state.playerId)) return;
+            if (contestantId == state.playerId || state.Find(contestantId) == null) return;
+
+            double trust = state.Score(state.playerId, contestantId);
+            bool allied = state.Allied(state.playerId, contestantId);
+            var rect = (RectTransform)button.transform;
+            float reserved = allied ? 150f : 96f;
+
+            // Keep a long caption from running underneath the chips.
+            var caption = button.GetComponentInChildren<TMP_Text>();
+            if (caption != null)
+                caption.rectTransform.offsetMax = new Vector2(-reserved, caption.rectTransform.offsetMax.y);
+
+            if (allied)
+            {
+                var tag = NewText(rect,"ALLY",14,UiTheme.Gold);
+                Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-96f,0f),new Vector2(48,22));
+                tag.alignment = TextAlignmentOptions.Right;
+            }
+
+            var reading = NewText(rect,"Trust " + trust.ToString("0"),15,
+                trust > 5 ? UiTheme.Accent : trust < -5 ? UiTheme.Danger : UiTheme.Muted);
+            Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-16f,0f),new Vector2(74,22));
+            reading.alignment = TextAlignmentOptions.Right;
+        }
 
         /// <summary>
         /// Resolves a houseguest's portrait through the same persona mapping the in-world model

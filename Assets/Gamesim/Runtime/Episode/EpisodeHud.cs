@@ -52,6 +52,12 @@ namespace Gamesim.Episode
         private bool restoreSelection;
         private GameObject lastSelection;
         public float FontScale { get; set; } = 1;
+        /// <summary>Mirrors the director's accessibility preference; suppresses every HUD animation.</summary>
+        public bool ReducedMotion { get; set; }
+        // The canvas is rebuilt on every render, so motion is driven off genuine transitions
+        // rather than off the rebuild itself.
+        private bool modalWasOpen;
+        private string lastStatusMessage;
         public bool IsTyping => EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null &&
             EventSystem.current.currentSelectedGameObject.GetComponent<TMP_InputField>() != null;
 
@@ -105,6 +111,7 @@ namespace Gamesim.Episode
             var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
             FixedText(help,"Click floor: walk  ·  F: recenter\nWASD/arrows: camera pan\nRight-drag: orbit  ·  Wheel: zoom\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,97));
             var status = Chrome("Status",canvas.transform,Ink); Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,20),new Vector2(1200,64));
+            if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.
             var rule = Panel("Caption rule",status,recovery ? UiTheme.Warning : Accent,2);
@@ -115,8 +122,11 @@ namespace Gamesim.Episode
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);
             content = null;
-            if (!open && !recovery) return;
+            if (!open && !recovery) { modalWasOpen = false; return; }
             modal = Chrome("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(95,-10),new Vector2(790,680));
+            // Only on closed -> open. Re-renders of an already-open panel must not re-animate.
+            if (!modalWasOpen) HudReveal.Play(modal,ReducedMotion);
+            modalWasOpen = true;
             FixedButton(modal,"Close  [Esc]",new Vector2(598,-15),new Vector2(174,45),director.ClosePanels);
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.

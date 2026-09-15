@@ -535,7 +535,7 @@ namespace Gamesim.Episode
         {
             audioBed?.SetMuted(muted);
             cameraRig?.SetReducedMotion(reducedMotion);
-            if (hud != null) hud.FontScale = largeText ? 1.2f : 1;
+            if (hud != null) { hud.FontScale = largeText ? 1.2f : 1; hud.ReducedMotion = reducedMotion; }
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }

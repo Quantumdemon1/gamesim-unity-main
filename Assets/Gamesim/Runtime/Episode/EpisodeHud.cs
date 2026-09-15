@@ -91,7 +91,12 @@ namespace Gamesim.Episode
             FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);
             FixedButton(controls,"Settings",new Vector2(292,-9),new Vector2(162,46),director.OpenSettings);
             var objective = Chrome("Objective",canvas.transform,Ink); Anchor(objective,new Vector2(0,1),new Vector2(0,1),new Vector2(24,-143),new Vector2(330,285));
-            FixedText(objective,"WEEK " + state.week + " · " + EpisodeDirector.PhaseTitle(state.phase),21,Accent,new Vector2(18,-14),new Vector2(294,65));
+            // Broadcast bug: the week reads as the headline and the phase as its strap, tied
+            // together by an accent rule, the way a running TV graphic is built.
+            var bug = Panel("Phase bug",objective,Accent,2); Anchor(bug,new Vector2(0,1),new Vector2(0,1),new Vector2(18,-14),new Vector2(4,52));
+            bug.GetComponent<Image>().raycastTarget = false;
+            FixedText(objective,"WEEK " + state.week,26,Accent,new Vector2(32,-12),new Vector2(160,30));
+            FixedText(objective,EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),15,Paper,new Vector2(32,-42),new Vector2(262,22));
             FixedText(objective,state.pendingDiary != null ? "Next stop: private diary room" : EpisodeEngine.IsCompetition(state.phase)
                 ? "Next stop: competition yard" : "Next stop: living-room screen",19,Paper,new Vector2(18,-83),new Vector2(294,47));
             FixedButton(objective,"Go to episode screen",new Vector2(18,-144),new Vector2(294,54),director.GoToStation);
@@ -100,7 +105,12 @@ namespace Gamesim.Episode
             var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
             FixedText(help,"Click floor: walk  ·  F: recenter\nWASD/arrows: camera pan\nRight-drag: orbit  ·  Wheel: zoom\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,97));
             var status = Chrome("Status",canvas.transform,Ink); Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,20),new Vector2(1200,64));
-            FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(18,-9),new Vector2(1164,48));
+            // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
+            // state of the save is legible at a glance rather than only in the wording.
+            var rule = Panel("Caption rule",status,recovery ? UiTheme.Warning : Accent,2);
+            Anchor(rule,new Vector2(0,1),new Vector2(0,1),new Vector2(16,-12),new Vector2(5,40));
+            rule.GetComponent<Image>().raycastTarget = false;
+            FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
             var promptRoot = Chrome("Interaction prompt",canvas.transform,Ink); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);

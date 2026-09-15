@@ -342,7 +342,7 @@ namespace Gamesim.Episode
                     () => Commit(state, state.Allied(state.playerId, npc.id) ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id));
                 hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id));
                 if (state.phase == EpisodePhase.Campaign)
-                    foreach (var nominee in state.nominees) { string id = nominee; hud.Action("Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)); }
+                    foreach (var nominee in state.nominees) { string id = nominee; hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)); }
                 return;
             }
             if (!phaseOpen) return;
@@ -397,13 +397,13 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
             {
                 hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
-                foreach (var candidate in state.Active.Where(c => !c.isPlayer)) { string id = candidate.id; hud.Action("Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
+                foreach (var candidate in state.Active.Where(c => !c.isPlayer)) { string id = candidate.id; hud.ActionFor(id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
                 return;
             }
             if (state.phase == EpisodePhase.Jury && !state.Active.Any(c => c.isPlayer) && !state.votes.Any(v => v.voterId == state.playerId))
             {
                 hud.Paragraph("As a juror, choose who deserves to win.");
-                foreach (var candidate in state.Active) { string id = candidate.id; hud.Action("Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
+                foreach (var candidate in state.Active) { string id = candidate.id; hud.ActionFor(id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
                 return;
             }
             if (state.nominees.Count > 0) hud.Paragraph("Nominees: " + string.Join(" and ", state.nominees.Select(id => state.Find(id).name)));

@@ -296,7 +296,7 @@ namespace Gamesim.Episode
                     {
                         string saved = nominee;
                         if (state.hohId == state.playerId) VetoReplacements(state, saved, privateRoom);
-                        else hud.Action("Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
+                        else hud.ActionFor(saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
                             OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
                                 "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true));
                     }
@@ -314,7 +314,7 @@ namespace Gamesim.Episode
                 foreach (var nominee in state.nominees)
                 {
                     string id = nominee;
-                    hud.Action("Vote to evict " + state.Find(id).name, () => OfferPlayerDecision(state, privateRoom,
+                    hud.ActionFor(id, "Vote to evict " + state.Find(id).name, () => OfferPlayerDecision(state, privateRoom,
                         EpisodeCommandKind.CastVote, (tieBreak ? "Cast the deciding vote to evict " : "Vote privately to evict ")
                         + state.Find(id).name + ". This records your ballot only; the eviction reveal happens at the episode screen.", id));
                 }
@@ -329,7 +329,7 @@ namespace Gamesim.Episode
             foreach (var candidate in EpisodeEngine.ReplacementCandidates(state))
             {
                 string id = candidate.id;
-                hud.Action(candidate.name, () => OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
+                hud.ActionFor(id, candidate.name, () => OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
                     "Use the veto to save " + state.Find(saved).name + " and nominate " + state.Find(id).name + " as the replacement.", saved, id, true));
             }
         }

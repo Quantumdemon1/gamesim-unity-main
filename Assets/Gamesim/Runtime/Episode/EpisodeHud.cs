@@ -296,6 +296,13 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// An action row about a specific houseguest, fronted by their portrait. Callers pass the
+        /// contestant id rather than a texture so portrait resolution stays in one place.
+        /// </summary>
+        public Button ActionFor(string contestantId,string caption,Action action)
+            => Action(caption,Portrait(contestantId),action);
+
+        /// <summary>
         /// Resolves a houseguest's portrait through the same persona mapping the in-world model
         /// uses. Returns null when the cast or the art is unavailable, and the row degrades to text.
         /// </summary>

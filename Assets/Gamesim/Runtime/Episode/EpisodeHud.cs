@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
@@ -32,10 +33,12 @@ namespace Gamesim.Episode
         public const string StudyConfirmCaption = "Confirm study · use 1 social action";
         public const string StudyCancelCaption = "Back to diary (discard study)";
         public const string SimulateCompetitionCaption = "Simulate competition · weighted rules";
-        private static readonly Color Ink = new Color(.035f,.055f,.085f,.98f);
-        private static readonly Color Surface = new Color(.085f,.13f,.18f,.98f);
-        private static readonly Color Accent = new Color(.5f,.93f,.78f,1);
-        private static readonly Color Paper = new Color(.95f,.96f,.98f,1);
+        // Palette lives in UiTheme so the HUD and the 3D set stay in step; these aliases keep
+        // the existing call sites unchanged.
+        private static readonly Color Ink = UiTheme.Ink;
+        private static readonly Color Surface = UiTheme.Surface;
+        private static readonly Color Accent = UiTheme.Accent;
+        private static readonly Color Paper = UiTheme.Paper;
         private EpisodeDirector director;
         private Canvas canvas;
         private TMP_FontAsset font;
@@ -80,30 +83,30 @@ namespace Gamesim.Episode
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
-            var brand = Panel("Brand", canvas.transform, Ink); Anchor(brand,new Vector2(0,1),new Vector2(0,1),new Vector2(24,-24),new Vector2(330,103));
+            var brand = Chrome("Brand", canvas.transform, Ink); Anchor(brand,new Vector2(0,1),new Vector2(0,1),new Vector2(24,-24),new Vector2(330,103));
             FixedText(brand,"GAMESIM",32,Accent,new Vector2(18,-12),new Vector2(300,42));
             FixedText(brand,"THE HOUSE  /  A SIX-PERSON SEASON",14,Paper,new Vector2(19,-62),new Vector2(300,24));
-            var controls = Panel("Navigation",canvas.transform,Ink); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-24),new Vector2(465,64));
+            var controls = Chrome("Navigation",canvas.transform,Ink); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-24),new Vector2(465,64));
             FixedButton(controls,"Notebook [J]",new Vector2(10,-9),new Vector2(142,46),director.OpenJournal);
             FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);
             FixedButton(controls,"Settings",new Vector2(292,-9),new Vector2(162,46),director.OpenSettings);
-            var objective = Panel("Objective",canvas.transform,Ink); Anchor(objective,new Vector2(0,1),new Vector2(0,1),new Vector2(24,-143),new Vector2(330,285));
+            var objective = Chrome("Objective",canvas.transform,Ink); Anchor(objective,new Vector2(0,1),new Vector2(0,1),new Vector2(24,-143),new Vector2(330,285));
             FixedText(objective,"WEEK " + state.week + " · " + EpisodeDirector.PhaseTitle(state.phase),21,Accent,new Vector2(18,-14),new Vector2(294,65));
             FixedText(objective,state.pendingDiary != null ? "Next stop: private diary room" : EpisodeEngine.IsCompetition(state.phase)
                 ? "Next stop: competition yard" : "Next stop: living-room screen",19,Paper,new Vector2(18,-83),new Vector2(294,47));
             FixedButton(objective,"Go to episode screen",new Vector2(18,-144),new Vector2(294,54),director.GoToStation);
             FixedButton(objective,DiaryTravelCaption,new Vector2(18,-210),new Vector2(294,54),director.GoToDiary).interactable =
                 director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
-            var help = Panel("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
+            var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
             FixedText(help,"Click floor: walk  ·  F: recenter\nWASD/arrows: camera pan\nRight-drag: orbit  ·  Wheel: zoom\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,97));
-            var status = Panel("Status",canvas.transform,Ink); Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,20),new Vector2(1200,64));
-            FixedText(status,message,18,recovery ? new Color(1,.77f,.45f) : Paper,new Vector2(18,-9),new Vector2(1164,48));
-            var promptRoot = Panel("Interaction prompt",canvas.transform,Ink); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
+            var status = Chrome("Status",canvas.transform,Ink); Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,20),new Vector2(1200,64));
+            FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(18,-9),new Vector2(1164,48));
+            var promptRoot = Chrome("Interaction prompt",canvas.transform,Ink); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);
             content = null;
             if (!open && !recovery) return;
-            modal = Panel("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(95,-10),new Vector2(790,680));
+            modal = Chrome("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(95,-10),new Vector2(790,680));
             FixedButton(modal,"Close  [Esc]",new Vector2(598,-15),new Vector2(174,45),director.ClosePanels);
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.
@@ -226,7 +229,7 @@ namespace Gamesim.Episode
             var input = rect.gameObject.AddComponent<EpisodeSpeechInputField>();
             var text = NewText(rect,"",21,Paper); Stretch(text.rectTransform,14,12,14,12);
             text.alignment = TextAlignmentOptions.TopLeft;
-            var hint = NewText(rect,"What do you want the jury to remember about your game?",21,new Color(.6f,.7f,.75f));
+            var hint = NewText(rect,"What do you want the jury to remember about your game?",21,UiTheme.Muted);
             Stretch(hint.rectTransform,14,12,14,12);
             input.textComponent = text; input.placeholder = hint;
             input.characterLimit = 2000; input.lineType = TMP_InputField.LineType.MultiLineNewline;
@@ -276,7 +279,7 @@ namespace Gamesim.Episode
         {
             var rect = Panel("Import path",content,Surface); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 58;
             var input = rect.gameObject.AddComponent<TMP_InputField>(); var text = NewText(rect,"",19,Paper); Stretch(text.rectTransform,14,9,14,9);
-            var hint = NewText(rect,placeholder,19,new Color(.6f,.7f,.75f)); Stretch(hint.rectTransform,14,9,14,9);
+            var hint = NewText(rect,placeholder,19,UiTheme.Muted); Stretch(hint.rectTransform,14,9,14,9);
             input.textComponent = text; input.placeholder = hint; input.characterLimit = 1024; input.lineType = TMP_InputField.LineType.SingleLine;
             input.text = retainedImportPath;
             input.onValueChanged.AddListener(value => retainedImportPath = value);
@@ -424,10 +427,21 @@ namespace Gamesim.Episode
             text.fontSize=Mathf.RoundToInt(size*FontScale); text.color=color; text.text=value; text.richText=false; text.raycastTarget=false;
             text.textWrappingMode=TextWrappingModes.Normal; text.overflowMode=TextOverflowModes.Truncate; return text;
         }
-        private static RectTransform Panel(string name,Transform parent,Color color)
+        private static RectTransform Panel(string name,Transform parent,Color color,int radius = UiTheme.ControlRadius)
         {
             var panel=new GameObject(name,typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>(); panel.SetParent(parent,false);
-            panel.GetComponent<Image>().color=color; panel.GetComponent<Image>().raycastTarget=true; return panel;
+            var image=panel.GetComponent<Image>();
+            UiTheme.Style(image,color,radius); image.raycastTarget=true; return panel;
+        }
+        /// <summary>
+        /// Major chrome: a larger corner radius plus a hairline border, so panel edges stay legible
+        /// against the set's bloom instead of dissolving into it. The border never takes raycasts.
+        /// </summary>
+        private static RectTransform Chrome(string name,Transform parent,Color color)
+        {
+            var rect=Panel(name,parent,color,UiTheme.PanelRadius);
+            UiTheme.AddBorder(rect,UiTheme.PanelRadius,UiTheme.Outline);
+            return rect;
         }
         private static void Anchor(RectTransform rect,Vector2 anchor,Vector2 pivot,Vector2 position,Vector2 size)
         { rect.anchorMin=anchor; rect.anchorMax=anchor; rect.pivot=pivot; rect.anchoredPosition=position; rect.sizeDelta=size; }

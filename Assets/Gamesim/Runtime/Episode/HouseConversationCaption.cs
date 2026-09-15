@@ -40,7 +40,9 @@ namespace Gamesim.Episode
             panel.transform.SetParent(root.transform, false);
             var rect = panel.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(.5f, 1);
             rect.pivot = new Vector2(.5f, 1); rect.anchoredPosition = new Vector2(0, -108); rect.sizeDelta = new Vector2(650, 70);
-            var background = panel.GetComponent<Image>(); background.color = new Color(.035f, .055f, .085f, .95f); background.raycastTarget = false;
+            var background = panel.GetComponent<Image>();
+            Gamesim.Presentation.UiTheme.Style(background, Gamesim.Presentation.UiTheme.Ink, Gamesim.Presentation.UiTheme.PanelRadius);
+            background.raycastTarget = false;
             var text = new GameObject("Caption", typeof(RectTransform), typeof(TextMeshProUGUI)); text.transform.SetParent(panel.transform, false);
             var textRect = text.GetComponent<RectTransform>(); textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one;
             textRect.offsetMin = new Vector2(16, 6); textRect.offsetMax = new Vector2(-16, -6);

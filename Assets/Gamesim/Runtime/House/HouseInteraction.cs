@@ -1,3 +1,4 @@
+using Gamesim.Presentation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -11,10 +12,12 @@ namespace Gamesim.House
     {
         private const float TalkDistance = 2.8f;
         private const float EyeHeight = 1.15f;
-        private static readonly Color Ink = new Color(0.035f, 0.065f, 0.11f, 0.96f);
-        private static readonly Color Surface = new Color(0.08f, 0.13f, 0.19f, 0.98f);
-        private static readonly Color Mint = new Color(0.48f, 0.94f, 0.79f, 1f);
-        private static readonly Color White = new Color(0.94f, 0.96f, 0.98f, 1f);
+        // Shared with the episode HUD through UiTheme; Mint is kept as a name so the existing
+        // call sites read unchanged, but it now resolves to the set's pale neon accent.
+        private static readonly Color Ink = UiTheme.Ink;
+        private static readonly Color Surface = UiTheme.Surface;
+        private static readonly Color Mint = UiTheme.Accent;
+        private static readonly Color White = UiTheme.Paper;
 
         [SerializeField] private HousePlayerController player;
         [SerializeField] private HouseNpc npc;
@@ -348,7 +351,7 @@ namespace Gamesim.House
             GameObject panel = new GameObject(name, typeof(RectTransform), typeof(Image));
             panel.transform.SetParent(parent, false);
             Image image = panel.GetComponent<Image>();
-            image.color = background;
+            UiTheme.Style(image, background, UiTheme.ControlRadius);
             // Visible HUD surfaces consume pointer input so clicks/drags cannot leak into the house.
             image.raycastTarget = true;
             return panel.GetComponent<RectTransform>();

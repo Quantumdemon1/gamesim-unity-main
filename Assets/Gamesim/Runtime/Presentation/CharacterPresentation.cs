@@ -367,7 +367,11 @@ namespace Gamesim.Presentation
             return color;
         }
 
-        private static string AppearanceId(ContestantState character, string canonicalId)
+        /// <summary>
+        /// Public so portraits resolve a houseguest to the same persona the in-world model uses;
+        /// a portrait that disagreed with the character standing in the room would be worse than none.
+        /// </summary>
+        public static string AppearanceId(ContestantState character, string canonicalId)
         {
             if (character.isPlayer) return ContentCatalog.PlayerId;
             switch (canonicalId)

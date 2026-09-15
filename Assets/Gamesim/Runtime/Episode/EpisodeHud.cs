@@ -255,6 +255,26 @@ namespace Gamesim.Episode
             return FinishButton(rect,caption,action);
         }
 
+        /// <summary>An action row fronted by a houseguest's portrait. Falls back to a plain row.</summary>
+        public Button Action(string caption,Texture portrait,Action action)
+        {
+            if (portrait == null) return Action(caption,action);
+            var rect = Panel(caption,content,Surface);
+            rect.gameObject.AddComponent<LayoutElement>().minHeight = 68 * FontScale;
+            var button = FinishButton(rect,caption,action,68f * FontScale);
+
+            var frame = new GameObject("Portrait",typeof(RectTransform),typeof(RawImage));
+            var frameRect = (RectTransform)frame.transform;
+            frameRect.SetParent(rect,false);
+            frameRect.anchorMin = new Vector2(0,.5f); frameRect.anchorMax = new Vector2(0,.5f); frameRect.pivot = new Vector2(0,.5f);
+            float side = 52f * FontScale;
+            frameRect.sizeDelta = new Vector2(side,side);
+            frameRect.anchoredPosition = new Vector2(8f,0f);
+            var raw = frame.GetComponent<RawImage>();
+            raw.texture = portrait; raw.raycastTarget = false;
+            return button;
+        }
+
         public void ChoosePair(Option[] options,Action<string,string> commit,string commitCaption = "Commit nominations")
         {
             string first = null, second = null;
@@ -262,7 +282,7 @@ namespace Gamesim.Episode
             foreach (var option in options)
             {
                 var captured = option;
-                Action(option.Label,() =>
+                Action(option.Label,Portrait(option.Id),() =>
                 {
                     if (first == captured.Id) first = null;
                     else if (second == captured.Id) second = null;
@@ -273,6 +293,19 @@ namespace Gamesim.Episode
                 });
             }
             Action(commitCaption,() => commit(first,second));
+        }
+
+        /// <summary>
+        /// Resolves a houseguest's portrait through the same persona mapping the in-world model
+        /// uses. Returns null when the cast or the art is unavailable, and the row degrades to text.
+        /// </summary>
+        private Texture Portrait(string contestantId)
+        {
+            var state = director != null ? director.Snapshot : null;
+            var contestant = state != null ? state.Find(contestantId) : null;
+            if (contestant == null) return null;
+            return CharacterPortraits.Get(
+                CharacterPresentation.AppearanceId(contestant, ContentCatalog.CanonicalId(contestant.id)));
         }
 
         public void PathInput(string placeholder,Action<string> submit)
@@ -397,11 +430,11 @@ namespace Gamesim.Episode
             AutoSize(label, 18);
             return button;
         }
-        private Button FinishButton(RectTransform rect,string caption,Action action)
+        private Button FinishButton(RectTransform rect,string caption,Action action,float leftInset = 16f)
         {
             var button=rect.gameObject.AddComponent<Button>(); var colors=button.colors;
             colors.highlightedColor=new Color(1.2f,1.6f,1.45f); colors.selectedColor=colors.highlightedColor; colors.pressedColor=new Color(.65f,1.1f,.9f); button.colors=colors;
-            var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,16,5,16,5); text.alignment=TextAlignmentOptions.Left;
+            var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,leftInset,5,16,5); text.alignment=TextAlignmentOptions.Left;
             button.onClick.AddListener(()=>action()); return button;
         }
         private TMP_Text FixedText(RectTransform parent,string value,int size,Color color,Vector2 position,Vector2 dimensions)

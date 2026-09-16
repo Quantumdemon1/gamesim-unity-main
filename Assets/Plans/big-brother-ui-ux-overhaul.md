@@ -94,6 +94,18 @@ week/phase bug, and faces — it is a game about six people, and the UI currentl
   moments the sim already models but renders as plain text swaps — nomination, veto, eviction, jury
   vote.
 - **Dependencies:** Steps 1–2. **Parallelizable:** No.
+- **Status:** Lower-third and broadcast bug shipped with the earlier pass. Stings implemented in
+  `Assets/Gamesim/Runtime/Presentation/CeremonySting.cs` and hooked into `EpisodeDirector.Submit`
+  beside the existing audio cue. **Compiles; not yet run.**
+- **How the sting stays safe:** it renders on its own scene root, not under the director, so it
+  never joins `director.GetComponentsInChildren<TMP_Text>()` and cannot disturb `ActiveDiaryText()`;
+  it has no `GraphicRaycaster` and every graphic sets `raycastTarget = false`, so it cannot swallow
+  a click during the seconds it is up; and it is driven by the same audience-filtered event that
+  feeds the status line, so it cannot announce what the notebook withholds. `CeremonyStingPlayModeTests`
+  asserts each of those rather than trusting them.
+- **Competition wins were left out on purpose.** They are a genuine broadcast beat, but this step
+  scoped four cards and a competition card would fire far more often; adding it is one entry in
+  `CeremonySting.IsCeremony` plus a headline.
 
 ### Step 5 — Relationships at a glance
 - **Description:** The simulation tracks relationships, alliances, promises, oaths, suspicion and

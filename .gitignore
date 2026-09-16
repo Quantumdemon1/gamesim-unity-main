@@ -26,6 +26,15 @@
 *.opendb
 *.VC.db
 
+# Third-party asset packs are re-installable dependencies, not source.
+# UMA 3 is roughly a gigabyte; committing it would bloat every clone, and GitHub
+# hard-rejects any single file over 100MB, which a pack this size can easily contain.
+# Re-import from Package Manager > My Assets rather than from source control.
+[Aa]ssets/UMA/
+[Aa]ssets/UMA.meta
+[Aa]ssets/UMA_Assets/
+[Aa]ssets/UMA_Assets.meta
+
 # OS files
 .DS_Store
 Thumbs.db

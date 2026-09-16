@@ -1,0 +1,23 @@
+{
+  "name": "Gamesim.Uma.Editor",
+  "rootNamespace": "Gamesim.Uma.Editor",
+  "references": [
+    "Gamesim.Uma",
+    "Gamesim.Runtime",
+    "Gamesim.Simulation",
+    "UMA_Core"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "GAMESIM_UMA"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

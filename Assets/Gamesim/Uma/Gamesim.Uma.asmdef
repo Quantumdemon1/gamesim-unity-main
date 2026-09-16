@@ -1,0 +1,20 @@
+{
+  "name": "Gamesim.Uma",
+  "rootNamespace": "Gamesim.Uma",
+  "references": [
+    "Gamesim.Runtime",
+    "Gamesim.Simulation",
+    "UMA_Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "GAMESIM_UMA"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

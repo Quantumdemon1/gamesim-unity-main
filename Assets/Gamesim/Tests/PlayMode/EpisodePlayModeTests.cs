@@ -91,7 +91,16 @@ namespace Gamesim.Tests.PlayMode
             {
                 var body = visual.transform.Find("Gamesim Character Visual");
                 Assert.That(body, Is.Not.Null, visual.CharacterId + " needs its native articulated visual.");
-                Assert.That(body.GetComponentsInChildren<Renderer>().Count(renderer => renderer.enabled), Is.GreaterThan(10));
+                // This used to require more than ten enabled renderers, which was really a count of
+                // the primitive rig's parts. An authored rigged model is a single skinned renderer,
+                // so that count started failing the moment the cast got real models. Both bodies are
+                // correct, so assert the houseguest reads as a person rather than counting pieces.
+                var parts = body.GetComponentsInChildren<Renderer>().Where(renderer => renderer.enabled).ToArray();
+                Assert.That(parts, Is.Not.Empty, visual.CharacterId + " needs a visible body.");
+                var extent = parts[0].bounds;
+                foreach (var part in parts) extent.Encapsulate(part.bounds);
+                Assert.That(extent.size.y, Is.GreaterThan(1.2f).And.LessThan(2.6f),
+                    visual.CharacterId + " should stand roughly human height, not a stray or collapsed body.");
             }
             Assert.That(director.GetComponentsInChildren<Canvas>(true).Any(canvas => canvas.isActiveAndEnabled), Is.True);
             Assert.That(director.GetComponentsInChildren<Button>(true).Count(button => button.IsActive() && button.IsInteractable()),
@@ -589,7 +598,7 @@ namespace Gamesim.Tests.PlayMode
             var beforeDraft = director.Snapshot;
             var input = SpeechInput();
             Assert.That(input.characterLimit, Is.EqualTo(2000));
-            Assert.That(input.lineType, Is.EqualTo(InputField.LineType.MultiLineNewline));
+            Assert.That(input.lineType, Is.EqualTo(TMPro.TMP_InputField.LineType.MultiLineNewline));
             input.Select(); input.ActivateInputField();
             yield return null; yield return null;
             const string draft = "I kept my promises.\nI made my own decisions.";
@@ -633,7 +642,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             AssertEquivalent(committed,director.Snapshot);
             yield return OpenFinalePanel();
-            Assert.That(director.GetComponentsInChildren<InputField>().Any(field => field.name == "Final speech draft"), Is.False);
+            Assert.That(director.GetComponentsInChildren<TMPro.TMP_InputField>().Any(field => field.name == "Final speech draft"), Is.False);
             Assert.That(ButtonWithCaption(EpisodeHud.SpeechContinueCaption), Is.Not.Null);
         }
 
@@ -656,7 +665,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Jury));
         }
 
-        private InputField SpeechInput() => director.GetComponentsInChildren<InputField>()
+        // The HUD's speech field is an EpisodeSpeechInputField, which derives from TMP_InputField.
+        // This helper looked for the legacy uGUI InputField and was missed when the HUD migrated to
+        // TextMeshPro, exactly as ActiveDiaryText was caught and updated at the time.
+        private TMPro.TMP_InputField SpeechInput() => director.GetComponentsInChildren<TMPro.TMP_InputField>()
             .Single(input => input.gameObject.activeInHierarchy && input.name == "Final speech draft");
 
         private IEnumerator OpenFinalePanel()

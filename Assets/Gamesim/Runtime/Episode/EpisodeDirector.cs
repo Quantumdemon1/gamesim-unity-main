@@ -23,6 +23,7 @@ namespace Gamesim.Episode
         private EpisodeState projected;
         private EpisodeSaveStore saves;
         private EpisodeHud hud;
+        private CeremonySting sting;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
@@ -84,6 +85,7 @@ namespace Gamesim.Episode
             muted = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
             largeText = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.LargeText", 0) == 1;
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
+            sting = CeremonySting.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
         }
@@ -204,6 +206,9 @@ namespace Gamesim.Episode
             if (durableCommitInProgress) return new CommandResult { reason = "A save transaction is already running.", state = Snapshot };
             if (blockedRecovery) return new CommandResult { reason = "Recover the save or start a new slot before playing.", state = Snapshot };
             bool wasYard = EpisodeEngine.IsCompetition(projected.phase);
+            // A single command can append several events. Remembering where the log ended lets the
+            // ceremony card look at everything this commit produced rather than only its last line.
+            int knownEvents = engine.Snapshot.events.Count;
             // Player and NPC candidates share durable publication ordering. A phase
             // transition cancels invalid NPC activity inside this same saved candidate.
             var candidate = new EpisodeEngine(engine.Snapshot);
@@ -220,7 +225,12 @@ namespace Gamesim.Episode
                     return new CommandResult { reason = failure, state = Snapshot };
                 }
             }
-            message = result.accepted ? result.state.events.LastOrDefault(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))?.text ?? "Decision committed." : result.reason;
+            // The one event the player is entitled to see drives both the status line and the
+            // ceremony card, so a title card can never announce something the notebook withholds.
+            var visible = result.accepted
+                ? result.state.events.LastOrDefault(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
+                : null;
+            message = result.accepted ? visible?.text ?? "Decision committed." : result.reason;
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
@@ -231,6 +241,16 @@ namespace Gamesim.Episode
                 audioBed.PlayCue(kind == "winner" ? HouseAudio.Cue.Finale : kind == "eviction" ? HouseAudio.Cue.Eviction :
                     kind == "competition" ? HouseAudio.Cue.CompetitionWin : kind == "nomination" ? HouseAudio.Cue.Nomination :
                     kind == "veto" ? HouseAudio.Cue.Veto : HouseAudio.Cue.Button);
+                // The ceremony is not always the last thing a commit writes — an eviction is followed
+                // by the events that open the next week, which is why keying off the final line
+                // meant the eviction card never played at all. Search everything this command
+                // appended, and only what the player is entitled to see: the cue is a sound, but the
+                // card carries words.
+                var ceremony = result.state.events.Skip(knownEvents)
+                    .LastOrDefault(entry => CeremonySting.IsCeremony(entry.kind)
+                        && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
+                if (sting != null && ceremony != null)
+                    sting.Play(ceremony.kind, ceremony.text, reducedMotion);
             }
             Render(); return result;
         }
@@ -536,6 +556,7 @@ namespace Gamesim.Episode
             audioBed?.SetMuted(muted);
             cameraRig?.SetReducedMotion(reducedMotion);
             if (hud != null) { hud.FontScale = largeText ? 1.2f : 1; hud.ReducedMotion = reducedMotion; }
+            if (sting != null) sting.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }
@@ -546,6 +567,7 @@ namespace Gamesim.Episode
             if (!IsReady) return;
             // Sibling scene roots may already be destroyed during unloading. Never rebuild UI here.
             ClosePanelsInternal(false); if (hud != null) hud.SetVisible(false);
+            if (sting != null) sting.Cancel();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()
@@ -554,7 +576,13 @@ namespace Gamesim.Episode
             hud?.SetVisible(true); ClosePanels();
         }
 
-        private void OnDestroy() { DisposeNpcSocialWorld(); if (hud != null) Destroy(hud); }
+        // The sting is a scene root rather than a child, so it has to be taken down explicitly.
+        private void OnDestroy()
+        {
+            DisposeNpcSocialWorld();
+            if (hud != null) Destroy(hud);
+            if (sting != null) { Destroy(sting.gameObject); sting = null; }
+        }
 
         public static string PhaseTitle(EpisodePhase phase)
         {

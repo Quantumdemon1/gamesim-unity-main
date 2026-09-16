@@ -246,6 +246,12 @@ namespace Gamesim.Tests.PlayMode
             var retainedPrimary = Directory.GetFiles(isolatedRoot, Path.GetFileName(director.SavePath) + ".before-recovery-*.json").Single();
             CollectionAssert.AreEqual(damaged, File.ReadAllBytes(retainedPrimary));
             CollectionAssert.AreEqual(originalBackup, File.ReadAllBytes(director.SavePath + ".backup"));
+
+            // Last, because it writes: recovery only counts if the episode can be played on, not
+            // merely unlocked. Restoring input without restoring the ability to commit would still
+            // leave the run stranded.
+            Assert.That(director.Submit(Talk(director.Snapshot)).accepted, Is.True,
+                "A recovered episode must accept a committed decision again.");
             yield break;
         }
 

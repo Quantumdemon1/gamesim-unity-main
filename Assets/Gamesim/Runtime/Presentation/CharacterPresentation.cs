@@ -34,6 +34,10 @@ namespace Gamesim.Presentation
         private Animator animator;
         private Transform modelHead;
         private Quaternion modelHeadRest;
+        private CharacterBody providedBody;
+        private Transform standIn;
+        private RuntimeAnimatorController inspectedController;
+        private bool hasSpeedParam, hasSeatedParam;
         public string CharacterId { get; private set; }
 
         public static CharacterPresentation Attach(GameObject root, ContestantState character, Color palette)
@@ -103,6 +107,8 @@ namespace Gamesim.Presentation
 
         private bool TryBuildModel(string appearanceId, Color palette)
         {
+            if (TryBuildProvidedBody(appearanceId, palette)) return true;
+
             var prefab = Resources.Load<GameObject>(ModelResourceRoot + appearanceId);
             if (prefab == null) return false;
 
@@ -128,6 +134,115 @@ namespace Gamesim.Presentation
             return true;
         }
 
+        /// <summary>
+        /// Asks the registered body provider — UMA, when a scene opts into it — before falling back
+        /// to an authored prefab. Editor-time builds are skipped because a generated body has no
+        /// business being written into a scene file.
+        /// </summary>
+        private bool TryBuildProvidedBody(string appearanceId, Color palette)
+        {
+            var provider = CharacterBodySource.Provider;
+            if (provider == null || !Application.isPlaying) return false;
+            if (!provider.TryCreate(appearanceId, visual, palette, out var created) || !created.Exists)
+                return false;
+
+            providedBody = created;
+            animator = created.Animator;
+            if (animator != null) animator.applyRootMotion = false;
+
+            // A deferred body has no skeleton yet; LateUpdate picks the head up once it exists.
+            if (!created.Deferred) ResolveModelHead();
+            else BuildStandIn(appearanceId);
+            return true;
+        }
+
+        /// <summary>
+        /// Puts an authored body in place for the half-second a provider takes to assemble a real
+        /// one, so the houseguest is never simply absent. Without this a UMA cast pops in after the
+        /// scene is already running, and anything that reasonably expects a houseguest to have a
+        /// body — including the episode's own smoke test — is briefly right to complain.
+        ///
+        /// The stand-in is the same prefab the non-provider path would have used, posed and still.
+        /// It is not animated, because it is on screen for less time than a stride.
+        /// </summary>
+        private void BuildStandIn(string appearanceId)
+        {
+            var prefab = Resources.Load<GameObject>(ModelResourceRoot + appearanceId);
+            if (prefab == null) return;
+
+            var instance = Instantiate(prefab, visual, false);
+            instance.name = "Stand-in";
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
+            foreach (var collider in instance.GetComponentsInChildren<Collider>(true))
+            {
+                if (Application.isPlaying) Destroy(collider); else DestroyImmediate(collider);
+            }
+            standIn = instance.transform;
+        }
+
+        /// <summary>Retires the stand-in the first frame the real body has something to draw.</summary>
+        private void RetireStandIn()
+        {
+            if (standIn == null) return;
+            if (!providedBody.Exists) return;
+            if (providedBody.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) return;
+
+            if (Application.isPlaying) Destroy(standIn.gameObject); else DestroyImmediate(standIn.gameObject);
+            standIn = null;
+        }
+
+        /// <summary>
+        /// Caches which animation cues the current controller understands. Re-reads only when the
+        /// controller itself changes, which a deferred body does once as UMA finishes assembling it.
+        /// </summary>
+        private void RefreshAnimatorParameters()
+        {
+            var controller = animator.runtimeAnimatorController;
+            if (ReferenceEquals(controller, inspectedController)) return;
+            if (controller == null)
+            {
+                inspectedController = null;
+                hasSpeedParam = hasSeatedParam = false;
+                return;
+            }
+
+            // An Animator reports no parameters until it has initialised, which on a deferred body
+            // is a frame or two after the controller lands. Leaving the cache unset retries next
+            // frame rather than concluding the controller understands nothing.
+            if (animator.parameterCount == 0) return;
+
+            inspectedController = controller;
+            hasSpeedParam = hasSeatedParam = false;
+            foreach (var parameter in animator.parameters)
+            {
+                if (parameter.nameHash == SpeedParam && parameter.type == AnimatorControllerParameterType.Float)
+                    hasSpeedParam = true;
+                else if (parameter.nameHash == SeatedParam && parameter.type == AnimatorControllerParameterType.Bool)
+                    hasSeatedParam = true;
+            }
+        }
+
+        /// <summary>
+        /// Finds the head so conversation can nod it. Prefers the humanoid rig mapping, which is
+        /// O(1) and unambiguous, and only walks the hierarchy by name when there is no valid avatar.
+        /// </summary>
+        private void ResolveModelHead()
+        {
+            if (modelHead != null) return;
+
+            if (animator != null && animator.isHuman && animator.avatar != null && animator.avatar.isValid)
+                modelHead = animator.GetBoneTransform(HumanBodyBones.Head);
+
+            if (modelHead == null)
+            {
+                var root = providedBody.Exists ? providedBody.Root.transform : null;
+                if (root != null) modelHead = FindBone(root, "Head");
+            }
+
+            if (modelHead != null) modelHeadRest = modelHead.localRotation;
+        }
+
         private static Transform FindBone(Transform root, string boneName)
         {
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
@@ -141,6 +256,12 @@ namespace Gamesim.Presentation
         /// </summary>
         private void ApplyWardrobe(Color palette)
         {
+            if (providedBody.Exists)
+            {
+                CharacterBodySource.Provider?.SetWardrobeColor(providedBody, palette);
+                return;
+            }
+
             if (animator == null)
             {
                 if (wardrobeMaterial != null) wardrobeMaterial.color = palette;
@@ -269,14 +390,45 @@ namespace Gamesim.Presentation
             float target = speed > 8f || seated ? 0f : Mathf.Clamp01(speed / 2.5f);
             movementBlend = Mathf.Lerp(movementBlend, target, 1f - Mathf.Exp(-12f * Time.deltaTime));
 
+            if (providedBody.Exists) { AnimateProvidedBody(); return; }
             if (animator != null) { AnimateModel(); return; }
             AnimatePrimitives();
         }
 
+        /// <summary>
+        /// Drives a body a provider built. Kept separate from the authored-prefab path for one
+        /// specific reason: UMA replaces the avatar's Animator while it assembles the character, so
+        /// the reference captured when the body was handed over can be destroyed out from under us.
+        /// Falling through to <see cref="AnimatePrimitives"/> on a null animator would then drive a
+        /// primitive rig that was never built for this houseguest, which is a null reference every
+        /// frame rather than a missing animation.
+        /// </summary>
+        private void AnimateProvidedBody()
+        {
+            RetireStandIn();
+            if (animator == null)
+            {
+                animator = providedBody.Root.GetComponentInChildren<Animator>(true);
+                if (animator == null) return;
+                animator.applyRootMotion = false;
+                inspectedController = null;
+            }
+            AnimateModel();
+        }
+
         private void AnimateModel()
         {
-            animator.SetFloat(SpeedParam, movementBlend);
-            animator.SetBool(SeatedParam, seated);
+            // Not every rig's controller carries both cues — UMA's shipped locomotion has Speed but
+            // no Seated — and driving a parameter a controller does not declare warns once per call.
+            RefreshAnimatorParameters();
+            if (hasSpeedParam) animator.SetFloat(SpeedParam, movementBlend);
+            if (hasSeatedParam) animator.SetBool(SeatedParam, seated);
+
+            // A provided body streams its rig in over a few frames. Retry on a slow cadence so the
+            // hierarchy walk behind ResolveModelHead cannot become a per-frame cost on a body that
+            // genuinely has no head bone.
+            if (modelHead == null && providedBody.Exists && (Time.frameCount & 7) == 0)
+                ResolveModelHead();
 
             // The authored clips carry no dialogue pose, so conversation keeps the original
             // head-nod cue, layered over whatever state the Animator is playing.
@@ -416,6 +568,10 @@ namespace Gamesim.Presentation
             chest = head = leftArm = rightArm = leftLeg = rightLeg = leftKnee = rightKnee = null;
             animator = null;
             modelHead = null;
+            providedBody = default;
+            standIn = null; // destroyed with the visual root above
+            inspectedController = null;
+            hasSpeedParam = hasSeatedParam = false;
             built = false;
             talking = seated = false;
             movementBlend = walkPhase = 0f;

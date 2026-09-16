@@ -27,6 +27,7 @@ namespace Gamesim.Episode
         private CeremonySting sting;
         private CeremonyTakeover takeover;
         private VoteReveal voteReveal;
+        private CompetitionResult competitionCard;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
@@ -91,6 +92,7 @@ namespace Gamesim.Episode
             sting = CeremonySting.Attach(gameObject);
             takeover = CeremonyTakeover.Attach(gameObject);
             voteReveal = VoteReveal.Attach(gameObject);
+            competitionCard = CompetitionResult.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
         }
@@ -216,6 +218,7 @@ namespace Gamesim.Episode
             int knownEvents = engine.Snapshot.events.Count;
             // Who was still playing before this command. An eviction event says what happened
             // but not to whom, and diffing is more reliable than parsing the sentence back.
+            var wasPhase = engine.Snapshot.phase;
             var wasActive = new HashSet<string>(engine.Snapshot.contestants
                 .Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id));
             // Player and NPC candidates share durable publication ordering. A phase
@@ -255,6 +258,15 @@ namespace Gamesim.Episode
                 // meant the eviction card never played at all. Search everything this command
                 // appended, and only what the player is entitled to see: the cue is a sound, but the
                 // card carries words.
+                // A competition is not a CeremonySting kind — it has no strip — so it is searched
+                // for separately. Same audience rule: the standings name everyone who competed.
+                var competition = result.state.events.Skip(knownEvents)
+                    .LastOrDefault(entry => entry.kind == "competition"
+                        && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
+                if (competition != null && competitionCard != null)
+                    competitionCard.Play(AwardTitle(wasPhase), result.state.week,
+                        CompetitionStandings(result.state), reducedMotion);
+
                 var ceremony = result.state.events.Skip(knownEvents)
                     .LastOrDefault(entry => CeremonySting.IsCeremony(entry.kind)
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
@@ -327,6 +339,49 @@ namespace Gamesim.Episode
                     break;
             }
             return subjects;
+        }
+
+        /// <summary>
+        /// What the competition was for, named from the phase the command was issued in.
+        ///
+        /// <para>Read from the pre-commit phase rather than parsed out of the event sentence: the
+        /// committed phase has already advanced to whatever comes next, and picking the words back
+        /// out of "Competition winner: X · Skill." would couple the card to copy.</para>
+        /// </summary>
+        private static string AwardTitle(EpisodePhase phase)
+        {
+            switch (phase)
+            {
+                case EpisodePhase.HoH: return "Head of Household";
+                case EpisodePhase.Veto: return "Power of Veto";
+                case EpisodePhase.FinalHoHPart1: return "Final HoH · Part 1";
+                case EpisodePhase.FinalHoHPart2: return "Final HoH · Part 2";
+                case EpisodePhase.FinalHoHPart3: return "Final HoH · Part 3";
+                default: return "Competition";
+            }
+        }
+
+        /// <summary>The scored field, best first, straight from committed state.</summary>
+        private static List<CompetitionResult.Standing> CompetitionStandings(EpisodeState state)
+        {
+            var standings = new List<CompetitionResult.Standing>();
+            if (state?.competitionScores == null) return standings;
+
+            double best = double.MinValue;
+            string winner = null;
+            foreach (var entry in state.competitionScores)
+                if (entry.score > best) { best = entry.score; winner = entry.contestantId; }
+
+            foreach (var entry in state.competitionScores.OrderByDescending(x => x.score))
+            {
+                var actor = state.Find(entry.contestantId);
+                if (actor == null) continue;
+                standings.Add(new CompetitionResult.Standing(
+                    actor.name, entry.score, actor.id == winner, actor.id == state.playerId,
+                    CharacterPortraits.Get(
+                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+            }
+            return standings;
         }
 
         /// <summary>The two people on the block, with their faces, for the eviction reveal.</summary>
@@ -678,6 +733,7 @@ namespace Gamesim.Episode
             if (sting != null) sting.FontScale = largeText ? 1.2f : 1;
             if (takeover != null) takeover.FontScale = largeText ? 1.2f : 1;
             if (voteReveal != null) voteReveal.FontScale = largeText ? 1.2f : 1;
+            if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }
@@ -691,6 +747,7 @@ namespace Gamesim.Episode
             if (sting != null) sting.Cancel();
             if (takeover != null) takeover.Cancel();
             if (voteReveal != null) voteReveal.Cancel();
+            if (competitionCard != null) competitionCard.Cancel();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()
@@ -707,6 +764,7 @@ namespace Gamesim.Episode
             if (sting != null) { Destroy(sting.gameObject); sting = null; }
             if (takeover != null) { Destroy(takeover.gameObject); takeover = null; }
             if (voteReveal != null) { Destroy(voteReveal.gameObject); voteReveal = null; }
+            if (competitionCard != null) { Destroy(competitionCard.gameObject); competitionCard = null; }
         }
 
         public static string PhaseTitle(EpisodePhase phase)

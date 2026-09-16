@@ -138,6 +138,7 @@ namespace Gamesim.Tests.PlayMode
 
                     if (reveal == null
                         && group.GetComponent<CeremonySting>() == null
+                        && group.GetComponent<CompetitionResult>() == null
                         && group.GetComponent<CeremonyTakeover>() == null) continue;
                     if (group.alpha > 0.02f && group.alpha < 0.99f) waiting = true;
                 }

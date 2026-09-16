@@ -30,6 +30,8 @@ namespace Gamesim.Episode
         private CompetitionResult competitionCard;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
+        // What the last social command actually moved, so the panel can say so.
+        private double lastSocialDelta;
         private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
         private bool blockedRecovery, reducedMotion, muted, largeText, phaseOpen, settingsOpen, journalOpen;
         private bool challengeActive;
@@ -197,7 +199,7 @@ namespace Gamesim.Episode
         private void ClosePanelsInternal(bool render)
         {
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
-            focusedNpc = null; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
+            focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             if (cameraRig != null) { cameraRig.EndConversation(); cameraRig.ControlsEnabled = !blockedRecovery; }
@@ -219,6 +221,12 @@ namespace Gamesim.Episode
             // Who was still playing before this command. An eviction event says what happened
             // but not to whom, and diffing is more reliable than parsing the sentence back.
             var wasPhase = engine.Snapshot.phase;
+            // Trust toward whoever the player is talking to, before this command. The
+            // engine adjusts relationships by social stat and reciprocal rolls, so the
+            // committed difference is the only honest number to report.
+            double trustBefore = focusedNpc != null
+                ? engine.Snapshot.Score(engine.Snapshot.playerId, focusedNpc.Id)
+                : 0d;
             var wasActive = new HashSet<string>(engine.Snapshot.contestants
                 .Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id));
             // Player and NPC candidates share durable publication ordering. A phase
@@ -246,7 +254,11 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
-                if (focusedNpc != null) lastSocialAction = command.kind;
+                if (focusedNpc != null)
+                {
+                    lastSocialAction = command.kind;
+                    lastSocialDelta = result.state.Score(result.state.playerId, focusedNpc.Id) - trustBefore;
+                }
                 message += "  ·  Saved locally."; Project();
                 if (phaseOpen && wasYard != EpisodeEngine.IsCompetition(result.state.phase)) ClosePanels();
                 var kind = result.state.events.LastOrDefault()?.kind;
@@ -517,6 +529,7 @@ namespace Gamesim.Episode
                 var npc = state.Find(focusedNpc.Id);
                 hud.SpeakerTitle(npc.id, npc.name.ToUpperInvariant(), npc.pronouns + " · " + string.Join(" / ", npc.traits));
                 hud.NpcDialogue(state, npc.id, lastSocialAction);
+                if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
                 if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
                 { hud.Paragraph("The next ceremony is waiting. We can catch up during free time or campaigning."); return; }
                 if (state.oathOpportunities.Contains(npc.id))

@@ -73,6 +73,22 @@ namespace Gamesim.Tests.PlayMode
                 yield return OpenNearbyNpc(maya);
                 yield return SettlePanels();
                 yield return Shoot("walkthrough-03-conversation");
+
+                // 03b — the same conversation after a committed social action, which is the only
+                // state in which the outcome chip exists. Capturing only the opening frame would
+                // photograph a panel that can never show it.
+                var talk = director.GetComponentsInChildren<UnityEngine.UI.Button>(true)
+                    .FirstOrDefault(button => button.IsActive()
+                        && button.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                            .Any(label => label.text == "Spend time together"));
+                if (talk != null)
+                {
+                    talk.onClick.Invoke();
+                    yield return null; yield return null;
+                    yield return SettlePanels();
+                    yield return Shoot("walkthrough-03b-conversation-outcome");
+                }
+
                 director.ClosePanels();
                 yield return null;
             }

@@ -238,6 +238,37 @@ namespace Gamesim.Episode
             if (!string.IsNullOrEmpty(line)) FlowText("\"" + line + "\"",21,Paper).gameObject.name = "NPC spoken dialogue";
         }
 
+        /// <summary>
+        /// The result of the exchange as a chip, the way the web build reports it.
+        ///
+        /// <para>A conversation that changes a number silently reads as flavour text. This is the
+        /// committed difference in trust, not a predicted or nominal one — the engine scales every
+        /// delta by the actor's social stat and rolls a separate reciprocal value, so the figure a
+        /// design document would quote is routinely not the figure the save holds.</para>
+        ///
+        /// <para>Nothing is drawn when nothing moved. A chip reading "+0" would be worse than
+        /// silence: it implies the action was wasted when it may have done something the notebook
+        /// records elsewhere.</para>
+        /// </summary>
+        public void OutcomeChips(double trustDelta)
+        {
+            int rounded = Mathf.RoundToInt((float)trustDelta);
+            if (rounded == 0) return;
+
+            var row = new GameObject("Outcome",typeof(RectTransform)).GetComponent<RectTransform>();
+            row.SetParent(content,false);
+            row.gameObject.AddComponent<LayoutElement>().minHeight = 30f * FontScale;
+
+            var tint = rounded > 0 ? UiTheme.Accent : UiTheme.Danger;
+            var chip = Panel("Trust chip",row,new Color(tint.r,tint.g,tint.b,.18f));
+            Anchor(chip,new Vector2(0,1),new Vector2(0,1),new Vector2(4f,-1f),new Vector2(214f * FontScale,28f * FontScale));
+            chip.GetComponent<Image>().raycastTarget = false;
+
+            FixedText(chip,
+                (rounded > 0 ? "+" : "") + rounded + (rounded > 0 ? " trust gained" : " trust lost"),
+                15,tint,new Vector2(10f,-4f),new Vector2(194f * FontScale,20f * FontScale));
+        }
+
         public void JuryQuestioning(EpisodeState state)
         {
             Paragraph("Public questions and recorded answers. A response is not a guaranteed jury vote.");

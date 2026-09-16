@@ -52,6 +52,19 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JToken.DeepEquals(a, b), Is.True, "Preparing private ballots changed unrelated authoritative state.");
         }
 
+        /// <summary>
+        /// Replays the frozen witness and requires the engine to reproduce it exactly.
+        ///
+        /// <para><b>The witness was re-recorded once, deliberately, on 2026-09-16.</b> The player's
+        /// contestant is named "You", so sentences built as name-plus-verb committed "You saves You"
+        /// and "Jamie Roberts nominates You". Two strings changed — events[8] and events[14] — and
+        /// nothing else: the re-recording moved the file by four bytes, which is exactly the length
+        /// difference between "saves You" and "save yourself". No score, vote, relationship or
+        /// ordering moved, because only the human-readable sentence was wrong.</para>
+        ///
+        /// <para>If this test fails again, that is the whole point of it. Re-record only when the
+        /// change to committed output is intended, and say here what moved and why.</para>
+        /// </summary>
         [Test]
         public void LegalPactReplayMatchesOriginalSourceAndChangesTargetThroughPrivatePressure()
         {

@@ -58,8 +58,13 @@ namespace Gamesim.Tests.PlayMode
                     && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(after.playerId)));
                 if (committed == null) continue;
 
-                // Let the card finish its entrance before reading or photographing it.
+                // Let both cards finish their entrance before reading or photographing them.
+                // A fixed frame count is not enough: batchmode advances frames far faster than
+                // real time, so 25 frames is a fraction of a 0.30s fade and the capture comes back
+                // uniformly washed — which reads as a rendering defect rather than as a stopwatch
+                // problem. Wait on the alpha itself.
                 for (int frame = 0; frame < 25; frame++) yield return null;
+                yield return SettleCeremonyCards();
 
                 var headline = StingText(sting, "Sting headline");
                 var detail = StingText(sting, "Sting detail");
@@ -78,6 +83,31 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(outstanding, Is.Empty,
                 "These ceremonies never showed a card during a played episode: " + string.Join(", ", outstanding));
+        }
+
+        /// <summary>
+        /// Waits until every ceremony card that is playing has finished fading in.
+        ///
+        /// <para>Bounded, and it gives up rather than failing: a card that is already past its hold
+        /// is a real thing to photograph, and blocking forever on one would turn a timing quirk into
+        /// a hung suite.</para>
+        /// </summary>
+        private static IEnumerator SettleCeremonyCards()
+        {
+            const int limit = 240;
+            for (int frame = 0; frame < limit; frame++)
+            {
+                bool rising = false;
+                foreach (var group in Object.FindObjectsByType<CanvasGroup>(
+                             FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                {
+                    if (group.GetComponent<CeremonySting>() == null
+                        && group.GetComponent<CeremonyTakeover>() == null) continue;
+                    if (group.alpha > 0.02f && group.alpha < 0.99f) rising = true;
+                }
+                if (!rising) yield break;
+                yield return null;
+            }
         }
 
         /// <summary>

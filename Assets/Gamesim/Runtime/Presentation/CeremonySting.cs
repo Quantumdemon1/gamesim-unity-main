@@ -51,7 +51,7 @@ namespace Gamesim.Presentation
         /// This was found by playing an episode and looking at the frame: a centred 880-wide card
         /// drew straight over the Notebook button during every ceremony.
         /// </summary>
-        private const float LeftInset = 24f + 330f + 16f;   // left column margin, width, gap
+        private const float LeftInset = Episode.EpisodeHud.LeftColumnX + 330f + 16f; // column start, width, gap
         private const float RightInset = 24f + 465f + 16f;  // navigation margin, width, gap
         private const float TopInset = 18f;
         private const float HeadlineSize = 34f;

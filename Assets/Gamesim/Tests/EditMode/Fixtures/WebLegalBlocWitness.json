@@ -847,7 +847,7 @@
         "week": 1,
         "phase": 2,
         "kind": "nomination",
-        "text": "Jamie Roberts nominates You and Taylor Kim.",
+        "text": "Jamie Roberts nominates you and Taylor Kim.",
         "audienceIds": []
       },
       {
@@ -895,7 +895,7 @@
         "week": 1,
         "phase": 5,
         "kind": "veto",
-        "text": "You saves You; Casey Wilson is the replacement nominee.",
+        "text": "You save yourself; Casey Wilson is the replacement nominee.",
         "audienceIds": []
       },
       {

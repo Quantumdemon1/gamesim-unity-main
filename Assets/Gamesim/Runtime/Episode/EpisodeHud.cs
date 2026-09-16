@@ -81,6 +81,12 @@ namespace Gamesim.Episode
             scaler.referenceResolution = new Vector2(1600,900); scaler.matchWidthOrHeight = .5f;
         }
 
+        /// <summary>
+        /// Where the panel column starts: clear of the cast rail's gutter. The ceremony card insets
+        /// against this too, so it lives here rather than as a literal in two places.
+        /// </summary>
+        public const float LeftColumnX = 14f + CastRail.Width + 12f;
+
         public void Begin(EpisodeState state, string message, bool recovery, bool open)
         {
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
@@ -92,10 +98,15 @@ namespace Gamesim.Episode
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
+            // The cast rail owns the far-left gutter, so the panel column starts to the right of it.
+            // Six faces on screen at all times is what makes the rest of the HUD able to say "the
+            // replacement nominee" and have that mean a person rather than a name.
+            CastRail.Build(canvas.transform, state, FontScale, font, Portrait);
+
             var leftColumn = new GameObject("Left column",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>();
             leftColumn.SetParent(canvas.transform,false);
             leftColumn.anchorMin = new Vector2(0,1); leftColumn.anchorMax = new Vector2(0,1); leftColumn.pivot = new Vector2(0,1);
-            leftColumn.anchoredPosition = new Vector2(24,-24);
+            leftColumn.anchoredPosition = new Vector2(LeftColumnX,-24);
             var columnLayout = leftColumn.GetComponent<VerticalLayoutGroup>();
             columnLayout.spacing = 16; columnLayout.childControlWidth = true; columnLayout.childControlHeight = true;
             columnLayout.childForceExpandWidth = false; columnLayout.childForceExpandHeight = false;

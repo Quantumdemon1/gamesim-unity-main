@@ -217,8 +217,10 @@ namespace Gamesim.Simulation
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
                     s.oathOpportunities.Remove(evicted);
-                    Log(s, "eviction", Name(s, evicted) + " is evicted and joins this six-person season's jury.");
-                    foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict " + Name(s, vote.targetId) + ". " + vote.reason);
+                    Log(s, "eviction", Name(s, evicted) + Verb(s, evicted, " is evicted and joins ", " are evicted and join ")
+                        + "this six-person season's jury.");
+                    foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict "
+                        + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason);
                     PreparePostEvictionDiary(s, evicted);
                     break;
                 case EpisodePhase.FinalEviction:
@@ -298,7 +300,8 @@ namespace Gamesim.Simulation
             Require(first != second && eligible.Contains(first ?? "") && eligible.Contains(second ?? ""), "Choose two distinct eligible houseguests.");
             s.nominees = new List<string> { first, second };
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
-            Log(s, "nomination", Name(s, s.hohId) + " nominates " + Name(s, first) + " and " + Name(s, second) + ".");
+            Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
+                + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
         }
 
         private static void NominationEffects(EpisodeState s, string id, bool initial = true)
@@ -332,12 +335,15 @@ namespace Gamesim.Simulation
                 if (s.hohId != s.playerId) replacement = ReplacementCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).First().id;
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
-                Change(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Name(s, saved));
-                Change(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Name(s, replacement) + " as replacement nominee");
-                if (s.hohId != s.vetoHolderId) Change(s, replacement, s.vetoHolderId, -15, Name(s, s.vetoHolderId) + " used POV forcing " + Name(s, replacement) + " on the block");
-                Log(s, "veto", Name(s, s.vetoHolderId) + " saves " + Name(s, saved) + "; " + Name(s, replacement) + " is the replacement nominee.");
+                Change(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId));
+                Change(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee");
+                if (s.hohId != s.vetoHolderId) Change(s, replacement, s.vetoHolderId, -15, Name(s, s.vetoHolderId) + " used POV forcing " + Target(s, replacement, s.vetoHolderId) + " on the block");
+                Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " saves ", " save ")
+                    + Target(s, saved, s.vetoHolderId) + "; " + TargetStart(s, replacement, s.vetoHolderId)
+                    + Verb(s, replacement, " is", " are") + " the replacement nominee.");
             }
-            else Log(s, "veto", Name(s, s.vetoHolderId) + " declines to use the veto. Nominations stand.");
+            else Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " declines ", " decline ")
+                + "to use the veto. Nominations stand.");
             s.vetoResolved = true;
         }
 
@@ -359,7 +365,9 @@ namespace Gamesim.Simulation
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
             s.oathOpportunities.Clear(); // No social oath decisions remain after final eviction.
             s.votes.Clear();
-            Log(s, "final-eviction", Name(s, s.hohId) + " takes " + Name(s, selected) + " to the final two. " + Name(s, target) + " joins the jury.");
+            Log(s, "final-eviction", Name(s, s.hohId) + Verb(s, s.hohId, " takes ", " take ")
+                + Target(s, selected, s.hohId) + " to the final two. " + TargetStart(s, target, s.hohId)
+                + Verb(s, target, " joins", " join") + " the jury.");
             Phase(s, EpisodePhase.JuryQuestioning);
             s.juryExchanges.Clear(); s.juryQuestionIndex = 0;
             PrepareJuryQuestion(s);
@@ -378,7 +386,8 @@ namespace Gamesim.Simulation
                 double secondScore = s.Score(juror.id, finalists[1].id) + Roll(s) * 20 - 10;
                 var preferred = firstScore > secondScore ? finalists[0] : finalists[1];
                 s.votes.Add(new VoteState { voterId = juror.id, targetId = preferred.id, reason = "Personal trust and this juror's final impression." });
-                Log(s, "jury-vote", Name(s, juror.id) + " votes for " + preferred.name + " to win.");
+                Log(s, "jury-vote", Name(s, juror.id) + Verb(s, juror.id, " votes for ", " vote for ")
+                    + Target(s, preferred.id, juror.id) + " to win.");
             }
             if (!s.Active.Any(c => c.id == s.playerId) && !s.votes.Any(v => v.voterId == s.playerId))
             {
@@ -532,6 +541,32 @@ namespace Gamesim.Simulation
         }
 
         private static string Name(EpisodeState s, string id) => s.Find(id)?.name ?? "Unknown housemate";
+
+        /// <summary>
+        /// Second-person verb agreement.
+        ///
+        /// <para>The player's contestant is literally named "You", so every sentence built as
+        /// <c>Name(...) + " verbs "</c> read "You is evicted", "You nominates", "You saves You". It
+        /// was in the committed event text, so it reached the status line, the notebook, the
+        /// ceremony card and the eviction — the one line the whole run is supposed to land on.</para>
+        /// </summary>
+        private static string Verb(EpisodeState s, string id, string third, string second)
+            => id == s.playerId ? second : third;
+
+        /// <summary>
+        /// The object form of a houseguest: their name, "you", or "yourself" when the actor is
+        /// acting on themselves.
+        /// </summary>
+        private static string Target(EpisodeState s, string id, string actorId)
+            => id != s.playerId ? Name(s, id) : (id == actorId ? "yourself" : "you");
+
+        /// <summary>The same, for a pronoun that opens a sentence.</summary>
+        private static string TargetStart(EpisodeState s, string id, string actorId)
+        {
+            var value = Target(s, id, actorId);
+            return value.Length == 0 ? value : char.ToUpperInvariant(value[0]) + value.Substring(1);
+        }
+
         private static void Phase(EpisodeState s, EpisodePhase phase) { s.phase = phase; Log(s, "phase", "Week " + s.week + " · " + phase); }
         private static void Log(EpisodeState s, string kind, string text, params string[] audience)
         {

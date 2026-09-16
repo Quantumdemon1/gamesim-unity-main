@@ -105,6 +105,7 @@ namespace Gamesim.Tests.PlayMode
                 // Let a ceremony card finish its entrance, so the beat is photographed staged rather
                 // than mid-animation.
                 for (int frame = 0; frame < 30; frame++) yield return null;
+                yield return SettleCeremonyCards();
 
                 yield return Shoot("walkthrough-" + index.ToString("00") + "-" + label);
                 LogBeat(label, director.Snapshot);
@@ -115,6 +116,7 @@ namespace Gamesim.Tests.PlayMode
             if (final.phase == EpisodePhase.Finished && photographed.Add(EpisodePhase.Finished))
             {
                 for (int frame = 0; frame < 30; frame++) yield return null;
+                yield return SettleCeremonyCards();
                 yield return Shoot("walkthrough-" + index.ToString("00") + "-aftermath");
                 LogBeat("aftermath", final);
             }

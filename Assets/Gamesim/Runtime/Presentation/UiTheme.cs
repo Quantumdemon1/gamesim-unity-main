@@ -73,6 +73,54 @@ namespace Gamesim.Presentation
             image.raycastTarget = false;
         }
 
+        private static Sprite circle;
+
+        /// <summary>
+        /// A plain filled disc, drawn once and shared.
+        ///
+        /// <para>The rounded-rect sprites above are 9-sliced, which makes them the wrong tool for a
+        /// circle: a radius large enough to round a 56px box gives slice borders wider than the box
+        /// itself, and the centre collapses. This is full-rect, so it scales to any size and stays
+        /// round — used for portrait frames and status pips, where the broadcast look wants circles
+        /// rather than rounded squares.</para>
+        /// </summary>
+        public static Sprite Circle()
+        {
+            if (circle != null) return circle;
+
+            const int size = 128;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Circle",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+
+            const float half = size * 0.5f;
+            const float radius = half - 1f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x + 0.5f - half;
+                    float dy = y + 0.5f - half;
+                    // The trailing half-pixel is the anti-aliasing term, as in Build above.
+                    float alpha = Mathf.Clamp01(0.5f - (Mathf.Sqrt(dx * dx + dy * dy) - radius));
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+
+            circle = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, .5f), 100f, 0,
+                SpriteMeshType.FullRect);
+            circle.name = texture.name;
+            circle.hideFlags = HideFlags.HideAndDontSave;
+            return circle;
+        }
+
         private static Sprite Fill(int radius) => Cached(FillCache, radius, false);
         private static Sprite OutlineSprite(int radius) => Cached(OutlineCache, radius, true);
 

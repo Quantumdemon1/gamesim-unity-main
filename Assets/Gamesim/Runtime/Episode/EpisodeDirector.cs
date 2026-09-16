@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Gamesim.House;
@@ -24,6 +25,7 @@ namespace Gamesim.Episode
         private EpisodeSaveStore saves;
         private EpisodeHud hud;
         private CeremonySting sting;
+        private CeremonyTakeover takeover;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
@@ -86,6 +88,7 @@ namespace Gamesim.Episode
             largeText = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.LargeText", 0) == 1;
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
+            takeover = CeremonyTakeover.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
         }
@@ -209,6 +212,10 @@ namespace Gamesim.Episode
             // A single command can append several events. Remembering where the log ended lets the
             // ceremony card look at everything this commit produced rather than only its last line.
             int knownEvents = engine.Snapshot.events.Count;
+            // Who was still playing before this command. An eviction event says what happened
+            // but not to whom, and diffing is more reliable than parsing the sentence back.
+            var wasActive = new HashSet<string>(engine.Snapshot.contestants
+                .Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id));
             // Player and NPC candidates share durable publication ordering. A phase
             // transition cancels invalid NPC activity inside this same saved candidate.
             var candidate = new EpisodeEngine(engine.Snapshot);
@@ -249,10 +256,64 @@ namespace Gamesim.Episode
                 var ceremony = result.state.events.Skip(knownEvents)
                     .LastOrDefault(entry => CeremonySting.IsCeremony(entry.kind)
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
-                if (sting != null && ceremony != null)
-                    sting.Play(ceremony.kind, ceremony.text, reducedMotion);
+                if (ceremony != null)
+                {
+                    // The takeover opens the scene and the sting reports the result, so they play
+                    // together rather than instead of each other: the card is over by the time the
+                    // strip has finished its own entrance.
+                    if (takeover != null)
+                        takeover.Play(ceremony.kind, result.state.week,
+                            CeremonySubjects(result.state, ceremony.kind, wasActive), reducedMotion);
+                    if (sting != null) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
+                }
             }
             Render(); return result;
+        }
+
+        /// <summary>
+        /// The faces a ceremony card should show, read from committed state rather than from the
+        /// event sentence.
+        ///
+        /// <para>Every subject is checked against the same audience rule the card text already
+        /// passes. A portrait is a stronger disclosure than a name — it says unambiguously who,
+        /// where prose can be vague — so the rail and this list stay inside what the player is
+        /// entitled to know.</para>
+        /// </summary>
+        private List<CeremonyTakeover.Subject> CeremonySubjects(
+            EpisodeState state, string kind, HashSet<string> wasActive)
+        {
+            var subjects = new List<CeremonyTakeover.Subject>();
+            if (state == null) return subjects;
+
+            void Add(string id, string badge)
+            {
+                var actor = state.Find(id);
+                if (actor == null) return;
+                subjects.Add(new CeremonyTakeover.Subject(actor.name, badge,
+                    CharacterPortraits.Get(
+                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+            }
+
+            switch (kind)
+            {
+                case CeremonySting.NominationKind:
+                case CeremonySting.VetoKind:
+                    if (state.nominees != null)
+                        foreach (var id in state.nominees) Add(id, "NOMINATED");
+                    break;
+                case CeremonySting.EvictionKind:
+                    // Whoever stopped being active during this commit. Usually one person; the
+                    // loop rather than a Single() because a double eviction would still be true.
+                    foreach (var actor in state.contestants)
+                        if (actor.status != ContestantStatus.Active && wasActive != null && wasActive.Contains(actor.id))
+                            Add(actor.id, "EVICTED");
+                    break;
+                case CeremonySting.WinnerKind:
+                    Add(state.winnerId, "WINNER");
+                    Add(state.runnerUpId, "RUNNER-UP");
+                    break;
+            }
+            return subjects;
         }
 
         private void Commit(EpisodeState origin, EpisodeCommandKind kind, string target = null, string second = null, bool veto = false, double performance = 0, string text = null)
@@ -557,6 +618,7 @@ namespace Gamesim.Episode
             cameraRig?.SetReducedMotion(reducedMotion);
             if (hud != null) { hud.FontScale = largeText ? 1.2f : 1; hud.ReducedMotion = reducedMotion; }
             if (sting != null) sting.FontScale = largeText ? 1.2f : 1;
+            if (takeover != null) takeover.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }
@@ -568,6 +630,7 @@ namespace Gamesim.Episode
             // Sibling scene roots may already be destroyed during unloading. Never rebuild UI here.
             ClosePanelsInternal(false); if (hud != null) hud.SetVisible(false);
             if (sting != null) sting.Cancel();
+            if (takeover != null) takeover.Cancel();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()
@@ -582,6 +645,7 @@ namespace Gamesim.Episode
             DisposeNpcSocialWorld();
             if (hud != null) Destroy(hud);
             if (sting != null) { Destroy(sting.gameObject); sting = null; }
+            if (takeover != null) { Destroy(takeover.gameObject); takeover = null; }
         }
 
         public static string PhaseTitle(EpisodePhase phase)

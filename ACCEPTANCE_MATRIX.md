@@ -232,6 +232,29 @@ against; run to impressions, it produces a feeling.
 | E4 | Loss is intentional | Play a losing run | the ending reads as an ending, not a failure state |
 | E5 | Visual bar | Art review of the pinned build | house and cast read as one production, not placeholder plus asset pack |
 
+### Result — not yet run
+
+No session has been held. The rows below are blank on purpose: an unrun criterion and a criterion
+recorded as passing without a number behind it are indistinguishable once the blank is filled in
+optimistically, so they stay empty until a real session fills them.
+
+- **Build under test:** `D:\GamesimAcceptance\Builds\Port-Windows-V7\Gamesim.exe`
+- **Cast configuration:** authored prefabs (the committed scene). Note it here if the UMA cast is
+  substituted — E5 answers differently for each.
+- **Date:** —
+- **Participants:** 0 of the 3 E2 requires
+
+| # | Result | Raw numbers | Notes |
+|---|---|---|---|
+| E1 | not run | — | minutes per participant, and where the time went |
+| E2 | not run | — | every stall: what they tried, what unstuck them |
+| E3 | not run | — | their account in their words, against the committed events |
+| E4 | not run | — | needs a participant actually evicted; do not stage it |
+| E5 | not run | — | judge framing, not bodies; see the two known issues in the protocol |
+
+Record failures with their numbers. A 22-minute run and a 70-minute run both miss E1 and mean
+opposite things.
+
 ## Out of scope for this matrix
 
 Recorded so absence is not mistaken for failure. These are not V7 gates:
@@ -251,6 +274,7 @@ Recorded so absence is not mistaken for failure. These are not V7 gates:
 4. Run A4–A8 against that executable.
 5. Record C1–C4 from one unbroken profile, plus C5 with a full UMA house.
 6. Walk D1–D6 by hand and capture the three resolutions.
-7. Schedule E1–E6. Only then is the build accepted.
+7. Schedule E1–E5 and write the raw numbers into the result block above. Only then is the build
+   accepted.
 8. Retain every log, including failures. The V6 record keeps its failed runs on purpose, and that is
    the practice worth continuing.

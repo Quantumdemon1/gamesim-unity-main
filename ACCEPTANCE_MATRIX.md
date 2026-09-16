@@ -104,7 +104,7 @@ The expected headless result is **114/0/0**. Anything else is a real regression.
 | B5c | UMA body replaces the fallback | `BuiltBody_ReplacesThePrimitiveRigRatherThanJoiningIt` | no primitive rig under a UMA houseguest | **passed** |
 | B6 | UMA shading matches the set | `BuiltBody_IsFlattenedTowardTheHouseLook` | smoothness ≤ 0.1, metallic 0, bump scale 0 | **passed** |
 | B6b | UMA proportions match the set | `Houseguest_BuildsARiggedBodyOfHumanProportions` | stylised height 1.5–1.85 m, every house DNA value applied | **passed** — 1.72 m, from 2.05 m un-stylised |
-| B6c | The cast reads at gameplay distance | `Accessibility_ReportsHowLargeTheCastReadsOnScreen` | houseguests legible at the default camera | **measured, and it is a camera problem** — see below |
+| B6c | The cast reads at gameplay distance | `Accessibility_ReportsHowLargeTheCastReadsOnScreen` | houseguests legible at the default camera | **measured; default kept at 24 by decision** — see below |
 | B7 | UMA is genuinely optional | Clone without `Assets/UMA`, committed settings | project compiles, Edit Mode green, define stays off | **passed** — 0 errors, 678/678 |
 | B8 | UMA does not regress the suite | Full Edit + Play suites with UMA installed | A1 and A2 still hold | **passed** — 678/0/0 and 114/0/0 with UMA installed |
 | B9 | The seam defaults to the project's own body | `CharacterBodyProviderPlayModeTests` | no provided body appears unless a provider supplied one, and no test leaks a provider | **passed** |
@@ -140,10 +140,12 @@ legibility has no standard, and inventing a threshold here would dress a prefere
 `Accessibility_ComparesCameraFramings` renders the house at the rig's default of 24, its midpoint and
 its minimum of 10, writing `camera-distance-*.png`. The comparison settles which half of the problem
 is real: **at 17 a houseguest reads clearly — hair, clothing, skin tone, a legible name label — and at
-24 the same character is eight pixels.** The cast is not the problem and never was. The rig already
-allows 10 to 34, so nothing needs building; the only question is where it starts, and that is the
-single change most likely to move E1, E2 and E5. Worth deciding before spending a session of testers
-on the current default.
+24 the same character is eight pixels.** The cast is not the problem and never was.
+
+**Decided: the default stays at 24.** Starting wide is the intended first impression, with the player
+zooming in from there. B6c is therefore closed as a deliberate choice rather than an open defect — but
+it is the assumption the playtest is most likely to test, so E2 should note whether participants find
+the zoom without being told.
 
 B9 says "the project's own body", not "the primitive rig", on purpose. The fallback is an authored
 prefab from `Resources/GamesimCharacters/` when the persona has one and the primitive rig when it

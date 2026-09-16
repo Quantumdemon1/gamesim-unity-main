@@ -6,15 +6,17 @@ session run to this protocol produces evidence a later session can be compared a
 
 Everything else in `ACCEPTANCE_MATRIX.md` passes. This is what remains.
 
-## Settle the camera first
+## The camera default is decided: it stays at 24
 
 `HouseCameraRig.distance` starts at 24 and allows 10 to 34. At 24 a houseguest is about eight pixels
 tall; at 17 the same character reads clearly, with hair, clothing, skin tone and a legible name label.
-Compare `camera-distance-24.png`, `-17.png` and `-10.png`, produced by
-`Accessibility_ComparesCameraFramings`.
+`Accessibility_ComparesCameraFramings` renders all three for comparison.
 
-Decide this before running anyone. E1, E2 and E5 all depend on it, and a session run against a
-starting framing you are about to change is a session spent twice.
+**Starting wide is the intended first impression** and the player zooms in from there. Run the session
+against that default rather than a modified one.
+
+Watch for it during E2 though: if participants stall because they cannot tell who is who, note whether
+they discover the zoom on their own. That is the specific thing this decision is betting on.
 
 ## Before the session
 

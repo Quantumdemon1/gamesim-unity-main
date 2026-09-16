@@ -131,18 +131,16 @@ Verifying it surfaced a genuine defect that the prefab cast never exposed: house
 **invisible for the half-second UMA takes to assemble**. `CharacterPresentation` now shows the
 authored body as a stand-in from the attach frame and retires it the frame the real body can draw.
 
-### A decision the measurement surfaced
+### A decision the measurement surfaced, now taken
 
-**The default camera distance is worth deciding on, and there is nothing to build.** `HouseCameraRig`
-already allows 10 to 34 units and starts at 24. `Accessibility_ComparesCameraFramings` renders all
-three, and the comparison is stark: **at 17 a houseguest reads clearly — hair, clothing, skin tone, a
-legible name label — and at 24 the same character is eight pixels.**
+`HouseCameraRig` allows 10 to 34 units and starts at 24. `Accessibility_ComparesCameraFramings`
+renders all three, and the comparison is stark: **at 17 a houseguest reads clearly — hair, clothing,
+skin tone, a legible name label — and at 24 the same character is eight pixels.**
 
-The slice contract asks for character selection and cinematic close-ups during conversations, which
-the default framing cannot deliver and the midpoint can. Starting wide may still be the right first
-impression, but it is now a choice between rendered alternatives rather than an impression, and it is
-the single change most likely to move E1, E2 and E5 — worth settling before spending a session of
-testers on the current default.
+**Decided: the default stays at 24.** Starting wide is the intended first impression and the player
+zooms in from there. Recorded here because the measurement made it a choice rather than an accident,
+and because it is the assumption most exposed by the playtest: if participants stall on telling
+houseguests apart, whether they find the zoom unprompted is the thing to watch.
 
 ### Still unproven
 

@@ -73,11 +73,11 @@ namespace Gamesim.Presentation
         /// competition the engine scored differently degrades to the status line instead of to a
         /// blank takeover.
         /// </summary>
-        public bool Play(string award, int week, IList<Standing> standings, bool reducedMotion)
+        public bool Play(string award, string category, int week, IList<Standing> standings, bool reducedMotion)
         {
             if (standings == null || standings.Count == 0) return false;
 
-            Build(award, week, standings);
+            Build(award, category, week, standings);
             reduced = reducedMotion;
             elapsed = 0f;
             playing = true;
@@ -122,7 +122,7 @@ namespace Gamesim.Presentation
             column.anchoredPosition = new Vector2(0f, (1f - eased) * -Rise);
         }
 
-        private void Build(string award, int week, IList<Standing> standings)
+        private void Build(string award, string category, int week, IList<Standing> standings)
         {
             var root = (RectTransform)transform;
             if (column != null)
@@ -166,6 +166,33 @@ namespace Gamesim.Presentation
 
             Standing winner = standings[0];
             for (int i = 0; i < standings.Count; i++) if (standings[i].IsWinner) winner = standings[i];
+
+            // The banner: the result stated once, loudly, before any of the detail. A player who
+            // looks away and back should be able to read the outcome without parsing the board.
+            var banner = HudPrimitives.Fill("Winner banner", column, UiTheme.Gold, UiTheme.PanelRadius);
+            Place(banner, width * scale, 62f * scale, ref y);
+            var bannerText = HudPrimitives.Label("Winner banner text", banner, 26f * scale,
+                UiTheme.OnColor(UiTheme.Gold), TextAlignmentOptions.Center);
+            bannerText.text = winner.IsPlayer ? "You win!" : winner.Name + " wins!";
+            bannerText.rectTransform.anchorMin = Vector2.zero;
+            bannerText.rectTransform.anchorMax = Vector2.one;
+            bannerText.rectTransform.offsetMin = Vector2.zero;
+            bannerText.rectTransform.offsetMax = Vector2.zero;
+            y -= 12f * scale;
+
+            if (!string.IsNullOrEmpty(category))
+            {
+                var pill = HudPrimitives.Fill("Category", column, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .20f), 10);
+                Place(pill, 132f * scale, 24f * scale, ref y);
+                var pillText = HudPrimitives.Label("Category text", pill, 13f * scale, UiTheme.Accent, TextAlignmentOptions.Center);
+                pillText.text = category.ToUpperInvariant();
+                pillText.characterSpacing = 6f;
+                pillText.rectTransform.anchorMin = Vector2.zero;
+                pillText.rectTransform.anchorMax = Vector2.one;
+                pillText.rectTransform.offsetMin = Vector2.zero;
+                pillText.rectTransform.offsetMax = Vector2.zero;
+                y -= 10f * scale;
+            }
 
             float portrait = 92f * scale;
             var rim = HudPrimitives.Portrait(column, winner.Portrait, UiTheme.Gold, portrait, 5f * scale, false);

@@ -37,6 +37,8 @@ namespace Gamesim.Tests.EditMode
             AssertContrast(UiTheme.Warning, UiTheme.Ink, BodyMinimum, "recovery warning copy");
             AssertContrast(UiTheme.Danger, UiTheme.Ink, BodyMinimum, "danger copy");
             AssertContrast(UiTheme.Gold, UiTheme.Ink, BodyMinimum, "gold copy");
+            AssertContrast(UiTheme.Positive, UiTheme.Ink, BodyMinimum, "allied-relationship copy");
+            AssertContrast(UiTheme.Positive, UiTheme.Surface, BodyMinimum, "allied-relationship copy on a panel");
         }
 
         [Test]

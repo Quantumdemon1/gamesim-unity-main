@@ -269,6 +269,19 @@ namespace Gamesim.Episode
                 15,tint,new Vector2(10f,-4f),new Vector2(194f * FontScale,20f * FontScale));
         }
 
+        /// <summary>
+        /// Adds the relationship graph to the current panel.
+        ///
+        /// <para>Placed above the list it summarises rather than instead of it. The graph answers
+        /// "where do I stand" at a glance; the list still carries the exact numbers, and a player
+        /// deciding a nomination wants both.</para>
+        /// </summary>
+        public void SocialGraphPanel(EpisodeState state)
+        {
+            if (content == null || state == null) return;
+            SocialGraph.Build(content, state, FontScale, font, Portrait);
+        }
+
         public void JuryQuestioning(EpisodeState state)
         {
             Paragraph("Public questions and recorded answers. A response is not a guaranteed jury vote.");

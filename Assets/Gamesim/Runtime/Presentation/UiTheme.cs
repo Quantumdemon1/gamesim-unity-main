@@ -27,6 +27,7 @@ namespace Gamesim.Presentation
         public static readonly Color Gold = Hex("FFC726");     // competition rings
         public static readonly Color Warning = Hex("FF8A5C");   // recovery / caution copy
         public static readonly Color Danger = Hex("FF6B6B");    // softened from the set's FF1A1A
+        public static readonly Color Positive = Hex("5BE49B");  // the yard's green, for allied relationships
         public static readonly Color Paper = Hex("F2F5FA");
         public static readonly Color Muted = Hex("94A7B8");
 

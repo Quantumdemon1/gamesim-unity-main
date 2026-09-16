@@ -221,6 +221,7 @@ namespace Gamesim.Episode
             // Who was still playing before this command. An eviction event says what happened
             // but not to whom, and diffing is more reliable than parsing the sentence back.
             var wasPhase = engine.Snapshot.phase;
+            var wasWeek = engine.Snapshot.week;
             // Trust toward whoever the player is talking to, before this command. The
             // engine adjusts relationships by social stat and reciprocal rolls, so the
             // committed difference is the only honest number to report.
@@ -276,7 +277,8 @@ namespace Gamesim.Episode
                     .LastOrDefault(entry => entry.kind == "competition"
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (competition != null && competitionCard != null)
-                    competitionCard.Play(AwardTitle(wasPhase), result.state.week,
+                    competitionCard.Play(AwardTitle(wasPhase),
+                        EpisodeEngine.CompetitionCategory(wasPhase, wasWeek), result.state.week,
                         CompetitionStandings(result.state), reducedMotion);
 
                 var ceremony = result.state.events.Skip(knownEvents)
@@ -505,7 +507,9 @@ namespace Gamesim.Episode
             if (journalOpen)
             {
                 hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
-                hud.Paragraph("Relationships are your own perspective; another housemate may feel differently.");
+                // The graph carries the caveat in its own legend, so repeating it here would be the
+                // same sentence twice within one screen.
+                hud.SocialGraphPanel(state);
                 foreach (var c in state.contestants.Where(c => !c.isPlayer)) hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
                 hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
                 // Aggregate source arcs have no participant/knowledge provenance.

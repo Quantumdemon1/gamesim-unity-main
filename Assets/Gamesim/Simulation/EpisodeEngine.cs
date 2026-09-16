@@ -244,11 +244,26 @@ namespace Gamesim.Simulation
             }
         }
 
+        /// <summary>
+        /// Which discipline a competition tests, from the phase and the week.
+        ///
+        /// <para>Public because the result card names it, and a second copy of this expression in the
+        /// presentation layer is how the card would eventually announce "Endurance" over a set of
+        /// scores the engine rolled as "Mental". It is a pure function of committed state, so the
+        /// card recomputes rather than reading the category back out of the event sentence.</para>
+        /// </summary>
+        public static string CompetitionCategory(EpisodePhase phase, int week)
+        {
+            if (phase == EpisodePhase.FinalHoHPart1) return "Endurance";
+            if (phase == EpisodePhase.FinalHoHPart2) return "Skill";
+            if (phase == EpisodePhase.FinalHoHPart3) return "Mental";
+            return week % 3 == 1 ? "Skill" : week % 3 == 2 ? "Mental" : "Endurance";
+        }
+
         private static void ResolveCompetition(EpisodeState s, double performance)
         {
             var players = CompetitionPlayers(s).ToArray(); Require(players.Length > 0, "No eligible competitors.");
-            string category = s.phase == EpisodePhase.FinalHoHPart1 ? "Endurance" : s.phase == EpisodePhase.FinalHoHPart2 ? "Skill" :
-                s.phase == EpisodePhase.FinalHoHPart3 ? "Mental" : s.week % 3 == 1 ? "Skill" : s.week % 3 == 2 ? "Mental" : "Endurance";
+            string category = CompetitionCategory(s.phase, s.week);
             s.competitionScores.Clear();
             if (s.phase == EpisodePhase.FinalHoHPart1)
             {

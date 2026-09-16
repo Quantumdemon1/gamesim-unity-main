@@ -48,19 +48,23 @@ namespace Gamesim.Editor
             try
             {
                 var world = new GameObject("House Architecture");
-                var wall = Material("Walls", new Color(0.80f, 0.83f, 0.81f));
+                var wall = Material("Walls", new Color(0.105f, 0.115f, 0.125f));
                 var wood = Material("Warm Oak", new Color(0.48f, 0.31f, 0.19f));
-                var tile = Material("Kitchen Stone", new Color(0.40f, 0.52f, 0.54f));
-                var bedroom = Material("Bedroom Floor", new Color(0.43f, 0.43f, 0.54f));
-                var privateFloor = Material("Private Room Floor", new Color(0.35f, 0.50f, 0.45f));
-                var grass = Material("Yard", new Color(0.24f, 0.41f, 0.31f));
+                // Shell tones above are the darkened broadcast values. They are only used
+                // when a material asset does not exist yet, but leaving the old bright ones
+                // here meant a regenerated set would silently come back as the pastel house.
+                var livingFloor = Material("Living Room Floor", new Color(0.105f, 0.080f, 0.060f));
+                var tile = Material("Kitchen Stone", new Color(0.080f, 0.105f, 0.115f));
+                var bedroom = Material("Bedroom Floor", new Color(0.085f, 0.085f, 0.130f));
+                var privateFloor = Material("Private Room Floor", new Color(0.070f, 0.105f, 0.095f));
+                var grass = Material("Yard", new Color(0.055f, 0.110f, 0.080f));
                 var dark = Material("Ink", new Color(0.065f, 0.11f, 0.15f));
                 var mint = Material("Mint", new Color(0.26f, 0.76f, 0.65f));
                 var coral = Material("Coral", new Color(0.88f, 0.42f, 0.32f));
                 var cream = Material("Linen", new Color(0.88f, 0.82f, 0.66f));
                 var brass = Material("Brass", new Color(0.77f, 0.60f, 0.28f));
 
-                Floor(world.transform, "Living room floor", new Vector3(-7, -0.15f, -5), new Vector3(14, 0.3f, 10), wood);
+                Floor(world.transform, "Living room floor", new Vector3(-7, -0.15f, -5), new Vector3(14, 0.3f, 10), livingFloor);
                 Floor(world.transform, "Kitchen floor", new Vector3(7, -0.15f, -5), new Vector3(14, 0.3f, 10), tile);
                 Floor(world.transform, "Bedroom floor", new Vector3(-7, -0.15f, 5), new Vector3(14, 0.3f, 10), bedroom);
                 Floor(world.transform, "Private room floor", new Vector3(7, -0.15f, 5), new Vector3(14, 0.3f, 10), privateFloor);

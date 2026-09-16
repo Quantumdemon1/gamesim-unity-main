@@ -26,6 +26,7 @@ namespace Gamesim.Episode
         private EpisodeHud hud;
         private CeremonySting sting;
         private CeremonyTakeover takeover;
+        private VoteReveal voteReveal;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
@@ -89,6 +90,7 @@ namespace Gamesim.Episode
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
             takeover = CeremonyTakeover.Attach(gameObject);
+            voteReveal = VoteReveal.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
         }
@@ -261,10 +263,21 @@ namespace Gamesim.Episode
                     // The takeover opens the scene and the sting reports the result, so they play
                     // together rather than instead of each other: the card is over by the time the
                     // strip has finished its own entrance.
-                    if (takeover != null)
+                    // An eviction gets the vote reveal instead of the generic card: it is the only
+                    // beat whose outcome is not already inferable, and the commit resolves every
+                    // ballot in one frame. If the reveal declines the shape — a block that is not
+                    // two, or no ballots — the generic card still plays, so the beat is never silent.
+                    bool revealed = ceremony.kind == CeremonySting.EvictionKind
+                        && voteReveal != null
+                        && voteReveal.Play(result.state.week, EvictionBlock(result.state),
+                            EvictionBallots(result.state), EvictedThisCommit(result.state, wasActive), reducedMotion);
+                    if (!revealed && takeover != null)
                         takeover.Play(ceremony.kind, result.state.week,
                             CeremonySubjects(result.state, ceremony.kind, wasActive), reducedMotion);
-                    if (sting != null) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
+                    // The reveal narrates the eviction itself and outlives the strip by seconds, so
+                    // the strip would only flash under it and vanish mid-tally. Everywhere else the
+                    // two still pair up: card opens the scene, strip reports the result.
+                    if (sting != null && !revealed) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
                 }
             }
             Render(); return result;
@@ -314,6 +327,50 @@ namespace Gamesim.Episode
                     break;
             }
             return subjects;
+        }
+
+        /// <summary>The two people on the block, with their faces, for the eviction reveal.</summary>
+        private List<VoteReveal.Nominee> EvictionBlock(EpisodeState state)
+        {
+            var block = new List<VoteReveal.Nominee>();
+            if (state?.nominees == null) return block;
+            foreach (var id in state.nominees)
+            {
+                var actor = state.Find(id);
+                if (actor == null) continue;
+                block.Add(new VoteReveal.Nominee(actor.id, actor.name,
+                    CharacterPortraits.Get(
+                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+            }
+            return block;
+        }
+
+        /// <summary>
+        /// The committed ballots, in the order the house cast them.
+        ///
+        /// <para>Read from state rather than re-derived, so the card counts to the same total the
+        /// save holds. It carries who voted and for whom — both already public at the reveal, which
+        /// is the moment the engine logs them as <c>vote-reveal</c> events.</para>
+        /// </summary>
+        private static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
+        {
+            var ballots = new List<VoteReveal.Ballot>();
+            if (state?.votes == null) return ballots;
+            foreach (var vote in state.votes)
+            {
+                var voter = state.Find(vote.voterId);
+                ballots.Add(new VoteReveal.Ballot(voter?.name ?? "A housemate", vote.targetId));
+            }
+            return ballots;
+        }
+
+        /// <summary>Whoever stopped being active during this commit, or null.</summary>
+        private static string EvictedThisCommit(EpisodeState state, HashSet<string> wasActive)
+        {
+            if (state?.contestants == null || wasActive == null) return null;
+            foreach (var actor in state.contestants)
+                if (actor.status != ContestantStatus.Active && wasActive.Contains(actor.id)) return actor.id;
+            return null;
         }
 
         private void Commit(EpisodeState origin, EpisodeCommandKind kind, string target = null, string second = null, bool veto = false, double performance = 0, string text = null)
@@ -620,6 +677,7 @@ namespace Gamesim.Episode
             if (hud != null) { hud.FontScale = largeText ? 1.2f : 1; hud.ReducedMotion = reducedMotion; }
             if (sting != null) sting.FontScale = largeText ? 1.2f : 1;
             if (takeover != null) takeover.FontScale = largeText ? 1.2f : 1;
+            if (voteReveal != null) voteReveal.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }
@@ -632,6 +690,7 @@ namespace Gamesim.Episode
             ClosePanelsInternal(false); if (hud != null) hud.SetVisible(false);
             if (sting != null) sting.Cancel();
             if (takeover != null) takeover.Cancel();
+            if (voteReveal != null) voteReveal.Cancel();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()
@@ -647,6 +706,7 @@ namespace Gamesim.Episode
             if (hud != null) Destroy(hud);
             if (sting != null) { Destroy(sting.gameObject); sting = null; }
             if (takeover != null) { Destroy(takeover.gameObject); takeover = null; }
+            if (voteReveal != null) { Destroy(voteReveal.gameObject); voteReveal = null; }
         }
 
         public static string PhaseTitle(EpisodePhase phase)

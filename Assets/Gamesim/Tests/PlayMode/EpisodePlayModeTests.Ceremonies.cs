@@ -66,17 +66,44 @@ namespace Gamesim.Tests.PlayMode
                 for (int frame = 0; frame < 25; frame++) yield return null;
                 yield return SettleCeremonyCards();
 
-                var headline = StingText(sting, "Sting headline");
-                var detail = StingText(sting, "Sting detail");
-                Assert.That(headline, Is.Not.Null, "The card should be built by the time it plays.");
-                Assert.That(headline.text, Is.EqualTo(expected[committed.kind]),
-                    "The " + committed.kind + " beat should announce itself as " + expected[committed.kind] + ".");
-                Assert.That(detail.text, Is.EqualTo(committed.text),
-                    "The card must carry the text the simulation committed, not a paraphrase.");
-                Assert.That(group.alpha, Is.GreaterThan(0.5f),
-                    "The card should be visible at this point, not faded out.");
+                if (committed.kind == CeremonySting.EvictionKind)
+                {
+                    // The eviction is narrated by the vote reveal instead of the strip, which would
+                    // only flash underneath it and fade out mid-tally. The guarantee this test
+                    // exists for is unchanged — the beat must announce itself, and name the person
+                    // it happened to — but for this one beat the thing a player sees is the reveal.
+                    var reveal = SceneComponents<VoteReveal>().FirstOrDefault();
+                    Assert.That(reveal, Is.Not.Null, "The episode should stage a vote reveal at startup.");
+                    Assert.That(reveal.IsPlaying, Is.True, "The eviction beat should play the vote reveal.");
+                    Assert.That(reveal.ShowingResult, Is.True,
+                        "The reveal should have reached its result by the time the cards have settled.");
 
-                AssertCardCoversNoChrome(sting);
+                    var evicted = after.contestants.FirstOrDefault(actor =>
+                        actor.status != ContestantStatus.Active
+                        && before.contestants.Any(was => was.id == actor.id && was.status == ContestantStatus.Active));
+                    Assert.That(evicted, Is.Not.Null, "An eviction commit should have removed somebody.");
+
+                    var resultBanner = RevealText(reveal, "Result");
+                    Assert.That(resultBanner, Is.Not.Null, "The reveal should carry a result banner.");
+                    Assert.That(resultBanner.text, Does.Contain(evicted.name.ToUpperInvariant()),
+                        "The reveal must name the houseguest the simulation actually evicted.");
+                    Assert.That(reveal.GetComponent<CanvasGroup>().alpha, Is.GreaterThan(0.5f),
+                        "The reveal should be visible at this point, not faded out.");
+                }
+                else
+                {
+                    var headline = StingText(sting, "Sting headline");
+                    var detail = StingText(sting, "Sting detail");
+                    Assert.That(headline, Is.Not.Null, "The card should be built by the time it plays.");
+                    Assert.That(headline.text, Is.EqualTo(expected[committed.kind]),
+                        "The " + committed.kind + " beat should announce itself as " + expected[committed.kind] + ".");
+                    Assert.That(detail.text, Is.EqualTo(committed.text),
+                        "The card must carry the text the simulation committed, not a paraphrase.");
+                    Assert.That(group.alpha, Is.GreaterThan(0.5f),
+                        "The card should be visible at this point, not faded out.");
+                    AssertCardCoversNoChrome(sting);
+                }
+
                 yield return CaptureCeremony(committed.kind);
                 outstanding.Remove(committed.kind);
             }
@@ -94,18 +121,27 @@ namespace Gamesim.Tests.PlayMode
         /// </summary>
         private static IEnumerator SettleCeremonyCards()
         {
-            const int limit = 240;
+            // Generous, because the vote reveal is narrated over several seconds of unscaled time
+            // and a batchmode frame is a couple of milliseconds. Bounded all the same: a card stuck
+            // half-open should photograph badly, not hang the suite.
+            const int limit = 6000;
             for (int frame = 0; frame < limit; frame++)
             {
-                bool rising = false;
+                bool waiting = false;
                 foreach (var group in Object.FindObjectsByType<CanvasGroup>(
                              FindObjectsInactive.Exclude, FindObjectsSortMode.None))
                 {
-                    if (group.GetComponent<CeremonySting>() == null
+                    // The reveal is worth photographing at its payoff, not mid-tally: a frame of
+                    // "Revealing vote 2 of 5" says less about the screen than the result does.
+                    var reveal = group.GetComponent<VoteReveal>();
+                    if (reveal != null && reveal.IsPlaying && !reveal.ShowingResult) { waiting = true; continue; }
+
+                    if (reveal == null
+                        && group.GetComponent<CeremonySting>() == null
                         && group.GetComponent<CeremonyTakeover>() == null) continue;
-                    if (group.alpha > 0.02f && group.alpha < 0.99f) rising = true;
+                    if (group.alpha > 0.02f && group.alpha < 0.99f) waiting = true;
                 }
-                if (!rising) yield break;
+                if (!waiting) yield break;
                 yield return null;
             }
         }
@@ -132,6 +168,9 @@ namespace Gamesim.Tests.PlayMode
 
         private static TMP_Text StingText(CeremonySting sting, string name) =>
             sting.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(label => label.name == name);
+
+        private static TMP_Text RevealText(VoteReveal reveal, string name) =>
+            reveal.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(label => label.name == name);
 
         /// <summary>
         /// Renders the set plus every overlay — HUD and card together — into an image.

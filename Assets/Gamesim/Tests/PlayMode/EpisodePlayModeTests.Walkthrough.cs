@@ -66,6 +66,31 @@ namespace Gamesim.Tests.PlayMode
             SetCameraDistance(24f);
             yield return SettleCamera();
 
+            // 02b — the memory wall, framed by standing the player in front of it. It is the one
+            // fixture that reports the game's state in the world rather than in the HUD, so a
+            // capture set that never shows it cannot be used to judge whether that works.
+            var wall = SceneComponents<Gamesim.Presentation.MemoryWall>().FirstOrDefault();
+            Assert.That(wall, Is.Not.Null, "The episode scene should carry a memory wall.");
+            var stand = wall.transform.position + new Vector3(2.6f, 0f, 0f);
+            if (UnityEngine.AI.NavMesh.SamplePosition(stand, out var spot, 3f, player.Agent.areaMask))
+            {
+                player.Agent.Warp(spot.position);
+                player.Agent.ResetPath();
+                Physics.SyncTransforms();
+
+                // Warping the player does not move the camera: the rig holds a focus point and only
+                // recentres on input. Framing between the player and the wall is what the rig
+                // already does for conversations, and it is the public way to ask.
+                cameraRig.SetConversationFocus(player.transform, wall.transform);
+                SetCameraDistance(9f);
+                yield return SettleCamera();
+                yield return Shoot("walkthrough-02b-memory-wall");
+
+                cameraRig.EndConversation();
+                SetCameraDistance(24f);
+                yield return SettleCamera();
+            }
+
             // 03 — a conversation, which is where promises and alliances are actually made.
             var maya = SceneComponents<HouseNpc>().FirstOrDefault(npc => npc.Id == ContentCatalog.MayaId);
             if (maya != null)

@@ -28,6 +28,7 @@ namespace Gamesim.Episode
         private CeremonyTakeover takeover;
         private VoteReveal voteReveal;
         private CompetitionResult competitionCard;
+        private MemoryWall memoryWall;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         // What the last social command actually moved, so the panel can say so.
@@ -550,6 +551,15 @@ namespace Gamesim.Episode
         {
             if (hud == null || engine == null) return;
             var state = projected ?? engine.Snapshot;
+            // Repainted from committed state on every render rather than on the eviction event, so a
+            // wall restored from a save shows the same thing as one that watched the vote.
+            if (memoryWall == null)
+                memoryWall = gameObject.scene.GetRootGameObjects()
+                    .SelectMany(root => root.GetComponentsInChildren<MemoryWall>(true))
+                    .FirstOrDefault();
+            // The committed snapshot, not the projection: a projected eviction is not a fact
+            // yet, and the set must never show an outcome the save does not hold.
+            if (memoryWall != null) memoryWall.Refresh(engine.Snapshot);
             hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen);
             if (settingsOpen || blockedRecovery) { Settings(state); return; }
             if (diaryOpen) { RenderDiary(state); return; }

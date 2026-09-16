@@ -28,10 +28,10 @@ namespace Gamesim.Editor
         {
             string scene = Argument("-gamesimScene") ?? "Assets/Gamesim/Scenes/HousePrototype.unity";
             string shot = Argument("-gamesimShot") ?? "house-look.png";
-            Capture(scene, shot);
+            Capture(scene, shot, Argument("-gamesimFocus"));
         }
 
-        public static void Capture(string scenePath, string outputName)
+        public static void Capture(string scenePath, string outputName, string focusName = null)
         {
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
 
@@ -44,6 +44,21 @@ namespace Gamesim.Editor
             var bounds = renderers[0].bounds;
             foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
 
+            // Framing one fixture instead of the whole set. A memory wall is 1.3 units tall inside a
+            // 30-unit house, so the wide shot is the wrong tool for asking whether it was built
+            // correctly — it is a handful of pixels there either way.
+            if (!string.IsNullOrEmpty(focusName))
+            {
+                var focus = GameObject.Find(focusName);
+                if (focus == null) throw new InvalidOperationException("No object named '" + focusName + "' to focus.");
+                var focusRenderers = focus.GetComponentsInChildren<Renderer>(true);
+                if (focusRenderers.Length == 0) throw new InvalidOperationException(focusName + " has nothing to render.");
+                bounds = focusRenderers[0].bounds;
+                foreach (var renderer in focusRenderers) bounds.Encapsulate(renderer.bounds);
+                Debug.Log("[Gamesim] focus · " + focusName + " at " + bounds.center.ToString("F2")
+                    + " size " + bounds.size.ToString("F2"));
+            }
+
             var rig = new GameObject("Gamesim Look Camera");
             var camera = rig.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
@@ -51,7 +66,9 @@ namespace Gamesim.Editor
             camera.fieldOfView = 40f;
 
             float reach = bounds.extents.magnitude;
-            var direction = new Vector3(0.62f, 0.72f, -0.62f).normalized;
+            var direction = string.IsNullOrEmpty(focusName)
+                ? new Vector3(0.62f, 0.72f, -0.62f).normalized
+                : new Vector3(1f, 0.22f, -0.28f).normalized;
             rig.transform.position = bounds.center + direction * (reach * 2.35f);
             rig.transform.LookAt(bounds.center);
             camera.nearClipPlane = 0.3f;

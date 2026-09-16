@@ -157,12 +157,17 @@ namespace Gamesim.Episode
             // Only on closed -> open. Re-renders of an already-open panel must not re-animate.
             if (!modalWasOpen) HudReveal.Play(modal,ReducedMotion);
             modalWasOpen = true;
+            // The phase band. Fixed chrome rather than the first thing in the scroll, so the beat
+            // the player is in stays on screen while they read past it — and coloured, because
+            // "which part of the week is this" is the question every panel is answered against.
+            // Built before the Close button so it sits behind it in the hierarchy.
+            var band = PhaseBand(modal, state);
             FixedButton(modal,"Close  [Esc]",new Vector2(598,-15),new Vector2(174,45),director.ClosePanels);
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.
-            FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,Paper,new Vector2(24,-28),new Vector2(550,30));
+            FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
             var scrollRoot = new GameObject("Episode scroll",typeof(RectTransform),typeof(ScrollRect)); scrollRoot.transform.SetParent(modal,false);
-            var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,75,20,22);
+            var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,104,20,22);
             var viewport = Panel("Viewport",scrollRect,new Color(0,0,0,0)); Stretch(viewport,0,0,18,0); viewport.gameObject.AddComponent<RectMask2D>();
             content = new GameObject("Episode content",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>(); content.SetParent(viewport,false);
             content.anchorMin = new Vector2(0,1); content.anchorMax = Vector2.one; content.pivot = new Vector2(.5f,1); content.sizeDelta = Vector2.zero;
@@ -184,6 +189,44 @@ namespace Gamesim.Episode
         public void PanelTitle(string title, string subtitle) { Heading(title); Paragraph(subtitle); }
         public void Heading(string value) { FlowText(value,26,Accent); }
         public void Paragraph(string value) { FlowText(value,21,Paper); }
+
+        /// <summary>
+        /// A panel title fronted by the speaker's face.
+        ///
+        /// <para>The same information as <see cref="PanelTitle"/>, but a conversation is with a
+        /// person and the cast rail has just taught the player which face that is. Falls back to the
+        /// plain title when the persona has no authored art, so a missing portrait costs a picture
+        /// rather than a header.</para>
+        /// </summary>
+        public void SpeakerTitle(string contestantId, string title, string subtitle)
+        {
+            var portrait = Portrait(contestantId);
+            if (portrait == null) { PanelTitle(title, subtitle); return; }
+
+            var row = new GameObject("Speaker",typeof(RectTransform)).GetComponent<RectTransform>();
+            row.SetParent(content,false);
+            float side = 64f * FontScale;
+            row.gameObject.AddComponent<LayoutElement>().minHeight = side + 8f * FontScale;
+
+            var frame = new GameObject("Speaker portrait",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();
+            frame.SetParent(row,false);
+            frame.anchorMin = new Vector2(0,1); frame.anchorMax = new Vector2(0,1); frame.pivot = new Vector2(0,1);
+            frame.anchoredPosition = new Vector2(4f,0f);
+            frame.sizeDelta = new Vector2(side,side);
+            var disc = frame.GetComponent<Image>();
+            disc.sprite = UiTheme.Circle(); disc.type = Image.Type.Simple; disc.raycastTarget = false;
+            frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+
+            var face = new GameObject("Face",typeof(RectTransform),typeof(RawImage)).GetComponent<RawImage>();
+            face.rectTransform.SetParent(frame,false);
+            face.rectTransform.anchorMin = Vector2.zero; face.rectTransform.anchorMax = Vector2.one;
+            face.rectTransform.offsetMin = Vector2.zero; face.rectTransform.offsetMax = Vector2.zero;
+            face.texture = portrait; face.raycastTarget = false;
+
+            float text = side + 16f * FontScale;
+            FixedText(row,title,26,Accent,new Vector2(text,-4f),new Vector2(420f * FontScale,32f * FontScale));
+            FixedText(row,subtitle,21,Paper,new Vector2(text,-34f * FontScale),new Vector2(420f * FontScale,28f * FontScale));
+        }
 
         public void NpcDialogue(EpisodeState state, string npcId, EpisodeCommandKind? acceptedAction = null)
         {
@@ -562,6 +605,60 @@ namespace Gamesim.Episode
             text.fontSize=Mathf.RoundToInt(size*FontScale); text.color=color; text.text=value; text.richText=false; text.raycastTarget=false;
             text.textWrappingMode=TextWrappingModes.Normal; text.overflowMode=TextOverflowModes.Truncate; return text;
         }
+        /// <summary>
+        /// The colour a phase announces itself in. Deliberately the same vocabulary the ceremony
+        /// takeover uses — gold for the veto, red for the block and the vote — so a player learns
+        /// one palette rather than two.
+        /// </summary>
+        private static Color PhaseTint(EpisodePhase phase)
+        {
+            switch (phase)
+            {
+                case EpisodePhase.Nomination:
+                case EpisodePhase.Eviction:
+                case EpisodePhase.FinalEviction:
+                    return UiTheme.Danger;
+                case EpisodePhase.VetoSelection:
+                case EpisodePhase.Veto:
+                case EpisodePhase.VetoMeeting:
+                    return UiTheme.Gold;
+                case EpisodePhase.Finished:
+                    return UiTheme.Gold;
+                case EpisodePhase.HoH:
+                case EpisodePhase.FinalHoHPart1:
+                case EpisodePhase.FinalHoHPart2:
+                case EpisodePhase.FinalHoHPart3:
+                    return UiTheme.Accent;
+                default:
+                    return UiTheme.AccentDeep;
+            }
+        }
+
+        /// <summary>
+        /// The panel's fixed header: phase, week, and how many are left.
+        ///
+        /// <para>The foreground is chosen by luminance rather than fixed, because the band runs from
+        /// a deep blue to gold and one hard-coded colour is unreadable at one end.</para>
+        /// </summary>
+        private RectTransform PhaseBand(RectTransform parent, EpisodeState state)
+        {
+            var tint = PhaseTint(state.phase);
+            var ink = UiTheme.OnColor(tint);
+
+            var rect = Panel("Phase band",parent,tint,UiTheme.PanelRadius);
+            rect.anchorMin = new Vector2(0,1); rect.anchorMax = new Vector2(1,1); rect.pivot = new Vector2(.5f,1);
+            rect.offsetMin = new Vector2(0,-62); rect.offsetMax = new Vector2(0,0);
+            rect.GetComponent<Image>().raycastTarget = false;
+
+            FixedText(rect,EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),21,ink,
+                new Vector2(22,-9),new Vector2(540,27));
+            FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
+                    ? "Season complete"
+                    : state.Active.Count() + " houseguests remain"),
+                14,new Color(ink.r,ink.g,ink.b,.82f),new Vector2(22,-36),new Vector2(540,20));
+            return rect;
+        }
+
         private static RectTransform Panel(string name,Transform parent,Color color,int radius = UiTheme.ControlRadius)
         {
             var panel=new GameObject(name,typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>(); panel.SetParent(parent,false);

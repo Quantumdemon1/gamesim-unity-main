@@ -30,6 +30,24 @@ namespace Gamesim.Presentation
         public static readonly Color Paper = Hex("F2F5FA");
         public static readonly Color Muted = Hex("94A7B8");
 
+        /// <summary>
+        /// Ink or Paper, whichever reads against <paramref name="background"/>.
+        ///
+        /// <para>Phase-coloured bands run from a deep blue to gold, and a single hard-coded
+        /// foreground is wrong at one end or the other. This picks by WCAG relative luminance, the
+        /// same measure <c>UiThemeContrastTests</c> holds the rest of the palette to, so a new band
+        /// colour cannot quietly ship unreadable copy.</para>
+        /// </summary>
+        public static Color OnColor(Color background)
+        {
+            static float Channel(float c) => c <= 0.03928f ? c / 12.92f : Mathf.Pow((c + 0.055f) / 1.055f, 2.4f);
+            float luminance = 0.2126f * Channel(background.r)
+                + 0.7152f * Channel(background.g)
+                + 0.0722f * Channel(background.b);
+            // Contrast against Ink (near-black) beats contrast against Paper above this crossover.
+            return luminance > 0.18f ? Ink : Paper;
+        }
+
         public const int PanelRadius = 10;
         public const int ControlRadius = 7;
         public const int BorderThickness = 2;

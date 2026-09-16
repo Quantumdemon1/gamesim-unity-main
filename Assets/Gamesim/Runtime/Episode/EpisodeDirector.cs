@@ -403,7 +403,7 @@ namespace Gamesim.Episode
             if (focusedNpc != null)
             {
                 var npc = state.Find(focusedNpc.Id);
-                hud.PanelTitle(npc.name.ToUpperInvariant(), npc.pronouns + " · " + string.Join(" / ", npc.traits));
+                hud.SpeakerTitle(npc.id, npc.name.ToUpperInvariant(), npc.pronouns + " · " + string.Join(" / ", npc.traits));
                 hud.NpcDialogue(state, npc.id, lastSocialAction);
                 if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
                 { hud.Paragraph("The next ceremony is waiting. We can catch up during free time or campaigning."); return; }
@@ -427,8 +427,9 @@ namespace Gamesim.Episode
                 return;
             }
             if (!phaseOpen) return;
-            hud.PanelTitle(PhaseTitle(state.phase), "WEEK " + state.week + " · "
-                + (state.phase == EpisodePhase.Finished ? "Season complete" : state.Active.Count() + " houseguests remain"));
+            // The phase and week now live in the panel's fixed header band, which stays on screen
+            // while this content scrolls. Repeating them as the first line of the scroll was the
+            // same sentence twice, six lines apart.
             if (state.pendingDiary != null)
             {
                 hud.Heading("A PRIVATE REFLECTION IS READY");

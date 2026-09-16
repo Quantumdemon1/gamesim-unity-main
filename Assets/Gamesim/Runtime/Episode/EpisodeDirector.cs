@@ -398,6 +398,55 @@ namespace Gamesim.Episode
             return standings;
         }
 
+        /// <summary>
+        /// Who is standing in which room, right now, by nearest room marker.
+        ///
+        /// <para>Scene-local, like the diary-room lookup: a second loaded house must not contribute
+        /// markers to this one. Read from live transforms rather than from the simulation, because
+        /// the simulation does not model position — where a houseguest is standing is a fact about
+        /// the scene, and claiming otherwise would be inventing state.</para>
+        /// </summary>
+        private List<HouseMap.Room> HouseOccupancy(EpisodeState state)
+        {
+            var rooms = new List<HouseMap.Room>();
+            if (state == null) return rooms;
+
+            var markers = gameObject.scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<HouseRoomMarker>(true))
+                .Where(marker => !string.IsNullOrEmpty(marker.RoomName))
+                .OrderBy(marker => marker.RoomName, StringComparer.Ordinal)
+                .ToArray();
+            if (markers.Length == 0) return rooms;
+
+            var occupants = new Dictionary<string, List<HouseMap.Occupant>>();
+            foreach (var marker in markers) occupants[marker.RoomName] = new List<HouseMap.Occupant>();
+
+            foreach (var visual in gameObject.scene.GetRootGameObjects()
+                         .SelectMany(root => root.GetComponentsInChildren<CharacterPresentation>(true)))
+            {
+                var actor = state.Find(visual.CharacterId);
+                if (actor == null || actor.status != ContestantStatus.Active) continue;
+
+                HouseRoomMarker nearest = null;
+                float best = float.MaxValue;
+                foreach (var marker in markers)
+                {
+                    float distance = (marker.transform.position - visual.transform.position).sqrMagnitude;
+                    if (distance >= best) continue;
+                    best = distance; nearest = marker;
+                }
+                if (nearest == null) continue;
+
+                occupants[nearest.RoomName].Add(new HouseMap.Occupant(actor.name,
+                    CharacterPortraits.Get(
+                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id))),
+                    actor.id == state.playerId));
+            }
+
+            foreach (var marker in markers) rooms.Add(new HouseMap.Room(marker.RoomName, occupants[marker.RoomName]));
+            return rooms;
+        }
+
         /// <summary>The two people on the block, with their faces, for the eviction reveal.</summary>
         private List<VoteReveal.Nominee> EvictionBlock(EpisodeState state)
         {
@@ -510,6 +559,8 @@ namespace Gamesim.Episode
                 // The graph carries the caveat in its own legend, so repeating it here would be the
                 // same sentence twice within one screen.
                 hud.SocialGraphPanel(state);
+                hud.Heading("WHO IS WHERE");
+                hud.HouseMapPanel(HouseOccupancy(state));
                 foreach (var c in state.contestants.Where(c => !c.isPlayer)) hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
                 hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
                 // Aggregate source arcs have no participant/knowledge provenance.

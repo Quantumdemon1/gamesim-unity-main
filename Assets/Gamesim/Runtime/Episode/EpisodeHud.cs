@@ -282,6 +282,13 @@ namespace Gamesim.Episode
             SocialGraph.Build(content, state, FontScale, font, Portrait);
         }
 
+        /// <summary>Adds the room-occupancy cards to the current panel.</summary>
+        public void HouseMapPanel(System.Collections.Generic.IList<HouseMap.Room> rooms)
+        {
+            if (content == null) return;
+            HouseMap.Build(content, rooms, FontScale, font);
+        }
+
         public void JuryQuestioning(EpisodeState state)
         {
             Paragraph("Public questions and recorded answers. A response is not a guaranteed jury vote.");

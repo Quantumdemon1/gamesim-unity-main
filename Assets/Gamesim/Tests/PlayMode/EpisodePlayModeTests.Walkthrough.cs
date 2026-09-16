@@ -98,6 +98,31 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenNotebook();
             yield return SettlePanels();
             yield return Shoot("walkthrough-04-notebook");
+
+            // 04b — the same panel scrolled to the room map. The notebook is taller than its
+            // viewport, so the top frame photographs the graph and nothing below it. Scrolled to a
+            // fixed fraction this would silently drift the moment the panel grows a paragraph, so
+            // it scrolls to the element by name and photographs wherever that turns out to be.
+            var scroll = director.GetComponentsInChildren<UnityEngine.UI.ScrollRect>(true)
+                .FirstOrDefault(rect => rect.gameObject.activeInHierarchy);
+            var map = director.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == Gamesim.Presentation.HouseMap.RootName);
+            Assert.That(map, Is.Not.Null, "The notebook should carry the room map.");
+            if (scroll != null)
+            {
+                Canvas.ForceUpdateCanvases();
+                float travel = scroll.content.rect.height - scroll.viewport.rect.height;
+                if (travel > 1f)
+                {
+                    // anchoredPosition.y is negative going down the content.
+                    float target = Mathf.Clamp01(1f - (-map.anchoredPosition.y) / travel);
+                    scroll.verticalNormalizedPosition = target;
+                }
+                Canvas.ForceUpdateCanvases();
+                yield return null; yield return null;
+                yield return Shoot("walkthrough-04b-notebook-rooms");
+            }
+
             director.ClosePanels();
             yield return null;
 

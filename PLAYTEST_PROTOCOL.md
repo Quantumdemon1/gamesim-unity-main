@@ -6,17 +6,37 @@ session run to this protocol produces evidence a later session can be compared a
 
 Everything else in `ACCEPTANCE_MATRIX.md` passes. This is what remains.
 
-## The camera default is decided: it stays at 24
+## The camera default is NOT 24 — the shipped scene opens at 48
 
-`HouseCameraRig.distance` starts at 24 and allows 10 to 34. At 24 a houseguest is about eight pixels
-tall; at 17 the same character reads clearly, with hair, clothing, skin tone and a legible name label.
-`Accessibility_ComparesCameraFramings` renders all three for comparison.
+This section previously said the rig "starts at 24 and allows 10 to 34". That is the C# field
+default, and `EpisodeHouse.unity` overrides both:
 
-**Starting wide is the intended first impression** and the player zooms in from there. Run the session
-against that default rather than a modified one.
+| | Source default | Serialized in the shipped scene |
+|---|---|---|
+| `distance` | 24 | **48** |
+| `maximumDistance` | 34 | **56** |
 
-Watch for it during E2 though: if participants stall because they cannot tell who is who, note whether
-they discover the zoom on their own. That is the specific thing this decision is betting on.
+`Camera_ReportsStartupFramingOverTime` measures the running game: the camera sits at 48 units from
+the pivot at frame 0 and is still at 48 at frame 480, with the rig's own field reading 48. It does
+not converge on 24 — nothing in an untouched episode ever puts it there.
+
+Three things follow, and they matter before anyone runs a session:
+
+- **The camera decision was taken against a number the build does not use.** "Leave it at 24" was
+  answered about a default that is actually 48. The decision needs retaking against 48, or the scene
+  needs changing to match it. Either is fine; shipping a documented 24 that renders as 48 is not.
+- **The existing legibility measurement was taken at 48**, which is why it recorded houseguests
+  "42–54 metres from camera" — a figure a 24-unit rig cannot produce. The 1.4%–2.2% of frame height
+  is real, but it is the 48 number, so a cast that reads small at the default reads roughly twice
+  that size at the documented one.
+- **`Accessibility_ComparesCameraFramings` renders 24, 17 and 10 — and none of them is the shipped
+  default.** Add 48 before using those frames to choose a framing.
+
+**Run the session against whatever the scene actually ships**, and write the measured distance into
+the notes. Do not hand-edit the rig to 24 to match the old text.
+
+Watch for it during E2: if participants stall because they cannot tell who is who, note whether they
+discover the zoom on their own. At 48 that is a much bigger bet than the decision assumed.
 
 ## Before the session
 

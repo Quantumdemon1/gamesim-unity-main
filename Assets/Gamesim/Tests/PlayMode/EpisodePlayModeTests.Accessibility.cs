@@ -55,7 +55,7 @@ namespace Gamesim.Tests.PlayMode
         {
             // The always-on chrome. The modal and the interaction prompt deliberately sit over the
             // scene, so they are not part of this check.
-            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status" };
+            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status", "House pill" };
 
             foreach (bool larger in new[] { false, true })
             {

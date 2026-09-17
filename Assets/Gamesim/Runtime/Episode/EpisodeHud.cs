@@ -133,6 +133,22 @@ namespace Gamesim.Episode
             FixedButton(objective,"Go to episode screen",new Vector2(18,-144),new Vector2(294,54),director.GoToStation);
             FixedButton(objective,DiaryTravelCaption,new Vector2(18,-210),new Vector2(294,54),director.GoToDiary).interactable =
                 director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
+            // The broadcast pill: how many are left, and who holds the house this week. Centred
+            // between the panel column and the navigation, both of which are anchored to their own
+            // edges, so the gap it sits in exists at every aspect ratio.
+            var pill = Chrome("House pill",canvas.transform,Ink);
+            Anchor(pill,new Vector2(.5f,1),new Vector2(.5f,1),new Vector2(0,-24),new Vector2(360,46));
+            var holder = state.Find(state.hohId);
+            FixedText(pill,state.Active.Count() + " ACTIVE",15,Accent,new Vector2(16,-13),new Vector2(96,22));
+            var pillRule = Panel("Pill rule",pill,UiTheme.Outline,2);
+            Anchor(pillRule,new Vector2(0,1),new Vector2(0,1),new Vector2(120,-13),new Vector2(2,22));
+            pillRule.GetComponent<Image>().raycastTarget = false;
+            // "AWAITING HOH" rather than a spelled-out sentence: chrome text does not auto-shrink
+            // here, so the longest string this field can ever hold has to fit at full size. The
+            // clipping test found the first attempt immediately, which is what it is for.
+            FixedText(pill,holder == null ? "AWAITING HOH" : "HOH · " + holder.name.ToUpperInvariant(),
+                15,holder == null ? UiTheme.Muted : UiTheme.Gold,new Vector2(134,-13),new Vector2(210,22));
+
             var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
             FixedText(help,"Click floor: walk  ·  F: recenter\nWASD/arrows: camera pan\nRight-drag: orbit  ·  Wheel: zoom\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,97));
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption

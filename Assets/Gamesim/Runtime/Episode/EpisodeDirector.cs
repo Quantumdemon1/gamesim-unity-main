@@ -29,6 +29,7 @@ namespace Gamesim.Episode
         private VoteReveal voteReveal;
         private CompetitionResult competitionCard;
         private KeyCeremony keyCeremony;
+        private HouseTutorial tutorial;
         private MemoryWall memoryWall;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
@@ -98,7 +99,10 @@ namespace Gamesim.Episode
             voteReveal = VoteReveal.Attach(gameObject);
             competitionCard = CompetitionResult.Attach(gameObject);
             keyCeremony = KeyCeremony.Attach(gameObject);
+            tutorial = HouseTutorial.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
+            // After the first Render, so the chrome the tour points at exists to be found.
+            OfferTutorial();
             Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
         }
 
@@ -456,6 +460,25 @@ namespace Gamesim.Episode
             foreach (var marker in markers) rooms.Add(new HouseMap.Room(marker.RoomName, occupants[marker.RoomName]));
             return rooms;
         }
+
+        /// <summary>
+        /// Starts the first-run tour, once, for a player who has never seen it.
+        ///
+        /// <para>Never in batchmode. The tour is the only overlay that waits for a click, so it is
+        /// the only one that could hold up an automated season — and a headless run is by definition
+        /// not a first-time player. Tests drive <c>HouseTutorial.Show</c> directly instead.</para>
+        /// </summary>
+        public void OfferTutorial()
+        {
+            if (tutorial == null || Application.isBatchMode || HouseTutorial.Seen) return;
+            tutorial.Show(FindChrome);
+        }
+
+        /// <summary>Resolves a HUD chrome panel by name, live, for the tour to stand beside.</summary>
+        private RectTransform FindChrome(string name) =>
+            gameObject.scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<RectTransform>(true))
+                .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy);
 
         private static string NameOf(EpisodeState state, string id) => state?.Find(id)?.name;
 
@@ -875,6 +898,7 @@ namespace Gamesim.Episode
             if (voteReveal != null) voteReveal.FontScale = largeText ? 1.2f : 1;
             if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
             if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
+            if (tutorial != null) tutorial.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }
@@ -908,6 +932,7 @@ namespace Gamesim.Episode
             if (voteReveal != null) { Destroy(voteReveal.gameObject); voteReveal = null; }
             if (competitionCard != null) { Destroy(competitionCard.gameObject); competitionCard = null; }
             if (keyCeremony != null) { Destroy(keyCeremony.gameObject); keyCeremony = null; }
+            if (tutorial != null) { Destroy(tutorial.gameObject); tutorial = null; }
         }
 
         public static string PhaseTitle(EpisodePhase phase)

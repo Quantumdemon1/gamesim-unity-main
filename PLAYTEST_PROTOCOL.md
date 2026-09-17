@@ -69,6 +69,19 @@ which of those three dominated.
 "Unaided" means no hints, no answering questions about controls or what to do next. Sit where you can
 see the screen and stay quiet.
 
+**Decide the tutorial before the first participant, and record it.** The build now carries a
+seven-step first-run tour that names the cast rail, the week, the objective panel, movement, the
+notebook and the episode screen. It is exactly the intervention this criterion exists to detect the
+absence of, so it changes what E2 measures rather than how well the build does on it:
+
+- **Tour off** — the honest reading of "unaided", and the number comparable to the V6 record. Clear
+  it with `PlayerPrefs.DeleteKey("Gamesim.TutorialSeen")` per participant to guarantee a first run,
+  then skip it on sight, or run a build with it disabled.
+- **Tour on** — a fair question about the shipping product, but a different one. If you run it this
+  way, write "tour on" beside the number.
+
+Do not run some participants each way and report whichever set looks better.
+
 Record each place they stall, what they tried, and what unstuck them. A participant who reaches the
 eviction after being stuck twice still passes E2, and those two stalls are the most valuable thing the
 session produces.

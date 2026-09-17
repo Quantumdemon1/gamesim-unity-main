@@ -66,6 +66,30 @@ namespace Gamesim.Tests.PlayMode
             SetCameraDistance(24f);
             yield return SettleCamera();
 
+            // 01b — the first-run tour. Driven explicitly rather than by clearing the seen flag:
+            // the director refuses to offer it in batchmode on purpose, because it is the one
+            // overlay that waits for a click and could hold up an automated season. Photographing
+            // it needs the mechanism, not the trigger.
+            var tour = SceneComponents<Gamesim.Presentation.HouseTutorial>().FirstOrDefault();
+            Assert.That(tour, Is.Not.Null, "The episode should stage the tutorial at startup.");
+            tour.Show(name => director.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy));
+            Assert.That(tour.IsShowing, Is.True, "The tour should start on step one.");
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases();
+            yield return Shoot("walkthrough-01b-tutorial");
+
+            // Step through every card, so a step that throws is caught rather than photographed once.
+            for (int i = 1; i < tour.Count; i++)
+            {
+                tour.Next();
+                yield return null;
+                Assert.That(tour.StepIndex, Is.EqualTo(i), "The tour should advance one step per Next.");
+            }
+            tour.Next();
+            Assert.That(tour.IsShowing, Is.False, "The last Next should finish the tour.");
+            yield return null;
+
             // 02b — the memory wall, framed by standing the player in front of it. It is the one
             // fixture that reports the game's state in the world rather than in the HUD, so a
             // capture set that never shows it cannot be used to judge whether that works.

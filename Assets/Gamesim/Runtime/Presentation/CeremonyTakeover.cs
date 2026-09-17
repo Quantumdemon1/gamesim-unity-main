@@ -78,6 +78,12 @@ namespace Gamesim.Presentation
             return root.AddComponent<CeremonyTakeover>();
         }
 
+        /// <summary>
+        /// The veto field. Not a <see cref="CeremonySting"/> kind — it has no strip — but it is a
+        /// beat, and it was previously the one phase the episode passed through in silence.
+        /// </summary>
+        public const string VetoSelectionKind = "veto-selection";
+
         /// <summary>The title a beat announces itself with, or null when it does not get a card.</summary>
         public static string TitleFor(string kind)
         {
@@ -87,6 +93,7 @@ namespace Gamesim.Presentation
                 case CeremonySting.VetoKind: return "Veto Meeting";
                 case CeremonySting.EvictionKind: return "Live Eviction";
                 case CeremonySting.WinnerKind: return "The Winner";
+                case VetoSelectionKind: return "Power of Veto";
                 default: return null;
             }
         }
@@ -107,6 +114,11 @@ namespace Gamesim.Presentation
                     return "The house falls silent. One of them leaves tonight.";
                 case CeremonySting.WinnerKind:
                     return "The jury has spoken.";
+                case VetoSelectionKind:
+                    // No chips to draw: the engine seats everyone still in the house, and inventing a
+                    // draw animation for a selection that does not happen would be theatre for a
+                    // decision nobody made.
+                    return "Everyone still in the house plays. The winner can take a nominee off the block.";
                 default: return string.Empty;
             }
         }
@@ -119,6 +131,7 @@ namespace Gamesim.Presentation
                 case CeremonySting.VetoKind: return UiTheme.Gold;
                 case CeremonySting.EvictionKind: return UiTheme.Danger;
                 case CeremonySting.WinnerKind: return UiTheme.Gold;
+                case VetoSelectionKind: return UiTheme.Gold;
                 default: return UiTheme.Accent;
             }
         }

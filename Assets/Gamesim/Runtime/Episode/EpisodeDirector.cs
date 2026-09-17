@@ -288,6 +288,14 @@ namespace Gamesim.Episode
                         EpisodeEngine.CompetitionCategory(wasPhase, wasWeek), result.state.week,
                         CompetitionStandings(result.state), reducedMotion);
 
+                // The veto field. Previously the one phase the episode passed through in silence.
+                var field = result.state.events.Skip(knownEvents)
+                    .LastOrDefault(entry => entry.kind == CeremonyTakeover.VetoSelectionKind
+                        && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
+                if (field != null && takeover != null)
+                    takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
+                        VetoField(result.state), reducedMotion);
+
                 var ceremony = result.state.events.Skip(knownEvents)
                     .LastOrDefault(entry => CeremonySting.IsCeremony(entry.kind)
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
@@ -310,6 +318,7 @@ namespace Gamesim.Episode
                     revealed |= ceremony.kind == CeremonySting.NominationKind
                         && keyCeremony != null
                         && keyCeremony.Play(result.state.week, NameOf(result.state, result.state.hohId),
+                            result.state.hohId == result.state.playerId,
                             SafeHouseguests(result.state), NominatedHouseguests(result.state), reducedMotion);
                     if (!revealed && takeover != null)
                         takeover.Play(ceremony.kind, result.state.week,
@@ -479,6 +488,64 @@ namespace Gamesim.Episode
             gameObject.scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<RectTransform>(true))
                 .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy);
+
+        /// <summary>Who is playing for the veto, badged by what they are defending.</summary>
+        private List<CeremonyTakeover.Subject> VetoField(EpisodeState state)
+        {
+            var field = new List<CeremonyTakeover.Subject>();
+            if (state?.vetoPlayers == null) return field;
+            foreach (var id in state.vetoPlayers)
+            {
+                var actor = state.Find(id);
+                if (actor == null) continue;
+                string badge = actor.id == state.hohId ? "HOH"
+                    : state.nominees != null && state.nominees.Contains(actor.id) ? "NOMINATED"
+                    : null;
+                field.Add(new CeremonyTakeover.Subject(actor.name, badge,
+                    CharacterPortraits.Get(
+                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+            }
+            return field;
+        }
+
+        /// <summary>
+        /// The season so far, grouped by week and read forwards.
+        ///
+        /// <para>The record was a flat reverse-chronological list of the last thirty-five committed
+        /// lines. That is a log, and a log is the right thing for debugging and the wrong thing for
+        /// remembering a story: it opens on the most recent line, gives no indication which week
+        /// anything belongs to, and reads backwards, so cause follows effect down the page.</para>
+        ///
+        /// <para>Grouped and forwards, it reads as what happened. Nothing is invented and nothing is
+        /// paraphrased — every line is the text the simulation committed, filtered by the same
+        /// audience rule as everywhere else.</para>
+        /// </summary>
+        private void RenderStorySoFar(EpisodeState state)
+        {
+            hud.Heading("THE STORY SO FAR");
+
+            var visible = state.events
+                .Where(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
+                // Phase markers are scaffolding for the engine, not events in the story.
+                .Where(e => e.kind != "phase")
+                .ToList();
+            if (visible.Count == 0) { hud.Paragraph("Nothing has happened yet."); return; }
+
+            // The most recent weeks, oldest first inside each. A long season would otherwise push
+            // this week off the bottom of a panel that opens at the top.
+            const int weeks = 3;
+            int newest = visible.Max(e => e.week);
+            int oldest = Mathf.Max(1, newest - (weeks - 1));
+            if (oldest > 1) hud.Paragraph("Earlier weeks are in the save; the last " + weeks + " are shown here.");
+
+            for (int week = oldest; week <= newest; week++)
+            {
+                var entries = visible.Where(e => e.week == week).ToList();
+                if (entries.Count == 0) continue;
+                hud.Heading(week == newest ? "Week " + week + " · this week" : "Week " + week);
+                foreach (var entry in entries) hud.Paragraph(entry.text);
+            }
+        }
 
         private static string NameOf(EpisodeState state, string id) => state?.Find(id)?.name;
 
@@ -670,8 +737,7 @@ namespace Gamesim.Episode
                         : state.Find(oath.playerId).name + " declared loyalty to you") + ". A declaration is not a mutual guarantee.");
                 RenderDiaryRecord(state);
                 foreach (var memory in state.memories.Where(m => m.ownerId == state.playerId)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
-                hud.Heading("Episode record");
-                foreach (var entry in state.events.Where(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId)).Reverse().Take(35)) hud.Paragraph(entry.text);
+                RenderStorySoFar(state);
                 return;
             }
             if (focusedNpc != null)

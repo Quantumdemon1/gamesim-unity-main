@@ -86,7 +86,7 @@ namespace Gamesim.Presentation
         /// Plays the ceremony. Declines a shape it cannot narrate — no keys to hand out, or nobody
         /// on the block — and the generic card plays instead, so the beat is never silent.
         /// </summary>
-        public bool Play(int week, string hohName, IList<Person> safeHouseguests,
+        public bool Play(int week, string hohName, bool hohIsPlayer, IList<Person> safeHouseguests,
             IList<Person> block, bool reducedMotion)
         {
             if (safeHouseguests == null || block == null || block.Count == 0) return false;
@@ -102,8 +102,11 @@ namespace Gamesim.Presentation
             playing = true;
 
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
-            hohLine.text = string.IsNullOrEmpty(hohName)
-                ? "The keys go up"
+            // Second person when the player is the one holding the keys. The engine's event text
+            // learned this already; a card that says "You has made their decision" undoes it in the
+            // most prominent place on screen.
+            hohLine.text = string.IsNullOrEmpty(hohName) ? "The keys go up"
+                : hohIsPlayer ? "You have made your decision"
                 : hohName + " has made their decision";
 
             Reveal(0);

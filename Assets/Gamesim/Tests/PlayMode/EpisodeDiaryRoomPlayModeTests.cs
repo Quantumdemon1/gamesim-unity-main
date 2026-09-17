@@ -32,7 +32,9 @@ namespace Gamesim.Tests.PlayMode
                 yield return WaitForDiaryWalk();
                 Assert.That(Vector3.Distance(player.transform.position, room.transform.position), Is.LessThan(1));
             }
-            Assert.That(SceneComponents<HouseRoomMarker>(), Has.Length.EqualTo(5));
+            // Eight since the south wing: the original five plus the HoH suite, the
+            // nomination room and the game room.
+            Assert.That(SceneComponents<HouseRoomMarker>(), Has.Length.EqualTo(8));
             ButtonWithCaption(EpisodeHud.DiaryTravelCaption).onClick.Invoke();
             Assert.That(director.IsDiaryOpen, Is.False, "The travel button moves the player; it does not open remotely.");
             yield return WaitForDiaryWalk();

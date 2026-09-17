@@ -66,6 +66,12 @@ namespace Gamesim.Tests.PlayMode
         {
             var query = CreateNpcRoomQuery();
             var filter = NpcMotionFilter();
+            // A point inside each room, paired with the room it must resolve to.
+            //
+            // These are the prototype scene's five rooms, and they stay five: this fixture loads
+            // HousePrototype, which has no south wing. The wing's rooms are covered where they
+            // exist — EpisodeHouse's reachability test walks to all eight markers — and adding
+            // points here for rooms this scene does not contain tested nothing but my own patience.
             var points = new[]
             {
                 new Vector3(-5,0,-7), new Vector3(3,0,-6), new Vector3(-5,0,2),

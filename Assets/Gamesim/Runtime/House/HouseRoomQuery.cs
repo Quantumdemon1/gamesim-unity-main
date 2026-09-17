@@ -7,8 +7,18 @@ using UnityEngine.SceneManagement;
 namespace Gamesim.House
 {
     /// <summary>
-    /// Read-only room/floor/visibility queries for the existing five-floor house.
+    /// Read-only room/floor/visibility queries for the house.
     /// Markers are destinations, never room volumes. No simulation or save dependency.
+    ///
+    /// <para>The floor set is a closed list on purpose: an NPC standing somewhere this class cannot
+    /// name is a position the rest of the system cannot reason about, so an unrecognised floor is a
+    /// hard failure rather than a shrug.</para>
+    ///
+    /// <para>The first five are required and the south wing is optional, because two houses use this
+    /// class. <c>EpisodeHouse</c> has eight rooms; <c>HousePrototype</c> — which the NPC motion suite
+    /// loads, and which is the U02 reference scene — still has five. Demanding all eight would have
+    /// meant the query worked in the shipping scene and failed in the one the tests run against,
+    /// which is the wrong way round for something this load-bearing.</para>
     /// </summary>
     public sealed class HouseRoomQuery
     {
@@ -20,11 +30,19 @@ namespace Gamesim.House
 
         private static readonly string[] FloorNames =
         {
-            "Living room floor", "Kitchen floor", "Bedroom floor", "Private room floor", "Competition yard floor"
+            "Living room floor", "Kitchen floor", "Bedroom floor", "Private room floor", "Competition yard floor",
+            "HoH floor", "Nomination floor", "Games floor",
         };
-        private static readonly string[] RoomIds = { "Living", "Kitchen", "Bedroom", "Private", "Yard" };
+        private static readonly string[] RoomIds =
+        {
+            "Living", "Kitchen", "Bedroom", "Private", "Yard",
+            "HoH", "Nomination", "Games",
+        };
         private readonly Scene scene;
-        private readonly Floor[] floors = new Floor[5];
+        /// <summary>Floors present in this scene, in table order. Optional rooms may be absent.</summary>
+        private readonly List<Floor> floors = new List<Floor>(FloorNames.Length);
+        /// <summary>How many of <see cref="FloorNames"/> every house must have.</summary>
+        private const int RequiredFloors = 5;
         private readonly List<GameObject> rootBuffer = new List<GameObject>(64);
         private readonly List<HouseWalkable> walkableBuffer = new List<HouseWalkable>(8);
         private readonly RaycastHit[] sightHits = new RaycastHit[32];
@@ -42,7 +60,7 @@ namespace Gamesim.House
             { reason = "The house scene is not loaded."; return false; }
             var candidate = new HouseRoomQuery(ownedScene);
             ownedScene.GetRootGameObjects(candidate.rootBuffer);
-            int floorCount = 0;
+            var seen = new bool[FloorNames.Length];
             foreach (var root in candidate.rootBuffer)
             {
                 candidate.walkableBuffer.Clear();
@@ -51,14 +69,28 @@ namespace Gamesim.House
                 {
                     int index = Array.IndexOf(FloorNames, marker.gameObject.name);
                     var collider = marker.GetComponent<BoxCollider>();
-                    if (index < 0 || collider == null || candidate.floors[index] != null)
-                    { reason = "Expected five uniquely named BoxCollider house floors; found an unknown or duplicate floor."; return false; }
-                    candidate.floors[index] = new Floor { roomId = RoomIds[index], collider = collider };
-                    floorCount++;
+                    if (index < 0 || collider == null || seen[index])
+                    {
+                        reason = "Expected uniquely named BoxCollider house floors; found an unknown or duplicate floor: "
+                            + marker.gameObject.name + ".";
+                        return false;
+                    }
+                    seen[index] = true;
+                    candidate.floors.Add(new Floor { roomId = RoomIds[index], collider = collider });
                 }
             }
-            if (floorCount != 5)
-            { reason = "The house does not have all five expected floor colliders."; return false; }
+
+            // Table order, so callers that enumerate floors see rooms in a stable sequence rather
+            // than in whatever order the scene roots happened to be walked.
+            candidate.floors.Sort((a, b) =>
+                Array.IndexOf(RoomIds, a.roomId).CompareTo(Array.IndexOf(RoomIds, b.roomId)));
+
+            for (int i = 0; i < RequiredFloors; i++)
+            {
+                if (seen[i]) continue;
+                reason = "The house is missing its " + FloorNames[i] + ".";
+                return false;
+            }
             if (!candidate.TryValidateScene(out reason)) return false;
             query = candidate;
             return true;

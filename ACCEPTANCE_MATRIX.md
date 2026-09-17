@@ -279,6 +279,18 @@ measuring a build nobody is looking at any more.
 | F6 | First-run tour | walkthrough steps through all seven |
 | F7 | Ambient house-activity caption | `AmbientCaption_ShowsAConversationAndClearsTheChrome` |
 | F8 | Set restructure — neon trim, Kenney furniture, checkered kitchen, roped entrance | renderers 76 → 358; suites green |
+| F9 | South wing — HoH suite, nomination room, game room | room-marker count raised 5 → 8 in the suites; reachability walks all eight |
+
+**F9 changes the slice, not only its look.** The original outline named five rooms; the house now
+has eight. That was asked for explicitly after the five-room contract was raised, and it is recorded
+here because a later reader comparing this build against the outline will otherwise find a
+discrepancy with no explanation. The tests that count rooms were raised in the same change rather
+than loosened, so the number is still something the suite enforces.
+
+`HouseRoomQuery` requires the original five and treats the wing as optional, because two scenes use
+it: `EpisodeHouse` has eight rooms and `HousePrototype` — the U02 reference scene, and the one the
+NPC motion suite loads — still has five. Demanding all eight made the query work in the shipping
+scene and fail in the one the tests run against.
 
 Two things this pass changed that affect other sections:
 

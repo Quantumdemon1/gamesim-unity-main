@@ -522,7 +522,10 @@ namespace Gamesim.Tests.PlayMode
             player.Agent.speed = 25; player.Agent.acceleration = 100;
             yield return null; yield return null; // Let each active NPC carving obstacle register.
             var rooms = SceneComponents<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
-            Assert.That(rooms, Has.Length.EqualTo(5));
+            // The south wing brought this from five to eight. Kept as an exact count rather
+            // than a minimum: this test walks to every room it finds, so a marker that goes
+            // missing would otherwise make the suite quietly test less.
+            Assert.That(rooms, Has.Length.EqualTo(8));
             foreach (var room in rooms)
             {
                 Assert.That(player.TryMoveTo(room.transform.position), Is.True, room.RoomName + " route overlaps an obstacle or is disconnected.");

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using Gamesim.Episode;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -106,6 +107,46 @@ namespace Gamesim.Tests.PlayMode
                 pixels, camera.pixelHeight > 0 ? pixels / camera.pixelHeight : 0f,
                 Vector3.Distance(camera.transform.position, extent.center),
                 inFront && low.x > 0f && low.x < camera.pixelWidth ? "yes" : "no"));
+        }
+
+        /// <summary>
+        /// The section rail has to actually go somewhere. Chrome that is present and inert is the
+        /// failure this guards: it renders identically either way, so a screenshot cannot tell.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator IconRail_JumpsToEverySectionOfTheNotebook()
+        {
+            var sections = new[]
+            {
+                EpisodeDirector.NotebookSection.Network,
+                EpisodeDirector.NotebookSection.Rooms,
+                EpisodeDirector.NotebookSection.Story,
+            };
+
+            foreach (var section in sections)
+            {
+                director.ClosePanels();
+                yield return null;
+
+                var rail = director.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == IconRail.RootName && rect.gameObject.activeInHierarchy);
+                Assert.That(rail, Is.Not.Null, "The HUD should carry the section rail.");
+
+                var buttons = rail.GetComponentsInChildren<UnityEngine.UI.Button>(true);
+                Assert.That(buttons, Has.Length.EqualTo(4), "The rail should carry four sections.");
+
+                director.ShowNotebookSection(section);
+                yield return null; yield return null;
+                Canvas.ForceUpdateCanvases();
+
+                Assert.That(director.IsPanelOpen, Is.True, "Jumping to " + section + " should open the notebook.");
+                var found = director.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == section);
+                Assert.That(found, Is.Not.Null, "The notebook should contain " + section + ".");
+            }
+
+            director.ClosePanels();
+            yield return null;
         }
 
         private static Transform[] Frames(MemoryWall wall) =>

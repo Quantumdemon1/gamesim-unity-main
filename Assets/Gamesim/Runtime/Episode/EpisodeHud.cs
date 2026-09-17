@@ -149,6 +149,15 @@ namespace Gamesim.Episode
             FixedText(pill,holder == null ? "AWAITING HOH" : "HOH · " + holder.name.ToUpperInvariant(),
                 15,holder == null ? UiTheme.Muted : UiTheme.Gold,new Vector2(134,-13),new Vector2(210,22));
 
+            // The section rail. Four views that currently share one long scroll.
+            IconRail.Build(canvas.transform, new[]
+            {
+                new IconRail.Entry(IconRail.Mark.Network, EpisodeDirector.NotebookSection.Network, "Relationships"),
+                new IconRail.Entry(IconRail.Mark.Rooms,   EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
+                new IconRail.Entry(IconRail.Mark.Votes,   EpisodeDirector.NotebookSection.Votes,   "The vote"),
+                new IconRail.Entry(IconRail.Mark.Story,   EpisodeDirector.NotebookSection.Story,   "The story so far"),
+            }, FontScale, director.ShowNotebookSection);
+
             var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
             FixedText(help,"Click floor: walk  ·  F: recenter\nWASD/arrows: camera pan\nRight-drag: orbit  ·  Wheel: zoom\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,97));
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
@@ -344,6 +353,45 @@ namespace Gamesim.Episode
             FixedText(rect, heading, 19, Paper, new Vector2(textLeft, -8f * FontScale), new Vector2(560f * FontScale, 24f * FontScale));
             if (!string.IsNullOrEmpty(body))
                 FixedText(rect, body, 15, UiTheme.Muted, new Vector2(textLeft, -32f * FontScale), new Vector2(560f * FontScale, 26f * FontScale));
+        }
+
+        private string pendingScroll;
+
+        /// <summary>
+        /// Names the most recent thing added to the panel, so the icon rail can scroll back to it.
+        /// </summary>
+        public void Mark(string sectionName)
+        {
+            if (content == null || content.childCount == 0) return;
+            content.GetChild(content.childCount - 1).gameObject.name = sectionName;
+        }
+
+        /// <summary>
+        /// Asks for the panel to be scrolled to a named section once it has been rebuilt.
+        ///
+        /// <para>Deferred rather than immediate because a rail click re-renders the whole panel:
+        /// scrolling now would move a ScrollRect that is about to be destroyed.</para>
+        /// </summary>
+        public void RequestScrollTo(string sectionName) => pendingScroll = sectionName;
+
+        /// <summary>Applies a deferred scroll. Called once the panel's content is complete.</summary>
+        public void ApplyPendingScroll()
+        {
+            if (string.IsNullOrEmpty(pendingScroll) || modalScroll == null) return;
+            var target = pendingScroll;
+            pendingScroll = null;
+
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+
+            var section = content.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == target);
+            if (section == null) return;
+
+            float travel = content.rect.height - modalScroll.viewport.rect.height;
+            if (travel <= 1f) { modalScroll.verticalNormalizedPosition = 1f; return; }
+            modalScroll.verticalNormalizedPosition =
+                Mathf.Clamp01(1f - (-section.anchoredPosition.y) / travel);
         }
 
         public void JuryQuestioning(EpisodeState state)

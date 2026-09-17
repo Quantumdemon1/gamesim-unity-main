@@ -523,6 +523,7 @@ namespace Gamesim.Episode
         private void RenderStorySoFar(EpisodeState state)
         {
             hud.Heading("THE STORY SO FAR");
+            hud.Mark(NotebookSection.Story);
 
             var visible = state.events
                 .Where(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
@@ -545,6 +546,24 @@ namespace Gamesim.Episode
                 hud.Heading(week == newest ? "Week " + week + " · this week" : "Week " + week);
                 foreach (var entry in entries) hud.Paragraph(entry.text);
             }
+        }
+
+        /// <summary>The notebook's addressable sections, shared with the icon rail.</summary>
+        public static class NotebookSection
+        {
+            public const string Network = "Section · network";
+            public const string Rooms = "Section · rooms";
+            public const string Votes = "Section · votes";
+            public const string Story = "Section · story";
+        }
+
+        /// <summary>Opens the notebook, if needed, and scrolls to a section.</summary>
+        public void ShowNotebookSection(string section)
+        {
+            journalOpen = true;
+            phaseOpen = false; settingsOpen = false; diaryOpen = false;
+            hud.RequestScrollTo(section);
+            Render();
         }
 
         private static string NameOf(EpisodeState state, string id) => state?.Find(id)?.name;
@@ -704,7 +723,9 @@ namespace Gamesim.Episode
                 // The graph carries the caveat in its own legend, so repeating it here would be the
                 // same sentence twice within one screen.
                 hud.SocialGraphPanel(state);
+                hud.Mark(NotebookSection.Network);
                 hud.Heading("WHO IS WHERE");
+                hud.Mark(NotebookSection.Rooms);
                 hud.HouseMapPanel(HouseOccupancy(state));
                 foreach (var c in state.contestants.Where(c => !c.isPlayer)) hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
                 // How the house voted, with the reason each voter committed. The engine has written
@@ -714,6 +735,7 @@ namespace Gamesim.Episode
                 if (state.votes != null && state.votes.Count > 0)
                 {
                     hud.Heading("HOW THE HOUSE VOTED");
+                    hud.Mark(NotebookSection.Votes);
                     foreach (var vote in state.votes)
                     {
                         var voter = state.Find(vote.voterId);
@@ -738,6 +760,7 @@ namespace Gamesim.Episode
                 RenderDiaryRecord(state);
                 foreach (var memory in state.memories.Where(m => m.ownerId == state.playerId)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
                 RenderStorySoFar(state);
+                hud.ApplyPendingScroll();
                 return;
             }
             if (focusedNpc != null)

@@ -30475,7 +30475,7 @@ MonoBehaviour:
   pitch: 55
   yaw: 45
   distance: 24
-  minimumDistance: 10
+  minimumDistance: 4
   maximumDistance: 34
   orbitSensitivity: 0.18
   panSpeed: 8

@@ -17,6 +17,16 @@ namespace Gamesim.House
 
         private NavMeshAgent agent;
         private NavMeshPath candidatePath;
+        private HouseCameraRig cameraRig;
+
+        /// <summary>
+        /// The rig the view camera hangs under. Resolved through the camera rather than serialised,
+        /// so this needs no scene wiring and cannot come back null on a scene that was authored
+        /// before click-to-focus existed.
+        /// </summary>
+        private HouseCameraRig CameraRig => cameraRig != null
+            ? cameraRig
+            : cameraRig = viewCamera != null ? viewCamera.GetComponentInParent<HouseCameraRig>() : null;
 
         public bool InputEnabled { get; private set; } = true;
         public bool IsSelected => isSelected;
@@ -136,11 +146,25 @@ namespace Gamesim.House
             if (hit.collider.GetComponentInParent<HousePlayerController>() == this)
             {
                 isSelected = true;
+                CameraRig?.FocusSubject(transform);
+                return;
+            }
+
+            // Clicking a houseguest rides them. Previously this fell straight through to the walk
+            // check, failed it because a person is not a walkable surface, and did nothing at all —
+            // so the one gesture people try first had no effect and no feedback.
+            var houseguest = hit.collider.GetComponentInParent<HouseNpc>();
+            if (houseguest != null)
+            {
+                CameraRig?.FocusSubject(houseguest.transform);
                 return;
             }
 
             if (isSelected && hit.collider.GetComponentInParent<HouseWalkable>() != null)
             {
+                // Sending the player somewhere means you want to watch them go, not keep staring at
+                // whoever you were following.
+                CameraRig?.ClearSubject();
                 TryMoveTo(hit.point);
             }
         }

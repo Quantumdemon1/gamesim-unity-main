@@ -158,8 +158,13 @@ namespace Gamesim.Episode
                 new IconRail.Entry(IconRail.Mark.Story,   EpisodeDirector.NotebookSection.Story,   "The story so far"),
             }, FontScale, director.ShowNotebookSection);
 
-            var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,115));
-            FixedText(help,"Click floor: walk  ·  F: recenter\nWASD/arrows: camera pan\nRight-drag: orbit  ·  Wheel: zoom\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,97));
+            // Five lines, not four, because click-to-follow had to be added without lengthening a
+            // line: this box is a fixed 258 wide and the accessibility suite fails any copy that
+            // clips at either text size. Thirty-five characters is the proven ceiling — a forty
+            // character line is what broke it — so the panel grew downward instead. It stays in the
+            // lower right, well clear of the ceremony banner that must not overlap the chrome.
+            var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,140));
+            FixedText(help,"Click a houseguest: follow\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,122));
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
             var status = Chrome("Status",canvas.transform,Ink);
@@ -212,6 +217,23 @@ namespace Gamesim.Episode
         }
 
         public void PanelTitle(string title, string subtitle) { Heading(title); Paragraph(subtitle); }
+        /// <summary>The caption a spectating player sees above everything else.</summary>
+        public const string SpectatorCaption = "WATCHING AS A SPECTATOR";
+
+        /// <summary>
+        /// Standing notice that the player is out of the game and the season is continuing without
+        /// them.
+        ///
+        /// <para>The mechanism for spectating already worked — an evicted player's input is gated
+        /// and the season plays on — but nothing said so, so the controls simply stopped answering.
+        /// That reads as a bug rather than an ending, which is the difference this repairs.</para>
+        /// </summary>
+        public void SpectatorNote(string detail)
+        {
+            FlowText(SpectatorCaption,18,UiTheme.Warning).gameObject.name = "Spectator banner";
+            FlowText(detail,19,UiTheme.Muted);
+        }
+
         public void Heading(string value) { FlowText(value,26,Accent); }
         public void Paragraph(string value) { FlowText(value,21,Paper); }
 

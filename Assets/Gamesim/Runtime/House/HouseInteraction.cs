@@ -239,13 +239,15 @@ namespace Gamesim.House
             Label("Slice", brand, "HOUSE PROTOTYPE", 15, Mint, new Vector2(21f, -59f), new Vector2(266f, 24f));
 
             RectTransform controls = Panel("Controls", hud.transform, Ink);
+            // Five lines for the same reason the episode HUD's panel has five: click-to-follow is a
+            // new control and lengthening an existing line clips it. The panel grew instead.
             Anchor(controls, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24f, -24f),
-                new Vector2(352f, 150f));
+                new Vector2(352f, 175f));
             Label("Control heading", controls, "MAKE YOURSELF AT HOME", 15, Mint,
                 new Vector2(18f, -13f), new Vector2(320f, 24f));
             Label("Control detail", controls,
-                "Click floor: walk   ·   F: recenter\nWASD / arrows: pan camera\nRight-drag: orbit   ·   Scroll: zoom\nE: talk nearby   ·   Esc: leave",
-                17, White, new Vector2(18f, -44f), new Vector2(320f, 97f));
+                "Click a houseguest: follow\nClick floor: walk   ·   F: recenter\nWASD / arrows: pan   ·   Scroll: zoom\nRight-drag: orbit\nE: talk nearby   ·   Esc: leave",
+                17, White, new Vector2(18f, -44f), new Vector2(320f, 122f));
 
             RectTransform promptRect = Panel("Talk prompt", hud.transform, Ink);
             Anchor(promptRect, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f),

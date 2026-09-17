@@ -235,6 +235,16 @@ namespace Gamesim.Episode
         }
 
         public void Heading(string value) { FlowText(value,26,Accent); }
+
+        /// <summary>A heading in a given colour. The recap uses gold, as the reference build does.</summary>
+        public void Heading(string value,Color colour) { FlowText(value,26,colour); }
+
+        /// <summary>Small letterspaced copy above a section, the reference build's eyebrow.</summary>
+        public void Eyebrow(string value,Color colour)
+        {
+            var text = FlowText(value,15,colour);
+            text.characterSpacing = 10f;
+        }
         public void Paragraph(string value) { FlowText(value,21,Paper); }
 
         /// <summary>

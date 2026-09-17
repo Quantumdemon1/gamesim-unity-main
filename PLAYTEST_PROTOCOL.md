@@ -27,11 +27,12 @@ What that changed, measured the same way both times:
 
 Two caveats worth carrying into a session rather than rediscovering:
 
-- **The cast measurement is noisy between runs.** In the 24-unit run two houseguests reported
-  1.3% and 0.2% while the rest roughly doubled. Apparent size is camera-independent arithmetic on
-  world bounds, so a figure that moves when only the camera moved means the measurement caught a
-  body mid-assembly, not that the character shrank. Treat single outliers as measurement noise and
-  the typical range as the signal.
+- **The cast measurement was noisy, and the cause is now fixed.** Two houseguests once reported
+  1.3% and 0.2% while the rest roughly doubled. The cause was the U02 capsule placeholders: they
+  shipped enabled in the saved scene and were switched off during the first frames of play, so the
+  measurement sometimes encapsulated a body mid-swap. With the placeholders disabled in the scene
+  itself the range is 1.5%–4.7% and the outliers are gone. Casey is the smallest at 1.5% because
+  that character is authored shortest, not because anything is wrong.
 - **Vertical surfaces stay foreshortened.** The rig pitches 55 degrees down (clamped 45–70), so
   wall-mounted fixtures — the memory wall, and anything like it — read at roughly a third of what
   a floor-standing object of the same size does. That is a pitch question, still open, and no

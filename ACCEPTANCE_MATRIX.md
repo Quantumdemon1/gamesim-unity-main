@@ -18,7 +18,7 @@ Re-run against the pinned build. V6 evidence is cited so a regression is visible
 | # | Criterion | Threshold | V6 evidence | V7 status |
 |---|---|---|---|---|
 | A1 | Edit Mode suite green | 0 failed, 0 skipped | 640/0/0, run `a35edf94…` | **passed** — 678/0/0 |
-| A2 | Play Mode suite green | 0 failed, 0 skipped | 84/0/0, run `a1c11a52…` | **passed** — 114/0/0 |
+| A2 | Play Mode suite green | 0 failed, 0 skipped | 84/0/0, run `a1c11a52…` | **passed** — 111/0/0 plus 8/0/0 UMA, run separately |
 | A3 | Strict clean build | Succeeded, 0 errors, 0 Gamesim-owned warnings | 144,167,539 bytes, 77.72 s | **passed** — 912,012,559 bytes, 0 errors, 685 warnings none Gamesim-owned |
 | A4 | Headless season completes | exit 0, empty error array, season finishes | `Port-verify-…-d11b6394…` | **passed** — exit 0, 0 errors, winner decided |
 | A5 | Graphical season completes | exit 0, empty error array | `Port-verify-…-7a0b9ebd…` | **passed functionally** — `graphical: true`, 0 errors, but its screenshots are black (see D6b) |
@@ -88,7 +88,12 @@ holds focus. `Assets/Gamesim/Tests/PlayMode/HeadlessInputSettings.cs` relaxes th
 `Application.isBatchMode` and living in the test assembly, so it affects neither a player build nor an
 interactive session. Without it, seven tests fail in a way that looks exactly like product bugs.
 
-The expected headless result is **114/0/0**. Anything else is a real regression.
+**`-assemblyNames` honours only its first argument.** Passing two assembly names silently runs the
+first and reports the UMA suite as zero tests, which reads as "no UMA tests exist" rather than "you
+asked wrongly". Run them as separate invocations.
+
+The expected headless result is **678/0/0** Edit Mode, **111/0/0** Play Mode and **8/0/0** for
+`Gamesim.Uma.PlayModeTests`. Anything else is a real regression.
 
 ## B — New in V7
 
@@ -254,6 +259,33 @@ optimistically, so they stay empty until a real session fills them.
 
 Record failures with their numbers. A 22-minute run and a 70-minute run both miss E1 and mean
 opposite things.
+
+## F — Broadcast presentation (added after V7 was pinned)
+
+A presentation pass brought the Unity build toward the reference web build's look. Every item is
+covered by the automated suites above; this section records what exists so a reviewer is not
+comparing the pinned V7 executable against a screenshot of something newer.
+
+**The pinned V7 build predates all of it.** Re-pin before running section E, or section E will be
+measuring a build nobody is looking at any more.
+
+| # | What | Verified by |
+|---|---|---|
+| F1 | Cast rail — every houseguest, status badge, evicted moved to the end | HUD overlap and clipping suites |
+| F2 | Ceremony takeover, key ceremony, vote reveal, competition card, veto field | `Presentation_CeremonyCardsFireDuringAPlayedEpisode` |
+| F3 | Memory wall — portraits in-world, darkened on eviction | `MemoryWall_CarriesEveryHouseguestAndDarkensTheEvicted` |
+| F4 | Social graph, room occupancy, vote breakdown, story so far | `IconRail_JumpsToEverySectionOfTheNotebook` |
+| F5 | House pill and section rail | overlap suite; rail navigation test |
+| F6 | First-run tour | walkthrough steps through all seven |
+| F7 | Ambient house-activity caption | `AmbientCaption_ShowsAConversationAndClearsTheChrome` |
+| F8 | Set restructure — neon trim, Kenney furniture, checkered kitchen, roped entrance | renderers 76 → 358; suites green |
+
+Two things this pass changed that affect other sections:
+
+- **The camera now ships at 24, not 48.** C and D figures taken at 48 are stale; the cast reads at
+  roughly 2.7%–4.6% of frame height rather than 1.8%–2.2%. See `PLAYTEST_PROTOCOL.md`.
+- **The first-run tour changes what E2 measures.** It is the intervention that criterion exists to
+  detect the absence of. Run E2 with it off, or record that it was on.
 
 ## Out of scope for this matrix
 

@@ -149,6 +149,51 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// The ambient house-activity caption — the overlay that reports two houseguests talking
+        /// near you — renders, and clears the chrome above it.
+        ///
+        /// <para>Until now it was asserted only in the negative: three tests check it stays empty
+        /// when the player is not entitled to see a conversation, which guards the knowledge
+        /// boundary and says nothing about whether it works when it should. It also sits at a fixed
+        /// offset below the top edge, which the house pill now occupies — exactly the kind of
+        /// collision that is invisible until two features written months apart meet.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AmbientCaption_ShowsAConversationAndClearsTheChrome()
+        {
+            var caption = SceneComponents<Gamesim.Episode.HouseConversationCaption>().FirstOrDefault();
+            Assert.That(caption, Is.Not.Null, "The episode should stage the conversation caption.");
+            Assert.That(director.ObservedNpcConversation, Is.Empty, "Nothing should be observed yet.");
+
+            caption.Show("Maya Hassan", "Riley Johnson", "strategy", 1f);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+
+            Assert.That(director.ObservedNpcConversation,
+                Is.EqualTo("Maya Hassan and Riley Johnson are discussing the game."),
+                "The caption should describe the pair with the allowlisted topic.");
+
+            var panel = caption.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == "Witnessed generic topic");
+            Assert.That(panel, Is.Not.Null, "The caption should have built its panel.");
+
+            var pill = director.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == "House pill" && rect.gameObject.activeInHierarchy);
+            Assert.That(pill, Is.Not.Null, "The HUD should carry the house pill.");
+
+            var captionRect = ScreenRect(panel);
+            var pillRect = ScreenRect(pill);
+            Assert.That(captionRect.Overlaps(pillRect), Is.False,
+                "The ambient caption " + captionRect + " overlaps the house pill " + pillRect + ".");
+
+            yield return Shoot("walkthrough-13-ambient-caption");
+
+            caption.Hide();
+            yield return null;
+            Assert.That(director.ObservedNpcConversation, Is.Empty, "Hiding should clear the caption.");
+        }
+
         private static Transform[] Frames(MemoryWall wall) =>
             wall.transform.Cast<Transform>()
                 .Where(child => child.name.StartsWith(MemoryWall.FramePrefix, System.StringComparison.Ordinal))

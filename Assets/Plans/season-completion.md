@@ -1,0 +1,84 @@
+# Completing the season
+
+What the Unity port already does against the web game's documented flow, and what is actually
+missing.
+
+## The headline finding
+
+**The middle of the game is done. Both ends are not.**
+
+The weekly cycle, the endgame and every underlying system are ported and working — a headless season
+already runs to a decided winner (acceptance A4). What is missing is the way in and the way out: the
+game cannot be started except by pressing Play on a scene, and it ends with two sentences of text.
+
+## Gap map, against `GameSim-Game-Flow.md`
+
+| Doc section | Web game | Unity port | Verdict |
+| --- | --- | --- | --- |
+| 2. Home / sign-in / onboarding | Auth, routing, leaderboard | Nothing; you press Play | **Menu needed.** Accounts are out of scope for a single-player desktop build |
+| 3. Season setup (3 steps) | Player creation, 8 stats, 2 traits, cast pick, All-Stars, house size 8 | **Nothing.** Fixed six-person cast from `ContentCatalog` | **Missing entirely** |
+| 4. Opening sequences | Intro, house entry, walk-in, tutorial, meet & greet | Tutorial only (`HouseTutorial`) | **Four of five missing** |
+| 5–6. Weekly cycle | HoH → Nomination → Draw → Veto → Ceremony → Eviction → Social | All present | **Done** |
+| 7. Endgame F4 / F3 / F2 | Final HoH, three rounds | `FinalHoHPart1/2/3`, `FinalEviction` | **Done** |
+| 8. Jury questioning and finale | Questioning, speeches, jury vote | `JuryQuestioning`, `FinalSpeeches`, jury vote | **Done** |
+| 9. Final stats screen | Winner display, your journey, houseguest grid, season table, standings, player stats | **Two paragraphs of text** | **Missing entirely** |
+| 10. Underlying systems | Relationships, alliances, deals, threat, storylines, gossip, persona, jury sentiment, autosave | All present and substantial | **Done** |
+| 11. Spectator mode | Auto-on when evicted, season plays to the end | Season continues and input is gated; nothing tells the player | **Half done — see below** |
+
+The systems column is worth dwelling on, because it is the expensive half and it is finished:
+alliances, promises, relationship decay, gossip and witnesses, diary-room persona, jury sentiment,
+threat ranking and storyline arcs are all real code with tests behind them.
+
+## The six-contestant constraint
+
+`EpisodeValidation` rejects any state whose cast is not exactly six:
+
+```csharp
+if (s.contestants.Count != 6) return Fail(out error, "The house format requires six stored contestants.");
+```
+
+The web game defaults to eight and lets the player choose. **Setup cannot ship without relaxing
+this**, and relaxing it touches validation, the veto lineup rule, save migration and a large number
+of tests. It is the single biggest structural difference between the two games and it is why setup
+is sequenced late here rather than first, despite being first in the player's experience.
+
+## Order of work, and why
+
+**Phase 1 — the season finale report.** *Building now.*
+
+Highest value per unit of risk, and the clearest current defect: a player finishes a whole season
+and is told "Winner: X. Runner-up: Y." in two lines of body text. Everything a full report needs is
+already in `EpisodeState` — `hohWins`, `vetoWins`, `timesNominated`, `nominationWeeks`, `status`,
+and an `events` log whose entries carry a `week` and types for `competition`, `nomination`, `veto`
+and `eviction`, so the week-by-week table can be reconstructed rather than newly recorded. **It
+needs no simulation change at all**, which means it cannot regress the season.
+
+**Phase 2 — spectator mode.** Smaller than it first looked, and worth stating precisely because the
+first version of this document got it wrong.
+
+The *mechanism* is already there. The engine marks an evicted player `Jury` and carries on; it
+already guards for an inactive player (`Require(!s.Active.Any(x => x.isPlayer) || …)` before final
+speeches). The director tracks `playerIsActive`, disables player input and the diary room, blocks
+social approaches, and opens the phase panel so the season can still be advanced. Tests already
+construct a season in which the player is a juror.
+
+What is missing is **the acknowledgement**. Nothing on screen says the player has been evicted or
+that they are now watching. Control simply stops responding, which is the difference between an
+ending and a bug. So Phase 2 is a presentation change — an eviction moment for the player, a
+standing spectator badge, and a decision about whether remaining phases auto-advance — rather than
+the systems work it appeared to be.
+
+**Phase 3 — main menu and season setup.** The front door, and the six-contestant work above. Menu
+first (cheap, unblocks "start a game like a game"), then player creation, then variable house size
+as its own change with the validation and test churn it implies.
+
+**Phase 4 — opening sequences.** Intro, house entry, walk-in, meet and greet. Presentation only,
+and the least load-bearing: the game is complete without them, it just does not open well.
+
+## What not to port
+
+The web game's home page, sign-in, account creation, onboarding and cloud leaderboard exist to serve
+a hosted multi-user web app. A single-player desktop build has no accounts, so these become one
+main menu with New Season / Continue / Settings / Quit. The "unranked local season" notice on the
+web stats screen exists because those results are not cloud-verified; here every season is local, so
+the notice has nothing to contrast with and is dropped.

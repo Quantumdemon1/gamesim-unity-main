@@ -31,6 +31,7 @@ namespace Gamesim.Episode
         private KeyCeremony keyCeremony;
         private HouseTutorial tutorial;
         private MemoryWall memoryWall;
+        private SeasonReport seasonReport;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         // What the last social command actually moved, so the panel can say so.
@@ -100,6 +101,7 @@ namespace Gamesim.Episode
             competitionCard = CompetitionResult.Attach(gameObject);
             keyCeremony = KeyCeremony.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
+            seasonReport = SeasonReport.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             // After the first Render, so the chrome the tour points at exists to be found.
             OfferTutorial();
@@ -631,6 +633,58 @@ namespace Gamesim.Episode
             return people;
         }
 
+        /// <summary>
+        /// Whether the player is out of the game and the season is running on without them.
+        ///
+        /// <para>The web game stores this as a sticky <c>isSpectatorMode</c> flag set when the
+        /// evicted houseguest is the player. Here it is derived from the player's status instead,
+        /// which is equivalent — a juror never returns to the house — and avoids adding a field to
+        /// the save schema and a migration to go with it.</para>
+        ///
+        /// <para>The finale is excluded: once the season is over everyone is a spectator, and the
+        /// report carries its own badge for someone who watched from the jury.</para>
+        /// </summary>
+        public static bool Spectating(EpisodeState state)
+        {
+            if (state == null || state.phase == EpisodePhase.Finished) return false;
+            var you = state.Find(state.playerId);
+            return you != null && you.status != ContestantStatus.Active;
+        }
+
+        /// <summary>The line under the spectator caption: when they went, and what is left.</summary>
+        private static string SpectatorDetail(EpisodeState state)
+        {
+            var you = state.Find(state.playerId);
+            int week = you != null && you.nominationWeeks != null && you.nominationWeeks.Count > 0
+                ? you.nominationWeeks[you.nominationWeeks.Count - 1]
+                : state.week;
+            string seat = you != null && you.status == ContestantStatus.Jury
+                ? "You are on the jury, and you will vote for the winner."
+                : "You were evicted before jury, so you have no vote in the finale.";
+            return "You were evicted in week " + week + ". " + seat
+                + " The house plays on; you can still watch every ceremony and read the notebook.";
+        }
+
+        /// <summary>
+        /// Opens the season report on the committed season.
+        ///
+        /// <para>It reads <see cref="Snapshot"/> rather than the projection, for the reason every
+        /// other presentation surface here does: a projected result is not a fact, and the last
+        /// screen of a season is the worst possible place to show an outcome the save does not
+        /// hold.</para>
+        /// </summary>
+        public void ShowSeasonReport()
+        {
+            if (seasonReport == null) return;
+            var committed = Snapshot;
+            seasonReport.Show(committed, id =>
+            {
+                var actor = committed.Find(id);
+                return actor == null ? null : CharacterPortraits.Get(
+                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)));
+            }, OpenJournal);
+        }
+
         private static KeyCeremony.Person Person(EpisodeState state, string id)
         {
             var actor = state.Find(id);
@@ -752,6 +806,9 @@ namespace Gamesim.Episode
             // yet, and the set must never show an outcome the save does not hold.
             if (memoryWall != null) memoryWall.Refresh(engine.Snapshot);
             hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen);
+            // Committed state, not the projection: a projected eviction is not a fact, and telling
+            // someone they are out of the game is the last claim that should run ahead of the save.
+            if (Spectating(engine.Snapshot)) hud.SpectatorNote(SpectatorDetail(engine.Snapshot));
             if (settingsOpen || blockedRecovery) { Settings(state); return; }
             if (diaryOpen) { RenderDiary(state); return; }
             if (journalOpen)
@@ -846,7 +903,9 @@ namespace Gamesim.Episode
             {
                 hud.Paragraph("Winner: " + state.Find(state.winnerId).name + ". Runner-up: " + state.Find(state.runnerUpId).name + ".");
                 hud.Paragraph("Your choices and votes are preserved in the notebook. Start another season from Settings; the old save is retained.");
-                hud.Action("Review the season", OpenJournal); return;
+                hud.Action("Season report", ShowSeasonReport);
+                hud.Action("Review the season", OpenJournal);
+                return;
             }
             if (EpisodeEngine.IsCompetition(state.phase))
             {

@@ -276,6 +276,11 @@ namespace Gamesim.Presentation
             rim.anchorMin = new Vector2(.5f, 1f); rim.anchorMax = new Vector2(.5f, 1f); rim.pivot = new Vector2(.5f, 1f);
             rim.anchoredPosition = Vector2.zero;
 
+            // The target the web build pins to a nominee's portrait. Only the block gets one — a
+            // houseguest handed a key is safe, and marking them would say the opposite.
+            if (badge == "NOMINATED")
+                HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, portrait);
+
             var name = HudPrimitives.Label("Name", stage, 30f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
             name.text = person.Value.Name;
             Place(name.rectTransform, 640f * scale, 38f * scale, -(portrait + 12f * scale));
@@ -308,6 +313,10 @@ namespace Gamesim.Presentation
                 var rim = HudPrimitives.Portrait(stage, person.Portrait, UiTheme.Danger, portrait, 5f * scale, false);
                 rim.anchorMin = new Vector2(.5f, 1f); rim.anchorMax = new Vector2(.5f, 1f); rim.pivot = new Vector2(.5f, 1f);
                 rim.anchoredPosition = new Vector2(start + i * slotWidth, 0f);
+
+                // The target the web build pins to a nominee. This is the shot the card exists for,
+                // so it is the one portrait that most needs the mark.
+                HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, portrait);
 
                 var name = HudPrimitives.Label("Nominee", stage, 22f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
                 name.text = person.Name;

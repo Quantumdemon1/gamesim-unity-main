@@ -242,7 +242,11 @@ namespace Gamesim.Episode
             foreach (var choice in prompt.choices)
             {
                 var selected = choice;
-                hud.Action(choice.persona + " · " + choice.text, () => ReviewDiaryReflection(state, selected.id));
+                // The exposure badge is a chip on the control, not part of its caption: the
+                // caption is how the suite and a screen reader identify a button, and appending to
+                // it renamed every diary choice. Same mistake as the social action categories.
+                hud.Tag(hud.Action(choice.persona + " · " + choice.text,
+                    () => ReviewDiaryReflection(state, selected.id)), Exposure(choice));
             }
             hud.Action(EpisodeHud.DiarySkipReflectionCaption, SkipDiary);
         }
@@ -266,6 +270,94 @@ namespace Gamesim.Episode
         }
 
         /// <summary>One renderer supplies the existing public screen and the private confirmation flow.</summary>
+        /// <summary>
+        /// How exposed a diary answer leaves the player, read off the answer's own committed
+        /// effects.
+        ///
+        /// <para>The web build badges its confession choices Safe or Moderate. <b>Social actions
+        /// here carry no risk concept at all</b>, so badging those would be inventing a mechanic
+        /// rather than restyling one — but diary answers genuinely differ: some carry a jury
+        /// penalty, and the jury decides the season. So the badge is derived from
+        /// <c>juryDelta</c> rather than authored, which means it cannot drift away from what the
+        /// answer actually does.</para>
+        /// </summary>
+        private static string Exposure(WebDiaryChoice choice)
+        {
+            int jury = choice?.effects?.juryDelta ?? 0;
+            return jury < 0 ? "costs jury goodwill" : jury > 0 ? "wins jury goodwill" : "safe";
+        }
+
+        /// <summary>Whose thoughts the voter roster is currently showing, if any.</summary>
+        private string thoughtsVoterId;
+
+        /// <summary>
+        /// The roster of eligible voters, with a per-voter reveal — the web build's "Thoughts"
+        /// control, and the progress line that goes with it.
+        ///
+        /// <para><b>What it will not do is tell you how anyone is voting.</b> The web shows this
+        /// before the ballots are in, and the obvious reading of "thoughts" would be the voter's
+        /// leaning — but that is exactly the private coordination this project keeps out of every
+        /// player-visible surface, and a knowledge-boundary check asserts its absence. Revealing it
+        /// would also remove the reason the eviction reveal exists.</para>
+        ///
+        /// <para>So the reveal is built only from what the player already holds: their own trust in
+        /// that houseguest, which the notebook prints, and the most recent thing the player
+        /// themselves remembers about them. Nothing here is knowledge the player did not already
+        /// have — it is the same information, gathered to where the decision is being made.</para>
+        /// </summary>
+        private void VoterRoster(EpisodeState state)
+        {
+            var voters = EpisodeEngine.Voters(state).ToArray();
+            if (voters.Length == 0) return;
+
+            int cast = voters.Count(voter => state.votes.Any(vote => vote.voterId == voter.id));
+            hud.Heading("VOTERS  ·  " + cast + " OF " + voters.Length + " VOTED");
+
+            foreach (var voter in voters)
+            {
+                var actor = voter;
+                bool voted = state.votes.Any(vote => vote.voterId == actor.id);
+
+                if (actor.isPlayer)
+                { hud.Paragraph(actor.name + " (You)" + (voted ? "  ·  voted" : "")); continue; }
+
+                // The caption is fixed whatever the state, and the "voted" marker is a chip rather
+                // than part of it. A control whose name changes as you use it is a control neither
+                // a test nor a screen reader can refer to twice.
+                hud.Tag(hud.ActionFor(actor.id + ":thoughts", "Thoughts · " + actor.name,
+                        () => { thoughtsVoterId = thoughtsVoterId == actor.id ? null : actor.id; Render(); }),
+                    voted ? "voted" : null);
+
+                if (thoughtsVoterId == actor.id) hud.Paragraph(Thoughts(state, actor));
+            }
+        }
+
+        /// <summary>
+        /// What the player knows about one voter, in their own words where they have any.
+        /// Strictly the player's own knowledge: their trust, and their own memories.
+        /// </summary>
+        private static string Thoughts(EpisodeState state, ContestantState voter)
+        {
+            double trust = state.Score(state.playerId, voter.id);
+            string standing = trust >= 25 ? "You trust " + voter.name + "."
+                : trust <= -25 ? "There is bad blood between you and " + voter.name + "."
+                : "You and " + voter.name + " are on level terms.";
+
+            var remembered = state.memories
+                .Where(memory => memory.ownerId == state.playerId && memory.subjectId == voter.id)
+                .OrderByDescending(memory => memory.week)
+                .FirstOrDefault();
+
+            string recalled = remembered == null
+                ? "You have nothing specific on them this season."
+                : "Week " + remembered.week + ": " + remembered.text;
+
+            bool allied = state.Allied(state.playerId, voter.id);
+            return standing + " " + recalled
+                + (allied ? " You are in an alliance together." : string.Empty)
+                + "  (Your trust: " + trust.ToString("0") + ". How they vote is theirs until the reveal.)";
+        }
+
         private bool RenderPlayerDecision(EpisodeState state, bool privateRoom)
         {
             if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
@@ -311,6 +403,7 @@ namespace Gamesim.Episode
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");
+                VoterRoster(state);
                 foreach (var nominee in state.nominees)
                 {
                     string id = nominee;

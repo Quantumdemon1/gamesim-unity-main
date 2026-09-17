@@ -95,6 +95,18 @@ namespace Gamesim.Presentation
             return order;
         }
 
+        /// <summary>The badge word the rail already shows, expressed as a portrait mark.</summary>
+        private static HudPrimitives.RoleMark MarkFor(string badge)
+        {
+            switch (badge)
+            {
+                case "HOH": return HudPrimitives.RoleMark.HeadOfHousehold;
+                case "VETO": return HudPrimitives.RoleMark.VetoHolder;
+                case "NOM": return HudPrimitives.RoleMark.Nominee;
+                default: return HudPrimitives.RoleMark.None;
+            }
+        }
+
         private static Standing Read(EpisodeState state, ContestantState actor)
         {
             if (actor.status == ContestantStatus.Winner) return new Standing("WINNER", UiTheme.Gold, false);
@@ -127,6 +139,11 @@ namespace Gamesim.Presentation
             rim.anchorMin = new Vector2(.5f, 1f); rim.anchorMax = new Vector2(.5f, 1f); rim.pivot = new Vector2(.5f, 1f);
             rim.anchoredPosition = Vector2.zero;
             rim.sizeDelta = new Vector2(ring, ring);
+
+            // The role badge the web build pins to a portrait: a target on a nominee, a crown on
+            // the Head of Household. It repeats what the chip below already says in words, so a
+            // reader who cannot see the shape loses nothing.
+            HudPrimitives.AddRoleMark(rim, MarkFor(standing.Badge), ring);
 
             // A circular mask over the portrait render. The face texture is square, so without this
             // the cast reads as a row of tiles rather than as a row of people.

@@ -49,6 +49,11 @@ namespace Gamesim.Episode
         private Quaternion[] initialNpcRotations;
         private readonly RaycastHit[] sightHits = new RaycastHit[32];
         private bool playerIsActive;
+        /// <summary>Master volume as a percentage, and whether the ambient bed plays. Both were
+        /// reachable in HouseAudio but only mute was ever exposed, so a player could silence the
+        /// game or leave it alone and nothing in between.</summary>
+        private int volumePercent = 35;
+        private bool musicOn = true;
         private HouseNpc promptNpc;
         private string npcPrompt;
         private EpisodeCommandKind? lastSocialAction;
@@ -104,6 +109,8 @@ namespace Gamesim.Episode
             reducedMotion = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedMotion", 0) == 1;
             muted = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
             largeText = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.LargeText", 0) == 1;
+            volumePercent = SaveRootOverride == null ? Mathf.Clamp(PlayerPrefs.GetInt("Gamesim.Volume", 35), 0, 100) : 35;
+            musicOn = SaveRootOverride != null || PlayerPrefs.GetInt("Gamesim.Music", 1) == 1;
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
             takeover = CeremonyTakeover.Attach(gameObject);
@@ -537,6 +544,62 @@ namespace Gamesim.Episode
         /// the simulation does not model position — where a houseguest is standing is a fact about
         /// the scene, and claiming otherwise would be inventing state.</para>
         /// </summary>
+        /// <summary>
+        /// The room the player is standing in and who else is in it — the web build's "Current
+        /// Location" card.
+        ///
+        /// <para>Read from the same occupancy the notebook's house map uses, which derives each
+        /// houseguest's room from where their body actually is rather than from a stored field. So
+        /// this cannot disagree with the map, and it cannot claim someone is nearby who is not.</para>
+        ///
+        /// <para>It earns its place on the social screen because the decision being made there is
+        /// who to talk to, and that was previously answerable only by opening the notebook or
+        /// turning the camera.</para>
+        /// </summary>
+        private void CurrentLocation(EpisodeState state)
+        {
+            var here = HouseOccupancy(state)
+                .FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
+            if (string.IsNullOrEmpty(here.Name)) return;
+
+            var others = here.Occupants.Where(person => !person.IsPlayer).Select(person => person.Name).ToArray();
+            hud.Heading("CURRENT LOCATION  ·  " + here.Name.ToUpperInvariant());
+            hud.Paragraph(others.Length == 0
+                ? "You have this room to yourself."
+                : others.Length + (others.Length == 1 ? " houseguest here: " : " houseguests here: ") + string.Join(", ", others));
+        }
+
+        /// <summary>
+        /// A social action's category, drawn as a pill beside the control.
+        ///
+        /// <para>The grouping is real rather than invented: these commands already divide by what
+        /// they commit. Talking and sharing information move a relationship and nothing else;
+        /// promises and alliances write a binding record that comes due later; studying the house
+        /// banks a competition bonus and touches no one. Unlike the confession "risk" badges, which
+        /// have no counterpart in this simulation at all, this is a name for structure that is
+        /// already there.</para>
+        /// </summary>
+        private static string Category(EpisodeCommandKind kind)
+        {
+            switch (kind)
+            {
+                case EpisodeCommandKind.Talk:
+                case EpisodeCommandKind.ShareInformation:
+                    return "social";
+                case EpisodeCommandKind.PromiseSafety:
+                case EpisodeCommandKind.PromiseVote:
+                case EpisodeCommandKind.PromiseFinalTwo:
+                case EpisodeCommandKind.FormAlliance:
+                case EpisodeCommandKind.LeaveAlliance:
+                case EpisodeCommandKind.SwearLoyalty:
+                    return "strategic";
+                case EpisodeCommandKind.StudyHouse:
+                    return "preparation";
+                default:
+                    return null;
+            }
+        }
+
         private List<HouseMap.Room> HouseOccupancy(EpisodeState state)
         {
             var rooms = new List<HouseMap.Room>();
@@ -963,14 +1026,23 @@ namespace Gamesim.Episode
                 }
                 else if (state.loyaltyOaths.Any(oath => oath.playerId == state.playerId && oath.targetId == npc.id))
                     hud.Paragraph("Your loyalty declaration is recorded. It does not bind " + npc.name + " to protect you.");
-                hud.Action("Spend time together", () => Commit(state, EpisodeCommandKind.Talk, npc.id));
-                hud.Action("Promise safety", () => Commit(state, EpisodeCommandKind.PromiseSafety, npc.id));
-                hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id));
-                hud.Action(state.Allied(state.playerId, npc.id) ? "Leave our alliance" : "Propose an alliance",
-                    () => Commit(state, state.Allied(state.playerId, npc.id) ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id));
-                hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id));
+                // The category is a chip pinned to the button, never part of its caption. Baking it
+                // into the label broke every test that finds a control by the words on it — and the
+                // web build draws it as a separate pill anyway, so the caption was the wrong place.
+                bool allied = state.Allied(state.playerId, npc.id);
+                hud.Tag(hud.Action("Spend time together", () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
+                    Category(EpisodeCommandKind.Talk));
+                hud.Tag(hud.Action("Promise safety", () => Commit(state, EpisodeCommandKind.PromiseSafety, npc.id)),
+                    Category(EpisodeCommandKind.PromiseSafety));
+                hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
+                    Category(EpisodeCommandKind.PromiseFinalTwo));
+                hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
+                        () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
+                    Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+                hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
+                    Category(EpisodeCommandKind.ShareInformation));
                 if (state.phase == EpisodePhase.Campaign)
-                    foreach (var nominee in state.nominees) { string id = nominee; hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)); }
+                    foreach (var nominee in state.nominees) { string id = nominee; hud.Tag(hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)), Category(EpisodeCommandKind.PromiseVote)); }
                 return;
             }
             if (!phaseOpen) return;
@@ -1041,7 +1113,21 @@ namespace Gamesim.Episode
             if (state.hohId != null) hud.Paragraph("HoH: " + state.Find(state.hohId).name);
             if (state.vetoHolderId != null) hud.Paragraph("Veto holder: " + state.Find(state.vetoHolderId).name);
             if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
-                hud.Paragraph("Explore and talk freely before continuing. Social actions used: " + state.socialActions + "/18. You can finish the window whenever you choose.");
+            {
+                CurrentLocation(state);
+                // The web build draws this as a bar you can watch drain rather than a sentence you
+                // have to read and subtract. The caption still carries the numbers.
+                hud.Meter("Interactions available", Mathf.Max(0, 18 - state.socialActions), 18, UiTheme.Accent);
+                // Standing modifiers, shown beside the budget they apply to. The web build puts a
+                // social-bonus chip on each action's result; here that would misattribute it,
+                // because this bonus accrues from diary answers and story beats rather than from
+                // the action it would be printed under. Shown as what it is: something you carry.
+                if (state.phaseEventSocialBonus > 0)
+                    hud.Paragraph("Carrying a +" + state.phaseEventSocialBonus + " social bonus from earlier choices.");
+                if (state.playerStudyBonus > 0)
+                    hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
+                hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose.");
+            }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph("Four jurors choose the winner. The source game's tie rule awards a tied jury to the second finalist in cast order.");
             hud.Action(state.phase == EpisodePhase.Social ? "Begin the next competition" : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode", () => Commit(state, EpisodeCommandKind.Advance));
         }
@@ -1075,7 +1161,11 @@ namespace Gamesim.Episode
             hud.Action("Reload current slot", LoadNow);
             hud.Action("Recover validated backup (preserve current file)", RecoverBackup);
             hud.Action("New season in a NEW slot (preserves this season)", NewSeason);
+            hud.Meter("Master volume", volumePercent, 100, muted ? UiTheme.Muted : UiTheme.Accent);
+            hud.Action("Volume down", () => { volumePercent = Mathf.Max(0, volumePercent - 10); ApplyPreferences(); Render(); });
+            hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
             hud.Action(muted ? "Turn sound on" : "Mute sound", () => { muted = !muted; ApplyPreferences(); Render(); });
+            hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(largeText ? "Use standard text" : "Use larger text", () => { largeText = !largeText; ApplyPreferences(); Render(); });
             hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
@@ -1165,6 +1255,8 @@ namespace Gamesim.Episode
         private void ApplyPreferences()
         {
             audioBed?.SetMuted(muted);
+            audioBed?.SetVolume(volumePercent / 100f);
+            audioBed?.SetAmbienceEnabled(musicOn);
             cameraRig?.SetReducedMotion(reducedMotion);
             if (hud != null) { hud.FontScale = largeText ? 1.2f : 1; hud.ReducedMotion = reducedMotion; }
             if (sting != null) sting.FontScale = largeText ? 1.2f : 1;
@@ -1175,7 +1267,7 @@ namespace Gamesim.Episode
             if (tutorial != null) tutorial.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
-            { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }
+            { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.SetInt("Gamesim.Volume", volumePercent); PlayerPrefs.SetInt("Gamesim.Music", musicOn ? 1 : 0); PlayerPrefs.Save(); }
         }
 
         private void OnDisable()

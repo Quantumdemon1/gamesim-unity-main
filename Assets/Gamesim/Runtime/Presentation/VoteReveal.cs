@@ -254,6 +254,9 @@ namespace Gamesim.Presentation
                 float x = (i == 0 ? -1f : 1f) * slot * 0.5f;
 
                 var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, 4f * scale, false);
+
+                // Both faces here are on the block, so both carry the target the web build uses.
+                HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, portrait);
                 rim.anchorMin = new Vector2(.5f, 1f); rim.anchorMax = new Vector2(.5f, 1f); rim.pivot = new Vector2(.5f, 1f);
                 rim.anchoredPosition = new Vector2(x, -100f * scale);
                 rims.Add(rim);

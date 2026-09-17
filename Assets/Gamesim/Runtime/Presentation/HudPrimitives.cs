@@ -107,5 +107,90 @@ namespace Gamesim.Presentation
             }
             return rim;
         }
+
+        /// <summary>Which role badge sits on a portrait, if any.</summary>
+        public enum RoleMark { None, Nominee, HeadOfHousehold, VetoHolder }
+
+        /// <summary>
+        /// Pins a small role badge to a portrait's upper-right, the way the web build marks a
+        /// nominee with a target and the Head of Household with a crown.
+        ///
+        /// <para>Every mark is built from discs and bars rather than from a glyph. The shipped
+        /// atlas is LiberationSans SDF, which has no dingbats, so a crown character would render as
+        /// tofu — the same constraint that made the ceremony mark a shape and the icon rail a set of
+        /// drawn forms.</para>
+        ///
+        /// <para>The badge is decoration on top of a status that is already stated in words
+        /// elsewhere. It never carries information on its own, because a coloured shape is not
+        /// something a screen reader can announce.</para>
+        /// </summary>
+        public static RectTransform AddRoleMark(RectTransform rim, RoleMark mark, float diameter)
+        {
+            if (rim == null || mark == RoleMark.None) return null;
+
+            float size = Mathf.Max(14f, diameter * 0.34f);
+            var badge = Disc("Role mark", rim, Tint(mark));
+            badge.anchorMin = new Vector2(1f, 1f);
+            badge.anchorMax = new Vector2(1f, 1f);
+            badge.pivot = new Vector2(.5f, .5f);
+            // Sat on the rim's shoulder at roughly 45 degrees, so it clears the face either side.
+            badge.anchoredPosition = new Vector2(-size * 0.28f, -size * 0.28f);
+            badge.sizeDelta = new Vector2(size, size);
+
+            switch (mark)
+            {
+                case RoleMark.Nominee:
+                    // A target: ring, gap, core.
+                    Ring(badge, size * 0.62f, UiTheme.Ink);
+                    Ring(badge, size * 0.30f, Tint(mark));
+                    break;
+                case RoleMark.VetoHolder:
+                    // A medal: a dark bar across a gold field.
+                    var bar = Fill("Veto bar", badge, UiTheme.Ink, 1);
+                    Centre(bar, size * 0.58f, Mathf.Max(2f, size * 0.14f));
+                    bar.localRotation = Quaternion.Euler(0f, 0f, -35f);
+                    break;
+                case RoleMark.HeadOfHousehold:
+                    // A crown: a band with three points above it.
+                    var band = Fill("Crown band", badge, UiTheme.Ink, 1);
+                    Centre(band, size * 0.56f, Mathf.Max(2f, size * 0.12f));
+                    band.anchoredPosition = new Vector2(0f, -size * 0.14f);
+                    float point = Mathf.Max(2f, size * 0.13f);
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        var spike = Fill("Crown point", badge, UiTheme.Ink, 1);
+                        Centre(spike, point, point * (i == 0 ? 1.7f : 1.2f));
+                        spike.anchoredPosition = new Vector2(i * size * 0.20f, size * 0.06f);
+                    }
+                    break;
+            }
+            return badge;
+        }
+
+        private static Color Tint(RoleMark mark)
+        {
+            switch (mark)
+            {
+                case RoleMark.Nominee: return UiTheme.Danger;
+                case RoleMark.VetoHolder: return UiTheme.Gold;
+                case RoleMark.HeadOfHousehold: return UiTheme.Gold;
+                default: return UiTheme.Muted;
+            }
+        }
+
+        private static void Ring(RectTransform parent, float size, Color colour)
+        {
+            var ring = Disc("Ring", parent, colour);
+            Centre(ring, size, size);
+        }
+
+        private static void Centre(RectTransform rect, float width, float height)
+        {
+            rect.anchorMin = new Vector2(.5f, .5f);
+            rect.anchorMax = new Vector2(.5f, .5f);
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(width, height);
+        }
     }
 }

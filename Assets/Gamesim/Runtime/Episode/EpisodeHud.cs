@@ -520,6 +520,27 @@ namespace Gamesim.Episode
             return text;
         }
 
+        /// <summary>
+        /// Pins a small category pill to the right-hand end of a control, the way the web build
+        /// tags its action list.
+        ///
+        /// <para>It is drawn as a separate graphic rather than folded into the caption, because the
+        /// caption is how tests and a screen reader identify the control — appending to it renamed
+        /// every button and broke six tests that look one up by the words on it.</para>
+        /// </summary>
+        public void Tag(Button target,string text)
+        {
+            if (target == null || string.IsNullOrEmpty(text)) return;
+            var chip = Panel("Tag",target.transform,new Color(Accent.r,Accent.g,Accent.b,.16f));
+            Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-12f,0f),
+                new Vector2(104f * FontScale,22f * FontScale));
+            chip.GetComponent<Image>().raycastTarget = false;
+            var label = FixedText(chip,text,12,Accent,Vector2.zero,new Vector2(104f * FontScale,22f * FontScale));
+            label.alignment = TextAlignmentOptions.Center;
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = Vector2.zero; label.rectTransform.offsetMax = Vector2.zero;
+        }
+
         public Button Action(string caption,Action action)
         {
             var rect = Panel(caption,content,Surface); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
@@ -651,6 +672,38 @@ namespace Gamesim.Episode
             input.text = retainedImportPath;
             input.onValueChanged.AddListener(value => retainedImportPath = value);
             Action("Archive and import this file",() => submit(input.text));
+        }
+
+        /// <summary>
+        /// A labelled progress bar: the caption on the left, the remaining count on the right, and
+        /// a filled track under both.
+        ///
+        /// <para>The web build shows the action budget this way — a number you can see draining
+        /// rather than a sentence you have to read and subtract. The count is stated in the caption
+        /// as well as drawn, because a bar on its own is not something a screen reader can report.
+        /// </para>
+        /// </summary>
+        public void Meter(string caption, int remaining, int total, Color tint)
+        {
+            int held = Mathf.Clamp(remaining, 0, Mathf.Max(1, total));
+            var rect = Panel("Meter", content, Surface);
+            rect.gameObject.AddComponent<LayoutElement>().minHeight = Mathf.RoundToInt(58 * FontScale);
+
+            FixedText(rect, caption, 16, Paper, new Vector2(16, -10), new Vector2(360, 22));
+            var countText = FixedText(rect, held + " of " + total, 16, tint, new Vector2(-16, -10), new Vector2(160, 22));
+            countText.alignment = TextAlignmentOptions.Right;
+            var countRect = countText.rectTransform;
+            countRect.anchorMin = new Vector2(1, 1); countRect.anchorMax = new Vector2(1, 1); countRect.pivot = new Vector2(1, 1);
+
+            var track = Panel("Track", rect, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .55f), 3);
+            track.anchorMin = new Vector2(0, 0); track.anchorMax = new Vector2(1, 0); track.pivot = new Vector2(.5f, 0);
+            track.offsetMin = new Vector2(16, 14); track.offsetMax = new Vector2(-16, 22);
+            track.GetComponent<Image>().raycastTarget = false;
+
+            var fill = Panel("Fill", track, tint, 3);
+            fill.anchorMin = Vector2.zero; fill.anchorMax = new Vector2(total <= 0 ? 0f : (float)held / total, 1f);
+            fill.offsetMin = Vector2.zero; fill.offsetMax = Vector2.zero;
+            fill.GetComponent<Image>().raycastTarget = false;
         }
 
         public void ChallengeMeter()

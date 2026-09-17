@@ -5,6 +5,17 @@ namespace Gamesim.Simulation
 {
     public static partial class EpisodeValidation
     {
+        /// <summary>
+        /// The house size this format accepts.
+        ///
+        /// <para>This used to demand exactly six, which made the port a fixed demo rather than the
+        /// game the web version is — that one defaults to eight and lets the player choose. Three is
+        /// the floor because the Final Three is a real stage and a season cannot start already past
+        /// it; sixteen is a ceiling on stored cast rather than a design statement, and exists so a
+        /// corrupt save cannot describe a house of thousands.</para>
+        /// </summary>
+        public const int MinimumCast = 3, MaximumCast = 16;
+
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
@@ -15,8 +26,9 @@ namespace Gamesim.Simulation
             if (s.blocRulesStartWeek < 1 || s.blocRulesStartWeek > 101 || s.blocRulesStartWeek > s.week + 1)
                 return Fail(out error, "Voting-bloc activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
-            if (s.contestants == null || s.contestants.Count != 6 || s.contestants.Any(c => c == null)) return Fail(out error, "The house format requires six stored contestants.");
-            if (s.contestants.Select(c => c.id).Distinct(StringComparer.Ordinal).Count() != 6 || s.contestants.Count(c => c.isPlayer) != 1 ||
+            if (s.contestants == null || s.contestants.Count < MinimumCast || s.contestants.Count > MaximumCast || s.contestants.Any(c => c == null))
+                return Fail(out error, "A house holds between " + MinimumCast + " and " + MaximumCast + " contestants.");
+            if (s.contestants.Select(c => c.id).Distinct(StringComparer.Ordinal).Count() != s.contestants.Count || s.contestants.Count(c => c.isPlayer) != 1 ||
                 !s.contestants.Any(c => c.isPlayer && c.id == s.playerId)) return Fail(out error, "Cast/player identity is invalid.");
             foreach (var c in s.contestants)
             {
@@ -32,24 +44,24 @@ namespace Gamesim.Simulation
             bool Optional(string id) => string.IsNullOrEmpty(id) || Id(id);
             if (!Optional(s.hohId) || !Optional(s.previousHohId) || !Optional(s.vetoHolderId) || !Optional(s.winnerId) ||
                 !Optional(s.runnerUpId) || !Optional(s.finalPart1WinnerId) || !Optional(s.finalPart2WinnerId)) return Fail(out error, "Unknown role identity.");
-            if (s.relationships == null || s.relationships.Count > 36 || s.relationships.Any(r => r == null || !Id(r.fromId) || !Id(r.toId) || !Finite(r.score) || Math.Abs(r.score) > 100) ||
+            if (s.relationships == null || s.relationships.Count > s.contestants.Count * (s.contestants.Count - 1) || s.relationships.Any(r => r == null || !Id(r.fromId) || !Id(r.toId) || !Finite(r.score) || Math.Abs(r.score) > 100) ||
                 s.relationships.GroupBy(r => new { r.fromId, r.toId }).Any(g => g.Count() > 1)) return Fail(out error, "Invalid directed relationship graph.");
             if (s.nominees == null || s.nominees.Count > 2 || s.nominees.Any(id => !Id(id)) || s.nominees.Distinct().Count() != s.nominees.Count ||
-                s.vetoPlayers == null || s.vetoPlayers.Count > 6 || s.vetoPlayers.Any(id => !Id(id)) || s.vetoPlayers.Distinct().Count() != s.vetoPlayers.Count)
+                s.vetoPlayers == null || s.vetoPlayers.Count > EpisodeEngine.VetoLineupSize || s.vetoPlayers.Any(id => !Id(id)) || s.vetoPlayers.Distinct().Count() != s.vetoPlayers.Count)
                 return Fail(out error, "Invalid nomination or veto participant references.");
             if (s.promises == null || s.promises.Count > 200 || s.promises.Any(p => p == null || !Text(p.id, 160) || !Id(p.fromId) || !Id(p.toId) || p.fromId == p.toId ||
                 !Optional(p.targetId) || !Defined(p.kind) || !Defined(p.status) || p.week < 1 || p.week > s.week || p.expiresWeek < 0 || p.expiresWeek > 101) ||
                 s.promises.GroupBy(p => p.id).Any(g => g.Count() > 1)) return Fail(out error, "Invalid promise data.");
             if (s.alliances == null || s.alliances.Count > 100 || s.alliances.Any(a => a == null || !Text(a.id, 160) || !Text(a.name, 100) || a.members == null ||
-                a.members.Count < 2 || a.members.Count > 6 || a.members.Any(id => !Id(id)) || a.members.Distinct().Count() != a.members.Count) ||
+                a.members.Count < 2 || a.members.Count > s.contestants.Count || a.members.Any(id => !Id(id)) || a.members.Distinct().Count() != a.members.Count) ||
                 s.alliances.GroupBy(a => a.id).Any(g => g.Count() > 1)) return Fail(out error, "Invalid alliance data.");
-            if (s.memories == null || s.memories.Count > 180 || s.memories.Any(m => m == null || !Id(m.ownerId) || !Id(m.subjectId) || !Text(m.text, 2000) || m.week < 1 || m.week > s.week))
+            if (s.memories == null || s.memories.Count > 30 * s.contestants.Count || s.memories.Any(m => m == null || !Id(m.ownerId) || !Id(m.subjectId) || !Text(m.text, 2000) || m.week < 1 || m.week > s.week))
                 return Fail(out error, "Invalid memory data.");
-            if (s.votes == null || s.votes.Count > 6 || s.votes.Any(v => v == null || !Id(v.voterId) || !Id(v.targetId) || v.voterId == v.targetId) ||
+            if (s.votes == null || s.votes.Count > s.contestants.Count || s.votes.Any(v => v == null || !Id(v.voterId) || !Id(v.targetId) || v.voterId == v.targetId) ||
                 s.votes.GroupBy(v => v.voterId).Any(g => g.Count() > 1)) return Fail(out error, "Invalid votes.");
             // Schema4 simulation may add the existing counter1000 + study5 + base12.5 + clutch5 (+ luck3).
             // Preserve legal v3 counters without clipping source bonus arithmetic at the former 1000 result ceiling.
-            if (s.competitionScores == null || s.competitionScores.Count > 6 || s.competitionScores.Any(c => c == null || !Id(c.contestantId) || !Finite(c.score) || c.score < 0 || c.score > 1030) ||
+            if (s.competitionScores == null || s.competitionScores.Count > s.contestants.Count || s.competitionScores.Any(c => c == null || !Id(c.contestantId) || !Finite(c.score) || c.score < 0 || c.score > 1030) ||
                 s.competitionScores.GroupBy(c => c.contestantId).Any(g => g.Count() > 1)) return Fail(out error, "Invalid competition results.");
             if (s.events == null || s.events.Count > 256 || s.events.Any(e => e == null || e.sequence < 1 || e.sequence >= s.nextSequence || e.week < 1 || e.week > s.week ||
                 !Defined(e.phase) || !Text(e.kind, 100) || !Text(e.text, 4000) || e.audienceIds == null || e.audienceIds.Any(id => !Id(id))) ||
@@ -82,7 +94,7 @@ namespace Gamesim.Simulation
             if (weekly && s.nominees.Contains(s.hohId)) return Fail(out error, "The HoH cannot be nominated.");
             if (weekly && !s.evictionResolved && s.nominees.Any(id => !Live(id))) return Fail(out error, "Current nominees must be active.");
             if ((s.phase == EpisodePhase.Veto || s.phase == EpisodePhase.VetoMeeting || s.phase == EpisodePhase.Campaign || (s.phase == EpisodePhase.Eviction && !s.evictionResolved)) &&
-                (s.vetoPlayers.Count != activeCount || s.vetoPlayers.Any(id => !Live(id)))) return Fail(out error, "The six-person format requires the complete active veto lineup.");
+                (s.vetoPlayers.Count != EpisodeEngine.VetoPlayerCount(activeCount) || s.vetoPlayers.Any(id => !Live(id)))) return Fail(out error, "The veto lineup must seat " + EpisodeEngine.VetoPlayerCount(activeCount) + " active houseguests.");
             if ((s.phase == EpisodePhase.VetoMeeting || s.phase == EpisodePhase.Campaign || s.phase == EpisodePhase.Eviction) && !s.vetoPlayers.Contains(s.vetoHolderId)) return Fail(out error, "The veto holder must have competed.");
             if ((s.phase == EpisodePhase.Campaign || s.phase == EpisodePhase.Eviction) && !s.vetoResolved) return Fail(out error, "Campaigning requires a committed veto decision.");
             if (s.competitionResolved && EpisodeEngine.IsCompetition(s.phase))

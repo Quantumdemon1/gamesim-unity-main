@@ -48,7 +48,7 @@ namespace Gamesim.Presentation
         private static readonly Step[] Steps =
         {
             new Step(null, "Welcome to the house",
-                "Six of you are living here. One leaves every week. Here is how to play."),
+                "You are living here with the rest of the house. One leaves every week. Here is how to play."),
             new Step("Cast rail", "The cast",
                 "Everyone still in the game, top to bottom. The badge under a face is what they hold this week."),
             new Step("House pill", "The week",

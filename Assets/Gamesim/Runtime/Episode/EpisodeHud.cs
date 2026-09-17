@@ -116,7 +116,7 @@ namespace Gamesim.Episode
 
             var brand = Chrome("Brand", leftColumn, Ink); Size(brand,330,103);
             FixedText(brand,"GAMESIM",32,Accent,new Vector2(18,-12),new Vector2(300,42));
-            FixedText(brand,"THE HOUSE  /  A SIX-PERSON SEASON",14,Paper,new Vector2(19,-62),new Vector2(300,24));
+            FixedText(brand,"THE HOUSE  /  " + (state == null ? "A SEASON" : state.contestants.Count + "-PERSON SEASON"),14,Paper,new Vector2(19,-62),new Vector2(300,24));
             var controls = Chrome("Navigation",canvas.transform,Ink); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-24),new Vector2(465,64));
             FixedButton(controls,"Notebook [J]",new Vector2(10,-9),new Vector2(142,46),director.OpenJournal);
             FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);

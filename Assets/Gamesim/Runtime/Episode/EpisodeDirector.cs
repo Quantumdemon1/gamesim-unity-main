@@ -8,6 +8,7 @@ using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 namespace Gamesim.Episode
@@ -65,11 +66,13 @@ namespace Gamesim.Episode
         private IEnumerator Start()
         {
             yield return null; // Surface and player navigation initialize before any saved episode is installed.
-            if (player == null || cameraRig == null || housemates == null || housemates.Length != 5 || !player.Agent.isOnNavMesh)
+            // One authored body is enough. This used to demand exactly five, which was the scene's
+            // shape rather than the game's rule, and it is what made the house a fixed six-person
+            // set: the simulation could describe a larger cast and the set could not hold one. Any
+            // houseguest the scene was not authored with is cloned from the first body below.
+            if (player == null || cameraRig == null || housemates == null || housemates.Length < 1 || !player.Agent.isOnNavMesh)
             { Debug.LogError("Gamesim episode could not initialize its house wiring."); yield break; }
             initialPlayerPosition = player.transform.position;
-            initialNpcPositions = housemates.Select(npc => npc.transform.position).ToArray();
-            initialNpcRotations = housemates.Select(npc => npc.transform.rotation).ToArray();
             ResolveDiaryRoom();
             // Explicit launch-only isolation for QA; never changes the user's active slot preference.
             var launchArguments = Environment.GetCommandLineArgs();
@@ -90,6 +93,13 @@ namespace Gamesim.Episode
                 if (saves.TryLoad(out var loaded, out var loadMessage)) { engine = new EpisodeEngine(loaded); message = loadMessage; }
                 else { blockedRecovery = true; message = loadMessage; }
             }
+            // After the save is loaded, because the cast size is a property of the season being
+            // played rather than of the scene, and a restored save may hold a different house from
+            // the one a fresh season would create.
+            FitHousematesToCast(engine.Snapshot);
+            initialNpcPositions = housemates.Select(npc => npc.transform.position).ToArray();
+            initialNpcRotations = housemates.Select(npc => npc.transform.rotation).ToArray();
+
             audioBed = HouseAudio.Attach(gameObject);
             reducedMotion = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedMotion", 0) == 1;
             muted = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
@@ -105,7 +115,86 @@ namespace Gamesim.Episode
             ApplyPreferences(); Project(); Render(); IsReady = true;
             // After the first Render, so the chrome the tour points at exists to be found.
             OfferTutorial();
-            Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
+            Debug.Log("Gamesim episode ready: " + engine.Snapshot.contestants.Count + " contestants, validated simulation, local recovery and accessible HUD connected.");
+        }
+
+        /// <summary>
+        /// Gives every houseguest in the season a body, whatever size the house is.
+        ///
+        /// <para>The scene authors five, which is exactly right for the six-person scenario and
+        /// wrong for any other. Rather than requiring a scene edit per cast size, any houseguest
+        /// without a body gets one cloned from the first authored body — the same thing the editor
+        /// setup pass does, done at runtime — and any spare body is switched off rather than left
+        /// standing in the house as a nameless extra.</para>
+        ///
+        /// <para>Cloned bodies are placed by sampling the NavMesh outward from the template, so a
+        /// larger cast does not spawn stacked inside one another or off the walkable surface.</para>
+        /// </summary>
+        private void FitHousematesToCast(EpisodeState state)
+        {
+            var cast = state.contestants.Where(c => !c.isPlayer).ToList();
+            var bodies = housemates.Where(npc => npc != null).ToList();
+            var template = bodies.FirstOrDefault();
+            if (template == null || cast.Count == 0) return;
+
+            for (int i = bodies.Count; i < cast.Count; i++)
+            {
+                var clone = Instantiate(template.gameObject, template.transform.parent);
+                clone.transform.SetPositionAndRotation(
+                    SpawnNear(template.transform.position, i), template.transform.rotation);
+                var body = clone.GetComponent<HouseNpc>();
+                if (body == null) { Destroy(clone); break; }
+                bodies.Add(body);
+            }
+
+            for (int i = cast.Count; i < bodies.Count; i++) bodies[i].gameObject.SetActive(false);
+
+            housemates = bodies.Take(cast.Count).ToArray();
+            for (int i = 0; i < housemates.Length; i++)
+            {
+                var npc = housemates[i];
+                npc.gameObject.SetActive(true);
+                npc.Configure(cast[i].id, cast[i].name);
+                npc.gameObject.name = cast[i].name;
+                // Attach releases and rebuilds when the character id changed, so a recycled body
+                // never keeps the previous houseguest's face.
+                CharacterPresentation.Attach(npc.gameObject, cast[i], CastPalette(cast[i].id));
+            }
+            Physics.SyncTransforms();
+        }
+
+        /// <summary>A walkable spot near the template, spiralling outward so bodies do not stack.</summary>
+        private static Vector3 SpawnNear(Vector3 origin, int index)
+        {
+            float angle = index * 137.5f * Mathf.Deg2Rad;   // golden angle: no two early picks align
+            float radius = 1.6f + index * 0.7f;
+            var wanted = origin + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+            return NavMesh.SamplePosition(wanted, out var hit, 6f, NavMesh.AllAreas) ? hit.position : origin;
+        }
+
+        /// <summary>
+        /// A houseguest's wardrobe colour. The authored five keep the colours they shipped with, so
+        /// the six-person season looks exactly as it did; anyone else gets a stable hue derived from
+        /// their id, which spreads a larger cast without anyone choosing sixteen colours by hand.
+        /// </summary>
+        private static Color CastPalette(string id)
+        {
+            switch (ContentCatalog.CanonicalId(id))
+            {
+                case "maya-hassan":   return Hex("#476A88");
+                case "taylor-kim":    return Hex("#CF6D52");
+                case "jamie-roberts": return Hex("#7E9E87");
+                case "casey-wilson":  return Hex("#C79C53");
+                case "riley-johnson": return Hex("#807B9C");
+            }
+            uint hash = SeededRandom.HashSeed(id ?? string.Empty);
+            return Color.HSVToRGB(hash % 360u / 360f, 0.34f, 0.62f);
+        }
+
+        private static Color Hex(string value)
+        {
+            ColorUtility.TryParseHtmlString(value, out var color);
+            return color;
         }
 
         private int seenBodiesCompleted;

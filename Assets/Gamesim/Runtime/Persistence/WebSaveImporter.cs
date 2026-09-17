@@ -11,7 +11,8 @@ using UnityEngine;
 namespace Gamesim.Persistence
 {
     /// <summary>
-    /// Explicit conversion of supported six-active-cast social saves. Unsupported gameplay is rejected;
+    /// Explicit conversion of supported all-active social saves, at any house size this format accepts.
+    /// Unsupported gameplay is rejected;
     /// the entire supplied source is archived before any candidate can be returned.
     /// </summary>
     public static class WebSaveImporter
@@ -56,7 +57,7 @@ namespace Gamesim.Persistence
                 var candidate = Convert(source, digest, report);
                 EpisodeSaveValidation.Validate(candidate);
                 state = candidate;
-                message = "Imported a supported six-cast social scenario. Actor IDs, stats, directed scores and competition history were preserved. "
+                message = "Imported a supported social scenario with " + candidate.contestants.Count + " contestants. Actor IDs, stats, directed scores and competition history were preserved. "
                     + "Unity room homes, motives, camera, and deterministic random state use new scenario defaults. "
                     + "Voting-bloc rules begin in week " + candidate.blocRulesStartWeek + "; the current week is unchanged. "
                     + "NPC conversations begin in week " + candidate.npcSocial.rulesStartWeek + "; the current week is unchanged. "
@@ -134,8 +135,15 @@ namespace Gamesim.Persistence
 
             var week = Integer(input["week"], "week");
             Require(week >= 1 && week <= 100, "A playable social save must be within the supported week range 1–100.");
-            Require(input["houseguests"] is JArray guests && guests.Count == 6,
-                "Import requires exactly six contestants; actors cannot be silently discarded.");
+            // The cast is taken at whatever size the web save carries, within the range this format
+            // validates. It used to demand exactly six, which rejected every ordinary web save —
+            // that game defaults to eight. The guarantee that mattered is unchanged: the whole cast
+            // is imported or the import fails, and actors are never silently discarded.
+            Require(input["houseguests"] is JArray guests
+                    && guests.Count >= EpisodeValidation.MinimumCast
+                    && guests.Count <= EpisodeValidation.MaximumCast,
+                "Import requires between " + EpisodeValidation.MinimumCast + " and "
+                    + EpisodeValidation.MaximumCast + " contestants; actors cannot be silently discarded.");
             var seed = uint.Parse(digest.Substring(0, 8), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
             var result = new EpisodeState
             {
@@ -150,9 +158,9 @@ namespace Gamesim.Persistence
             foreach (var value in (JArray)input["houseguests"])
             {
                 Require(value is JObject, "Each contestant must be an object.");
-                result.contestants.Add(ConvertGuest((JObject)value, homes[index++], report));
+                result.contestants.Add(ConvertGuest((JObject)value, homes[index++ % homes.Length], report));
             }
-            Require(result.contestants.Select(actor => actor.id).Distinct(StringComparer.Ordinal).Count() == 6,
+            Require(result.contestants.Select(actor => actor.id).Distinct(StringComparer.Ordinal).Count() == result.contestants.Count,
                 "Contestant IDs must be unique.");
             Require(result.contestants.Count(actor => actor.isPlayer) == 1, "Import requires exactly one controlled player.");
             result.playerId = result.contestants.Single(actor => actor.isPlayer).id;
@@ -201,7 +209,7 @@ namespace Gamesim.Persistence
                 "internalThoughts", "lastReflectionWeek", "memoryStream", "currentSummary", "cognitiveGoal", "longTermGoal",
                 "activeLies", "publicStatements"
             }), "contestant");
-            Require(Text(input["status"], "contestant status") == "Active", "Only a six-active-contestant social boundary can be imported.");
+            Require(Text(input["status"], "contestant status") == "Active", "Only an all-active social boundary can be imported.");
             Require(input["isPlayer"]?.Type == JTokenType.Boolean, "Every contestant must have an explicit isPlayer flag.");
             foreach (var slot in new[] { "isHoH", "isPovHolder", "isNominated" })
                 Require(input[slot] == null || input[slot].Type == JTokenType.Boolean && !(bool)input[slot],

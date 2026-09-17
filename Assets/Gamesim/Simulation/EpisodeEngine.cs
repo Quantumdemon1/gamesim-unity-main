@@ -158,8 +158,10 @@ namespace Gamesim.Simulation
                     }
                     Phase(s, EpisodePhase.VetoSelection); break;
                 case EpisodePhase.VetoSelection:
-                    s.vetoPlayers = s.Active.Select(c => c.id).ToList(); // Six-person slice: all remaining houseguests play.
-                    Log(s, "veto-selection", "Everyone remaining in the house is eligible for the veto competition.");
+                    s.vetoPlayers = DrawVetoPlayers(s);
+                    Log(s, "veto-selection", s.vetoPlayers.Count >= s.Active.Count()
+                        ? "Everyone remaining in the house is eligible for the veto competition."
+                        : "Veto players drawn: " + string.Join(", ", s.vetoPlayers.Select(id => Name(s, id))) + ".");
                     Phase(s, EpisodePhase.Veto); break;
                 case EpisodePhase.VetoMeeting:
                     if (!s.vetoResolved)
@@ -218,7 +220,7 @@ namespace Gamesim.Simulation
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
                     s.oathOpportunities.Remove(evicted);
                     Log(s, "eviction", Name(s, evicted) + Verb(s, evicted, " is evicted and joins ", " are evicted and join ")
-                        + "this six-person season's jury.");
+                        + "the jury.");
                     foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict "
                         + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason);
                     PreparePostEvictionDiary(s, evicted);
@@ -542,6 +544,59 @@ namespace Gamesim.Simulation
             var relation = s.relationships.FirstOrDefault(r => r.fromId == from && r.toId == to);
             if (relation == null) { relation = new RelationshipState { fromId = from, toId = to }; s.relationships.Add(relation); }
             relation.score = WebRules.ClampScore(relation.score + delta);
+        }
+
+        /// <summary>
+        /// How many houseguests sit in a veto competition: six, or everyone still in the house when
+        /// fewer than six remain.
+        ///
+        /// <para>Six is the format's number — the Head of Household, both nominees, and three drawn
+        /// — and it is what the web game seats. This project previously put <b>every</b> active
+        /// houseguest in the veto competition, which is indistinguishable from the real rule in a
+        /// six-person house and wrong in any larger one. Existing saves are unaffected for exactly
+        /// that reason: at six active or fewer the two rules produce the same lineup.</para>
+        /// </summary>
+        public const int VetoLineupSize = 6;
+
+        public static int VetoPlayerCount(int activeCount)
+            => Math.Min(VetoLineupSize, Math.Max(0, activeCount));
+
+        /// <summary>
+        /// The veto lineup: the HoH and both nominees by right, then a seeded draw for the rest.
+        ///
+        /// <para>The draw runs off <see cref="EpisodeState.randomState"/> and advances it, so the
+        /// same save always draws the same names and a reload cannot re-roll a lineup the player
+        /// has already seen.</para>
+        /// </summary>
+        private static List<string> DrawVetoPlayers(EpisodeState s)
+        {
+            var active = s.Active.Select(c => c.id).ToList();
+            int seats = VetoPlayerCount(active.Count);
+
+            // When every remaining houseguest plays there is nothing to draw, so the random stream
+            // must not be touched. Drawing "all of them" one name at a time still consumes rolls,
+            // which silently shifted every later result in a six-person season and broke replay
+            // determinism — a committed season would not reproduce itself.
+            if (seats >= active.Count) return active;
+
+            var lineup = new List<string>();
+            if (active.Contains(s.hohId)) lineup.Add(s.hohId);
+            foreach (var nominee in s.nominees)
+                if (active.Contains(nominee) && !lineup.Contains(nominee)) lineup.Add(nominee);
+
+            var pool = active.Where(id => !lineup.Contains(id)).ToList();
+            var rng = new SeededRandom(s.randomState);
+            while (lineup.Count < seats && pool.Count > 0)
+            {
+                int index = rng.NextInt(pool.Count);
+                lineup.Add(pool[index]);
+                pool.RemoveAt(index);
+            }
+            s.randomState = rng.State;
+
+            // Held in house order rather than draw order, so the lineup reads the same way the cast
+            // does everywhere else and a save diff does not churn on a reshuffle.
+            return active.Where(id => lineup.Contains(id)).ToList();
         }
 
         private static double Roll(EpisodeState s)

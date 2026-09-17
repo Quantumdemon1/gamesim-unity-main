@@ -4,7 +4,19 @@ using System.Collections.Generic;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Native six-contestant scenario. Identity/traits come from the web character-templates.ts;
+    /// The native six-contestant *scenario*.
+    ///
+    /// <para>Six is this scenario's cast, not the format's rule — validation accepts any house
+    /// between <see cref="EpisodeValidation.MinimumCast"/> and <see cref="EpisodeValidation.MaximumCast"/>.
+    /// Until player setup exists there is nothing that asks for a different size, and this stays the
+    /// season a fresh game starts.</para>
+    ///
+    /// <para>Its arrival line names six on purpose. That text is recorded in the frozen voting-bloc
+    /// parity fixture, so generalising the wording breaks a replay comparison for no gain; a setup
+    /// wizard that builds a different house should write its own arrival line rather than edit
+    /// this one.</para>
+    ///
+    /// Identity/traits come from the web character-templates.ts;
     /// fixed stats use its creation.ts lower-middle base rolls plus traits.ts boosts.
     /// Motives, room homes and starting relationships are authored Unity scenario defaults.
     /// </summary>

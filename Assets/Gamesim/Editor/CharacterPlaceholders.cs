@@ -42,12 +42,14 @@ namespace Gamesim.Editor
             { "Maya", "maya-hassan" },
         };
 
+        /// <summary>
+        /// The episode scene only. HousePrototype is left alone deliberately: it is the U02 greybox
+        /// the NPC motion suite loads, not a scene anyone plays, and dressing it with authored models
+        /// put a cast in it that does not match the one the game uses. Greybox capsules are the right
+        /// thing in a greybox.
+        /// </summary>
         [MenuItem("Gamesim/U07/Hide the placeholder bodies")]
-        public static void ApplyToBothScenes()
-        {
-            Apply("Assets/Gamesim/Scenes/EpisodeHouse.unity", false);
-            Apply("Assets/Gamesim/Scenes/HousePrototype.unity", true);
-        }
+        public static void ApplyToEpisode() => Apply("Assets/Gamesim/Scenes/EpisodeHouse.unity", false);
 
         public static void ApplyFromCommandLine()
         {

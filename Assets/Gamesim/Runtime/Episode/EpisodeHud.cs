@@ -605,6 +605,17 @@ namespace Gamesim.Episode
             var state = director != null ? director.Snapshot : null;
             var contestant = state != null ? state.Find(contestantId) : null;
             if (contestant == null) return null;
+
+            // A generated body has no prefab to photograph, so the HUD showed authored faces while
+            // the world showed generated ones. Prefer the body actually standing in the house; fall
+            // back to the prefab for the authored cast, which has no live body worth preferring.
+            var live = director.LiveBody(contestant.id);
+            if (live != null)
+            {
+                var portrait = CharacterPortraits.GetLive(contestant.id, live);
+                if (portrait != null) return portrait;
+            }
+
             return CharacterPortraits.Get(
                 CharacterPresentation.AppearanceId(contestant, ContentCatalog.CanonicalId(contestant.id)));
         }

@@ -40,6 +40,12 @@ namespace Gamesim.Presentation
         private bool hasSpeedParam, hasSeatedParam;
         public string CharacterId { get; private set; }
 
+        /// <summary>
+        /// How many deferred bodies have finished assembling this session. Monotonic; readers keep
+        /// their own last-seen value.
+        /// </summary>
+        public static int BodiesCompleted { get; private set; }
+
         public static CharacterPresentation Attach(GameObject root, ContestantState character, Color palette)
         {
             if (root == null || character == null) return null;
@@ -190,6 +196,11 @@ namespace Gamesim.Presentation
 
             if (Application.isPlaying) Destroy(standIn.gameObject); else DestroyImmediate(standIn.gameObject);
             standIn = null;
+            // The HUD photographs these bodies for its portraits, and until this moment there was
+            // nothing to photograph — so anything already drawn is holding a fallback face. A
+            // counter rather than an event: the director polls it, which cannot leave a subscription
+            // behind on a scene that has been unloaded.
+            BodiesCompleted++;
         }
 
         /// <summary>

@@ -106,8 +106,25 @@ namespace Gamesim.Episode
             Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
         }
 
+        private int seenBodiesCompleted;
+
         private void Update()
         {
+            // A body that has just finished assembling changes what the HUD can show: its portraits
+            // are rendered from the live character, and anything drawn before this point is holding
+            // a fallback face until something else happens to trigger a render.
+            //
+            // Not while a panel is open. Rebuilding one because a body finished loading throws away
+            // the player's scroll position and keyboard focus mid-read, for a portrait they are not
+            // looking at — and it rebuilt the layout underneath the clipping test between its own
+            // canvas update and its assertion. The counter is left unread until the panel closes,
+            // so the refresh happens then instead of being lost.
+            if (IsReady && !IsPanelOpen && CharacterPresentation.BodiesCompleted != seenBodiesCompleted)
+            {
+                seenBodiesCompleted = CharacterPresentation.BodiesCompleted;
+                Render();
+            }
+
             if (!IsReady) return;
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
             frameAverage = Mathf.Lerp(frameAverage, Time.unscaledDeltaTime, 0.03f);
@@ -564,6 +581,26 @@ namespace Gamesim.Episode
             phaseOpen = false; settingsOpen = false; diaryOpen = false;
             hud.RequestScrollTo(section);
             Render();
+        }
+
+        /// <summary>
+        /// The visual root of a houseguest whose body is generated at runtime, or null.
+        ///
+        /// <para>Only generated bodies are offered. An authored prefab photographs better from the
+        /// portrait rig — isolated, unlit, framed — than it does standing in a dark house, so there
+        /// is nothing to gain by capturing it live and a lit-by-the-room portrait to lose.</para>
+        /// </summary>
+        public Transform LiveBody(string contestantId)
+        {
+            if (CharacterBodySource.Provider == null) return null;
+            var canonical = ContentCatalog.CanonicalId(contestantId);
+            foreach (var visual in gameObject.scene.GetRootGameObjects()
+                         .SelectMany(root => root.GetComponentsInChildren<CharacterPresentation>(true)))
+            {
+                if (ContentCatalog.CanonicalId(visual.CharacterId) != canonical) continue;
+                return visual.transform.Find("Gamesim Character Visual");
+            }
+            return null;
         }
 
         private static string NameOf(EpisodeState state, string id) => state?.Find(id)?.name;

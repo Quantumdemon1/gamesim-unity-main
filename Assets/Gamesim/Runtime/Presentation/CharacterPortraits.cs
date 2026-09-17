@@ -42,6 +42,49 @@ namespace Gamesim.Presentation
             return texture;
         }
 
+        /// <summary>
+        /// The portrait for a houseguest whose body is generated at runtime, rendered from the body
+        /// standing in the house rather than from a prefab.
+        ///
+        /// <para>UMA characters have no prefab to instantiate — they are assembled at runtime — so
+        /// the prefab path returns nothing for them, and the HUD ends up showing authored faces
+        /// while the world shows generated ones. Nobody chose that; it is just what happens when the
+        /// two systems answer the same question differently.</para>
+        ///
+        /// <para>This points the portrait camera at the live body instead of moving the body to the
+        /// camera. Two consequences worth stating. The short far plane that keeps the house out of
+        /// frame is doing more work here, because the subject is standing in the house rather than
+        /// alone under it — a houseguest close behind another can appear in the shot. And the live
+        /// materials are never touched, so unlike the prefab path this cannot flatten anything the
+        /// player is looking at; the subject is lit for the capture instead.</para>
+        ///
+        /// <para>Nothing is cached until the body actually has geometry. A UMA character is empty
+        /// for the first frames of its assembly, and a blank portrait cached once would stay blank
+        /// for the rest of the season.</para>
+        /// </summary>
+        public static Texture GetLive(string contestantId, Transform body)
+        {
+            if (string.IsNullOrEmpty(contestantId) || body == null) return null;
+
+            // Namespaced, because the two paths share one cache and the ids collide: a houseguest's
+            // contestant id and their appearance id are the same string for this cast, so an early
+            // render that fell back to the prefab would poison the live key and the HUD would show
+            // authored faces for the rest of the season no matter how many bodies finished.
+            string cacheKey = "live:" + contestantId;
+            if (Cache.TryGetValue(cacheKey, out var cached) && cached != null) return cached;
+
+            var skins = body.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            if (skins.Length == 0) return null;
+
+            var extent = skins[0].bounds;
+            foreach (var skin in skins) extent.Encapsulate(skin.bounds);
+            if (extent.size.y < 0.5f) return null; // still assembling
+
+            var texture = RenderLive(body, extent, contestantId);
+            if (texture != null) Cache[cacheKey] = texture;
+            return texture;
+        }
+
         /// <summary>Drops every cached portrait and tears the rig down. Call on season teardown.</summary>
         public static void Release()
         {
@@ -110,6 +153,63 @@ namespace Gamesim.Presentation
             rigCamera.targetTexture = null;
 
             Destroy(subject);
+            return texture;
+        }
+
+        /// <summary>
+        /// Renders a body where it stands. The camera is moved to the subject and a light is created
+        /// for the shot, so nothing about the live character changes.
+        /// </summary>
+        private static RenderTexture RenderLive(Transform body, Bounds extent, string name)
+        {
+            EnsureRig();
+
+            float previousFar = rigCamera.farClipPlane;
+            var previousParent = rigCamera.transform.parent;
+            rigCamera.transform.SetParent(null, true);
+
+            // The same framing the prefab path uses: head bone for the focus, jaw to crown for the
+            // extent, distance solved from the field of view. Three attempts at hand-placing this
+            // camera produced a blown-out white disc, a forehead, and a neck — because a fraction of
+            // body height is the wrong ruler when hair changes where the crown is and the cast is
+            // deliberately not all one height.
+            Frame(body.gameObject);
+
+            // Far enough to clear the subject, short enough to leave the house behind it out of
+            // frame. Measured from where Frame put the camera rather than assumed.
+            float distance = Vector3.Distance(rigCamera.transform.position, body.position);
+            rigCamera.farClipPlane = distance + 0.75f;
+
+            // Directional rather than a point light. A point light close enough to reach a face this
+            // small arrives at an intensity that blows the whole portrait to white, and the distance
+            // that fixes that is past the far plane. A directional light does not fall off.
+            var lamp = new GameObject("Portrait Light") { hideFlags = HideFlags.DontSave };
+            lamp.transform.SetParent(rigCamera.transform, false);
+            lamp.transform.localRotation = Quaternion.Euler(18f, -24f, 0f);
+            var light = lamp.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.15f;
+            light.shadows = LightShadows.None;
+            light.color = Color.white;
+
+            var texture = new RenderTexture(Size, Size, 24, RenderTextureFormat.ARGB32)
+            {
+                name = "Portrait " + name,
+                antiAliasing = 2,
+                filterMode = FilterMode.Bilinear,
+                hideFlags = HideFlags.DontSave,
+            };
+            texture.Create();
+
+            rigCamera.targetTexture = texture;
+            rigCamera.Render();
+            rigCamera.targetTexture = null;
+
+            Destroy(lamp);
+            rigCamera.farClipPlane = previousFar;
+            rigCamera.transform.SetParent(previousParent, false);
+            rigCamera.transform.localPosition = Vector3.zero;
+            rigCamera.transform.localRotation = Quaternion.identity;
             return texture;
         }
 

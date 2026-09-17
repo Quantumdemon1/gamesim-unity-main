@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
 using UnityEngine.AI;
@@ -113,11 +114,24 @@ namespace Gamesim.Episode
             yield return ClickSeasonButton("Save now  [F5]");
             string previousSlot = seasonDirector.SavePath;
             var previousBytes = File.ReadAllBytes(previousSlot);
+            int previousCast = seasonDirector.Snapshot.contestants.Count;
+            // The control opens the cast screen now rather than building a season outright, so this
+            // walks the screen the way a player does — and backing out of it is the case worth
+            // checking hardest, because a cancel that has already written a slot is unrecoverable.
             yield return ClickSeasonButton("New season in a NEW slot (preserves this season)");
+            RequireSeason(seasonDirector.SavePath == previousSlot,"Opening the cast screen must not change the active slot.");
+            yield return ClickSeasonButton(CastSelect.CancelCaption);
+            RequireSeason(seasonDirector.SavePath == previousSlot && File.Exists(previousSlot)
+                && seasonDirector.Snapshot.contestants.Count == previousCast,"Cancelling the cast screen must leave the running season and its slot untouched.");
+
+            yield return ClickSeasonButton("New season in a NEW slot (preserves this season)");
+            yield return ClickSeasonButton(CastSelect.StartCaption);
             var fresh = seasonDirector.Snapshot;
             RequireSeason(seasonDirector.SavePath != previousSlot && File.Exists(previousSlot),"Creating the QA season must preserve the profile's previous save slot.");
-            RequireSeason(fresh.phase == EpisodePhase.Social && fresh.week == 1 && fresh.Active.Count() == 6
-                && fresh.contestants.Count == 6 && fresh.contestants.Count(actor => actor.isPlayer) == 1,"The new season must be a genuine native six-person start.");
+            RequireSeason(fresh.phase == EpisodePhase.Social && fresh.week == 1
+                && fresh.Active.Count() == SeasonBuilder.DefaultHouseSize
+                && fresh.contestants.Count == SeasonBuilder.DefaultHouseSize
+                && fresh.contestants.Count(actor => actor.isPlayer) == 1,"The cast screen must start a genuine default-size season.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;

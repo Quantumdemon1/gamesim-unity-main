@@ -46,6 +46,7 @@ namespace Gamesim.Simulation
                         pronouns = "they/them", isPlayer = true, status = ContestantStatus.Active,
                         motive = "Choose who to trust, survive the vote, and build a game you can explain.",
                         homeRoom = "Living",
+                        archetype = "The Newcomer", age = 30, occupation = "Houseguest",
                         // A balanced player is an explicit scenario override, not a web NPC roll.
                         stats = new ContestantStats
                         {
@@ -100,54 +101,56 @@ namespace Gamesim.Simulation
         private static ContestantState Npc(string id, string name, string pronouns, string room,
             string motive, params string[] traits)
         {
-            return new ContestantState
+            var npc = new ContestantState
             {
                 id = id, name = name, pronouns = pronouns, homeRoom = room, motive = motive,
                 status = ContestantStatus.Active, traits = new List<string>(traits),
                 stats = DefaultStats(traits)
             };
+            Card(npc);
+            return npc;
         }
 
+        /// <summary>
+        /// The card copy a houseguest's tile carries: an archetype, an age and a job.
+        ///
+        /// <para>The <b>archetypes are the web game's own</b> — this scenario's five are drawn from
+        /// its regular cast, so The Diplomat, The Firebrand, The Caregiver, The Party Animal and The
+        /// Brainiac are copied rather than invented. Ages and occupations are authored Unity
+        /// scenario defaults, in the same class as the motives and room homes above: the reference
+        /// screenshots show the shape of the field, not its value for these five.</para>
+        /// </summary>
+        private static void Card(ContestantState npc)
+        {
+            switch (npc.id)
+            {
+                case MayaId:
+                    npc.archetype = "The Diplomat"; npc.age = 31; npc.occupation = "Mediator"; break;
+                case "taylor-kim":
+                    npc.archetype = "The Firebrand"; npc.age = 26; npc.occupation = "Personal Trainer"; break;
+                case "jamie-roberts":
+                    npc.archetype = "The Caregiver"; npc.age = 38; npc.occupation = "Paediatric Nurse"; break;
+                case "casey-wilson":
+                    npc.archetype = "The Party Animal"; npc.age = 24; npc.occupation = "Bartender"; break;
+                case "riley-johnson":
+                    npc.archetype = "The Brainiac"; npc.age = 29; npc.occupation = "Data Analyst"; break;
+            }
+        }
+
+        /// <summary>
+        /// This scenario's stats: the lower-middle base roll plus trait boosts.
+        ///
+        /// <para>The arithmetic itself lives in <see cref="WebTraits.CreateStats"/>, which is where
+        /// <see cref="CastTemplates"/> reads it from too. It used to be a private copy here with its
+        /// own six-trait lookup table, and five of these houseguests also appear in the template
+        /// pool — two copies of the same formula is exactly the pair that drifts.</para>
+        /// </summary>
         private static ContestantStats DefaultStats(string[] traits)
         {
-            // creation.ts ranges: primary 5..8, secondary 4..7, other 3..6.
-            // Choose 6/5/4 before applying each trait's +2 primary and +1 secondary.
-            var primary = new HashSet<string>();
-            var secondary = new HashSet<string>();
             foreach (var trait in traits)
-            {
-                BoostKeys(trait, out var first, out var second);
-                primary.Add(first); secondary.Add(second);
-            }
-            var values = new Dictionary<string, double>();
-            foreach (var key in new[] { "physical", "mental", "endurance", "social", "luck", "competition", "strategic", "loyalty" })
-                values[key] = primary.Contains(key) ? 6 : secondary.Contains(key) ? 5 : 4;
-            foreach (var trait in traits)
-            {
-                BoostKeys(trait, out var first, out var second);
-                values[first] = Math.Min(10, values[first] + 2);
-                values[second] = Math.Min(10, values[second] + 1);
-            }
-            return new ContestantStats
-            {
-                physical = values["physical"], mental = values["mental"], endurance = values["endurance"],
-                social = values["social"], luck = values["luck"], competition = values["competition"],
-                strategic = values["strategic"], loyalty = values["loyalty"]
-            };
-        }
-
-        private static void BoostKeys(string trait, out string primary, out string secondary)
-        {
-            switch (trait)
-            {
-                case "Competitive":
-                case "Confrontational": primary = "physical"; secondary = "endurance"; break;
-                case "Strategic":
-                case "Analytical": primary = "mental"; secondary = "strategic"; break;
-                case "Emotional": primary = "social"; secondary = "loyalty"; break;
-                case "Social": primary = "social"; secondary = "luck"; break;
-                default: throw new ArgumentOutOfRangeException(nameof(trait), trait, "No default stat mapping for this scenario trait.");
-            }
+                if (!WebTraits.Known(trait))
+                    throw new ArgumentOutOfRangeException(nameof(traits), trait, "This scenario trait is not in the trait table.");
+            return WebTraits.CreateStats(traits);
         }
 
         private static double StartingScore(string first, string second)

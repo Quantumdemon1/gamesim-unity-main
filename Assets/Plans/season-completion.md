@@ -16,12 +16,12 @@ game cannot be started except by pressing Play on a scene, and it ends with two 
 | Doc section | Web game | Unity port | Verdict |
 | --- | --- | --- | --- |
 | 2. Home / sign-in / onboarding | Auth, routing, leaderboard | Nothing; you press Play | **Menu needed.** Accounts are out of scope for a single-player desktop build |
-| 3. Season setup (3 steps) | Player creation, 8 stats, 2 traits, cast pick, All-Stars, house size 8 | **Nothing.** Fixed six-person cast from `ContentCatalog` | **Missing entirely** |
+| 3. Season setup (3 steps) | Player creation, 8 stats, 2 traits, cast pick, All-Stars, house size 8 | Cast screen: 24-person pool, both rosters, category filters, house size 3–12, default 8 | **Mostly done.** No free-form character creation — you pick a card rather than authoring stats |
 | 4. Opening sequences | Intro, house entry, walk-in, tutorial, meet & greet | Tutorial only (`HouseTutorial`) | **Four of five missing** |
 | 5–6. Weekly cycle | HoH → Nomination → Draw → Veto → Ceremony → Eviction → Social | All present | **Done** |
 | 7. Endgame F4 / F3 / F2 | Final HoH, three rounds | `FinalHoHPart1/2/3`, `FinalEviction` | **Done** |
 | 8. Jury questioning and finale | Questioning, speeches, jury vote | `JuryQuestioning`, `FinalSpeeches`, jury vote | **Done** |
-| 9. Final stats screen | Winner display, your journey, houseguest grid, season table, standings, player stats | **Two paragraphs of text** | **Missing entirely** |
+| 9. Final stats screen | Winner display, your journey, houseguest grid, season table, standings, player stats | `SeasonReport` — all six sections | **Done** |
 | 10. Underlying systems | Relationships, alliances, deals, threat, storylines, gossip, persona, jury sentiment, autosave | All present and substantial | **Done** |
 | 11. Spectator mode | Auto-on when evicted, season plays to the end | Season continues and input is gated; nothing tells the player | **Half done — see below** |
 
@@ -68,9 +68,25 @@ ending and a bug. So Phase 2 is a presentation change — an eviction moment for
 standing spectator badge, and a decision about whether remaining phases auto-advance — rather than
 the systems work it appeared to be.
 
-**Phase 3 — main menu and season setup.** The front door, and the six-contestant work above. Menu
-first (cheap, unblocks "start a game like a game"), then player creation, then variable house size
-as its own change with the validation and test churn it implies.
+**Phase 3 — main menu and season setup.** *Season setup built; menu still open.*
+
+Done in three steps, in the opposite order from the one planned here, because the validation work
+turned out to be the thing everything else was waiting on:
+
+1. `EpisodeValidation` stopped demanding exactly six (`MinimumCast` 3, `MaximumCast` 16), and the
+   caps derived from six — relationships, memories, votes, scores — were rewritten against the cast
+   size. That exposed the veto lineup rule hiding inside the old one: six *seats*, not "everyone".
+2. `CastTemplates` — a 24-person pool across two rosters, with `WebTraits` supplying the stats so a
+   houseguest cast from the pool and the same person in the shipped scenario are built by one
+   formula. `SeasonBuilder` turns a choice into a season without touching the generator, so a built
+   season replays like any other.
+3. `CastSelect` — the "Choose Your Houseguest" screen: roster tabs, category chips, the card grid,
+   a house-size stepper, and a start that stages to a new slot while keeping the old one.
+
+**Still open.** There is no main menu: the cast screen is reached through Settings, so a season is
+still started from inside a running one rather than from a front door. And setup is a *pick*, not
+the web's character creator — no free-form name, stat allocation or trait selection. `WebTraits`
+already holds the arithmetic a creator would need.
 
 **Phase 4 — opening sequences.** Intro, house entry, walk-in, meet and greet. Presentation only,
 and the least load-bearing: the game is complete without them, it just does not open well.

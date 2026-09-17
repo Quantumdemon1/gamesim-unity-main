@@ -27,6 +27,11 @@ namespace Gamesim.Simulation
     public sealed class ContestantState
     {
         public string id, name, pronouns, motive, homeRoom;
+        // Card copy: who this person is outside the game. Optional by construction — a save written
+        // before these existed deserialises them empty, and every surface treats empty as "omit the
+        // line" rather than printing a blank field.
+        public string occupation, archetype;
+        public int age;
         public string mood = "Neutral", stressLevel = "Normal";
         public bool isPlayer;
         public ContestantStatus status;
@@ -155,7 +160,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 6;
+        public int schemaVersion = 7;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;

@@ -20,11 +20,55 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 7) return (JObject)original.DeepClone();
+            if (version < 1 || version > 6) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v6 = version == 6 ? original : PrepareV6Payload(original, out _);
+            var result = UpgradeV6ToV7(v6);
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v5-to-v6 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV6Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 6) return (JObject)original.DeepClone();
             if (version < 1 || version > 5) throw new InvalidDataException("Unsupported simulation schema version.");
             var v5 = version == 5 ? original : PrepareV5Payload(original, out _);
-            var result = UpgradeV5ToV6(v5);
+            var current = UpgradeV5ToV6(v5);
             migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Adds the card copy a houseguest's tile shows: an archetype, an age and a job.
+        ///
+        /// <para>Three new optional fields would not need a schema version in a format that ignored
+        /// unknown properties. This one does not — <see cref="SaveJson.CheckDtoShape"/> requires a
+        /// stored object to carry exactly the fields its type declares, which is what catches a
+        /// truncated or hand-edited save, and that strictness is worth more than the version.</para>
+        ///
+        /// <para>The values are left empty rather than guessed. A season saved before this existed
+        /// has no record of who anybody was outside the house, and every surface that shows the card
+        /// line omits it when it is blank rather than printing a gap.</para>
+        /// </summary>
+        public static JObject UpgradeV6ToV7(JObject original)
+        {
+            FrozenEpisodeV6.Validate(original);
+            var result = (JObject)original.DeepClone();
+            if (result["contestants"] is not JArray contestants)
+                throw new InvalidDataException("contestants must be an array.");
+            foreach (var value in contestants)
+            {
+                if (value is not JObject actor) throw new InvalidDataException("contestants contains a null record.");
+                actor.Add("occupation", JValue.CreateNull());
+                actor.Add("archetype", JValue.CreateNull());
+                actor.Add("age", 0);
+            }
+            result["schemaVersion"] = 7;
             return result;
         }
 

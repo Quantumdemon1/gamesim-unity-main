@@ -69,11 +69,14 @@ namespace Gamesim.Tests.EditMode
         public void LegalPactReplayMatchesOriginalSourceAndChangesTargetThroughPrivatePressure()
         {
             var fixture = Fixture(); var state = Witness().Snapshot;
-            Assert.That(state.schemaVersion, Is.EqualTo(6));
+            Assert.That(state.schemaVersion, Is.EqualTo(7));
             Assert.That((int)fixture["state"]["schemaVersion"], Is.EqualTo(5), "Keep the original witness unchanged.");
             Assert.That(JToken.DeepEquals(JObject.FromObject(state.npcSocial), JObject.FromObject(NpcSocialState.Create(state.seed))), Is.True,
                 "The explicit command replay must not silently run background conversations.");
-            var historicalView = JObject.FromObject(state); historicalView.Remove("npcSocial");
+            // The fixture is a v5 witness, so the replayed state is compared in v5's shape: without
+            // the NPC subsystem schema 6 added, and without the contestant card copy schema 7 did.
+            var historicalView = PersistenceMigrationTests.StripCardCopy(JObject.FromObject(state));
+            historicalView.Remove("npcSocial");
             historicalView["schemaVersion"] = fixture["state"]["schemaVersion"].DeepClone();
             WebVotingBlocParityTests.Equivalent(fixture["state"], historicalView, "legal command replay");
             Assert.That(state.phase, Is.EqualTo(EpisodePhase.Eviction));

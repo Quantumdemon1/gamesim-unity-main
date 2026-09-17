@@ -33,6 +33,7 @@ namespace Gamesim.Episode
         private HouseTutorial tutorial;
         private MemoryWall memoryWall;
         private SeasonReport seasonReport;
+        private CastSelect castSelect;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         // What the last social command actually moved, so the panel can say so.
@@ -101,9 +102,7 @@ namespace Gamesim.Episode
             // After the save is loaded, because the cast size is a property of the season being
             // played rather than of the scene, and a restored save may hold a different house from
             // the one a fresh season would create.
-            FitHousematesToCast(engine.Snapshot);
-            initialNpcPositions = housemates.Select(npc => npc.transform.position).ToArray();
-            initialNpcRotations = housemates.Select(npc => npc.transform.rotation).ToArray();
+            SeatCast(engine.Snapshot);
 
             audioBed = HouseAudio.Attach(gameObject);
             reducedMotion = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedMotion", 0) == 1;
@@ -119,6 +118,7 @@ namespace Gamesim.Episode
             keyCeremony = KeyCeremony.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
             seasonReport = SeasonReport.Attach(gameObject);
+            castSelect = CastSelect.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             // After the first Render, so the chrome the tour points at exists to be found.
             OfferTutorial();
@@ -165,9 +165,36 @@ namespace Gamesim.Episode
                 npc.gameObject.name = cast[i].name;
                 // Attach releases and rebuilds when the character id changed, so a recycled body
                 // never keeps the previous houseguest's face.
-                CharacterPresentation.Attach(npc.gameObject, cast[i], CastPalette(cast[i].id));
+                CharacterPresentation.Attach(npc.gameObject, cast[i], CastPalette.For(cast[i].id));
             }
             Physics.SyncTransforms();
+        }
+
+        /// <summary>
+        /// Gives the season's cast bodies and keeps the authored-placement anchors describing them.
+        ///
+        /// <para>The anchors are read back by index when a season is installed, so they have to stay
+        /// the same length as <see cref="housemates"/>. A body that was already in the house keeps
+        /// the anchor it shipped with — a shorter season must still put the original five back where
+        /// the scene author put them — and a body created for a larger house adopts the NavMesh spot
+        /// it was just placed on, because it has no authored home to return to.</para>
+        /// </summary>
+        private void SeatCast(EpisodeState state)
+        {
+            FitHousematesToCast(state);
+            if (housemates == null) return;
+            if (initialNpcPositions != null && initialNpcPositions.Length == housemates.Length) return;
+
+            var positions = new Vector3[housemates.Length];
+            var rotations = new Quaternion[housemates.Length];
+            for (int i = 0; i < housemates.Length; i++)
+            {
+                bool authored = initialNpcPositions != null && i < initialNpcPositions.Length;
+                positions[i] = authored ? initialNpcPositions[i] : housemates[i].transform.position;
+                rotations[i] = authored ? initialNpcRotations[i] : housemates[i].transform.rotation;
+            }
+            initialNpcPositions = positions;
+            initialNpcRotations = rotations;
         }
 
         /// <summary>A walkable spot near the template, spiralling outward so bodies do not stack.</summary>
@@ -177,31 +204,6 @@ namespace Gamesim.Episode
             float radius = 1.6f + index * 0.7f;
             var wanted = origin + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
             return NavMesh.SamplePosition(wanted, out var hit, 6f, NavMesh.AllAreas) ? hit.position : origin;
-        }
-
-        /// <summary>
-        /// A houseguest's wardrobe colour. The authored five keep the colours they shipped with, so
-        /// the six-person season looks exactly as it did; anyone else gets a stable hue derived from
-        /// their id, which spreads a larger cast without anyone choosing sixteen colours by hand.
-        /// </summary>
-        private static Color CastPalette(string id)
-        {
-            switch (ContentCatalog.CanonicalId(id))
-            {
-                case "maya-hassan":   return Hex("#476A88");
-                case "taylor-kim":    return Hex("#CF6D52");
-                case "jamie-roberts": return Hex("#7E9E87");
-                case "casey-wilson":  return Hex("#C79C53");
-                case "riley-johnson": return Hex("#807B9C");
-            }
-            uint hash = SeededRandom.HashSeed(id ?? string.Empty);
-            return Color.HSVToRGB(hash % 360u / 360f, 0.34f, 0.62f);
-        }
-
-        private static Color Hex(string value)
-        {
-            ColorUtility.TryParseHtmlString(value, out var color);
-            return color;
         }
 
         private int seenBodiesCompleted;
@@ -234,7 +236,14 @@ namespace Gamesim.Episode
                 if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) RecordChallengeHit();
             }
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) { ClosePanels(); return; }
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+            {
+                // The cast screen sits above the HUD and owns Escape while it is open;
+                // closing the panels underneath it would leave it on screen with nothing behind.
+                if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
+                else ClosePanels();
+                return;
+            }
             if (keyboard != null && !hud.IsTyping)
             {
                 if (keyboard.jKey.wasPressedThisFrame) OpenJournal();
@@ -600,6 +609,19 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>
+        /// "The Diplomat · 31 · Mediator", or as much of it as the save actually holds.
+        /// </summary>
+        public static string CardLine(ContestantState actor)
+        {
+            if (actor == null) return null;
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(actor.archetype)) parts.Add(actor.archetype);
+            if (actor.age > 0) parts.Add(actor.age.ToString());
+            if (!string.IsNullOrEmpty(actor.occupation)) parts.Add(actor.occupation);
+            return parts.Count == 0 ? null : string.Join(" · ", parts);
+        }
+
         private List<HouseMap.Room> HouseOccupancy(EpisodeState state)
         {
             var rooms = new List<HouseMap.Room>();
@@ -693,7 +715,8 @@ namespace Gamesim.Episode
         /// </summary>
         private void RenderStorySoFar(EpisodeState state)
         {
-            hud.Heading("THE STORY SO FAR");
+            hud.Heading("THE STORY SO FAR", UiTheme.Gold);
+            hud.Eyebrow("PREVIOUSLY ON BIG BROTHER", UiTheme.Gold);
             hud.Mark(NotebookSection.Story);
 
             var visible = state.events
@@ -714,7 +737,7 @@ namespace Gamesim.Episode
             {
                 var entries = visible.Where(e => e.week == week).ToList();
                 if (entries.Count == 0) continue;
-                hud.Heading(week == newest ? "Week " + week + " · this week" : "Week " + week);
+                hud.Heading(week == newest ? "Week " + week + " · this week" : "Week " + week, UiTheme.Gold);
                 foreach (var entry in entries) hud.Paragraph(entry.text);
             }
         }
@@ -973,7 +996,15 @@ namespace Gamesim.Episode
                 hud.Heading("WHO IS WHERE");
                 hud.Mark(NotebookSection.Rooms);
                 hud.HouseMapPanel(HouseOccupancy(state));
-                foreach (var c in state.contestants.Where(c => !c.isPlayer)) hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
+                // Name, then who they are outside the game, then where you stand — the order the
+                // reference build's houseguest list uses. The card line is omitted rather than left
+                // blank when a save predates those fields.
+                foreach (var c in state.contestants.Where(c => !c.isPlayer))
+                {
+                    hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
+                    string card = CardLine(c);
+                    if (!string.IsNullOrEmpty(card)) hud.Paragraph(card);
+                }
                 // How the house voted, with the reason each voter committed. The engine has written
                 // these to every ballot since the beginning and nothing has ever shown them — the
                 // event log carries the sentence, but only the last line of it reaches the status
@@ -1205,22 +1236,50 @@ namespace Gamesim.Episode
             if (saves.TryRecoverBackup(out var state, out var result)) Install(state);
             message = result; Render();
         }
+        /// <summary>
+        /// Opens the cast screen. Nothing is created or written until the player commits there, so
+        /// backing out leaves the running season and its slot exactly as they were.
+        /// </summary>
         public void NewSeason()
+        {
+            if (durableCommitInProgress) return;
+            if (castSelect == null) { StartSeason(null); return; }
+            castSelect.Show(StartSeason, Render);
+        }
+
+        /// <summary>
+        /// Stages and installs a season. A null choice builds the authored six-person scenario,
+        /// which is what a headless caller and the pre-cast-screen behaviour both get.
+        /// </summary>
+        public void StartSeason(SeasonBuilder.Choice choice)
         {
             if (durableCommitInProgress) return;
             SuspendNpcWorldWithoutSaving();
             try
             {
+                var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
-                var fresh = ContentCatalog.Create(unchecked((uint)DateTime.UtcNow.Ticks)); fresh.sessionId = Guid.NewGuid().ToString("N");
+                var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
+                fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.
                 saves = nextStore; Install(fresh);
                 if (SaveRootOverride == null) { PlayerPrefs.SetString("Gamesim.ActiveSave", Path.GetFileName(saves.SavePath)); PlayerPrefs.Save(); }
-                message = "New season started in a new slot. Previous saves were retained.";
+                message = SeasonMessage(fresh, choice);
             }
             catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
             { message = "New season could not be saved. Your current session and slot were preserved. " + error.Message; }
             Render();
+        }
+
+        private static string SeasonMessage(EpisodeState fresh, SeasonBuilder.Choice choice)
+        {
+            string head = "New season started in a new slot. Previous saves were retained.";
+            if (choice == null) return head;
+            var you = fresh.Find(fresh.playerId);
+            return head + "  ·  " + fresh.contestants.Count + " houseguests, "
+                   + CastTemplates.RosterName(choice.Roster).ToLowerInvariant()
+                   + (you != null && !string.IsNullOrEmpty(choice.PlayerTemplateId)
+                       ? ". You are playing as " + you.name + "." : ".");
         }
         public void ImportFile(string path)
         {
@@ -1244,6 +1303,10 @@ namespace Gamesim.Episode
         {
             ResetNpcSocialForLoad();
             ClosePanels(); engine = new EpisodeEngine(state); blockedRecovery = false;
+            // Before the placement loop below, which indexes the anchor arrays by body: the season
+            // being installed can hold a different house from the one on screen, and until seasons
+            // could differ in size this loop was indexing an array that always happened to match.
+            SeatCast(state);
             // Load-time authored placement only, never a travel/pathfinding fallback.
             // Pending conversations walk back to their saved venue without new draws.
             if (initialNpcPositions != null)
@@ -1265,6 +1328,8 @@ namespace Gamesim.Episode
             if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
             if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
             if (tutorial != null) tutorial.FontScale = largeText ? 1.2f : 1;
+            if (seasonReport != null) seasonReport.FontScale = largeText ? 1.2f : 1;
+            if (castSelect != null) castSelect.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.SetInt("Gamesim.Volume", volumePercent); PlayerPrefs.SetInt("Gamesim.Music", musicOn ? 1 : 0); PlayerPrefs.Save(); }

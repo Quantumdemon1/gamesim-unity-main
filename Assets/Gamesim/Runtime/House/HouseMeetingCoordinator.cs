@@ -116,7 +116,9 @@ namespace Gamesim.House
         {
             reason = null;
             if (disposed || string.IsNullOrWhiteSpace(generation) || castSlots == null || castIds == null || eligibleIds == null
-                || castSlots.Count != castIds.Count || castSlots.Count > 5)
+                // The bound keeps the binding finite; it is not a statement that a house holds
+                // six. Five was the scene's authored NPC count, and a season can now cast more.
+                || castSlots.Count != castIds.Count || castSlots.Count > Gamesim.Simulation.EpisodeValidation.MaximumCast - 1)
                 return Fail(out reason, "Invalid world generation or bounded cast binding.");
             var nextIds = new HashSet<string>(StringComparer.Ordinal);
             var nextRoots = new HashSet<HouseNpc>();

@@ -19,7 +19,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 6) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 7) return Fail(out error, "Unsupported episode schema.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0 || s.socialActions > 18 || !Defined(s.phase))
                 return Fail(out error, "Invalid session counters or phase.");
@@ -37,6 +37,10 @@ namespace Gamesim.Simulation
                     c.nominationWeeks.Any(w => w < 1 || w > s.week) || c.timesNominated < 0 || c.hohWins < 0 || c.vetoWins < 0 ||
                     c.timesNominated > 100 || c.hohWins > 100 || c.vetoWins > 100)
                     return Fail(out error, "Invalid contestant data.");
+                // Card copy is optional, so it is bounded rather than required: an old save has none
+                // of it and must stay valid.
+                if (c.age < 0 || c.age > 120 || !ShortOrAbsent(c.occupation, 100) || !ShortOrAbsent(c.archetype, 100))
+                    return Fail(out error, "Invalid contestant card copy.");
                 var stats = new[] { c.stats.physical, c.stats.mental, c.stats.endurance, c.stats.social, c.stats.luck, c.stats.competition, c.stats.strategic, c.stats.loyalty };
                 if (stats.Any(x => !Finite(x) || x < 0 || x > 10)) return Fail(out error, "Stats must be finite in the supported 0–10 range.");
             }
@@ -119,6 +123,15 @@ namespace Gamesim.Simulation
             if (s.phase == EpisodePhase.Jury && s.votes.Any(v => !Live(v.targetId) || Live(v.voterId))) return Fail(out error, "Invalid jury ballot eligibility.");
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error);
         }
+
+        /// <summary>
+        /// Absent, or present and within bounds.
+        ///
+        /// <para>Not called <c>Optional</c>: <see cref="TryValidate"/> declares a local function of
+        /// that name for optional <i>identities</i>, and a local function hides the enclosing type's
+        /// methods outright rather than overloading them.</para>
+        /// </summary>
+        private static bool ShortOrAbsent(string value, int max) => string.IsNullOrEmpty(value) || value.Length <= max;
 
         private static bool Text(string value, int max) => !string.IsNullOrWhiteSpace(value) && value.Length <= max;
         private static bool Defined<T>(T value) where T : struct => Enum.IsDefined(typeof(T), value);

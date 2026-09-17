@@ -17,9 +17,13 @@ namespace Gamesim.Simulation
                 social.nextScanTick > social.clockTick + 3 || social.nextScanTick % 3 != 0 ||
                 social.nextConversationSequence < 1 || social.nextConversationSequence - 1 > 2L * state.revision)
                 return Fail(out error, "Invalid NPC social clock or issued sequence.");
+            // One cooldown per NPC, and one memory row per ordered pair of NPCs. Both read as the
+            // literals 5 and 20 while a house held six, which is what those numbers are: five NPCs
+            // and their twenty directed pairs.
+            int npcs = Math.Max(0, state.contestants.Count - 1);
             if (social.pending == null || social.pending.Count > 2 || social.pending.Any(row => row == null) ||
-                social.cooldowns == null || social.cooldowns.Count > 5 || social.cooldowns.Any(row => row == null) ||
-                social.pairMemory == null || social.pairMemory.Count > 20 || social.pairMemory.Any(row => row == null))
+                social.cooldowns == null || social.cooldowns.Count > npcs || social.cooldowns.Any(row => row == null) ||
+                social.pairMemory == null || social.pairMemory.Count > npcs * Math.Max(0, npcs - 1) || social.pairMemory.Any(row => row == null))
                 return Fail(out error, "Invalid NPC social collections.");
             bool Npc(string id) => state.contestants.Any(actor => actor.id == id && !actor.isPlayer);
             bool ActiveNpc(string id) => state.contestants.Any(actor => actor.id == id && !actor.isPlayer && actor.status == ContestantStatus.Active);

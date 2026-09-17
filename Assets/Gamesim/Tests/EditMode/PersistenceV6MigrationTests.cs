@@ -17,7 +17,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshFactoryUsesFixedIndependentSeedWithoutDrawingTheMainStream(uint seed)
         {
             var state = ContentCatalog.Create(seed);
-            Assert.That(state.schemaVersion, Is.EqualTo(6));
+            Assert.That(state.schemaVersion, Is.EqualTo(7));
             Assert.That(state.npcSocial.rulesStartWeek, Is.EqualTo(1));
             Assert.That(state.npcSocial.randomState, Is.EqualTo(SeededRandom.HashSeed("gamesim:npc-social:v1:" + seed.ToString("x8", System.Globalization.CultureInfo.InvariantCulture))));
             Assert.That(state.randomState, Is.EqualTo(seed == 0 ? 0x6D2B79F5u : seed));
@@ -33,12 +33,14 @@ namespace Gamesim.Tests.EditMode
             if (version == 5) old["blocRulesStartWeek"] = 2; // Never recompute this established rule boundary.
             string before = old.ToString(Formatting.None);
             var v5 = EpisodeSaveMigrations.PrepareV5Payload(old, out _);
-            var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+            // PrepareV6Payload, not PrepareCurrentPayload: this test is about the v5-to-v6 step, and
+            // "current" moved on to schema 7 when the contestant card copy was added.
+            var result = EpisodeSaveMigrations.PrepareV6Payload(old, out bool migrated);
             Assert.That(migrated, Is.True); Assert.That((int)result["schemaVersion"], Is.EqualTo(6));
             Assert.That((int)result["npcSocial"]["rulesStartWeek"], Is.EqualTo(8));
             AssertPreserved(v5, result);
             Assert.That(old.ToString(Formatting.None), Is.EqualTo(before));
-            var repeat = EpisodeSaveMigrations.PrepareCurrentPayload(result, out migrated);
+            var repeat = EpisodeSaveMigrations.PrepareV6Payload(result, out migrated);
             Assert.That(migrated, Is.False); Assert.That(ReferenceEquals(result, repeat), Is.False);
             Assert.That(JToken.DeepEquals(result, repeat), Is.True);
             using var files = new Files(); files.Write(old);
@@ -226,7 +228,11 @@ namespace Gamesim.Tests.EditMode
             if (version < 5) return (JObject)typeof(PersistenceV5MigrationTests).GetMethod("Historical", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { version });
             return CaptureV5(ContentCatalog.Create(601));
         }
-        private static JObject CaptureV5(EpisodeState state) { var result = Capture(state); result.Remove("npcSocial"); result["schemaVersion"] = 5; return result; }
+        private static JObject CaptureV5(EpisodeState state)
+        {
+            var result = PersistenceMigrationTests.StripCardCopy(Capture(state));
+            result.Remove("npcSocial"); result["schemaVersion"] = 5; return result;
+        }
         private static JObject Capture(EpisodeState state) => JObject.FromObject(state, Serializer());
         private static JsonSerializer Serializer() => (JsonSerializer)typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true)
             .GetMethod("Serializer", BindingFlags.Public | BindingFlags.Static).Invoke(null, null);

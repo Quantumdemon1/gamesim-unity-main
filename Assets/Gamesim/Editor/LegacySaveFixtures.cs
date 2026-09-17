@@ -57,6 +57,11 @@ namespace Gamesim.Editor
         {
             var payload = JObject.FromObject(state, ProductionSerializer());
             payload.Remove("npcSocial");
+            // Schema 7's card copy did not exist in v5 either, and the stored shape is checked
+            // field for field: a capture that still carries it is not a v5 payload.
+            foreach (var value in (JArray)payload["contestants"])
+                foreach (var field in new[] { "occupation", "archetype", "age" })
+                    ((JObject)value).Remove(field);
             payload["schemaVersion"] = 5;
             return payload;
         }

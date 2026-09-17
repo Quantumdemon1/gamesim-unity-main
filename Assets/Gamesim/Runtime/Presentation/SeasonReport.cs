@@ -31,6 +31,27 @@ namespace Gamesim.Presentation
         private CanvasGroup group;
         private float cursor;
 
+        private CanvasScaler scaler;
+
+        /// <summary>
+        /// The "larger text" accessibility setting, applied by scaling the whole screen rather than
+        /// each label.
+        ///
+        /// <para>This is a fixed layout — cards, chips and rows are sized in reference pixels — so
+        /// growing the type alone would push text out of boxes that did not grow with it. Shrinking
+        /// the reference resolution magnifies the layout and its text together, which is what a
+        /// fixed layout actually needs.</para>
+        /// </summary>
+        public float FontScale
+        {
+            set
+            {
+                if (scaler == null) return;
+                float scale = Mathf.Clamp(value, 0.5f, 2f);
+                scaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
+            }
+        }
+
         public bool IsShowing => group != null && group.alpha > 0f;
 
         /// <summary>
@@ -54,6 +75,7 @@ namespace Gamesim.Presentation
             scaler.matchWidthOrHeight = 0.5f;
 
             var report = root.AddComponent<SeasonReport>();
+            report.scaler = scaler;
             report.group = root.GetComponent<CanvasGroup>();
             report.Hide();
             return report;

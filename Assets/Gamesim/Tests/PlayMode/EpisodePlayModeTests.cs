@@ -228,7 +228,7 @@ namespace Gamesim.Tests.PlayMode
             rootField.SetValue(director, blockedRoot);
             try
             {
-                Assert.DoesNotThrow(() => director.NewSeason());
+                Assert.DoesNotThrow(() => director.StartSeason(null));
                 Assert.That(director.SavePath, Is.EqualTo(previousPath));
                 AssertEquivalent(before, director.Snapshot);
                 Assert.That(File.ReadAllBytes(previousPath), Is.EqualTo(beforeBytes));

@@ -103,9 +103,11 @@ these automatically during a headless run.
 
 Two known issues to judge rather than rediscover:
 
-- **The cast reads small at the default camera, and it is measured, not felt.** Houseguests project to
-  1.4%–2.2% of frame height from 42–54 metres. That is a camera-framing decision, not an art one, and
-  no character change reaches it. Judge the framing; do not re-litigate the bodies.
+- **The cast still reads small, and it is measured, not felt.** At the corrected 24-unit default
+  houseguests project to roughly 2.7%–4.6% of frame height from 20–30 metres — about double the
+  42–54 metre figure this section used to quote, which was taken at the 48 the scene wrongly
+  shipped. Whether that is now enough is the judgement E5 is for. It remains a camera decision
+  rather than an art one, so judge the framing and do not re-litigate the bodies.
 - **Bloom is absent from the automated captures.** They come from `camera.Render()` into a
   RenderTexture, which skips the URP post-processing pass. Judging the HUD against the lit set needs a
   windowed run, which is the open half of D6b.

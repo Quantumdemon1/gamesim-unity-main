@@ -28,6 +28,7 @@ namespace Gamesim.Episode
         private CeremonyTakeover takeover;
         private VoteReveal voteReveal;
         private CompetitionResult competitionCard;
+        private KeyCeremony keyCeremony;
         private MemoryWall memoryWall;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
@@ -96,6 +97,7 @@ namespace Gamesim.Episode
             takeover = CeremonyTakeover.Attach(gameObject);
             voteReveal = VoteReveal.Attach(gameObject);
             competitionCard = CompetitionResult.Attach(gameObject);
+            keyCeremony = KeyCeremony.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             Debug.Log("Gamesim episode ready: six contestants, validated simulation, local recovery and accessible HUD connected.");
         }
@@ -298,6 +300,13 @@ namespace Gamesim.Episode
                         && voteReveal != null
                         && voteReveal.Play(result.state.week, EvictionBlock(result.state),
                             EvictionBallots(result.state), EvictedThisCommit(result.state, wasActive), reducedMotion);
+
+                    // The nomination gets the key ceremony for the same reason the eviction gets the
+                    // vote reveal: the engine decides it in one commit, and the order is the beat.
+                    revealed |= ceremony.kind == CeremonySting.NominationKind
+                        && keyCeremony != null
+                        && keyCeremony.Play(result.state.week, NameOf(result.state, result.state.hohId),
+                            SafeHouseguests(result.state), NominatedHouseguests(result.state), reducedMotion);
                     if (!revealed && takeover != null)
                         takeover.Play(ceremony.kind, result.state.week,
                             CeremonySubjects(result.state, ceremony.kind, wasActive), reducedMotion);
@@ -446,6 +455,42 @@ namespace Gamesim.Episode
 
             foreach (var marker in markers) rooms.Add(new HouseMap.Room(marker.RoomName, occupants[marker.RoomName]));
             return rooms;
+        }
+
+        private static string NameOf(EpisodeState state, string id) => state?.Find(id)?.name;
+
+        /// <summary>
+        /// Everyone who draws a key and keeps it: still playing, not the Head of Household, not on
+        /// the block. The HoH does not draw for their own safety.
+        /// </summary>
+        private List<KeyCeremony.Person> SafeHouseguests(EpisodeState state)
+        {
+            var people = new List<KeyCeremony.Person>();
+            if (state?.contestants == null) return people;
+            foreach (var actor in state.contestants)
+            {
+                if (actor.status != ContestantStatus.Active) continue;
+                if (actor.id == state.hohId) continue;
+                if (state.nominees != null && state.nominees.Contains(actor.id)) continue;
+                people.Add(Person(state, actor.id));
+            }
+            return people;
+        }
+
+        private List<KeyCeremony.Person> NominatedHouseguests(EpisodeState state)
+        {
+            var people = new List<KeyCeremony.Person>();
+            if (state?.nominees == null) return people;
+            foreach (var id in state.nominees) if (state.Find(id) != null) people.Add(Person(state, id));
+            return people;
+        }
+
+        private static KeyCeremony.Person Person(EpisodeState state, string id)
+        {
+            var actor = state.Find(id);
+            return new KeyCeremony.Person(actor.id, actor.name,
+                CharacterPortraits.Get(
+                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id))));
         }
 
         /// <summary>The two people on the block, with their faces, for the eviction reveal.</summary>
@@ -812,6 +857,7 @@ namespace Gamesim.Episode
             if (takeover != null) takeover.FontScale = largeText ? 1.2f : 1;
             if (voteReveal != null) voteReveal.FontScale = largeText ? 1.2f : 1;
             if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
+            if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.Save(); }
@@ -826,6 +872,7 @@ namespace Gamesim.Episode
             if (takeover != null) takeover.Cancel();
             if (voteReveal != null) voteReveal.Cancel();
             if (competitionCard != null) competitionCard.Cancel();
+            if (keyCeremony != null) keyCeremony.Cancel();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()
@@ -843,6 +890,7 @@ namespace Gamesim.Episode
             if (takeover != null) { Destroy(takeover.gameObject); takeover = null; }
             if (voteReveal != null) { Destroy(voteReveal.gameObject); voteReveal = null; }
             if (competitionCard != null) { Destroy(competitionCard.gameObject); competitionCard = null; }
+            if (keyCeremony != null) { Destroy(keyCeremony.gameObject); keyCeremony = null; }
         }
 
         public static string PhaseTitle(EpisodePhase phase)

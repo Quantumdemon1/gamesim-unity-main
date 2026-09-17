@@ -29,6 +29,8 @@ namespace Gamesim.Tests.PlayMode
         {
             var expected = new Dictionary<string, string>
             {
+                // Nomination and eviction are narrated by their own overlays and asserted below;
+                // they stay in this map because it is also the set of beats the loop looks for.
                 { CeremonySting.NominationKind, "NOMINATION CEREMONY" },
                 { CeremonySting.VetoKind, "VETO CEREMONY" },
                 { CeremonySting.EvictionKind, "EVICTION" },
@@ -66,7 +68,44 @@ namespace Gamesim.Tests.PlayMode
                 for (int frame = 0; frame < 25; frame++) yield return null;
                 yield return SettleCeremonyCards();
 
-                if (committed.kind == CeremonySting.EvictionKind)
+                if (committed.kind == CeremonySting.NominationKind)
+                {
+                    // The nomination is narrated by the key ceremony rather than the strip, for the
+                    // same reason the eviction is: the beat is the order the names come out in, and
+                    // a strip that reports both at once is the thing being replaced. The guarantee
+                    // is unchanged — the beat must announce itself and name who is on the block.
+                    var keys = SceneComponents<KeyCeremony>().FirstOrDefault();
+                    Assert.That(keys, Is.Not.Null, "The episode should stage a key ceremony at startup.");
+                    Assert.That(keys.IsPlaying, Is.True, "The nomination beat should play the key ceremony.");
+                    Assert.That(keys.ShowingBlock, Is.True,
+                        "The ceremony should have reached the block by the time the cards have settled.");
+
+                    var onTheBlock = keys.GetComponentsInChildren<TMP_Text>(true)
+                        .Where(label => label.name == "Nominee")
+                        .Select(label => label.text)
+                        .ToArray();
+                    Assert.That(onTheBlock, Has.Length.EqualTo(after.nominees.Count),
+                        "The ceremony should show exactly the committed nominees.");
+                    foreach (var id in after.nominees)
+                        Assert.That(onTheBlock, Contains.Item(after.Find(id).name),
+                            "The ceremony must name the houseguest the simulation actually nominated.");
+
+                    // One key slot per houseguest who draws: everyone still playing except the Head
+                    // of Household, who does not draw for their own safety. Structural, so the
+                    // key-by-key stage cannot quietly stop happening — the settled capture only ever
+                    // photographs the block, and a ceremony that jumped straight there would look
+                    // identical in every frame this suite keeps.
+                    int drawing = after.contestants.Count(actor =>
+                        actor.status == ContestantStatus.Active && actor.id != after.hohId);
+                    int slots = keys.GetComponentsInChildren<RectTransform>(true)
+                        .Count(rect => rect.name.StartsWith("Key ", System.StringComparison.Ordinal));
+                    Assert.That(slots, Is.EqualTo(drawing - after.nominees.Count),
+                        "There should be one key slot per houseguest who keeps a key.");
+
+                    Assert.That(keys.GetComponent<CanvasGroup>().alpha, Is.GreaterThan(0.5f),
+                        "The ceremony should be visible at this point, not faded out.");
+                }
+                else if (committed.kind == CeremonySting.EvictionKind)
                 {
                     // The eviction is narrated by the vote reveal instead of the strip, which would
                     // only flash underneath it and fade out mid-tally. The guarantee this test
@@ -136,7 +175,10 @@ namespace Gamesim.Tests.PlayMode
                     var reveal = group.GetComponent<VoteReveal>();
                     if (reveal != null && reveal.IsPlaying && !reveal.ShowingResult) { waiting = true; continue; }
 
-                    if (reveal == null
+                    var keys = group.GetComponent<KeyCeremony>();
+                    if (keys != null && keys.IsPlaying && !keys.ShowingBlock) { waiting = true; continue; }
+
+                    if (reveal == null && keys == null
                         && group.GetComponent<CeremonySting>() == null
                         && group.GetComponent<CompetitionResult>() == null
                         && group.GetComponent<CeremonyTakeover>() == null) continue;

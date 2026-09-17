@@ -15,7 +15,7 @@ game cannot be started except by pressing Play on a scene, and it ends with two 
 
 | Doc section | Web game | Unity port | Verdict |
 | --- | --- | --- | --- |
-| 2. Home / sign-in / onboarding | Auth, routing, leaderboard | Nothing; you press Play | **Menu needed.** Accounts are out of scope for a single-player desktop build |
+| 2. Home / sign-in / onboarding | Auth, routing, leaderboard | `MainMenu`: Continue / New season / Settings / Quit | **Done**, minus accounts, which are out of scope for a single-player desktop build |
 | 3. Season setup (3 steps) | Player creation, 8 stats, 2 traits, cast pick, All-Stars, house size 8 | Cast screen: 24-person pool, both rosters, category filters, house size 3–12, default 8 | **Mostly done.** No free-form character creation — you pick a card rather than authoring stats |
 | 4. Opening sequences | Intro, house entry, walk-in, tutorial, meet & greet | Tutorial only (`HouseTutorial`) | **Four of five missing** |
 | 5–6. Weekly cycle | HoH → Nomination → Draw → Veto → Ceremony → Eviction → Social | All present | **Done** |
@@ -83,10 +83,15 @@ turned out to be the thing everything else was waiting on:
 3. `CastSelect` — the "Choose Your Houseguest" screen: roster tabs, category chips, the card grid,
    a house-size stepper, and a start that stages to a new slot while keeping the old one.
 
-**Still open.** There is no main menu: the cast screen is reached through Settings, so a season is
-still started from inside a running one rather than from a front door. And setup is a *pick*, not
-the web's character creator — no free-form name, stat allocation or trait selection. `WebTraits`
-already holds the arithmetic a creator would need.
+4. `MainMenu` — the front door. It opens on a real launch, offers Continue only when there is
+   something on disk to continue, and hands off to the cast screen for a new season. A run started
+   with an explicit save root keeps the old behaviour and reaches the house directly, because a
+   menu nothing asked for would block every test and the standalone verification; those drive it
+   through `OpenMainMenu` instead, and do.
+
+**Still open.** Setup is a *pick*, not the web's character creator — no free-form name, stat
+allocation or trait selection. `WebTraits.CreateStats` already holds the arithmetic a creator would
+need, and `CastTemplates.ToContestant` is the shape it would produce.
 
 **Phase 4 — opening sequences.** Intro, house entry, walk-in, meet and greet. Presentation only,
 and the least load-bearing: the game is complete without them, it just does not open well.

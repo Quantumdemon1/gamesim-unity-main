@@ -104,6 +104,25 @@ namespace Gamesim.Presentation
                 var hole = Disc("Initial", frame, UiTheme.SurfaceRaised);
                 hole.anchorMin = Vector2.zero; hole.anchorMax = Vector2.one;
                 hole.offsetMin = Vector2.zero; hole.offsetMax = Vector2.zero;
+
+                // A houseguest with no body yet gets the generated silhouette rather than an empty
+                // disc, which used to read as a rendering failure rather than as "not loaded".
+                var silhouette = UiTheme.Icon("houseguest");
+                if (silhouette != null)
+                {
+                    var art = new GameObject("Silhouette", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                    art.SetParent(hole, false);
+                    art.anchorMin = new Vector2(0.5f, 0f);
+                    art.anchorMax = new Vector2(0.5f, 0f);
+                    art.pivot = new Vector2(0.5f, 0f);
+                    art.sizeDelta = new Vector2(diameter * .82f, diameter * .82f);
+                    art.anchoredPosition = new Vector2(0f, diameter * .05f);
+                    var image = art.GetComponent<Image>();
+                    image.sprite = silhouette;
+                    image.color = new Color(1f, 1f, 1f, dim ? .18f : .28f);
+                    image.preserveAspect = true;
+                    image.raycastTarget = false;
+                }
             }
             return rim;
         }

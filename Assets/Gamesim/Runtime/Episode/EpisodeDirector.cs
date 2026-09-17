@@ -34,6 +34,7 @@ namespace Gamesim.Episode
         private MemoryWall memoryWall;
         private SeasonReport seasonReport;
         private CastSelect castSelect;
+        private MainMenu mainMenu;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
         // What the last social command actually moved, so the panel can say so.
@@ -119,9 +120,15 @@ namespace Gamesim.Episode
             tutorial = HouseTutorial.Attach(gameObject);
             seasonReport = SeasonReport.Attach(gameObject);
             castSelect = CastSelect.Attach(gameObject);
+            mainMenu = MainMenu.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
+            // A real launch opens at the front door. A run with an explicit save root is a test or
+            // the standalone verification driving the house directly, and a menu it never asked for
+            // would block every one of them — so those keep the previous behaviour and reach the
+            // menu through OpenMainMenu when they mean to.
+            if (SaveRootOverride == null) OpenMainMenu();
             // After the first Render, so the chrome the tour points at exists to be found.
-            OfferTutorial();
+            else OfferTutorial();
             Debug.Log("Gamesim episode ready: " + engine.Snapshot.contestants.Count + " contestants, validated simulation, local recovery and accessible HUD connected.");
         }
 
@@ -238,9 +245,12 @@ namespace Gamesim.Episode
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
             {
-                // The cast screen sits above the HUD and owns Escape while it is open;
-                // closing the panels underneath it would leave it on screen with nothing behind.
-                if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
+                // Topmost first. The main menu sits above the cast screen, which sits above the
+                // HUD; closing a panel underneath either of them would leave a screen on top of the
+                // house with nothing behind it. The menu itself ignores Escape when there is no
+                // season to go back to, because there is nowhere for it to close to.
+                if (mainMenu != null && mainMenu.IsShowing) { if (SeasonInProgress) CloseMainMenu(); }
+                else if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
                 else ClosePanels();
                 return;
             }
@@ -1192,6 +1202,7 @@ namespace Gamesim.Episode
             hud.Action("Reload current slot", LoadNow);
             hud.Action("Recover validated backup (preserve current file)", RecoverBackup);
             hud.Action("New season in a NEW slot (preserves this season)", NewSeason);
+            hud.Action("Main menu", OpenMainMenu);
             hud.Meter("Master volume", volumePercent, 100, muted ? UiTheme.Muted : UiTheme.Accent);
             hud.Action("Volume down", () => { volumePercent = Mathf.Max(0, volumePercent - 10); ApplyPreferences(); Render(); });
             hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
@@ -1236,6 +1247,64 @@ namespace Gamesim.Episode
             if (saves.TryRecoverBackup(out var state, out var result)) Install(state);
             message = result; Render();
         }
+        /// <summary>Whether there is a season on screen worth going back to from the menu.</summary>
+        public bool SeasonInProgress => engine != null && !blockedRecovery;
+
+        /// <summary>
+        /// Opens the front door.
+        ///
+        /// <para>Continue is offered from the <b>disk</b>, not from the fact that a season object
+        /// exists: the director always has one in memory — it builds the authored scenario before it
+        /// looks for a save — so asking the engine would offer "continue" on a fresh install and
+        /// then continue a season the player never played.</para>
+        /// </summary>
+        public void OpenMainMenu()
+        {
+            if (mainMenu == null || durableCommitInProgress) return;
+            PauseNpcSocialForPanel();
+            ClosePanelsInternal(false);
+            if (player != null) player.SetInputEnabled(false);
+            if (cameraRig != null) cameraRig.ControlsEnabled = false;
+            bool canContinue = saves != null && (File.Exists(saves.SavePath) || File.Exists(saves.BackupPath));
+            mainMenu.Show(canContinue, blockedRecovery ? message : null,
+                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame);
+            Render();
+        }
+
+        /// <summary>Leaves the menu and hands the house back. Only reachable with a season running.</summary>
+        public void CloseMainMenu()
+        {
+            if (mainMenu == null) return;
+            mainMenu.Hide();
+            ClosePanels();
+            // Deferred from bootstrap: the tour points at HUD chrome, and pointing at it from behind
+            // a full-screen menu would have been a tour of something nobody could see.
+            OfferTutorial();
+        }
+
+        private void OpenSettingsFromMenu()
+        {
+            if (mainMenu != null) mainMenu.Hide();
+            OpenSettings();
+        }
+
+        /// <summary>
+        /// Leaves the game.
+        ///
+        /// <para>In the editor this stops play instead of closing the application, because
+        /// <see cref="Application.Quit"/> does nothing there and a Quit button that visibly does
+        /// nothing is indistinguishable from a broken one.</para>
+        /// </summary>
+        public void QuitGame()
+        {
+            SuspendNpcWorldWithoutSaving();
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
         /// <summary>
         /// Opens the cast screen. Nothing is created or written until the player commits there, so
         /// backing out leaves the running season and its slot exactly as they were.
@@ -1244,7 +1313,12 @@ namespace Gamesim.Episode
         {
             if (durableCommitInProgress) return;
             if (castSelect == null) { StartSeason(null); return; }
-            castSelect.Show(StartSeason, Render);
+            // The cast screen draws below the menu, so the menu has to step aside rather than sit on
+            // top of it — and backing out has to land wherever the player came from, which is the
+            // menu when they arrived through it and the settings panel when they did not.
+            bool fromMenu = mainMenu != null && mainMenu.IsShowing;
+            if (fromMenu) mainMenu.Hide();
+            castSelect.Show(StartSeason, fromMenu ? (Action)OpenMainMenu : Render);
         }
 
         /// <summary>
@@ -1330,6 +1404,7 @@ namespace Gamesim.Episode
             if (tutorial != null) tutorial.FontScale = largeText ? 1.2f : 1;
             if (seasonReport != null) seasonReport.FontScale = largeText ? 1.2f : 1;
             if (castSelect != null) castSelect.FontScale = largeText ? 1.2f : 1;
+            if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.SetInt("Gamesim.Volume", volumePercent); PlayerPrefs.SetInt("Gamesim.Music", musicOn ? 1 : 0); PlayerPrefs.Save(); }

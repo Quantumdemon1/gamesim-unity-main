@@ -298,13 +298,36 @@ namespace Gamesim.Presentation
             face.sizeDelta = new Vector2(56f, 56f);
             face.anchoredPosition = Vector2.zero;
 
-            var initials = HudPrimitives.Label("Initials", face, 20f,
-                UiTheme.OnColor(wardrobe), TextAlignmentOptions.Center);
-            initials.text = Initials(template.Name);
-            initials.rectTransform.anchorMin = Vector2.zero;
-            initials.rectTransform.anchorMax = Vector2.one;
-            initials.rectTransform.offsetMin = Vector2.zero;
-            initials.rectTransform.offsetMax = Vector2.zero;
+            // The generated silhouette where the icon pass has been run, and the initials where it
+            // has not. A silhouette is the honest answer to "who is this" before a body exists to
+            // render — inventing a portrait would be inventing a person's appearance — and the
+            // initials remain so that a clone without the art still tells the cards apart.
+            var silhouette = UiTheme.Icon("houseguest");
+            if (silhouette != null)
+            {
+                var art = new GameObject("Silhouette", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                art.SetParent(face, false);
+                art.anchorMin = new Vector2(0.5f, 0f);
+                art.anchorMax = new Vector2(0.5f, 0f);
+                art.pivot = new Vector2(0.5f, 0f);
+                art.sizeDelta = new Vector2(46f, 46f);
+                art.anchoredPosition = new Vector2(0f, 3f);
+                var portrait = art.GetComponent<Image>();
+                portrait.sprite = silhouette;
+                portrait.color = UiTheme.OnColor(wardrobe);
+                portrait.preserveAspect = true;
+                portrait.raycastTarget = false;
+            }
+            else
+            {
+                var initials = HudPrimitives.Label("Initials", face, 20f,
+                    UiTheme.OnColor(wardrobe), TextAlignmentOptions.Center);
+                initials.text = Initials(template.Name);
+                initials.rectTransform.anchorMin = Vector2.zero;
+                initials.rectTransform.anchorMax = Vector2.one;
+                initials.rectTransform.offsetMin = Vector2.zero;
+                initials.rectTransform.offsetMax = Vector2.zero;
+            }
 
             Line(card, template.Name, 16f, UiTheme.Paper, -84f, 22f);
             Line(card, template.Archetype, 13f, UiTheme.Accent, -104f, 18f);

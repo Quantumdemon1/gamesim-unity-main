@@ -222,8 +222,9 @@ namespace Gamesim.Presentation
                 group.interactable = false;
                 group.blocksRaycasts = false;
 
+                // Near-opaque, matching the web build and the other phase cards.
                 scrim = HudPrimitives.Fill("Scrim", root,
-                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.93f), 1);
+                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.975f), 1);
                 scrim.anchorMin = Vector2.zero; scrim.anchorMax = Vector2.one;
                 scrim.offsetMin = Vector2.zero; scrim.offsetMax = Vector2.zero;
 
@@ -272,9 +273,20 @@ namespace Gamesim.Presentation
                 Place(caption.rectTransform, slot, 18f * scale, -(100f + portrait + 104f) * scale, x);
             }
 
-            var versus = HudPrimitives.Label("Versus", column, 30f * scale, UiTheme.Danger, TextAlignmentOptions.Center);
+            // A filled red disc with the word inside it, not red lettering on the ground. The web
+            // build makes this the one solid mark between the two faces, and it is what stops the
+            // eye reading the pair as a row of portraits rather than as an opposition.
+            float versusSize = 62f * scale;
+            var versusDisc = HudPrimitives.Disc("Versus disc", column, UiTheme.Danger);
+            Place(versusDisc, versusSize, versusSize, -(100f + portrait * 0.4f) * scale);
+
+            var versus = HudPrimitives.Label("Versus", versusDisc, 22f * scale, UiTheme.OnColor(UiTheme.Danger),
+                TextAlignmentOptions.Center);
             versus.text = "VS";
-            Place(versus.rectTransform, 120f * scale, 40f * scale, -(100f + portrait * 0.4f) * scale);
+            versus.rectTransform.anchorMin = Vector2.zero;
+            versus.rectTransform.anchorMax = Vector2.one;
+            versus.rectTransform.sizeDelta = Vector2.zero;
+            versus.rectTransform.anchoredPosition = Vector2.zero;
 
             // One pip per committed ballot, filling as the votes come in.
             dotRow = new GameObject("Dots", typeof(RectTransform)).GetComponent<RectTransform>();

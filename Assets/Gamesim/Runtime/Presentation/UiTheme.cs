@@ -28,6 +28,12 @@ namespace Gamesim.Presentation
         public static readonly Color Warning = Hex("FF8A5C");   // recovery / caution copy
         public static readonly Color Danger = Hex("FF6B6B");    // softened from the set's FF1A1A
         public static readonly Color Positive = Hex("5BE49B");  // the yard's green, for allied relationships
+        // A saturated green for a filled ceremony header, where Positive is a tint meant for text on
+        // a dark ground and washes out as a background. This is the web build's veto-meeting banner.
+        public static readonly Color PositiveDeep = Hex("16A34A");
+        // Reserved for one thing only: the competition result banner. Gold already means the veto
+        // here, so a gold banner over an HoH win read as the wrong power at a glance.
+        public static readonly Color Award = Hex("7C3AED");
         public static readonly Color Paper = Hex("F2F5FA");
         public static readonly Color Muted = Hex("94A7B8");
 

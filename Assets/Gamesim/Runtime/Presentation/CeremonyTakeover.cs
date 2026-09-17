@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -47,6 +48,11 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>What the card says it is waiting for, matching the web build's wording.</summary>
+        public const string DismissCaption = "Click anywhere to continue";
+
+        private RectTransform rule;
+        private TMP_Text dismiss;
         private CanvasGroup group;
         private RectTransform column, scrim, faces;
         private TMP_Text eyebrow, title, flavour;
@@ -174,10 +180,25 @@ namespace Gamesim.Presentation
             if (scrim != null) scrim.gameObject.SetActive(false);
         }
 
+        /// <summary>
+        /// True once the card has been up long enough to have been read, after which a click ends
+        /// it. The delay matters: without it a click already in flight when the card appears
+        /// dismisses it before anyone has seen what it said.
+        /// </summary>
+        private bool Dismissable => elapsed >= FadeIn + 0.35f;
+
         private void Update()
         {
             if (!playing) return;
             elapsed += Time.unscaledDeltaTime;
+
+            // Read the device directly rather than through the event system. The card carries no
+            // GraphicRaycaster and every graphic on it is non-raycasting — an acceptance criterion,
+            // because a ceremony must never be able to swallow a click meant for the house. Polling
+            // the mouse keeps that true while still letting the card close on demand the way the
+            // web build's does.
+            if (Dismissable && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            { Cancel(); return; }
 
             if (reduced)
             {
@@ -214,9 +235,10 @@ namespace Gamesim.Presentation
 
             var root = (RectTransform)transform;
 
-            // The set stays visible behind the card. A ceremony that blacked the house out would
-            // lose the one thing the 3D view is for.
-            scrim = NewPanel("Scrim", root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.93f), 1);
+            // The set stays visible behind the card, but only just. The web build darkens almost to
+            // black here and the house reads as a texture rather than as a room; at 0.93 the set was
+            // bright enough to compete with the title for attention.
+            scrim = NewPanel("Scrim", root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.975f), 1);
             scrim.anchorMin = Vector2.zero; scrim.anchorMax = Vector2.one;
             scrim.offsetMin = Vector2.zero; scrim.offsetMax = Vector2.zero;
 
@@ -246,6 +268,14 @@ namespace Gamesim.Presentation
             faces = new GameObject("Takeover subjects", typeof(RectTransform)).GetComponent<RectTransform>();
             faces.SetParent(column, false);
 
+            // The web build closes every phase card with a hairline rule and a quiet instruction.
+            // It is the thing that tells you the card is waiting for you rather than simply playing
+            // at you, and without it a card that also happens to time out reads as a cutscene.
+            rule = NewPanel("Takeover rule", column, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);
+            dismiss = NewText("Takeover dismiss", column, 15f, UiTheme.Muted);
+            dismiss.alignment = TextAlignmentOptions.Center;
+            dismiss.text = DismissCaption;
+
             Layout();
         }
 
@@ -268,9 +298,14 @@ namespace Gamesim.Presentation
             float flavourH = 54f * scale;
             float facesH = faces.childCount > 0 ? 116f * scale : 0f;
             float gap = 14f * scale;
+            float ruleH = 1f;
+            float dismissH = 24f * scale;
+
+            dismiss.fontSize = 15f * scale;
 
             float total = eyebrowH + gap + mark + gap + titleH + flavourH
-                + (facesH > 0f ? gap + facesH : 0f);
+                + (facesH > 0f ? gap + facesH : 0f)
+                + gap * 1.6f + ruleH + gap + dismissH;
             column.sizeDelta = new Vector2(width * scale, total);
 
             float y = 0f;
@@ -292,6 +327,12 @@ namespace Gamesim.Presentation
                 y -= gap;
                 PlaceRect(faces, width * scale, facesH, ref y);
             }
+
+            // A short centred rule, not a full-width one: the web's is about a sixth of the card.
+            y -= gap * 1.6f;
+            PlaceRect(rule, 132f * scale, ruleH, ref y);
+            y -= gap;
+            Place(dismiss.rectTransform, width * scale, dismissH, ref y);
         }
 
         private void Place(RectTransform rect, float width, float height, ref float y)

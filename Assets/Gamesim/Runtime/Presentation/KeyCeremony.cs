@@ -196,8 +196,10 @@ namespace Gamesim.Presentation
                 group.interactable = false;
                 group.blocksRaycasts = false;
 
+                // Near-opaque, matching the web build: at 0.93 the house behind stayed bright
+                // enough to compete with the ceremony for attention.
                 scrim = HudPrimitives.Fill("Scrim", root,
-                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.93f), 1);
+                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.975f), 1);
                 scrim.anchorMin = Vector2.zero; scrim.anchorMax = Vector2.one;
                 scrim.offsetMin = Vector2.zero; scrim.offsetMax = Vector2.zero;
 
@@ -248,6 +250,17 @@ namespace Gamesim.Presentation
 
             progress = HudPrimitives.Label("Progress", column, 17f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             Place(progress.rectTransform, width * scale, 24f * scale, -398f * scale);
+
+            // The web build closes every phase card with a hairline rule and a quiet instruction.
+            // Without it a card that also happens to time out reads as a cutscene being played at
+            // you rather than a beat waiting for you.
+            var rule = HudPrimitives.Fill("Rule", column,
+                new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);
+            Place(rule, 132f * scale, 1f, -436f * scale);
+
+            var dismiss = HudPrimitives.Label("Dismiss", column, 15f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
+            dismiss.text = CeremonyTakeover.DismissCaption;
+            Place(dismiss.rectTransform, width * scale, 24f * scale, -452f * scale);
         }
 
         /// <summary>Draws one houseguest on the stage, or clears it.</summary>

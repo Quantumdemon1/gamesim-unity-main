@@ -807,10 +807,15 @@ namespace Gamesim.Episode
                 case EpisodePhase.Eviction:
                 case EpisodePhase.FinalEviction:
                     return UiTheme.Danger;
+                // The veto arc is three different colours in the web build, not one: the draw and the
+                // competition are blue, and the meeting — the beat that resolves the block — is
+                // green. Tinting all three gold made a week's most consequential turn look identical
+                // to the draw that set it up.
                 case EpisodePhase.VetoSelection:
                 case EpisodePhase.Veto:
+                    return UiTheme.AccentDeep;
                 case EpisodePhase.VetoMeeting:
-                    return UiTheme.Gold;
+                    return UiTheme.PositiveDeep;
                 case EpisodePhase.Finished:
                     return UiTheme.Gold;
                 case EpisodePhase.HoH:

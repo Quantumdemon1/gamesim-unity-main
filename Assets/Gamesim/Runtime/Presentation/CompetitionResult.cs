@@ -136,8 +136,9 @@ namespace Gamesim.Presentation
                 group.interactable = false;
                 group.blocksRaycasts = false;
 
+                // Near-opaque, matching the web build and the other phase cards.
                 scrim = HudPrimitives.Fill("Scrim", root,
-                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.93f), 1);
+                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.975f), 1);
                 scrim.anchorMin = Vector2.zero; scrim.anchorMax = Vector2.one;
                 scrim.offsetMin = Vector2.zero; scrim.offsetMax = Vector2.zero;
 
@@ -169,15 +170,33 @@ namespace Gamesim.Presentation
 
             // The banner: the result stated once, loudly, before any of the detail. A player who
             // looks away and back should be able to read the outcome without parsing the board.
-            var banner = HudPrimitives.Fill("Winner banner", column, UiTheme.Gold, UiTheme.PanelRadius);
-            Place(banner, width * scale, 62f * scale, ref y);
+            // Violet, not gold. Gold is this project's colour for the veto itself, so a gold
+            // banner announcing an HoH win said "veto" at a glance. The web build reserves violet
+            // for the result banner and it is the one place that colour appears.
+            var banner = HudPrimitives.Fill("Winner banner", column, UiTheme.Award, UiTheme.PanelRadius);
+            Place(banner, width * scale, 86f * scale, ref y);
+            var bannerInk = UiTheme.OnColor(UiTheme.Award);
+
             var bannerText = HudPrimitives.Label("Winner banner text", banner, 26f * scale,
-                UiTheme.OnColor(UiTheme.Gold), TextAlignmentOptions.Center);
+                bannerInk, TextAlignmentOptions.Center);
             bannerText.text = winner.IsPlayer ? "You win!" : winner.Name + " wins!";
-            bannerText.rectTransform.anchorMin = Vector2.zero;
-            bannerText.rectTransform.anchorMax = Vector2.one;
-            bannerText.rectTransform.offsetMin = Vector2.zero;
-            bannerText.rectTransform.offsetMax = Vector2.zero;
+            bannerText.rectTransform.anchorMin = new Vector2(0f, .5f);
+            bannerText.rectTransform.anchorMax = new Vector2(1f, .5f);
+            bannerText.rectTransform.sizeDelta = new Vector2(0f, 34f * scale);
+            bannerText.rectTransform.anchoredPosition = new Vector2(0f, 12f * scale);
+
+            // The category repeated inside the banner, as the web build does, so the headline says
+            // what kind of competition was won and not merely that one was.
+            if (!string.IsNullOrEmpty(category))
+            {
+                var bannerSub = HudPrimitives.Label("Winner banner category", banner, 15f * scale,
+                    new Color(bannerInk.r, bannerInk.g, bannerInk.b, .85f), TextAlignmentOptions.Center);
+                bannerSub.text = category + " competition";
+                bannerSub.rectTransform.anchorMin = new Vector2(0f, .5f);
+                bannerSub.rectTransform.anchorMax = new Vector2(1f, .5f);
+                bannerSub.rectTransform.sizeDelta = new Vector2(0f, 22f * scale);
+                bannerSub.rectTransform.anchoredPosition = new Vector2(0f, -16f * scale);
+            }
             y -= 12f * scale;
 
             if (!string.IsNullOrEmpty(category))

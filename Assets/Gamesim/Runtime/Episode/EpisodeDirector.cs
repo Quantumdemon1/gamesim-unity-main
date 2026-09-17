@@ -617,6 +617,23 @@ namespace Gamesim.Episode
                 hud.Heading("WHO IS WHERE");
                 hud.HouseMapPanel(HouseOccupancy(state));
                 foreach (var c in state.contestants.Where(c => !c.isPlayer)) hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
+                // How the house voted, with the reason each voter committed. The engine has written
+                // these to every ballot since the beginning and nothing has ever shown them — the
+                // event log carries the sentence, but only the last line of it reaches the status
+                // bar, so the "why" behind an eviction was effectively private.
+                if (state.votes != null && state.votes.Count > 0)
+                {
+                    hud.Heading("HOW THE HOUSE VOTED");
+                    foreach (var vote in state.votes)
+                    {
+                        var voter = state.Find(vote.voterId);
+                        var target = state.Find(vote.targetId);
+                        if (voter == null || target == null) continue;
+                        hud.PortraitRow(voter.id,
+                            voter.name + " voted to evict " + (target.id == state.playerId ? "you" : target.name),
+                            vote.reason);
+                    }
+                }
                 hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
                 // Aggregate source arcs have no participant/knowledge provenance.
                 // NPC-only conversations must not masquerade as the player's bonds.

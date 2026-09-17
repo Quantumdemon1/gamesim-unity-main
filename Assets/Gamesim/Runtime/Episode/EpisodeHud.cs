@@ -289,6 +289,47 @@ namespace Gamesim.Episode
             HouseMap.Build(content, rooms, FontScale, font);
         }
 
+        /// <summary>
+        /// A read-only row fronted by a houseguest's face: who they are, and what they did.
+        ///
+        /// <para>Distinct from <see cref="Action(string,Texture,Action)"/>, which looks similar and
+        /// is a button. A vote that has already been cast is a fact to read, and making it clickable
+        /// would invite a player to try to change it.</para>
+        /// </summary>
+        public void PortraitRow(string contestantId, string heading, string body)
+        {
+            var portrait = Portrait(contestantId);
+            var rect = Panel("Voter", content, Surface);
+            rect.GetComponent<Image>().raycastTarget = false;
+            float height = (portrait != null ? 66f : 52f) * FontScale;
+            rect.gameObject.AddComponent<LayoutElement>().minHeight = height;
+
+            float textLeft = 14f;
+            if (portrait != null)
+            {
+                float side = 46f * FontScale;
+                var frame = new GameObject("Face", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                frame.SetParent(rect, false);
+                frame.anchorMin = new Vector2(0, .5f); frame.anchorMax = new Vector2(0, .5f); frame.pivot = new Vector2(0, .5f);
+                frame.anchoredPosition = new Vector2(10f, 0f);
+                frame.sizeDelta = new Vector2(side, side);
+                var disc = frame.GetComponent<Image>();
+                disc.sprite = UiTheme.Circle(); disc.type = Image.Type.Simple; disc.raycastTarget = false;
+                frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+
+                var face = new GameObject("Portrait", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+                face.rectTransform.SetParent(frame, false);
+                face.rectTransform.anchorMin = Vector2.zero; face.rectTransform.anchorMax = Vector2.one;
+                face.rectTransform.offsetMin = Vector2.zero; face.rectTransform.offsetMax = Vector2.zero;
+                face.texture = portrait; face.raycastTarget = false;
+                textLeft = 10f + side + 12f;
+            }
+
+            FixedText(rect, heading, 19, Paper, new Vector2(textLeft, -8f * FontScale), new Vector2(560f * FontScale, 24f * FontScale));
+            if (!string.IsNullOrEmpty(body))
+                FixedText(rect, body, 15, UiTheme.Muted, new Vector2(textLeft, -32f * FontScale), new Vector2(560f * FontScale, 26f * FontScale));
+        }
+
         public void JuryQuestioning(EpisodeState state)
         {
             Paragraph("Public questions and recorded answers. A response is not a guaranteed jury vote.");

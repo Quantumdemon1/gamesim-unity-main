@@ -6,37 +6,39 @@ session run to this protocol produces evidence a later session can be compared a
 
 Everything else in `ACCEPTANCE_MATRIX.md` passes. This is what remains.
 
-## The camera default is NOT 24 — the shipped scene opens at 48
+## The camera default is 24, and now actually is
 
-This section previously said the rig "starts at 24 and allows 10 to 34". That is the C# field
-default, and `EpisodeHouse.unity` overrides both:
+This section previously recorded a discrepancy: `HouseCameraRig` declared `distance = 24` with a
+34 maximum, while `EpisodeHouse.unity` serialised **48 and 56**, and the running game measured 48
+at frame 0 and still 48 at frame 480. It never converged. Every framing judgement made about this
+project — the "leave it at 24" decision, the cast-reads-small finding, the three comparison
+renders — was made against a number the build did not use.
 
-| | Source default | Serialized in the shipped scene |
+**Fixed on 2026-09-16.** The scene now serialises 24 / 34, matching the source defaults and the
+decision already taken. `Camera_ReportsStartupFramingOverTime` measures 24.0 at frame 0 and holds.
+
+What that changed, measured the same way both times:
+
+| | at 48 | at 24 |
 |---|---|---|
-| `distance` | 24 | **48** |
-| `maximumDistance` | 34 | **56** |
+| Distance to cast | 42–54 m | 20–30 m |
+| Cast height, typical | 1.8–2.2% of frame | 2.7–4.6% |
+| Memory wall | 1.0% | 1.4% |
 
-`Camera_ReportsStartupFramingOverTime` measures the running game: the camera sits at 48 units from
-the pivot at frame 0 and is still at 48 at frame 480, with the rig's own field reading 48. It does
-not converge on 24 — nothing in an untouched episode ever puts it there.
+Two caveats worth carrying into a session rather than rediscovering:
 
-Three things follow, and they matter before anyone runs a session:
+- **The cast measurement is noisy between runs.** In the 24-unit run two houseguests reported
+  1.3% and 0.2% while the rest roughly doubled. Apparent size is camera-independent arithmetic on
+  world bounds, so a figure that moves when only the camera moved means the measurement caught a
+  body mid-assembly, not that the character shrank. Treat single outliers as measurement noise and
+  the typical range as the signal.
+- **Vertical surfaces stay foreshortened.** The rig pitches 55 degrees down (clamped 45–70), so
+  wall-mounted fixtures — the memory wall, and anything like it — read at roughly a third of what
+  a floor-standing object of the same size does. That is a pitch question, still open, and no
+  amount of work on a fixture reaches it.
 
-- **The camera decision was taken against a number the build does not use.** "Leave it at 24" was
-  answered about a default that is actually 48. The decision needs retaking against 48, or the scene
-  needs changing to match it. Either is fine; shipping a documented 24 that renders as 48 is not.
-- **The existing legibility measurement was taken at 48**, which is why it recorded houseguests
-  "42–54 metres from camera" — a figure a 24-unit rig cannot produce. The 1.4%–2.2% of frame height
-  is real, but it is the 48 number, so a cast that reads small at the default reads roughly twice
-  that size at the documented one.
-- **`Accessibility_ComparesCameraFramings` renders 24, 17 and 10 — and none of them is the shipped
-  default.** Add 48 before using those frames to choose a framing.
-
-**Run the session against whatever the scene actually ships**, and write the measured distance into
-the notes. Do not hand-edit the rig to 24 to match the old text.
-
-Watch for it during E2: if participants stall because they cannot tell who is who, note whether they
-discover the zoom on their own. At 48 that is a much bigger bet than the decision assumed.
+Run the session against whatever the scene actually ships, and write the measured distance into
+the notes.
 
 ## Before the session
 

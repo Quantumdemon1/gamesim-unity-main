@@ -253,16 +253,19 @@ namespace Gamesim.Tests.PlayMode
         /// </summary>
         private IEnumerator SettleCamera()
         {
-            const int limit = 600;
-            float previous = -1f;
+            const int limit = 900;
+            var previous = Vector3.positiveInfinity;
             int stable = 0;
             for (int frame = 0; frame < limit; frame++)
             {
-                float distance = Vector3.Distance(
-                    cameraRig.ViewCamera.transform.position, cameraRig.transform.position);
-                stable = Mathf.Abs(distance - previous) < 0.01f ? stable + 1 : 0;
+                // The camera's whole world position, not just its distance from the pivot. Distance
+                // settles in a few frames while the focus is still panning across the house, so
+                // watching distance alone reported "settled" mid-pan and photographed the wrong room
+                // — which read as a fixture that had not been built.
+                var position = cameraRig.ViewCamera.transform.position;
+                stable = (position - previous).sqrMagnitude < 0.0001f ? stable + 1 : 0;
                 if (stable >= 10) yield break;
-                previous = distance;
+                previous = position;
                 yield return null;
             }
         }

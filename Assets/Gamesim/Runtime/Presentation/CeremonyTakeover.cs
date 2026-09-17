@@ -129,6 +129,20 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>The generated icon each beat uses, when the set exists.</summary>
+        private static string IconFor(string kind)
+        {
+            switch (kind)
+            {
+                case CeremonySting.NominationKind: return "target";
+                case CeremonySting.VetoKind: return "gavel";
+                case CeremonySting.EvictionKind: return "evicted";
+                case CeremonySting.WinnerKind: return "trophy";
+                case VetoSelectionKind: return "veto-token";
+                default: return null;
+            }
+        }
+
         private static Color Tint(string kind)
         {
             switch (kind)
@@ -160,7 +174,12 @@ namespace Gamesim.Presentation
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
             title.text = name;
             flavour.text = FlavourFor(kind);
+            // A generated glyph when the icon set exists, and the two-disc mark when it does not.
+            var glyph = UiTheme.Icon(IconFor(kind));
+            markOuter.GetComponent<Image>().sprite = glyph != null ? glyph : UiTheme.Circle();
             markOuter.GetComponent<Image>().color = tint;
+            markOuter.GetComponent<Image>().preserveAspect = glyph != null;
+            markInner.gameObject.SetActive(glyph == null);
             markInner.GetComponent<Image>().color = tint;
             title.color = UiTheme.Paper;
 

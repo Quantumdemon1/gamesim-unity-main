@@ -109,6 +109,26 @@ namespace Gamesim.Presentation
         /// round — used for portrait frames and status pips, where the broadcast look wants circles
         /// rather than rounded squares.</para>
         /// </summary>
+        /// <summary>
+        /// A generated HUD icon by name, or null when the set has not been generated.
+        ///
+        /// <para>Loaded from <c>Resources/GamesimIcons</c> and cached. Every caller must cope with
+        /// null and fall back to the shape it drew before: the icons are produced by an editor pass
+        /// (<c>Gamesim ▸ U07 ▸ Generate HUD icons</c>), and a clone that has not run it should get a
+        /// plainer badge rather than an empty square.</para>
+        /// </summary>
+        public static Sprite Icon(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            if (icons.TryGetValue(name, out var cached)) return cached;
+            var sprite = Resources.Load<Sprite>("GamesimIcons/" + name);
+            icons[name] = sprite;
+            return sprite;
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<string, Sprite> icons
+            = new System.Collections.Generic.Dictionary<string, Sprite>();
+
         public static Sprite Circle()
         {
             if (circle != null) return circle;

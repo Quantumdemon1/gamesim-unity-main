@@ -48,3 +48,7 @@ test-results.xml
 .env
 .env.*
 !.env.example
+
+# Icon contact sheet from Gamesim > U07 > Preview HUD icons. A review aid for artwork that is
+# white-on-transparent and therefore invisible in most viewers; regenerate it, do not track it.
+icon-preview.png

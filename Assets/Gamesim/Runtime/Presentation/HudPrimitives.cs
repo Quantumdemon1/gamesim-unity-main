@@ -115,10 +115,12 @@ namespace Gamesim.Presentation
         /// Pins a small role badge to a portrait's upper-right, the way the web build marks a
         /// nominee with a target and the Head of Household with a crown.
         ///
-        /// <para>Every mark is built from discs and bars rather than from a glyph. The shipped
-        /// atlas is LiberationSans SDF, which has no dingbats, so a crown character would render as
-        /// tofu — the same constraint that made the ceremony mark a shape and the icon rail a set of
-        /// drawn forms.</para>
+        /// <para>Drawn from a generated sprite where one exists, and from discs and bars where it
+        /// does not. Neither path uses a font glyph: the shipped atlas is LiberationSans SDF, which
+        /// has no dingbats, so a crown character renders as tofu — the constraint that made the
+        /// ceremony mark a shape and the icon rail a set of drawn forms. The sprites come from
+        /// <c>Gamesim ▸ U07 ▸ Generate HUD icons</c>, and the drawn shapes remain so that a clone
+        /// which has never run that pass still gets a badge.</para>
         ///
         /// <para>The badge is decoration on top of a status that is already stated in words
         /// elsewhere. It never carries information on its own, because a coloured shape is not
@@ -136,6 +138,23 @@ namespace Gamesim.Presentation
             // Sat on the rim's shoulder at roughly 45 degrees, so it clears the face either side.
             badge.anchoredPosition = new Vector2(-size * 0.28f, -size * 0.28f);
             badge.sizeDelta = new Vector2(size, size);
+
+            // The generated sprite when the icon pass has been run, and the drawn shape when it has
+            // not. The badge is the same size and colour either way, so a clone without the art
+            // loses fidelity and nothing else.
+            var glyph = UiTheme.Icon(IconFor(mark));
+            if (glyph != null)
+            {
+                var art = new GameObject("Role glyph", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                art.SetParent(badge, false);
+                Centre(art, size * 0.70f, size * 0.70f);
+                var image = art.GetComponent<Image>();
+                image.sprite = glyph;
+                image.color = UiTheme.OnColor(Tint(mark));
+                image.raycastTarget = false;
+                image.preserveAspect = true;
+                return badge;
+            }
 
             switch (mark)
             {
@@ -165,6 +184,18 @@ namespace Gamesim.Presentation
                     break;
             }
             return badge;
+        }
+
+        /// <summary>The generated icon each role uses, when the set exists.</summary>
+        private static string IconFor(RoleMark mark)
+        {
+            switch (mark)
+            {
+                case RoleMark.Nominee: return "target";
+                case RoleMark.HeadOfHousehold: return "crown";
+                case RoleMark.VetoHolder: return "veto-token";
+                default: return null;
+            }
         }
 
         private static Color Tint(RoleMark mark)

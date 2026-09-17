@@ -153,8 +153,8 @@ anything.
 | --- | --- |
 | [Kenney Furniture Kit 2.0](https://kenney.nl) | CC0 — [licence](Assets/Gamesim/Art/External/KenneyFurniture/Kenney-License.txt) |
 | [Quaternius characters](https://quaternius.com) | CC0 — [licence](Assets/Gamesim/Art/External/QuaterniusBaseCharacters/Quaternius-CC0-License.txt) |
+| UMA 2 | Unity Asset Store — **not included**, import it yourself |
 
 The Quaternius licence file sits in `QuaterniusBaseCharacters/`, which is a second import that
 nothing references — the cast prefabs use `QuaterniusCharacters/`. Both are the same CC0 licence.
 The unused folder is 42 MB and safe to delete; it is kept only because the licence text lives in it.
-| UMA 2 | Unity Asset Store — **not included**, import it yourself |

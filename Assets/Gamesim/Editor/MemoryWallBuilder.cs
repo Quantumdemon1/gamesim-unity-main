@@ -18,6 +18,10 @@ namespace Gamesim.Editor
     /// <para>Placement is derived from the wall's own renderer bounds rather than from constants.
     /// The set has been rebuilt twice already; a wall mounted at hard-coded coordinates is a wall
     /// that ends up floating in the yard the next time the house moves.</para>
+    ///
+    /// <para>Re-running is safe but not free in version control: the wall is destroyed and rebuilt,
+    /// so every object gets a fresh fileID and the scene diff is a couple of thousand lines of
+    /// identical geometry under new ids. Run it when the wall needs to change, not as a habit.</para>
     /// </summary>
     public static class MemoryWallBuilder
     {

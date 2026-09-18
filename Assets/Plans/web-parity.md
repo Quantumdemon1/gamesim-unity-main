@@ -202,6 +202,83 @@ assumes the web is undocumented and rewrites what already exists.
 `src/contexts` (80 files) and `src/hooks` (40) were not opened. In a React codebase these often hold
 real game logic rather than only wiring, so there may be more here.
 
+## Third pass: contexts, hooks, utils and the asset tree
+
+### The game has no sound
+
+`HouseAudio.cs` is 200 lines that **synthesise tones** — it carries a struct of
+`frequency, duration, start, gain` and builds its cues from scratch. `Assets/Gamesim` ships
+**zero audio files**.
+
+The web ships `public/audio/bbtheme.mp3` (767 KB) and `public/audio/background_music.mp3` (2.8 MB),
+driven by `useIntroAudio`, `useBackgroundMusic` and `useGameSFX` (13 KB of cue handling).
+
+This lands directly on work already done here. `GameSim-Game-Flow_v2.md` says background music starts
+once the intro theme ends and plays through the season, pausing on setup, intro and the final stats
+screen. The opening sequence built in commit `3c1a111` implements the five beats and none of that
+audio, because there is no theme for it to follow. A cinematic intro in silence is a smaller thing
+than it looks on paper.
+
+Nothing here is a port in the usual sense — it is two audio files and wiring.
+
+### There is no weekly recap
+
+`src/utils/recap/` is four builders: `weekly-recap-builder`, `finale-recap-builder`,
+`story-context-builder` and `event-formatter`, about 40 KB together.
+
+This port has `SeasonReport`, which is the end-of-season screen, and nothing for the end of a *week*.
+The events are all there — `EpisodeEvent` records everything with a week, a phase, a kind and an
+audience — so this is a presentation layer over data that already exists, in the same way
+`SeasonReport` is.
+
+### Social actions can be bought, and here they cannot
+
+`player-action-reducer.ts` (44 KB — the second-largest file in the project) handles forty actions.
+Two of them are `buy_action_point` and `buy_action_point_free`: a player out of social actions can
+buy another, paying in relationship damage, with a `costType` of either `random_one` (one houseguest
+takes the hit) or `spread_all` (everybody takes a smaller one). The free variant is a storyline
+reward.
+
+`EpisodeEngine.SocialActionBudget` is a hard ceiling with no way past it. This is a genuine
+mechanic — a pressure valve with a real cost — and it appears in none of the plans in this folder.
+
+### Talk is still one verb where the source has five
+
+Confirmed against the reducer rather than the design document: `small_talk`, `personal_chat`,
+`discuss_game`, `strategic_discussion` and `relationship_building` are five distinct actions, and
+`share_secret` and `share_true_intel` are two where this port has one `ShareInformation`.
+`season-completion.md` flagged this as "collapsed into Talk"; it is still collapsed.
+
+Also present there and absent here: `spread_rumor_strategic` alongside `spread_lie`,
+`house_meeting_strategic`, `progress_storyline`, `deal_coordination_respond`, `fast_forward` and
+`simulate_weeks`.
+
+### The text layer is roughly four times bigger
+
+`ai-thought-generator` (28 KB) · `campaign-cutscene-generator` (22 KB) · `speech-generator` (13 KB) ·
+`allstar-dialogue` (12 KB) · `quick-action-responses` (10 KB) — about 85 KB of generation against
+`HouseDialogue.cs` at 19 KB.
+
+Relevant to the Phase E honesty note in `npc-behaviour.md`: reflections expressed through templated
+language will read flatter than the source's, and this is the size of the template bank that makes
+the source's read well.
+
+### Room-level interaction
+
+`use-pull-aside-listener`, `useRoomActionListener`, `useNpcRoomBehavior` and
+`use-quick-action-cutscene` hang social actions off where people physically are. Pulling somebody
+aside is a mechanic with no counterpart here, and this port has the harder half already — a real
+3D house, `HouseRoomQuery`, proximity and an NPC conversation scheduler.
+
+### Production assets
+
+The web ships 20 `.glb` models, 3 `.vrm` avatars, 19 `.webp` character portraits and the two audio
+files. This port generates its cast from primitives and UMA, draws cast cards as a wardrobe colour
+and a silhouette, and synthesises its sound.
+
+That is a defensible position for a port and worth revisiting only deliberately — but it should be a
+decision rather than something nobody noticed.
+
 ## Suggested order
 
 1. **Reconcile the cast data.** Pure data, no architecture, and it fixes the stat blocks and
@@ -213,8 +290,11 @@ real game logic rather than only wiring, so there may be more here.
    `npc-social-behavior.ts`, exactly the value guessed. Cheap, and it raises confidence in everything
    already shipped.
 3. **CI.** The suites exist and nothing runs them automatically.
-4. **Deals.** Highest-value system gap, existing consumer, no dependencies, proven shape.
-5. **Event layer**, then **agency**, then **narrative**.
-6. **Phase E** last, as already planned.
+4. **Audio.** Two files and wiring, and it finishes the opening sequence that is already built.
+5. **Deals.** Highest-value system gap, existing consumer, no dependencies, proven shape.
+6. **Weekly recap.** Presentation over events that already exist, like `SeasonReport`.
+7. **Split `Talk` into five**, add the action-point economy, and the rest of the agency tier.
+8. **Event layer**, then **narrative**.
+9. **Phase E** last, as already planned.
 
-The first three are days, not weeks, and two of them are not really ports at all.
+The first four are days, not weeks, and only one of them is really a port.

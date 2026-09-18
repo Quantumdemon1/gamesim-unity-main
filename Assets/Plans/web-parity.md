@@ -1,134 +1,64 @@
-# What the web build still does better
+# Porting plan: what the web build still does better
 
-Written against `Quantumdemon1/gamesim` (private, TypeScript, pushed 2026-09-17) — the actual
-reference source, not the markdown appendices this port has been working from. 1,157 files, 147 of
-them under `src/systems`, 77 test files.
+Written against `Quantumdemon1/gamesim` — the reference source itself, not the markdown appendices
+this port worked from until now. 1,157 files: 557 components, 147 systems, 80 contexts, 41 utils,
+40 hooks, 35 avatar, 28 models, 23 game-states, 77 test files.
 
-Every claim below is from reading that tree and grepping this one, not from the design documents.
+Every claim here comes from reading that tree and grepping this one. Where a number was checked it is
+given; where something was not read it says so.
 
-## The pattern worth naming first
+---
 
-**This port has a habit of shipping the consumer of a system without the producer.** It has happened
-three times:
+## 1. The organising insight
 
-| system | consumer ported | producer ported |
+**This port has a habit of shipping the consumer of a system without the producer.** Four times:
+
+| system | consumer here | producer here |
 | --- | --- | --- |
-| alliances | `WebVotingBlocs` reads them to coordinate a bloc | only in Phase C, months later |
+| alliances | `WebVotingBlocs` coordinates blocs from them | only in Phase C |
 | promises | `WebEvictionVoting` weighs them | only in Phase C |
 | **deals** | `WebEvictionVoting.DealObligation` / `PairDealValue` weigh them | **never** |
 | **storylines** | `WebFinalSpeeches` lets a finalist cite them | **never** |
 
-`deals.Add` and `new WebVoteDeal` appear nowhere in `Assets/`. The eviction vote asks every
-houseguest what deals oblige them, gets an empty list every time, and has done since it was written.
-Same for storylines in the final speech.
+`deals.Add` and `new WebVoteDeal` appear nowhere in `Assets/`. The eviction vote asks every houseguest
+what deals oblige them, gets an empty list, and has since it was written.
 
-This is the cheapest quality available in the whole project: the hard, well-tested half already
-exists, and nothing downstream needs changing. Phase C proved the shape of the work.
-
-A second confirmation sits in `WebSaveImporter.EmptyStateSlots` — the list of web save fields this
-port drops on import. It reads as an inventory of what the web has and Unity does not:
+`WebSaveImporter.EmptyStateSlots` is the same finding from the other direction — the list of web save
+fields this port discards on import reads as an inventory of the gap:
 
     deals · houseEvents · activeStorylines · activeModifiers · npcMemories · pendingNPCProposals
     playerPerceptions · threatMatrix · playerPersona · grudgeLedger · pendingStorylineEvent
     lastEavesdropIntel · phaseEventSocialBonus · phaseEventCompBonus · weekFocusModifier
 
-## Tier 1 — Deals (`deal-system.ts`, 31 KB)
+These are the cheapest quality in the project: the hard, well-tested half already exists.
 
-The single highest-value gap, and the one with an existing consumer.
+## 2. The constraint on everything below
 
-`DealSystem` covers proposal, a counter-offer table (`COUNTER_OFFER_MAP`), trait modifiers on
-acceptance (`getTraitDealModifiers`), and then per-phase resolution: `evaluateNominationDeal`,
-`evaluateVoteDeal`, `evaluateVetoDeal`, `evaluateFinalTwoDeal`. Outcomes run through
-`applyDealOutcome`, which updates alliance stability and calls `spreadBetrayalInfo` — a broken deal
-propagates to other houseguests rather than staying between two people.
+This port is ahead of the reference on four things, and anything ported has to arrive under them.
+That, not file size, is what makes these expensive.
 
-Deals are also *stronger than promises* in the interaction table this port already implements:
-`deal_fulfilled` +35 and `deal_broken` −50, against `promise-kept` +25 and `promise-broken` −40. So
-the ledger and trust systems are already calibrated for a system that does not exist yet.
-
-Dependencies: none. `PromiseState` is the template, `NpcPromises` is the shape to copy, and the
-Phase C rules-boundary precedent handles the replay fixtures.
-
-## Tier 2 — The event layer (~105 KB, six systems, none present)
-
-`phase-event-system` · `house-event-system` · `proximity-event-system` · `ambient-event-system` ·
-`emergent-event-system` · `mid-week-crisis-system`
-
-Nothing in `Assets/` matches any of these names. This is the layer that makes one week feel unlike
-the last: things happen to the house rather than only because the player pressed something.
-`phaseEventSocialBonus` and `phaseEventCompBonus` in the importer's discard list show these events
-feed back into competition and social outcomes, so it is not decoration.
-
-Worth doing before the narrative tier, because storylines are largely reactions to events.
-
-## Tier 3 — Player agency breadth (~105 KB)
-
-`contextual-action-generator` (37 KB) · `player-activity-chains` (20 KB) · `player-activity-system`
-(16 KB) · `veto-lobbying-system` (22 KB) · `intel-system` (10 KB)
-
-This port has fourteen fixed social verbs on `EpisodeCommandKind`. The web generates the available
-actions from context instead, and chains them, so what a player can do on Tuesday of week five is
-not the same list as Monday of week one. `veto-lobbying-system` is a whole phase of play — working
-the veto holder — that has no counterpart here at all.
-
-## Tier 4 — Narrative and presentation (~165 KB)
-
-`social-cutscene-system` (74 KB, the largest single file in the project) · `storyline-system`
-(37 KB) · `branching-story-system` (37 KB) · `dialogue-tree-engine` (17 KB)
-
-This is the "it reads like a show" layer, and it is the biggest thing the web has that this port
-does not. `HouseDialogue` is the nearest equivalent and is a templated line bank, not a cutscene
-system or a branching tree.
-
-Deliberately ranked below agency: a cutscene about a week where nothing happened is still a cutscene
-about nothing.
-
-## Tier 5 — Layer 3 cognition (~59 KB)
-
-`ai/memory-manager` (19 KB) · `ai/npc-decision-engine` (17 KB) · `ai/fallback-generator` (23 KB)
-
-Already scoped as Phase E of `npc-behaviour.md`. Unchanged assessment: largest, least load-bearing,
-and the part that reads thinnest without a model behind it. The `fallback-generator` is the piece
-worth having regardless — the source's own note is that it is reproducible, which makes NPC
-behaviour testable without network access.
-
-## Also missing, smaller
-
-- `accepted-consequences/` (32 KB with its own tests) — a consequence framework the port has no
-  equivalent of.
-- `relationship-evolution` (11 KB) — relationships that change shape over a season rather than only
-  accumulating a score.
-- `nomination-evidence-record` (12 KB) — why a nomination happened, kept as a record.
-- `fast-forward` (13 KB) — skipping ahead; `FastForward` appears in `Assets/` only inside
-  `WebSaveImporter`.
-
-## Where this port is already ahead, and should stay that way
-
-Worth stating so none of the above is taken as "rewrite it to match".
-
-- **Testing.** 931 EditMode plus 148 PlayMode tests against 77 test files. The determinism and
-  persistence suites in particular have no web counterpart.
-- **Determinism.** Every draw goes through `EpisodeState.randomState`; the web calls `Math.random()`
-  freely. Replays here are reproducible and the web's are not.
-- **Persistence.** Nine schema versions with frozen validators, migrations and fixture sweeps. The
-  web has a save format; this has a save *contract*.
+- **Determinism.** Every draw goes through `EpisodeState.randomState`. The reference calls
+  `Math.random()` freely — including in `buy_action_point` and `selectTalkTarget`. Replays here are
+  reproducible; theirs are not.
+- **The save contract.** Nine schema versions with frozen validators, migrations and fixture sweeps.
+  `SaveJson.CheckDtoShape` matches stored objects field-for-field, so **any new persisted field forces
+  a schema version**. Batch them.
 - **Rules versioning.** `blocRulesStartWeek`, `npcSocial.rulesStartWeek`, `socialBudgetRulesStartWeek`
-  let rules change without invalidating a season already in progress. Nothing like it in the web.
+  let rules change without invalidating a season in progress. No counterpart in the reference.
+- **Tests.** 931 EditMode + 148 PlayMode against 77 test files.
 
-Any port from the tiers above has to arrive under those four properties, which is most of the work
-and is why raw file size is a bad estimate of effort.
+Read `memory/removing-a-command-re-rolls-the-season.md` before touching anything that draws.
 
-## Second pass: what a systems-only survey missed
+---
 
-The first pass read `src/systems` — 147 of 1,157 files. The rest of the tree holds the two most
-actionable findings in this document.
+## Tier 0 — Not really ports (days, not weeks)
 
-### The shipped cast does not match the reference (data only, high value)
+### 0.1 The shipped cast does not match the reference
 
-`src/data/character-templates.ts` carries every houseguest's full card, and this port's
-`CastTemplates` disagrees with it for most of the cast:
+`src/data/character-templates.ts` carries every houseguest's full card and `CastTemplates` disagrees
+for most of them:
 
-| | web | this port |
+| | reference | this port |
 | --- | --- | --- |
 | Alex Chen | Marketing Executive · Strategic + Social | Software Architect · Analytical + Manipulative |
 | Jordan Taylor | Sales Representative · Social + Sneaky | Sales Representative · Charming + Social |
@@ -137,164 +67,179 @@ actionable findings in this document.
 | Sam Williams | Restaurant Owner · Strategic + Loyal | Site Foreman · Competitive + Loyal |
 | Blake Peterson | Architect · Analytical + Sneaky | Night Auditor · Introverted + Sneaky |
 
-Seven of twelve have different traits and nine have different occupations. **Traits are not
-cosmetic** — `WebTraits.CreateStats` derives the whole stat block from them, so these houseguests
-play differently from the same houseguests in the reference build, and `NpcSocialActions.Repertoire`
-reads the lead trait to decide what they do with a social turn. Changing Alex Chen from Analytical to
-Strategic changes his stats *and* his behaviour.
+**Seven of twelve have different traits; nine have different occupations.** Traits are not cosmetic —
+`WebTraits.CreateStats` derives the whole stat block from them and `NpcSocialActions.Repertoire` reads
+the lead trait to choose behaviour. These houseguests play *and* act differently from the same people
+in the reference.
 
-All twelve also carry `hometown` and `bio` in the web table. `CharacterDraft.From` currently says
-those are left blank because "the cast table has never held either" — true of *this* port's table,
-and wrong about the source. That comment should go, and `CastTemplates.Template` should gain the two
-fields, which also makes the character creator's card copy real instead of empty.
+All twelve also carry `hometown` and `bio`. `CharacterDraft.From` currently says those are blank
+because "the cast table has never held either" — true of this port's table, wrong about the source.
+That comment goes, and `CastTemplates.Template` gains the two fields, which makes the creator's card
+copy real.
 
-This is data, not architecture. It is the cheapest parity win available and it touches the most
-visible content in the game.
+**Decide first:** changing traits changes stat blocks, and replay fixtures are anchored to them.
+Either the `rulesStartWeek` pattern again, or a deliberate fixture re-record.
 
-### There is no CI, and the web has end-to-end coverage this port does not
+### 0.2 Reconcile the authored numbers
 
-- **`.github/workflows/ci.yml` exists on the web. This repository has no CI at all** — a PR here
-  reports `statusCheckRollup: []`. Every check in this project is somebody remembering to run
-  `scratchpad/sync-and-run.sh`.
-- **`e2e/` holds fifteen Playwright specs, about 180 KB**, and they cover exactly the areas this port
-  treats as most dangerous: `local-save-recovery` (21 KB), `autosave-cancellation` (21 KB),
-  `live-ceremony-receipts`, `nomination-accounting`, `startup-identity`, `dialogue-resilience`,
-  `results-containment`, `final-hoh-commit`.
+Several constants in `NpcAlliances`, `NpcSocialActions` and `ThreatAssessment` are marked *authored*
+because the markdown did not give them. At least one is wrong to be so marked: `alliance_meeting` is
+`relationshipChange = 3` in `npc-social-behavior.ts` — exactly the value guessed. Also worth checking
+`NpcAlliances.SourLine`, and the `ThreatAssessment` quirks (potential cap unreachable, total labelled
+0–100 but capping at 112) which may be faithful or may be misreadings.
 
-This port's equivalent is `PortVerification.Season.cs` — one scripted walkthrough of a standalone
-build — plus section E of `ACCEPTANCE_MATRIX.md`, which is still 0/5 because it needs people. The
-tests here are better than the web's at the unit level and worse at the "does the built game
-actually work" level.
+### 0.3 There is no CI
 
-Neither of these is a port. Both are process, and both are cheap next to the system tiers above.
+`.github/workflows/ci.yml` exists there. **This repository has none** — a PR reports
+`statusCheckRollup: []`. Every check is somebody remembering to run `scratchpad/sync-and-run.sh`.
 
-### Avatars are a real pipeline there and a placeholder here
+### 0.4 There is no sound
 
-`src/avatar/` is 35 files: `CreatorStudio.tsx` (24 KB), `FacePainter.ts` (15 KB), `MorphAvatar.ts`,
-`createHumanoidBase.ts`, a casting director, and Ready Player Me integration. `tools/` adds the
-generator behind it — `gen.mjs` (46 KB), a MakeHuman pipeline with body specs, and a texture atlas
-dilator.
+`HouseAudio.cs` is 200 lines that **synthesise tones** from a `frequency, duration, start, gain`
+struct. `Assets/Gamesim` ships **zero audio files**. The reference ships `bbtheme.mp3` (767 KB) and
+`background_music.mp3` (2.8 MB) with `useIntroAudio`, `useBackgroundMusic` and `useGameSFX`.
 
-This port has UMA, `CharacterPresentation`, and a character creator whose live preview is a wardrobe
-colour and a silhouette, with a comment explaining that a silhouette is the honest answer before a
-body exists. That comment is right, and the web answers the question differently: it builds the body.
+`GameSim-Game-Flow_v2.md` specifies music starting when the intro theme ends. The opening sequence in
+commit `3c1a111` implements the five beats and none of the audio, because there is no theme to follow.
 
-Worth knowing before anyone plans more work on the creator — the reference is not a colour picker.
+## Tier 1 — Producers for consumers that already exist
 
-### Smaller models with no counterpart here
+### 1.1 Deals (`deal-system.ts`, 31 KB)
 
-- `relationship-tier.ts` — relationships as named tiers, not only a number.
-- `player-perception.ts` — how the house reads the player (`playerPersona` is in the importer's
-  discard list, and the LLM prompt in the design document takes it).
-- `conversation-topic.ts` — topics as a model; this port has a string and a validator.
-- `houseguest/mental-state.ts` — a real mood and stress model with `updateHouseguestMentalState`
-  driving it. This port has the two fields and writes them from exactly one place
-  (`EpisodeEngine.cs:446`), so the values exist but almost nothing moves them.
+Proposal, a counter-offer table (`COUNTER_OFFER_MAP`), trait modifiers (`getTraitDealModifiers`), then
+per-phase resolution — `evaluateNominationDeal`, `evaluateVoteDeal`, `evaluateVetoDeal`,
+`evaluateFinalTwoDeal` — with `applyDealOutcome` updating alliance stability and `spreadBetrayalInfo`
+propagating a break to third parties.
 
-### Documentation
+Already calibrated for here: `deal_fulfilled` +35 and `deal_broken` −50 sit in the interaction table
+this port implements, against `promise-kept` +25 and `promise-broken` −40.
 
-`docs/` has thirteen documents including `QUALITY_EVIDENCE.md` (40 KB) and `AAA_VERTICAL_SLICE.md`.
-This port has `Assets/Plans/` and `ACCEPTANCE_MATRIX.md`, which is comparable — noted only so nobody
-assumes the web is undocumented and rewrites what already exists.
+`PromiseState` is the template; `NpcPromises` is the shape; Phase C's rules boundary handles fixtures.
 
-### Not yet read
+### 1.2 Storylines (`storyline-system.ts` 37 KB, `branching-story-system.ts` 37 KB)
 
-`src/contexts` (80 files) and `src/hooks` (40) were not opened. In a React codebase these often hold
-real game logic rather than only wiring, so there may be more here.
+Lower priority than deals — largely reactions to the event layer, so it wants Tier 4 first.
 
-## Third pass: contexts, hooks, utils and the asset tree
+## Tier 2 — Presentation over data that already exists
 
-### The game has no sound
+### 2.1 Weekly recap (`src/utils/recap/`, ~40 KB)
 
-`HouseAudio.cs` is 200 lines that **synthesise tones** — it carries a struct of
-`frequency, duration, start, gain` and builds its cues from scratch. `Assets/Gamesim` ships
-**zero audio files**.
+Four builders: weekly, finale, story-context, event-formatter. This port has `SeasonReport` for the
+end of a season and nothing for the end of a week — over an `EpisodeEvent` log that already records
+week, phase, kind and audience. Same shape as `SeasonReport`; no simulation change.
 
-The web ships `public/audio/bbtheme.mp3` (767 KB) and `public/audio/background_music.mp3` (2.8 MB),
-driven by `useIntroAudio`, `useBackgroundMusic` and `useGameSFX` (13 KB of cue handling).
+## Tier 3 — Gameplay breadth
 
-This lands directly on work already done here. `GameSim-Game-Flow_v2.md` says background music starts
-once the intro theme ends and plays through the season, pausing on setup, intro and the final stats
-screen. The opening sequence built in commit `3c1a111` implements the five beats and none of that
-audio, because there is no theme for it to follow. A cinematic intro in silence is a smaller thing
-than it looks on paper.
+### 3.1 Every competition plays the same minigame
 
-Nothing here is a port in the usual sense — it is two audio files and wiring.
+The reference routes five by competition type: `EnduranceHold`, `WordScramble`, `MemoryMatch`,
+`ReactionTap`, `DiceRoll`, plus `NPCScoring` and a `MiniGameRouter`.
 
-### There is no weekly recap
+This port has **one** — a timing bar, three attempts (`EpisodeDirector.StartChallenge`) — used for
+every competition. `WebRules.WeightedCompetitionScore` already takes a category, so the simulation
+distinguishes competition types that the player experiences identically.
 
-`src/utils/recap/` is four builders: `weekly-recap-builder`, `finale-recap-builder`,
-`story-context-builder` and `event-formatter`, about 40 KB together.
+### 3.2 The social vocabulary is still collapsed
 
-This port has `SeasonReport`, which is the end-of-season screen, and nothing for the end of a *week*.
-The events are all there — `EpisodeEvent` records everything with a week, a phase, a kind and an
-audience — so this is a presentation layer over data that already exists, in the same way
-`SeasonReport` is.
+Confirmed against `player-action-reducer.ts` (44 KB, 40 actions) rather than the design document:
 
-### Social actions can be bought, and here they cannot
+- `Talk` is one verb where the source has five: `small_talk`, `personal_chat`, `discuss_game`,
+  `strategic_discussion`, `relationship_building`.
+- `ShareInformation` is one where the source has two: `share_secret`, `share_true_intel`.
+- Absent entirely: `spread_rumor_strategic`, `house_meeting_strategic`, `progress_storyline`,
+  `deal_coordination_respond`, `fast_forward`, `simulate_weeks`.
 
-`player-action-reducer.ts` (44 KB — the second-largest file in the project) handles forty actions.
-Two of them are `buy_action_point` and `buy_action_point_free`: a player out of social actions can
-buy another, paying in relationship damage, with a `costType` of either `random_one` (one houseguest
-takes the hit) or `spread_all` (everybody takes a smaller one). The free variant is a storyline
-reward.
+### 3.3 Social actions can be bought
 
-`EpisodeEngine.SocialActionBudget` is a hard ceiling with no way past it. This is a genuine
-mechanic — a pressure valve with a real cost — and it appears in none of the plans in this folder.
+`buy_action_point` trades relationship damage for another action — `costType` of `random_one` (one
+houseguest takes the hit) or `spread_all` (everyone takes a smaller one); `buy_action_point_free` is a
+storyline reward. `SocialActionBudget` here is a hard ceiling with no way past it.
 
-### Talk is still one verb where the source has five
+A pressure valve with a real cost, and in none of the other plans in this folder.
 
-Confirmed against the reducer rather than the design document: `small_talk`, `personal_chat`,
-`discuss_game`, `strategic_discussion` and `relationship_building` are five distinct actions, and
-`share_secret` and `share_true_intel` are two where this port has one `ShareInformation`.
-`season-completion.md` flagged this as "collapsed into Talk"; it is still collapsed.
+### 3.4 Contextual actions and lobbying
 
-Also present there and absent here: `spread_rumor_strategic` alongside `spread_lie`,
-`house_meeting_strategic`, `progress_storyline`, `deal_coordination_respond`, `fast_forward` and
-`simulate_weeks`.
+`contextual-action-generator` (37 KB) generates the available actions from context rather than
+offering a fixed list. `veto-lobbying-system` (22 KB) is a whole phase of play — working the veto
+holder — with no counterpart. Plus `player-activity-chains` (20 KB), `player-activity-system` (16 KB),
+`intel-system` (10 KB).
 
-### The text layer is roughly four times bigger
+### 3.5 Room-level interaction
 
-`ai-thought-generator` (28 KB) · `campaign-cutscene-generator` (22 KB) · `speech-generator` (13 KB) ·
-`allstar-dialogue` (12 KB) · `quick-action-responses` (10 KB) — about 85 KB of generation against
-`HouseDialogue.cs` at 19 KB.
+`use-pull-aside-listener`, `useRoomActionListener`, `useNpcRoomBehavior`, `use-quick-action-cutscene`
+hang actions off where people physically are. Pulling somebody aside has no counterpart here — and
+this port owns the harder half already: a real 3D house, `HouseRoomQuery`, proximity, and a
+conversation scheduler.
 
-Relevant to the Phase E honesty note in `npc-behaviour.md`: reflections expressed through templated
-language will read flatter than the source's, and this is the size of the template bank that makes
-the source's read well.
+## Tier 4 — The event layer (~105 KB, six systems, none present)
 
-### Room-level interaction
+`phase-event-system` (23 KB) · `house-event-system` (20 KB) · `proximity-event-system` (17 KB) ·
+`ambient-event-system` (13 KB) · `emergent-event-system` (11 KB) · `mid-week-crisis-system` (21 KB)
 
-`use-pull-aside-listener`, `useRoomActionListener`, `useNpcRoomBehavior` and
-`use-quick-action-cutscene` hang social actions off where people physically are. Pulling somebody
-aside is a mechanic with no counterpart here, and this port has the harder half already — a real
-3D house, `HouseRoomQuery`, proximity and an NPC conversation scheduler.
+Nothing in `Assets/` matches any of these. This is what makes one week feel unlike the last: things
+happen to the house rather than only because the player pressed something. `phaseEventSocialBonus` and
+`phaseEventCompBonus` in the importer's discard list show they feed competition and social outcomes,
+so this is not decoration.
 
-### Production assets
+## Tier 5 — Narrative and the text bank
 
-The web ships 20 `.glb` models, 3 `.vrm` avatars, 19 `.webp` character portraits and the two audio
-files. This port generates its cast from primitives and UMA, draws cast cards as a wardrobe colour
-and a silhouette, and synthesises its sound.
+`social-cutscene-system` (74 KB, largest file in the project) · `dialogue-tree-engine` (17 KB), plus
+the generation layer: `ai-thought-generator` (28 KB), `campaign-cutscene-generator` (22 KB),
+`speech-generator` (13 KB), `allstar-dialogue` (12 KB), `quick-action-responses` (10 KB) — about 85 KB
+against `HouseDialogue.cs` at 19 KB.
 
-That is a defensible position for a port and worth revisiting only deliberately — but it should be a
-decision rather than something nobody noticed.
+Ranked below agency deliberately: a cutscene about a week where nothing happened is still about
+nothing. But note this is the size of the template bank behind the Phase E honesty note in
+`npc-behaviour.md` — reflections will read flatter here partly because the bank is a quarter the size.
 
-## Suggested order
+## Tier 6 — Layer 3 cognition
 
-1. **Reconcile the cast data.** Pure data, no architecture, and it fixes the stat blocks and
-   behaviour of most of the shipped houseguests. Add `hometown` and `bio` to the template while
-   there.
-2. **Reconcile the authored numbers** against real source. Several in `NpcAlliances`,
-   `NpcSocialActions` and `ThreatAssessment` are marked *authored* because the markdown did not give
-   them, and at least one is wrong to be marked so: `alliance_meeting` is `relationshipChange = 3` in
-   `npc-social-behavior.ts`, exactly the value guessed. Cheap, and it raises confidence in everything
-   already shipped.
-3. **CI.** The suites exist and nothing runs them automatically.
-4. **Audio.** Two files and wiring, and it finishes the opening sequence that is already built.
-5. **Deals.** Highest-value system gap, existing consumer, no dependencies, proven shape.
-6. **Weekly recap.** Presentation over events that already exist, like `SeasonReport`.
-7. **Split `Talk` into five**, add the action-point economy, and the rest of the agency tier.
-8. **Event layer**, then **narrative**.
-9. **Phase E** last, as already planned.
+`ai/memory-manager` (19 KB) · `ai/npc-decision-engine` (17 KB) · `ai/fallback-generator` (23 KB).
+Already scoped as Phase E of `npc-behaviour.md`; assessment unchanged.
 
-The first four are days, not weeks, and only one of them is really a port.
+`fallback-generator` is worth having regardless of the rest — the source's own note is that it is
+reproducible, which is what makes NPC behaviour testable without network access.
+
+---
+
+## Decisions rather than work
+
+**The 21 Supabase edge functions** (`npc-decision`, `npc-reflect`, `npc-threat-rankings`,
+`generate-storyline`, `social-cutscene-narrative`, `story-recap`, …) are Layer 4, and this project has
+always said it will not use a service. That stays right — and `fallback-generator` is why it costs
+little: every one of them has a deterministic local path.
+
+**Avatars.** `src/avatar/` (35 files) plus `src/components/avatar-3d/` (149) plus `tools/` (a
+MakeHuman pipeline, `gen.mjs` at 46 KB, an atlas dilator) against UMA, `CharacterPresentation` and a
+creator previewing a wardrobe colour and a silhouette. The reference ships 20 `.glb`, 3 `.vrm` and 19
+`.webp` portraits. A defensible divergence — but it should be a decision, not an oversight.
+
+**End-to-end coverage.** 15 Playwright specs (~180 KB) covering `local-save-recovery`,
+`autosave-cancellation`, `live-ceremony-receipts`, `nomination-accounting`, `startup-identity`,
+`dialogue-resilience`. This port's equivalent is `PortVerification.Season.cs` — one scripted
+walkthrough — plus section E of `ACCEPTANCE_MATRIX.md`, still 0/5 because it needs people. Better than
+the reference at the unit level, worse at "does the built game work".
+
+**Not read:** `src/components/game-phases` (186 files) and `src/components/avatar-3d` (149). Both are
+React presentation; the phase components may hold flow logic worth a look before Tier 3.
+
+---
+
+## Sequence
+
+| # | Work | Why here |
+| --- | --- | --- |
+| 1 | Cast data (0.1) | Data only; fixes the stats and behaviour of most of the cast. Needs the fixture decision first. |
+| 2 | Authored numbers (0.2) | Cheap; raises confidence in everything already shipped. |
+| 3 | CI (0.3) | The suites exist and nothing runs them. |
+| 4 | Audio (0.4) | Two files and wiring; completes an opening sequence already built. |
+| 5 | Deals (1.1) | Best value of any system; the consumer exists and is tested. |
+| 6 | Weekly recap (2.1) | Presentation over an existing event log. |
+| 7 | Minigames (3.1) | Every competition currently plays identically. |
+| 8 | Social vocabulary + action points (3.2, 3.3) | Player-facing breadth; append-only to `EpisodeCommandKind`. |
+| 9 | Event layer (Tier 4) | Unlocks storylines, which is why they are not earlier. |
+| 10 | Storylines and narrative (1.2, Tier 5) | |
+| 11 | Phase E (Tier 6) | As already planned. |
+
+Items 1–4 are days rather than weeks and only one is a port. Items 8 and 9 both add persisted state —
+**batch them into one schema version**, per the constraint above.

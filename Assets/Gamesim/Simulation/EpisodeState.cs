@@ -299,7 +299,9 @@ namespace Gamesim.Simulation
         Talk, PromiseSafety, PromiseVote, PromiseFinalTwo, FormAlliance, LeaveAlliance, ShareInformation,
         AnswerJury, SkipQuestioning, SubmitSpeech, ReflectDiary, SkipDiary, SwearLoyalty, DeclineLoyalty,
         StudyHouse, SimulateCompetition,
-        SubmitEvictionSpeech // Append: preserve every pre-v4 command ordinal.
+        SubmitEvictionSpeech,
+        AskForIntel, Eavesdrop, SpreadLie, VentAbout, SchemeAgainst,
+        SetBackdoorPlan // Append: preserve every pre-v4 command ordinal.
     }
 
     [Serializable]

@@ -369,6 +369,22 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.Nomination && state.nominees.Count == 0 && state.hohId == state.playerId)
             {
                 hud.Paragraph("You are HoH. Choose two different nominees. Commit only when both choices are correct.");
+                // The week's real target, named before the two people who will stand in for it.
+                // Costs nothing and moves nobody: it is a plan, and the house cannot hear a plan.
+                if (string.IsNullOrEmpty(state.backdoorTargetId))
+                {
+                    hud.Paragraph("You can also settle on who this week is really aimed at. A backdoor plan "
+                        + "costs nothing, tells nobody, and is yours to change until you nominate.");
+                    foreach (var aim in EpisodeEngine.NominationCandidates(state))
+                    {
+                        string id = aim.id;
+                        hud.Tag(hud.ActionFor(id, "Aim this week at " + aim.name,
+                            () => Commit(state, EpisodeCommandKind.SetBackdoorPlan, id)),
+                            Category(EpisodeCommandKind.SetBackdoorPlan));
+                    }
+                }
+                else hud.Paragraph("This week is aimed at " + state.Find(state.backdoorTargetId).name
+                    + ". Nominate two others and use the veto to put them up.");
                 var candidates = EpisodeEngine.NominationCandidates(state).Select(c => new EpisodeHud.Option(c.id, c.name)).ToArray();
                 hud.ChoosePair(candidates, (first, second) =>
                 {

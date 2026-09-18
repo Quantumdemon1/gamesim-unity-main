@@ -103,6 +103,7 @@ namespace Gamesim.Simulation
                         ? "You let your game speak for itself."
                         : "You addressed the house from the block.");
                     break;
+                case EpisodeCommandKind.SetBackdoorPlan: SetBackdoorPlan(s, s.Find(c.targetId)); break;
                 case EpisodeCommandKind.FinalEvict:
                     Require(s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId, "Only the final HoH makes this choice.");
                     FinalEvict(s, c.targetId); break;
@@ -149,6 +150,7 @@ namespace Gamesim.Simulation
                     {
                         s.previousHohId = s.hohId; s.week++; s.hohId = null; s.vetoHolderId = null;
                         s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear(); s.evictionSpeeches.Clear();
+                        s.backdoorTargetId = null;   // A plan for a week that has ended is not a plan.
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
@@ -570,6 +572,11 @@ namespace Gamesim.Simulation
                     Require(known != null, "You have no personal information to share yet.");
                     Remember(s, target.id, known.subjectId, "Heard from you: " + known.text, true);
                     Change(s, s.playerId, target.id, 3); Log(s, "information", "You shared something you personally knew with " + target.name + ".", s.playerId, target.id); break;
+                case EpisodeCommandKind.AskForIntel: AskForIntel(s, target); break;
+                case EpisodeCommandKind.Eavesdrop: Eavesdrop(s); break;
+                case EpisodeCommandKind.SpreadLie: SpreadLie(s, target, c.secondTargetId); break;
+                case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
+                case EpisodeCommandKind.SchemeAgainst: SchemeAgainst(s, target); break;
                 default: throw new RuleException("Unsupported social action.");
             }
             // Campaigning is not the social week, and the reference build counts those separately
@@ -577,6 +584,199 @@ namespace Gamesim.Simulation
             // and this one has to survive it.
             if (s.phase == EpisodePhase.Social) s.socialActions++;
             else s.outOfPhaseSocialActions++;
+        }
+
+        // ---------------------------------------------------------------- the rest of the vocabulary
+        //
+        // Ported from the reference build's reducer. Every number below is its number, and every
+        // roll goes through Roll(s) rather than a fresh generator: these are committed commands, so
+        // a replay has to reproduce them exactly. The source calls Math.random() directly, which is
+        // the one thing about it that cannot be copied literally.
+
+        /// <summary>Roughly seven times in ten, per the source's spy approach.</summary>
+        public const double EavesdropSuccessChance = 0.7;
+
+        /// <summary>How often a lie comes back to the person it was about.</summary>
+        public const double LieDiscoveryChance = 0.3;
+
+        /// <summary>
+        /// Asks a housemate what they know. Source: two to four points, and they remember being asked.
+        ///
+        /// <para>What they say is not manufactured here. The player learns the conversation
+        /// happened; anything the housemate knows and chooses to share reaches the player through
+        /// the same private-memory channel every other disclosure in this game uses.</para>
+        /// </summary>
+        private static void AskForIntel(EpisodeState s, ContestantState target)
+        {
+            double improvement = 2 + Math.Floor(Roll(s) * 3);
+            Change(s, s.playerId, target.id, improvement);
+            Remember(s, target.id, s.playerId, "You asked me what I knew in week " + s.week
+                + ". It seems my read on this house is worth something to you.", true);
+            Log(s, "information", "You asked " + target.name + " what they had been hearing.",
+                s.playerId, target.id);
+        }
+
+        /// <summary>
+        /// Listens in on two housemates. Source: caught roughly three times in ten, and being caught
+        /// costs eight with whoever catches you.
+        ///
+        /// <para><b>What success reveals is deliberately narrow.</b> The source hands over the two
+        /// houseguests' relationship score and this does the same — as a private memory the player
+        /// owns, which is the only channel that keeps acceptance A9 true. An overheard conversation
+        /// must not become narration of things the player's character was not there for, and it must
+        /// not become a fact the rest of the house suddenly shares.</para>
+        /// </summary>
+        private static void Eavesdrop(EpisodeState s)
+        {
+            var others = s.Active.Where(c => !c.isPlayer).ToList();
+            Require(others.Count >= 2, "There is nobody to overhear right now.");
+
+            // Drawn before the outcome roll, so the pair is the same whether or not you are caught:
+            // the conversation was happening either way.
+            var first = Draw(s, others);
+            var second = Draw(s, others.Where(c => c.id != first.id).ToList());
+
+            if (Roll(s) >= EavesdropSuccessChance)
+            {
+                var catcher = Draw(s, others);
+                Change(s, s.playerId, catcher.id, -8, catcher.name + " caught you listening in", "eavesdrop");
+                Remember(s, catcher.id, s.playerId, "I caught you listening to a conversation you were not part of.", true);
+                Log(s, "eavesdrop", catcher.name + " caught you listening in. That will cost you.",
+                    s.playerId, catcher.id);
+                return;
+            }
+
+            double between = s.Score(first.id, second.id);
+            string reading = between >= 25 ? "sounded close"
+                : between <= -25 ? "sounded like they cannot stand each other"
+                : "sounded careful with each other";
+            Remember(s, s.playerId, first.id, "I overheard " + first.name + " and " + second.name
+                + " in week " + s.week + ". They " + reading + ".", true);
+            Log(s, "eavesdrop", "You overheard " + first.name + " and " + second.name + ". They " + reading + ".",
+                s.playerId);
+        }
+
+        /// <summary>
+        /// Tells one housemate something untrue about another. Source: five to twelve points of
+        /// damage between them, and fifteen against you if it comes back.
+        ///
+        /// <para>Discovery is rolled here rather than passed in, because the source's caller decides
+        /// it and this engine has no caller outside itself. A lie that is never discovered is still
+        /// recorded as a lie in the recipient's memory: they were told something, and whether it was
+        /// true is not theirs to know.</para>
+        /// </summary>
+        private static void SpreadLie(EpisodeState s, ContestantState recipient, string aboutId)
+        {
+            var about = s.Find(aboutId);
+            Require(about != null && about.status == ContestantStatus.Active && !about.isPlayer
+                && about.id != recipient.id, "Choose someone else in the house to lie about.");
+
+            double damage = -(5 + Math.Floor(Roll(s) * 8));
+            Change(s, recipient.id, about.id, damage,
+                "You told " + recipient.name + " something about " + about.name, "lie");
+            Remember(s, recipient.id, about.id, "You told me something about " + about.name
+                + " in week " + s.week + ". I have not checked it.", true);
+
+            bool discovered = Roll(s) < LieDiscoveryChance;
+            if (discovered)
+            {
+                Change(s, s.playerId, about.id, -15, about.name + " found out what you had been saying", "lie");
+                Remember(s, about.id, s.playerId, "I found out what you were telling people about me.", true);
+            }
+            Log(s, "lie", discovered
+                    ? "You told " + recipient.name + " something about " + about.name + " — and " + about.name + " found out."
+                    : "You told " + recipient.name + " something about " + about.name + ".",
+                discovered ? new[] { s.playerId, recipient.id, about.id } : new[] { s.playerId, recipient.id });
+        }
+
+        /// <summary>
+        /// Complains about a third housemate. Source: eight to fifteen if it lands, minus ten if it
+        /// does not — venting is a real risk, not a free bonding action.
+        /// </summary>
+        private static void VentAbout(EpisodeState s, ContestantState listener, string aboutId)
+        {
+            var about = s.Find(aboutId);
+            Require(about != null && about.id != listener.id && !about.isPlayer,
+                "Choose someone else in the house to vent about.");
+
+            // It lands when they already dislike the subject; the house's own opinions decide this
+            // rather than a bare coin toss.
+            bool receptive = s.Score(listener.id, about.id) < 0 || Roll(s) < 0.5;
+            double delta = receptive ? 8 + Math.Floor(Roll(s) * 8) : -10;
+            Change(s, s.playerId, listener.id, delta,
+                receptive ? listener.name + " agreed with you about " + about.name
+                    : listener.name + " did not enjoy hearing it", "vent");
+            Remember(s, listener.id, s.playerId, receptive
+                ? "You vented to me about " + about.name + ". I was glad it was not just me."
+                : "You vented to me about " + about.name + ". I did not enjoy it.", true);
+            Log(s, "vent", receptive
+                    ? "You vented about " + about.name + " to " + listener.name + ", and it landed."
+                    : "You vented about " + about.name + " to " + listener.name + ". It did not land.",
+                s.playerId, listener.id);
+        }
+
+        /// <summary>
+        /// Works against someone quietly. Source: one or two of their relationships take three to
+        /// eight points of damage.
+        ///
+        /// <para>The damage lands on the target's bonds with other houseguests rather than on the
+        /// player's standing, which is the whole point of doing it quietly. The log entry is the
+        /// player's own, because nobody else knows it happened.</para>
+        /// </summary>
+        private static void SchemeAgainst(EpisodeState s, ContestantState target)
+        {
+            var others = s.Active.Where(c => !c.isPlayer && c.id != target.id).ToList();
+            Require(others.Count >= 1, "There is nobody left to turn against them.");
+
+            int victims = Math.Min(others.Count, 1 + (int)Math.Floor(Roll(s) * 2));
+            for (int i = 0; i < victims && others.Count > 0; i++)
+            {
+                var victim = Draw(s, others);
+                others.Remove(victim);
+                double damage = -(3 + Math.Floor(Roll(s) * 6));
+                Change(s, target.id, victim.id, damage, "Something you said reached " + victim.name, "scheme");
+            }
+            Remember(s, s.playerId, target.id, "I spent week " + s.week + " quietly working against "
+                + target.name + ".", true);
+            Log(s, "scheme", "You worked against " + target.name + " without saying so to their face.", s.playerId);
+        }
+
+        /// <summary>
+        /// Marks someone the Head of Household means to backdoor.
+        ///
+        /// <para>A plan, not a nomination: it costs an action and changes nobody's standing. It is
+        /// stored so the intent survives a reload, and it clears when the week turns, because a plan
+        /// for a week that has ended is not a plan.</para>
+        /// </summary>
+        private static void SetBackdoorPlan(EpisodeState s, ContestantState target)
+        {
+            // Not a social action, and deliberately not on the same budget. A backdoor plan is the
+            // shape of a nomination rather than a conversation: you are deciding who the week is
+            // actually aimed at before naming the two people who will stand in for it. It is also
+            // the only moment it can be set — during the social week the title still belongs to
+            // last week's winner, and by campaigning the veto has already been used.
+            Require(s.phase == EpisodePhase.Nomination, "A backdoor is planned when nominations are made.");
+            Require(s.hohId == s.playerId, "Only the Head of Household can plan a backdoor.");
+            Require(s.nominees.Count == 0, "Nominations are already committed.");
+            Require(target != null && target.status == ContestantStatus.Active && !target.isPlayer,
+                "Choose an active housemate to aim the week at.");
+            s.backdoorTargetId = target.id;
+            Remember(s, s.playerId, target.id, "I mean to get " + target.name
+                + " on the block after the veto, not before it.", true);
+            Log(s, "backdoor", "You settled on a plan to backdoor " + target.name + ".", s.playerId);
+        }
+
+        /// <summary>
+        /// One of a list, drawn from the season's own generator.
+        ///
+        /// <para>The source shuffles with <c>Math.random()</c>. That cannot be copied literally here:
+        /// these are committed commands and a replay has to reproduce them, so every draw comes off
+        /// the saved stream instead.</para>
+        /// </summary>
+        private static ContestantState Draw(EpisodeState s, List<ContestantState> from)
+        {
+            int index = (int)Math.Floor(Roll(s) * from.Count);
+            return from[Math.Min(Math.Max(0, index), from.Count - 1)];
         }
 
         private static void MakePromise(EpisodeState s, string to, PromiseKind kind, string target)

@@ -604,7 +604,17 @@ namespace Gamesim.Episode
             {
                 case EpisodeCommandKind.Talk:
                 case EpisodeCommandKind.ShareInformation:
+                case EpisodeCommandKind.AskForIntel:
+                case EpisodeCommandKind.VentAbout:
                     return "social";
+                // Their own category on purpose. These are the actions that can rebound on you, and
+                // the chip is the only warning before you spend an action on one.
+                case EpisodeCommandKind.Eavesdrop:
+                case EpisodeCommandKind.SpreadLie:
+                case EpisodeCommandKind.SchemeAgainst:
+                    return "risky";
+                case EpisodeCommandKind.SetBackdoorPlan:
+                    return "strategic";
                 case EpisodeCommandKind.PromiseSafety:
                 case EpisodeCommandKind.PromiseVote:
                 case EpisodeCommandKind.PromiseFinalTwo:
@@ -1106,6 +1116,22 @@ namespace Gamesim.Episode
                     Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
                 hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
                     Category(EpisodeCommandKind.ShareInformation));
+                hud.Tag(hud.Action("Ask what they have heard", () => Commit(state, EpisodeCommandKind.AskForIntel, npc.id)),
+                    Category(EpisodeCommandKind.AskForIntel));
+                // Both of these need a third person, so they are offered per subject rather than as
+                // one control that would then have to ask "about whom?" after being clicked.
+                foreach (var subject in state.Active.Where(c => !c.isPlayer && c.id != npc.id))
+                {
+                    string about = subject.id;
+                    hud.Tag(hud.ActionFor(about, "Vent about " + subject.name,
+                        () => Commit(state, EpisodeCommandKind.VentAbout, npc.id, about)),
+                        Category(EpisodeCommandKind.VentAbout));
+                    hud.Tag(hud.ActionFor(about, "Tell them something untrue about " + subject.name,
+                        () => Commit(state, EpisodeCommandKind.SpreadLie, npc.id, about)),
+                        Category(EpisodeCommandKind.SpreadLie));
+                }
+                hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
+                    Category(EpisodeCommandKind.SchemeAgainst));
                 if (state.phase == EpisodePhase.Campaign)
                     foreach (var nominee in state.nominees) { string id = nominee; hud.Tag(hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)), Category(EpisodeCommandKind.PromiseVote)); }
                 return;
@@ -1198,6 +1224,14 @@ namespace Gamesim.Episode
                     hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
                 hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
                     + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
+                // Listening in needs no one to talk to, so it sits here rather than in a conversation.
+                if (state.Active.Count(c => !c.isPlayer) >= 2)
+                {
+                    hud.Paragraph("You can also try to overhear a conversation you are not part of. "
+                        + "It works about seven times in ten; the rest of the time somebody notices.");
+                    hud.Tag(hud.Action("Listen in on a conversation", () => Commit(state, EpisodeCommandKind.Eavesdrop)),
+                        Category(EpisodeCommandKind.Eavesdrop));
+                }
             }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph("Four jurors choose the winner. The source game's tie rule awards a tied jury to the second finalist in cast order.");
             hud.Action(state.phase == EpisodePhase.Social ? "Begin the next competition" : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode", () => Commit(state, EpisodeCommandKind.Advance));

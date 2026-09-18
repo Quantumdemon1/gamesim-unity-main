@@ -191,7 +191,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 9;
+        public int schemaVersion = 10;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;
@@ -258,6 +258,31 @@ namespace Gamesim.Simulation
         /// </summary>
         public int socialBudgetRulesStartWeek = 1;
 
+        // ---------------------------------------------------------------- schema 10
+        /// <summary>
+        /// Deals between houseguests.
+        ///
+        /// <para>The eviction vote has weighed deals since it was written —
+        /// <c>WebEvictionVoting.DealObligation</c> reads this list, scores an active
+        /// <c>vote_save</c> at +35 and a broken one at −35, and <c>PairDealValue</c> has a table
+        /// running from information sharing at 10 to a final two at 50. It has been reading an empty
+        /// list the whole time, because nothing in the project could make a deal. This is the same
+        /// shape as alliances and promises before Phase C: the consumer shipped, the producer did
+        /// not.</para>
+        ///
+        /// <para>Deals sit above promises deliberately. The interaction table this project already
+        /// implements scores <c>deal_fulfilled</c> at +35 and <c>deal_broken</c> at −50, against
+        /// +25 and −40 for a promise — a deal is the heavier commitment, and breaking one is the
+        /// worst thing in the table short of betraying an alliance.</para>
+        /// </summary>
+        public List<DealState> deals = new List<DealState>();
+
+        /// <summary>
+        /// The week deals start being made, so a season already under way is not handed a system it
+        /// was not played under. The same boundary <see cref="blocRulesStartWeek"/> uses.
+        /// </summary>
+        public int dealRulesStartWeek = 1;
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -289,6 +314,7 @@ namespace Gamesim.Simulation
             copy.npcSocial = npcSocial.Clone();
             copy.evictionSpeeches = evictionSpeeches.Select(x => x.Clone()).ToList();
             copy.openingBeatsSeen = new List<string>(openingBeatsSeen);
+            copy.deals = deals.Select(x => x.Clone()).ToList();
             return copy;
         }
     }
@@ -302,7 +328,9 @@ namespace Gamesim.Simulation
         SubmitEvictionSpeech,
         AskForIntel, Eavesdrop, SpreadLie, VentAbout, SchemeAgainst,
         SetBackdoorPlan,
-        MarkOpeningBeat // Append: preserve every pre-v4 command ordinal.
+        MarkOpeningBeat,
+        ProposeDeal,
+        RespondToDeal // Append: preserve every pre-v4 command ordinal.
     }
 
     /// <summary>

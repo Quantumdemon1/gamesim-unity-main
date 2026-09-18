@@ -105,6 +105,7 @@ namespace Gamesim.Simulation
                     break;
                 case EpisodeCommandKind.SetBackdoorPlan: SetBackdoorPlan(s, s.Find(c.targetId)); break;
                 case EpisodeCommandKind.MarkOpeningBeat: MarkOpeningBeat(s, c.targetId); break;
+                case EpisodeCommandKind.RespondToDeal: RespondToDeal(s, c); break;
                 case EpisodeCommandKind.FinalEvict:
                     Require(s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId, "Only the final HoH makes this choice.");
                     FinalEvict(s, c.targetId); break;
@@ -199,6 +200,11 @@ namespace Gamesim.Simulation
                     // that moment.
                     Phase(s, EpisodePhase.Campaign);
                     NpcPromises.Settle(s);
+                    // Deals are struck here as well as at the social week's open, because half the
+                    // ladder is positional: a nominee begging the veto holder and somebody courting
+                    // the Head of Household only mean anything once the block is settled.
+                    NpcDeals.Settle(s);
+                    NpcDeals.Propose(s);
                     NpcSocialActions.Campaign(s);
                     break;
                 case EpisodePhase.Campaign:
@@ -223,6 +229,8 @@ namespace Gamesim.Simulation
                         // — target choice is weighted sampling — which is why it sits behind the
                         // same rules boundary and why a recording declares itself past it.
                         NpcSocialActions.Settle(s);
+                        NpcDeals.Settle(s);
+                        NpcDeals.Propose(s);
                         return;
                     }
                     // Eviction night runs as stages inside this phase rather than as phases of its
@@ -280,6 +288,7 @@ namespace Gamesim.Simulation
                             SettlePromise(s, promise, promise.targetId == vote.targetId ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
                         ApplyOathPlan(s, WebLoyaltyOaths.EvictionVote(OathSnapshot(s), vote.voterId, vote.targetId));
                     }
+                    SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null));
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
                     s.evictionStage = EvictionStage.Results;
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
@@ -426,6 +435,7 @@ namespace Gamesim.Simulation
             Require(first != second && eligible.Contains(first ?? "") && eligible.Contains(second ?? ""), "Choose two distinct eligible houseguests.");
             s.nominees = new List<string> { first, second };
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
+            SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId, s.nominees.ToList()));
             Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
                 + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
         }
@@ -454,6 +464,9 @@ namespace Gamesim.Simulation
 
         private static void ResolveVeto(EpisodeState s, bool use, string saved, string replacement)
         {
+            // The block as it stood before this decision. A veto commitment is kept by lifting the
+            // partner off it, and reading the block afterwards would find them already gone.
+            var blockBefore = s.nominees.ToList();
             if (use)
             {
                 Require(!VetoIsLockedAtFinalFour(s),
@@ -472,6 +485,12 @@ namespace Gamesim.Simulation
             }
             else Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " declines ", " decline ")
                 + "to use the veto. Nominations stand.");
+            SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Vetoes, s.vetoHolderId,
+                nominees: blockBefore, savedId: use ? saved : null, used: use));
+            // Naming a replacement is a nomination, and a safety pact with the person named is
+            // broken by it exactly as it would be at the ceremony itself.
+            if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
+                new List<string> { replacement }));
             s.vetoResolved = true;
         }
 
@@ -515,6 +534,7 @@ namespace Gamesim.Simulation
             var selected = s.Active.Single(c => c.id != target && c.id != s.hohId).id;
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == s.hohId).ToArray())
                 SettlePromise(s, promise, promise.toId == selected ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
+            SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Selects, s.hohId, selectedId: selected));
             s.Find(target).status = ContestantStatus.Jury;
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
             s.oathOpportunities.Clear(); // No social oath decisions remain after final eviction.
@@ -596,6 +616,7 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.SpreadLie: SpreadLie(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.SchemeAgainst: SchemeAgainst(s, target); break;
+                case EpisodeCommandKind.ProposeDeal: ProposeDeal(s, target, c); break;
                 default: throw new RuleException("Unsupported social action.");
             }
             // Campaigning is not the social week, and the reference build counts those separately
@@ -857,6 +878,163 @@ namespace Gamesim.Simulation
             Remember(s, to, s.playerId, "Made me a " + kind + " promise.", true);
             Remember(s, s.playerId, to, "I promised " + kind + " to " + Name(s, to) + ".", true);
             Log(s, "promise", "You promised " + kind + " to " + Name(s, to) + ".", s.playerId, to);
+        }
+
+        // ---------------------------------------------------------------- the deal table
+        //
+        // NpcDeals is the house bargaining among itself and leaves the player out on purpose; these
+        // two are the player's side of the same table. Both draw from the season's generator, which
+        // is legitimate here and nowhere else in the deal code: they run only inside a committed
+        // command, so the draw is recorded and replays identically.
+
+        /// <summary>
+        /// The player puts something to a houseguest, and hears the answer straight away.
+        ///
+        /// <para>The reference queues a proposal and resolves it later; resolving it here instead is
+        /// deliberate. A pending proposal from the player would be a second store the save format
+        /// has no room for, and the reference's own resolution is a single roll against a number
+        /// computed entirely from present state — so asking and answering in one command produces
+        /// the same distribution with one fewer thing to persist.</para>
+        /// </summary>
+        private static void ProposeDeal(EpisodeState s, ContestantState target, EpisodeCommand c)
+        {
+            string type = (c.text ?? string.Empty).Trim();
+            string about = c.secondTargetId;
+            Require(PlayerDeals.CanPropose(s, target.id, type, about, out string refusal), refusal);
+
+            double chance = PlayerDeals.AcceptanceChance(s, target.id, type, about);
+            bool accepted = Roll(s) * 100 < chance;
+            string title = DealKind.Title(type).ToLowerInvariant();
+            string said = PlayerDeals.Reasoning(s, target.id, type, accepted);
+
+            if (accepted)
+            {
+                s.deals.Add(PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence));
+                Change(s, s.playerId, target.id, PlayerDeals.AcceptedImpact,
+                    "Agreed a " + title + " with you.", "deal_accepted");
+                Remember(s, target.id, s.playerId, "Agreed a " + title + " with me.", true);
+                Log(s, "deal", target.name + " agreed a " + title + ". “" + said + "”",
+                    s.playerId, target.id);
+                return;
+            }
+
+            Change(s, s.playerId, target.id, PlayerDeals.RefusedImpact,
+                "Turned down a " + title + " from you.", "deal_refused");
+            Log(s, "deal", target.name + " turned down a " + title + ". “" + said + "”",
+                s.playerId, target.id);
+        }
+
+        /// <summary>
+        /// The player answers something a houseguest put to them.
+        ///
+        /// <para>Not a social action, and deliberately: the offer was somebody else's move, and
+        /// charging the player an action to decline it would make being popular expensive. The
+        /// reference treats a response the same way.</para>
+        /// </summary>
+        /// <summary>The word a command carries to mean yes. Anything else is a refusal.</summary>
+        public const string AcceptDeal = "accept";
+
+        private static void RespondToDeal(EpisodeState s, EpisodeCommand c)
+        {
+            Require(s.Find(s.playerId).status == ContestantStatus.Active,
+                "Evicted players can follow the season but cannot influence it.");
+            var deal = s.deals.FirstOrDefault(d => d.id == c.targetId
+                                                   && d.status == DealStatus.Proposed
+                                                   && d.recipientId == s.playerId);
+            Require(deal != null, "That offer is no longer on the table.");
+            var from = s.Find(deal.proposerId);
+            Require(from != null && from.status == ContestantStatus.Active,
+                "The houseguest who offered that is no longer in the house.");
+
+            string title = DealKind.Title(deal.type).ToLowerInvariant();
+            if (string.Equals((c.text ?? string.Empty).Trim(), AcceptDeal, StringComparison.OrdinalIgnoreCase))
+            {
+                deal.status = DealStatus.Active;
+                // The offer lapsed at the end of this week; the arrangement it becomes runs for as
+                // long as its own kind runs for, which for a final two or a partnership is no limit.
+                deal.expiresWeek = PlayerDeals.Draft(s, deal.proposerId, deal.type, deal.targetId, deal.id).expiresWeek;
+                Change(s, s.playerId, deal.proposerId, PlayerDeals.AcceptedImpact,
+                    "Took me up on a " + title + ".", "deal_accepted");
+                Remember(s, s.playerId, deal.proposerId, "I accepted a " + title + " from " + from.name + ".", true);
+                Log(s, "deal", "You accepted a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
+                return;
+            }
+
+            deal.status = DealStatus.Declined;
+            Change(s, s.playerId, deal.proposerId, PlayerDeals.DeclineImpact,
+                "Turned down my " + title + ".", "deal_declined");
+            Log(s, "deal", "You declined a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
+        }
+
+        /// <summary>
+        /// Writes the verdicts an action reached on the deals it touched.
+        ///
+        /// <para>Direction matters and is not the reference's. <c>applyDealOutcome</c> moves the
+        /// <i>proposer's</i> view of the recipient whichever of them acted, which reads as the person
+        /// who broke their word thinking less of the person they wronged. This port writes it the way
+        /// <see cref="SettlePromise"/> already does: the wronged party's view of whoever acted. A
+        /// voting block has no single actor, so that one moves both ways.</para>
+        ///
+        /// <para>The betrayal spread draws from the season's generator, which is legitimate because
+        /// this only ever runs inside a committed command — the same line the promise witnesses sit
+        /// on, and the same reason.</para>
+        /// </summary>
+        private static void SettleDeals(EpisodeState s, List<DealResolution.Verdict> verdicts)
+        {
+            foreach (var verdict in verdicts)
+            {
+                var deal = verdict.deal;
+                deal.status = verdict.status;
+                double delta = DealResolution.Impact(deal, verdict.status);
+                bool kept = verdict.status == DealStatus.Fulfilled;
+                string title = DealKind.Title(deal.type).ToLowerInvariant();
+
+                if (verdict.actorId == null)
+                {
+                    string text = Name(s, deal.proposerId) + " and " + Name(s, deal.recipientId)
+                        + (kept ? " held to their " : " fell out over their ") + title + ".";
+                    WriteScore(s, deal.proposerId, deal.recipientId, delta);
+                    WriteScore(s, deal.recipientId, deal.proposerId, delta);
+                    RelationshipLedger.Record(s, deal.proposerId, deal.recipientId,
+                        kept ? "deal_fulfilled" : "deal_broken", delta, text);
+                    Log(s, "deal-outcome", text, deal.proposerId, deal.recipientId);
+                }
+                else
+                {
+                    string wronged = DealResolution.Partner(deal, verdict.actorId);
+                    string text = Name(s, verdict.actorId) + (kept ? " honoured a " : " broke a ")
+                        + title + " with " + Name(s, wronged) + ".";
+                    WriteScore(s, wronged, verdict.actorId, delta);
+                    RelationshipLedger.Record(s, wronged, verdict.actorId,
+                        kept ? "deal_fulfilled" : "deal_broken", delta, text);
+                    Remember(s, wronged, verdict.actorId, text, true);
+                    Log(s, "deal-outcome", text, verdict.actorId, wronged);
+                }
+
+                if (!kept) SpreadBetrayal(s, deal, verdict.actorId);
+            }
+        }
+
+        /// <summary>
+        /// Word getting around that somebody broke their word.
+        ///
+        /// <para>The reference's <c>spreadBetrayalInfo</c>: each other houseguest has a two-in-five
+        /// chance of hearing, and hearing costs the betrayer between five and fifteen points of
+        /// their standing with that person. Where nobody in particular acted — a voting block both
+        /// sides walked away from — there is no betrayer to gossip about, so nothing spreads.</para>
+        /// </summary>
+        private static void SpreadBetrayal(EpisodeState s, DealState deal, string betrayerId)
+        {
+            if (betrayerId == null) return;
+            string wronged = DealResolution.Partner(deal, betrayerId);
+            foreach (var witness in s.Active.Where(c => c.id != betrayerId && c.id != wronged).ToList())
+            {
+                if (Roll(s) >= DealResolution.BetrayalChance) continue;
+                double penalty = Math.Floor(DealResolution.BetrayalFloor + Roll(s) * DealResolution.BetrayalSpread);
+                WriteScore(s, witness.id, betrayerId, penalty);
+                RelationshipLedger.Record(s, witness.id, betrayerId, "heard_about_betrayal", penalty,
+                    "Heard that " + Name(s, betrayerId) + " broke a deal with " + Name(s, wronged) + ".");
+            }
         }
 
         private static void SettlePromise(EpisodeState s, PromiseState promise, PromiseStatus status)

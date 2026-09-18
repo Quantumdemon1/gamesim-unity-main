@@ -104,7 +104,7 @@ commit `3c1a111` implements the five beats and none of the audio, because there 
 
 ## Tier 1 — Producers for consumers that already exist
 
-### 1.1 Deals (`deal-system.ts`, 31 KB)
+### 1.1 Deals (`deal-system.ts`, 31 KB) — **DONE, schema 10**
 
 Proposal, a counter-offer table (`COUNTER_OFFER_MAP`), trait modifiers (`getTraitDealModifiers`), then
 per-phase resolution — `evaluateNominationDeal`, `evaluateVoteDeal`, `evaluateVetoDeal`,
@@ -115,6 +115,45 @@ Already calibrated for here: `deal_fulfilled` +35 and `deal_broken` −50 sit in
 this port implements, against `promise-kept` +25 and `promise-broken` −40.
 
 `PromiseState` is the template; `NpcPromises` is the shape; Phase C's rules boundary handles fixtures.
+
+**What landed.** `DealState` (the ten types, seven statuses and four trust weights, spelled as
+`WebEvictionVoting` and `WebSaveImporter` already read them), `NpcDeals` (the house bargaining among
+itself and putting offers to the player, roll-free), `PlayerDeals` (`evaluatePlayerDeal` term for
+term, including the five relationship tiers and the whole trait table), `DealResolution`
+(`deal-action-rules.ts` plus `applyDealOutcome` and `spreadBetrayalInfo`), and the two commands
+`ProposeDeal` / `RespondToDeal` with their controls in the conversation panel. `dealRulesStartWeek` is
+the fourth use of the rules boundary. **The line that mattered most is one line**: `FromNative` now
+copies `deals` across, so the eviction vote's deal weights — written before this and tested ever
+since — finally multiply something other than an empty list.
+
+Resolution hangs off the four actions the source resolves and no others: the nomination ceremony
+(target agreements and safety pacts), the veto decision, the eviction vote (voting blocks only), and
+the final two. A `vote_save` is deliberately *not* settled by the ballot — the vote evaluator already
+scores it at +35, and settling it here would count the same promise twice.
+
+One deliberate divergence in direction. `applyDealOutcome` moves the *proposer's* view of the
+recipient whoever acted, which reads as the person who broke their word thinking less of the person
+they wronged. This port writes it the way `SettlePromise` already does — the wronged party's view of
+whoever acted — and moves both ways only for a voting block, where neither party is the one who
+decided it.
+
+**Deliberately not ported, and why.**
+
+- **`COUNTER_OFFER_MAP`.** A counter-offer is a second proposal aimed back at the player, and there is
+  nowhere for one to wait until the pending-proposal queue below is ported. Inventing a store the
+  save format has no room for is worse than a declined deal being simply declined.
+- **The pending-proposal queue for the player's own asks.** The reference queues a proposal and
+  resolves it later; here asking and hearing the answer is one committed command. The resolution is a
+  single roll against a number computed entirely from present state, so this produces the same
+  distribution with one fewer thing to persist. NPC-to-player offers *do* wait, because those the
+  player has to be able to see before answering.
+- **Alliance stability.** `applyDealOutcome` nudges an alliance's stability by ±3 or ±10.
+  `AllianceState` has no stability field, and adding one is another schema version for a number
+  nothing else in this port reads. The relationship and betrayal effects, which everything does read,
+  are ported.
+- **`deal.context._voteTracking`.** The source accumulates each partner's ballot on the deal itself.
+  `EpisodeState.votes` already holds exactly that by the time the house has voted, so the rule reads
+  those instead of persisting a second copy.
 
 ### 1.2 Storylines (`storyline-system.ts` 37 KB, `branching-story-system.ts` 37 KB)
 
@@ -233,7 +272,7 @@ React presentation; the phase components may hold flow logic worth a look before
 | 2 | Authored numbers (0.2) | Cheap; raises confidence in everything already shipped. |
 | 3 | CI (0.3) | The suites exist and nothing runs them. |
 | 4 | Audio (0.4) | Two files and wiring; completes an opening sequence already built. |
-| 5 | Deals (1.1) | Best value of any system; the consumer exists and is tested. |
+| 5 | ~~Deals (1.1)~~ **done** | Best value of any system; the consumer exists and is tested. Landed as schema 10. |
 | 6 | Weekly recap (2.1) | Presentation over an existing event log. |
 | 7 | Minigames (3.1) | Every competition currently plays identically. |
 | 8 | Social vocabulary + action points (3.2, 3.3) | Player-facing breadth; append-only to `EpisodeCommandKind`. |

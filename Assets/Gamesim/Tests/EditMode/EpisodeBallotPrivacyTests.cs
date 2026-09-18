@@ -94,6 +94,7 @@ namespace Gamesim.Tests.EditMode
                 // their hands still: autonomy would add words nobody in the test gave.
                 var opening = ContentCatalog.Create(seed);
                 opening.npcSocial.rulesStartWeek = 2;
+                opening.dealRulesStartWeek = 2;
                 var engine = new EpisodeEngine(opening);
                 for (int guard = 0; guard < 20; guard++)
                 {

@@ -40,6 +40,14 @@ namespace Gamesim.Episode
         /// simulating. It is a competition entered at the floor rather than a refusal to enter.
         /// </summary>
         public const string ThrowCompetitionCaption = "Throw this competition on purpose";
+        /// <summary>
+        /// The words on a deal control. Captions are a contract — tests and screen readers find a
+        /// control by what it says — so the deal type is spelled out here once and the chance is
+        /// drawn as a tag beside the button rather than appended to it.
+        /// </summary>
+        public const string DealAcceptCaption = "Accept this offer";
+        public const string DealDeclineCaption = "Turn this offer down";
+        public static string DealProposeCaption(string title) => "Propose a " + title;
         // Palette lives in UiTheme so the HUD and the 3D set stay in step; these aliases keep
         // the existing call sites unchanged.
         private static readonly Color Ink = UiTheme.Ink;

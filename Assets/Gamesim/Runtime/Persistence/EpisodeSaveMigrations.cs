@@ -20,11 +20,49 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 10) return (JObject)original.DeepClone();
+            if (version < 1 || version > 9) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v9 = version == 9 ? original : PrepareV9Payload(original, out _);
+            var result = UpgradeV9ToV10(v9);
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v8-to-v9 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV9Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 9) return (JObject)original.DeepClone();
             if (version < 1 || version > 8) throw new InvalidDataException("Unsupported simulation schema version.");
             var v8 = version == 8 ? original : PrepareV8Payload(original, out _);
-            var result = UpgradeV8ToV9(v8);
+            var current = UpgradeV8ToV9(v8);
             migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Opens deals, from the week after the one the save is in.
+        ///
+        /// <para>An empty list rather than a guess, because there is nothing in a v9 save to infer a
+        /// deal from — the field never existed. What the grace week buys is not the list but the
+        /// behaviour: a season restored mid-week should not suddenly have houseguests striking
+        /// bargains it was not being played under, any more than it should get a new action budget.
+        /// The same boundary <c>socialBudgetRulesStartWeek</c> and <c>npcSocial.rulesStartWeek</c>
+        /// already use.</para>
+        ///
+        /// <para>A fresh season is built at week one, so new play has deals from the first week.</para>
+        /// </summary>
+        public static JObject UpgradeV9ToV10(JObject original)
+        {
+            FrozenEpisodeV9.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("deals", new JArray());
+            result.Add("dealRulesStartWeek", startWeek);
+            result["schemaVersion"] = 10;
             return result;
         }
 

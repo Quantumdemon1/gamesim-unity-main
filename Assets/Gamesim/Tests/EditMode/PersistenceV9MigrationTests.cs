@@ -31,7 +31,7 @@ namespace Gamesim.Tests.EditMode
         {
             foreach (var state in new[] { ContentCatalog.Create(11u), SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u) })
             {
-                Assert.That(state.schemaVersion, Is.EqualTo(9));
+                Assert.That(state.schemaVersion, Is.EqualTo(10));
                 Assert.That(state.socialBudgetRulesStartWeek, Is.EqualTo(1),
                     "New play gets the ported budget immediately; only migrated history gets a grace week.");
                 Assert.That(EpisodeEngine.SocialActionBudget(state),
@@ -73,7 +73,9 @@ namespace Gamesim.Tests.EditMode
             var before = CaptureV8(ContentCatalog.Create(601));
             before["socialActions"] = spent;
 
-            var parsed = EpisodeSaveMigrations.UpgradeV8ToV9(before).ToObject<EpisodeState>(Serializer());
+            // The whole chain, not one step: a schema 9 payload no longer describes a state the
+            // simulation will accept, and what has to stay legal is what a load actually produces.
+            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(before, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, error);
             Assert.That(EpisodeEngine.SocialActionsSpent(parsed),
                 Is.LessThanOrEqualTo(EpisodeEngine.SocialActionBudget(parsed)),
@@ -103,7 +105,9 @@ namespace Gamesim.Tests.EditMode
             for (int version = 1; version <= 8; version++)
             {
                 var old = Historical(version);
-                var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+                // PrepareV9Payload, not PrepareCurrentPayload: this file pins the step that ends at
+                // schema 9, and "current" moved on when schema 10 opened deals.
+                var result = EpisodeSaveMigrations.PrepareV9Payload(old, out bool migrated);
 
                 Assert.That(migrated, Is.True, "version " + version);
                 Assert.That((int)result["schemaVersion"], Is.EqualTo(9), "version " + version);
@@ -115,15 +119,15 @@ namespace Gamesim.Tests.EditMode
         public void MigratingAgainIsANoOpAndTheResultLoadsAndValidates()
         {
             var old = CaptureV8(ContentCatalog.Create(601));
-            var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+            var result = EpisodeSaveMigrations.PrepareV9Payload(old, out bool migrated);
             Assert.That(migrated, Is.True);
 
-            var repeat = EpisodeSaveMigrations.PrepareCurrentPayload(result, out migrated);
+            var repeat = EpisodeSaveMigrations.PrepareV9Payload(result, out migrated);
             Assert.That(migrated, Is.False, "A schema 9 payload must not be migrated again.");
             Assert.That(ReferenceEquals(result, repeat), Is.False);
             Assert.That(JToken.DeepEquals(result, repeat), Is.True);
 
-            var parsed = result.ToObject<EpisodeState>(Serializer());
+            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(old, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, error);
         }
 
@@ -135,8 +139,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 8").And.Contain("schema 9 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(9));
+            Assert.That(message, Does.Contain("Schema 8").And.Contain("schema 10 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(10), "A load runs the whole chain, not one step.");
             Assert.That(loaded.socialBudgetRulesStartWeek, Is.EqualTo(loaded.week + 1));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
                 "Loading must not rewrite the file.");
@@ -193,7 +197,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The current runtime state expressed in schema 8's shape.</summary>
         private static JObject CaptureV8(EpisodeState state)
         {
-            var payload = PersistenceMigrationTests.StripSchema9(Capture(state));
+            var payload = PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(Capture(state)));
             payload["schemaVersion"] = 8;
             return payload;
         }

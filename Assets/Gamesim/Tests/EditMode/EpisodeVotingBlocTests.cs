@@ -49,6 +49,10 @@ namespace Gamesim.Tests.EditMode
             // cannot claim one indefinitely far off. The witness spans a single week, which is
             // exactly what this buys.
             initial.npcSocial.rulesStartWeek = 2;
+            // And nobody was striking deals when this was recorded. Deals are weighed by the very
+            // evaluator this fixture pins — DealObligation scores an active vote_save at +35 — so a
+            // replay with them running is not the season on file.
+            initial.dealRulesStartWeek = 2;
             var engine = new EpisodeEngine(initial);
             foreach (var item in fixture["commands"]) Apply(engine, Read<EpisodeCommand>(item));
             return engine;
@@ -87,7 +91,7 @@ namespace Gamesim.Tests.EditMode
         public void LegalPactReplayMatchesOriginalSourceAndChangesTargetThroughPrivatePressure()
         {
             var fixture = Fixture(); var state = Witness().Snapshot;
-            Assert.That(state.schemaVersion, Is.EqualTo(9));
+            Assert.That(state.schemaVersion, Is.EqualTo(10));
             Assert.That((int)fixture["state"]["schemaVersion"], Is.EqualTo(5), "Keep the original witness unchanged.");
             // Compared against a subsystem created with the same declared boundary, because that
             // boundary is configuration rather than activity. What this asserts is unchanged: no
@@ -99,7 +103,7 @@ namespace Gamesim.Tests.EditMode
             // the NPC subsystem schema 6 added, and without the contestant card copy schema 7 did.
             var historicalView = PersistenceMigrationTests.StripCardCopy(
                 PersistenceMigrationTests.StripSchema8(
-                    PersistenceMigrationTests.StripSchema9(JObject.FromObject(state))));
+                    PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(JObject.FromObject(state)))));
             historicalView.Remove("npcSocial");
             historicalView["schemaVersion"] = fixture["state"]["schemaVersion"].DeepClone();
             WebVotingBlocParityTests.Equivalent(fixture["state"], historicalView, "legal command replay");

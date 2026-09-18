@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshGamesStartInWeekOneAndThePrimitiveIsDetachedInEverySnapshot()
         {
             var input = ContentCatalog.Create(501);
-            Assert.That(input.schemaVersion, Is.EqualTo(9));
+            Assert.That(input.schemaVersion, Is.EqualTo(10));
             Assert.That(input.blocRulesStartWeek, Is.EqualTo(1));
             var engine = new EpisodeEngine(input);
             var copy = engine.Snapshot; copy.blocRulesStartWeek = 2; input.blocRulesStartWeek = 2;
@@ -37,12 +37,12 @@ namespace Gamesim.Tests.EditMode
             var v4 = version < 4 ? EpisodeSaveMigrations.PrepareV4Payload(original, out _) : original;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(9));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(10));
             Assert.That((int)migrated["blocRulesStartWeek"], Is.EqualTo(8));
             Assert.That((uint)migrated["randomState"], Is.Zero);
             // Without schema 7's card copy: see the note on the v4 twin.
             AssertOldFieldsEqual(v4, PersistenceMigrationTests.StripCardCopy(
-                PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9((JObject)migrated.DeepClone()))));
+                PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10((JObject)migrated.DeepClone())))));
             Assert.That(original.ToString(Formatting.None), Is.EqualTo(before));
             var second = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
             Assert.That(changed, Is.False);
@@ -257,7 +257,7 @@ namespace Gamesim.Tests.EditMode
         }
         private static JObject CaptureV4(EpisodeState state)
         {
-            var source = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(CaptureCurrent(state))));
+            var source = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(CaptureCurrent(state)))));
             source.Remove("npcSocial"); source.Remove("blocRulesStartWeek"); source["schemaVersion"] = 4; return source;
         }
         private static readonly PublicFieldContractResolver SharedCaptureResolver = new PublicFieldContractResolver();
@@ -281,7 +281,8 @@ namespace Gamesim.Tests.EditMode
                 case "state": return new[] { "blocRulesStartWeek", "npcSocial",
                     "evictionStage", "evictionSpeeches", "backdoorTargetId",
                     "outOfPhaseSocialActions", "openingBeatsSeen",
-                    "socialBudgetRulesStartWeek" }.Contains(field);
+                    "socialBudgetRulesStartWeek",
+                    "deals", "dealRulesStartWeek" }.Contains(field);
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio" }.Contains(field);
                 default: return false;
             }

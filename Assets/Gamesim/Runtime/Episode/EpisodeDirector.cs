@@ -621,6 +621,8 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.SchemeAgainst:
                     return "risky";
                 case EpisodeCommandKind.SetBackdoorPlan:
+                case EpisodeCommandKind.ProposeDeal:
+                case EpisodeCommandKind.RespondToDeal:
                     return "strategic";
                 case EpisodeCommandKind.PromiseSafety:
                 case EpisodeCommandKind.PromiseVote:
@@ -1241,6 +1243,7 @@ namespace Gamesim.Episode
                 }
                 hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
                     Category(EpisodeCommandKind.SchemeAgainst));
+                DealPanel(state, npc);
                 if (state.phase == EpisodePhase.Campaign)
                     foreach (var nominee in state.nominees) { string id = nominee; hud.Tag(hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)), Category(EpisodeCommandKind.PromiseVote)); }
                 return;
@@ -1352,6 +1355,107 @@ namespace Gamesim.Episode
             challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0; challengeStarted = Time.unscaledTime;
             audioBed.PlayCue(HouseAudio.Cue.CompetitionStart); Render();
         }
+        /// <summary>
+        /// The deal table for one houseguest: what they have put to you, and what you can put to them.
+        ///
+        /// <para>The chance is drawn as a tag rather than folded into the caption, for the same
+        /// reason the action category is: the words on a button are how tests and screen readers
+        /// find it, and a number that moves every time the relationship does would make the control
+        /// unfindable. Showing it at all is the reference's choice — it puts the odds on the screen
+        /// rather than making the player guess.</para>
+        /// </summary>
+        private void DealPanel(EpisodeState state, ContestantState npc)
+        {
+            var waiting = NpcDeals.Pending(state).Where(d => d.proposerId == npc.id).ToList();
+            foreach (var offer in waiting)
+            {
+                string id = offer.id;
+                hud.Heading("AN OFFER FROM " + npc.name.ToUpperInvariant());
+                hud.Paragraph(DealSentence(state, offer));
+                hud.Tag(hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
+                        () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal)),
+                    Category(EpisodeCommandKind.RespondToDeal));
+                hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
+                    () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"));
+            }
+
+            var offers = PlayerDeals.Available(state, npc.id);
+            if (offers.Count == 0) return;
+            hud.Heading("WHAT YOU COULD PUT TO " + npc.name.ToUpperInvariant());
+            foreach (string type in offers)
+            {
+                string kind = type;
+                // A target agreement is about a third person, so it is offered per subject rather
+                // than as one control that would have to ask "about whom?" after being clicked —
+                // the same shape the vent and lie controls already use.
+                if (kind == DealKind.TargetAgreement)
+                {
+                    foreach (var subject in state.Active.Where(c => !c.isPlayer && c.id != npc.id))
+                    {
+                        string about = subject.id;
+                        if (!PlayerDeals.CanPropose(state, npc.id, kind, about, out _)) continue;
+                        hud.Tag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
+                                    DealKind.Title(kind).ToLowerInvariant() + " against " + subject.name),
+                                () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, about, text: kind)),
+                            Category(EpisodeCommandKind.ProposeDeal) + " · " + Chance(state, npc.id, kind, about));
+                    }
+                    continue;
+                }
+                hud.Tag(hud.ActionFor(kind, EpisodeHud.DealProposeCaption(DealKind.Title(kind).ToLowerInvariant()),
+                        () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, text: kind)),
+                    Category(EpisodeCommandKind.ProposeDeal) + " · " + Chance(state, npc.id, kind, null));
+            }
+        }
+
+        /// <summary>
+        /// "about even" rather than "51%", so the chip reads as a judgement and not a promise.
+        ///
+        /// <para>It rides beside the action category rather than replacing it — every other control
+        /// in this panel says what kind of move it is, and a deal button should not be the one that
+        /// stops. And it stays out of the caption, because the caption is how a test and a screen
+        /// reader find the button, and a number that moves with the relationship would make it
+        /// unfindable.</para>
+        /// </summary>
+        private static string Chance(EpisodeState state, string npcId, string type, string about)
+        {
+            double chance = PlayerDeals.AcceptanceChance(state, npcId, type, about);
+            if (chance >= 75) return "likely";
+            if (chance >= 55) return "favourable";
+            if (chance >= 45) return "about even";
+            if (chance >= 25) return "a stretch";
+            return "unlikely";
+        }
+
+        /// <summary>What the houseguest is actually asking for, in words.</summary>
+        private static string DealSentence(EpisodeState state, DealState offer)
+        {
+            string who = state.Find(offer.proposerId)?.name ?? "They";
+            string about = offer.targetId == null ? null : state.Find(offer.targetId)?.name;
+            switch (offer.type)
+            {
+                case DealKind.VetoUse:
+                    return who + " is on the block and wants your word that you will use the veto on them.";
+                case DealKind.VoteSave:
+                    return who + " wants your vote to keep " + (about ?? "them") + " in the house this week.";
+                case DealKind.VoteEvict:
+                    return who + " wants your vote against " + (about ?? "the other nominee") + " this week.";
+                case DealKind.VoteTogether:
+                    return who + " wants the two of you to vote as a block this week.";
+                case DealKind.TargetAgreement:
+                    return who + " thinks " + (about ?? "somebody") + " is getting too strong and wants to work together on it.";
+                case DealKind.SafetyAgreement:
+                    return who + " is proposing that neither of you puts the other up.";
+                case DealKind.InformationSharing:
+                    return who + " wants to trade whatever the two of you hear around the house.";
+                case DealKind.FinalTwo:
+                    return who + " wants to sit beside you at the end.";
+                case DealKind.AllianceInvite:
+                    return who + " thinks it is time the two of you made it official.";
+                default:
+                    return who + " wants to partner up properly.";
+            }
+        }
+
         private void ChallengePanel()
         {
             hud.Paragraph("Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.");

@@ -19,7 +19,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 9) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 10) return Fail(out error, "Unsupported episode schema.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0 || s.socialActions > 18 || !Defined(s.phase))
                 return Fail(out error, "Invalid session counters or phase.");
@@ -104,6 +104,19 @@ namespace Gamesim.Simulation
             // enforced where an action is spent, which is the only place it can be.
             if (s.outOfPhaseSocialActions < 0 || s.outOfPhaseSocialActions > 18)
                 return Fail(out error, "Invalid out-of-phase social action count.");
+            // Deals are bounded like promises and for the same reason: nothing legitimately makes
+            // hundreds of them, and an unbounded list is a save that grows until it will not load.
+            if (s.deals == null || s.deals.Count > 200 ||
+                s.deals.Any(d => d == null || !Text(d.id, 160) || !Id(d.proposerId) || !Id(d.recipientId)
+                                 || d.proposerId == d.recipientId || !Optional(d.targetId)
+                                 || !DealKind.IsKnown(d.type) || !DealStatus.IsKnown(d.status)
+                                 || !DealTrust.IsKnown(d.trustImpact)
+                                 || d.week < 1 || d.week > s.week
+                                 || d.expiresWeek < 0 || d.expiresWeek > 101) ||
+                s.deals.GroupBy(d => d.id).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid deal data.");
+            if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A deal rules boundary cannot be further off than next week.");
             if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
                 s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
                 s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)

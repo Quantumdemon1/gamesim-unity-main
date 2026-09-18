@@ -118,13 +118,103 @@ Worth stating so none of the above is taken as "rewrite it to match".
 Any port from the tiers above has to arrive under those four properties, which is most of the work
 and is why raw file size is a bad estimate of effort.
 
+## Second pass: what a systems-only survey missed
+
+The first pass read `src/systems` — 147 of 1,157 files. The rest of the tree holds the two most
+actionable findings in this document.
+
+### The shipped cast does not match the reference (data only, high value)
+
+`src/data/character-templates.ts` carries every houseguest's full card, and this port's
+`CastTemplates` disagrees with it for most of the cast:
+
+| | web | this port |
+| --- | --- | --- |
+| Alex Chen | Marketing Executive · Strategic + Social | Software Architect · Analytical + Manipulative |
+| Jordan Taylor | Sales Representative · Social + Sneaky | Sales Representative · Charming + Social |
+| Quinn Martinez | Social Media Influencer · Confrontational + Social | Content Creator · Charming + Deceptive |
+| Avery Thompson | Police Officer · Loyal + Competitive | Firefighter · Loyal + Stubborn |
+| Sam Williams | Restaurant Owner · Strategic + Loyal | Site Foreman · Competitive + Loyal |
+| Blake Peterson | Architect · Analytical + Sneaky | Night Auditor · Introverted + Sneaky |
+
+Seven of twelve have different traits and nine have different occupations. **Traits are not
+cosmetic** — `WebTraits.CreateStats` derives the whole stat block from them, so these houseguests
+play differently from the same houseguests in the reference build, and `NpcSocialActions.Repertoire`
+reads the lead trait to decide what they do with a social turn. Changing Alex Chen from Analytical to
+Strategic changes his stats *and* his behaviour.
+
+All twelve also carry `hometown` and `bio` in the web table. `CharacterDraft.From` currently says
+those are left blank because "the cast table has never held either" — true of *this* port's table,
+and wrong about the source. That comment should go, and `CastTemplates.Template` should gain the two
+fields, which also makes the character creator's card copy real instead of empty.
+
+This is data, not architecture. It is the cheapest parity win available and it touches the most
+visible content in the game.
+
+### There is no CI, and the web has end-to-end coverage this port does not
+
+- **`.github/workflows/ci.yml` exists on the web. This repository has no CI at all** — a PR here
+  reports `statusCheckRollup: []`. Every check in this project is somebody remembering to run
+  `scratchpad/sync-and-run.sh`.
+- **`e2e/` holds fifteen Playwright specs, about 180 KB**, and they cover exactly the areas this port
+  treats as most dangerous: `local-save-recovery` (21 KB), `autosave-cancellation` (21 KB),
+  `live-ceremony-receipts`, `nomination-accounting`, `startup-identity`, `dialogue-resilience`,
+  `results-containment`, `final-hoh-commit`.
+
+This port's equivalent is `PortVerification.Season.cs` — one scripted walkthrough of a standalone
+build — plus section E of `ACCEPTANCE_MATRIX.md`, which is still 0/5 because it needs people. The
+tests here are better than the web's at the unit level and worse at the "does the built game
+actually work" level.
+
+Neither of these is a port. Both are process, and both are cheap next to the system tiers above.
+
+### Avatars are a real pipeline there and a placeholder here
+
+`src/avatar/` is 35 files: `CreatorStudio.tsx` (24 KB), `FacePainter.ts` (15 KB), `MorphAvatar.ts`,
+`createHumanoidBase.ts`, a casting director, and Ready Player Me integration. `tools/` adds the
+generator behind it — `gen.mjs` (46 KB), a MakeHuman pipeline with body specs, and a texture atlas
+dilator.
+
+This port has UMA, `CharacterPresentation`, and a character creator whose live preview is a wardrobe
+colour and a silhouette, with a comment explaining that a silhouette is the honest answer before a
+body exists. That comment is right, and the web answers the question differently: it builds the body.
+
+Worth knowing before anyone plans more work on the creator — the reference is not a colour picker.
+
+### Smaller models with no counterpart here
+
+- `relationship-tier.ts` — relationships as named tiers, not only a number.
+- `player-perception.ts` — how the house reads the player (`playerPersona` is in the importer's
+  discard list, and the LLM prompt in the design document takes it).
+- `conversation-topic.ts` — topics as a model; this port has a string and a validator.
+- `houseguest/mental-state.ts` — a real mood and stress model with `updateHouseguestMentalState`
+  driving it. This port has the two fields and writes them from exactly one place
+  (`EpisodeEngine.cs:446`), so the values exist but almost nothing moves them.
+
+### Documentation
+
+`docs/` has thirteen documents including `QUALITY_EVIDENCE.md` (40 KB) and `AAA_VERTICAL_SLICE.md`.
+This port has `Assets/Plans/` and `ACCEPTANCE_MATRIX.md`, which is comparable — noted only so nobody
+assumes the web is undocumented and rewrites what already exists.
+
+### Not yet read
+
+`src/contexts` (80 files) and `src/hooks` (40) were not opened. In a React codebase these often hold
+real game logic rather than only wiring, so there may be more here.
+
 ## Suggested order
 
-1. **Deals.** Highest value, existing consumer, no dependencies, proven shape.
-2. **Reconcile what is already ported against real source.** Several numbers in `NpcAlliances`,
+1. **Reconcile the cast data.** Pure data, no architecture, and it fixes the stat blocks and
+   behaviour of most of the shipped houseguests. Add `hometown` and `bio` to the template while
+   there.
+2. **Reconcile the authored numbers** against real source. Several in `NpcAlliances`,
    `NpcSocialActions` and `ThreatAssessment` are marked *authored* because the markdown did not give
-   them. At least one is wrong to be marked so: `alliance_meeting` is `relationshipChange = 3` in
-   `npc-social-behavior.ts`, exactly the value guessed. Cheap, and it raises confidence in
-   everything already shipped.
-3. **Event layer**, then **agency**, then **narrative**.
-4. **Phase E** last, as already planned.
+   them, and at least one is wrong to be marked so: `alliance_meeting` is `relationshipChange = 3` in
+   `npc-social-behavior.ts`, exactly the value guessed. Cheap, and it raises confidence in everything
+   already shipped.
+3. **CI.** The suites exist and nothing runs them automatically.
+4. **Deals.** Highest-value system gap, existing consumer, no dependencies, proven shape.
+5. **Event layer**, then **agency**, then **narrative**.
+6. **Phase E** last, as already planned.
+
+The first three are days, not weeks, and two of them are not really ports at all.

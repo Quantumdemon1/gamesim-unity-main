@@ -31,9 +31,11 @@ namespace Gamesim.Episode
         private CompetitionResult competitionCard;
         private KeyCeremony keyCeremony;
         private HouseTutorial tutorial;
+        private OpeningSequence opening;
         private MemoryWall memoryWall;
         private SeasonReport seasonReport;
         private CastSelect castSelect;
+        private CharacterCreator characterCreator;
         private MainMenu mainMenu;
         private HouseAudio audioBed;
         private HouseNpc focusedNpc;
@@ -118,8 +120,10 @@ namespace Gamesim.Episode
             competitionCard = CompetitionResult.Attach(gameObject);
             keyCeremony = KeyCeremony.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
+            opening = OpeningSequence.Attach(gameObject);
             seasonReport = SeasonReport.Attach(gameObject);
             castSelect = CastSelect.Attach(gameObject);
+            characterCreator = CharacterCreator.Attach(gameObject);
             mainMenu = MainMenu.Attach(gameObject);
             ApplyPreferences(); Project(); Render(); IsReady = true;
             // A real launch opens at the front door. A run with an explicit save root is a test or
@@ -128,7 +132,7 @@ namespace Gamesim.Episode
             // menu through OpenMainMenu when they mean to.
             if (SaveRootOverride == null) OpenMainMenu();
             // After the first Render, so the chrome the tour points at exists to be found.
-            else OfferTutorial();
+            else PlayOpening();
             Debug.Log("Gamesim episode ready: " + engine.Snapshot.contestants.Count + " contestants, validated simulation, local recovery and accessible HUD connected.");
         }
 
@@ -250,6 +254,9 @@ namespace Gamesim.Episode
                 // house with nothing behind it. The menu itself ignores Escape when there is no
                 // season to go back to, because there is nowhere for it to close to.
                 if (mainMenu != null && mainMenu.IsShowing) { if (SeasonInProgress) CloseMainMenu(); }
+                // The creator draws above the cast screen, so it takes Escape first — otherwise
+                // the screen underneath would close out from under the form on top of it.
+                else if (characterCreator != null && characterCreator.IsShowing) characterCreator.Dismiss();
                 else if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
                 else ClosePanels();
                 return;
@@ -695,6 +702,77 @@ namespace Gamesim.Episode
             if (tutorial == null || Application.isBatchMode || HouseTutorial.Seen) return;
             tutorial.Show(FindChrome);
         }
+
+        /// <summary>
+        /// Plays whichever opening beats this season has not seen.
+        ///
+        /// <para>The tour used to be started directly from both of these call sites. It is now the
+        /// fourth of five beats, so the sequence owns it and both sites hand over here — which is
+        /// also what makes the intro land before the tour rather than after it.</para>
+        ///
+        /// <para>Never in batchmode, for the reason the tour was never offered there: a sequence that
+        /// waits is the only thing that can hold up an automated season, and a headless run is by
+        /// definition not seeing any of this. Tests drive <see cref="OpeningSequence.Play"/> directly
+        /// instead.</para>
+        /// </summary>
+        public void PlayOpening()
+        {
+            if (opening == null || Application.isBatchMode) { OfferTutorial(); return; }
+            if (opening.IsPlaying) return;
+
+            var state = projected;
+            opening.Play(state.openingBeatsSeen, new OpeningSequence.Settings
+            {
+                MarkBeat = MarkOpeningBeat,
+                Rig = cameraRig,
+                RoomStops = RoomStops(),
+                RunTutorial = done =>
+                {
+                    OfferTutorial();
+                    if (tutorial == null || !tutorial.IsShowing) { done(); return; }
+                    StartCoroutine(WaitForTutorial(done));
+                },
+                Finished = Render,
+                ReducedMotion = reducedMotion,
+                Cast = state.Active.ToList(),
+                ArrivalLine = state.events
+                    .Where(entry => entry.kind == "arrival")
+                    .Select(entry => entry.text)
+                    .LastOrDefault(),
+            });
+        }
+
+        private System.Collections.IEnumerator WaitForTutorial(Action done)
+        {
+            while (tutorial != null && tutorial.IsShowing) yield return null;
+            done();
+        }
+
+        /// <summary>
+        /// Records a finished beat, through the engine like any other decision.
+        ///
+        /// <para>It is a command rather than a field the presentation writes because the record has
+        /// to survive a reload, and the only thing here that survives a reload is the season. The
+        /// meet and greet also has a rules consequence — the player stops being a stranger — and a
+        /// consequence belongs to the engine wherever it is triggered from.</para>
+        /// </summary>
+        private void MarkOpeningBeat(string beat)
+        {
+            if (string.IsNullOrEmpty(beat) || projected.openingBeatsSeen.Contains(beat)) return;
+            Commit(projected, EpisodeCommandKind.MarkOpeningBeat, target: beat);
+        }
+
+        /// <summary>
+        /// Where the walk-in stops: every room marker in the scene, in the order the house lists
+        /// them, which is the order the memory wall and the map already use.
+        /// </summary>
+        private List<KeyValuePair<string, Vector3>> RoomStops() =>
+            gameObject.scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<HouseRoomMarker>(true))
+                .Where(marker => !string.IsNullOrEmpty(marker.RoomName))
+                .OrderBy(marker => marker.RoomName, StringComparer.Ordinal)
+                .Select(marker => new KeyValuePair<string, Vector3>(marker.RoomName, marker.transform.position))
+                .ToList();
 
         /// <summary>Resolves a HUD chrome panel by name, live, for the tour to stand beside.</summary>
         private RectTransform FindChrome(string name) =>
@@ -1341,9 +1419,9 @@ namespace Gamesim.Episode
             if (mainMenu == null) return;
             mainMenu.Hide();
             ClosePanels();
-            // Deferred from bootstrap: the tour points at HUD chrome, and pointing at it from behind
-            // a full-screen menu would have been a tour of something nobody could see.
-            OfferTutorial();
+            // Deferred from bootstrap: the opening's tour points at HUD chrome, and pointing at it
+            // from behind a full-screen menu would have been a tour of something nobody could see.
+            PlayOpening();
         }
 
         private void OpenSettingsFromMenu()
@@ -1382,7 +1460,9 @@ namespace Gamesim.Episode
             // menu when they arrived through it and the settings panel when they did not.
             bool fromMenu = mainMenu != null && mainMenu.IsShowing;
             if (fromMenu) mainMenu.Hide();
-            castSelect.Show(StartSeason, fromMenu ? (Action)OpenMainMenu : Render);
+            Action back = fromMenu ? (Action)OpenMainMenu : Render;
+            castSelect.Show(StartSeason, back, characterCreator == null ? (Action<SeasonBuilder.Choice, CharacterDraft>)null
+                : (choice, draft) => characterCreator.Show(choice, draft, StartSeason, castSelect.Resume));
         }
 
         /// <summary>
@@ -1416,8 +1496,10 @@ namespace Gamesim.Episode
             var you = fresh.Find(fresh.playerId);
             return head + "  ·  " + fresh.contestants.Count + " houseguests, "
                    + CastTemplates.RosterName(choice.Roster).ToLowerInvariant()
-                   + (you != null && !string.IsNullOrEmpty(choice.PlayerTemplateId)
-                       ? ". You are playing as " + you.name + "." : ".");
+                   + (you != null && choice.Authored != null
+                       ? ". You built " + you.name + "."
+                       : you != null && !string.IsNullOrEmpty(choice.PlayerTemplateId)
+                           ? ". You are playing as " + you.name + "." : ".");
         }
         public void ImportFile(string path)
         {
@@ -1466,8 +1548,10 @@ namespace Gamesim.Episode
             if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
             if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
             if (tutorial != null) tutorial.FontScale = largeText ? 1.2f : 1;
+            if (opening != null) opening.FontScale = largeText ? 1.2f : 1;
             if (seasonReport != null) seasonReport.FontScale = largeText ? 1.2f : 1;
             if (castSelect != null) castSelect.FontScale = largeText ? 1.2f : 1;
+            if (characterCreator != null) characterCreator.FontScale = largeText ? 1.2f : 1;
             if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             if (SaveRootOverride == null)
@@ -1503,6 +1587,7 @@ namespace Gamesim.Episode
             if (competitionCard != null) { Destroy(competitionCard.gameObject); competitionCard = null; }
             if (keyCeremony != null) { Destroy(keyCeremony.gameObject); keyCeremony = null; }
             if (tutorial != null) { Destroy(tutorial.gameObject); tutorial = null; }
+            if (opening != null) { Destroy(opening.gameObject); opening = null; }
         }
 
         public static string PhaseTitle(EpisodePhase phase)

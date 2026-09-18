@@ -41,7 +41,22 @@ namespace Gamesim.Simulation
 
             public int HouseSize = DefaultHouseSize;
 
-            public Choice Copy() => (Choice)MemberwiseClone();
+            /// <summary>
+            /// A houseguest the player built themselves, which wins over <see cref="PlayerTemplateId"/>.
+            ///
+            /// <para>The two are not alternatives so much as stages: the creator is opened <i>from</i>
+            /// a card, so a customised houseguest usually has both — the id says which card is spoken
+            /// for and must not also be cast as an NPC, and the draft says who the player actually
+            /// is. Creating from a blank slate leaves the id empty and every card in the house.</para>
+            /// </summary>
+            public CharacterDraft Authored;
+
+            public Choice Copy()
+            {
+                var copy = (Choice)MemberwiseClone();
+                copy.Authored = Authored?.Copy();
+                return copy;
+            }
         }
 
         /// <summary>
@@ -77,7 +92,7 @@ namespace Gamesim.Simulation
                 socialActions = 0,
             };
 
-            state.contestants.Add(Player(persona));
+            state.contestants.Add(Player(persona, choice.Authored));
 
             // In table order, skipping whoever the player is playing as. Order is the roster's, not
             // a shuffle, for the determinism reason in the class note above.
@@ -111,8 +126,14 @@ namespace Gamesim.Simulation
         /// yours, and keeping one id means the chosen template can still appear in a later season as
         /// an NPC without colliding with a save.</para>
         /// </summary>
-        private static ContestantState Player(CastTemplates.Template persona)
+        /// <param name="authored">
+        /// A houseguest built in the creator, which takes precedence over <paramref name="persona"/>.
+        /// A customised card arrives as both: the persona still reserves the card so the player is
+        /// not also cast as an NPC, and this is who they turned that card into.
+        /// </param>
+        private static ContestantState Player(CastTemplates.Template persona, CharacterDraft authored = null)
         {
+            if (authored != null) return authored.ToContestant();
             if (persona == null)
             {
                 return new ContestantState

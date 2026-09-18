@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Gamesim.Simulation;
 using TMPro;
@@ -32,6 +33,57 @@ namespace Gamesim.Presentation
         private float cursor;
 
         private CanvasScaler scaler;
+
+        /// <summary>How the house table is ordered. Captions are what tests and readers find.</summary>
+        public enum CastSort { Placement, Name, HohWins, VetoWins, Nominations }
+
+        /// <summary>Which part of the house the table is showing.</summary>
+        public enum CastFilter { Everyone, Finalists, Jury, Evicted }
+
+        public static string SortCaption(CastSort by)
+        {
+            switch (by)
+            {
+                case CastSort.Name: return "Sort by name";
+                case CastSort.HohWins: return "Sort by HoH wins";
+                case CastSort.VetoWins: return "Sort by veto wins";
+                case CastSort.Nominations: return "Sort by nominations";
+                default: return "Sort by placement";
+            }
+        }
+
+        public static string FilterCaption(CastFilter which)
+        {
+            switch (which)
+            {
+                case CastFilter.Finalists: return "Finalists";
+                case CastFilter.Jury: return "The jury";
+                case CastFilter.Evicted: return "Evicted before jury";
+                default: return "Everyone";
+            }
+        }
+
+        // The table's ordering and filter are read back out by the screen when it rebuilds itself,
+        // so they live here rather than being passed down. They are presentation and nothing else:
+        // no part of a finished season changes because somebody sorted a column.
+        private CastSort sortBy = CastSort.Placement;
+        private CastFilter filter = CastFilter.Everyone;
+
+        /// <summary>
+        /// Who the house table is currently listing, in the order it lists them.
+        ///
+        /// <para>Exposed because the rest of the screen names houseguests too — the standings list
+        /// everybody whatever the table is filtered to — so "is this person on screen" cannot answer
+        /// "is this person in the table".</para>
+        /// </summary>
+        public IReadOnlyList<string> TableNames => tableNames;
+
+        private List<string> tableNames = new List<string>();
+
+        // Held so a sort or filter can redraw without the caller having to hand them over again.
+        private EpisodeState shown;
+        private Func<string, Texture> shownPortrait;
+        private Action shownReview;
 
         /// <summary>
         /// The "larger text" accessibility setting, applied by scaling the whole screen rather than
@@ -95,7 +147,12 @@ namespace Gamesim.Presentation
         public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview)
         {
             if (state == null) return;
-            Rebuild(state, portrait ?? (_ => null), onReview);
+            shown = state;
+            shownPortrait = portrait ?? (_ => null);
+            shownReview = onReview;
+            sortBy = CastSort.Placement;
+            filter = CastFilter.Everyone;
+            Rebuild(state, shownPortrait, onReview);
             group.alpha = 1f;
             group.blocksRaycasts = true;
             group.interactable = true;
@@ -133,6 +190,7 @@ namespace Gamesim.Presentation
             cursor = 0f;
             Header(state);
             Winner(state, portrait);
+            WinnersJourney(state);
             YourJourney(state);
             Standings(state);
             WeekByWeek(state);
@@ -208,6 +266,53 @@ namespace Gamesim.Presentation
             tag.text = badge;
             tag.rectTransform.sizeDelta = new Vector2(300f, 20f);
             tag.rectTransform.anchoredPosition = new Vector2(0f, -60f);
+        }
+
+        /// <summary>
+        /// How the champion got there: the three numbers that describe a winning season.
+        ///
+        /// <para>Skipped entirely when the player won it, because the block underneath already says
+        /// all of this about the same person and two identical cards in a row reads as a bug rather
+        /// than as emphasis.</para>
+        /// </summary>
+        private void WinnersJourney(EpisodeState state)
+        {
+            var champion = state.Find(state.winnerId);
+            if (champion == null || champion.isPlayer) return;
+
+            Heading(champion.name + "'s road to the end");
+            var card = Panel(132f, UiTheme.Surface);
+
+            Stat(card, 0, "HOH WINS", champion.hohWins.ToString(), UiTheme.Accent);
+            Stat(card, 1, "VETO WINS", champion.vetoWins.ToString(), UiTheme.Gold);
+            Stat(card, 2, "NOMINATED", champion.timesNominated.ToString(),
+                champion.timesNominated > 0 ? UiTheme.Danger : UiTheme.Positive);
+            Stat(card, 3, "COMP WINS", (champion.hohWins + champion.vetoWins).ToString(), UiTheme.Positive);
+            Stat(card, 4, "WITH YOU",
+                Math.Round(state.Score(state.playerId, champion.id)).ToString(CultureInfo.InvariantCulture),
+                UiTheme.Muted);
+
+            var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
+            note.text = WinnerNote(champion);
+            Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
+        }
+
+        /// <summary>
+        /// One line on how the champion played it, from the shape of their own record rather than
+        /// from a phrase picked at random — a winner who never won anything and a winner who won
+        /// everything did not have the same season and should not be described the same way.
+        /// </summary>
+        private static string WinnerNote(ContestantState champion)
+        {
+            int comps = champion.hohWins + champion.vetoWins;
+            if (comps == 0 && champion.timesNominated == 0)
+                return "Never on the block, never in charge. Nobody ever thought to move on them.";
+            if (comps == 0)
+                return "Won nothing and survived anyway, which is the harder way to do it.";
+            if (champion.timesNominated == 0)
+                return "Won " + comps + " and was never once put up for it.";
+            return "Won " + comps + " and survived the block " + champion.timesNominated
+                   + (champion.timesNominated == 1 ? " time." : " times.");
         }
 
         /// <summary>The player's own season, which is the part they actually came for.</summary>
@@ -312,13 +417,32 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>
+        /// Every houseguest's season, sortable by each column and filterable by how far they got.
+        ///
+        /// <para>The controls are buttons that say what they do — "Sort by veto wins" — rather than
+        /// column headings that happen to be clickable. A heading that is secretly a control is
+        /// invisible to anyone not using a mouse, and this screen is the one most likely to be read
+        /// rather than played.</para>
+        ///
+        /// <para>Sorting and filtering change nothing but this list. A finished season is a record,
+        /// and looking at it from a different angle is not an edit.</para>
+        /// </summary>
         private void Cast(EpisodeState state, Func<string, Texture> portrait)
         {
             Heading("The house");
+            CastControls();
 
-            foreach (var who in state.contestants
-                .OrderByDescending(c => c.hohWins + c.vetoWins)
-                .ThenBy(c => c.name))
+            var shownCast = Ordered(state, Filtered(state)).ToList();
+            tableNames = shownCast.Select(c => c.name).ToList();
+            if (shownCast.Count == 0)
+            {
+                Text("Nobody in this season finished there.", 15f, UiTheme.Muted, 30f,
+                    TextAlignmentOptions.Center);
+                return;
+            }
+
+            foreach (var who in shownCast)
             {
                 var row = Panel(64f, UiTheme.Surface);
 
@@ -346,6 +470,121 @@ namespace Gamesim.Presentation
                         TextAlignmentOptions.Left);
                 }
             }
+        }
+
+        /// <summary>The sort and filter rows above the table.</summary>
+        private void CastControls()
+        {
+            var sorts = (CastSort[])Enum.GetValues(typeof(CastSort));
+            var sortBar = Panel(44f, new Color(0f, 0f, 0f, 0f));
+            float span = (Width - Pad * 2f) / sorts.Length;
+            float x = -(sorts.Length - 1) * span / 2f;
+            foreach (var option in sorts)
+            {
+                var pick = option;
+                Chip(sortBar, SortCaption(pick), x, span - 8f, sortBy == pick, () =>
+                {
+                    sortBy = pick;
+                    Rebuild(shown, shownPortrait, shownReview);
+                });
+                x += span;
+            }
+
+            var filters = (CastFilter[])Enum.GetValues(typeof(CastFilter));
+            var filterBar = Panel(44f, new Color(0f, 0f, 0f, 0f));
+            span = (Width - Pad * 2f) / filters.Length;
+            x = -(filters.Length - 1) * span / 2f;
+            foreach (var option in filters)
+            {
+                var pick = option;
+                Chip(filterBar, FilterCaption(pick), x, span - 8f, filter == pick, () =>
+                {
+                    filter = pick;
+                    Rebuild(shown, shownPortrait, shownReview);
+                });
+                x += span;
+            }
+        }
+
+        private IEnumerable<ContestantState> Filtered(EpisodeState state)
+        {
+            switch (filter)
+            {
+                case CastFilter.Finalists:
+                    return state.contestants.Where(c => c.status == ContestantStatus.Winner
+                                                        || c.status == ContestantStatus.RunnerUp);
+                case CastFilter.Jury:
+                    return state.contestants.Where(c => c.status == ContestantStatus.Jury);
+                case CastFilter.Evicted:
+                    return state.contestants.Where(c => c.status == ContestantStatus.Evicted);
+                default:
+                    return state.contestants;
+            }
+        }
+
+        /// <summary>
+        /// The chosen order, with a stable tie-break on name throughout — so two houseguests with
+        /// the same two veto wins do not swap places every time the list is redrawn.
+        /// </summary>
+        private IEnumerable<ContestantState> Ordered(EpisodeState state, IEnumerable<ContestantState> cast)
+        {
+            switch (sortBy)
+            {
+                case CastSort.Name:
+                    return cast.OrderBy(c => c.name, StringComparer.CurrentCulture);
+                case CastSort.HohWins:
+                    return cast.OrderByDescending(c => c.hohWins).ThenBy(c => c.name, StringComparer.CurrentCulture);
+                case CastSort.VetoWins:
+                    return cast.OrderByDescending(c => c.vetoWins).ThenBy(c => c.name, StringComparer.CurrentCulture);
+                case CastSort.Nominations:
+                    return cast.OrderByDescending(c => c.timesNominated).ThenBy(c => c.name, StringComparer.CurrentCulture);
+                default:
+                    // How far they got, which is the order the standings above already read in.
+                    return cast
+                        .OrderBy(c => PlacementRank(c.status))
+                        .ThenByDescending(c => c.hohWins + c.vetoWins)
+                        .ThenBy(c => c.name, StringComparer.CurrentCulture);
+            }
+        }
+
+        private static int PlacementRank(ContestantStatus status)
+        {
+            switch (status)
+            {
+                case ContestantStatus.Winner: return 0;
+                case ContestantStatus.RunnerUp: return 1;
+                case ContestantStatus.Active: return 2;
+                case ContestantStatus.Jury: return 3;
+                default: return 4;
+            }
+        }
+
+        /// <summary>A pill control, the same shape the cast screen and the creator use.</summary>
+        private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)
+        {
+            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.AccentDeep : UiTheme.SurfaceRaised, 16);
+            pill.anchorMin = new Vector2(0.5f, 0.5f);
+            pill.anchorMax = new Vector2(0.5f, 0.5f);
+            pill.pivot = new Vector2(0.5f, 0.5f);
+            pill.sizeDelta = new Vector2(width, 34f);
+            pill.anchoredPosition = new Vector2(x, 0f);
+            UiTheme.AddBorder(pill, 16, active ? UiTheme.Accent : UiTheme.Outline);
+
+            var image = pill.GetComponent<Image>();
+            image.raycastTarget = true;
+
+            var label = HudPrimitives.Label("Label", pill, 12f, active ? UiTheme.Paper : UiTheme.Muted,
+                TextAlignmentOptions.Center);
+            label.text = text;
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(5f, 0f);
+            label.rectTransform.offsetMax = new Vector2(-5f, 0f);
+
+            var button = pill.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.onClick.AddListener(() => action());
+            return button;
         }
 
         private void Buttons(Action onReview)

@@ -96,6 +96,33 @@ need, and `CastTemplates.ToContestant` is the shape it would produce.
 **Phase 4 — opening sequences.** Intro, house entry, walk-in, meet and greet. Presentation only,
 and the least load-bearing: the game is complete without them, it just does not open well.
 
+Three things came out of building the creator and the opening that are worth keeping:
+
+- **Customising a card does not preserve its stats, and the gap is not small.** The source lists what
+  a chosen character brings along — name, age, job, hometown, bio, traits, look, pronouns — and stats
+  are not on that list; step two then puts everybody who reaches it on five with five spare. But a
+  card *played as it is* gets its block from `WebTraits.CreateStats`, which seeds each stat at six,
+  five or four by whether a held trait names it. So the customised version of a houseguest starts
+  flatter, higher in total, and with five points still to spend. Customising is a way to start again
+  from what somebody was, not a way to keep them and adjust. Pinned by
+  `CustomisingACardDoesNotPreserveItsStats`.
+- **The opening must not be able to re-roll a season.** The meet and greet is the one beat with a
+  rules consequence — the player stops being a stranger to everybody — and it is written
+  symmetrically through the ledger rather than through `Change`, which rolls. One draw there would
+  move every competition and vote after it, which would make the difference between watching the
+  intro and skipping it a difference in who wins. `NoBeatSpendsTheSeasonsGenerator` is the guard.
+- **Confetti is UI images, not particle systems**, which is a departure from what this plan asked
+  for. A particle system renders in the world, so over a screen-space overlay it needs a camera to
+  sit in front of, a URP material to be lit by and a render pipeline to be present — three
+  dependencies for confetti. Rectangles in the same canvas as the titles need none of them.
+
+Also worth recording because it cost a run: the sequence was first attached as its own scene root,
+copying `CeremonyTakeover`. The ceremony cards sit outside the director's subtree deliberately,
+because they are watched rather than used and a card carrying a houseguest's name would turn up in
+every enumeration of the director's controls. The opening is a screen with a control on it, so it
+belongs with the cast screen and the report — parented to the director. Eight tests failed at once on
+`GetComponentInChildren` returning null, which is what that mistake looks like.
+
 ## What not to port
 
 The web game's home page, sign-in, account creation, onboarding and cloud leaderboard exist to serve

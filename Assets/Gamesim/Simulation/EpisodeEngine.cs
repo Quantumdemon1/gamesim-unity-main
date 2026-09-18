@@ -104,6 +104,7 @@ namespace Gamesim.Simulation
                         : "You addressed the house from the block.");
                     break;
                 case EpisodeCommandKind.SetBackdoorPlan: SetBackdoorPlan(s, s.Find(c.targetId)); break;
+                case EpisodeCommandKind.MarkOpeningBeat: MarkOpeningBeat(s, c.targetId); break;
                 case EpisodeCommandKind.FinalEvict:
                     Require(s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId, "Only the final HoH makes this choice.");
                     FinalEvict(s, c.targetId); break;
@@ -757,6 +758,57 @@ namespace Gamesim.Simulation
             Remember(s, s.playerId, target.id, "I spent week " + s.week + " quietly working against "
                 + target.name + ".", true);
             Log(s, "scheme", "You worked against " + target.name + " without saying so to their face.", s.playerId);
+        }
+
+        /// <summary>
+        /// Records that an opening beat has been played.
+        ///
+        /// <para>Bookkeeping, not an event: no roll, no log entry and no standing changes. It exists
+        /// so the intro does not replay every time a season is loaded, which is the one thing an
+        /// unskippable-feeling cinematic does that nothing else in this game does.</para>
+        ///
+        /// <para>Deliberately not confined to a phase. The beats run before the first competition, so
+        /// the season is in its opening social week the whole time — but a player who quits during
+        /// the walk-in and comes back is still owed the rest of the sequence, and refusing the mark
+        /// because the phase had moved on would replay the intro forever.</para>
+        /// </summary>
+        private static void MarkOpeningBeat(EpisodeState s, string beat)
+        {
+            Require(OpeningBeat.IsKnown(beat), "That is not one of the opening beats.");
+            if (s.openingBeatsSeen.Contains(beat)) return;
+            s.openingBeatsSeen.Add(beat);
+            if (beat == OpeningBeat.MeetAndGreet) FirstImpressions(s);
+        }
+
+        /// <summary>
+        /// How much the house warms to somebody it has actually met.
+        ///
+        /// <para><b>Authored.</b> The reference build says early relationship scores start moving at
+        /// the meet and greet and does not say by how much. Small and positive is the defensible
+        /// reading: having been introduced is better than being a stranger, and anything larger would
+        /// make the opening worth more than a week of playing.</para>
+        /// </summary>
+        public const double FirstImpressionImpact = 3;
+
+        /// <summary>
+        /// The meet and greet's one consequence: the player is no longer a stranger.
+        ///
+        /// <para>Written symmetrically through the ledger rather than through <c>Change</c>, so it
+        /// spends no randomness. That is what lets the beat be part of a season's record without the
+        /// opening deciding who wins the first competition — an opening sequence must not be able to
+        /// re-roll a season, and a single roll here would.</para>
+        ///
+        /// <para>Runs once, because the beat is recorded before it is applied and a recorded beat is
+        /// never marked twice.</para>
+        /// </summary>
+        private static void FirstImpressions(EpisodeState s)
+        {
+            foreach (var other in s.Active.Where(c => !c.isPlayer).ToList())
+            {
+                RelationshipLedger.Move(s, s.playerId, other.id, FirstImpressionImpact);
+                RelationshipLedger.Record(s, s.playerId, other.id, "met",
+                    FirstImpressionImpact, "You met " + other.name + " on the first night");
+            }
         }
 
         /// <summary>

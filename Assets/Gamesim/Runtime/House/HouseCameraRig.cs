@@ -165,6 +165,40 @@ namespace Gamesim.House
             desiredDistance = distance;
         }
 
+        /// <summary>
+        /// Points the camera at somewhere in particular, for a scripted move.
+        ///
+        /// <para>A waypoint rather than a path: the caller walks the list and this eases toward each
+        /// one using the same smoothing every other automatic move uses, so a scripted sweep and a
+        /// conversation framing look like the same camera. The opening walk-in is the only caller
+        /// today.</para>
+        ///
+        /// <para>Callers turn <see cref="ControlsEnabled"/> off for the duration. Leaving it on does
+        /// not break anything, but a key held down would fight the sweep every frame and the player
+        /// would be shown a camera that appears to be struggling.</para>
+        ///
+        /// <para>Under reduced motion the blend is already one, so the move lands immediately. That
+        /// is the intended behaviour and not a degradation: the preference removes the sweep, not the
+        /// place it was going.</para>
+        /// </summary>
+        public void MoveTo(Vector3 focus, float wantedDistance)
+        {
+            Initialize();
+            ClearSubject();
+            desiredFocus = ClampFocus(focus);
+            desiredDistance = Mathf.Clamp(wantedDistance, minimumDistance, maximumDistance);
+        }
+
+        /// <summary>Whether the last <see cref="MoveTo"/> has effectively landed.</summary>
+        public bool HasArrived(float tolerance = 0.35f) =>
+            (transform.position - desiredFocus).sqrMagnitude <= tolerance * tolerance
+            && Mathf.Abs(distance - desiredDistance) <= tolerance;
+
+        /// <summary>Where the house is centred and how far the camera may pull back, for a caller
+        /// composing a scripted move without having to know the rig's serialized fields.</summary>
+        public Vector3 HouseCenter => houseCenter;
+        public float FarthestDistance => maximumDistance;
+
         public void EndConversation()
         {
             if (!IsConversationFocused)

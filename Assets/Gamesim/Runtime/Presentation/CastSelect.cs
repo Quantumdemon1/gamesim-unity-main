@@ -51,6 +51,7 @@ namespace Gamesim.Presentation
 
         private Action<SeasonBuilder.Choice> onStart;
         private Action onCancel;
+        private Action<SeasonBuilder.Choice, CharacterDraft> onCustomise;
 
         private CanvasScaler scaler;
 
@@ -113,10 +114,20 @@ namespace Gamesim.Presentation
         /// Opens the screen. <paramref name="start"/> receives the choice when the player commits;
         /// <paramref name="cancel"/> runs when they back out, and nothing is built in that case.
         /// </summary>
-        public void Show(Action<SeasonBuilder.Choice> start, Action cancel)
+        public void Show(Action<SeasonBuilder.Choice> start, Action cancel) => Show(start, cancel, null);
+
+        /// <summary>
+        /// The same, with the creator attached. <paramref name="customise"/> receives the choice as
+        /// it stands and the draft to open — built from the selected card, or blank when there is
+        /// none. Without it the two creator controls are simply not drawn, so a caller that has no
+        /// creator still gets a working cast screen.
+        /// </summary>
+        public void Show(Action<SeasonBuilder.Choice> start, Action cancel,
+            Action<SeasonBuilder.Choice, CharacterDraft> customise)
         {
             onStart = start;
             onCancel = cancel;
+            onCustomise = customise;
             roster = CastTemplates.Roster.Regular;
             category = CastTemplates.AllCategories;
             selectedId = null;
@@ -393,7 +404,54 @@ namespace Gamesim.Presentation
                 start?.Invoke(choice);
             });
             Chip(bar, CancelCaption, 150f, 260f, false, Dismiss);
+
+            // The reference build's step one offers three ways out of this grid: play a card as it
+            // is, open it for editing, or start from nothing. The first is the control above; these
+            // are the other two, and "Customise" names the selected houseguest so it is never a
+            // question of which card it would open.
+            if (onCustomise != null)
+            {
+                var creator = Row(52f);
+                Chip(creator, CharacterCreator.CreateCaption, -170f, 320f, false,
+                    () => OpenCreator(CharacterDraft.Blank()));
+                Chip(creator, CharacterCreator.CustomiseCaption, 170f, 320f, false, () =>
+                    OpenCreator(chosen != null ? CharacterDraft.From(chosen) : CharacterDraft.Blank()));
+                Text(chosen != null
+                        ? "Customise opens " + chosen.Name + " for editing. Create your own starts from a blank card."
+                        : "No card picked, so both start from a blank card.",
+                    12f, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
+            }
             Space(Pad);
+        }
+
+        /// <summary>
+        /// Hands the current roster, size and card over to the creator.
+        ///
+        /// <para>The screen hides rather than closing: the creator's back control brings it straight
+        /// back, and re-showing it would reset the roster, the filter and the pick the player has
+        /// just spent time on.</para>
+        /// </summary>
+        private void OpenCreator(CharacterDraft start)
+        {
+            var choice = new SeasonBuilder.Choice
+            {
+                Roster = roster,
+                PlayerTemplateId = selectedId,
+                HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
+            };
+            var customise = onCustomise;
+            Hide();
+            customise?.Invoke(choice, start);
+        }
+
+        /// <summary>Brings the screen back with the player's roster, filter and pick intact.</summary>
+        public void Resume()
+        {
+            if (onStart == null) return;
+            Rebuild();
+            group.alpha = 1f;
+            group.blocksRaycasts = true;
+            group.interactable = true;
         }
 
         // ---------------------------------------------------------------- pieces

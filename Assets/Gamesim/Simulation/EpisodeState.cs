@@ -301,7 +301,30 @@ namespace Gamesim.Simulation
         StudyHouse, SimulateCompetition,
         SubmitEvictionSpeech,
         AskForIntel, Eavesdrop, SpreadLie, VentAbout, SchemeAgainst,
-        SetBackdoorPlan // Append: preserve every pre-v4 command ordinal.
+        SetBackdoorPlan,
+        MarkOpeningBeat // Append: preserve every pre-v4 command ordinal.
+    }
+
+    /// <summary>
+    /// The five beats that run once, in order, before the first Head of Household competition.
+    ///
+    /// <para>Named rather than numbered because <see cref="EpisodeState.openingBeatsSeen"/> stores
+    /// the names, and a season saved halfway through the opening has to be able to say which of them
+    /// it has already played after the list has been reordered or added to.</para>
+    /// </summary>
+    public static class OpeningBeat
+    {
+        public const string Intro = "intro";
+        public const string HouseEntry = "house-entry";
+        public const string WalkIn = "house-walk-in";
+        public const string Tutorial = "tutorial";
+        public const string MeetAndGreet = "meet-and-greet";
+
+        /// <summary>In the order the reference build plays them.</summary>
+        public static readonly string[] InOrder = { Intro, HouseEntry, WalkIn, Tutorial, MeetAndGreet };
+
+        public static bool IsKnown(string beat) =>
+            beat != null && Array.IndexOf(InOrder, beat) >= 0;
     }
 
     [Serializable]

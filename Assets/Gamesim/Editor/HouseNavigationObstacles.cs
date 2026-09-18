@@ -146,10 +146,29 @@ namespace Gamesim.Editor
             if (!TryFindSurface(out var surface)) return;
 
             var existing = surface.navMeshData;
+            // What the house can currently do, so the new bake can be compared against it.
+            int before = HouseNavigationAudit.ReachablePairs();
+
             surface.BuildNavMesh();
             if (surface.navMeshData == null)
             {
                 Debug.LogError("[Gamesim] The NavMesh bake produced no data; nothing was written.");
+                return;
+            }
+
+            // A bake that disconnects rooms is worse than a stale one, and this house can produce
+            // exactly that: the committed NavMesh joins the yard to the rest of the house and a
+            // fresh bake of the current geometry does not. Whatever is missing, discovering it by
+            // shipping a house nobody can cross is the wrong way round, so a bake that loses ground
+            // is refused rather than written.
+            int after = HouseNavigationAudit.ReachablePairs();
+            if (after < before)
+            {
+                surface.navMeshData = existing;
+                Debug.LogWarning("[Gamesim] Rebake REFUSED: the new bake reaches " + after
+                                 + " room pairs where the current one reaches " + before
+                                 + ". The old NavMesh has been kept. Something in the scene no longer"
+                                 + " bakes into a connected house — find it before baking again.");
                 return;
             }
 

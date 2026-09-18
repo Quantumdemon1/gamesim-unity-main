@@ -197,6 +197,31 @@ namespace Gamesim.Editor
         /// running game has every agent bound and every room occupied, so a difference between the
         /// two readings is worth believing the running one.</para>
         /// </summary>
+        /// <summary>
+        /// How many room pairs can currently reach each other, for a caller that wants to compare
+        /// two navigation meshes rather than read a report.
+        /// </summary>
+        public static int ReachablePairs()
+        {
+            var markers = UnityEngine.Object.FindObjectsByType<Gamesim.House.HouseRoomMarker>(
+                    FindObjectsInactive.Exclude)
+                .Where(marker => !string.IsNullOrEmpty(marker.RoomName))
+                .ToList();
+            var grounded = new List<Vector3>();
+            foreach (var marker in markers)
+                if (NavMesh.SamplePosition(marker.transform.position, out var hit, 2f, NavMesh.AllAreas))
+                    grounded.Add(hit.position);
+
+            int reachable = 0;
+            var path = new NavMeshPath();
+            for (int a = 0; a < grounded.Count; a++)
+                for (int b = a + 1; b < grounded.Count; b++)
+                    if (NavMesh.CalculatePath(grounded[a], grounded[b], NavMesh.AllAreas, path)
+                        && path.status == NavMeshPathStatus.PathComplete)
+                        reachable++;
+            return reachable;
+        }
+
         private static void Reachability()
         {
             var markers = UnityEngine.Object.FindObjectsByType<Gamesim.House.HouseRoomMarker>(FindObjectsInactive.Exclude)

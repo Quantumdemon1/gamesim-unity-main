@@ -851,7 +851,18 @@ namespace Gamesim.Simulation
         {
             WriteScore(s, from, to, 0);
             var relation = s.relationships.Single(r => r.fromId == from && r.toId == to);
-            relation.events.Add(new RelationshipEventState { sequence = s.nextSequence++, week = s.week, type = type, description = note, impactScore = delta, decayable = true });
+            relation.events.Add(new RelationshipEventState { sequence = s.nextSequence++, week = s.week,
+                type = type, description = note, impactScore = delta,
+                // Set from the act rather than hardcoded. An untyped change is ordinary social
+                // traffic and fades; the ledger names the ones that do not.
+                //
+                // No currently-written type is permanent, so this is a no-op today and correct the
+                // moment one is. Naming the permanent acts — nominations, veto saves, alliances —
+                // means passing an eventType where none is passed now, and the branch above
+                // consumes an extra generator roll and two sequence numbers when it fires. That
+                // re-rolls every season and breaks every replay fixture, so it lands once, with the
+                // NPC writes in Phase C, rather than twice.
+                decayable = RelationshipLedger.Decays(type) });
             if (relation.events.Count > 512) relation.events.RemoveAt(0);
         }
 

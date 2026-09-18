@@ -1,130 +1,167 @@
 # What the houseguests do when nobody is playing them
 
-A plan for NPC behaviour, written after porting the player's social vocabulary and finding the
-asymmetry that created.
+A plan for NPC behaviour, rewritten against `GameSim-NPC-Behavior.md` (the web build's own
+description, 2,552 lines). An earlier version of this plan was written from a survey of the Unity
+code alone; the source corrects it in several places, and those corrections are called out below.
 
-## The headline finding
+## The architectural finding, which changes the scope
 
-**Only the player can form an alliance or make a promise.** `alliances.Add` and `promises.Add`
-appear exactly once each in the whole simulation, both inside the player's social-action path in
-`EpisodeEngine`. No houseguest has ever formed an alliance with another houseguest, or promised one
-anything, in any season this project has ever run.
+The source describes four layers, and states the rule that governs them:
 
-Every alliance in the house is one the player is in. Every promise is one the player made or
-received. The voting-bloc system — which is substantial, ported faithfully, and well tested — reads
-alliances to decide how a bloc coordinates its votes, so it has only ever coordinated blocs the
-player built. The NPCs are not playing the game; they are reacting to someone who is.
+> **Layer 2 is the source of truth for outcomes, Layer 4 is the source of truth for voice.**
 
-The reference build's own description of the social week is the contrast: *"houseguests move on their
-own, seek each other out, form and break alliances, gossip, remember what you did, and react."*
-Three of those six are done.
-
-## What is already ported, and is good
-
-This is not a bare simulation. The parts that exist are real and tested:
-
-| System | Where | What it does |
+| Layer | Where it runs | Status here |
 | --- | --- | --- |
-| Motives and decay | `WebNpcMotives`, `WebNpcActivityRules` | Each houseguest carries motives that decay and are satisfied by activities |
-| Where they go | `WebNpcActivityCatalog`, `HouseMeetingCoordinator` | Room choice, rendezvous points, world leases so two pairs cannot claim one venue |
-| Who they seek | `WebNpcSeekCandidate`, `EpisodeNpcSocial` | Conversation partner selection, cooldowns, pair memory |
-| What they talk about | `WebNpcConversations` | Trait-weighted topic choice, duration, completion effects |
-| How they vote | `WebEvictionVoting`, `WebNativeEvictionRound`, `WebVotingBlocs` | Threat/alliance/relationship/deal weights, bloc coordination, public vs private reasons |
-| What they feel | `WebRelationshipArcs`, `WebJurySentiment` | Arcs with escalation levels, jury sentiment across the season |
-| Oath ripples | `WebLoyaltyOaths` | How a declaration moves third parties |
+| 4 — LLM narrative cognition | server | **Out of scope, and costs nothing.** Language only |
+| 3 — Cognitive state: memory stream, retrieval, reflection, self-model, goals | client, in the save | **Absent** |
+| 2 — Numeric strategy: threat, decision engine, obligations, ledger, arcs | client, deterministic | **Half ported** |
+| 1 — Embodied autonomy: motive decay, activity advertising, pathing | client, real time | **Ported** |
 
-The conversation scheduler in particular (`NpcSocialState`, `EpisodeNpcSocial`) is careful work —
-clock ticks, issued sequences, pair memory in both directions, world-readiness evidence separated
-from simulation state. None of that needs redoing.
+This is better news than the earlier plan assumed. I had treated NPC intelligence as something that
+might need a model behind it. It does not: the source says every layer runs without the one above,
+that Layers 1–3 are client-side, and — explicitly — that *"the fallback generator is therefore
+reproducible, which makes AI behavior testable without network access."*
+
+So the whole of NPC decision-making is portable, deterministically, with `HouseDialogue` supplying
+the templated language the source falls back to. Nothing here needs a service this project has
+always said it will not use.
+
+## What is already ported
+
+Layer 1 is done, and Layer 2's *voting* half is done well: `WebEvictionVoting`,
+`WebNativeEvictionRound` and `WebVotingBlocs` carry threat/alliance/relationship/deal weights, bloc
+coordination, and the split between public and private reasoning. The conversation scheduler
+(`NpcSocialState`, `EpisodeNpcSocial`, `WebNpcConversations`) handles who talks to whom, about what,
+for how long, with pair memory in both directions.
 
 ## What is missing
 
-Measured against the reference build's §10 "Houseguest intelligence" row and §6's social week.
+### 1. Houseguests cannot form alliances or make promises (still the biggest)
 
-### 1. Houseguests cannot form or break alliances (biggest)
+`alliances.Add` and `promises.Add` each appear exactly once in the entire simulation, both on the
+player's path. No houseguest has ever formed an alliance with another houseguest in any season this
+project has run — so the bloc system, which reads alliances to decide how a bloc coordinates, has
+only ever coordinated blocs the player personally built.
 
-The bloc system is built to coordinate alliances that mostly do not exist. Until NPCs pair up on
-their own, its most interesting path is unreachable in a season the player does not personally
-construct.
+The source gives both rules outright. **Alliance desire:**
 
-Needs: a rule for when two houseguests form a pact (the source uses a relationship floor), and one
-for when it dissolves (the source dissolves automatically if any pair sours badly). Both must run
-off the season's generator, and both must write through the same `AllianceState` the player's path
-uses so the bloc system needs no changes at all.
+```
+score = relationship*0.4 + sharedThreats*15 + strategicValue*0.15 + (trust-50)*0.3 - alliances*10
+propose when relationship >= 25 and score > 25
+```
+where `sharedThreats` counts houseguests both parties rate below −20 — the engine's "enemy of my
+enemy", worth 15 points each and the standout term in the formula. `strategicValue` is
+`compWins*5 + social*3`. Capped at 3 alliances per person.
 
-### 2. Houseguests cannot use the vocabulary the player just got
+**Promise type follows game position, not affection** — nominee begs for votes, an unallied player
+courts the HoH, a warm unallied bond becomes alliance loyalty, and past relationship 60 at six or
+fewer an NPC starts shopping for a final two.
 
-The player can now ask for intel, eavesdrop, lie, vent, scheme and plan a backdoor. Houseguests can
-talk, and that is all. An NPC who can be lied to but cannot lie is not a player in the same game.
+### 2. No threat assessment
 
-The honest framing: this is not "give NPCs six commands". Most of those actions are *player*
-affordances — eavesdropping is a thing you do because you are standing somewhere. The ones that make
-a house feel alive are lying, venting and scheming, because they produce relationship movement the
-player can notice and misread.
+The earlier plan called this "no standing threat ranking" and left the shape open. The source
+defines it precisely: a 0–100 composite of five **capped** components, where capping is the point —
+a competition beast maxes at 40 and still needs social capital and alliance power to read as an
+extreme threat.
 
-### 3. No standing threat ranking
+| Component | Cap | Driven by |
+| --- | --- | --- |
+| competition | 40 | HoH wins ×8, veto wins ×6 |
+| social | 30 | Average relationship with the active house |
+| alliance | 20 | Total alliance membership size ×4 |
+| potential | 10 | competition/10×3 + strategic/10×2, +2 for the social+strategic jury combo |
+| reputation | 15 | Broken deals ×3 (cap 8), trust <35 → +5, trust >70 → −3, rivalry arcs |
 
-`WebEvictionVoting` carries threat *weights* inside a single vote evaluation, but there is no threat
-ranking the house holds between votes, and nothing implements the source's *"threat logic shifts
-sharply at five players or fewer"*. That shift is what makes an endgame feel different from week
-three, and its absence is why the late season currently plays like the early one.
+Everything this needs already exists on `ContestantState` except trust.
 
-### 4. No storylines, crises or story beats
+### 3. The interaction ledger exists but its asymmetry does not
 
-Absent entirely — no file mentions them. The source spawns narrative arcs from betrayals and intense
-relationships, interrupts the week with crises and war-room moments, and carries modifiers forward.
-`WebRelationshipArcs` is the nearest thing and tracks intensity without ever spending it on an event.
+This is the correction I most want to flag, because the structure looked done and is not.
 
-### 5. Houseguests do not reflect
+`RelationshipEventState` already carries `type`, `impactScore` and a `decayable` flag — close to the
+source's `TrackedInteraction`. But **`decayable` is written `true` at the single call site and never
+read anywhere**, and there is no weekly relationship decay pass at all. Only *motive* decay exists,
+which is Layer 1 and unrelated.
 
-The player has a diary room that shapes a persona. Houseguests have memories written about them and
-never look back at them. The source has them reflect on past events; here, memory is only ever read
-by the vote evaluator.
+The source's headline for this system is the asymmetry:
 
-## Order of work, and why
+> **Betrayals never decay** — that asymmetry is the main reason the house develops long memories and
+> grudges.
 
-**Phase A — alliances between houseguests.** Highest value by a distance, because it is the one gap
-that makes an existing, expensive, well-tested system (voting blocs) reachable. It is also the
-smallest of the five: a formation rule, a dissolution rule, and the generator discipline to keep
-both replayable. Nothing downstream needs changing — the bloc system reads `AllianceState` and does
-not care who wrote it.
+So the house currently has no long memory of betrayal, and also no forgetting of anything else. Both
+halves are missing, and they only mean something together: decay without the exception makes
+betrayal cheap, and the exception without decay makes nothing special.
 
-**Phase B — a standing threat ranking.** Second because it is what makes Phase A's alliances *aim*
-at something, and because the five-or-fewer shift is a concrete, testable rule rather than an open
-design. Likely a derived value rather than persisted state, which would avoid a schema version.
+### 4. No trust score
 
-**Phase C — the social vocabulary for houseguests.** Lying, venting and scheming, driven by motives
-and threat. Deliberately after B, because an NPC that schemes without a threat model schemes at
-random, and random malice reads as noise rather than as a house with opinions.
+The source's `interactionTracker.getTrustScore` (default 50) feeds alliance desire, reputation
+threat, and vote weighting. Nothing here computes it. It is derivable from the ledger above rather
+than being new stored state.
 
-**Phase D — reflection.** Houseguests reading their own memories and letting them shift behaviour.
-Cheap once C exists, because the same memories are already being written.
+### 5. No cognitive layer at all (Layer 3)
 
-**Phase E — storylines and crises.** Largest and least load-bearing. The season is complete without
-it; this is the layer that makes a season memorable rather than correct.
+`MemoryState` stores memories; nothing scores or retrieves them. The source has three-factor
+retrieval (recency, importance, relevance), periodic reflection producing insights, a weekly
+self-summary with short- and long-term goals, and a dual-track split between private reasoning and
+public statement. None of it exists here. It is also the layer the LLM would normally decorate —
+but the source is clear that the numbers, not the model, decide outcomes.
 
-## Constraints that shape all of it
+### 6. NPCs take no autonomous social actions
 
-- **Every draw comes off `randomState`.** Consuming the generator anywhere new shifts every result
-  after it, which is why `SeasonBuilder` takes its cast in table order and `DrawVetoPlayers` returns
-  early when everyone plays. Any NPC decision that rolls must roll through `Roll(s)`.
-- **Knowledge boundaries (acceptance A9).** NPCs may act on what they know. Nothing they do may
-  surface to the player as narration of a room the player's character was not in — the channel for
-  that is a private `MemoryState` the player owns, which is how eavesdropping was built.
-- **New persisted state means a schema version.** Two were spent in one sitting already. Prefer
-  derived values; if state is unavoidable, batch every field the whole plan needs into one bump.
-- **Recorded fixtures declare their rule version rather than being edited.** Any change to NPC
-  decisions will move the replay witnesses. `socialBudgetRulesStartWeek` is the precedent.
+`NPC_ACTIONS_PER_SOCIAL_PHASE: 3`. NPCs here converse through the scheduler and do nothing else —
+no proposing, no promising, no gossiping, no eavesdropping. The source maps traits to verbs:
+`Sneaky` gossips and eavesdrops, `Confrontational` picks fights, `Floater` mostly chats, and so on
+across ten traits.
+
+This compounds the asymmetry the player's new vocabulary just created: a houseguest who can be lied
+to but cannot lie is not playing the same game.
+
+## Order of work
+
+**Phase A — the ledger asymmetry and decay.** Moved to first, ahead of alliances, and that is a
+change from the earlier plan. It is the smallest change here — one flag written correctly at a
+handful of call sites, plus a weekly decay pass — and everything downstream reads it: trust scores
+come off the ledger, reputation threat comes off trust and broken deals, alliance desire takes trust
+as a term. Building alliances first would mean building them against a trust value that is
+permanently 50.
+
+**Phase B — trust score and threat assessment.** Both are pure functions of state that already
+exists, so both are derived rather than stored, and neither needs a schema version. Threat is
+independently useful the moment it lands: the HUD can finally show why the house is looking at
+someone.
+
+**Phase C — alliances and promises between houseguests.** The formulas are given. Writes through the
+same `AllianceState` and `PromiseState` the player's path uses, so the bloc system needs no changes
+and inherits the whole thing.
+
+**Phase D — autonomous social actions.** Three per social phase, chosen from trait repertoires,
+using the vocabulary that now exists on the player's side.
+
+**Phase E — the cognitive layer.** Largest, least load-bearing, and the only part that would feel
+thin without a model behind it. Worth doing last and worth being honest about: reflections and
+self-summaries expressed through templated language will read as flatter than the source's.
+
+## Constraints
+
+- **Every draw comes off `randomState`.** The source calls `Math.random()` freely; that cannot be
+  copied. `selectTalkTarget`'s weighted sampling, in particular, must roll through `Roll(s)`.
+- **Knowledge boundaries (A9).** NPC reasoning may use what the NPC knows. Nothing may surface to
+  the player except through a private `MemoryState` they own — the channel eavesdropping already
+  uses.
+- **Prefer derived over stored.** Trust and threat are pure functions; keeping them derived avoids a
+  schema version. If Phase E forces stored state, batch every field it needs into one bump.
+- **Recorded fixtures declare their rule version.** Any change to NPC decisions moves the replay
+  witnesses; `socialBudgetRulesStartWeek` is the precedent for handling that without editing them.
 
 ## Verification
 
-Per phase, and the same discipline as the rest of the port: offline compile, then both suites via
-`scratchpad/sync-and-run.sh`. Baseline to beat is **EditMode 778+, PlayMode 128**.
+Per phase: offline compile, then both suites via `scratchpad/sync-and-run.sh`. Baseline to beat is
+**EditMode 802, PlayMode 128**.
 
-Two properties deserve their own tests, because both are easy to break and silent when broken:
+Two properties deserve dedicated tests:
 
-- **A season with no player input still produces a plausible house.** Run a spectator season to the
-  end and assert alliances formed, dissolved, and that the winner was not simply the highest-stat
-  houseguest.
-- **NPC decisions are replayable.** The same seed and command list must produce the same house,
-  including every alliance formed and broken. This is the one that catches a stray `new Random()`.
+- **A season with no player input produces a plausible house.** Run a spectator season to the end
+  and assert alliances formed and dissolved, that threat rankings moved as people won competitions,
+  and that the winner was not simply the highest-stat houseguest.
+- **NPC decisions are replayable.** Same seed and command list, same house, including every alliance
+  formed and every grudge held. This is the test that catches a stray `new Random()`.

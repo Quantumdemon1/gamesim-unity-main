@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # A define that must never be committed. With UMA absent — which is every fresh clone — a
       # committed GAMESIM_UMA makes the project fail to compile, and it fails in a way the project
@@ -52,7 +52,15 @@ jobs:
             if [ ! -f "$f.meta" ]; then echo "::error file=$f::no .meta file"; missing=$((missing+1)); fi
           done < <(find Assets -type f ! -name '*.meta')
           while IFS= read -r m; do
-            if [ ! -e "${m%.meta}" ]; then echo "::error file=$m::orphaned .meta, its asset is gone"; missing=$((missing+1)); fi
+            [ -e "${m%.meta}" ] && continue
+            # A FOLDER meta with no folder is normal and must not fail this check. Git cannot track
+            # an empty directory, so a folder that holds nothing committed simply is not in a fresh
+            # checkout — while its .meta is, and has to be: deleting it would make Unity mint a new
+            # GUID for that folder on every machine, which is the exact failure this job exists to
+            # prevent. Assets/Gamesim/Audio is one of these on purpose; the opening sequence's music
+            # lands there and the folder identity should already be settled when it does.
+            if grep -q '^folderAsset: yes' "$m" 2>/dev/null; then continue; fi
+            echo "::error file=$m::orphaned .meta, its asset is gone"; missing=$((missing+1))
           done < <(find Assets -type f -name '*.meta')
           [ "$missing" -eq 0 ] || { echo "$missing problem(s)"; exit 1; }
           echo "every asset accounted for"

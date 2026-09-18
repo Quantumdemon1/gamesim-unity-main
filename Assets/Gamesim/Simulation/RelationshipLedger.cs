@@ -146,6 +146,42 @@ namespace Gamesim.Simulation
             }
         }
 
+        /// <summary>
+        /// Moves two houseguests' standing with each other, symmetrically and without a roll.
+        ///
+        /// <para>The engine's own <c>Change</c> is the right path whenever the player is one of the
+        /// two, and this is the right path whenever they are not — not to avoid the randomness, but
+        /// because of what else <c>Change</c> does. It updates <c>relationshipArcs</c>, and an arc
+        /// is keyed by one houseguest with no record of who it is <i>with</i>: every line it
+        /// produces reads "Your rivalry with X". Feeding it from conversations the player was never
+        /// part of would have the house's own traffic accumulate into the player's feuds and
+        /// friendships, and <see cref="ThreatAssessment"/> and the eviction vote both read those.
+        /// </para>
+        ///
+        /// <para>So this writes the two scores and the interaction week, and nothing else. What
+        /// happened is recorded separately through <see cref="Record"/>.</para>
+        /// </summary>
+        public static void Move(EpisodeState state, string from, string to, double delta)
+        {
+            if (state == null || from == to) return;
+            Write(state, from, to, delta);
+            Write(state, to, from, delta);
+            foreach (var edge in state.relationships.Where(r =>
+                         (r.fromId == from && r.toId == to) || (r.fromId == to && r.toId == from)))
+                edge.lastInteractionWeek = state.week;
+        }
+
+        private static void Write(EpisodeState state, string from, string to, double delta)
+        {
+            var edge = Edge(state, from, to);
+            if (edge == null)
+            {
+                edge = new RelationshipState { fromId = from, toId = to };
+                state.relationships.Add(edge);
+            }
+            edge.score = WebRules.ClampScore(edge.score + delta);
+        }
+
         private static RelationshipState Edge(EpisodeState state, string from, string to) =>
             state?.relationships.FirstOrDefault(r => r.fromId == from && r.toId == to);
     }

@@ -196,7 +196,10 @@ namespace Gamesim.Simulation
                     // A nominee begging for votes and somebody courting the Head of Household are
                     // both positional, so they only make sense once the block is settled. This is
                     // that moment.
-                    Phase(s, EpisodePhase.Campaign); NpcPromises.Settle(s); break;
+                    Phase(s, EpisodePhase.Campaign);
+                    NpcPromises.Settle(s);
+                    NpcSocialActions.Campaign(s);
+                    break;
                 case EpisodePhase.Campaign:
                     // Campaigning IS the reference build's interaction stage — last conversations
                     // and vote-wrangling — so eviction night opens on the speeches rather than
@@ -212,11 +215,13 @@ namespace Gamesim.Simulation
                     {
                         s.evictionStage = EvictionStage.Interaction;
                         Phase(s, EpisodePhase.Social);
-                        // The house takes stock as the social week opens: pacts that have soured
-                        // fall apart, people who want to work together start doing so, and words are
-                        // given. Neither pass draws randomness, so neither can shift the generator.
-                        NpcAlliances.Settle(s);
-                        NpcPromises.Settle(s);
+                        // The house takes stock as the social week opens and then plays it: pacts
+                        // that have soured fall apart, people who want to work together start doing
+                        // so, words are given, and everybody spends three turns on whatever their
+                        // personality makes natural. This one DOES draw from the season's generator
+                        // — target choice is weighted sampling — which is why it sits behind the
+                        // same rules boundary and why a recording declares itself past it.
+                        NpcSocialActions.Settle(s);
                         return;
                     }
                     // Eviction night runs as stages inside this phase rather than as phases of its
@@ -824,7 +829,7 @@ namespace Gamesim.Simulation
             }
         }
 
-        private static void Change(EpisodeState s, string from, string to, double delta, string note = null, string eventType = null)
+        internal static void Change(EpisodeState s, string from, string to, double delta, string note = null, string eventType = null)
             => ChangeWithRoll(s, from, to, delta, () => Roll(s), note, eventType);
 
         // Shared source reducer. The ordinary player path keeps its original stream;
@@ -944,12 +949,12 @@ namespace Gamesim.Simulation
             return active.Where(id => lineup.Contains(id)).ToList();
         }
 
-        private static double Roll(EpisodeState s)
+        internal static double Roll(EpisodeState s)
         {
             var rng = new SeededRandom(s.randomState); var roll = rng.NextDouble(); s.randomState = rng.State; return roll;
         }
 
-        private static void Remember(EpisodeState s, string owner, string subject, string text, bool privacy)
+        internal static void Remember(EpisodeState s, string owner, string subject, string text, bool privacy)
         {
             s.memories.Add(new MemoryState { ownerId = owner, subjectId = subject, text = text, week = s.week, isPrivate = privacy });
             while (s.memories.Count(m => m.ownerId == owner) > 30) s.memories.Remove(s.memories.First(m => m.ownerId == owner));
@@ -983,7 +988,7 @@ namespace Gamesim.Simulation
         }
 
         private static void Phase(EpisodeState s, EpisodePhase phase) { s.phase = phase; Log(s, "phase", "Week " + s.week + " · " + phase); }
-        private static void Log(EpisodeState s, string kind, string text, params string[] audience)
+        internal static void Log(EpisodeState s, string kind, string text, params string[] audience)
         {
             s.events.Add(new EpisodeEvent { sequence = s.nextSequence++, week = s.week, phase = s.phase, kind = kind, text = text, audienceIds = audience.ToList() });
             if (s.events.Count > 256) s.events.RemoveAt(0);

@@ -106,6 +106,13 @@ namespace Gamesim.Simulation
         ///
         /// <para>At most one new alliance per houseguest per week, so a house that suddenly likes
         /// everybody does not pair off completely in a single evening.</para>
+        ///
+        /// <para><b>A season does not call this directly.</b> Alliance formation is the highest-priority
+        /// thing a houseguest can do with a social turn, and turns are budgeted, so the weekly pass runs
+        /// through <see cref="NpcSocialActions.Settle"/> — which is this loop with promises and the rest
+        /// of the repertoire interleaved behind it. This stays because it is the alliance rule on its
+        /// own, which is the only way to state what that rule is without the rest of the week in the
+        /// way.</para>
         /// </summary>
         public static void Settle(EpisodeState state)
         {
@@ -115,25 +122,43 @@ namespace Gamesim.Simulation
             // Cast order throughout, so the same house always pairs up the same way.
             var joined = new HashSet<string>(StringComparer.Ordinal);
             foreach (var npc in state.contestants.Where(c => c.status == ContestantStatus.Active && !c.isPlayer))
-            {
-                if (joined.Contains(npc.id)) continue;
+                TryPropose(state, npc.id, joined);
+        }
 
-                string partner = state.contestants
-                    .Where(other => other.status == ContestantStatus.Active
-                                    && other.id != npc.id
-                                    && !joined.Contains(other.id)
-                                    && WouldPropose(state, npc.id, other.id)
-                                    && WouldPropose(state, other.id, npc.id))
-                    .OrderByDescending(other => Desire(state, npc.id, other.id))
-                    .ThenBy(other => other.id, StringComparer.Ordinal)
-                    .Select(other => other.id)
-                    .FirstOrDefault();
+        /// <summary>
+        /// One houseguest's alliance attempt for the week: the highest-desire partner who wants it
+        /// back, or nothing.
+        ///
+        /// <para><paramref name="joined"/> is the set of people who have already paired off in this
+        /// pass. It is what holds the pass to one new alliance per houseguest per week; without it a
+        /// house that suddenly likes everybody pairs off completely in a single evening.</para>
+        ///
+        /// <para><b>Never the player.</b> The source excludes them from autonomous alliance
+        /// generation outright, and the reason is worth stating: acceptance is decided here by
+        /// mutual desire, and the player's side of that is computed from their scores rather than
+        /// asked of them. Including them would enrol a player in an alliance they never agreed to,
+        /// and the player's own <c>FormAlliance</c> is how they join one.</para>
+        /// </summary>
+        public static bool TryPropose(EpisodeState state, string npcId, ISet<string> joined)
+        {
+            if (joined != null && joined.Contains(npcId)) return false;
 
-                if (partner == null) continue;
-                Form(state, npc.id, partner);
-                joined.Add(npc.id);
-                joined.Add(partner);
-            }
+            string partner = state.contestants
+                .Where(other => other.status == ContestantStatus.Active
+                                && !other.isPlayer
+                                && other.id != npcId
+                                && (joined == null || !joined.Contains(other.id))
+                                && WouldPropose(state, npcId, other.id)
+                                && WouldPropose(state, other.id, npcId))
+                .OrderByDescending(other => Desire(state, npcId, other.id))
+                .ThenBy(other => other.id, StringComparer.Ordinal)
+                .Select(other => other.id)
+                .FirstOrDefault();
+
+            if (partner == null) return false;
+            Form(state, npcId, partner);
+            if (joined != null) { joined.Add(npcId); joined.Add(partner); }
+            return true;
         }
 
         /// <summary>Every active alliance this houseguest belongs to.</summary>
@@ -163,7 +188,7 @@ namespace Gamesim.Simulation
         /// pact that dies because two people drifted apart is not a betrayal, and recording it as
         /// one would put a permanent grudge on the books that nobody earned.</para>
         /// </summary>
-        private static void Dissolve(EpisodeState state)
+        public static void Dissolve(EpisodeState state)
         {
             foreach (var alliance in state.alliances.Where(a => a.active).ToList())
             {

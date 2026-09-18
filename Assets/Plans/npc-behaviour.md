@@ -137,6 +137,62 @@ and inherits the whole thing.
 **Phase D — autonomous social actions.** Three per social phase, chosen from trait repertoires,
 using the vocabulary that now exists on the player's side.
 
+Three things came out of doing it that were not visible from the plan:
+
+- **It is the first NPC pass that spends the season's generator**, and it has to be. `selectTalkTarget`
+  is weighted sampling, and the source says plainly that is what stops a houseguest talking to their
+  closest friend every single time. A deterministic port would have deleted the variety the system
+  exists to produce. It sits behind `npcSocial.rulesStartWeek`, which both recorded witnesses already
+  declare themselves past, so nothing on file had to move.
+- **Acts between two houseguests must not go through the engine's `Change`.** Not to save rolls —
+  because `Change` feeds `relationshipArcs`, and an arc is keyed by one houseguest with no record of
+  who it is *with*. Every line it renders reads "Your rivalry with X". Feeding it from conversations
+  the player was never in would accumulate the house's own traffic into the player's feuds and
+  friendships, and both `ThreatAssessment` and the eviction vote read those. `RelationshipLedger.Move`
+  exists for this, and the rule is: the player in it, use the engine; neither of them, use the ledger.
+- **The whole existing suite stayed green**, which is not by itself good news — a pass that is never
+  invoked looks exactly the same. `ASeasonPlayedThroughTheEngineLetsTheHouseActOnItsOwn` is the test
+  that tells the two apart. The reason nothing broke is that the full-season fixtures assert shape
+  (the season finishes, four people sit on the jury, week four ends it) rather than who won.
+
+And writing that test immediately paid for itself, because its first version failed: **no NPC
+alliance forms in the shipped scenario at all.** The floor is a relationship of 25 before anybody
+proposes; houseguests start at zero with each other, and in a season driven by commands the only
+thing that warms them is this pass's own conversations at four points each. Four weeks of that,
+spread across the house by weighted sampling, does not get near twenty-five.
+
+The reference build warms its house through a conversation system that runs continuously. This port
+has one — `WebNpcConversations`, and it does move pair relationships — but it only turns while
+somebody is walking around in free roam, so a headless season never gets it. **So the bloc system
+still only ever coordinates blocs the player built, in exactly the seasons the tests can see.** That
+is the same finding Phase C opened with, one layer further in, and it is not closed.
+
+Closing it means either warming the house faster or lowering the source's floor, and both are
+changes to the source's own numbers rather than ports of them — so it is stated rather than quietly
+fixed. `AColdHouseNeverReachesTheSourcesAllianceFloor` pins the shortfall and says in its own note
+what to do when it starts failing.
+
+Two Phase C corrections went in alongside it, both now that the house can act on the player:
+
+- **The player was being enrolled in alliances they never agreed to.** Acceptance is decided here by
+  mutual desire, and the player's side of that is computed from their scores rather than asked of
+  them. The source excludes the player from autonomous alliance and promise generation outright, and
+  now so does this. `FormAlliance` remains how a player joins one.
+- **Both positional promise branches were reading a week that had already finished.** A week's social
+  phase belongs to its *end*, so the block is still standing in state and the title still sits with
+  somebody after the vote that settled both. The surviving nominee spent the following week begging
+  for votes counted days ago, and the whole house courted an outgoing Head of Household who had
+  already nominated, already lost the veto and already seen the vote come in. Both branches belong to
+  campaigning, which is the other moment the pass runs, so both are now guarded on an unsettled
+  block. The second one was costing every houseguest a turn a week on a promise worth nothing.
+
+**Open, and deliberately not closed here:** nine of this project's seventeen traits have no repertoire
+in the source's ten, and six of the twenty-four shipped houseguests lead with one of them — so a
+quarter of the cast plays the default. Mapping `Charming` to `Social`, `Deceptive` to `Sneaky` and so
+on is plausible, but it is authoring a personality system rather than porting one, and this project's
+standing rule is that the web build is the reference. `TraitsThisProjectHasAndTheSourceDoesNotFallToTheDefault`
+pins the gap so it stays visible; it is the test to change if somebody decides to map them.
+
 **Phase E — the cognitive layer.** Largest, least load-bearing, and the only part that would feel
 thin without a model behind it. Worth doing last and worth being honest about: reflections and
 self-summaries expressed through templated language will read as flatter than the source's.
@@ -145,6 +201,10 @@ self-summaries expressed through templated language will read as flatter than th
 
 - **Every draw comes off `randomState`.** The source calls `Math.random()` freely; that cannot be
   copied. `selectTalkTarget`'s weighted sampling, in particular, must roll through `Roll(s)`.
+  *(Held in Phase D.* `npcSocial.randomState` looked like the tidier home for it and is not: that
+  stream is advanced by real-time free-roam ticks, which are not in the command record, so its value
+  at any given Advance depends on how long the player spent walking around. A pass drawing from it
+  would not replay.)
 - **Knowledge boundaries (A9).** NPC reasoning may use what the NPC knows. Nothing may surface to
   the player except through a private `MemoryState` they own — the channel eavesdropping already
   uses.

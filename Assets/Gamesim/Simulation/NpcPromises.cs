@@ -48,12 +48,24 @@ namespace Gamesim.Simulation
             bool allied = state.Allied(npcId, targetId);
             double relationship = state.Score(npcId, targetId);
 
+            // The first two branches are positional, and both are guarded on a vote that has not
+            // happened yet. That guard is this port's, not the source's, and it exists because of
+            // how a week is shaped here: the social phase belongs to the END of its week, so the
+            // block is still standing in state and the title still sits with somebody while the
+            // vote that settled both has already been counted.
+            //
+            // Without it the surviving nominee spends the following week begging for votes that
+            // were counted days ago, and the whole house courts an outgoing Head of Household whose
+            // power is spent — they have nominated, the veto has been used and the vote is in. Both
+            // branches belong to campaigning, and that is the other moment this pass runs.
+            bool blockStillStands = !state.evictionResolved;
+
             // On the block, and talking to somebody who is not.
-            if (state.nominees.Contains(npcId) && !state.nominees.Contains(targetId))
+            if (blockStillStands && state.nominees.Contains(npcId) && !state.nominees.Contains(targetId))
                 return PromiseKind.Vote;
 
             // They hold the power and we have no claim on them.
-            if (state.hohId == targetId && !allied)
+            if (blockStillStands && state.hohId == targetId && !allied)
                 return PromiseKind.Safety;
 
             // Warm but unallied: lay the groundwork for a pact.
@@ -76,25 +88,43 @@ namespace Gamesim.Simulation
         /// promises in an evening and exhaust the two hundred a season may hold. The recipient is
         /// whoever they are closest to among those they would say something to — ties broken on id,
         /// so the same house always makes the same offers.</para>
+        ///
+        /// <para>The season runs this at the start of campaigning, where the block has just been
+        /// settled and a promise is about the block. The social week runs it through
+        /// <see cref="NpcSocialActions.Settle"/> instead, so it competes for a turn with everything
+        /// else a houseguest might do with one.</para>
         /// </summary>
         public static void Settle(EpisodeState state)
         {
             if (!NpcSocialState.AutonomyHasBegun(state)) return;
             foreach (var npc in state.contestants.Where(c => c.status == ContestantStatus.Active && !c.isPlayer))
-            {
-                if (state.promises.Count >= PromiseCeiling) return;
+                TryGive(state, npc.id);
+        }
 
-                var chosen = state.contestants
-                    .Where(other => other.status == ContestantStatus.Active && other.id != npc.id)
-                    .Select(other => new { other.id, kind = Offer(state, npc.id, other.id) })
-                    .Where(candidate => candidate.kind.HasValue && !AlreadyPromised(state, npc.id, candidate.id, candidate.kind.Value))
-                    .OrderByDescending(candidate => state.Score(npc.id, candidate.id))
-                    .ThenBy(candidate => candidate.id, StringComparer.Ordinal)
-                    .FirstOrDefault();
+        /// <summary>
+        /// One houseguest's word for the week: whoever they are closest to among the people they
+        /// would say something to, ties broken on id.
+        ///
+        /// <para><b>Never the player.</b> The source leaves them out of autonomous promise
+        /// generation for the same reason it leaves them out of alliance generation, and until a
+        /// houseguest can walk up and offer the player something the player can answer, a promise
+        /// made to them is a line in a file they never see.</para>
+        /// </summary>
+        public static bool TryGive(EpisodeState state, string npcId)
+        {
+            if (state.promises.Count >= PromiseCeiling) return false;
 
-                if (chosen == null) continue;
-                Give(state, npc.id, chosen.id, chosen.kind.Value);
-            }
+            var chosen = state.contestants
+                .Where(other => other.status == ContestantStatus.Active && !other.isPlayer && other.id != npcId)
+                .Select(other => new { other.id, kind = Offer(state, npcId, other.id) })
+                .Where(candidate => candidate.kind.HasValue && !AlreadyPromised(state, npcId, candidate.id, candidate.kind.Value))
+                .OrderByDescending(candidate => state.Score(npcId, candidate.id))
+                .ThenBy(candidate => candidate.id, StringComparer.Ordinal)
+                .FirstOrDefault();
+
+            if (chosen == null) return false;
+            Give(state, npcId, chosen.id, chosen.kind.Value);
+            return true;
         }
 
         /// <summary>What validation allows a season to hold, so the pass stops short of it.</summary>

@@ -88,13 +88,14 @@ namespace Gamesim.Tests.EditMode
             var oldV3 = version < 3 ? EpisodeSaveMigrations.PrepareV3Payload(source, out _) : source;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(source, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(7));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(9));
             Assert.That((int)migrated["playerStudyBonus"], Is.Zero);
             Assert.That((uint)migrated["randomState"], Is.Zero);
             // Compared without schema 7's card copy, which the last step adds to every contestant.
             // The claim is that nothing historical changed, not that nothing was added — what the
             // step adds is pinned separately in PersistenceV7MigrationTests.
-            var historical = PersistenceMigrationTests.StripCardCopy((JObject)migrated.DeepClone());
+            var historical = PersistenceMigrationTests.StripCardCopy(
+                PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9((JObject)migrated.DeepClone())));
             foreach (var field in oldV3.Properties()) if (field.Name != "schemaVersion")
                 Assert.That(JToken.DeepEquals(field.Value, historical[field.Name]), Is.True, field.Name);
             Assert.That(source.ToString(Formatting.None), Is.EqualTo(before));
@@ -112,15 +113,15 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, source);
             byte[] before = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 7 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(7));
+            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 9 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(9));
             Assert.That(loaded.playerStudyBonus, Is.Zero);
             Assert.That(loaded.playerPersona.scores.Count, Is.EqualTo(5));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
             Assert.That(Directory.GetFiles(files.DirectoryPath).Length, Is.EqualTo(1));
             files.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(7));
+            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(9));
             Assert.That(files.Store.TryRecoverBackup(out loaded, out message), Is.True, message);
             Assert.That(loaded.playerStudyBonus, Is.Zero);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
@@ -169,7 +170,7 @@ namespace Gamesim.Tests.EditMode
             var payload = V3Fixture();
             if (damage == "smuggled-study") payload["playerStudyBonus"] = 5;
             else if (damage == "truncated-v4") payload["schemaVersion"] = 4;
-            else if (damage == "future-schema") payload["schemaVersion"] = 8;   // Seven is current.
+            else if (damage == "future-schema") payload["schemaVersion"] = 10;  // Nine is current.
             else if (damage != "checksum")
             {
                 payload = EpisodeSaveMigrations.UpgradeV3ToV4(payload);
@@ -190,8 +191,11 @@ namespace Gamesim.Tests.EditMode
         {
             switch (path)
             {
-                case "state": return new[] { "playerStudyBonus", "blocRulesStartWeek", "npcSocial" }.Contains(field);
-                case "state.contestants[]": return new[] { "occupation", "archetype", "age" }.Contains(field);
+                case "state": return new[] { "playerStudyBonus", "blocRulesStartWeek", "npcSocial",
+                    "evictionStage", "evictionSpeeches", "backdoorTargetId",
+                    "outOfPhaseSocialActions", "openingBeatsSeen",
+                    "socialBudgetRulesStartWeek" }.Contains(field);
+                case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio" }.Contains(field);
                 default: return false;
             }
         }

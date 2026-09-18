@@ -938,8 +938,32 @@ namespace Gamesim.Episode
                 || !EpisodeEngine.CompetitionPlayers(state).Any(contestant => contestant.isPlayer)) return;
             Commit(state, EpisodeCommandKind.SimulateCompetition);
         }
+        /// <summary>
+        /// Enters the competition at the floor.
+        ///
+        /// <para>A throw is a <see cref="EpisodeCommandKind.Compete"/> with no precision rather than
+        /// a command of its own: the houseguest does compete, their stats still count, and the
+        /// result is as binding as any other. Modelling it as a refusal to enter would have made it
+        /// a way to opt out of a committed result, which is exactly what it is not.</para>
+        /// </summary>
+        public void ThrowCompetition() => ThrowCompetition(projected);
+        private void ThrowCompetition(EpisodeState state)
+        {
+            if (!phaseOpen || challengeActive || !IsCurrentDiaryRevision(state) || state.competitionResolved
+                || !EpisodeEngine.CompetitionPlayers(state).Any(contestant => contestant.isPlayer)) return;
+            Commit(state, EpisodeCommandKind.Compete, performance: 0d);
+        }
+
         public void SkipQuestioning() { if (phaseOpen) Commit(projected, EpisodeCommandKind.SkipQuestioning); }
         public void SubmitSpeech(string text) { if (phaseOpen) Commit(projected, EpisodeCommandKind.SubmitSpeech, text: text); }
+        /// <summary>
+        /// Commits a nominee's speech from the block. Reachable from the episode screen and from
+        /// the diary room, because the block speech is offered in both.
+        /// </summary>
+        public void SubmitEvictionSpeech(string text)
+        {
+            if (phaseOpen || diaryOpen) Commit(projected, EpisodeCommandKind.SubmitEvictionSpeech, text: text);
+        }
         public void AnswerJury(string choice)
         {
             if (!phaseOpen || projected.phase != EpisodePhase.JuryQuestioning) return;
@@ -1126,6 +1150,9 @@ namespace Gamesim.Episode
                                 + state.playerStudyBonus + "/5; event bonus: " + state.phaseEventCompBonus
                                 + ". These boost only your simulated score, with no precision bonus. Preparation is kept for later weeks and does not boost final HoH.");
                             hud.Action(EpisodeHud.SimulateCompetitionCaption, () => SimulateCompetition(state));
+                            hud.Paragraph("Or throw it. You still compete and the result still stands — "
+                                + "you simply do not try, which is sometimes the safer week.");
+                            hud.Action(EpisodeHud.ThrowCompetitionCaption, () => ThrowCompetition(state));
                         }
                     }
                     else hud.Action("Watch eligible housemates compete", () => Commit(state, EpisodeCommandKind.Advance));
@@ -1158,7 +1185,9 @@ namespace Gamesim.Episode
                 CurrentLocation(state);
                 // The web build draws this as a bar you can watch drain rather than a sentence you
                 // have to read and subtract. The caption still carries the numbers.
-                hud.Meter("Interactions available", Mathf.Max(0, 18 - state.socialActions), 18, UiTheme.Accent);
+                int budget = EpisodeEngine.SocialActionBudget(state);
+                hud.Meter("Interactions available",
+                    Mathf.Max(0, budget - EpisodeEngine.SocialActionsSpent(state)), budget, UiTheme.Accent);
                 // Standing modifiers, shown beside the budget they apply to. The web build puts a
                 // social-bonus chip on each action's result; here that would misattribute it,
                 // because this bonus accrues from diary answers and story beats rather than from
@@ -1167,7 +1196,8 @@ namespace Gamesim.Episode
                     hud.Paragraph("Carrying a +" + state.phaseEventSocialBonus + " social bonus from earlier choices.");
                 if (state.playerStudyBonus > 0)
                     hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
-                hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose.");
+                hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
+                    + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
             }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph("Four jurors choose the winner. The source game's tie rule awards a tied jury to the second finalist in cast order.");
             hud.Action(state.phase == EpisodePhase.Social ? "Begin the next competition" : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode", () => Commit(state, EpisodeCommandKind.Advance));

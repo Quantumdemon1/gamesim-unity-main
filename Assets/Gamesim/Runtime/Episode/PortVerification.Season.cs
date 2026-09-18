@@ -264,6 +264,20 @@ namespace Gamesim.Episode
             }
             if (state.phase == EpisodePhase.Jury && !state.Active.Any(actor => actor.isPlayer) && !state.votes.Any(vote => vote.voterId == state.playerId))
             { yield return ClickSeasonButton("Vote for " + state.Active.First().name + " to win"); yield break; }
+            // Eviction night pauses on the block for the nominees' speeches, and a nominated player
+            // has to give theirs before the house will vote. There is no "continue" past it, which
+            // is the point: the speech is a decision, not a presentation.
+            if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches
+                && state.nominees.Contains(state.playerId)
+                && !state.evictionSpeeches.Any(speech => speech.speakerId == state.playerId))
+            {
+                yield return CaptureSeason("block-speech-draft",graphical);
+                yield return ClickSeasonButton(EpisodeHud.EvictionSpeechCaption);
+                RequireSeason(seasonDirector.Snapshot.evictionSpeeches.Any(speech => speech.speakerId == state.playerId),
+                    "The block speech control must commit a speech.");
+                seasonReport.blockSpeeches++;
+                yield break;
+            }
             yield return ClickSeasonButton(state.phase == EpisodePhase.Social ? "Begin the next competition"
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode");
         }
@@ -300,11 +314,17 @@ namespace Gamesim.Episode
             { seasonReport.oathNote = "Optional Maya approach did not complete within its route deadline."; yield break; }
             if (!seasonDirector.TryOpenNpc(npc.Id)) { seasonReport.oathNote = "Maya was not interactable after approach."; yield break; }
             yield return null; yield return null;
-            for (int budget = 0; budget < 18 && !seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id); budget++)
+            // The week's budget is half the active house, not a flat eighteen, so this optional
+            // coverage may simply run out of actions before the milestone. It breaks out and records
+            // a note rather than failing: the oath path is optional by design.
+            int weeklyBudget = EpisodeEngine.SocialActionBudget(seasonDirector.Snapshot);
+            for (int spent = 0; spent < weeklyBudget && !seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id); spent++)
             {
                 var before = seasonDirector.Snapshot;
-                if (before.phase != EpisodePhase.Social || before.socialActions >= 18 || !HasSeasonButton("Spend time together")) break;
-                // Eighteen plain +4 conversations reach only 72 from a neutral start.
+                if (before.phase != EpisodePhase.Social
+                    || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)
+                    || !HasSeasonButton("Spend time together")) break;
+                // Plain +4 conversations climb slowly from a neutral start.
                 // Use the same legal alliance opportunity as the live Play Mode fixture.
                 string action = !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
                     && HasSeasonButton("Propose an alliance") ? "Propose an alliance" : "Spend time together";
@@ -463,7 +483,7 @@ namespace Gamesim.Episode
             public AutonomyReport autonomy;
             public double elapsedSeconds;
             public float navigationSpeed;
-            public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks;
+            public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks, blockSpeeches;
             public List<string> phases = new List<string>(), reloadCheckpoints = new List<string>(), screenshots = new List<string>();
             public List<SeasonRoute> routes = new List<SeasonRoute>();
             public List<SeasonButton> buttons = new List<SeasonButton>();

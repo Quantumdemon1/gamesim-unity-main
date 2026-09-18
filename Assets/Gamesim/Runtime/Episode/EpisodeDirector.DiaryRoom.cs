@@ -121,7 +121,8 @@ namespace Gamesim.Episode
         private void ReviewStudyHouse(EpisodeState state, string choiceId)
         {
             if (!diaryOpen || diaryDraft != null || !CanUseDiary || !IsCurrentDiaryRevision(state) || state.phase != EpisodePhase.Social
-                || state.pendingDiary != null || state.socialActions >= 18) return;
+                || state.pendingDiary != null
+                || EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state)) return;
             if (choiceId != "memorize-layout" && choiceId != "sneak-peek") return;
             bool memorize = choiceId == "memorize-layout";
             int chance = WebStudyHouse.SuccessChance(choiceId, null);
@@ -129,7 +130,9 @@ namespace Gamesim.Episode
             {
                 origin = state, kind = EpisodeCommandKind.StudyHouse, target = choiceId,
                 summary = (memorize ? "Memorize the layout." : "Sneak a peek at production notes.")
-                    + "\nCost: 1 social action (" + (18 - state.socialActions) + " of 18 remaining this free-time window)."
+                    + "\nCost: 1 social action ("
+                    + (EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state))
+                    + " of " + EpisodeEngine.SocialActionBudget(state) + " remaining this week)."
                     + (memorize ? "\nGuaranteed +1 preparation, up to the limit of 5."
                         : "\nSuccess chance: " + chance + "%. Success adds 2 preparation; failure removes 1.")
                     + "\nPreparation stays between 0 and 5. Current preparation: " + state.playerStudyBonus + "/5."
@@ -218,10 +221,12 @@ namespace Gamesim.Episode
         {
             if (state.phase != EpisodePhase.Social || state.Find(state.playerId)?.status != ContestantStatus.Active) return;
             hud.Heading("STUDY THE HOUSE");
-            hud.Paragraph("Study here in the private room during free time. Each confirmed approach uses 1 of your 18 social actions. Opening, reading, and cancelling cost nothing.");
+            hud.Paragraph("Study here in the private room during free time. Each confirmed approach uses one of the "
+                + EpisodeEngine.SocialActionBudget(state) + " social actions this week allows. "
+                + "Opening, reading, and cancelling cost nothing.");
             if (state.pendingDiary != null)
             { hud.Paragraph("Answer or skip your pending private reflection before studying."); return; }
-            if (state.socialActions >= 18)
+            if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
             { hud.Paragraph("No social actions remain in this window. Return to the episode screen when ready to continue."); return; }
             hud.Paragraph("Memorize: Guaranteed +1 preparation, up to the limit of 5. Sneak: "
                 + WebStudyHouse.SuccessChance("sneak-peek", null)
@@ -382,6 +387,12 @@ namespace Gamesim.Episode
                 {
                     hud.Action("Do not use the veto", () => OfferPlayerDecision(state, privateRoom,
                         EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
+                    if (EpisodeEngine.VetoIsLockedAtFinalFour(state))
+                    {
+                        hud.Paragraph("At the final four a veto holder who is not on the block cannot use the veto. "
+                            + "Nominations stand.");
+                        return true;
+                    }
                     if (!EpisodeEngine.ReplacementCandidates(state).Any())
                     { hud.Paragraph("No legal replacement exists at the final four, so the veto cannot be used."); return true; }
                     foreach (var nominee in state.nominees)
@@ -397,12 +408,28 @@ namespace Gamesim.Episode
                 var savedByNpc = EpisodeEngine.NpcVetoSave(state);
                 if (savedByNpc != null) { VetoReplacements(state, savedByNpc, privateRoom); return true; }
             }
+            if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches
+                && state.nominees.Contains(state.playerId)
+                && !state.evictionSpeeches.Any(speech => speech.speakerId == state.playerId))
+            {
+                hud.Heading("YOUR SPEECH FROM THE BLOCK");
+                hud.Paragraph("The house votes after this. Say what you want them to have heard, or say nothing — "
+                    + "an empty speech is a choice the house will read too.");
+                hud.EvictionSpeech(SubmitEvictionSpeech);
+                return true;
+            }
             if (state.phase == EpisodePhase.Eviction && !state.evictionResolved
+                && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
                 && !state.votes.Any(vote => vote.voterId == state.playerId)
                 && (EpisodeEngine.Voters(state).Any(voter => voter.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");
+                // At four there is exactly one eligible voter. That has always been true by
+                // arithmetic and has never been said, which makes a sole ballot look like a bug.
+                if (!tieBreak && EpisodeEngine.Voters(state).Count() == 1)
+                    hud.Paragraph("At the final four only one houseguest votes, and tonight that is you. "
+                        + "Your single vote decides the eviction outright.");
                 VoterRoster(state);
                 foreach (var nominee in state.nominees)
                 {

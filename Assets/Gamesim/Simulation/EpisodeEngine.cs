@@ -82,8 +82,27 @@ namespace Gamesim.Simulation
                     }
                     Require(s.phase == EpisodePhase.Eviction, "Voting is not open.");
                     Require(!s.evictionResolved, "The eviction is already complete.");
+                    // The house votes at the voting stage, not before it. Without this a ballot could
+                    // be cast while the nominees were still speaking — which is both out of order and
+                    // the one thing that can make a save's stage disagree with its own votes.
+                    Require(s.evictionStage == EvictionStage.Voting || s.evictionStage == EvictionStage.Tiebreaker,
+                        "The nominees are still speaking. The house votes after that.");
                     Require(Voters(s).Any(x => x.id == s.playerId) || NeedsPlayerTieBreak(s), "You are not eligible to vote now.");
                     Vote(s, s.playerId, c.targetId, "Player's decision"); break;
+                case EpisodeCommandKind.SubmitEvictionSpeech:
+                    Require(s.phase == EpisodePhase.Eviction && s.evictionStage == EvictionStage.Speeches,
+                        "The nominees are not speaking right now.");
+                    Require(s.nominees.Contains(s.playerId), "Only a nominee speaks from the block.");
+                    Require(!s.evictionSpeeches.Any(x => x.speakerId == s.playerId), "Your speech is already committed.");
+                    s.evictionSpeeches.Add(new EvictionSpeechState
+                    {
+                        speakerId = s.playerId, week = s.week, isPlayerAuthored = true,
+                        text = (c.text ?? string.Empty).Trim(),
+                    });
+                    Log(s, "eviction-speech", string.IsNullOrWhiteSpace(c.text)
+                        ? "You let your game speak for itself."
+                        : "You addressed the house from the block.");
+                    break;
                 case EpisodeCommandKind.FinalEvict:
                     Require(s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId, "Only the final HoH makes this choice.");
                     FinalEvict(s, c.targetId); break;
@@ -129,12 +148,12 @@ namespace Gamesim.Simulation
                     if (s.evictionResolved)
                     {
                         s.previousHohId = s.hohId; s.week++; s.hohId = null; s.vetoHolderId = null;
-                        s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear();
+                        s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear(); s.evictionSpeeches.Clear();
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
                     }
-                    s.socialActions = 0; s.competitionResolved = false;
+                    s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
                     Phase(s, s.Active.Count() == 3 ? EpisodePhase.FinalHoHPart1 : EpisodePhase.HoH); break;
                 case EpisodePhase.HoH:
                 case EpisodePhase.Veto:
@@ -174,9 +193,32 @@ namespace Gamesim.Simulation
                     }
                     Phase(s, EpisodePhase.Campaign); break;
                 case EpisodePhase.Campaign:
-                    Log(s, "campaign-close", "Campaigning has closed. The house votes privately to evict."); Phase(s, EpisodePhase.Eviction); break;
+                    // Campaigning IS the reference build's interaction stage — last conversations
+                    // and vote-wrangling — so eviction night opens on the speeches rather than
+                    // repeating a stage the season has just spent a whole phase on.
+                    s.evictionStage = EvictionStage.Speeches;
+                    // This sentence is recorded verbatim in the frozen voting-bloc witness. The
+                    // speeches announce themselves in their own entries; rewording a committed line
+                    // to describe a new stage would break a replay comparison for no gain.
+                    Log(s, "campaign-close", "Campaigning has closed. The house votes privately to evict.");
+                    Phase(s, EpisodePhase.Eviction); break;
                 case EpisodePhase.Eviction:
-                    if (s.evictionResolved) { Phase(s, EpisodePhase.Social); return; }
+                    if (s.evictionResolved) { s.evictionStage = EvictionStage.Interaction; Phase(s, EpisodePhase.Social); return; }
+                    // Eviction night runs as stages inside this phase rather than as phases of its
+                    // own, because EpisodePhase ordinals are frozen into every historical save.
+                    // Interaction is reachable only on a save that pre-dates the staging, whose
+                    // migration reads the stage from its ballots. Treat it as the speeches, which is
+                    // where a night that has not voted yet actually stands.
+                    if (s.evictionStage == EvictionStage.Interaction) s.evictionStage = EvictionStage.Speeches;
+                    if (s.evictionStage == EvictionStage.Speeches)
+                    {
+                        SpeakFromTheBlock(s);
+                        Require(s.evictionSpeeches.Count >= s.nominees.Count,
+                            "Deliver your speech from the block before the house votes.");
+                        s.evictionStage = EvictionStage.Voting;
+                        Log(s, "eviction-stage", "The house votes privately to evict.");
+                        return;
+                    }
                     int votesBefore = s.votes.Count;
                     var missingNpcVoters = Voters(s).Where(c => c.id != s.playerId && !s.votes.Any(v => v.voterId == c.id)).ToArray();
                     // Plan the entire missing batch before recording any ballot or settling consequences.
@@ -199,6 +241,7 @@ namespace Gamesim.Simulation
                         {
                             if (s.hohId == s.playerId)
                             {
+                                s.evictionStage = EvictionStage.Tiebreaker;
                                 if (s.votes.Count > votesBefore) return;
                                 throw new RuleException("The vote is tied. Cast the HoH tie-break vote.");
                             }
@@ -217,6 +260,7 @@ namespace Gamesim.Simulation
                         ApplyOathPlan(s, WebLoyaltyOaths.EvictionVote(OathSnapshot(s), vote.voterId, vote.targetId));
                     }
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
+                    s.evictionStage = EvictionStage.Results;
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
                     s.oathOpportunities.Remove(evicted);
                     Log(s, "eviction", Name(s, evicted) + Verb(s, evicted, " is evicted and joins ", " are evicted and join ")
@@ -298,6 +342,46 @@ namespace Gamesim.Simulation
 
         public static IEnumerable<ContestantState> NominationCandidates(EpisodeState s) => s.Active.Where(c => c.id != s.hohId);
         public static IEnumerable<ContestantState> ReplacementCandidates(EpisodeState s) => s.Active.Where(c => c.id != s.hohId && c.id != s.vetoHolderId && !s.nominees.Contains(c.id));
+        /// <summary>
+        /// How many social actions a week allows: half the active house, rounded up.
+        ///
+        /// <para>Ported from the reference build's <c>Math.ceil(activeCount / 2)</c>. This read as a
+        /// flat eighteen, which is the same family of mistake as the seven cast-derived constants
+        /// already corrected — except this one was never even right for six. Eighteen is three times
+        /// what a six-person house should get, so the social week has always been far looser here
+        /// than in the build being copied.</para>
+        ///
+        /// <para>The budget tightens as the house empties, which is the point: the endgame is meant
+        /// to leave less room to work than the opening weeks.</para>
+        /// </summary>
+        public static int SocialActionBudget(EpisodeState s) =>
+            s.week < s.socialBudgetRulesStartWeek
+                ? LegacySocialActionBudget
+                : (int)Math.Ceiling(Math.Max(0, s.Active.Count()) / 2.0);
+
+        /// <summary>
+        /// The flat allowance this project used before the rule was ported.
+        ///
+        /// <para>Kept so a season saved under it can finish the week it is in. It was never the
+        /// reference build's number for any house size — six houseguests should get three — which is
+        /// why it is a compatibility boundary rather than a supported alternative.</para>
+        /// </summary>
+        public const int LegacySocialActionBudget = 18;
+
+        /// <summary>What the player has spent this week, in the social window and outside it.</summary>
+        public static int SocialActionsSpent(EpisodeState s) => s.socialActions + s.outOfPhaseSocialActions;
+
+        /// <summary>
+        /// At Final 4 a veto holder who is not on the block may not use the veto.
+        ///
+        /// <para>The reference build states this as a rule of its own. Without it the veto holder at
+        /// four could pull a nominee down and force the Head of Household to name the only remaining
+        /// person — themselves or the other safe player — which turns the last full week into a
+        /// formality.</para>
+        /// </summary>
+        public static bool VetoIsLockedAtFinalFour(EpisodeState s) =>
+            s.Active.Count() == 4 && !string.IsNullOrEmpty(s.vetoHolderId) && !s.nominees.Contains(s.vetoHolderId);
+
         public static IEnumerable<ContestantState> Voters(EpisodeState s) => s.Active.Where(c => c.id != s.hohId && !s.nominees.Contains(c.id));
         public static bool NeedsPlayerTieBreak(EpisodeState s) => s.phase == EpisodePhase.Eviction && !s.evictionResolved && s.hohId == s.playerId &&
             s.nominees.Count == 2 && Voters(s).All(c => s.votes.Any(v => v.voterId == c.id)) &&
@@ -305,6 +389,10 @@ namespace Gamesim.Simulation
 
         public static string NpcVetoSave(EpisodeState s)
         {
+            // Before anything else, because Advance commits whatever this returns and the Final 4
+            // lock would then reject it — leaving the veto meeting with no legal command at all.
+            // A locked veto is one the holder may not use, so the answer is "saves nobody".
+            if (VetoIsLockedAtFinalFour(s)) return null;
             if (!ReplacementCandidates(s).Any()) return null;
             if (s.nominees.Contains(s.vetoHolderId)) return s.vetoHolderId;
             return s.nominees.OrderByDescending(id => s.Score(s.vetoHolderId, id)).FirstOrDefault(id => s.Score(s.vetoHolderId, id) > 30);
@@ -347,6 +435,8 @@ namespace Gamesim.Simulation
         {
             if (use)
             {
+                Require(!VetoIsLockedAtFinalFour(s),
+                    "At the final four a veto holder who is not on the block cannot use the veto.");
                 Require(s.nominees.Contains(saved ?? ""), "The veto can only save a current nominee.");
                 Require(ReplacementCandidates(s).Any(), "The veto cannot be used because no legal replacement exists.");
                 if (s.hohId != s.playerId) replacement = ReplacementCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).First().id;
@@ -362,6 +452,32 @@ namespace Gamesim.Simulation
             else Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " declines ", " decline ")
                 + "to use the veto. Nominations stand.");
             s.vetoResolved = true;
+        }
+
+        /// <summary>
+        /// Puts every nominee's speech on the record, generating the ones the player does not write.
+        ///
+        /// <para>The player's own is theirs to author and is committed separately, so this fills in
+        /// around it rather than speaking for them: a nominee who has already spoken is skipped.
+        /// A player who is not on the block has nothing to say here, and the stage passes straight
+        /// through.</para>
+        /// </summary>
+        private static void SpeakFromTheBlock(EpisodeState s)
+        {
+            foreach (var nomineeId in s.nominees)
+            {
+                if (nomineeId == s.playerId) continue;
+                if (s.evictionSpeeches.Any(x => x.speakerId == nomineeId)) continue;
+                var nominee = s.Find(nomineeId);
+                if (nominee == null) continue;
+                s.evictionSpeeches.Add(new EvictionSpeechState
+                {
+                    speakerId = nomineeId, week = s.week, isPlayerAuthored = false,
+                    text = HouseDialogue.EvictionPlea(s, nomineeId),
+                });
+                Log(s, "eviction-speech", Name(s, nomineeId) + ": "
+                    + s.evictionSpeeches.Last(x => x.speakerId == nomineeId).text);
+            }
         }
 
         private static void Vote(EpisodeState s, string voter, string target, string reason)
@@ -427,7 +543,8 @@ namespace Gamesim.Simulation
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
             Require(target != null && target.status == ContestantStatus.Active && !target.isPlayer, "Approach an active housemate.");
-            Require(s.socialActions < 18, "This social window is complete. Continue the episode.");
+            Require(SocialActionsSpent(s) < SocialActionBudget(s),
+                "This social window is complete. Continue the episode.");
             switch (c.kind)
             {
                 case EpisodeCommandKind.Talk:
@@ -455,7 +572,11 @@ namespace Gamesim.Simulation
                     Change(s, s.playerId, target.id, 3); Log(s, "information", "You shared something you personally knew with " + target.name + ".", s.playerId, target.id); break;
                 default: throw new RuleException("Unsupported social action.");
             }
-            s.socialActions++;
+            // Campaigning is not the social week, and the reference build counts those separately
+            // even though they draw on the same budget — the in-phase counter resets with the phase
+            // and this one has to survive it.
+            if (s.phase == EpisodePhase.Social) s.socialActions++;
+            else s.outOfPhaseSocialActions++;
         }
 
         private static void MakePromise(EpisodeState s, string to, PromiseKind kind, string target)

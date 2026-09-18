@@ -16,6 +16,8 @@ namespace Gamesim.Episode
         public const string JuryContinueCaption = "Continue jury questioning";
         public const string JurySkipCaption = "Skip remaining questions";
         public const string SpeechSubmitCaption = "Submit final speech";
+        public const string EvictionSpeechCaption = "Deliver your speech";
+        public const string EvictionSpeechSkipCaption = "Say nothing";
         public const string SpeechSkipCaption = "Skip my final speech";
         public const string SpeechContinueCaption = "Continue to jury voting";
         public const string DiaryTravelCaption = "Go to diary room [R]";
@@ -33,6 +35,11 @@ namespace Gamesim.Episode
         public const string StudyConfirmCaption = "Confirm study · use 1 social action";
         public const string StudyCancelCaption = "Back to diary (discard study)";
         public const string SimulateCompetitionCaption = "Simulate competition · weighted rules";
+        /// <summary>
+        /// Throwing is a real strategic option in the reference build, sitting beside playing and
+        /// simulating. It is a competition entered at the floor rather than a refusal to enter.
+        /// </summary>
+        public const string ThrowCompetitionCaption = "Throw this competition on purpose";
         // Palette lives in UiTheme so the HUD and the 3D set stay in step; these aliases keep
         // the existing call sites unchanged.
         private static readonly Color Ink = UiTheme.Ink;
@@ -505,12 +512,28 @@ namespace Gamesim.Episode
             }
             Paragraph("Write your final speech, or skip it. Your speech becomes part of the saved record; no jury result is promised.");
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
-            var rect = Panel("Final speech draft",content,Surface);
+            var input = SpeechDraft("Final speech draft","What do you want the jury to remember about your game?",
+                "Final speech character count");
+            Action(SpeechSubmitCaption,() => director.SubmitSpeech(input.text));
+            Action(SpeechSkipCaption,() => director.SubmitSpeech(""));
+        }
+        /// <summary>
+        /// The speech editor: a retained multi-line draft with a character count.
+        ///
+        /// <para>Shared by the finale and by a nominee's speech from the block. The two are
+        /// different speeches with different captions and different stakes, but the widget is the
+        /// same one, and it carries behaviour worth having in one place — Tab moves focus rather
+        /// than inserting a tab, and the draft survives a HUD rebuild, so a repaint cannot silently
+        /// erase what someone was part way through writing.</para>
+        /// </summary>
+        private EpisodeSpeechInputField SpeechDraft(string panelName,string hintText,string counterName)
+        {
+            var rect = Panel(panelName,content,Surface);
             rect.gameObject.AddComponent<LayoutElement>().minHeight = 210 * FontScale;
             var input = rect.gameObject.AddComponent<EpisodeSpeechInputField>();
             var text = NewText(rect,"",21,Paper); Stretch(text.rectTransform,14,12,14,12);
             text.alignment = TextAlignmentOptions.TopLeft;
-            var hint = NewText(rect,"What do you want the jury to remember about your game?",21,UiTheme.Muted);
+            var hint = NewText(rect,hintText,21,UiTheme.Muted);
             Stretch(hint.rectTransform,14,12,14,12);
             input.textComponent = text; input.placeholder = hint;
             input.characterLimit = 2000; input.lineType = TMP_InputField.LineType.MultiLineNewline;
@@ -519,11 +542,21 @@ namespace Gamesim.Episode
             input.selectionColor = new Color(Accent.r,Accent.g,Accent.b,.3f);
             input.text = retainedSpeech;
             var count = FlowText(retainedSpeech.Length + " / 2000 characters",17,Paper);
-            count.gameObject.name = "Final speech character count";
+            count.gameObject.name = counterName;
             input.onValueChanged.AddListener(value => { retainedSpeech = value; count.text = value.Length + " / 2000 characters"; });
-            Action(SpeechSubmitCaption,() => director.SubmitSpeech(input.text));
-            Action(SpeechSkipCaption,() => director.SubmitSpeech(""));
+            return input;
         }
+
+        /// <summary>A nominee's speech from the block, using the editor the finale uses.</summary>
+        public void EvictionSpeech(Action<string> commit)
+        {
+            Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
+            var input = SpeechDraft("Block speech draft",
+                "What do you want the house to have heard before it votes?","Block speech character count");
+            Action(EvictionSpeechCaption,() => commit(input.text));
+            Action(EvictionSpeechSkipCaption,() => commit(""));
+        }
+
         private TMP_Text FlowText(string value,int size,Color color)
         {
             var text = NewText(content,value,size,color); var element = text.gameObject.AddComponent<LayoutElement>(); element.minHeight = size * FontScale + 8;

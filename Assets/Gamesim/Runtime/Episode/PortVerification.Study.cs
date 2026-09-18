@@ -94,7 +94,9 @@ namespace Gamesim.Episode
             studyReport.preparationCapReached = true;
             studyReport.noRollBeforeConfirmation = studyReport.reviewNoMutationChecks == StudyConfirmations + 1;
             studyReport.trustPersonaMemoriesPreserved = studyReport.privateEffectChecks == StudyConfirmations;
-            studyReport.socialActionsRemainingForOptionalOath = 18 - seasonDirector.Snapshot.socialActions;
+            studyReport.socialActionsRemainingForOptionalOath =
+                EpisodeEngine.SocialActionBudget(seasonDirector.Snapshot)
+                - EpisodeEngine.SocialActionsSpent(seasonDirector.Snapshot);
             yield return CaptureSeason("study-result", graphical);
             yield return SaveReloadSeason("after-five-study-confirmations");
             RequireSeason(seasonDirector.Snapshot.playerStudyBonus == 5, "Reload must retain the earned preparation.");

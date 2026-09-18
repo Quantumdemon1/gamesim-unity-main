@@ -351,6 +351,8 @@ namespace Gamesim.Tests.EditMode
             state.hohId = npcs.First(item => item.id != victim).id;
             string other = npcs.First(item => item.id != victim && item.id != state.hohId).id;
             state.phase = EpisodePhase.Eviction; state.vetoHolderId = state.hohId;
+            // Ballots are committed below, so this fixture is the night at its voting stage.
+            state.evictionStage = EvictionStage.Voting;
             state.nominees = new List<string> { victim, other };
             state.vetoPlayers = state.Active.Select(item => item.id).ToList();
             state.vetoResolved = true; state.evictionResolved = false; state.competitionResolved = false;

@@ -19,12 +19,14 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 7) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 9) return Fail(out error, "Unsupported episode schema.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0 || s.socialActions > 18 || !Defined(s.phase))
                 return Fail(out error, "Invalid session counters or phase.");
             if (s.blocRulesStartWeek < 1 || s.blocRulesStartWeek > 101 || s.blocRulesStartWeek > s.week + 1)
                 return Fail(out error, "Voting-bloc activation week must be within the saved season boundary.");
+            if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
+                return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
             if (s.contestants == null || s.contestants.Count < MinimumCast || s.contestants.Count > MaximumCast || s.contestants.Any(c => c == null))
                 return Fail(out error, "A house holds between " + MinimumCast + " and " + MaximumCast + " contestants.");
@@ -39,7 +41,8 @@ namespace Gamesim.Simulation
                     return Fail(out error, "Invalid contestant data.");
                 // Card copy is optional, so it is bounded rather than required: an old save has none
                 // of it and must stay valid.
-                if (c.age < 0 || c.age > 120 || !ShortOrAbsent(c.occupation, 100) || !ShortOrAbsent(c.archetype, 100))
+                if (c.age < 0 || c.age > 120 || !ShortOrAbsent(c.occupation, 100) || !ShortOrAbsent(c.archetype, 100)
+                    || !ShortOrAbsent(c.hometown, 100) || !ShortOrAbsent(c.bio, 1000))
                     return Fail(out error, "Invalid contestant card copy.");
                 var stats = new[] { c.stats.physical, c.stats.mental, c.stats.endurance, c.stats.social, c.stats.luck, c.stats.competition, c.stats.strategic, c.stats.loyalty };
                 if (stats.Any(x => !Finite(x) || x < 0 || x > 10)) return Fail(out error, "Stats must be finite in the supported 0–10 range.");
@@ -72,6 +75,39 @@ namespace Gamesim.Simulation
                 s.events.GroupBy(e => e.sequence).Any(g => g.Count() > 1)) return Fail(out error, "Invalid event history.");
             if (s.acceptedCommandIds == null || s.acceptedCommandIds.Count > 256 || s.acceptedCommandIds.Any(id => !Text(id, 160)) ||
                 s.acceptedCommandIds.Distinct().Count() != s.acceptedCommandIds.Count) return Fail(out error, "Invalid command receipts.");
+            if (!Defined(s.evictionStage)) return Fail(out error, "Unsupported eviction stage.");
+            // A stage only means anything inside eviction night; anywhere else it must be the one a
+            // fresh night opens on, so a stale stage cannot survive into next week.
+            if (s.phase != EpisodePhase.Eviction && s.evictionStage != EvictionStage.Interaction)
+                return Fail(out error, "An eviction stage cannot outlive eviction night.");
+            // Interaction is the campaign phase, so a night that has actually begun is past it.
+            // A migrated save may still carry it, which is why this only bites once a ballot exists
+            // or the night has resolved — both covered by the two checks below.
+            // The stage and the ballots are two records of the same night and must agree. Without
+            // this a save can claim the house has not voted while holding its votes, and the only
+            // symptom is the night appearing to rewind on load.
+            if (s.phase == EpisodePhase.Eviction && s.evictionResolved && s.evictionStage != EvictionStage.Results)
+                return Fail(out error, "A resolved eviction is at the results stage.");
+            if (s.phase == EpisodePhase.Eviction && !s.evictionResolved && s.votes.Count > 0 &&
+                s.evictionStage != EvictionStage.Voting && s.evictionStage != EvictionStage.Tiebreaker)
+                return Fail(out error, "Ballots have been cast, so the night is past the speeches.");
+            if (s.evictionSpeeches == null || s.evictionSpeeches.Count > 2 ||
+                s.evictionSpeeches.Any(x => x == null || !Id(x.speakerId) || x.text == null || x.text.Length > 4000 ||
+                    x.week < 1 || x.week > s.week || x.isPlayerAuthored != (x.speakerId == s.playerId)) ||
+                s.evictionSpeeches.GroupBy(x => x.speakerId).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid eviction speeches.");
+            if (!Optional(s.backdoorTargetId) || (s.backdoorTargetId != null && s.backdoorTargetId == s.playerId))
+                return Fail(out error, "Invalid backdoor plan.");
+            // Bounded at the old flat ceiling rather than at the new budget: a season saved while
+            // eighteen actions were legal is still a legal season, and validation may not
+            // retroactively reject what the rules allowed when it was written. The budget is
+            // enforced where an action is spent, which is the only place it can be.
+            if (s.outOfPhaseSocialActions < 0 || s.outOfPhaseSocialActions > 18)
+                return Fail(out error, "Invalid out-of-phase social action count.");
+            if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
+                s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
+                s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)
+                return Fail(out error, "Invalid opening sequence progress.");
             var activeCount = s.Active.Count();
             if (s.phase == EpisodePhase.Finished)
             {

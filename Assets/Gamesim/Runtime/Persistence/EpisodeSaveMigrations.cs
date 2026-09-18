@@ -20,12 +20,122 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 9) return (JObject)original.DeepClone();
+            if (version < 1 || version > 8) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v8 = version == 8 ? original : PrepareV8Payload(original, out _);
+            var result = UpgradeV8ToV9(v8);
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v7-to-v8 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV8Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 8) return (JObject)original.DeepClone();
+            if (version < 1 || version > 7) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v7 = version == 7 ? original : PrepareV7Payload(original, out _);
+            var current = UpgradeV7ToV8(v7);
+            migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Moves the social-action allowance onto the rule the reference build uses, from the week
+        /// after the one the save is in.
+        ///
+        /// <para>The allowance was a flat eighteen and is now half the active house. Applying that
+        /// to the week a save is already in would retroactively overspend it — someone who legally
+        /// took six actions on Tuesday would load on Wednesday to find the limit was three. So the
+        /// saved week keeps what it was played under and the new rule starts with the next one,
+        /// which is the same boundary <c>blocRulesStartWeek</c> and the NPC subsystem already use.
+        /// </para>
+        ///
+        /// <para>A fresh season is created at week one and is therefore under the ported rule from
+        /// its first conversation; only migrated history gets the grace week.</para>
+        /// </summary>
+        public static JObject UpgradeV8ToV9(JObject original)
+        {
+            FrozenEpisodeV8.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("socialBudgetRulesStartWeek", startWeek);
+            result["schemaVersion"] = 9;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v6-to-v7 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV7Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 7) return (JObject)original.DeepClone();
             if (version < 1 || version > 6) throw new InvalidDataException("Unsupported simulation schema version.");
             var v6 = version == 6 ? original : PrepareV6Payload(original, out _);
-            var result = UpgradeV6ToV7(v6);
+            var current = UpgradeV6ToV7(v6);
             migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Adds eviction night's stages, the nominee speeches that go with them, the backdoor plan,
+        /// the out-of-phase action count, the opening beats already played, and the last two fields
+        /// of a houseguest's card.
+        ///
+        /// <para><b>Every new field defaults to empty except the eviction stage, which is derived —
+        /// and that distinction matters.</b> "Do not guess" means do not invent information the save
+        /// never held: a season saved before the creator existed has no record of anybody's
+        /// hometown, so it gets none. But eviction night's stage is not new information. A v7 save
+        /// already records whether the eviction resolved and which ballots were cast, and the stage
+        /// is a reading of those facts. Defaulting it to Interaction would take a save with a
+        /// completed vote and put it back before the speeches, which is not a conservative default —
+        /// it is a rewind. The same reasoning is why UpgradeV5ToV6 derives an activation week from
+        /// the stored week rather than defaulting it to one.</para>
+        /// </summary>
+        public static JObject UpgradeV7ToV8(JObject original)
+        {
+            FrozenEpisodeV7.Validate(original);
+            var result = (JObject)original.DeepClone();
+
+            result.Add("evictionStage", (int)StageOf(original));
+            result.Add("evictionSpeeches", new JArray());
+            result.Add("backdoorTargetId", JValue.CreateNull());
+            result.Add("outOfPhaseSocialActions", 0);
+            result.Add("openingBeatsSeen", new JArray());
+
+            if (result["contestants"] is not JArray contestants)
+                throw new InvalidDataException("contestants must be an array.");
+            foreach (var value in contestants)
+            {
+                if (value is not JObject actor) throw new InvalidDataException("contestants contains a null record.");
+                actor.Add("hometown", JValue.CreateNull());
+                actor.Add("bio", JValue.CreateNull());
+            }
+            result["schemaVersion"] = 8;
             return result;
+        }
+
+        /// <summary>
+        /// Where a stored season's eviction night had got to, read from what it already records.
+        ///
+        /// <para>Only a season sitting in the eviction phase has a stage at all; every other phase
+        /// gets the opening one, which is what a fresh night starts on.</para>
+        /// </summary>
+        private static EvictionStage StageOf(JObject payload)
+        {
+            if (payload["phase"]?.Type != JTokenType.Integer
+                || (long)payload["phase"] != (long)EpisodePhase.Eviction)
+                return EvictionStage.Interaction;
+            if (payload["evictionResolved"]?.Type == JTokenType.Boolean && (bool)payload["evictionResolved"])
+                return EvictionStage.Results;
+            return payload["votes"] is JArray votes && votes.Count > 0
+                ? EvictionStage.Voting
+                : EvictionStage.Interaction;
         }
 
         /// <summary>Frozen v1-v5-to-v6 dispatch; do not retarget its historical defaults.</summary>

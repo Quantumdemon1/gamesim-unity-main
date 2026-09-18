@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshGamesStartInWeekOneAndThePrimitiveIsDetachedInEverySnapshot()
         {
             var input = ContentCatalog.Create(501);
-            Assert.That(input.schemaVersion, Is.EqualTo(7));
+            Assert.That(input.schemaVersion, Is.EqualTo(9));
             Assert.That(input.blocRulesStartWeek, Is.EqualTo(1));
             var engine = new EpisodeEngine(input);
             var copy = engine.Snapshot; copy.blocRulesStartWeek = 2; input.blocRulesStartWeek = 2;
@@ -37,11 +37,12 @@ namespace Gamesim.Tests.EditMode
             var v4 = version < 4 ? EpisodeSaveMigrations.PrepareV4Payload(original, out _) : original;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(7));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(9));
             Assert.That((int)migrated["blocRulesStartWeek"], Is.EqualTo(8));
             Assert.That((uint)migrated["randomState"], Is.Zero);
             // Without schema 7's card copy: see the note on the v4 twin.
-            AssertOldFieldsEqual(v4, PersistenceMigrationTests.StripCardCopy((JObject)migrated.DeepClone()));
+            AssertOldFieldsEqual(v4, PersistenceMigrationTests.StripCardCopy(
+                PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9((JObject)migrated.DeepClone()))));
             Assert.That(original.ToString(Formatting.None), Is.EqualTo(before));
             var second = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
             Assert.That(changed, Is.False);
@@ -62,7 +63,7 @@ namespace Gamesim.Tests.EditMode
             var engine = new EpisodeEngine(ContentCatalog.Create(502));
             var phases = new HashSet<EpisodePhase>();
             bool partial = false, revealed = false, terminal = false;
-            for (int guard = 0; guard < 160; guard++)
+            for (int guard = 0; guard < 280; guard++)
             {
                 var state = engine.Snapshot; phases.Add(state.phase);
                 partial |= state.phase == EpisodePhase.Eviction && state.votes.Count > 0 && !state.evictionResolved;
@@ -202,7 +203,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, envelope.ToString(Formatting.None));
             Assert.That(files.Store.TryLoad(out _, out string message), Is.False);
             Assert.That(message, Does.Contain("checksum").IgnoreCase);
-            foreach (string value in new[] { "null", "4.5", "'4'", "8", "2147483648" })   // 8: still unsupported.
+            foreach (string value in new[] { "null", "4.5", "'4'", "10", "2147483648" })   // 8: still unsupported.
             {
                 var old = Historical(4); old["schemaVersion"] = JToken.Parse(value);
                 File.WriteAllText(files.Store.SavePath, PersistenceMigrationTests.Envelope(old));
@@ -256,7 +257,7 @@ namespace Gamesim.Tests.EditMode
         }
         private static JObject CaptureV4(EpisodeState state)
         {
-            var source = PersistenceMigrationTests.StripCardCopy(CaptureCurrent(state));
+            var source = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(CaptureCurrent(state))));
             source.Remove("npcSocial"); source.Remove("blocRulesStartWeek"); source["schemaVersion"] = 4; return source;
         }
         private static readonly PublicFieldContractResolver SharedCaptureResolver = new PublicFieldContractResolver();
@@ -277,8 +278,11 @@ namespace Gamesim.Tests.EditMode
         {
             switch (path)
             {
-                case "state": return new[] { "blocRulesStartWeek", "npcSocial" }.Contains(field);
-                case "state.contestants[]": return new[] { "occupation", "archetype", "age" }.Contains(field);
+                case "state": return new[] { "blocRulesStartWeek", "npcSocial",
+                    "evictionStage", "evictionSpeeches", "backdoorTargetId",
+                    "outOfPhaseSocialActions", "openingBeatsSeen",
+                    "socialBudgetRulesStartWeek" }.Contains(field);
+                case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio" }.Contains(field);
                 default: return false;
             }
         }

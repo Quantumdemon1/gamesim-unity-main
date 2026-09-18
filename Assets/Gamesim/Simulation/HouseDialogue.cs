@@ -40,6 +40,27 @@ namespace Gamesim.Simulation
             return opening + " " + RelationshipLine(state, npc);
         }
 
+        /// <summary>
+        /// A nominee's speech from the block on eviction night.
+        ///
+        /// <para>Authored in the same voices as the rest of this file, and written from the
+        /// speaker's own standing only — a plea that named who was voting which way would be the
+        /// nominee telling the house something they have no way of knowing.</para>
+        /// </summary>
+        public static string EvictionPlea(EpisodeState state, string npcId)
+        {
+            var npc = Speaker(state, npcId);
+            if (npc == null) return "I'd like to stay. That's the whole speech.";
+            string id = ContentCatalog.CanonicalId(npc.id);
+            return Pick(id,
+                "I've kept every promise I made in here, including the ones that cost me. Keep me and that doesn't change.",
+                "I'm not going to beg. I've played hard and I've played straight, and I'd like the chance to keep doing both.",
+                "I've looked after people in this house when it wasn't strategic. I'd like to think that counts for something tonight.",
+                "I know I'm loud. I also know I've never lied to any of you about what I wanted. Keep me and you keep that.",
+                "I've watched this house carefully, and I've told you what I saw. I'd like to keep being useful to you.",
+                "I'd like to stay, and I'd rather ask you honestly than work you for it. That's my speech.");
+        }
+
         /// <summary>A contextual reply with no claim that a new action was accepted.</summary>
         public static string Response(EpisodeState state, string npcId)
         {

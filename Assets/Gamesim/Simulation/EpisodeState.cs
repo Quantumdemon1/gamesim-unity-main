@@ -11,6 +11,18 @@ namespace Gamesim.Simulation
         JuryQuestioning, FinalSpeeches // Append: version-one ordinal values remain stable.
     }
 
+    /// <summary>
+    /// Where eviction night has got to.
+    ///
+    /// <para>A stage inside <see cref="EpisodePhase.Eviction"/> rather than five new phases.
+    /// <see cref="EpisodePhase"/> ordinals are frozen — every historical save stores the number, and
+    /// a parity test pins that all sixteen survive a round trip — so the night is modelled as state
+    /// within the phase it already had.</para>
+    ///
+    /// <para>Append only, for the same reason.</para>
+    /// </summary>
+    public enum EvictionStage { Interaction, Speeches, Voting, Tiebreaker, Results }
+
     public enum ContestantStatus { Active, Evicted, Jury, Winner, RunnerUp }
     public enum PromiseKind { Safety, Vote, FinalTwo, AllianceLoyalty, Information }
     public enum PromiseStatus { Active, Fulfilled, Broken, Expired }
@@ -31,6 +43,10 @@ namespace Gamesim.Simulation
         // before these existed deserialises them empty, and every surface treats empty as "omit the
         // line" rather than printing a blank field.
         public string occupation, archetype;
+        // Schema 8: the rest of the creator's card. Optional in the same way as the fields above —
+        // a season built before the creator existed has neither, and every surface omits the line
+        // rather than printing a blank one.
+        public string hometown, bio;
         public int age;
         public string mood = "Neutral", stressLevel = "Normal";
         public bool isPlayer;
@@ -79,6 +95,21 @@ namespace Gamesim.Simulation
         public string answerChoice, answer, opponentAnswer;
         public bool completed;
         public JuryExchangeState Clone() => (JuryExchangeState)MemberwiseClone();
+    }
+
+    /// <summary>
+    /// A nominee addressing the house on eviction night.
+    ///
+    /// <para>Separate from <see cref="FinalSpeechState"/>, which is the finale's plea to the jury.
+    /// They read alike and are not: this one is given by someone who may still be saved, is given
+    /// every week, and carries the week it belongs to.</para>
+    /// </summary>
+    [Serializable] public sealed class EvictionSpeechState
+    {
+        public string speakerId, text;
+        public int week;
+        public bool isPlayerAuthored;
+        public EvictionSpeechState Clone() => (EvictionSpeechState)MemberwiseClone();
     }
 
     [Serializable] public sealed class FinalSpeechState
@@ -160,7 +191,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 7;
+        public int schemaVersion = 9;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;
@@ -197,6 +228,36 @@ namespace Gamesim.Simulation
         public int blocRulesStartWeek = 1;
         public NpcSocialState npcSocial = NpcSocialState.Create(0);
 
+        // ---------------------------------------------------------------- schema 8
+        /// <summary>How far eviction night has got, so a reload resumes rather than rewinds.</summary>
+        public EvictionStage evictionStage = EvictionStage.Interaction;
+        public List<EvictionSpeechState> evictionSpeeches = new List<EvictionSpeechState>();
+        /// <summary>A nominee the Head of Household means to backdoor; not itself a nomination.</summary>
+        public string backdoorTargetId;
+        /// <summary>
+        /// Social actions spent outside the social week. The reference build counts these against
+        /// the same budget but tracks them separately, because the in-phase counter resets on the
+        /// phase and this one does not.
+        /// </summary>
+        public int outOfPhaseSocialActions;
+        /// <summary>Opening beats already played, so the intro does not replay on every load.</summary>
+        public List<string> openingBeatsSeen = new List<string>();
+
+        // ---------------------------------------------------------------- schema 9
+        /// <summary>
+        /// The week the social-action budget starts following the cast.
+        ///
+        /// <para>The allowance used to be a flat eighteen and is now half the active house, rounded
+        /// up. A season already underway keeps its old allowance for the week it is in, because the
+        /// alternative is telling someone mid-week that actions they have already legally spent have
+        /// put them over a limit that did not exist when they spent them.</para>
+        ///
+        /// <para>The same rule-version boundary <see cref="blocRulesStartWeek"/> and
+        /// <see cref="NpcSocialState.rulesStartWeek"/> already use. A fresh season starts at week
+        /// one, so new play is under the ported rule from the first conversation.</para>
+        /// </summary>
+        public int socialBudgetRulesStartWeek = 1;
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -226,6 +287,8 @@ namespace Gamesim.Simulation
             copy.oathOpportunities = new List<string>(oathOpportunities);
             copy.shownOathMilestones = new List<string>(shownOathMilestones);
             copy.npcSocial = npcSocial.Clone();
+            copy.evictionSpeeches = evictionSpeeches.Select(x => x.Clone()).ToList();
+            copy.openingBeatsSeen = new List<string>(openingBeatsSeen);
             return copy;
         }
     }
@@ -235,7 +298,8 @@ namespace Gamesim.Simulation
         Advance, Compete, Nominate, ResolveVeto, CastVote, FinalEvict,
         Talk, PromiseSafety, PromiseVote, PromiseFinalTwo, FormAlliance, LeaveAlliance, ShareInformation,
         AnswerJury, SkipQuestioning, SubmitSpeech, ReflectDiary, SkipDiary, SwearLoyalty, DeclineLoyalty,
-        StudyHouse, SimulateCompetition // Append: preserve every pre-v4 command ordinal.
+        StudyHouse, SimulateCompetition,
+        SubmitEvictionSpeech // Append: preserve every pre-v4 command ordinal.
     }
 
     [Serializable]

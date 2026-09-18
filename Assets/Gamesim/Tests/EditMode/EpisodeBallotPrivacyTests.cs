@@ -16,7 +16,7 @@ namespace Gamesim.Tests.EditMode
             var campaign = engine.Snapshot;
             string recipient = EpisodeEngine.Voters(campaign).First(voter => !voter.isPlayer).id;
             Apply(engine,EpisodeCommandKind.PromiseVote,recipient,campaign.nominees[0]);
-            Apply(engine,EpisodeCommandKind.Advance);
+            EpisodeEngineTests.OpenTheVote(engine);
             var before = engine.Snapshot;
             var command = Command(before,EpisodeCommandKind.CastVote,before.nominees[honorPromise ? 0 : 1]);
             var result = engine.Apply(command);
@@ -50,7 +50,7 @@ namespace Gamesim.Tests.EditMode
             var campaign = engine.Snapshot;
             string recipient = EpisodeEngine.Voters(campaign).First(voter => !voter.isPlayer).id;
             Apply(engine,EpisodeCommandKind.PromiseVote,recipient,campaign.nominees[0]);
-            Apply(engine,EpisodeCommandKind.Advance);
+            EpisodeEngineTests.OpenTheVote(engine);
             Apply(engine,EpisodeCommandKind.CastVote,engine.Snapshot.nominees[honorPromise ? 0 : 1]);
             var pending = engine.Snapshot;
             var expectedNpcVotes = EpisodeEngine.Voters(pending).Where(voter => !voter.isPlayer)

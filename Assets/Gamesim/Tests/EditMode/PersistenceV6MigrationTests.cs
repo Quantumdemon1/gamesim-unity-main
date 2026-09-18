@@ -17,7 +17,8 @@ namespace Gamesim.Tests.EditMode
         public void FreshFactoryUsesFixedIndependentSeedWithoutDrawingTheMainStream(uint seed)
         {
             var state = ContentCatalog.Create(seed);
-            Assert.That(state.schemaVersion, Is.EqualTo(7));
+            // A fresh season is written at whatever the current schema is, not at this file's step.
+            Assert.That(state.schemaVersion, Is.EqualTo(9));
             Assert.That(state.npcSocial.rulesStartWeek, Is.EqualTo(1));
             Assert.That(state.npcSocial.randomState, Is.EqualTo(SeededRandom.HashSeed("gamesim:npc-social:v1:" + seed.ToString("x8", System.Globalization.CultureInfo.InvariantCulture))));
             Assert.That(state.randomState, Is.EqualTo(seed == 0 ? 0x6D2B79F5u : seed));
@@ -63,7 +64,7 @@ namespace Gamesim.Tests.EditMode
         {
             var engine = new EpisodeEngine(ContentCatalog.Create(502));
             var phases = new HashSet<EpisodePhase>(); bool partial = false, revealed = false;
-            for (int guard = 0; guard < 160; guard++)
+            for (int guard = 0; guard < 280; guard++)
             {
                 var state = engine.Snapshot; phases.Add(state.phase);
                 partial |= state.phase == EpisodePhase.Eviction && state.votes.Count > 0 && !state.evictionResolved;
@@ -230,7 +231,7 @@ namespace Gamesim.Tests.EditMode
         }
         private static JObject CaptureV5(EpisodeState state)
         {
-            var result = PersistenceMigrationTests.StripCardCopy(Capture(state));
+            var result = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(Capture(state))));
             result.Remove("npcSocial"); result["schemaVersion"] = 5; return result;
         }
         private static JObject Capture(EpisodeState state) => JObject.FromObject(state, Serializer());

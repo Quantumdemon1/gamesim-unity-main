@@ -14,13 +14,46 @@ namespace Gamesim.Tests.EditMode
     public sealed class PersistenceMigrationTests
     {
         /// <summary>
-        /// Removes the card copy — occupation, archetype, age — from a capture of the current
-        /// runtime state, so it can stand in for a save written before schema 7 added them.
+        /// Removes the card copy — occupation, archetype and age from schema 7, hometown and bio
+        /// from schema 8 — from a capture of the current runtime state, so it can stand in for a
+        /// save written before those fields existed.
         ///
         /// <para>Every downgrade helper in these fixtures needs this. The stored shape is checked
         /// field for field against the type it claims to be, so a "v5 payload" that still carries
         /// schema 7's contestant fields is not a v5 payload and the frozen validator says so.</para>
         /// </summary>
+        /// <summary>
+        /// Removes everything schema 8 added — eviction night's stages and speeches, the backdoor
+        /// plan, the out-of-phase action count, the opening beats, and the last two card fields —
+        /// turning a capture of the current runtime state into a schema 7 payload.
+        ///
+        /// <para>Separate from <see cref="StripCardCopy"/> because the two granularities are both
+        /// needed: a v7 fixture keeps occupation, archetype and age, and a v6 one does not.</para>
+        /// </summary>
+        /// <summary>
+        /// Removes schema 9's social-budget rule boundary, turning a capture of the current runtime
+        /// state into a schema 8 payload.
+        /// </summary>
+        public static JObject StripSchema9(JObject payload)
+        {
+            payload?.Remove("socialBudgetRulesStartWeek");
+            return payload;
+        }
+
+        public static JObject StripSchema8(JObject payload)
+        {
+            if (payload == null) return null;
+            foreach (var field in new[] { "evictionStage", "evictionSpeeches", "backdoorTargetId",
+                         "outOfPhaseSocialActions", "openingBeatsSeen" })
+                payload.Remove(field);
+            foreach (var row in payload.DescendantsAndSelf().OfType<JObject>().ToArray())
+            {
+                if (row.Property("stats") == null) continue;
+                foreach (var field in new[] { "hometown", "bio" }) row.Remove(field);
+            }
+            return payload;
+        }
+
         public static JObject StripCardCopy(JObject payload)
         {
             if (payload == null) return null;
@@ -31,7 +64,7 @@ namespace Gamesim.Tests.EditMode
             foreach (var row in payload.DescendantsAndSelf().OfType<JObject>().ToArray())
             {
                 if (row.Property("stats") == null) continue;
-                foreach (var field in new[] { "occupation", "archetype", "age" }) row.Remove(field);
+                foreach (var field in new[] { "occupation", "archetype", "age", "hometown", "bio" }) row.Remove(field);
             }
             return payload;
         }
@@ -154,13 +187,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(7));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(9));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(7));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(9));
         }
 
         [Test]
@@ -186,7 +219,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(7));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(9));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -249,7 +282,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(7));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(9));
             Assert.That((int)loaded.phase, Is.EqualTo(phase));
             Assert.That(loaded.juryExchanges, Is.Empty);
             Assert.That(loaded.finalSpeeches, Is.Empty);

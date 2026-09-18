@@ -411,7 +411,16 @@ namespace Gamesim.Tests.PlayMode
                 command.targetId = command.useVeto ? state.vetoHolderId == state.playerId ? state.nominees[0] : EpisodeEngine.NpcVetoSave(state) : null;
                 command.secondTargetId = replacement?.id;
             }
-            else if (state.phase == EpisodePhase.Eviction && !state.evictionResolved && !state.votes.Any(vote => vote.voterId == state.playerId)
+            else if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches
+                && state.nominees.Contains(state.playerId)
+                && !state.evictionSpeeches.Any(speech => speech.speakerId == state.playerId))
+            {
+                command.kind = EpisodeCommandKind.SubmitEvictionSpeech;
+                command.text = ""; // The complete-season route exercises the explicit "say nothing" path.
+            }
+            else if (state.phase == EpisodePhase.Eviction && !state.evictionResolved
+                && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
+                && !state.votes.Any(vote => vote.voterId == state.playerId)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             {
                 command.kind = EpisodeCommandKind.CastVote;
@@ -483,6 +492,7 @@ namespace Gamesim.Tests.PlayMode
                     case EpisodeCommandKind.CastVote:
                         caption = before.phase == EpisodePhase.Jury ? "Vote for " + before.Find(next.targetId).name + " to win"
                             : "Vote to evict " + before.Find(next.targetId).name; break;
+                    case EpisodeCommandKind.SubmitEvictionSpeech: caption = EpisodeHud.EvictionSpeechSkipCaption; break;
                     case EpisodeCommandKind.FinalEvict: caption = "Evict " + before.Find(next.targetId).name; break;
                     case EpisodeCommandKind.AnswerJury:
                         var exchange = before.juryExchanges[before.juryQuestionIndex];

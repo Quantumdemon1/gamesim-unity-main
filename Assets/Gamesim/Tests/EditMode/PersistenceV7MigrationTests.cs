@@ -28,13 +28,6 @@ namespace Gamesim.Tests.EditMode
         private static readonly string[] CardFields = { "occupation", "archetype", "age" };
 
         [Test]
-        public void AFreshSeasonIsWrittenAtSchemaSeven()
-        {
-            Assert.That(ContentCatalog.Create(11u).schemaVersion, Is.EqualTo(7));
-            Assert.That(SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u).schemaVersion, Is.EqualTo(7));
-        }
-
-        [Test]
         public void TheUpgradeAddsTheCardFieldsAndChangesNothingElse()
         {
             var before = CaptureV6(ContentCatalog.Create(601));
@@ -101,7 +94,9 @@ namespace Gamesim.Tests.EditMode
             for (int version = 1; version <= 6; version++)
             {
                 var old = Historical(version);
-                var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+                // PrepareV7Payload, not PrepareCurrentPayload: this file is about the step that
+                // ends at schema 7, and "current" moved on when schema 8 added eviction staging.
+                var result = EpisodeSaveMigrations.PrepareV7Payload(old, out bool migrated);
 
                 Assert.That(migrated, Is.True, "version " + version);
                 Assert.That((int)result["schemaVersion"], Is.EqualTo(7), "version " + version);
@@ -115,15 +110,16 @@ namespace Gamesim.Tests.EditMode
         public void MigratingAgainIsANoOpAndTheResultLoadsAndValidates()
         {
             var old = CaptureV6(ContentCatalog.Create(601));
-            var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+            var result = EpisodeSaveMigrations.PrepareV7Payload(old, out bool migrated);
             Assert.That(migrated, Is.True);
 
-            var repeat = EpisodeSaveMigrations.PrepareCurrentPayload(result, out migrated);
+            var repeat = EpisodeSaveMigrations.PrepareV7Payload(result, out migrated);
             Assert.That(migrated, Is.False, "A schema 7 payload must not be migrated again.");
             Assert.That(ReferenceEquals(result, repeat), Is.False, "The payload must be cloned, not handed back.");
             Assert.That(JToken.DeepEquals(result, repeat), Is.True);
 
-            var parsed = result.ToObject<EpisodeState>(Serializer());
+            // Parsing needs the whole chain: the runtime type is schema 8 and validation says so.
+            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(old, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, error);
             foreach (var actor in parsed.contestants)
             {
@@ -145,8 +141,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 6").And.Contain("schema 7 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(7));
+            Assert.That(message, Does.Contain("Schema 6").And.Contain("schema 9 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(9), "A load runs the whole chain, not one step.");
             Assert.That(loaded.contestants, Has.All.Matches<ContestantState>(c => c.archetype == null && c.age == 0));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
                 "Loading must not rewrite the file.");
@@ -155,7 +151,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(originalBytes),
                 "The pre-migration bytes are kept as the backup.");
             Assert.That(files.Store.TryLoad(out var again, out message), Is.True, message);
-            Assert.That(again.schemaVersion, Is.EqualTo(7));
+            Assert.That(again.schemaVersion, Is.EqualTo(9));
             Assert.That(JToken.DeepEquals(Capture(loaded), Capture(again)), Is.True);
         }
 
@@ -219,7 +215,7 @@ namespace Gamesim.Tests.EditMode
             var result = EpisodeSaveMigrations.UpgradeV6ToV7(old);
             Assert.That(((JArray)result["contestants"]).Count, Is.EqualTo(size));
 
-            var parsed = result.ToObject<EpisodeState>(Serializer());
+            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(old, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, size + ": " + error);
         }
 
@@ -228,7 +224,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The current runtime state expressed in schema 6's shape.</summary>
         private static JObject CaptureV6(EpisodeState state)
         {
-            var payload = PersistenceMigrationTests.StripCardCopy(Capture(state));
+            var payload = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(Capture(state))));
             payload["schemaVersion"] = 6;
             return payload;
         }

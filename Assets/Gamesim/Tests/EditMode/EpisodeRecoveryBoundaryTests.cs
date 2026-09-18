@@ -227,6 +227,10 @@ namespace Gamesim.Tests.EditMode
             state.nominees.Add(state.contestants[2].id);
             state.vetoPlayers = state.Active.Select(c => c.id).ToList();
             state.vetoResolved = phase == EpisodePhase.Campaign || phase == EpisodePhase.Eviction;
+            // A hand-built eviction night is placed at its voting stage. Campaigning is the
+            // interaction stage, so a season already sitting in Eviction is past the speeches —
+            // and these fixtures are about ballots, which is the stage that takes them.
+            if (phase == EpisodePhase.Eviction) state.evictionStage = EvictionStage.Voting;
             return state;
         }
 

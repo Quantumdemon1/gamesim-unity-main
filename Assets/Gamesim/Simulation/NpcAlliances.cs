@@ -46,13 +46,13 @@ namespace Gamesim.Simulation
         /// <summary>
         /// How badly a pair has to sour before their alliance falls apart.
         ///
-        /// <para><b>Authored.</b> The reference build says alliances "dissolve automatically if any
-        /// pair sours badly" and shows the reducer that marks one broken, but never gives the
-        /// threshold that fires it. This reuses the dislike line above rather than inventing a
-        /// second number: the point at which the house would call two people enemies is a defensible
-        /// point at which to say they are no longer allies.</para>
+        /// <para>The source's <c>DISSOLUTION_THRESHOLD</c> in <c>alliance-system.ts</c>, read from
+        /// the reference repository rather than from the design document — which describes the rule
+        /// but never gives the number. It was authored here as a guess that reused the dislike line
+        /// above, and the guess was right; only the comparison was wrong. The source dissolves on
+        /// <c>score &lt; -20</c>, so a pair sitting exactly on the line stays allied.</para>
         /// </summary>
-        public const double SourLine = DislikeLine;
+        public const double SourLine = -20;
 
         /// <summary>
         /// How much one houseguest wants to work with another.
@@ -193,7 +193,7 @@ namespace Gamesim.Simulation
             foreach (var alliance in state.alliances.Where(a => a.active).ToList())
             {
                 bool soured = alliance.members.Any(one =>
-                    alliance.members.Any(other => one != other && state.Score(one, other) <= SourLine));
+                    alliance.members.Any(other => one != other && state.Score(one, other) < SourLine));
                 bool intact = alliance.members.Count(id => state.Find(id)?.status == ContestantStatus.Active) >= 2;
                 if (soured || !intact) alliance.active = false;
             }

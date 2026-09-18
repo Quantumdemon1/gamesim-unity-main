@@ -114,26 +114,31 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The card copy a houseguest's tile carries: an archetype, an age and a job.
         ///
-        /// <para>The <b>archetypes are the web game's own</b> — this scenario's five are drawn from
-        /// its regular cast, so The Diplomat, The Firebrand, The Caregiver, The Party Animal and The
-        /// Brainiac are copied rather than invented. Ages and occupations are authored Unity
-        /// scenario defaults, in the same class as the motives and room homes above: the reference
-        /// screenshots show the shape of the field, not its value for these five.</para>
+        /// <para>All of it is the web game's own now. The archetypes always were — The Diplomat, The
+        /// Firebrand, The Caregiver, The Party Animal and The Brainiac are copied rather than
+        /// invented — and the ages and occupations used to be authored Unity defaults, chosen
+        /// because the reference screenshots showed the shape of the field rather than its value.
+        /// They did not have to be: <c>src/data/character-templates.ts</c> carries both, and these
+        /// five now match it. Maya is a thirty-year-old lawyer rather than a thirty-one-year-old
+        /// mediator because that is what the source says.</para>
+        ///
+        /// <para>Card copy only, so nothing downstream moves. Stats come from traits, and the traits
+        /// of these five already agreed with the source.</para>
         /// </summary>
         private static void Card(ContestantState npc)
         {
             switch (npc.id)
             {
                 case MayaId:
-                    npc.archetype = "The Diplomat"; npc.age = 31; npc.occupation = "Mediator"; break;
+                    npc.archetype = "The Diplomat"; npc.age = 30; npc.occupation = "Lawyer"; break;
                 case "taylor-kim":
-                    npc.archetype = "The Firebrand"; npc.age = 26; npc.occupation = "Personal Trainer"; break;
+                    npc.archetype = "The Firebrand"; npc.age = 27; npc.occupation = "Fitness Instructor"; break;
                 case "jamie-roberts":
-                    npc.archetype = "The Caregiver"; npc.age = 38; npc.occupation = "Paediatric Nurse"; break;
+                    npc.archetype = "The Caregiver"; npc.age = 27; npc.occupation = "Nurse"; break;
                 case "casey-wilson":
                     npc.archetype = "The Party Animal"; npc.age = 24; npc.occupation = "Bartender"; break;
                 case "riley-johnson":
-                    npc.archetype = "The Brainiac"; npc.age = 29; npc.occupation = "Data Analyst"; break;
+                    npc.archetype = "The Brainiac"; npc.age = 29; npc.occupation = "Software Engineer"; break;
             }
         }
 

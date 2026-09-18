@@ -15,8 +15,18 @@ namespace Gamesim.Presentation
 
         private const int SampleRate = 22050;
         private readonly Dictionary<Cue, AudioClip> clips = new Dictionary<Cue, AudioClip>();
-        private AudioSource ambienceSource, cueSource;
-        private AudioClip ambience;
+        /// <summary>
+        /// What the music bed is doing.
+        ///
+        /// <para>The reference's shape, from <c>GameSim-Game-Flow_v2.md</c>: a theme over the opening,
+        /// then a season bed that plays until the game is over, and silence on the screens that are
+        /// not the game — setup, the opening itself, and the final stats.</para>
+        /// </summary>
+        public enum Music { Silent, Theme, Season }
+
+        private AudioSource ambienceSource, cueSource, musicSource;
+        private AudioClip ambience, themeBed, seasonBed;
+        private Music music = Music.Silent;
         private bool initialized, ambienceEnabled = true;
         private float volume = 0.35f;
         public bool Muted { get; private set; }
@@ -57,6 +67,36 @@ namespace Gamesim.Presentation
             ApplySettings();
         }
 
+        /// <summary>
+        /// Puts the music bed into a state, idempotently.
+        ///
+        /// <para>Callers say what is happening rather than what to play — the opening sequence asks
+        /// for <see cref="Music.Theme"/>, the house asks for <see cref="Music.Season"/>, and every
+        /// screen that is not the game asks for <see cref="Music.Silent"/>. Repeating the state a
+        /// caller is already in does nothing, so a screen can assert its own music every time it
+        /// renders without restarting the track under the player.</para>
+        /// </summary>
+        public void SetMusic(Music value)
+        {
+            if (music == value) return;
+            music = value;
+            ApplySettings();
+        }
+
+        public Music CurrentMusic => music;
+
+        /// <summary>
+        /// Whether the bed is a real recording rather than the synthesised stand-in.
+        ///
+        /// <para>False in every build today. <c>Resources/Audio/Theme</c> and
+        /// <c>Resources/Audio/Season</c> are looked up at startup and used when present, so supplying
+        /// the reference's <c>bbtheme.mp3</c> and <c>background_music.mp3</c> under those names is the
+        /// whole of the work — nothing here needs changing. They are deliberately not committed:
+        /// a file called <c>bbtheme</c> is very likely somebody else's music, and that is a licensing
+        /// decision rather than a porting one.</para>
+        /// </summary>
+        public bool HasRecordedMusic { get; private set; }
+
         public void PlayCue(Cue cue)
         {
             if (!isActiveAndEnabled || Muted || volume <= 0f) return;
@@ -84,6 +124,19 @@ namespace Gamesim.Presentation
             cueSource.playOnAwake = false;
             cueSource.spatialBlend = 0f;
             cueSource.priority = 80;
+            musicSource = gameObject.AddComponent<AudioSource>();
+            musicSource.playOnAwake = false;
+            musicSource.loop = true;
+            musicSource.spatialBlend = 0f;
+            // Below the cues and the ambience: music is the thing that gets out of the way when the
+            // house has something to say.
+            musicSource.priority = 200;
+
+            // A supplied recording wins over the synthesised bed, and neither is required.
+            themeBed = Resources.Load<AudioClip>("Audio/Theme") ?? BuildBed("Theme bed", ThemeChords, 1.5f);
+            seasonBed = Resources.Load<AudioClip>("Audio/Season") ?? BuildBed("Season bed", SeasonChords, 2.4f);
+            HasRecordedMusic = Resources.Load<AudioClip>("Audio/Theme") != null;
+
             ambience = BuildAmbience();
             ambienceSource.clip = ambience;
             clips[Cue.Button] = Compose("Button", 0.07f, new Tone(600, 0.06f, 0, 0.11f));
@@ -123,6 +176,66 @@ namespace Gamesim.Presentation
                 cueSource.mute = Muted;
                 cueSource.volume = volume;
             }
+            if (musicSource != null)
+            {
+                musicSource.mute = Muted;
+                // Under the cues on purpose. A bed that competes with the eviction sting is not a bed.
+                musicSource.volume = volume * 0.45f;
+                var wanted = music == Music.Theme ? themeBed : music == Music.Season ? seasonBed : null;
+                if (wanted == null || !isActiveAndEnabled) musicSource.Stop();
+                else if (musicSource.clip != wanted || !musicSource.isPlaying)
+                {
+                    musicSource.clip = wanted;
+                    musicSource.Play();
+                }
+            }
+        }
+
+        /// <summary>The theme: brighter, shorter, and it opens on the tonic so it reads as a fanfare.</summary>
+        private static readonly float[][] ThemeChords =
+        {
+            new[] { 261.63f, 329.63f, 392.00f },   // C
+            new[] { 349.23f, 440.00f, 523.25f },   // F
+            new[] { 392.00f, 493.88f, 587.33f },   // G
+            new[] { 261.63f, 329.63f, 392.00f },   // C
+        };
+
+        /// <summary>The season bed: minor, slower, and it never resolves. It plays for hours.</summary>
+        private static readonly float[][] SeasonChords =
+        {
+            new[] { 220.00f, 261.63f, 329.63f },   // Am
+            new[] { 174.61f, 220.00f, 261.63f },   // F
+            new[] { 196.00f, 246.94f, 293.66f },   // G
+            new[] { 164.81f, 196.00f, 246.94f },   // Em
+        };
+
+        /// <summary>
+        /// A looping chord bed, synthesised.
+        ///
+        /// <para>A stand-in, and audibly one — but a stand-in that holds the shape the reference
+        /// describes, so the opening has something to follow and the season has something under it.
+        /// Each chord fades in and out of the next so the loop point is not a click.</para>
+        /// </summary>
+        private static AudioClip BuildBed(string name, float[][] chords, float secondsPerChord)
+        {
+            int perChord = Mathf.RoundToInt(SampleRate * secondsPerChord);
+            var data = new float[perChord * chords.Length];
+            for (int c = 0; c < chords.Length; c++)
+                for (int i = 0; i < perChord; i++)
+                {
+                    float t = i / (float)SampleRate;
+                    float phase = i / (float)perChord;
+                    // Raised sine over the whole chord: silent at both ends, so chords cross-fade
+                    // into each other and the wrap from last to first is seamless.
+                    float envelope = 0.5f * (1f - Mathf.Cos(phase * 2f * Mathf.PI));
+                    float sample = 0f;
+                    foreach (var frequency in chords[c])
+                        sample += Mathf.Sin(2f * Mathf.PI * frequency * t);
+                    data[c * perChord + i] = sample / chords[c].Length * envelope * 0.25f;
+                }
+            var clip = AudioClip.Create(name, data.Length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
         }
 
         private readonly struct Tone

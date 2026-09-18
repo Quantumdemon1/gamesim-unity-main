@@ -72,9 +72,12 @@ namespace Gamesim.Simulation
         /// <para><b>The card's stats do not come along, and the difference is not small.</b> The
         /// source lists what a chosen character brings — name, age, job, hometown, bio, traits, look
         /// and pronouns — and stats are not on it; step two then says every stat starts at five with
-        /// five spare points, for anyone who reaches that step by any route. So this copies the copy
-        /// and the traits, applies the trait boosts to a flat five, and leaves the allowance
-        /// unspent.</para>
+        /// five spare points, for anyone who reaches that step by any route. So this copies all of
+        /// that copy, applies the trait boosts to a flat five, and leaves the allowance unspent.</para>
+        ///
+        /// <para>The hometown and bio really do come along now. They were skipped here for a while
+        /// on the grounds that the cast table did not hold them, which was true of this project's
+        /// table and wrong about the source.</para>
         ///
         /// <para>The consequence is worth stating plainly, because it is a real one.
         /// <see cref="CastTemplates.ToContestant"/> builds a card's stats through
@@ -90,11 +93,10 @@ namespace Gamesim.Simulation
             var draft = new CharacterDraft();
             if (template == null) return draft;
 
-            // Hometown and bio are left blank on purpose: the cast table has never held either.
-            // They arrived with the creator's own card copy in schema 8, and writing twenty-four
-            // biographies to fill them in would be authoring a cast rather than porting one.
             draft.Name = template.Name ?? string.Empty;
             draft.Occupation = template.Occupation ?? string.Empty;
+            draft.Hometown = template.Hometown ?? string.Empty;
+            draft.Bio = template.Bio ?? string.Empty;
             draft.Pronouns = string.IsNullOrEmpty(template.Pronouns) ? "they/them" : template.Pronouns;
             draft.Archetype = string.IsNullOrEmpty(template.Archetype) ? "The Newcomer" : template.Archetype;
             draft.HomeRoom = string.IsNullOrEmpty(template.HomeRoom) ? "Living" : template.HomeRoom;

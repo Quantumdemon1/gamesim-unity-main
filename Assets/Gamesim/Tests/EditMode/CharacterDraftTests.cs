@@ -189,13 +189,42 @@ namespace Gamesim.Tests.EditMode
                 Is.GreaterThan(WebTraits.StatNames.Sum(stat => WebTraits.Get(played, stat))));
         }
 
+        /// <summary>
+        /// The whole card comes along, hometown and bio included.
+        ///
+        /// <para>This test used to assert the opposite — that both stayed blank, because "the cast
+        /// table has never held either". That was true of this project's table and wrong about the
+        /// source, which has carried a hometown and a bio for every houseguest all along. The table
+        /// was the thing that needed fixing, not the creator.</para>
+        /// </summary>
         [Test]
-        public void ABlankCardStaysBlankWhereTheTableHasNothing()
+        public void OpeningACardBringsItsWholeCard()
         {
-            var draft = CharacterDraft.From(CastTemplates.In(CastTemplates.Roster.Regular).First());
-            Assert.That(draft.Hometown, Is.Empty);
-            Assert.That(draft.Bio, Is.Empty,
-                "The cast table has never held either; they arrived with the creator.");
+            foreach (var template in CastTemplates.In(CastTemplates.Roster.Regular))
+            {
+                var draft = CharacterDraft.From(template);
+                Assert.That(draft.Hometown, Is.Not.Empty, template.Name + " has no hometown.");
+                Assert.That(draft.Bio, Is.Not.Empty, template.Name + " has no bio.");
+                Assert.That(draft.Hometown, Is.EqualTo(template.Hometown));
+                Assert.That(draft.Bio, Is.EqualTo(template.Bio));
+            }
+        }
+
+        /// <summary>Every houseguest in the pool carries the full card, so no season builds a blank one.</summary>
+        [Test]
+        public void EveryTemplateCarriesItsCardCopy()
+        {
+            foreach (var roster in (CastTemplates.Roster[])System.Enum.GetValues(typeof(CastTemplates.Roster)))
+                foreach (var template in CastTemplates.In(roster))
+                {
+                    Assert.That(template.Hometown, Is.Not.Null.And.Not.Empty, template.Name + " hometown");
+                    Assert.That(template.Bio, Is.Not.Null.And.Not.Empty, template.Name + " bio");
+                    Assert.That(template.Bio.Length, Is.LessThanOrEqualTo(CharacterDraft.BioLimit));
+                    Assert.That(template.Hometown.Length, Is.LessThanOrEqualTo(CharacterDraft.ShortLimit));
+                    var built = CastTemplates.ToContestant(template, false);
+                    Assert.That(built.hometown, Is.EqualTo(template.Hometown));
+                    Assert.That(built.bio, Is.EqualTo(template.Bio));
+                }
         }
 
         // ---------------------------------------------------------------- committing

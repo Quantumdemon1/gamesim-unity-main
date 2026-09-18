@@ -48,12 +48,13 @@ namespace Gamesim.Simulation
         public const double TalkImpact = 4;
 
         /// <summary>
-        /// Touching base with an alliance.
+        /// Touching base with an alliance: the source's <c>holdAllianceMeeting</c>, which writes a
+        /// decaying <c>alliance_meeting</c> event worth three in both directions between every pair
+        /// of members.
         ///
-        /// <para><b>Authored.</b> The source schedules alliance upkeep at priority 50 and never says
-        /// what it is worth. Small and positive is the only defensible reading — a meeting that moved
-        /// a bond as far as forming the alliance did would make the pact worth less than talking
-        /// about it.</para>
+        /// <para>Marked authored here for a while, because the design document schedules alliance
+        /// upkeep at priority 50 and never says what it is worth. Reading <c>alliance-system.ts</c>
+        /// settled it: the guess and the source agree exactly.</para>
         /// </summary>
         public const double AllianceMeetingImpact = 3;
 

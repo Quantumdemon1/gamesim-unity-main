@@ -774,6 +774,34 @@ namespace Gamesim.Episode
                 .Select(marker => new KeyValuePair<string, Vector3>(marker.RoomName, marker.transform.position))
                 .ToList();
 
+        /// <summary>
+        /// Decides what the music bed should be doing, from what is on screen.
+        ///
+        /// <para>The reference's rule, from <c>GameSim-Game-Flow_v2.md</c>: a theme over the opening,
+        /// then background music through the season, and silence on the screens that are not the game
+        /// — setup and the final stats. Expressed here as a question about state rather than a set of
+        /// commands scattered through the code, so there is one place that decides and no way for two
+        /// screens to disagree about what is playing.</para>
+        ///
+        /// <para>Safe to call from anywhere and often: <see cref="HouseAudio.SetMusic"/> ignores a
+        /// state it is already in, so this does not restart the track on every render.</para>
+        /// </summary>
+        private void ApplyMusic()
+        {
+            if (audioBed == null) return;
+            if (!musicOn) { audioBed.SetMusic(HouseAudio.Music.Silent); return; }
+
+            bool setup = (mainMenu != null && mainMenu.IsShowing)
+                         || (castSelect != null && castSelect.IsShowing)
+                         || (characterCreator != null && characterCreator.IsShowing)
+                         || (seasonReport != null && seasonReport.IsShowing);
+            if (setup) { audioBed.SetMusic(HouseAudio.Music.Silent); return; }
+
+            // The opening carries the theme, and the season takes over when it ends.
+            bool titles = opening != null && opening.IsPlaying;
+            audioBed.SetMusic(titles ? HouseAudio.Music.Theme : HouseAudio.Music.Season);
+        }
+
         /// <summary>Resolves a HUD chrome panel by name, live, for the tour to stand beside.</summary>
         private RectTransform FindChrome(string name) =>
             gameObject.scene.GetRootGameObjects()
@@ -1092,6 +1120,9 @@ namespace Gamesim.Episode
         private void Render()
         {
             if (hud == null || engine == null) return;
+            // Which screen is up decides what the music does, and a render is exactly the moment
+            // that changed. SetMusic ignores a state it is already in, so this costs nothing.
+            ApplyMusic();
             var state = projected ?? engine.Snapshot;
             // Repainted from committed state on every render rather than on the eviction event, so a
             // wall restored from a save shows the same thing as one that watched the vote.
@@ -1540,6 +1571,7 @@ namespace Gamesim.Episode
             audioBed?.SetMuted(muted);
             audioBed?.SetVolume(volumePercent / 100f);
             audioBed?.SetAmbienceEnabled(musicOn);
+            ApplyMusic();
             cameraRig?.SetReducedMotion(reducedMotion);
             if (hud != null) { hud.FontScale = largeText ? 1.2f : 1; hud.ReducedMotion = reducedMotion; }
             if (sting != null) sting.FontScale = largeText ? 1.2f : 1;

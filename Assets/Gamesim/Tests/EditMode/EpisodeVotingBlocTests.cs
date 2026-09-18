@@ -41,6 +41,14 @@ namespace Gamesim.Tests.EditMode
             // after it, and the expectations this fixture asserts came from the web build rather
             // than from here, so they cannot be regenerated locally.
             initial.socialBudgetRulesStartWeek = 2;
+            // And houseguests were not forming their own alliances or giving their own word when
+            // this was recorded. Both write to the ledger and move nextSequence, so a replay with
+            // autonomy running is a different season from the one on file.
+            //
+            // Two, not something larger: validation refuses a boundary beyond next week, so a save
+            // cannot claim one indefinitely far off. The witness spans a single week, which is
+            // exactly what this buys.
+            initial.npcSocial.rulesStartWeek = 2;
             var engine = new EpisodeEngine(initial);
             foreach (var item in fixture["commands"]) Apply(engine, Read<EpisodeCommand>(item));
             return engine;
@@ -81,7 +89,11 @@ namespace Gamesim.Tests.EditMode
             var fixture = Fixture(); var state = Witness().Snapshot;
             Assert.That(state.schemaVersion, Is.EqualTo(9));
             Assert.That((int)fixture["state"]["schemaVersion"], Is.EqualTo(5), "Keep the original witness unchanged.");
-            Assert.That(JToken.DeepEquals(JObject.FromObject(state.npcSocial), JObject.FromObject(NpcSocialState.Create(state.seed))), Is.True,
+            // Compared against a subsystem created with the same declared boundary, because that
+            // boundary is configuration rather than activity. What this asserts is unchanged: no
+            // conversation started, no clock advanced, no pair memory was written.
+            Assert.That(JToken.DeepEquals(JObject.FromObject(state.npcSocial),
+                    JObject.FromObject(NpcSocialState.Create(state.seed, 2))), Is.True,
                 "The explicit command replay must not silently run background conversations.");
             // The fixture is a v5 witness, so the replayed state is compared in v5's shape: without
             // the NPC subsystem schema 6 added, and without the contestant card copy schema 7 did.

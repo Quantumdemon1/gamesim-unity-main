@@ -90,7 +90,11 @@ namespace Gamesim.Tests.EditMode
         {
             for (uint seed = 1; seed <= 30; seed++)
             {
-                var engine = new EpisodeEngine(ContentCatalog.Create(seed));
+                // These count promises and their settlement exactly, so the houseguests keep
+                // their hands still: autonomy would add words nobody in the test gave.
+                var opening = ContentCatalog.Create(seed);
+                opening.npcSocial.rulesStartWeek = 2;
+                var engine = new EpisodeEngine(opening);
                 for (int guard = 0; guard < 20; guard++)
                 {
                     var state = engine.Snapshot;

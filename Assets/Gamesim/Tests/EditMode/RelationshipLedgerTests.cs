@@ -122,17 +122,17 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// An ordinary season writes <b>nothing</b> to the ledger, which is worth stating as a test
-        /// rather than leaving to be rediscovered.
+        /// An ordinary season now leaves a ledger, and every entry in it carries the policy its type
+        /// demands.
         ///
-        /// <para>Relationship events are only written when a change carries an event type, and the
-        /// only calls that pass one are the four risky social actions the player may never choose.
-        /// So a 512-capped, validated, persisted structure sits empty through an entire season.
-        /// That is the gap Phase C closes: naming nominations, veto saves and alliances turns this
-        /// from dead storage into the house's memory.</para>
+        /// <para>It did not used to. Relationship events are only written when a change carries an
+        /// event type, and for a long time the only calls passing one were risky social actions the
+        /// player might never choose — so a 512-capped, validated, persisted structure sat empty
+        /// through a whole season. Houseguests forming their own alliances and giving their own word
+        /// is what filled it, which is why that work came before anything that reads it.</para>
         /// </summary>
         [Test]
-        public void AnOrdinarySeasonWritesNoLedgerAtAll()
+        public void AnOrdinarySeasonNowLeavesALedgerAndEveryEntryCarriesItsPolicy()
         {
             var engine = new EpisodeEngine(ContentCatalog.Create(4242));
             for (int guard = 0; guard < 240 && engine.Snapshot.phase != EpisodePhase.Finished; guard++)
@@ -141,9 +141,15 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(step.accepted, Is.True, step.reason);
             }
 
-            Assert.That(engine.Snapshot.relationships.SelectMany(r => r.events), Is.Empty,
-                "If a season now leaves a ledger, the acts that write one have been named — "
-                + "update this test to assert their policies rather than deleting it.");
+            var written = engine.Snapshot.relationships.SelectMany(r => r.events).ToList();
+            Assert.That(written, Is.Not.Empty,
+                "Houseguests acting on their own account should leave a record of it.");
+            foreach (var entry in written)
+                Assert.That(entry.decayable, Is.EqualTo(RelationshipLedger.Decays(entry.type)),
+                    "A '" + entry.type + "' entry carries the wrong decay policy.");
+
+            Assert.That(written.Any(e => !e.decayable), Is.True,
+                "And some of what a season produces should be permanent.");
         }
 
         /// <summary>

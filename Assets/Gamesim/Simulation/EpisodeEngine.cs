@@ -193,7 +193,10 @@ namespace Gamesim.Simulation
                         var replacement = saved == null ? null : ReplacementCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).First().id;
                         ResolveVeto(s, saved != null, saved, replacement); return;
                     }
-                    Phase(s, EpisodePhase.Campaign); break;
+                    // A nominee begging for votes and somebody courting the Head of Household are
+                    // both positional, so they only make sense once the block is settled. This is
+                    // that moment.
+                    Phase(s, EpisodePhase.Campaign); NpcPromises.Settle(s); break;
                 case EpisodePhase.Campaign:
                     // Campaigning IS the reference build's interaction stage — last conversations
                     // and vote-wrangling — so eviction night opens on the speeches rather than
@@ -205,7 +208,17 @@ namespace Gamesim.Simulation
                     Log(s, "campaign-close", "Campaigning has closed. The house votes privately to evict.");
                     Phase(s, EpisodePhase.Eviction); break;
                 case EpisodePhase.Eviction:
-                    if (s.evictionResolved) { s.evictionStage = EvictionStage.Interaction; Phase(s, EpisodePhase.Social); return; }
+                    if (s.evictionResolved)
+                    {
+                        s.evictionStage = EvictionStage.Interaction;
+                        Phase(s, EpisodePhase.Social);
+                        // The house takes stock as the social week opens: pacts that have soured
+                        // fall apart, people who want to work together start doing so, and words are
+                        // given. Neither pass draws randomness, so neither can shift the generator.
+                        NpcAlliances.Settle(s);
+                        NpcPromises.Settle(s);
+                        return;
+                    }
                     // Eviction night runs as stages inside this phase rather than as phases of its
                     // own, because EpisodePhase ordinals are frozen into every historical save.
                     // Interaction is reachable only on a save that pre-dates the staging, whose

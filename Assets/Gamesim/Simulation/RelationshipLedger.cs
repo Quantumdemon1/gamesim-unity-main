@@ -113,6 +113,39 @@ namespace Gamesim.Simulation
             return edge != null && edge.events.Any(entry => !entry.decayable && entry.impactScore < 0);
         }
 
+        /// <summary>
+        /// Writes both directions of an act onto the record, without touching either score or the
+        /// season's generator.
+        ///
+        /// <para>The engine's own relationship path rolls for a reciprocal delta, which is exactly
+        /// what an autonomous houseguest must not do — a roll spent outside a player's command
+        /// shifts every competition and vote after it. Acts recorded here are symmetric by
+        /// construction, so there is nothing to roll for.</para>
+        ///
+        /// <para>This records what happened. It does not move anybody's standing; a caller that
+        /// wants the score to change says so separately, through the engine.</para>
+        /// </summary>
+        public static void Record(EpisodeState state, string from, string to,
+            string type, double impact, string description)
+        {
+            if (state == null || from == to) return;
+            foreach (var pair in new[] { (from, to), (to, from) })
+            {
+                var edge = Edge(state, pair.Item1, pair.Item2);
+                if (edge == null)
+                {
+                    edge = new RelationshipState { fromId = pair.Item1, toId = pair.Item2, score = 0 };
+                    state.relationships.Add(edge);
+                }
+                edge.events.Add(new RelationshipEventState
+                {
+                    sequence = state.nextSequence++, week = state.week, type = type,
+                    description = description, impactScore = impact, decayable = Decays(type),
+                });
+                if (edge.events.Count > 512) edge.events.RemoveAt(0);
+            }
+        }
+
         private static RelationshipState Edge(EpisodeState state, string from, string to) =>
             state?.relationships.FirstOrDefault(r => r.fromId == from && r.toId == to);
     }

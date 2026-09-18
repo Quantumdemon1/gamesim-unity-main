@@ -25,6 +25,22 @@ namespace Gamesim.Simulation
             return new NpcSocialState { rulesStartWeek = startWeek, randomState = InitialRandomState(seed) };
         }
 
+        /// <summary>
+        /// Whether houseguests are acting on their own account yet.
+        ///
+        /// <para>The same boundary the conversation scheduler uses, and for the same reason. A
+        /// season saved before houseguests formed their own alliances and gave their own word keeps
+        /// the week it was in; autonomy starts with the next one. Recorded fixtures set it beyond
+        /// their own length, which is how a replay stays the season it recorded rather than the
+        /// season it would be if run today.</para>
+        ///
+        /// <para>Phase-independent, unlike <see cref="IsEligible"/>: alliances are settled as the
+        /// social week opens and words are given at two points in the week, so the callers decide
+        /// when, and this decides whether.</para>
+        /// </summary>
+        public static bool AutonomyHasBegun(EpisodeState state) =>
+            state?.npcSocial != null && state.week >= state.npcSocial.rulesStartWeek;
+
         public static bool IsEligiblePhase(EpisodePhase phase) => phase == EpisodePhase.Social || phase == EpisodePhase.Campaign;
         public static bool IsEligible(EpisodeState state) => state?.npcSocial != null &&
             state.week >= state.npcSocial.rulesStartWeek && IsEligiblePhase(state.phase) && state.pendingDiary == null &&

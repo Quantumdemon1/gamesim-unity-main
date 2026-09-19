@@ -174,6 +174,7 @@ namespace Gamesim.Presentation
             Relationships(recap);
             Bullets("Alliances", recap.alliances, UiTheme.Accent);
             Bullets("Deals", recap.deals, UiTheme.Accent);
+            Bullets("What happened to the house", recap.happenings, UiTheme.Warning);
             Bullets("Turning points", recap.moments, UiTheme.Warning);
 
             Controls();

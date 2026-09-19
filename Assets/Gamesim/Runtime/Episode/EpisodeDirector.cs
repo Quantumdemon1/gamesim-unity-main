@@ -1023,10 +1023,23 @@ namespace Gamesim.Episode
         {
             if (weeklyRecap == null || week < 1) return;
             if (recapWait != null) StopCoroutine(recapWait);
-            recapWait = StartCoroutine(OpenWeeklyRecap(week));
+            recapWait = StartCoroutine(OpenWeeklyRecap(week, Snapshot.revision));
         }
 
-        private IEnumerator OpenWeeklyRecap(int week)
+        /// <summary>
+        /// Phases where there is no next week to continue to.
+        ///
+        /// <para>The last regular eviction is still an eviction, so it queues a recap like any
+        /// other — and then the season walks straight into the endgame while the vote reveal is
+        /// still playing. A recap that opened there would be a summary of the week laid over the
+        /// jury questioning that replaced it.</para>
+        /// </summary>
+        private static bool SeasonIsEnding(EpisodePhase phase) =>
+            phase == EpisodePhase.FinalEviction || phase == EpisodePhase.JuryQuestioning
+            || phase == EpisodePhase.FinalSpeeches || phase == EpisodePhase.Jury
+            || phase == EpisodePhase.Finished;
+
+        private IEnumerator OpenWeeklyRecap(int week, int queuedAt)
         {
             // Nothing here is timed. It waits on the cards' own state, so reduced motion and
             // batchmode — where those beats collapse to nothing — cost exactly one frame.
@@ -1037,8 +1050,12 @@ namespace Gamesim.Episode
 
             recapWait = null;
             var committed = Snapshot;
-            if (committed.phase == EpisodePhase.Finished) yield break;
+            if (SeasonIsEnding(committed.phase)) yield break;
             if (seasonReport != null && seasonReport.IsShowing) yield break;
+            // The player has already moved on. Nothing commits while the reveal plays unless
+            // somebody pressed something, and a recap that arrives after the next decision has been
+            // taken is an interruption rather than a summary.
+            if (committed.revision != queuedAt) yield break;
             // ClosePanels is what dismissing does: it puts the player back in the house and
             // repaints, which hiding the screen on its own would not.
             OpenRecap(() => weeklyRecap.Show(committed, ClosePanels));
@@ -1485,6 +1502,9 @@ namespace Gamesim.Episode
                     hud.Paragraph("Carrying a +" + state.phaseEventSocialBonus + " social bonus from earlier choices.");
                 if (state.playerStudyBonus > 0)
                     hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
+                // Before anything the player chose to do: something has happened to them, and a
+                // situation buried under the ordinary controls is a situation they will not see.
+                PendingHouseEvent(state);
                 HouseWideActions(state);
                 hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
                     + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
@@ -1713,6 +1733,34 @@ namespace Gamesim.Episode
                     return who + " thinks it is time the two of you made it official.";
                 default:
                     return who + " wants to partner up properly.";
+            }
+        }
+
+        /// <summary>
+        /// Whatever has happened to the house and is still waiting on an answer.
+        ///
+        /// <para>Each option says what it costs and how far it could rebound. The risk is drawn as a
+        /// word beside the control rather than only as a colour, because a warning carried by colour
+        /// alone is a warning some players never receive.</para>
+        ///
+        /// <para>There is no way to dismiss one. The reference does not offer one either, and an
+        /// event you can wave away is a paragraph rather than a decision — but nothing forces an
+        /// answer this turn, so it simply waits.</para>
+        /// </summary>
+        private void PendingHouseEvent(EpisodeState state)
+        {
+            var item = HouseEvents.Pending(state);
+            if (item == null) return;
+
+            hud.Heading(item.title.ToUpperInvariant());
+            hud.Paragraph(item.narrative);
+            foreach (var choice in item.choices)
+            {
+                string label = choice.label;
+                var control = hud.ActionFor(item.id, EpisodeHud.EventChoiceCaption(label),
+                    () => Commit(state, EpisodeCommandKind.ResolveHouseEvent, item.id, text: label));
+                hud.Tag(control, EpisodeHud.RiskTag(choice.risk));
+                if (!string.IsNullOrEmpty(choice.description)) hud.Paragraph(choice.description);
             }
         }
 

@@ -169,8 +169,15 @@ is the same finding Phase C opened with, one layer further in, and it is not clo
 
 Closing it means either warming the house faster or lowering the source's floor, and both are
 changes to the source's own numbers rather than ports of them — so it is stated rather than quietly
-fixed. `AColdHouseNeverReachesTheSourcesAllianceFloor` pins the shortfall and says in its own note
-what to do when it starts failing.
+fixed. `ANpcAllianceNeverFormsInAHeadlessSeason` pins the shortfall.
+
+It used to assert the warmth bound directly and that proved too brittle: adding the event layer
+re-rolled the season, and the warmest pair moved from under twenty-five to twenty-six without
+anything warming up by design. Forming an alliance needs warmth **at** the floor and desire
+**above** it, and desire weighs threat and shared enemies rather than warmth — so grazing the first
+number is not the same as clearing the bar. The test now asserts that nobody pairs off and reports
+the warmth in its failure message, which is the claim that actually matters and the one a re-roll
+cannot flip.
 
 Two Phase C corrections went in alongside it, both now that the house can act on the player:
 

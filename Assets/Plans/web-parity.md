@@ -288,15 +288,48 @@ hang actions off where people physically are. Pulling somebody aside has no coun
 this port owns the harder half already: a real 3D house, `HouseRoomQuery`, proximity, and a
 conversation scheduler.
 
-## Tier 4 — The event layer (~105 KB, six systems, none present)
+## Tier 4 — The event layer (~105 KB, six systems) — **house events DONE**
 
 `phase-event-system` (23 KB) · `house-event-system` (20 KB) · `proximity-event-system` (17 KB) ·
 `ambient-event-system` (13 KB) · `emergent-event-system` (11 KB) · `mid-week-crisis-system` (21 KB)
 
-Nothing in `Assets/` matches any of these. This is what makes one week feel unlike the last: things
+Nothing in `Assets/` matched any of these. This is what makes one week feel unlike the last: things
 happen to the house rather than only because the player pressed something. `phaseEventSocialBonus` and
 `phaseEventCompBonus` in the importer's discard list show they feed competition and social outcomes,
-so this is not decoration.
+so this is not decoration. (Those two do have a producer here — the diary room writes them — so they
+were never the gap; the gap was situations arriving unbidden.)
+
+**What landed.** `house-event-system.ts`, as `HouseEvents` plus the `ResolveHouseEvent` command. Its
+six templates, word for word and number for number, cast from the season's own state through the
+reference's role placeholders — `{ALLY}` is whoever the player is warmest with, `{RIVAL}` whoever
+they are coldest with, and the power roles fall back to somebody rather than printing a placeholder.
+One situation a week, drawn at the transition where the house settles its other business, surfaced
+above the ordinary controls and readable again afterwards in the weekly recap.
+
+**The AI route is not ported and will not be.** The reference asks a language model for a bespoke
+situation and falls back to the catalog when that returns nothing. A save whose content came from a
+network call cannot be replayed, and every season here has to reproduce exactly from its seed. The
+fallback is the part that works offline and deterministically, so the fallback is what was ported.
+
+**Choices are resolved to people when the event is offered, not when it is answered.** A situation
+left open for three weeks still moves whoever it was about rather than re-aiming at whoever the
+player has since fallen out with — which is also why the choices are persisted rather than derived.
+
+**`trustChange` goes to the ledger.** Trust here is `ThreatAssessment.TrustScore`, which reads
+weighted ledger impact. A choice that costs trust has to leave a mark the ledger can see, or it
+costs nothing at all.
+
+**The cost, paid knowingly.** Drawing from the season's generator re-rolls every later draw, so
+three existing tests moved. Two were fixtures that quiet the house to count effects exactly and
+simply did not know about the new system; one was a parity-gap test asserting a warmth bound that a
+re-roll flipped without anything warming up by design, now restated around the claim that actually
+matters. This is the same class of change as removing a recorded command and was not avoidable:
+events are both persisted and replayed, so the draw belongs in the recorded stream.
+
+**Still absent from Tier 4.** `proximity-event-system`, `ambient-event-system`,
+`emergent-event-system` and `mid-week-crisis-system`. The proximity one is the most tractable of
+those here, because this port owns the harder half already — a real 3D house, `HouseRoomQuery` and a
+conversation scheduler that knows who is standing where.
 
 ## Tier 5 — Narrative and the text bank
 
@@ -354,7 +387,7 @@ React presentation; the phase components may hold flow logic worth a look before
 | 6 | ~~Weekly recap (2.1)~~ **done** | Presentation over an existing event log. No schema change. |
 | 7 | ~~Minigames (3.1)~~ **done** | Every competition currently plays identically. Three games, one per category the engine produces. |
 | 8 | ~~Social vocabulary + action points (3.2, 3.3)~~ **done** | Player-facing breadth; append-only to `EpisodeCommandKind`. Landed on schema 11. |
-| 9 | Event layer (Tier 4) | Unlocks storylines, which is why they are not earlier. |
+| 9 | Event layer (Tier 4) — **house events done** | Unlocks storylines, which is why they are not earlier. Four of six systems remain. |
 | 10 | Storylines and narrative (1.2, Tier 5) | |
 | 11 | Phase E (Tier 6) | As already planned. |
 

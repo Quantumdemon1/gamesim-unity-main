@@ -386,7 +386,9 @@ namespace Gamesim.Simulation
         ShareSecret,
         SpreadRumor,
         HouseMeeting,
-        BuyActionPoint // Append: preserve every pre-v4 command ordinal.
+        BuyActionPoint,
+        /// <summary>Answering something that happened to the house.</summary>
+        ResolveHouseEvent // Append: preserve every pre-v4 command ordinal.
     }
 
     /// <summary>

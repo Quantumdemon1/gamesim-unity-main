@@ -76,6 +76,12 @@ namespace Gamesim.Presentation
             recap.deals = events.Where(e => e.kind == "deal" || e.kind == "deal-outcome")
                 .Select(e => e.text).Take(LineLimit).ToList();
             recap.moments = Moments(state, events);
+            // What happened to the house that week, and what the player did about it. The recap is
+            // the only place a resolved situation is readable again once its screen has gone.
+            recap.happenings = state.houseEvents
+                .Where(e => e.week == week)
+                .Select(e => e.title + (e.resolved ? " — " + e.outcome : " — you let it pass"))
+                .Take(LineLimit).ToList();
             recap.yourWeek = Narrative(state, week, events);
             return recap;
         }
@@ -262,6 +268,9 @@ namespace Gamesim.Presentation
             public List<string> alliances = new List<string>();
             public List<string> deals = new List<string>();
             public List<string> moments = new List<string>();
+
+            /// <summary>Things that happened to the house, and what was done about them.</summary>
+            public List<string> happenings = new List<string>();
 
             /// <summary>A week nothing is known about — a season that stopped before its first vote.</summary>
             public bool Empty => headOfHousehold == null && evicted == null && nominees.Count == 0;

@@ -53,6 +53,7 @@ namespace Gamesim.Tests.EditMode
             // evaluator this fixture pins — DealObligation scores an active vote_save at +35 — so a
             // replay with them running is not the season on file.
             initial.dealRulesStartWeek = 2;
+            initial.eventRulesStartWeek = 2;
             var engine = new EpisodeEngine(initial);
             foreach (var item in fixture["commands"]) Apply(engine, Read<EpisodeCommand>(item));
             return engine;

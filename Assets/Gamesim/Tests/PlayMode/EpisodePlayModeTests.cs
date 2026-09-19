@@ -407,7 +407,11 @@ namespace Gamesim.Tests.PlayMode
             {
                 command.kind = EpisodeCommandKind.ResolveVeto;
                 var replacement = EpisodeEngine.ReplacementCandidates(state).FirstOrDefault();
-                command.useVeto = replacement != null;
+                // At the final four a veto holder who is not on the block may not use it. The
+                // EditMode driver has always checked this; this one did not, and only never hit it
+                // because no season had reached that shape. Driving into a rule the engine enforces
+                // tests the driver, not the game.
+                command.useVeto = replacement != null && !EpisodeEngine.VetoIsLockedAtFinalFour(state);
                 command.targetId = command.useVeto ? state.vetoHolderId == state.playerId ? state.nominees[0] : EpisodeEngine.NpcVetoSave(state) : null;
                 command.secondTargetId = replacement?.id;
             }
@@ -515,7 +519,15 @@ namespace Gamesim.Tests.PlayMode
                 // the first group intentionally corresponds to NextCommand's first nominee.
                 var button = director.GetComponentsInChildren<Button>(true).FirstOrDefault(item => item.IsActive()
                     && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
-                Assert.That(button, Is.Not.Null, before.phase + " is missing action: " + caption);
+                // What the panel is actually showing, when it is not showing what was expected.
+                // This walk has cost two runs to guesswork already; a missing control should say
+                // which controls were there instead.
+                Assert.That(button, Is.Not.Null, before.phase + " is missing action: " + caption
+                    + "  ·  panel open: " + director.IsPanelOpen
+                    + "  ·  visible: " + string.Join(" | ", director.GetComponentsInChildren<Button>(true)
+                        .Where(item => item.IsActive())
+                        .SelectMany(item => item.GetComponentsInChildren<TMPro.TMP_Text>(true))
+                        .Select(text => text.text).Distinct().Take(20)));
                 button.onClick.Invoke();
                 yield return null; yield return null;
                 Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1), before.phase + ": " + director.StatusMessage);

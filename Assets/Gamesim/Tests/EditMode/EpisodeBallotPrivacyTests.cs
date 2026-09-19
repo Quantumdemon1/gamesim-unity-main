@@ -95,6 +95,7 @@ namespace Gamesim.Tests.EditMode
                 var opening = ContentCatalog.Create(seed);
                 opening.npcSocial.rulesStartWeek = 2;
                 opening.dealRulesStartWeek = 2;
+                opening.eventRulesStartWeek = 2;
                 var engine = new EpisodeEngine(opening);
                 for (int guard = 0; guard < 20; guard++)
                 {

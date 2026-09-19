@@ -71,6 +71,26 @@ namespace Gamesim.Episode
         public const string BuyBurnOneCaption = "Buy an action by burning one bridge";
         public const string BuySpreadCaption = "Buy an action at the whole house's expense";
 
+        /// <summary>
+        /// The words on one way of answering a situation.
+        ///
+        /// <para>The option's own label, unchanged. It comes from the save, and a screen that
+        /// decorated it would be showing something other than what the engine will match against.
+        /// </para>
+        /// </summary>
+        public static string EventChoiceCaption(string label) => label;
+
+        /// <summary>
+        /// How far a choice could rebound, in a word.
+        ///
+        /// <para>Said rather than only coloured: a warning that exists only as a shade of red is a
+        /// warning some players never receive.</para>
+        /// </summary>
+        public static string RiskTag(string risk) =>
+            risk == HouseEventRisk.High ? "high risk"
+            : risk == HouseEventRisk.Medium ? "some risk"
+            : "low risk";
+
         /// <summary>The words on each competition minigame's controls.</summary>
         public const string HoldGripCaption = "Hold on  [hold Space]";
         public const string ReleaseGripCaption = "Let go  [release Space]";

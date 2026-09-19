@@ -107,6 +107,9 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.MarkOpeningBeat: MarkOpeningBeat(s, c.targetId); break;
                 case EpisodeCommandKind.RespondToDeal: RespondToDeal(s, c); break;
                 case EpisodeCommandKind.BuyActionPoint: BuyActionPoint(s, c); break;
+                // Not a social action: the situation came to the player, and charging them
+                // an interaction for being walked in on would be charging for the weather.
+                case EpisodeCommandKind.ResolveHouseEvent: ResolveHouseEvent(s, c); break;
                 // Addressed to the room rather than to a person, so it cannot go through
                 // Social(), which requires a housemate to approach. It still costs an
                 // action, which it spends for itself.
@@ -236,6 +239,7 @@ namespace Gamesim.Simulation
                         NpcSocialActions.Settle(s);
                         NpcDeals.Settle(s);
                         NpcDeals.Propose(s);
+                        OfferHouseEvent(s);
                         return;
                     }
                     // Eviction night runs as stages inside this phase rather than as phases of its
@@ -914,6 +918,81 @@ namespace Gamesim.Simulation
             Remember(s, to, s.playerId, "Made me a " + kind + " promise.", true);
             Remember(s, s.playerId, to, "I promised " + kind + " to " + Name(s, to) + ".", true);
             Log(s, "promise", "You promised " + kind + " to " + Name(s, to) + ".", s.playerId, to);
+        }
+
+        // ---------------------------------------------------------------- the event layer
+        //
+        // Ported from house-event-system.ts. The reference asks a language model for a bespoke
+        // situation and falls back to a template catalog; only the catalog is ported, and that is
+        // deliberate — a save whose content came from a network call could not be replayed, and
+        // every season here has to reproduce exactly from its seed.
+
+        /// <summary>
+        /// Puts this week's situation in front of the player, if there is one.
+        ///
+        /// <para>Drawn at the same transition the house strikes its bargains at, because that is
+        /// when the week has settled enough for a situation to be about something. One a week, and
+        /// only where the player is still in the house to have it happen to them.</para>
+        /// </summary>
+        private static void OfferHouseEvent(EpisodeState s)
+        {
+            if (!HouseEvents.Ready(s)) return;
+            var drawn = HouseEvents.Draw(s, Roll(s), s.nextSequence);
+            if (drawn == null) return;
+            s.houseEvents.Add(drawn);
+            Log(s, "house-event", drawn.title + ". " + drawn.narrative, s.playerId);
+        }
+
+        /// <summary>
+        /// The player answering a situation.
+        ///
+        /// <para>Every consequence was resolved to a person when the event was drawn, so answering
+        /// three weeks later moves the people it was always about rather than re-aiming at whoever
+        /// the player has since fallen out with.</para>
+        ///
+        /// <para><c>trustChange</c> is written to the ledger rather than to a counter of its own.
+        /// Trust in this port is <see cref="ThreatAssessment.TrustScore"/>, which reads weighted
+        /// ledger impact — so a choice that costs the player trust has to leave a mark the ledger
+        /// can see, or it costs nothing at all.</para>
+        /// </summary>
+        private static void ResolveHouseEvent(EpisodeState s, EpisodeCommand c)
+        {
+            Require(s.Find(s.playerId).status == ContestantStatus.Active,
+                "Evicted players can follow the season but cannot influence it.");
+            var item = s.houseEvents.FirstOrDefault(e => e.id == c.targetId && !e.resolved);
+            Require(item != null, "That situation has already passed.");
+
+            // The choice travels as its own label rather than as an index, so a screen and an engine
+            // that disagree about the order cannot silently commit the wrong answer — which is the
+            // failure a stored list of options exists to make impossible.
+            int index = item.choices.FindIndex(x => string.Equals(x.label, (c.text ?? string.Empty).Trim(),
+                StringComparison.OrdinalIgnoreCase));
+            Require(index >= 0, "Choose one of this situation's recorded options.");
+
+            var choice = item.choices[index];
+            foreach (var impact in choice.impacts)
+            {
+                var target = s.Find(impact.targetId);
+                if (target == null || target.status != ContestantStatus.Active) continue;
+                Change(s, s.playerId, target.id, impact.amount, choice.label, "house_event");
+            }
+
+            if (Math.Abs(choice.trustChange) > 0.001)
+                foreach (string id in item.involvedIds)
+                {
+                    var witness = s.Find(id);
+                    if (witness == null || witness.status != ContestantStatus.Active) continue;
+                    RelationshipLedger.Record(s, witness.id, s.playerId,
+                        choice.trustChange > 0 ? "house_event_trust" : "house_event_distrust",
+                        choice.trustChange, choice.label);
+                }
+
+            item.resolved = true;
+            item.chosenIndex = index;
+            item.outcome = HouseEvents.Outcome(s, item, index);
+            Remember(s, s.playerId, item.involvedIds.FirstOrDefault() ?? s.playerId,
+                item.title + ": " + choice.label, true);
+            Log(s, "house-event-outcome", item.outcome, s.playerId);
         }
 
         // ---------------------------------------------------------------- the social vocabulary

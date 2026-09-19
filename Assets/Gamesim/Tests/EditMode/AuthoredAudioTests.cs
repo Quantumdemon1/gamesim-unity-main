@@ -43,6 +43,18 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void EveryRoomHasATone()
+        {
+            foreach (var room in new[] { "Kitchen", "Living", "Bedroom", "Private", "HoH", "Nomination", "Games", "Yard" })
+            {
+                var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "Rooms/" + room + ".wav");
+                Assert.That(clip, Is.Not.Null, "Resources/" + HouseAudio.RoomResourceFolder + room + " is the room's bed.");
+                Assert.That(clip.length, Is.InRange(8f, 30f), room + " loops for a while.");
+                Assert.That(clip.channels, Is.EqualTo(2));
+            }
+        }
+
+        [Test]
         public void TheButtonIsTheShortestCueAndTheFinaleTheLongest()
         {
             var lengths = Enum.GetValues(typeof(Cue)).Cast<Cue>()

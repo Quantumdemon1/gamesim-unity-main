@@ -31,7 +31,14 @@ namespace Gamesim.Presentation
         /// </summary>
         public enum Music { Silent, Theme, Season }
 
-        private AudioSource ambienceSource, cueSource, musicSource;
+        private AudioSource ambienceSource, cueSource, musicSource, roomSource;
+        private readonly Dictionary<string, AudioClip> roomTones = new Dictionary<string, AudioClip>();
+        /// <summary>Where a room's bed lives: <c>Resources/Audio/Rooms/&lt;RoomName&gt;</c>.</summary>
+        public const string RoomResourceFolder = "Audio/Rooms/";
+        /// <summary>The room whose bed is playing, or null when the generic air is.</summary>
+        public string CurrentRoom { get; private set; }
+        /// <summary>Whether a room's own bed is playing right now.</summary>
+        public bool RoomTonePlaying => roomSource != null && roomSource.isPlaying;
         private AudioClip ambience, themeBed, seasonBed;
         private Music music = Music.Silent;
         private bool initialized, ambienceEnabled = true;
@@ -52,6 +59,28 @@ namespace Gamesim.Presentation
         public void SetReducedAudio(bool value)
         {
             ReducedAudio = value;
+            ApplySettings();
+        }
+
+        /// <summary>
+        /// The room the camera looks into (§3.C room tone per room). A room with a bed in
+        /// Resources plays it and the generic air stops; a room without one, or none, keeps the
+        /// air. Asked every time the focus crosses a threshold; the same room again costs nothing.
+        /// </summary>
+        public void SetRoom(string room)
+        {
+            if (room == CurrentRoom) return;
+            CurrentRoom = room;
+            Initialize();
+            if (roomSource == null) return;
+            AudioClip clip = null;
+            if (!string.IsNullOrEmpty(room) && !roomTones.TryGetValue(room, out clip))
+            {
+                clip = Resources.Load<AudioClip>(RoomResourceFolder + room);
+                roomTones[room] = clip;
+            }
+            if (clip == null) { roomSource.Stop(); roomSource.clip = null; }
+            else if (roomSource.clip != clip) { roomSource.clip = clip; roomSource.Play(); }
             ApplySettings();
         }
 
@@ -164,6 +193,11 @@ namespace Gamesim.Presentation
 
             ambience = Own(BuildAmbience());
             ambienceSource.clip = ambience;
+            roomSource = gameObject.AddComponent<AudioSource>();
+            roomSource.playOnAwake = false;
+            roomSource.loop = true;
+            roomSource.spatialBlend = 0f;
+            roomSource.priority = 190;
             clips[Cue.Button] = Recorded(Cue.Button) ?? Own(Compose("Button", 0.07f, new Tone(600, 0.06f, 0, 0.11f)));
             clips[Cue.Save] = Recorded(Cue.Save) ?? Own(Compose("Save", 0.24f, new Tone(1000, 0.08f, 0, 0.12f), new Tone(1200, 0.10f, 0.10f, 0.12f)));
             clips[Cue.SocialUp] = Recorded(Cue.SocialUp) ?? Own(Compose("Connection", 0.33f, new Tone(330, 0.18f, 0, 0.13f), new Tone(523.25f, 0.22f, 0.10f, 0.13f)));
@@ -190,7 +224,9 @@ namespace Gamesim.Presentation
             {
                 ambienceSource.mute = Muted;
                 ambienceSource.volume = volume;
-                if (isActiveAndEnabled && ambienceEnabled && !ReducedAudio)
+                // A room's own bed replaces the generic air while it plays.
+                bool roomBed = roomSource != null && roomSource.clip != null;
+                if (isActiveAndEnabled && ambienceEnabled && !ReducedAudio && !roomBed)
                 {
                     if (!ambienceSource.isPlaying) ambienceSource.Play();
                 }
@@ -200,6 +236,14 @@ namespace Gamesim.Presentation
             {
                 cueSource.mute = Muted;
                 cueSource.volume = CueVolume;
+            }
+            if (roomSource != null)
+            {
+                roomSource.mute = Muted;
+                roomSource.volume = volume * 0.7f;
+                bool wanted = roomSource.clip != null && isActiveAndEnabled && ambienceEnabled && !ReducedAudio;
+                if (wanted && !roomSource.isPlaying) roomSource.Play();
+                else if (!wanted && roomSource.isPlaying) roomSource.Stop();
             }
             if (musicSource != null)
             {
@@ -339,6 +383,7 @@ namespace Gamesim.Presentation
         {
             if (ambienceSource != null) { ambienceSource.Stop(); Release(ambienceSource); }
             if (cueSource != null) { cueSource.Stop(); Release(cueSource); }
+            if (roomSource != null) { roomSource.Stop(); Release(roomSource); }
             foreach (var clip in owned) if (clip != null) Release(clip);
             owned.Clear();
             clips.Clear();

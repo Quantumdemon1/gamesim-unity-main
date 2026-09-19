@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Linq;
+using Gamesim.House;
 using Gamesim.Presentation;
 using NUnit.Framework;
 using UnityEngine;
@@ -12,6 +14,24 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        [UnityTest]
+        public IEnumerator Audio_TheRoomToneFollowsTheCamerasFocus()
+        {
+            var audio = director.GetComponent<HouseAudio>();
+            var kitchen = SceneComponents<HouseRoomMarker>().First(m => m.RoomName == "Kitchen");
+            var yard = SceneComponents<HouseRoomMarker>().First(m => m.RoomName == "Yard");
+            cameraRig.MoveTo(kitchen.transform.position, 12f);
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (director.RoomUnderCamera != "Kitchen" && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.RoomUnderCamera, Is.EqualTo("Kitchen"), "The camera looks into the kitchen.");
+            Assert.That(audio.CurrentRoom, Is.EqualTo("Kitchen"), "and the audio hears it");
+            Assert.That(audio.RoomTonePlaying, Is.True, "with the kitchen's bed playing");
+            cameraRig.MoveTo(yard.transform.position, 12f);
+            deadline = Time.realtimeSinceStartup + 3f;
+            while (director.RoomUnderCamera != "Yard" && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(audio.CurrentRoom, Is.EqualTo("Yard"), "and the yard's when it moves on.");
+        }
+
         [UnityTest]
         public IEnumerator Audio_ReducedSoundStopsTheRoomToneAndSoftensTheCues()
         {
@@ -29,6 +49,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(audio.ReducedAudio, Is.True, "The preference reaches the audio.");
             Assert.That(audio.CueVolume, Is.EqualTo(full * 0.5f).Within(0.001f), "The cues play at half.");
             Assert.That(audio.AmbiencePlaying, Is.False, "The room tone stops.");
+            Assert.That(audio.RoomTonePlaying, Is.False, "and so does a room's own bed");
             Assert.That(ButtonWithCaption("Full sound"), Is.Not.Null, "The control now offers the way back.");
 
             ButtonWithCaption("Full sound").onClick.Invoke();

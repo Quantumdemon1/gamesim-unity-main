@@ -322,6 +322,7 @@ namespace Gamesim.Episode
             // The house's shortcuts come through the actions map's second page: each key has a
             // gamepad button beside it there, so a controller reaches every panel the keyboard does.
             var shortcuts = cameraRig != null ? cameraRig.Actions : null;
+            TickRoomTone();
             if (challengeActive && challengeRun != null) TickMiniGame();
             else if (challengeActive)
             {

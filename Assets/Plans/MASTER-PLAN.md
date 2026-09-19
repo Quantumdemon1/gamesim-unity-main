@@ -165,7 +165,7 @@ contrast results in D6b stop being true.
 | **Reactions** — nominated, saved, evicted, won | **First pass 2026-09-19** — four one-shots authored on the rig, wired from Any State on triggers while standing; the director asks the nominees, the saved, the evicted and the winner at their beats (`Reactions_…` PlayMode test) |
 | **Faces from `mood` × `stressLevel`** | **Done 2026-09-19** — `FaceExpression` builds five blend shapes at runtime on the shipped mesh's Face submesh (the Quaternius head is two white eye shapes on a dark head, no mouth, no brows, no UVs: the emoticon's vocabulary — inner corners down, up, a squint to the lid, narrow, wide), one mesh per source mesh shared by every body of that kind; `CharacterPresentation` pushes the contestant's two words on every attach, eased, immediate under reduced motion; the six bodies the prefabs use import Read/Write for it. Two `Faces_*` PlayMode tests. Blender shape keys were the plan's route; the runtime route needs no key per body and no FBX re-export, and gives every body the same five by one rule |
 | Show-specific wardrobe | **Missing** — "Blender-authored content is still the plan" |
-| UMA at a full house of sixteen | **Unprofiled** |
+| UMA at a full house of sixteen | **Profiled at twelve 2026-09-19** — the roster's full house; the windowed 300 s profile in the matrix (median 3.20 ms, p95 4.32, p99 6.28) ran the UMA cast, since the working tree's define builds UMA bodies. Sixteen is a save's bound, not a cast |
 
 **Decide once: UMA or bespoke.** UMA gives variety cheaply and costs per frame; bespoke rigs give a
 look and cost an artist. The animation set is needed either way and is the part that reads loudest.
@@ -176,7 +176,7 @@ Part 4 §4.5 covers both routes.
 - A composed theme and a season bed, dropped into `Resources/Audio/Theme` and `Resources/Audio/Season`
   — the swap already exists. **Rendered 2026-09-19** by `ArtSource/audio/bb_music.py` under Blender's Python: a sixteen-second C-major fanfare and a forty-six-second A-minor bed, both seamless loops (rendered twice, second pass kept); `HasRecordedMusic` is true for the first time. `bb_check.py` reports peak, loudness, offset, clipping and the seam.
 - An SFX set keyed to `HouseAudio.Cue`: button, competition start/win, nomination, veto, eviction,
-  finale. Room tone per room. UI foley. **Eleven cues rendered 2026-09-19** by `bb_cues.py` into `Resources/Audio/Cues/<Cue>`; `HouseAudio` loads a recording when one ships and composes the old tone when it does not. Room tone per room and UI foley remain.
+  finale. Room tone per room. UI foley. **Eleven cues rendered 2026-09-19** by `bb_cues.py` into `Resources/Audio/Cues/<Cue>`; `HouseAudio` loads a recording when one ships and composes the old tone when it does not. **Room tone per room 2026-09-19**: `bb_rooms.py` renders eight quiet twelve-second loops into `Resources/Audio/Rooms/<RoomName>` and the audio plays the one under the camera's focus (the director asks the room query a few times a second), replacing the generic air while it plays; reduced audio silences it. UI foley remains.
 - A mixer with buses, and a "reduced audio" preference beside reduced motion. **The preference landed 2026-09-19**: "Reduce sound" in the settings stops the room tone and halves the cues and the music; every cue still sounds (`HouseAudio.SetReducedAudio`, `Audio_*` PlayMode test). The mixer remains.
 - A bark set for ceremonies covers most of the value of VO at a fraction of the cost.
 

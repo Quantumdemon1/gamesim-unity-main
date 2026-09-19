@@ -72,7 +72,9 @@ namespace Gamesim.Editor
         }
 
         /// <summary>Every model id the plan names, for the catalogue audit.</summary>
-        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model);
+        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model).Concat(SteppedModels);
+        /// <summary>Models placed by a step rather than a plan row: the competition set.</summary>
+        private static readonly string[] SteppedModels = { "bb_set_podium", "bb_set_compring" };
 
         // Heights are in metres and chosen to read at a glance rather than to be exact: a stove
         // that is waist-high and a lamp that is head-high is the whole requirement. A *negative*
@@ -126,9 +128,12 @@ namespace Gamesim.Editor
             new Prop("Living room floor", "loungeChairRelax",   0.22f, -0.20f, 210f, 0.90f),
             new Prop("Living room floor", "loungeDesignChair", -0.24f, -0.22f, 150f, 0.82f),
             new Prop("Living room floor", "loungeDesignSofa",   0.40f,  0.02f, 270f, 0.78f),
-            new Prop("Living room floor", "bookcaseOpen",      -0.44f,  0.06f,  90f, 1.45f),
-            new Prop("Living room floor", "books",             -0.42f,  0.06f,  90f, 0.24f, 0.95f),
-            new Prop("Living room floor", "books",             -0.42f,  0.14f,  90f, 0.24f, 0.62f),
+            // Against the north wall's west segment, not the west wall: the memory wall hangs there
+            // now, two rows of eight along the living room's half of it, and a bookcase stood in
+            // front of its middle.
+            new Prop("Living room floor", "bookcaseOpen",      -0.30f,  0.44f,   0f, 1.45f),
+            new Prop("Living room floor", "books",             -0.30f,  0.42f,   0f, 0.24f, 0.95f),
+            new Prop("Living room floor", "books",             -0.28f,  0.42f,   0f, 0.24f, 0.62f),
             new Prop("Living room floor", "sideTableDrawers",   0.30f,  0.40f,   0f, 0.62f),
             new Prop("Living room floor", "lampSquareTable",    0.30f,  0.40f,   0f, 0.45f, 0.62f),
             new Prop("Living room floor", "rugSquare",         -0.18f, -0.30f,   0f, -3.2f),
@@ -176,6 +181,12 @@ namespace Gamesim.Editor
             // The reward room's bed, authored with its own pillows and a headboard kept under the
             // south wing's 1.1 m wall; at its own size (a zero height).
             new Prop("HoH floor", "bb_set_hohbed",             -0.12f,  0.22f, 180f, 0f),
+            // The door with the key, dressing the divider's gap into the nomination room (the piece
+            // is placed by its bounds, and the open leaf swings into the suite, so the fraction puts
+            // the jambs on the divider at x -4.617 rather than the piece's middle there), and the
+            // week's basket on the coffee table.
+            new Prop("HoH floor", "bb_set_hohdoor",             0.4587f, 0.00f,  0f, 0f),
+            new Prop("HoH floor", "bb_set_hohbasket",          -0.30f, -0.34f,  30f, 0f, 0.42f),
             new Prop("HoH floor", "pillow",                    -0.05f,  0.35f, 180f, 0.11f, 0.58f),
             new Prop("HoH floor", "cabinetBedDrawer",          -0.33f,  0.40f,   0f, 0.52f),
             new Prop("HoH floor", "lampSquareTable",           -0.33f,  0.40f,   0f, 0.42f, 0.52f),
@@ -233,6 +244,9 @@ namespace Gamesim.Editor
             new Prop("Games floor", "desk",                     0.40f, -0.36f, 270f, 0.74f),
             new Prop("Games floor", "loungeDesignChair",        0.26f, -0.36f,  90f, 0.82f),
             new Prop("Games floor", "lampRoundFloor",          -0.42f, -0.42f,   0f, 1.05f),
+            // The have-not end: two steel cots along the south wall, cold and hard. Dressing only.
+            new Prop("Games floor", "bb_set_havenot_cot",      -0.28f, -0.44f,  90f, 0f),
+            new Prop("Games floor", "bb_set_havenot_cot",      -0.05f, -0.44f,  90f, 0f),
             new Prop("Games floor", "plantSmall3",              0.42f,  0.40f,   0f, 0.55f),
             new Prop("Games floor", "trashcan",                 0.42f,  0.22f,   0f, 0.55f),
 
@@ -245,21 +259,26 @@ namespace Gamesim.Editor
             // The east end is the pool end: the authored pool, hot tub and loungers sit where two
             // of the planters used to, at their own size (a zero height). The yard floor is 28 x
             // 10 m centred at z = 15, so 0.34 of its width is 9.5 m east of the circle.
-            new Prop("Competition yard floor", "bb_set_pool",     0.34f,  0.00f,   0f, 0f),
-            new Prop("Competition yard floor", "bb_set_hottub",   0.44f, -0.34f,   0f, 0f),
-            new Prop("Competition yard floor", "bb_set_lounger",  0.25f, -0.34f, 180f, 0f),
-            new Prop("Competition yard floor", "bb_set_lounger",  0.30f, -0.34f, 180f, 0f),
-            new Prop("Competition yard floor", "bb_set_lounger",  0.35f, -0.34f, 180f, 0f),
+            // The competition set - three gold rings on the yard's centre and the three podiums at
+            // x -6, 0 and 6 on z 17 - is placed by its own steps below, and its podium blocks carry
+            // the colliders the NavMesh was baked from, so the water goes round it: the pool turned
+            // long-ways along the east wall, clear of podium 3 (it used to stand on its corner), the
+            // loungers along the pool's south end facing it, and the hot tub in the north-west corner.
+            new Prop("Competition yard floor", "bb_set_pool",     0.40f,  0.07f,  90f, 0f),
+            new Prop("Competition yard floor", "bb_set_hottub",  -0.357f, 0.30f,   0f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.336f, -0.40f,  0f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.386f, -0.40f,  0f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.436f, -0.40f,  0f, 0f),
             new Prop("Competition yard floor", "pottedPlant",  -0.42f, -0.34f,   0f, 0.90f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.34f,   0f, 1.05f),
-            new Prop("Competition yard floor", "pottedPlant",   0.46f,  0.34f,   0f, 1.05f),
+            new Prop("Competition yard floor", "pottedPlant",   0.24f,  0.44f,   0f, 1.05f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.02f,   0f, 1.05f),
             new Prop("Competition yard floor", "plantSmall2",  -0.30f,  0.40f,   0f, 0.55f),
             new Prop("Competition yard floor", "plantSmall3",   0.30f,  0.40f,   0f, 0.55f),
             new Prop("Competition yard floor", "plantSmall1",  -0.16f,  0.44f,   0f, 0.50f),
             new Prop("Competition yard floor", "plantSmall1",   0.16f,  0.44f,   0f, 0.50f),
             new Prop("Competition yard floor", "plantSmall2",  -0.36f, -0.44f,   0f, 0.50f),
-            new Prop("Competition yard floor", "plantSmall3",   0.36f, -0.44f,   0f, 0.50f),
+            new Prop("Competition yard floor", "plantSmall3",   0.46f, -0.44f,   0f, 0.50f),
         };
 
         [MenuItem("Gamesim/U07/Add the remaining set pieces")]
@@ -298,6 +317,7 @@ namespace Gamesim.Editor
             int entrance = Entrance(world.transform, root);
             int greenery = Greenery(world.transform, root);
             int podiums = Podiums(world.transform, root);
+            int rings = Rings(world.transform, root);
             int shell = Shell(world.transform, root);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -305,8 +325,9 @@ namespace Gamesim.Editor
             AssetDatabase.SaveAssets();
             Debug.Log(string.Format(
                 "[Gamesim] set pieces · {0} props placed, {1} skipped, {2} floor tiles, {3} entrance parts, "
-                + "{4} plants swapped in, {5} podium parts, {6} primitive walls dressed by the authored shell",
-                placed, missing, tiles, entrance, greenery, podiums, shell));
+                + "{4} plants swapped in, {5} podium parts, {6} ring segments dressed by the authored circle, "
+                + "{7} primitive walls dressed by the authored shell",
+                placed, missing, tiles, entrance, greenery, podiums, rings, shell));
         }
 
         /// <summary>
@@ -399,6 +420,40 @@ namespace Gamesim.Editor
                 var renderer = box.GetComponent<Renderer>();
                 if (renderer == null || !renderer.enabled) continue;
                 renderer.enabled = false;
+                dressed++;
+            }
+            return dressed;
+        }
+
+        /// <summary>
+        /// The competition circle (Part 4, Tier 1): one authored mesh of three gold rings, from
+        /// <c>ArtSource/setpieces/bb_set_compring.py</c>, in place of the 144 primitive segments.
+        /// The segments stay in the scene with their renderers off - the yard was authored against
+        /// them and they carry no colliders, so nothing else changes. Returns how many segments the
+        /// authored circle now stands in for.
+        /// </summary>
+        private static int Rings(Transform world, Transform root)
+        {
+            var yard = Room(world, "Competition yard floor");
+            if (yard == null) return 0;
+            var segments = world.GetComponentsInChildren<Transform>(true)
+                .Where(node => !node.IsChildOf(root) && node.parent != null
+                    && node.parent.name.StartsWith("Ring ", StringComparison.Ordinal))
+                .Select(node => node.GetComponent<Renderer>())
+                .Where(renderer => renderer != null)
+                .ToArray();
+            var rings = Model("bb_set_compring", root, 0f, 0f);
+            if (rings == null) return 0;
+            // Where the primitives put the circle - their common centre - on the yard's floor.
+            var centre = segments.Length > 0
+                ? new Vector3(segments.Average(r => r.bounds.center.x), yard.bounds.max.y, segments.Average(r => r.bounds.center.z))
+                : new Vector3(yard.bounds.center.x, yard.bounds.max.y, yard.bounds.center.z);
+            rings.transform.position = centre;
+            int dressed = 0;
+            foreach (var segment in segments)
+            {
+                if (!segment.enabled) continue;
+                segment.enabled = false;
                 dressed++;
             }
             return dressed;
@@ -592,6 +647,26 @@ namespace Gamesim.Editor
 
             var group = new GameObject("Podiums").transform;
             group.SetParent(root, false);
+
+            // Authored first (Part 4, Tier 1): one mesh per podium at the block's own footprint,
+            // from ArtSource/setpieces/bb_set_podium.py. The primitive composition below is the
+            // fallback, so a missing export never leaves the yard without its podiums.
+            var authored = HouseCatalogue.Resolve("bb_set_podium", out var podiumTier);
+            if (authored != null && podiumTier == HouseCatalogue.Tier.Authored)
+            {
+                int placedPodiums = 0;
+                foreach (var block in blocks)
+                {
+                    var slot = block.bounds;
+                    var piece = Model("bb_set_podium", group, 0f, 0f);
+                    if (piece == null) continue;
+                    piece.name = block.name + " (set)";
+                    piece.transform.position = new Vector3(slot.center.x, slot.min.y, slot.center.z);
+                    block.enabled = false;
+                    placedPodiums++;
+                }
+                return placedPodiums;
+            }
 
             int parts = 0;
             foreach (var block in blocks)

@@ -32,8 +32,8 @@ rectangles. The distance between those two halves is the whole of this plan.
 | **Season flow** | `season-completion.md` | Phase 3 menu open, Phase 4 opening missing | **All four phases done.** Main menu, cast select, character creator, five-beat opening, spectator acknowledgement, season report. |
 | **House visual** | `…visual-overhaul.md` | Steps 1–5 complete, 6 remaining | **Half true, and the half that matters is the wrong half.** Steps 1–5 landed in `HousePrototype.unity`. The *shipping* scene `EpisodeHouse.unity` has the neon outlines, the competition circle and 36 fitted lights — and **no Global Volume, no post-processing, no Decor root.** Step 6 (mirror into the generator) never happened. |
 | **UI / UX** | `…ui-ux-overhaul.md` | "legacy `Text`, four hard-coded colours, no portraits" | **Stale — Steps 1–5 done.** TMP throughout, `UiTheme` (a static class, not the planned asset), rounded bordered panels, RenderTexture portraits, stings, lower-third, broadcast bug, social graph panel. **Step 6 (motion) not started; Step 7 (layout containers) four uses, not a pass.** |
-| **Camera** | `camera-navigation.md` | four phases scoped | **"What it does now" is accurate; Phases 1–4 are all unshipped.** No pitch-to-distance, no cursor zoom, no occlusion cast, no follow indicator, no Tab cycle, no gamepad. Three `.inputactions` assets exist; the rig reads `Mouse.current` directly and uses none of them. |
-| **Characters** | `uma-character-pipeline.md` | seam built, four known gaps | **Accurate.** Six authored Quaternius prefabs ship. One controller with `Speed` and `Seated` parameters and four clips — **no seated clip, so `Seated` is a parameter with nothing behind it.** `mood` and `stressLevel` are tracked per houseguest; the player's pair is printed as one line of text and **no houseguest's reaches a body or a face.** UMA behind the local-only define; 16k verts / 229 bones each, unprofiled at sixteen. |
+| **Camera** | `camera-navigation.md` | four phases scoped | **Phase 1 shipped 2026-09-19** (pitch follows the distance with the authored pitch as the orbit's offset, wheel zooms toward the cursor, a boom occluder beyond the zoom minimum pulls the camera in). Phases 2–4 unshipped: no follow indicator, no Tab cycle, no gamepad. Three `.inputactions` assets exist; the rig reads `Mouse.current` directly and uses none of them. |
+| **Characters** | `uma-character-pipeline.md` | seam built, four known gaps | **Half right.** Six authored Quaternius prefabs ship. The controller had `SitDown` and `StandUp` clips all along — what was missing was anything in the house that ever *set* `Seated`, and every clip, `Idle` and `Walk` included, was imported non-looping, so a walk froze after one cycle. **Both fixed 2026-09-19:** two seated venues (the long table, the loungers) and a facing per slot; `Idle`/`Walk` loop. `mood` and `stressLevel` are tracked per houseguest; the player's pair is printed as one line of text and **no houseguest's reaches a body or a face.** UMA behind the local-only define; 16k verts / 229 bones each, unprofiled at sixteen. |
 | **Asset packs** | `asset-pack-integration.md` | STYLARTS to become the base look; Phase 1 seam "not blocked" | **Phase 1 not done — no `HouseCatalogue` exists; `HouseSetPieces` hard-codes 132 Kenney entries.** No pack was ever downloaded; `Assets/ThirdParty/` does not exist. **Part 4 replaces this plan's premise.** |
 | **Audio** | — | — | **Zero recorded audio files.** Beds are chords synthesised in `HouseAudio.BuildBed()`. Cues, buses and the `Resources/Audio/Theme`/`Season` swap are wired and waiting. |
 | **Verification** | `ACCEPTANCE_MATRIX.md` | — | A: passing. B: passing. C: thresholds derived windowed, V7 measured batchmode — **stale.** D: passed, D2 partial. **E: 0/5.** `PortVerification.Season` walks 34 clicks and **predates every system in row one.** |
@@ -118,7 +118,7 @@ Standing between "every item delivered" and "done."
 | Step | Status | Note |
 | --- | --- | --- |
 | Merge PR #1 to `main` | **open** | Nothing blocks it. `main` has none of Part 1. |
-| Extend `PortVerification.Season` to deals, events, storylines, minigames | **written 2026-09-19; standalone run pending** | `PortVerification.Season.Systems.cs`: the weekly recap (which would have stranded the old walk after the first eviction), pending house events, one played minigame, an optional deal, and the season's storyline/event/deal counts in the report. The first standalone run showed `-nographics` cannot host the portrait RenderTextures — `Tools/build-and-verify.sh` runs `-batchmode` alone now — and then failed at its own first save/reload check, which now reports what it saw. |
+| Extend `PortVerification.Season` to deals, events, storylines, minigames | **written 2026-09-19; standalone run pending** | `PortVerification.Season.Systems.cs`: the weekly recap (which would have stranded the old walk after the first eviction), pending house events, one played minigame, an optional deal, and the season's storyline/event/deal counts in the report. The first standalone run showed `-nographics` cannot host the portrait RenderTextures — `Tools/build-and-verify.sh` runs `-batchmode` alone now — and then failed at its own first save/reload check, which now reports what it saw. **That failure was real:** a houseguest body cloned for a season larger than the authored five copied its template's motion owner and agent, and the coordinator refused every such clone its rebind — `FitHousematesToCast` strips them now, `NpcRuntime_ASeasonSeatedBeyondTheSixthSlotBindsAndSurvivesAReload` pins it, and the standalone season is to be rerun. |
 | Run Section E, once | **open** | Three fresh participants, one timed episode each, one losing run to its end. `PLAYTEST_PROTOCOL.md` is how. |
 | Re-measure C1–C5 in a window, on named hardware, at sixteen | **open** | The thresholds are windowed; the last measurement was not. |
 | Tier 5 writing pass — triple every template set | **done 2026-09-19** | 17 dialogue blocks × 6 voices × 3 variants, 6 situations × 3 narratives, 3 storyline chapters × 3, 6 jury reasons × 3. Wording is chosen by week (jury: by seat), never by a roll, so a seeded season plays out identically however it is phrased — `WritingPassTests` pins that. Labels and captions untouched. |
@@ -141,7 +141,7 @@ Standing between "every item delivered" and "done."
 | Mirror into `HousePrototypeSetup.cs` | **Resolved differently.** `HousePrototype.unity` is the hand-authored source of the art; the shipping scene is *derived* from it by the two `EpisodeHouseDressing` passes, which are re-runnable. `HousePrototypeSetup` regenerates only the shell, and regenerating it would discard the authored art — so it must not be re-run, and the plan no longer asks it to carry values it never produced. |
 | SSAO renderer feature | Present in `PC_Renderer.asset` |
 | Catalogue seam (`HouseCatalogue`, logical prop ids, resolution audit) | **Done 2026-09-19** — `HouseCatalogue.Resolve` (authored `bb_` ids first, registered replacements, then the Kenney kit), both furnishing passes route through it, `Gamesim/U07/Audit set piece resolution` lists every id by tier: 51 ids, 3 authored, 48 Kenney, 0 missing |
-| Big Brother set pieces (pool, hot tub, long table, diary chair, have-not room) | **Begun** — pool, hot tub and loungers authored and placed at the yard's east end (2026-09-19); long table, diary chair, memory wall, HoH room, podiums, have-not room open |
+| Big Brother set pieces (pool, hot tub, long table, diary chair, have-not room) | **Most of Tier 1 landed 2026-09-19** — pool, hot tub, loungers, the long table and sixteen chairs, the diary chair, the HoH bed, the competition rings and the three podiums authored and placed; the yard re-laid so the water stands clear of the podiums. the HoH door with its key, the basket and the have-not cots. **Tier 1 complete.** |
 | STYLARTS swap | **Cancelled by Part 4.** Never downloaded; cannot be committed; authored for full-height rooms against 1.5 m cutaway walls — the plan's own first risk. |
 
 **Remaining, in order:** replace the shell and set pieces with Blender-authored assets (Part 4) → per-room prop
@@ -160,7 +160,7 @@ contrast results in D6b stop being true.
 | Three-state body fallback (UMA → authored prefab → primitive rig) | Done, tested |
 | `GAMESIM_UMA` presence bootstrap | Done, and the rule in Part 2 §9 |
 | Stylised proportions, flattened shading, skin tones | Done |
-| **Seated pose** | **Missing** — the `Seated` parameter exists and is driven; there is no clip |
+| **Seated pose** | **Done 2026-09-19** — the clip was there; nothing set the parameter. `HouseMeetingCoordinator` has two *seated* venues (two chairs facing each other across the long table, two loungers by the pool) whose slots are the placed seats' floor positions, every lease carries a facing per slot (into the seat, or toward the other speaker at a standing chat), and `CharacterPresentation` sits, talks and turns to it once arrived. `Idle` and `Walk` loop now (they never did). Pinned by `Meeting_ASeatedVenue…`, `NpcRuntime_ASavedTableMeeting…` and `HouseSeatedVenueTests` (slots on chairs, in the shipping scene) |
 | **Conversation blocking** — two people facing each other, talk/listen loops | **Missing** |
 | **Reactions** — nominated, saved, evicted, won | **Missing** |
 | **Faces from `mood` × `stressLevel`** | **Missing** — five moods and five stress levels exist per houseguest; the only reader is a text line about the player (`EpisodeDirector.cs:1384`) |
@@ -206,7 +206,7 @@ storylines, minigames, recap) was built to the current idiom. A new idiom re-doe
 | Step | Status |
 | --- | --- |
 | Wheel zoom, click-to-frame, follow, orbit, pan, `F` | Done |
-| **Phase 1** — pitch tied to distance, zoom toward cursor, occlusion pull-in | **Not started** |
+| **Phase 1** — pitch tied to distance, zoom toward cursor, occlusion pull-in | **Done 2026-09-19.** The authored pitch is kept as the orbit's offset, so the first frame reframes nothing and reduced motion stays total (it took absorbing the in-flight pitch on the toggle). The occlusion cast starts at the zoom minimum: the sofa beside the focus can never yank the camera onto the floor, and the pull-in never passes what the player could zoom to. Three `Camera_*` tests |
 | **Phase 2** — cast-rail focus, follow ring and chip, Tab to cycle | **Not started** |
 | **Phase 3** — middle-drag, edge pan, gamepad, **move to an Input Actions asset** | **Not started** — `Assets/InputSystem_Actions.inputactions` exists and the rig does not use it; this is what makes the camera testable |
 | **Phase 4** — duration easing, close-range name tags, ceremony framing presets | **Not started** |
@@ -339,14 +339,16 @@ Priority is by how much each piece changes the read of the shipping scene per ho
 | **Pool and hot tub** | competition yard | The most recognisable thing about the backyard. Basin, coping, water plane (a shader, not geometry), jets, a seating ring on the tub, loungers around both. **Authored 2026-09-19** — `bb_set_pool` (7.0 × 4.4 m raised deck, tiled basin, steps, translucent lit water, `_col`), `bb_set_hottub` (2.4 m drum, seat ring, `_col`), `bb_set_lounger`; single LOD so far; not yet placed — placement is the catalogue seam's job. |
 | **Long dining table + sixteen chairs** | kitchen | Replaces the round table. One chair per houseguest — the house does most of its arguing here. Sixteen because the cast can be sixteen. **Authored and placed 2026-09-19** — `bb_set_diningtable` (4.8 × 1.1 m on two trestles) and `bb_set_diningchair` ×16, seven a side and one at each end. |
 | **Diary room hero chair** | private room | Lit separately; the one piece the camera sees in close-up during reflections. 2048 textures. **Authored and placed 2026-09-19** — `bb_set_diarychair`, a velvet throne on a brass plinth behind the diary marker, facing the camera; its own light and close-up framing still open. |
-| **Memory wall** | living room | Sixteen portrait frames in a grid; the frames are geometry, the portraits are the existing RenderTextures — `MemoryWall` already refreshes them. |
-| **HoH room** | HoH floor | The bed, the door with the key, the basket. The reward room should look like one. **Bed authored and placed 2026-09-19** — `bb_set_hohbed`, velvet and brass under the wing's 1.1 m wall; door, key and basket open. |
-| **Competition yard podiums and rings** | yard | The gold rings exist as 144 primitive segments; replace with one authored ring mesh and podiums that match. |
-| **Have-not room** | game room south | Cold palette, harsh surfaces. Set dressing only — the simulation has no have-not mechanic and this plan does not add one. |
+| **Memory wall** | living room | Sixteen portrait frames in a grid; the frames are geometry, the portraits are the existing RenderTextures — `MemoryWall` already refreshes them. **Authored and hung 2026-09-19** — `bb_set_memorywall`: two rows of eight lit frames on a dark backing, each frame its own object so the runtime can tint it, unpacked by `MemoryWallBuilder` into the "Memory frame NN" hierarchy the runtime and its tests already read; `MemoryWall` shows one frame per houseguest and centres them along the rows, so a six-person season is not six keys at one end of sixteen. The bookcase that stood in front of it moved to the north wall. |
+| **HoH room** | HoH floor | The bed, the door with the key, the basket. The reward room should look like one. **Bed authored and placed 2026-09-19** — `bb_set_hohbed`, velvet and brass under the wing's 1.1 m wall. **Door, key and basket the same day** — `bb_set_hohdoor` dresses the divider's gap into the nomination room: brass threshold, jambs, the leaf standing open into the suite with the gold key on it and the HoH plaque, all 1.1 m so nothing tops the cutaway; `bb_set_hohbasket` sits on the coffee table. |
+| **Competition yard podiums and rings** | yard | The gold rings exist as 144 primitive segments; replace with one authored ring mesh and podiums that match. **Authored and placed 2026-09-19** — `bb_set_compring` (three 96-sided annuli at the primitives' radii, neon gold that glows on import) over the 144 segments, `bb_set_podium` ×3 on the blocks' own footprints; the primitives stay unlit with the colliders the NavMesh was baked from. The yard was re-laid at the same time: the pool's first placement stood on podium 3, so it now runs long-ways along the east wall with the loungers at its south end and the hot tub in the north-west corner (`EpisodeHouseYardTests` pins the layout). |
+| **Have-not room** | game room south | Cold palette, harsh surfaces. Set dressing only — the simulation has no have-not mechanic and this plan does not add one. **Dressed 2026-09-19** — two `bb_set_havenot_cot` steel cots with thin cold mattresses along the game room's south wall. |
 
 **Tier 2 — the shell.** Walls, floors, wall caps, door frames, skirting, the cutaway edge itself
 as an authored trim. *(Walls, caps, skirting and jambs landed 2026-09-19 as `bb_shell_house`,
-generated from the scene's own colliders; floors and the cutaway trim are open.)* **The collider
+generated from the scene's own colliders. Floors textured 2026-09-19: `bb_tex_floors.py` bakes oak and
+walnut planks, slate and lawn through `bb_bake.py`, and `HouseFloorDressing` lays one tiled material
+per room floor. The cutaway trim and the wall material are open.)* **The collider
 bounds do not move.** The authored shell is visual geometry
 placed over the existing box colliders, or replaces them with `_col` meshes of identical bounds,
 and the navigation audit (`Gamesim/Audit house navigation`) passes before it is committed. The
@@ -381,7 +383,7 @@ authored.
 
 | Clip | Drives | Note |
 | --- | --- | --- |
-| `sit_idle`, `sit_to_stand`, `stand_to_sit` | the existing `Seated` parameter | Today a seated houseguest stands in a chair. This is the single most visible defect in the house and it is *one clip and two transitions.* |
+| `sit_idle`, `sit_to_stand`, `stand_to_sit` | the existing `Seated` parameter | **Wired 2026-09-19** with Quaternius' `SitDown`/`StandUp` (the one-shot holds its last frame as the seated idle). A breathing `sit_idle` loop is still worth authoring; the transitions are in the controller. |
 | `talk_loop`, `listen_loop`, `nod`, `shrug`, `arms_crossed` | `SetTalking` and conversation state | Two people facing each other and taking turns is what a conversation looks like. |
 | `react_nominated`, `react_saved`, `react_evicted`, `react_won` | the ceremony beats the stings already fire on | One-shots, additive over the idle. |
 | `walk`, `idle` variants × 3 | `Speed` | Sixteen identical idles read as clones. |
@@ -435,17 +437,20 @@ Every export passes, in order:
 1. ~~Export checklist script and the `AssetPostprocessor`~~ **done 2026-09-19** (`bb_export.py`,
    `bb_build.py`, `AuthoredAssetImporter`, `AuthoredAssetImportTests`). LFS waits for the first
    hand-modelled `.blend`; procedural sources need none.
-2. **The seated clip** — one afternoon; the most visible defect in the house, fixed.
+2. ~~**The seated clip**~~ **done 2026-09-19** — it was never the clip: seated venues, a facing per slot, and looping `Idle`/`Walk` (see §3.B).
 3. **The catalogue seam** — so every later asset has somewhere to land.
 4. Tier 1 set pieces, pool first — pool, hot tub, loungers, the long table and its sixteen chairs, the
    diary chair and the HoH bed authored and placed 2026-09-19 (eight scripts, all through the
-   checklist, all pinned by `AuthoredAssetImportTests`); memory wall frames, podiums and ring, HoH
-   door and basket, and the have-not dressing open.
+   checklist, all pinned by `AuthoredAssetImportTests`); the competition rings, podiums and the
+   memory wall, the HoH door and basket and the have-not cots the same day (fourteen scripts).
+   **Tier 1 is complete.**
 5. Tier 2 shell — **first pass 2026-09-19**: `ArtSource/shell/extract_walls.py` reads the 24 active wall
    and fence colliders out of the shipping scene, `bb_shell.py` builds caps, skirting and doorway
    jambs over them, and the set-pieces pass places the export and switches the primitive walls'
-   renderers off with their colliders untouched (reachability 28/28 after). Still to come: floors,
-   floor trim at the cutaway edge, and the wall material itself (the slab is still a flat tone).
+   renderers off with their colliders untouched (reachability 28/28 after). **Floors 2026-09-19**:
+   the first baked textures (`bb_bake.py`: Cycles on the CPU, headless; albedo + tangent normal,
+   power of two), laid per room by `HouseFloorDressing`, pinned by `AuthoredTextureTests`. Still to
+   come: floor trim at the cutaway edge, and the wall material itself (the slab is still a flat tone).
 6. Tier 3 furniture, kitchen first (it has the long table).
 7. Conversation and reaction clips; faces.
 8. Tier 4 clutter.

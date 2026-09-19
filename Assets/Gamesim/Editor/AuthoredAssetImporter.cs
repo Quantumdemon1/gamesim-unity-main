@@ -34,6 +34,28 @@ namespace Gamesim.Editor
         public static bool IsAnimation(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Animation/", StringComparison.Ordinal);
 
+        public static bool IsTexture(string path) => IsAuthored(path)
+            && path.StartsWith(Root + "Textures/", StringComparison.Ordinal);
+
+        /// <summary>
+        /// A baked texture (bb_bake.py) is one of a pair: <c>*_albedo.png</c> is colour and imports
+        /// as sRGB, <c>*_normal.png</c> is a tangent normal and imports as a normal map, never as
+        /// colour. Both repeat, because they are floor and wall tiles, and both keep their mips.
+        /// </summary>
+        private void OnPreprocessTexture()
+        {
+            if (!IsTexture(assetPath)) return;
+            var importer = (TextureImporter)assetImporter;
+            bool normal = assetPath.EndsWith("_normal.png", StringComparison.OrdinalIgnoreCase);
+            importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            importer.sRGBTexture = !normal;
+            importer.wrapMode = UnityEngine.TextureWrapMode.Repeat;
+            importer.mipmapEnabled = true;
+            importer.maxTextureSize = 2048;
+            importer.textureCompression = TextureImporterCompression.Compressed;
+            importer.isReadable = false;
+        }
+
         private void OnPreprocessModel()
         {
             if (!IsAuthored(assetPath)) return;
@@ -83,6 +105,7 @@ namespace Gamesim.Editor
         {
             if (!IsAuthored(assetPath) || material == null) return;
             string name = material.name.ToLowerInvariant();
+            if (name.Contains("neon")) Glow(material);
             bool translucent = name.Contains("water") || name.Contains("glass");
             if (!translucent || !material.HasProperty("_Surface")) return;
             var tint = material.color;
@@ -105,6 +128,19 @@ namespace Gamesim.Editor
                 // neon's strength read as a white rectangle from the overhead camera.
                 material.SetColor("_EmissionColor", new UnityEngine.Color(0.02f, 0.08f, 0.14f));
             }
+        }
+
+        /// <summary>
+        /// Neon materials glow. Blender's emission travels through FBX, but whether the URP importer
+        /// turns it into an *enabled* emission depends on the version, so the name decides: a
+        /// <c>bb_mat_neon_*</c> is lit at the strength of the house's own neon outlines.
+        /// </summary>
+        private static void Glow(UnityEngine.Material material)
+        {
+            if (!material.HasProperty("_EmissionColor")) return;
+            material.EnableKeyword("_EMISSION");
+            material.globalIlluminationFlags = UnityEngine.MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            material.SetColor("_EmissionColor", material.color * 3.2f);
         }
 
         private void OnPreprocessAnimation()

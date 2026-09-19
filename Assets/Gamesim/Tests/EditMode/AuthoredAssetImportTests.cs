@@ -56,10 +56,16 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(root, Is.Not.Null, path);
                 Assert.That(root.name, Does.StartWith("bb_"), path + ": the file and the root share the bb_ name.");
                 var bounds = RenderBounds(root);
-                Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), path + ": the lowest point is the floor.");
+                // The memory wall hangs on a wall; its origin is the floor beneath it, and nothing of
+                // it touches the floor. Everything else stands.
+                if (root.name != "bb_set_memorywall")
+                    Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), path + ": the lowest point is the floor.");
                 // A prop is centred on its origin so a plan can place it by its middle. The shell is
                 // not a prop: it is the house, laid over the colliders at the world origin.
                 if (path.StartsWith(AuthoredAssetImporter.Root + "Shell/", System.StringComparison.Ordinal)) continue;
+                // The HoH door stands open: its leaf swings a metre into the suite, so its middle is
+                // not its jambs. The plan places it by its bounds and says so.
+                if (root.name == "bb_set_hohdoor") continue;
                 Assert.That(bounds.center.x, Is.EqualTo(0f).Within(0.05f), path + ": centred on its origin in x.");
                 Assert.That(bounds.center.z, Is.EqualTo(0f).Within(0.05f), path + ": centred on its origin in z.");
             }
@@ -131,6 +137,62 @@ namespace Gamesim.Tests.EditMode
             Assert.That(bed.size.y, Is.LessThan(1.1f), "the south wing's cutaway wall is 1.1 m; nothing in the room may top it");
             Assert.That(bed.size.x, Is.EqualTo(1.9f).Within(0.05f), "bed across");
             Assert.That(bed.size.z, Is.EqualTo(2.1f).Within(0.05f), "bed head to foot");
+        }
+
+        [Test]
+        public void TheCompetitionRingsAndPodiumMatchThePrimitivesTheyReplace()
+        {
+            var rings = AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_compring.fbx");
+            var circle = RenderBounds(rings);
+            Assert.That(circle.size.x, Is.EqualTo(8.92f).Within(0.05f), "the outer ring's 4.4 m radius plus half the band");
+            Assert.That(circle.size.z, Is.EqualTo(8.92f).Within(0.05f));
+            Assert.That(circle.size.y, Is.EqualTo(0.05f).Within(0.01f), "the primitives' 5 cm lip");
+            Assert.That(rings.GetComponentsInChildren<Collider>(true), Is.Empty, "a floor graphic; the segments never had collision either");
+
+            var podium = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_podium.fbx"));
+            Assert.That(podium.size.x, Is.EqualTo(2.33f).Within(0.05f), "the block's 2.2 m plus the plinth's overhang");
+            Assert.That(podium.size.z, Is.EqualTo(1.46f).Within(0.05f), "the block's 1.3 m plus the plinth's overhang");
+            Assert.That(podium.size.y, Is.InRange(1.05f, 1.15f), "counter and buzzer over a one-metre block");
+
+            string gold = SetPieces + "Materials/bb_mat_neon_gold.mat";
+            Assert.That(File.Exists(gold), Is.True, gold);
+            var neon = AssetDatabase.LoadAssetAtPath<Material>(gold);
+            Assert.That(neon.IsKeywordEnabled("_EMISSION"), Is.True, "a neon material glows on import");
+            Assert.That(neon.GetColor("_EmissionColor").maxColorComponent, Is.GreaterThan(1.5f), "at the house's neon strength");
+        }
+
+        [Test]
+        public void TheMemoryWallHangsSixteenFramesUnderTheCutawayWall()
+        {
+            var wall = AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_memorywall.fbx");
+            var bounds = RenderBounds(wall);
+            Assert.That(bounds.size.z, Is.EqualTo(4.72f).Within(0.05f), "eight frames of 0.53 at a 0.053 gap, plus the backing's margin");
+            Assert.That(bounds.max.y, Is.LessThan(1.5f), "under the 1.5 m cutaway wall it hangs on");
+            Assert.That(bounds.min.y, Is.GreaterThan(0.1f), "hung, not stood");
+            Assert.That(bounds.size.x, Is.LessThan(0.12f), "a wall hanging is thin");
+            var frames = wall.GetComponentsInChildren<Transform>(true)
+                .Where(t => t.name.StartsWith("bb_set_memorywall_f", System.StringComparison.Ordinal)).ToArray();
+            Assert.That(frames, Has.Length.EqualTo(16), "one frame per seat of the largest house");
+            Assert.That(wall.GetComponentsInChildren<Collider>(true), Is.Empty, "decoration on a surface the player walks past");
+        }
+
+        [Test]
+        public void TheHohDoorBasketAndHaveNotCotFitTheirRooms()
+        {
+            var door = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_hohdoor.fbx"));
+            Assert.That(door.size.y, Is.InRange(1.05f, 1.12f), "the south wing's cutaway wall is 1.1 m; the door is its height, not taller");
+            Assert.That(door.size.z, Is.EqualTo(3.16f).Within(0.05f), "the divider's 2.8 m gap plus a capped jamb each end");
+            Assert.That(door.min.x, Is.LessThan(-0.85f), "the leaf stands open into the suite");
+            Assert.That(door.max.x, Is.LessThan(0.2f), "and nothing reaches into the nomination room");
+
+            var basket = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_hohbasket.fbx"));
+            Assert.That(basket.size.x, Is.EqualTo(0.52f).Within(0.05f), "basket across, rim included");
+            Assert.That(basket.size.y, Is.InRange(0.5f, 0.6f), "handle and bottle necks over a 0.24 m drum");
+
+            var cot = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_havenot_cot.fbx"));
+            Assert.That(cot.size.x, Is.EqualTo(0.9f).Within(0.02f), "cot width");
+            Assert.That(cot.size.z, Is.EqualTo(1.9f).Within(0.02f), "cot length");
+            Assert.That(cot.size.y, Is.InRange(0.45f, 0.55f), "the head rail is the tallest thing on it");
         }
 
         [Test]

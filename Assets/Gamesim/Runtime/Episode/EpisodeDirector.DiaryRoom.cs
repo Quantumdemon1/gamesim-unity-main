@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
 
@@ -78,8 +79,60 @@ namespace Gamesim.Episode
             if (blockedRecovery) return false;
             ClosePanels(); diaryOpen = true;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
-            // A solitary room does not borrow an NPC's conversation framing or invent a camera subject.
+            // A solitary room does not borrow an NPC's conversation framing or invent a camera
+            // subject: its shot is the chair, over the player's shoulder.
+            FrameDiaryChair();
             Render(); return true;
+        }
+
+        /// <summary>The chair the diary's shot looks at, as the set names it.</summary>
+        public const string DiaryChairName = "Confessional chair A";
+        /// <summary>
+        /// The diary's chair shot (V5): the eye a metre behind the player and half a metre to one
+        /// side, at standing height, looking at the chair - so the player's shoulder holds the edge
+        /// of the frame and the chair the middle, with the room soft behind it.
+        /// </summary>
+        public const float DiaryShotBehind = 1.0f;
+        public const float DiaryShotAside = 0.5f;
+        public const float DiaryShotEyeHeight = 1.9f;
+        public const float DiaryShotLookHeight = 0.7f;
+        public const float DiaryShotFieldOfView = 40f;
+        public const float DiaryShotSeconds = 0.8f;
+        public const float DiaryShotDepthOfField = 0.7f;
+
+        /// <summary>
+        /// Frames the confessional chair from behind the player. The player is not moved: the room
+        /// closes the moment they leave its reach, so warping them into the chair would close it.
+        /// Reduced motion keeps the shot the viewer has, as it does for conversations. A house
+        /// without the chair - the prototype scene - keeps the dollhouse view.
+        /// </summary>
+        private void FrameDiaryChair()
+        {
+            if (cameraRig == null || cameraRig.ReducedMotion) return;
+            var chair = gameObject.scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                .FirstOrDefault(t => t.name == DiaryChairName);
+            if (chair == null) return;
+            var from = player.transform.position;
+            var toward = chair.position - from;
+            toward.y = 0f;
+            if (toward.sqrMagnitude < 0.0001f) return;
+            toward.Normalize();
+            var side = new Vector3(toward.z, 0f, -toward.x);
+            // The eye and what it looks at, then the rig's terms for that line: the pivot is the
+            // look point, the boom is the line's length, and the angles are the line's.
+            var eye = from - toward * DiaryShotBehind + side * DiaryShotAside + Vector3.up * DiaryShotEyeHeight;
+            var look = chair.position + Vector3.up * DiaryShotLookHeight;
+            var line = look - eye;
+            float distance = line.magnitude;
+            cameraRig.MoveTo(new HouseCameraRig.Shot
+            {
+                Focus = look, Distance = distance,
+                Pitch = Mathf.Asin(Mathf.Clamp(-line.y / distance, -1f, 1f)) * Mathf.Rad2Deg,
+                Yaw = Mathf.Atan2(line.x, line.z) * Mathf.Rad2Deg,
+                FieldOfView = DiaryShotFieldOfView, Seconds = DiaryShotSeconds, DepthOfFieldWeight = DiaryShotDepthOfField,
+            });
+            player.GetComponent<CharacterPresentation>()?.SetFacing(Mathf.Atan2(toward.x, toward.z) * Mathf.Rad2Deg);
         }
 
         public void CancelDiaryDecision()

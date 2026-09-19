@@ -73,7 +73,9 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(Vector3.Distance(startPosition, rig.transform.position), Is.GreaterThan(0.001f));
             Assert.That(rig.ViewCamera.transform.localPosition.z, Is.GreaterThan(startCameraZ + 0.001f));
-            Assert.That(rig.ViewCamera.transform.localPosition.z, Is.LessThanOrEqualTo(-12f));
+            // The framing is the two-shot (V5): it eases toward the shot's boom and never inside it.
+            Assert.That(rig.HasShot, Is.True);
+            Assert.That(rig.ViewCamera.transform.localPosition.z, Is.LessThanOrEqualTo(-HouseCameraRig.TwoShotDistance + 0.001f));
         }
 
         [UnityTest]

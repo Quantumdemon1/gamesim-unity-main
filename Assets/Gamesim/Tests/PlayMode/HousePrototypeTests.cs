@@ -310,7 +310,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.TryMoveTo(Room("Bedroom").transform.position), Is.False);
             AssertDestination(destination);
 
-            var expectedFocus = (player.transform.position + npc.transform.position) * 0.5f + Vector3.up;
+            // The conversation's framing is the two-shot (V5): the pair's midpoint, a head higher.
+            var expectedFocus = (player.transform.position + npc.transform.position) * 0.5f + Vector3.up * (1f + HouseCameraRig.TwoShotLift);
             yield return WaitForCameraFocus(expectedFocus);
             Assert.That(Vector3.Distance(player.transform.position, stoppedPosition), Is.LessThan(0.05f));
             var responseText = interaction.GetComponentsInChildren<TMPro.TMP_Text>(true)

@@ -70,6 +70,7 @@ namespace Gamesim.Episode
         private void StartChallenge(EpisodeState state)
         {
             challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0; challengeStarted = Time.unscaledTime;
+            FrameCompetition();
             var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state.phase, state.week));
             // The board's shuffle and the targets' placement come from a generator this run owns,
             // seeded from the wall clock rather than from the season. A minigame's draws are not
@@ -185,6 +186,28 @@ namespace Gamesim.Episode
             challengeRun = null;
             challengeActive = false;
             Commit(challengeOrigin, EpisodeCommandKind.Compete, performance: run.Performance);
+            if (cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
+        }
+
+        /// <summary>
+        /// The competition wide (V5): the yard from the house's side, over the wall line, the
+        /// lanes and the ring in the middle of the frame. Taken when the minigame starts, let go
+        /// when it commits or is abandoned; the result's card then frames the yard its own way.
+        /// Reduced motion keeps the viewer's shot, as every automatic framing does.
+        /// </summary>
+        public const float CompetitionShotDistance = 12f;
+        public const float CompetitionShotPitch = 18f;
+        public const float CompetitionShotFieldOfView = 50f;
+        public const float CompetitionShotSeconds = 1.2f;
+
+        private void FrameCompetition()
+        {
+            if (cameraRig == null || cameraRig.ReducedMotion) return;
+            cameraRig.MoveTo(new HouseCameraRig.Shot
+            {
+                Focus = StationPosition + Vector3.up, Distance = CompetitionShotDistance, Pitch = CompetitionShotPitch, Yaw = 0f,
+                FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds,
+            });
         }
 
         private void ChallengePanel()
@@ -265,6 +288,7 @@ namespace Gamesim.Episode
             audioBed.PlayCue(HouseAudio.Cue.Button);
             if (challengeHits < 3) return;
             challengeActive = false; Commit(challengeOrigin, EpisodeCommandKind.Compete, performance:challengeTotal / 3);
+            if (cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
         }
     }
 }

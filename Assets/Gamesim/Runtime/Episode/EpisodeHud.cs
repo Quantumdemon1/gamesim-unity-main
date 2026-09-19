@@ -228,14 +228,18 @@ namespace Gamesim.Episode
             FixedText(pill,holder == null ? "AWAITING HOH" : "HOH · " + holder.name.ToUpperInvariant(),
                 15,holder == null ? UiTheme.Muted : UiTheme.Gold,new Vector2(134,-13),new Vector2(210,22));
 
-            // The section rail. Four views that currently share one long scroll.
+            // The section rail. Four views that currently share one long scroll, and the overview,
+            // which is a camera mode rather than a page: the director routes its section name.
             IconRail.Build(canvas.transform, new[]
             {
-                new IconRail.Entry(IconRail.Mark.Network, EpisodeDirector.NotebookSection.Network, "Relationships"),
-                new IconRail.Entry(IconRail.Mark.Rooms,   EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
-                new IconRail.Entry(IconRail.Mark.Votes,   EpisodeDirector.NotebookSection.Votes,   "The vote"),
-                new IconRail.Entry(IconRail.Mark.Story,   EpisodeDirector.NotebookSection.Story,   "The story so far"),
+                new IconRail.Entry(IconRail.Mark.Network,  EpisodeDirector.NotebookSection.Network, "Relationships"),
+                new IconRail.Entry(IconRail.Mark.Rooms,    EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
+                new IconRail.Entry(IconRail.Mark.Votes,    EpisodeDirector.NotebookSection.Votes,   "The vote"),
+                new IconRail.Entry(IconRail.Mark.Story,    EpisodeDirector.NotebookSection.Story,   "The story so far"),
+                new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection,         "Overview"),
             }, FontScale, director.ShowNotebookSection);
+            if (director.IsOverview) OverviewColumn(canvas.transform);
+            else if (director.LiveFeedTexture != null) LiveFeedCard(canvas.transform);
 
             // Five lines, not four, because click-to-follow had to be added without lengthening a
             // line: this box is a fixed 258 wide and the accessibility suite fails any copy that
@@ -467,6 +471,58 @@ namespace Gamesim.Episode
         }
 
         private string pendingScroll;
+
+        /// <summary>
+        /// The live feed's card (V5): the second camera's picture and its caption, lower right
+        /// above the exploration help, where the modal never reaches. Rebuilt with the rest of the
+        /// chrome; the texture it shows is the director's and outlives every rebuild.
+        /// </summary>
+        private TMP_Text liveFeedCaption;
+
+        private void LiveFeedCard(Transform parent)
+        {
+            var card = Chrome(EpisodeDirector.LiveFeedCardName, parent, Ink);
+            Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-24, -420), new Vector2(286, 226));
+            FixedText(card, "LIVE FEED", 14, Accent, new Vector2(16, -9), new Vector2(120, 20));
+            var dot = HudPrimitives.Disc("Live dot", card, UiTheme.Conflict);
+            Anchor(dot, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-16, -13), new Vector2(10, 10));
+            var picture = new GameObject("Picture", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+            picture.transform.SetParent(card, false);
+            picture.texture = director.LiveFeedTexture;
+            picture.raycastTarget = false;
+            Anchor(picture.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12, -34), new Vector2(262, 147));
+            UiTheme.AddBorder(picture.rectTransform, 6, UiTheme.Outline);
+            liveFeedCaption = FixedText(card, director.LiveFeedCaption, 13, Paper, new Vector2(16, -188), new Vector2(254, 22));
+        }
+
+        /// <summary>The feed's caption changes with the house; the card is not rebuilt for it.</summary>
+        public void SetLiveFeedCaption(string text)
+        {
+            if (liveFeedCaption != null) liveFeedCaption.text = text ?? "";
+        }
+
+        /// <summary>The overview's side column (V5): who is where, one row a room, beside the labelled house.</summary>
+        public const string OverviewColumnName = "Overview column";
+
+        private void OverviewColumn(Transform parent)
+        {
+            var rooms = director.WhoIsWhere();
+            const float RowHeight = 44f;
+            var column = Chrome(OverviewColumnName, parent, Ink);
+            Anchor(column, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-88, -104), new Vector2(300, 38 + rooms.Count * RowHeight));
+            FixedText(column, "WHO IS WHERE", 14, Accent, new Vector2(16, -9), new Vector2(268, 20));
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                var room = rooms[i];
+                float y = -(34 + i * RowHeight);
+                FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(16, y), new Vector2(214, 20));
+                var count = FixedText(column, room.Occupants.Count.ToString(), 15, Accent, new Vector2(232, y), new Vector2(52, 20));
+                count.alignment = TextAlignmentOptions.Right;
+                string who = room.Occupants.Count == 0 ? "empty"
+                    : string.Join(", ", room.Occupants.Select(o => o.Name.Split(' ')[0]));
+                FixedText(column, who, 13, UiTheme.Muted, new Vector2(16, y - 19), new Vector2(268, 18));
+            }
+        }
 
         /// <summary>
         /// Names the most recent thing added to the panel, so the icon rail can scroll back to it.

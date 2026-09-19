@@ -148,6 +148,8 @@ namespace Gamesim.Episode
         /// <summary>Opens the notebook, if needed, and scrolls to a section.</summary>
         public void ShowNotebookSection(string section)
         {
+            // The rail's last entry is not a page: it is the house itself, from above.
+            if (section == OverviewSection) { ToggleOverview(); return; }
             journalOpen = true;
             phaseOpen = false; settingsOpen = false; diaryOpen = false;
             hud.RequestScrollTo(section);

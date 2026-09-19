@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Gamesim.House
 {
@@ -59,6 +61,69 @@ namespace Gamesim.House
         private bool initialized;
         private bool reducedMotion;
 
+        // ------------------------------------------------------------------------------------
+        // Scripted shots (VISUAL-TARGET.md phase V5).
+        //
+        // A shot is the one way the camera leaves the dollhouse's envelope: a pitch below the
+        // 45-degree floor, a boom shorter than the player can zoom to, a narrower lens, an
+        // orthographic overview, depth of field. It is scripted framing, never input, so every
+        // ordinary move and every input releases it, and nothing that never asks for one sees one.
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>A scripted framing: where, how far, how steep, which lens, and how much depth of field.</summary>
+        public struct Shot
+        {
+            /// <summary>Where the pivot goes; clamped to the house like any focus.</summary>
+            public Vector3 Focus;
+            /// <summary>The boom, in metres, free of the zoom limits.</summary>
+            public float Distance;
+            /// <summary>Degrees down, free of the dollhouse's 45-70 range.</summary>
+            public float Pitch;
+            /// <summary>The yaw to turn to, unless <see cref="KeepYaw"/>.</summary>
+            public float Yaw;
+            public bool KeepYaw;
+            /// <summary>The vertical field of view; zero keeps the camera's own.</summary>
+            public float FieldOfView;
+            /// <summary>An orthographic lens of this half-height, for the overview.</summary>
+            public bool Orthographic;
+            public float OrthographicSize;
+            /// <summary>How long the move takes; zero uses the ordinary smoothing.</summary>
+            public float Seconds;
+            /// <summary>The close-up volume's weight while the shot holds, 0..1.</summary>
+            public float DepthOfFieldWeight;
+        }
+
+        /// <summary>The scene volume a shot weights in: depth of field for the close shots.</summary>
+        public const string CloseUpVolumeName = "Close-up Volume";
+        /// <summary>The two-shot a conversation takes: low, close, across the pair, the pair in focus.</summary>
+        public const float TwoShotDistance = 4f;
+        public const float TwoShotPitch = 25f;
+        public const float TwoShotFieldOfView = 40f;
+        /// <summary>
+        /// Zero: the two-shot eases the way conversation framing always has, arriving fast and
+        /// settling slowly. A timed move starts from rest, and a framing that has not visibly
+        /// begun two frames after the panel opened reads as the camera ignoring the conversation.
+        /// </summary>
+        public const float TwoShotSeconds = 0f;
+        /// <summary>The two-shot's pivot sits this much above the dollhouse's: faces in the upper half, not the middle.</summary>
+        public const float TwoShotLift = 0.3f;
+
+        private Shot? activeShot;
+        private Vector3 shotReturnFocus;
+        private float shotReturnDistance, shotReturnYaw;
+        // The angles the camera is actually at. Eased as angles rather than as a quaternion slerp:
+        // a slerp between two tilts that also differ in yaw passes through a roll, and a view frozen
+        // mid-way (reduced motion) would then be recomposed without that roll and visibly jump.
+        private float shownPitch, shownYaw;
+        private float travelFromPitch, travelFromYaw;
+        private float defaultFieldOfView = -1f;
+        private float lensFieldOfView = -1f, lensOrthographic, lensOrthographicSize = 1f;
+        private bool lensProjectionApplied;
+        private float depthOfFieldWeight;
+        private Volume closeUpVolume;
+        private DepthOfField closeUpDepthOfField;
+        private bool closeUpVolumeLookedUp;
+
         public Camera ViewCamera
         {
             get
@@ -77,7 +142,14 @@ namespace Gamesim.House
         public Transform FocusedSubject => subject;
         public bool ControlsEnabled { get; set; } = true;
         public float Pitch => pitch;
+        public float Yaw => yaw;
         public float Distance => distance;
+        /// <summary>Whether a scripted shot holds the camera.</summary>
+        public bool HasShot => activeShot.HasValue;
+        /// <summary>The close-up volume's weight this frame: how far the depth of field is in.</summary>
+        public float DepthOfFieldWeight => depthOfFieldWeight;
+        /// <summary>How orthographic the lens is this frame, 0 (the camera's own) to 1.</summary>
+        public float LensOrthographic => lensOrthographic;
         public float DesiredDistance => desiredDistance;
         public Vector3 DesiredFocus => desiredFocus;
         /// <summary>The boom length actually applied this frame, after occlusion.</summary>
@@ -149,9 +221,22 @@ namespace Gamesim.House
             {
                 // Reduced motion stops every reframe in flight, the pitch's included: whatever angle
                 // the camera is actually at becomes the offset, so the next frame changes nothing.
-                float actual = transform.rotation.eulerAngles.x;
-                if (actual > 180f) actual -= 360f;
+                float actual = shownPitch;
                 pitchOffset = actual - PitchFor(distance);
+                if (activeShot.HasValue)
+                {
+                    // A shot in flight freezes where it is, lens and all: the preference stops the
+                    // move, and the angle the camera is at right now is the one the viewer keeps.
+                    var frozen = activeShot.Value;
+                    frozen.Pitch = actual;
+                    frozen.KeepYaw = true;
+                    frozen.Seconds = 0f;
+                    frozen.FieldOfView = lensFieldOfView > 0f ? lensFieldOfView : frozen.FieldOfView;
+                    frozen.DepthOfFieldWeight = depthOfFieldWeight;
+                    activeShot = frozen;
+                    yaw = shownYaw;
+                    travelSeconds = 0f;
+                }
             }
             if (value)
             {
@@ -163,6 +248,7 @@ namespace Gamesim.House
             {
                 desiredFocus = ConversationFocus();
                 desiredDistance = Mathf.Clamp(12f, minimumDistance, maximumDistance);
+                MoveTo(TwoShot(conversationPlayer, conversationNpc));
             }
         }
 
@@ -186,6 +272,34 @@ namespace Gamesim.House
             if (reducedMotion) return;
             desiredFocus = ConversationFocus();
             desiredDistance = Mathf.Clamp(12f, minimumDistance, maximumDistance);
+            // The two-shot (V5) rides on top of the dollhouse framing above, which is what the
+            // camera falls back to if anything but the conversation's own end drops the shot.
+            MoveTo(TwoShot(player, npc));
+        }
+
+        /// <summary>A bystander nearer the two-shot's eye than this would fill the frame with their back.</summary>
+        public const float TwoShotClearance = 2.2f;
+
+        /// <summary>
+        /// The two-shot: across the pair, so both faces read, on the side that turns the camera
+        /// least - unless somebody else is standing where the camera would be, in which case the
+        /// other side. A third houseguest a metre in front of the lens is a back, not a scene.
+        /// </summary>
+        private Shot TwoShot(Transform player, Transform npc)
+        {
+            var across = npc.position - player.position;
+            across.y = 0f;
+            float pairYaw = across.sqrMagnitude > 0.0001f ? Mathf.Atan2(across.x, across.z) * Mathf.Rad2Deg : yaw;
+            float left = pairYaw - 90f, right = pairYaw + 90f;
+            float nearer = Mathf.Abs(Mathf.DeltaAngle(yaw, left)) <= Mathf.Abs(Mathf.DeltaAngle(yaw, right)) ? left : right;
+            float farther = nearer == left ? right : left;
+            var pivot = ConversationFocus() + Vector3.up * TwoShotLift;
+            float side = TwoShotSideIsClear(pivot, nearer, player, npc) || !TwoShotSideIsClear(pivot, farther, player, npc) ? nearer : farther;
+            return new Shot
+            {
+                Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,
+                FieldOfView = TwoShotFieldOfView, Seconds = TwoShotSeconds, DepthOfFieldWeight = 1f,
+            };
         }
 
         /// <summary>
@@ -210,6 +324,7 @@ namespace Gamesim.House
 
             subject = target;
             if (IsConversationFocused) return;
+            DropShot(true);
             desiredFocus = SubjectFocus();
             desiredDistance = Mathf.Clamp(subjectDistance, minimumDistance, maximumDistance);
         }
@@ -249,9 +364,87 @@ namespace Gamesim.House
         {
             Initialize();
             ClearSubject();
+            DropShot(true);
             travelSeconds = 0f;
             desiredFocus = ClampFocus(focus);
             desiredDistance = Mathf.Clamp(wantedDistance, minimumDistance, maximumDistance);
+        }
+
+        /// <summary>
+        /// Takes a scripted shot. The first shot after ordinary framing remembers the view it left,
+        /// so <see cref="ReleaseShot"/> can go back; a shot taken over a shot keeps that memory.
+        /// A followed subject is let go: the shot decides the focus now. Under reduced motion the
+        /// shot lands at once, as every scripted move does.
+        /// </summary>
+        public void MoveTo(in Shot shot)
+        {
+            Initialize();
+            if (!activeShot.HasValue)
+            {
+                shotReturnFocus = desiredFocus;
+                shotReturnDistance = desiredDistance;
+                shotReturnYaw = yaw;
+            }
+            ClearSubject();
+            activeShot = shot;
+            travelSeconds = 0f;
+            if (!shot.KeepYaw) yaw = Mathf.Repeat(shot.Yaw, 360f);
+            desiredFocus = ClampFocus(shot.Focus);
+            float farthest = ViewCamera != null ? viewCamera.farClipPlane - 5f : 100f;
+            desiredDistance = Mathf.Clamp(shot.Distance, 0.5f, Mathf.Max(0.5f, farthest));
+            BeginTravel(shot.Seconds);
+        }
+
+        /// <summary>
+        /// Lets a shot go and returns to the view it left, over <paramref name="seconds"/>.
+        /// Nothing happens when no shot holds.
+        /// </summary>
+        public void ReleaseShot(float seconds)
+        {
+            if (!activeShot.HasValue) return;
+            activeShot = null;
+            yaw = shotReturnYaw;
+            travelSeconds = 0f;
+            desiredFocus = ClampFocus(shotReturnFocus);
+            desiredDistance = Mathf.Clamp(shotReturnDistance, minimumDistance, maximumDistance);
+            BeginTravel(seconds);
+        }
+
+        /// <summary>A move or an input that takes the camera decides the view itself; the shot just ends.</summary>
+        private void DropShot(bool restoreYaw)
+        {
+            if (!activeShot.HasValue) return;
+            var shot = activeShot.Value;
+            activeShot = null;
+            // A timed move still in flight would otherwise carry its clock onto whatever focus the
+            // caller sets next and land there in a frame, which reads as a cut.
+            travelSeconds = 0f;
+            if (restoreYaw && !shot.KeepYaw) yaw = shotReturnYaw;
+            desiredDistance = Mathf.Clamp(desiredDistance, minimumDistance, maximumDistance);
+        }
+
+        /// <summary>Whether no houseguest but the pair stands within the clearance of where the eye would be.</summary>
+        private bool TwoShotSideIsClear(Vector3 pivot, float sideYaw, Transform player, Transform npc)
+        {
+            var eye = pivot + Quaternion.Euler(TwoShotPitch, sideYaw, 0f) * Vector3.back * TwoShotDistance;
+            foreach (var other in FindObjectsByType<HouseNpc>(FindObjectsSortMode.None))
+            {
+                if (other.transform == npc || other.transform == player || !other.gameObject.activeInHierarchy) continue;
+                var at = other.transform.position;
+                if (Vector3.Distance(new Vector3(at.x, eye.y, at.z), eye) < TwoShotClearance) return false;
+            }
+            return true;
+        }
+
+        private void BeginTravel(float seconds)
+        {
+            if (seconds <= 0f || reducedMotion) return;
+            travelFrom = transform.position;
+            travelFromDistance = distance;
+            travelFromPitch = shownPitch;
+            travelFromYaw = shownYaw;
+            travelSeconds = seconds;
+            travelElapsed = 0f;
         }
 
         // Phase 4 (MASTER-PLAN §3.E): a scripted move with a duration. The exponential smoothing
@@ -271,11 +464,7 @@ namespace Gamesim.House
         public void MoveTo(Vector3 focus, float wantedDistance, float seconds)
         {
             MoveTo(focus, wantedDistance);
-            if (seconds <= 0f || reducedMotion) return;
-            travelFrom = transform.position;
-            travelFromDistance = distance;
-            travelSeconds = seconds;
-            travelElapsed = 0f;
+            BeginTravel(seconds);
         }
 
         /// <summary>Whether the last <see cref="MoveTo"/> has effectively landed.</summary>
@@ -301,10 +490,12 @@ namespace Gamesim.House
             conversationNpc = null;
             if (reducedMotion)
             {
+                DropShot(false);
                 desiredFocus = transform.position;
                 desiredDistance = distance;
                 return;
             }
+            DropShot(true);
             desiredFocus = ClampFocus(previousFocus);
             desiredDistance = Mathf.Clamp(previousDistance, minimumDistance, maximumDistance);
         }
@@ -325,7 +516,7 @@ namespace Gamesim.House
                 }
                 else if (!reducedMotion)
                 {
-                    desiredFocus = ConversationFocus();
+                    desiredFocus = ConversationFocus() + (activeShot.HasValue ? Vector3.up * TwoShotLift : Vector3.zero);
                 }
             }
             else
@@ -341,7 +532,8 @@ namespace Gamesim.House
                 }
             }
 
-            pitch = Mathf.Clamp(PitchFor(desiredDistance) + pitchOffset, 45f, 70f);
+            // A shot's angle is its own; everything else stays inside the dollhouse's range.
+            pitch = activeShot.HasValue ? activeShot.Value.Pitch : Mathf.Clamp(PitchFor(desiredDistance) + pitchOffset, 45f, 70f);
             var blend = reducedMotion ? 1f : 1f - Mathf.Exp(-smoothing * Time.unscaledDeltaTime);
             if (IsTravelling)
             {
@@ -350,17 +542,93 @@ namespace Gamesim.House
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(travelElapsed / travelSeconds));
                 transform.position = Vector3.Lerp(travelFrom, desiredFocus, t);
                 distance = Mathf.Lerp(travelFromDistance, desiredDistance, t);
+                shownPitch = Mathf.Lerp(travelFromPitch, pitch, t);
+                shownYaw = Mathf.LerpAngle(travelFromYaw, yaw, t);
                 if (travelElapsed >= travelSeconds) travelSeconds = 0f;
             }
             else
             {
                 transform.position = Vector3.Lerp(transform.position, desiredFocus, blend);
                 distance = Mathf.Lerp(distance, desiredDistance, blend);
+                shownPitch = Mathf.Lerp(shownPitch, pitch, blend);
+                shownYaw = Mathf.LerpAngle(shownYaw, yaw, blend);
             }
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(pitch, yaw, 0f), blend);
+            transform.rotation = Quaternion.Euler(shownPitch, shownYaw, 0f);
             appliedDistance = OccludedDistance(distance);
             viewCamera.transform.localPosition = new Vector3(0f, 0f, -appliedDistance);
             viewCamera.transform.localRotation = Quaternion.identity;
+            ApplyLens(blend);
+        }
+
+        /// <summary>
+        /// Eases the lens - the field of view, and the perspective-to-orthographic morph the
+        /// overview asks for - and the close-up volume's weight toward what the shot wants, or back
+        /// to the camera's own when nothing holds. The morph blends the two projection matrices and
+        /// is recomputed every frame from the live aspect, so a resized window never keeps a stale one.
+        /// </summary>
+        private void ApplyLens(float blend)
+        {
+            if (defaultFieldOfView < 0f)
+            {
+                defaultFieldOfView = viewCamera.fieldOfView;
+                lensFieldOfView = defaultFieldOfView;
+            }
+            bool holds = activeShot.HasValue;
+            var shot = holds ? activeShot.Value : default;
+            float wantedFieldOfView = holds && shot.FieldOfView > 0f ? shot.FieldOfView : defaultFieldOfView;
+            float wantedOrthographic = holds && shot.Orthographic ? 1f : 0f;
+            float wantedSize = holds && shot.Orthographic ? Mathf.Max(1f, shot.OrthographicSize) : lensOrthographicSize;
+            float wantedDepthOfField = holds ? Mathf.Clamp01(shot.DepthOfFieldWeight) : 0f;
+
+            // The lens eases slower than the pivot: a field of view that lands in a tenth of a
+            // second reads as a cut, and the overview's morph should ride most of the dolly.
+            float lensBlend = reducedMotion ? 1f : 1f - Mathf.Exp(-smoothing * 0.3f * Time.unscaledDeltaTime);
+            lensFieldOfView = Settle(Mathf.Lerp(lensFieldOfView, wantedFieldOfView, lensBlend), wantedFieldOfView, 0.01f);
+            lensOrthographic = Settle(Mathf.Lerp(lensOrthographic, wantedOrthographic, lensBlend), wantedOrthographic, 0.002f);
+            lensOrthographicSize = Mathf.Lerp(lensOrthographicSize, wantedSize, lensBlend);
+            viewCamera.fieldOfView = lensFieldOfView;
+            if (lensOrthographic <= 0f)
+            {
+                if (lensProjectionApplied)
+                {
+                    viewCamera.ResetProjectionMatrix();
+                    lensProjectionApplied = false;
+                }
+            }
+            else
+            {
+                float aspect = viewCamera.aspect, near = viewCamera.nearClipPlane, far = viewCamera.farClipPlane;
+                var perspective = Matrix4x4.Perspective(lensFieldOfView, aspect, near, far);
+                float half = lensOrthographicSize;
+                var orthographic = Matrix4x4.Ortho(-half * aspect, half * aspect, -half, half, near, far);
+                var mixed = new Matrix4x4();
+                for (int i = 0; i < 16; i++) mixed[i] = Mathf.Lerp(perspective[i], orthographic[i], lensOrthographic);
+                viewCamera.projectionMatrix = mixed;
+                lensProjectionApplied = true;
+            }
+
+            depthOfFieldWeight = Settle(Mathf.Lerp(depthOfFieldWeight, wantedDepthOfField, blend), wantedDepthOfField, 0.002f);
+            if (!closeUpVolumeLookedUp) FindCloseUpVolume();
+            if (closeUpVolume == null) return;
+            closeUpVolume.weight = depthOfFieldWeight;
+            // Focus on the pivot: the subjects a shot frames stand at it.
+            if (depthOfFieldWeight > 0f && closeUpDepthOfField != null) closeUpDepthOfField.focusDistance.value = appliedDistance;
+        }
+
+        private static float Settle(float value, float target, float within) => Mathf.Abs(value - target) <= within ? target : value;
+
+        private void FindCloseUpVolume()
+        {
+            closeUpVolumeLookedUp = true;
+            foreach (var volume in FindObjectsByType<Volume>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (volume.name != CloseUpVolumeName || volume.gameObject.scene != gameObject.scene) continue;
+                closeUpVolume = volume;
+                // The instance, not the shared asset: the focus distance is driven every frame, and
+                // writing it into the asset would dirty the project each time a conversation opened.
+                if (volume.profile != null) volume.profile.TryGet(out closeUpDepthOfField);
+                break;
+            }
         }
 
         /// <summary>Where a screen point lands on the focus plane, for zooming toward the cursor.</summary>
@@ -411,9 +679,13 @@ namespace Gamesim.House
         {
             if (!ControlsEnabled) return;
             EnsureActions();
-            if (IsTravelling && (actions.Pan.ReadValue<Vector2>().sqrMagnitude > 0f || actions.Orbit.ReadValue<Vector2>().sqrMagnitude > 0f
-                || actions.Drag.ReadValue<Vector2>().sqrMagnitude > 0f || !Mathf.Approximately(actions.Zoom.ReadValue<float>(), 0f)))
-                travelSeconds = 0f;
+            bool moving = actions.Pan.ReadValue<Vector2>().sqrMagnitude > 0f || actions.Orbit.ReadValue<Vector2>().sqrMagnitude > 0f
+                || actions.Drag.ReadValue<Vector2>().sqrMagnitude > 0f || !Mathf.Approximately(actions.Zoom.ReadValue<float>(), 0f)
+                || actions.OrbitRate.ReadValue<Vector2>().sqrMagnitude > 0f || !Mathf.Approximately(actions.ZoomRate.ReadValue<float>(), 0f)
+                || actions.Recenter.WasPressedThisFrame();
+            if (moving && IsTravelling) travelSeconds = 0f;
+            // Input takes the camera back from a shot where it is: the player took the wheel.
+            if (moving) DropShot(false);
             float dt = Time.unscaledDeltaTime;
             bool pointerOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             var pointer = actions.Point.ReadValue<Vector2>();
@@ -448,7 +720,7 @@ namespace Gamesim.House
                 if (EdgePanActive && Pointer.current != null)
                 {
                     var edge = EdgeDirection(pointer);
-                    if (edge.sqrMagnitude > 0f) PanBy(edge, dt);
+                    if (edge.sqrMagnitude > 0f) { DropShot(false); PanBy(edge, dt); }
                 }
             }
 
@@ -562,6 +834,8 @@ namespace Gamesim.House
 
         private void ApplyCameraImmediately()
         {
+            shownPitch = pitch;
+            shownYaw = yaw;
             transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
             if (ViewCamera != null)
             {

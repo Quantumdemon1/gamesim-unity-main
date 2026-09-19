@@ -120,6 +120,7 @@ namespace Gamesim.Episode
             SeatCast(engine.Snapshot);
 
             audioBed = HouseAudio.Attach(gameObject);
+            liveFeed = LiveFeed.Attach(gameObject);
             reducedMotion = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedMotion", 0) == 1;
             reducedAudio = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedAudio", 0) == 1;
             muted = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
@@ -324,6 +325,8 @@ namespace Gamesim.Episode
             // gamepad button beside it there, so a controller reaches every panel the keyboard does.
             var shortcuts = cameraRig != null ? cameraRig.Actions : null;
             TickRoomTone();
+            TickOverview();
+            TickLiveFeed();
             if (challengeActive && challengeRun != null) TickMiniGame();
             else if (challengeActive)
             {
@@ -357,6 +360,7 @@ namespace Gamesim.Episode
             {
                 if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
+                if (shortcuts.Overview.WasPressedThisFrame() && !IsPanelOpen) ToggleOverview();
                 if (shortcuts.Diary.WasPressedThisFrame() && !IsPanelOpen) GoToDiary();
                 if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen)
                 {
@@ -412,7 +416,11 @@ namespace Gamesim.Episode
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
             // otherwise the scrim stays up while everything behind it believes it is dismissed.
             if (weeklyRecap != null) weeklyRecap.Hide();
-            if (cameraRig != null) { cameraRig.EndConversation(); cameraRig.ControlsEnabled = !blockedRecovery; }
+            // Any panel opening ends the overview: the shot it took goes with it. A conversation's
+            // two-shot ends with the conversation; the diary's chair shot is released here, which
+            // covers Escape and the walk-away close alike.
+            if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); }
+            if (cameraRig != null) { cameraRig.EndConversation(); cameraRig.ReleaseShot(DiaryShotSeconds); cameraRig.ControlsEnabled = !blockedRecovery; }
             if (projected != null && player != null) player.SetInputEnabled(!blockedRecovery && projected.Find(projected.playerId).status == ContestantStatus.Active);
             if (render && hud != null) Render();
         }
@@ -538,6 +546,7 @@ namespace Gamesim.Episode
                     // and the camera goes to the room the ceremony happens in (Phase 4 presets).
                     ReactToCeremony(result.state, ceremony.kind, wasActive, wasNominated);
                     FrameCeremony(ceremony.kind);
+                    lastCeremonyKind = ceremony.kind;
                     // The week's recap, once the beats that narrate the eviction have had their say.
                     // It waits rather than opening now because the reveal outlives its own strip by
                     // seconds and the two canvases share a sorting order — a recap that appeared

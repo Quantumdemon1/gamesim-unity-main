@@ -249,8 +249,33 @@ namespace Gamesim.House
         {
             Initialize();
             ClearSubject();
+            travelSeconds = 0f;
             desiredFocus = ClampFocus(focus);
             desiredDistance = Mathf.Clamp(wantedDistance, minimumDistance, maximumDistance);
+        }
+
+        // Phase 4 (MASTER-PLAN §3.E): a scripted move with a duration. The exponential smoothing
+        // every other move uses arrives fast and settles slowly, which is right for a follow and
+        // wrong for a beat that has to land on a count: a walk-in that says "four seconds a room".
+        private Vector3 travelFrom;
+        private float travelFromDistance, travelSeconds, travelElapsed;
+
+        /// <summary>Whether a timed move is in flight.</summary>
+        public bool IsTravelling => travelSeconds > 0f && travelElapsed < travelSeconds;
+
+        /// <summary>
+        /// Points the camera at somewhere over exactly <paramref name="seconds"/>, eased in and out,
+        /// so a scripted beat lands when the script says. Under reduced motion it lands at once.
+        /// Any other move, or input, ends the travel where it is.
+        /// </summary>
+        public void MoveTo(Vector3 focus, float wantedDistance, float seconds)
+        {
+            MoveTo(focus, wantedDistance);
+            if (seconds <= 0f || reducedMotion) return;
+            travelFrom = transform.position;
+            travelFromDistance = distance;
+            travelSeconds = seconds;
+            travelElapsed = 0f;
         }
 
         /// <summary>Whether the last <see cref="MoveTo"/> has effectively landed.</summary>
@@ -318,9 +343,21 @@ namespace Gamesim.House
 
             pitch = Mathf.Clamp(PitchFor(desiredDistance) + pitchOffset, 45f, 70f);
             var blend = reducedMotion ? 1f : 1f - Mathf.Exp(-smoothing * Time.unscaledDeltaTime);
-            transform.position = Vector3.Lerp(transform.position, desiredFocus, blend);
+            if (IsTravelling)
+            {
+                // A timed move: smoothstep from where it started to where it is going, on the clock.
+                travelElapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(travelElapsed / travelSeconds));
+                transform.position = Vector3.Lerp(travelFrom, desiredFocus, t);
+                distance = Mathf.Lerp(travelFromDistance, desiredDistance, t);
+                if (travelElapsed >= travelSeconds) travelSeconds = 0f;
+            }
+            else
+            {
+                transform.position = Vector3.Lerp(transform.position, desiredFocus, blend);
+                distance = Mathf.Lerp(distance, desiredDistance, blend);
+            }
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(pitch, yaw, 0f), blend);
-            distance = Mathf.Lerp(distance, desiredDistance, blend);
             appliedDistance = OccludedDistance(distance);
             viewCamera.transform.localPosition = new Vector3(0f, 0f, -appliedDistance);
             viewCamera.transform.localRotation = Quaternion.identity;
@@ -374,6 +411,9 @@ namespace Gamesim.House
         {
             if (!ControlsEnabled) return;
             EnsureActions();
+            if (IsTravelling && (actions.Pan.ReadValue<Vector2>().sqrMagnitude > 0f || actions.Orbit.ReadValue<Vector2>().sqrMagnitude > 0f
+                || actions.Drag.ReadValue<Vector2>().sqrMagnitude > 0f || !Mathf.Approximately(actions.Zoom.ReadValue<float>(), 0f)))
+                travelSeconds = 0f;
             float dt = Time.unscaledDeltaTime;
             bool pointerOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             var pointer = actions.Point.ReadValue<Vector2>();

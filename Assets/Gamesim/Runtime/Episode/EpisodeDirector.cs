@@ -531,8 +531,10 @@ namespace Gamesim.Episode
                     // the strip would only flash under it and vanish mid-tally. Everywhere else the
                     // two still pair up: card opens the scene, strip reports the result.
                     if (sting != null && !revealed) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
-                    // The bodies act the beat out in the house while the card and the strip report it.
+                    // The bodies act the beat out in the house while the card and the strip report it,
+                    // and the camera goes to the room the ceremony happens in (Phase 4 presets).
                     ReactToCeremony(result.state, ceremony.kind, wasActive, wasNominated);
+                    FrameCeremony(ceremony.kind);
                     // The week's recap, once the beats that narrate the eviction have had their say.
                     // It waits rather than opening now because the reveal outlives its own strip by
                     // seconds and the two canvases share a sorting order — a recap that appeared

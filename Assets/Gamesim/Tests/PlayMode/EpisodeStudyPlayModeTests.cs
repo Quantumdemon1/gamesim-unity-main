@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
@@ -191,7 +192,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             var before = director.Snapshot;
             var expected = StudyUiExpected(before, EpisodeCommandKind.SimulateCompetition);
-            Assert.That(DiaryHasButton("Enter precision challenge"), Is.True);
+            // Whichever game this competition routes to, not a fixed caption: the control now names
+            // the game, and week one's HoH is a skill competition rather than the timing bar.
+            Assert.That(DiaryHasButton(CompetitionMiniGames.EnterCaption(
+                CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(before.phase, before.week)))), Is.True);
             Assert.That(ActiveDiaryText(), Does.Contain("WEEK " + before.week + " · " + before.Active.Count() + " houseguests remain"));
             var simulate = ButtonWithCaption(EpisodeHud.SimulateCompetitionCaption).onClick;
             simulate.Invoke(); simulate.Invoke();

@@ -196,7 +196,7 @@ is honest about what is actually recorded rather than guessing at a flag that do
 
 ## Tier 3 — Gameplay breadth
 
-### 3.1 Every competition plays the same minigame
+### 3.1 Every competition plays the same minigame — **DONE (three of five, on purpose)**
 
 The reference routes five by competition type: `EnduranceHold`, `WordScramble`, `MemoryMatch`,
 `ReactionTap`, `DiceRoll`, plus `NPCScoring` and a `MiniGameRouter`.
@@ -204,6 +204,35 @@ The reference routes five by competition type: `EnduranceHold`, `WordScramble`, 
 This port has **one** — a timing bar, three attempts (`EpisodeDirector.StartChallenge`) — used for
 every competition. `WebRules.WeightedCompetitionScore` already takes a category, so the simulation
 distinguishes competition types that the player experiences identically.
+
+**What landed.** `CompetitionMiniGames` holds the scoring on the reference's own 0–10 scale;
+`MiniGameRun` holds one attempt as data rather than as a screen, taking its own delta so a
+thirty-second competition is a loop in a test instead of half a minute of the suite's life. Three
+panels in the director, each with keyboard and button controls.
+
+**Three, not five, and the reason is the rotation.** `EpisodeEngine.CompetitionCategory` only ever
+produces Skill, Mental and Endurance. `WebRules` also weights Physical and Crapshoot and nothing
+asks for them, so a word game and a dice game would be screens no player could reach. Widening the
+rotation to produce those two is a rules change that re-rolls every seeded season — a separate
+decision with a fixture cost, not something to smuggle in behind a presentation change. The timing
+bar stays as the fallback for any category without a game of its own.
+
+**No simulation change.** A minigame produces the same `performance` the timing bar already
+produced, and the engine weighs it the same way. The board's shuffle and the targets' placement come
+from a generator each run owns, seeded from the wall clock — a minigame's draws are not part of the
+committed command, so spending `randomState` on them would re-roll everything that follows, which is
+the same reason `SeasonBuilder` takes the cast in table order rather than shuffling it.
+
+**A scoring crossover, kept and pinned.** Seven of eight pairs scores 8.75; a board *cleared* on the
+buzzer scores 8, because a cleared board starts at eight and earns the rest from the clock. Matching
+almost everything quickly therefore beats finishing at the last moment. That is the reference's own
+shape, it looks like a bug the first time anybody sees it, and correcting it would be a rules change
+rather than a port — so `MatchingAlmostEverythingBeatsClearingItOnTheBuzzer` states it outright.
+
+**Not ported.** `NPCScoring` generates opponents' scores for the minigame's own results screen. This
+port already scores every competitor through `WebRules.WeightedCompetitionScore` from the season's
+seed, and `CompetitionResult` already shows the standings — a second, unseeded scorer would be a
+second answer to a question already answered.
 
 ### 3.2 The social vocabulary is still collapsed
 
@@ -301,7 +330,7 @@ React presentation; the phase components may hold flow logic worth a look before
 | 4 | Audio (0.4) | Two files and wiring; completes an opening sequence already built. |
 | 5 | ~~Deals (1.1)~~ **done** | Best value of any system; the consumer exists and is tested. Landed as schema 10. |
 | 6 | ~~Weekly recap (2.1)~~ **done** | Presentation over an existing event log. No schema change. |
-| 7 | Minigames (3.1) | Every competition currently plays identically. |
+| 7 | ~~Minigames (3.1)~~ **done** | Every competition currently plays identically. Three games, one per category the engine produces. |
 | 8 | Social vocabulary + action points (3.2, 3.3) | Player-facing breadth; append-only to `EpisodeCommandKind`. |
 | 9 | Event layer (Tier 4) | Unlocks storylines, which is why they are not earlier. |
 | 10 | Storylines and narrative (1.2, Tier 5) | |

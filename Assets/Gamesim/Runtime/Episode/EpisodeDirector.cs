@@ -50,6 +50,10 @@ namespace Gamesim.Episode
         private double challengeTotal;
         private float challengeStarted, challengeValue, frameAverage;
         private EpisodeState challengeOrigin;
+        // Null while the timing bar is running, which keeps its own value in challengeValue. The
+        // three ported games hold their whole state here instead, so the director does not grow a
+        // field per game and the behaviour stays drivable from a test.
+        private MiniGameRun challengeRun;
         private Vector3 initialPlayerPosition;
         private Vector3[] initialNpcPositions;
         private Quaternion[] initialNpcRotations;
@@ -246,7 +250,8 @@ namespace Gamesim.Episode
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
             frameAverage = Mathf.Lerp(frameAverage, Time.unscaledDeltaTime, 0.03f);
             if (diaryOpen && !CanUseDiary) { ClosePanels(); return; }
-            if (challengeActive)
+            if (challengeActive && challengeRun != null) TickMiniGame();
+            else if (challengeActive)
             {
                 challengeValue = Mathf.PingPong((Time.unscaledTime - challengeStarted) * 0.75f, 1f);
                 hud.SetChallenge(challengeValue, challengeHits);
@@ -354,6 +359,9 @@ namespace Gamesim.Episode
         {
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
+            // Escape cancels without committing, so the run goes with the panel. Leaving it would
+            // let a competition keep ticking behind a closed screen and commit itself later.
+            challengeRun = null;
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
@@ -1376,10 +1384,13 @@ namespace Gamesim.Episode
                 {
                     if (EpisodeEngine.CompetitionPlayers(state).Any(c => c.isPlayer))
                     {
+                        var game = CompetitionMiniGames.For(
+                            EpisodeEngine.CompetitionCategory(state.phase, state.week));
+                        hud.Paragraph(CompetitionMiniGames.Brief(game));
                         hud.Paragraph(state.phase == EpisodePhase.FinalHoHPart1
-                            ? "HOUSE SIGNALS: stop the marker near the center three times. Precision adds 0–2 effective endurance points (capped at 10) for the survival challenge; stored stats are unchanged."
-                            : "HOUSE SIGNALS: stop the marker near the center three times. Precision supplies a 0–2 point bonus; housemate stats and the saved seed determine the rest.");
-                        hud.Action("Enter precision challenge", () => StartChallenge(state));
+                            ? "How you do adds 0–2 effective endurance points (capped at 10) for the survival challenge; stored stats are unchanged."
+                            : "How you do supplies a 0–2 point bonus; housemate stats and the saved seed determine the rest.");
+                        hud.Action(CompetitionMiniGames.EnterCaption(game), () => StartChallenge(state));
                         hud.Action("Accessible alternative: steady 1-point bonus", () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
                         if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
                         {
@@ -1452,7 +1463,115 @@ namespace Gamesim.Episode
         private void StartChallenge(EpisodeState state)
         {
             challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0; challengeStarted = Time.unscaledTime;
+            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state.phase, state.week));
+            // The board's shuffle and the targets' placement come from a generator this run owns,
+            // seeded from the wall clock rather than from the season. A minigame's draws are not
+            // part of the committed command, so spending the season's randomState on them would
+            // re-roll everything that follows — the same reason the cast is not shuffled.
+            challengeRun = kind == CompetitionMiniGames.Kind.Precision
+                ? null
+                : new MiniGameRun(kind, (uint)Environment.TickCount);
             audioBed.PlayCue(HouseAudio.Cue.CompetitionStart); Render();
+        }
+
+        /// <summary>
+        /// Advances the running minigame and commits it when it ends.
+        ///
+        /// <para>Input is read here rather than from the panel's buttons because two of the three
+        /// are held or timed: an endurance grip has to know the frame the key came up, and a
+        /// reaction tap is only worth anything while a target is live. The panel still carries
+        /// equivalent controls, so nothing here is keyboard-only.</para>
+        /// </summary>
+        private void TickMiniGame()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance)
+                    challengeRun.SetHolding(keyboard.spaceKey.isPressed);
+                else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
+                         && keyboard.spaceKey.wasPressedThisFrame)
+                    TapTarget();
+            }
+
+            // What the panel currently says, before the frame moves anything.
+            var was = PanelShape();
+            challengeRun.Tick(Time.unscaledDeltaTime);
+
+            // The meter updates in place, every frame. A full Render rebuilds the panel's controls,
+            // so doing it per frame would destroy and recreate the buttons sixty times a second —
+            // which is both wasteful and a good way to swallow the click that is being made on one.
+            hud.SetChallenge((float)MiniGameMeter(), challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
+                ? challengeRun.Hits : challengeRun.MatchedPairs);
+
+            if (challengeRun.Finished) { CommitMiniGame(); return; }
+            // Redraw only when the panel would actually read differently: a target appearing or
+            // going, a grip taken or let go, a pair turning back over.
+            if (PanelShape() != was) Render();
+        }
+
+        /// <summary>
+        /// A signature of everything the panel's words and controls depend on.
+        ///
+        /// <para>Deliberately not the clock: a countdown that ticked in text would force a rebuild
+        /// every frame for the sake of one number, and the meter already carries the same
+        /// information without one.</para>
+        /// </summary>
+        private string PanelShape()
+        {
+            if (challengeRun == null) return "none";
+            switch (challengeRun.Kind)
+            {
+                case CompetitionMiniGames.Kind.Endurance:
+                    return "hold:" + challengeRun.Holding;
+                case CompetitionMiniGames.Kind.Reaction:
+                    return "target:" + challengeRun.TargetLive + ":" + challengeRun.Hits + "/" + challengeRun.Spawned;
+                default:
+                    return "board:" + challengeRun.MatchedPairs + ":" + challengeRun.WrongFlips
+                           + ":" + challengeRun.FirstFlip + ":" + challengeRun.SecondFlip;
+            }
+        }
+
+        /// <summary>What the HUD's single meter shows, which differs per game.</summary>
+        private double MiniGameMeter()
+        {
+            switch (challengeRun.Kind)
+            {
+                case CompetitionMiniGames.Kind.Endurance:
+                    return challengeRun.Meter / CompetitionMiniGames.MeterFull;
+                case CompetitionMiniGames.Kind.Memory:
+                    return challengeRun.Pairs == 0 ? 0 : (double)challengeRun.MatchedPairs / challengeRun.Pairs;
+                default:
+                    return challengeRun.TimeLimit <= 0 ? 0 : challengeRun.Remaining / challengeRun.TimeLimit;
+            }
+        }
+
+        /// <summary>Hitting the target that is up, if one is. Harmless when none is.</summary>
+        public void TapTarget()
+        {
+            if (!challengeActive || challengeRun == null) return;
+            if (challengeRun.Tap()) audioBed.PlayCue(HouseAudio.Cue.Button);
+        }
+
+        /// <summary>
+        /// Turning a card over.
+        ///
+        /// <para>This one redraws immediately rather than waiting for the next tick, because the
+        /// card the player just pressed has to show its face before they look away from it.</para>
+        /// </summary>
+        public void FlipCard(int index)
+        {
+            if (!challengeActive || challengeRun == null) return;
+            if (challengeRun.Flip(index)) audioBed.PlayCue(HouseAudio.Cue.Button);
+            if (challengeRun.Finished) CommitMiniGame(); else Render();
+        }
+
+        private void CommitMiniGame()
+        {
+            var run = challengeRun;
+            challengeRun = null;
+            challengeActive = false;
+            Commit(challengeOrigin, EpisodeCommandKind.Compete, performance: run.Performance);
         }
         /// <summary>
         /// The deal table for one houseguest: what they have put to you, and what you can put to them.
@@ -1557,8 +1676,73 @@ namespace Gamesim.Episode
 
         private void ChallengePanel()
         {
-            hud.Paragraph("Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.");
-            hud.ChallengeMeter(); hud.Action("STOP marker  [Space]", RecordChallengeHit);
+            if (challengeRun == null)
+            {
+                hud.Paragraph("Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.");
+                hud.ChallengeMeter(); hud.Action("STOP marker  [Space]", RecordChallengeHit);
+                return;
+            }
+
+            hud.Paragraph(CompetitionMiniGames.Brief(challengeRun.Kind)
+                + "  You have " + challengeRun.TimeLimit.ToString("0")
+                + " seconds. Escape cancels without committing.");
+            hud.ChallengeMeter();
+
+            switch (challengeRun.Kind)
+            {
+                case CompetitionMiniGames.Kind.Endurance:
+                    hud.Paragraph("Grip: " + challengeRun.Meter.ToString("0")
+                        + "%  ·  held " + challengeRun.Held.ToString("0.0") + "s of "
+                        + challengeRun.TimeLimit.ToString("0") + "s");
+                    // Holding is a key, so the button is a toggle rather than a second way to hold:
+                    // a control you have to keep the mouse down on is not usable with a keyboard,
+                    // a switch, or one hand.
+                    hud.Action(challengeRun.Holding ? EpisodeHud.ReleaseGripCaption : EpisodeHud.HoldGripCaption,
+                        () => challengeRun?.SetHolding(!challengeRun.Holding));
+                    break;
+
+                case CompetitionMiniGames.Kind.Reaction:
+                    hud.Paragraph(challengeRun.TargetLive
+                        ? "A target is up. Hit it."
+                        : "Wait for the next target.");
+                    hud.Paragraph("Hit " + challengeRun.Hits + " of " + challengeRun.Spawned + ".");
+                    hud.Action(EpisodeHud.TapTargetCaption, TapTarget);
+                    break;
+
+                case CompetitionMiniGames.Kind.Memory:
+                    hud.Paragraph("Matched " + challengeRun.MatchedPairs + " of " + challengeRun.Pairs
+                        + (challengeRun.WrongFlips > 0 ? "  ·  " + challengeRun.WrongFlips + " wrong flips" : ""));
+                    MemoryBoard();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// The board, as one control per card.
+        ///
+        /// <para>A card says what it is when it is face up and says so in words — "Card 3: star" —
+        /// rather than only in colour. The screen is the only place the board exists, so a player
+        /// using a screen reader has no other way to know what they just turned over.</para>
+        /// </summary>
+        private void MemoryBoard()
+        {
+            for (int index = 0; index < challengeRun.Faces.Count; index++)
+            {
+                int card = index;
+                bool up = challengeRun.Matched[card] || card == challengeRun.FirstFlip
+                          || card == challengeRun.SecondFlip;
+                var button = hud.Action(EpisodeHud.CardCaption(card, up ? MemoryFace(challengeRun.Faces[card]) : null),
+                    () => FlipCard(card));
+                if (button != null) button.interactable = !challengeRun.Matched[card];
+                if (challengeRun.Matched[card]) hud.Tag(button, "matched");
+            }
+        }
+
+        /// <summary>A name per face, so a card reads as something rather than as an index.</summary>
+        private static string MemoryFace(int face)
+        {
+            string[] names = { "star", "key", "crown", "eye", "flame", "anchor", "clover", "moon" };
+            return face >= 0 && face < names.Length ? names[face] : "symbol " + face;
         }
         public void RecordChallengeHit()
         {

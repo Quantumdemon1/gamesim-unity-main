@@ -50,6 +50,18 @@ namespace Gamesim.Episode
         public static string DealProposeCaption(string title) => "Propose a " + title;
         /// <summary>The words on a week-review control, one per week the notebook lists.</summary>
         public static string ReviewWeekCaption(int week) => "Read the week " + week + " recap";
+        /// <summary>The words on each competition minigame's controls.</summary>
+        public const string HoldGripCaption = "Hold on  [hold Space]";
+        public const string ReleaseGripCaption = "Let go  [release Space]";
+        public const string TapTargetCaption = "Hit the target  [Space]";
+        /// <summary>
+        /// A memory card, named by what it shows once it is face up.
+        ///
+        /// <para>In words, not only in colour: this screen is the only place the board exists, so a
+        /// player reading it aloud has no other way to know what they just turned over.</para>
+        /// </summary>
+        public static string CardCaption(int index, string face) =>
+            "Card " + (index + 1) + (face == null ? "" : ": " + face);
         // Palette lives in UiTheme so the HUD and the 3D set stay in step; these aliases keep
         // the existing call sites unchanged.
         private static readonly Color Ink = UiTheme.Ink;

@@ -10,8 +10,13 @@ namespace Gamesim.Presentation
         public enum Cue
         {
             Button, Save, SocialUp, SocialDown, CompetitionStart, CompetitionWin,
-            Nomination, Veto, Vote, Eviction, Finale
+            Nomination, Veto, Vote, Eviction, Finale,
+            // UI foley (§3.C): a panel opening, a panel closing, a hover over a control.
+            PanelOpen, PanelClose, Hover
         }
+
+        /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
+        public Cue? LastCue { get; private set; }
 
         private const int SampleRate = 22050;
         private readonly Dictionary<Cue, AudioClip> clips = new Dictionary<Cue, AudioClip>();
@@ -151,6 +156,7 @@ namespace Gamesim.Presentation
 
         public void PlayCue(Cue cue)
         {
+            LastCue = cue;
             if (!isActiveAndEnabled || Muted || volume <= 0f) return;
             Initialize();
             if (clips.TryGetValue(cue, out var clip)) cueSource.PlayOneShot(clip);
@@ -211,6 +217,9 @@ namespace Gamesim.Presentation
                 new Tone(587.33f, 0.28f, 0, 0.13f), new Tone(739.99f, 0.3f, 0.18f, 0.13f), new Tone(880, 0.36f, 0.37f, 0.12f)));
             clips[Cue.Vote] = Recorded(Cue.Vote) ?? Own(Compose("Vote recorded", 0.20f, new Tone(880, 0.18f, 0, 0.11f)));
             clips[Cue.Eviction] = Recorded(Cue.Eviction) ?? Own(Compose("Eviction", 0.95f, new Tone(82.41f, 0.85f, 0, 0.15f), new Tone(164.81f, 0.6f, 0.12f, 0.07f)));
+            clips[Cue.PanelOpen] = Recorded(Cue.PanelOpen) ?? Own(Compose("Panel opens", 0.28f, new Tone(520, 0.12f, 0, 0.08f), new Tone(780, 0.14f, 0.1f, 0.08f)));
+            clips[Cue.PanelClose] = Recorded(Cue.PanelClose) ?? Own(Compose("Panel closes", 0.24f, new Tone(760, 0.1f, 0, 0.08f), new Tone(460, 0.12f, 0.09f, 0.08f)));
+            clips[Cue.Hover] = Recorded(Cue.Hover) ?? Own(Compose("Hover", 0.09f, new Tone(1800, 0.07f, 0, 0.05f)));
             clips[Cue.Finale] = Recorded(Cue.Finale) ?? Own(Compose("Final result", 1.5f,
                 new Tone(523.25f, 1.35f, 0, 0.10f), new Tone(659.25f, 1.25f, 0.10f, 0.09f),
                 new Tone(783.99f, 1.15f, 0.20f, 0.09f), new Tone(1046.5f, 0.75f, 0.55f, 0.065f)));

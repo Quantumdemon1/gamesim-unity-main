@@ -33,6 +33,25 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator Audio_PanelsAndHoversHaveTheirFoley()
+        {
+            var audio = director.GetComponent<HouseAudio>();
+            director.ClosePanels();
+            yield return null;
+            director.OpenSettings();
+            yield return null;
+            Assert.That(audio.LastCue, Is.EqualTo(HouseAudio.Cue.PanelOpen), "A panel arriving says so.");
+            var button = ButtonWithCaption("Close  [Esc]");
+            UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject,
+                new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current),
+                UnityEngine.EventSystems.ExecuteEvents.pointerEnterHandler);
+            Assert.That(audio.LastCue, Is.EqualTo(HouseAudio.Cue.Hover), "The pointer arriving over a control ticks.");
+            director.ClosePanels();
+            yield return null;
+            Assert.That(audio.LastCue, Is.EqualTo(HouseAudio.Cue.PanelClose), "and a panel leaving says so.");
+        }
+
+        [UnityTest]
         public IEnumerator Audio_ReducedSoundStopsTheRoomToneAndSoftensTheCues()
         {
             var audio = director.GetComponent<HouseAudio>();

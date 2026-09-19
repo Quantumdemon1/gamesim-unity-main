@@ -9,10 +9,14 @@ namespace Gamesim.Presentation
     /// reduced motion. Scale only, so the caption, the focus ring and the click are untouched.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class HudPress : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+    public sealed class HudPress : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler, IPointerEnterHandler
     {
         private const float Dip = 0.96f;
         public bool ReducedMotion;
+        /// <summary>Called when the pointer arrives over the control: the HUD plays the hover foley.</summary>
+        public System.Action Hovered;
+
+        public void OnPointerEnter(PointerEventData eventData) => Hovered?.Invoke();
 
         public void OnPointerDown(PointerEventData eventData)
         {

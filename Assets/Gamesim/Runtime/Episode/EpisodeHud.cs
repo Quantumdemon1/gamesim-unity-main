@@ -167,6 +167,9 @@ namespace Gamesim.Episode
             // modal goes to a ghost canvas that owns no controls (HudFade strips them), so the
             // rebuild below can throw the rest away as it always has.
             if (modal != null && !open && !recovery) HudFade.Ghost(modal, canvas, ReducedMotion);
+            // UI foley: a panel arriving or leaving says so. A rebuild of an open panel is neither.
+            if (open && modal == null) Foley(HouseAudio.Cue.PanelOpen);
+            else if (!open && modal != null && !recovery) Foley(HouseAudio.Cue.PanelClose);
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
@@ -828,6 +831,14 @@ namespace Gamesim.Episode
 
         public const string FollowChipName = "Follow chip";
 
+        private HouseAudio foley;
+        /// <summary>The director's audio, for the HUD's own sounds; found once, absent in a bare test.</summary>
+        private void Foley(HouseAudio.Cue cue)
+        {
+            if (foley == null && director != null) foley = director.GetComponent<HouseAudio>();
+            if (foley != null) foley.PlayCue(cue);
+        }
+
         /// <summary>
         /// The chip under the house pill naming who the camera is following, and how to stop.
         /// Rebuilt with the chrome, and redrawn on its own when the subject changes between
@@ -1011,7 +1022,8 @@ namespace Gamesim.Episode
             var button=rect.gameObject.AddComponent<Button>(); var colors=button.colors;
             colors.highlightedColor=new Color(1.2f,1.6f,1.45f); colors.selectedColor=colors.highlightedColor; colors.pressedColor=new Color(.65f,1.1f,.9f); button.colors=colors;
             var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,leftInset,5,16,5); text.alignment=TextAlignmentOptions.Left;
-            rect.gameObject.AddComponent<HudPress>().ReducedMotion = ReducedMotion;
+            var press = rect.gameObject.AddComponent<HudPress>(); press.ReducedMotion = ReducedMotion;
+press.Hovered = () => Foley(HouseAudio.Cue.Hover);
             button.onClick.AddListener(()=>action()); return button;
         }
         private TMP_Text FixedText(RectTransform parent,string value,int size,Color color,Vector2 position,Vector2 dimensions)

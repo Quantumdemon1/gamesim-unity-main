@@ -88,6 +88,18 @@ def cues():
         fin.add(s.chorus_pad([s.hz(name)], 1.5 - index * 0.1, cutoff=2200.0, env=(0.02, 0.2, 0.7, 0.5), gain=0.5), index * 0.08, pan=-0.3 + 0.15 * index)
     fin.add(s.note("sine", s.hz("C6"), 0.8, env=(0.01, 0.2, 0.6, 0.4), gain=0.25), 0.55)
     yield "Finale", stereo(fin, rev=0.35, size=0.9)
+    # UI foley: a panel sliding open (a short upward sweep), closing (the same down), and a hover
+    # (a tick softer and higher than the button, so a pass over a row is not a press).
+    n = s.seconds(0.28)
+    t = np.arange(n) / s.SR
+    open_sweep = np.sin(2.0 * np.pi * np.cumsum(420.0 + 380.0 * t / 0.28) / s.SR) * s.adsr(n, 0.005, 0.08, 0.35, 0.12) * 0.4
+    yield "PanelOpen", stereo(s.lowpass(open_sweep, 2600.0), rev=0.1)
+    n = s.seconds(0.24)
+    t = np.arange(n) / s.SR
+    close_sweep = np.sin(2.0 * np.pi * np.cumsum(760.0 - 340.0 * t / 0.24) / s.SR) * s.adsr(n, 0.005, 0.07, 0.3, 0.1) * 0.4
+    yield "PanelClose", stereo(s.lowpass(close_sweep, 2400.0), rev=0.1)
+    hover = s.note("sine", 1800.0, 0.09, env=(0.001, 0.02, 0.0, 0.04), gain=0.35)
+    yield "Hover", stereo(hover, rev=0.0)
 
 
 if __name__ == "__main__":

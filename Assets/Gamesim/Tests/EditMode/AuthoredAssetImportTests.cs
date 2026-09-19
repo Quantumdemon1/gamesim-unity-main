@@ -43,6 +43,8 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(importer.animationType, Is.EqualTo(AuthoredAssetImporter.IsGeneric(path) ? ModelImporterAnimationType.Generic
                     : AuthoredAssetImporter.IsRigged(path) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None), path);
                 Assert.That(importer.importAnimation, Is.EqualTo(AuthoredAssetImporter.IsAnimation(path)), path);
+                Assert.That(importer.generateSecondaryUV, Is.EqualTo(!AuthoredAssetImporter.IsRigged(path)),
+                    path + ": props carry lightmap UVs; bodies are lit by probes.");
                 Assert.That(importer.avatarSetup, Is.EqualTo(AuthoredAssetImporter.IsRigged(path)
                     ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar),
                     path + ": a rig carries its avatar; a prop carries none.");

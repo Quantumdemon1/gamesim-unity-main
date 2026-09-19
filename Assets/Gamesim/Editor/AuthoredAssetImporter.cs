@@ -95,6 +95,9 @@ namespace Gamesim.Editor
             importer.animationType = IsGeneric(assetPath) ? ModelImporterAnimationType.Generic
                 : IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
             importer.importAnimation = IsAnimation(assetPath);
+            // A prop is lightmapped, and its box-projected UVs tile past 0..1, so the lightmapper
+            // gets a second set of its own. A body is lit by probes and needs none.
+            importer.generateSecondaryUV = !IsRigged(assetPath);
             // A Generic rig gets no avatar unless asked; the prefab and the six bodies carry one.
             importer.avatarSetup = IsRigged(assetPath) ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar;
         }

@@ -259,6 +259,62 @@ ceilings. Load-time targets. Crash-free sessions measured in real sessions.
 
 ---
 
+### 3.J — The player's experience, checked against the brief *(2026-09-19)*
+
+The brief: a single-player, Sims-like season of Big Brother USA — create a character or pick a
+default, play the house socially and strategically against interactive houseguests in a
+choose-your-own-adventure season, win or lose the competitions for power, nominate, veto, replace,
+sway the vote, reach the final two, face a jury that votes on its own motivations; keep career
+stats between seasons; play another season by hand, or set up a cast and watch it play out.
+
+| Element of the brief | In the project | Where |
+| --- | --- | --- |
+| Create a character or pick a default | **Present** | `CastSelect` (24-template pool, two rosters, 3–12 seats), `CharacterCreator` (name, age, occupation, hometown, bio, pronouns, two traits, five spare points) |
+| Interactive houseguests, a season with choices | **Present** | 41 command kinds: fourteen social actions, promises, alliances (propose and leave, from any conversation), deals with counter-answers, intel, lies, rumours, schemes, backdoor plans, house meetings; house events and storylines the player resolves by choice; NPCs with motives, meetings, proximity and their own alliances |
+| Competitions: play, simulate or throw; HoH, nominations, veto, replacement, final HoH in three parts | **Present** | `EpisodeEngine` phases HoH → Nomination → VetoSelection → Veto → VetoMeeting → Campaign → Eviction (five stages) → FinalHoH 1–3 → FinalEviction; three mini-games and an untimed assisted option |
+| Sway the house before the vote | **Present** | the Campaign phase, conversations, deals, promises, the block speech, the eviction stages |
+| A jury that votes on its own motivations | **Present in the engine, partly on screen** | `WebJuryVoting` (the web's `calculateJuryScore` and `calculateGameplayRespect`: competition wins, times nominated, the strategic stat, alliances, deals, and the relationship) with `WebJurySentiment` and the questioning; the report says who beat whom, not why each juror voted |
+| Spectate after eviction | **Present** | the season plays on; the HUD names it; the report badges it |
+| Career stats between seasons | **Absent** | the web kept these behind sign-in as a cloud leaderboard, which §1.3 deliberately did not port; nothing offline replaced it |
+| Set up a cast and watch a season play | **Absent** | the web had no such mode either (its "simulate" is a competition, not a season); the engine already runs NPC-only weeks for the verifier and for a spectating player |
+
+Three items follow. The first and third are small and belong in Phase 0 or 2; the second is a
+feature and belongs after the slice gate, beside clutter and wardrobe.
+
+**J1 — A career ledger, offline.** One JSON file beside the saves (`career.json`, versioned like a
+save) that the director appends to when a season reaches `Finished`: the season's seed, roster,
+house size, the player's placement, HoH and veto wins, times nominated, days on the block, jury
+votes received, whether they were evicted or spectated, and the winner. From it: seasons played,
+wins, runner-ups, jury finishes, median and best placement, competition record, win rate. Shown on
+the main menu under the continue button as a career line, and as a "YOUR CAREER" card on the season
+report beside "YOUR JOURNEY"; reset from settings with a confirmation. Persisted per save root so
+the tests' isolated roots keep their own; `SaveRootOverride` respected. Tests: the ledger gains one
+entry per finished season and never one for an abandoned one; the median is the median; the report
+card reads the ledger; a corrupt file is archived, not trusted. No accounts, no network - the
+"unranked local season" notice the web showed becomes the truth rather than a caveat.
+
+**J2 — Watch a season.** A third entry on the main menu, "Watch a season", that takes the cast
+screen as it is (roster, house size, the creator for a guest star) with no seat for the player, and
+runs the season on the engine's own NPC decisions - the same path the verifier's autonomy walk and
+the post-eviction spectator already use - with the presentation doing the work: the camera follows
+the ceremonies' framing presets, the cast rail and follow keys pick who to ride, the recap opens
+each week, and a pace control (pause, real time, a beat a second, a week a minute) sits where the
+action budget would. Nothing new in the simulation: the player id is a houseguest like the rest with
+`isPlayer` false, so every rule and save format holds, and a watched season can be saved, resumed
+and reported. The ceremonies, the reactions, the seated conversations and the room tone are what
+make it worth watching; this is the item that turns the presentation work into a mode. Tests: an
+NPC-only season reaches `Finished` under the director in batchmode; the pace control changes the
+world's clock and nothing else; a watched season's report has no "you" card and a full cast one.
+
+**J3 — The jury's reasons, on screen.** The engine already records one: every `jury-vote` ballot
+carries `WebJuryVoting.Reason` - the term that decided it, from the juror's own score of each
+finalist - and the notebook shows the eviction ballots' reasons the same way. The season report
+does not show the jury's. Add a "HOW THE JURY VOTED" section to the report and a line per juror to
+the finale's reveal, read from the recorded ballots, so a player learns whether they lost the jury
+on competitions, on the block, on a broken promise or on the person they were. No schema change; the
+reasons are in the events. Tests: the report lists every juror with their reason; a reloaded
+finished season shows the same lines.
+
 ## Part 4 — The Blender pipeline
 
 This is the part that changes the asset strategy, so it gets its own reasoning before its own steps.
@@ -508,11 +564,11 @@ and the Blender pipeline is the art track of the vertical slice.
 
 | Phase | Weeks | Deliverable | Gate |
 | --- | --- | --- | --- |
-| **0 — Finish** | 1 | §3.0 complete: merged, verified, housekept, E run once, volume in the shipping scene | Section E has a first result; C1–C5 measured windowed |
+| **0 — Finish** | 1 | §3.0 complete: merged, verified, housekept, E run once, volume in the shipping scene; **§3.J J1 career ledger and J3 jury reasons** | Section E has a first result; C1–C5 measured windowed |
 | **1 — Vertical slice** | 5–7 | **One week of one season at final quality.** Part 4 tiers 1–2 and the seated clip (A, B); theme, bed and cue SFX (C); UI motion and layout (D); ceremonies on Timeline with Cinemachine framing (E) | *Does one week look like a shipped game?* If yes, the rest is production. If no, the answer is in 3.A or 3.B and nothing below fixes it. |
 | **2 — Content** | 3–4 | Tier 5 writing pass, every template set tripled; Part 4 tier 3 furniture; conversation and reaction clips; faces | No repetition inside a season; every room off Kenney |
 | **3 — Platform** | 2–3 | Addressables, three desktop targets, settings, Steam, localisation keys | A stranger can install and play it |
-| **4 — Depth** | ongoing | §3.G; generated content if adopted; wardrobe or cast; clutter | Players are asking for more |
+| **4 — Depth** | ongoing | §3.G; generated content if adopted; wardrobe or cast; clutter; **§3.J J2 watch a season** | Players are asking for more |
 
 **Where the phases stand at the end of 2026-09-19.** Phase 0 is done but for the human steps in
 §3.0 (merge PR #1, Section E, the two `git rm`s) and the C-threshold decision the matrix names.

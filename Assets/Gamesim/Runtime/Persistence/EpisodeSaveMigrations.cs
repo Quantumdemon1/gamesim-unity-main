@@ -20,11 +20,52 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 11) return (JObject)original.DeepClone();
+            if (version < 1 || version > 10) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v10 = version == 10 ? original : PrepareV10Payload(original, out _);
+            var result = UpgradeV10ToV11(v10);
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v9-to-v10 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV10Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 10) return (JObject)original.DeepClone();
             if (version < 1 || version > 9) throw new InvalidDataException("Unsupported simulation schema version.");
             var v9 = version == 9 ? original : PrepareV9Payload(original, out _);
-            var result = UpgradeV9ToV10(v9);
+            var current = UpgradeV9ToV10(v9);
             migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Opens the social vocabulary's purchases and the event layer, from the week after the one
+        /// the save is in.
+        ///
+        /// <para>Two systems in one version, and both arrive empty because there is nothing in a v10
+        /// save to infer either from. What the boundary buys is the behaviour: a season restored
+        /// mid-week should not suddenly have things happening to the house it was not being played
+        /// under, any more than it should get a new action budget or start striking deals. The fifth
+        /// use of a rule-version boundary, and the same shape as the other four.</para>
+        ///
+        /// <para><c>boughtActionPoints</c> has no boundary of its own. It is a count of something
+        /// nobody has done yet, and zero is not a rule — it is the truth about every save written
+        /// before the control existed.</para>
+        /// </summary>
+        public static JObject UpgradeV10ToV11(JObject original)
+        {
+            FrozenEpisodeV10.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("boughtActionPoints", 0);
+            result.Add("houseEvents", new JArray());
+            result.Add("eventRulesStartWeek", startWeek);
+            result["schemaVersion"] = 11;
             return result;
         }
 

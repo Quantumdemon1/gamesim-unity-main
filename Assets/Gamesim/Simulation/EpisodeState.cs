@@ -191,7 +191,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 10;
+        public int schemaVersion = 11;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;
@@ -283,6 +283,49 @@ namespace Gamesim.Simulation
         /// </summary>
         public int dealRulesStartWeek = 1;
 
+        // ---------------------------------------------------------------- schema 11
+        //
+        // One version carrying two systems, deliberately. The social vocabulary and the event layer
+        // both need persisted state, and the save format checks stored objects field for field — so
+        // adding them separately would cost two migrations, two frozen contracts and two sweeps of
+        // every fixture, for one week's work either way.
+
+        /// <summary>
+        /// Extra social actions the player has bought this phase.
+        ///
+        /// <para>The reference's <c>buy_action_point</c> trades relationship damage for another
+        /// action. The budget here has been a hard ceiling with no way past it, which makes a week
+        /// where the house moves faster than the allowance simply unplayable rather than expensive.
+        /// </para>
+        ///
+        /// <para>Counted separately from <see cref="socialActions"/> rather than deducted from it,
+        /// because the two answer different questions: one is what you spent, this is what you paid
+        /// to be allowed to spend it, and a screen that showed the second as the first would be
+        /// telling the player they had actions left when they had bought them.</para>
+        /// </summary>
+        public int boughtActionPoints;
+
+        /// <summary>
+        /// Things that have happened to the house.
+        ///
+        /// <para>Every week in this port happens because the player pressed something. The event
+        /// layer is what the reference uses to make one week feel unlike the last — six systems'
+        /// worth of situations that arrive on their own and sometimes ask a question.</para>
+        ///
+        /// <para>Resolved events stay in the list. They are the record of what the season did to the
+        /// player, which the weekly recap reads and which a screen cannot reconstruct once it is
+        /// gone.</para>
+        /// </summary>
+        public List<HouseEventState> houseEvents = new List<HouseEventState>();
+
+        /// <summary>
+        /// The week the house starts having things happen to it, so a season already under way is
+        /// not suddenly handed a system it was not played under. The fifth use of this boundary,
+        /// after <see cref="blocRulesStartWeek"/>, <see cref="NpcSocialState.rulesStartWeek"/>,
+        /// <see cref="socialBudgetRulesStartWeek"/> and <see cref="dealRulesStartWeek"/>.
+        /// </summary>
+        public int eventRulesStartWeek = 1;
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -315,6 +358,7 @@ namespace Gamesim.Simulation
             copy.evictionSpeeches = evictionSpeeches.Select(x => x.Clone()).ToList();
             copy.openingBeatsSeen = new List<string>(openingBeatsSeen);
             copy.deals = deals.Select(x => x.Clone()).ToList();
+            copy.houseEvents = houseEvents.Select(x => x.Clone()).ToList();
             return copy;
         }
     }

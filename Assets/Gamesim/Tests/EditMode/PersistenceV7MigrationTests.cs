@@ -141,8 +141,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 6").And.Contain("schema 10 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(10), "A load runs the whole chain, not one step.");
+            Assert.That(message, Does.Contain("Schema 6").And.Contain("schema 11 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(11), "A load runs the whole chain, not one step.");
             Assert.That(loaded.contestants, Has.All.Matches<ContestantState>(c => c.archetype == null && c.age == 0));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
                 "Loading must not rewrite the file.");
@@ -151,7 +151,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(originalBytes),
                 "The pre-migration bytes are kept as the backup.");
             Assert.That(files.Store.TryLoad(out var again, out message), Is.True, message);
-            Assert.That(again.schemaVersion, Is.EqualTo(10));
+            Assert.That(again.schemaVersion, Is.EqualTo(11));
             Assert.That(JToken.DeepEquals(Capture(loaded), Capture(again)), Is.True);
         }
 
@@ -224,7 +224,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The current runtime state expressed in schema 6's shape.</summary>
         private static JObject CaptureV6(EpisodeState state)
         {
-            var payload = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(Capture(state)))));
+            var payload = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(Capture(state))))));
             payload["schemaVersion"] = 6;
             return payload;
         }

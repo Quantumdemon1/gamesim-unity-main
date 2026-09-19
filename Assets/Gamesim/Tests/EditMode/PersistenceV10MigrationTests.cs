@@ -27,7 +27,7 @@ namespace Gamesim.Tests.EditMode
         {
             foreach (var state in new[] { ContentCatalog.Create(11u), SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u) })
             {
-                Assert.That(state.schemaVersion, Is.EqualTo(10));
+                Assert.That(state.schemaVersion, Is.EqualTo(11));
                 Assert.That(state.deals, Is.Empty, "A season starts with nothing agreed.");
                 Assert.That(state.dealRulesStartWeek, Is.EqualTo(1),
                     "New play deals immediately; only migrated history gets a grace week.");
@@ -61,7 +61,10 @@ namespace Gamesim.Tests.EditMode
             var before = CaptureV9(ContentCatalog.Create(601));
             before["week"] = week;
 
-            var parsed = EpisodeSaveMigrations.UpgradeV9ToV10(before).ToObject<EpisodeState>(Serializer());
+            // The whole chain, not one step. A schema 10 payload no longer describes a state the
+            // simulation accepts, and what has to stay legal is what a load actually produces —
+            // which is also what stops this test breaking again on the next version.
+            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(before, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, error);
             Assert.That(parsed.dealRulesStartWeek, Is.EqualTo(Math.Min(101, week + 1)),
                 "A season in its hundredth week may not name a start week validation would reject.");
@@ -90,7 +93,9 @@ namespace Gamesim.Tests.EditMode
             for (int version = 1; version <= 9; version++)
             {
                 var old = Historical(version);
-                var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+                // PrepareV10Payload, not PrepareCurrentPayload: this file pins the step that ends
+                // at schema 10, and "current" moved on when schema 11 opened the event layer.
+                var result = EpisodeSaveMigrations.PrepareV10Payload(old, out bool migrated);
 
                 Assert.That(migrated, Is.True, "version " + version);
                 Assert.That((int)result["schemaVersion"], Is.EqualTo(10), "version " + version);
@@ -103,15 +108,15 @@ namespace Gamesim.Tests.EditMode
         public void MigratingAgainIsANoOpAndTheResultLoadsAndValidates()
         {
             var old = CaptureV9(ContentCatalog.Create(601));
-            var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
+            var result = EpisodeSaveMigrations.PrepareV10Payload(old, out bool migrated);
             Assert.That(migrated, Is.True);
 
-            var repeat = EpisodeSaveMigrations.PrepareCurrentPayload(result, out migrated);
+            var repeat = EpisodeSaveMigrations.PrepareV10Payload(result, out migrated);
             Assert.That(migrated, Is.False, "A schema 10 payload must not be migrated again.");
             Assert.That(ReferenceEquals(result, repeat), Is.False, "The payload must be cloned, not handed back.");
             Assert.That(JToken.DeepEquals(result, repeat), Is.True);
 
-            var parsed = result.ToObject<EpisodeState>(Serializer());
+            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(old, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, error);
             Assert.That(parsed.deals, Is.Empty);
         }
@@ -124,8 +129,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 9").And.Contain("schema 10 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(10));
+            Assert.That(message, Does.Contain("Schema 9").And.Contain("schema 11 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(11), "A load runs the whole chain, not one step.");
             Assert.That(loaded.deals, Is.Empty);
             Assert.That(loaded.dealRulesStartWeek, Is.EqualTo(loaded.week + 1));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
@@ -244,7 +249,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The current runtime state expressed in schema 9's shape.</summary>
         private static JObject CaptureV9(EpisodeState state)
         {
-            var payload = PersistenceMigrationTests.StripSchema10(Capture(state));
+            var payload = PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(Capture(state)));
             payload["schemaVersion"] = 9;
             return payload;
         }

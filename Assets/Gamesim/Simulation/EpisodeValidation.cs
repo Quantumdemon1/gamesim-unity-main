@@ -19,7 +19,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 10) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 11) return Fail(out error, "Unsupported episode schema.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0 || s.socialActions > 18 || !Defined(s.phase))
                 return Fail(out error, "Invalid session counters or phase.");
@@ -117,6 +117,31 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid deal data.");
             if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A deal rules boundary cannot be further off than next week.");
+            // Bought actions are bounded like everything else a player can accumulate: nothing
+            // legitimately buys hundreds, and an unbounded counter is a save that stops loading.
+            if (s.boughtActionPoints < 0 || s.boughtActionPoints > 100)
+                return Fail(out error, "Invalid bought action point count.");
+            if (s.houseEvents == null || s.houseEvents.Count > 400 ||
+                s.houseEvents.Any(e => e == null || !Text(e.id, 160) || !HouseEventKind.IsKnown(e.kind)
+                                       || !Text(e.title, 200) || !Text(e.narrative, 2000)
+                                       || e.week < 1 || e.week > s.week
+                                       || e.involvedIds == null || e.involvedIds.Count > 32
+                                       || e.involvedIds.Any(id => !Id(id))
+                                       || e.involvedIds.Distinct(StringComparer.Ordinal).Count() != e.involvedIds.Count
+                                       || e.choices == null || e.choices.Count > 8
+                                       || e.choices.Any(BadChoice)
+                                       // An unresolved event has chosen nothing; a resolved one has
+                                       // chosen something that exists. Anything else is a save that
+                                       // says a decision was made and cannot say what it was.
+                                       || (e.resolved
+                                           ? e.chosenIndex < -1 || e.chosenIndex >= e.choices.Count
+                                           : e.chosenIndex != -1)
+                                       || !ShortOrAbsent(e.outcome, 2000)
+                                       || e.choices.Any(c => c.impacts.Any(i => !Optional(i.targetId)))) ||
+                s.houseEvents.GroupBy(e => e.id).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid house event data.");
+            if (s.eventRulesStartWeek < 1 || s.eventRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "An event rules boundary cannot be further off than next week.");
             if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
                 s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
                 s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)
@@ -181,6 +206,21 @@ namespace Gamesim.Simulation
         /// methods outright rather than overloading them.</para>
         /// </summary>
         private static bool ShortOrAbsent(string value, int max) => string.IsNullOrEmpty(value) || value.Length <= max;
+
+        /// <summary>
+        /// Whether one way of answering an event is malformed.
+        ///
+        /// <para>Split out because the expression that walks the event list is already the longest
+        /// condition in this file, and a choice has enough of its own shape to be worth naming. The
+        /// target of an impact is checked by the caller, which is the only place the cast is in
+        /// scope.</para>
+        /// </summary>
+        private static bool BadChoice(HouseEventChoice choice) =>
+            choice == null || !Text(choice.label, 120) || !ShortOrAbsent(choice.description, 500)
+            || !HouseEventRisk.IsKnown(choice.risk)
+            || !Finite(choice.trustChange) || Math.Abs(choice.trustChange) > 100
+            || choice.impacts == null || choice.impacts.Count > 32
+            || choice.impacts.Any(i => i == null || !Finite(i.amount) || Math.Abs(i.amount) > 100);
 
         private static bool Text(string value, int max) => !string.IsNullOrWhiteSpace(value) && value.Length <= max;
         private static bool Defined<T>(T value) where T : struct => Enum.IsDefined(typeof(T), value);

@@ -4,7 +4,8 @@
   "references": [
     "Gamesim.Runtime",
     "Gamesim.Simulation",
-    "Gamesim.Editor"
+    "Gamesim.Editor",
+    "Unity.InputSystem"
   ],
   "includePlatforms": [
     "Editor"

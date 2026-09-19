@@ -222,7 +222,11 @@ namespace Gamesim.Episode
                 else yield return ClickSeasonButton("Save " + state.Find(state.nominees[0]).name + " (HoH chooses replacement)");
                 yield break;
             }
+            // The ballot is offered only once the night reaches the vote: the stages before it
+            // (the speeches, and a player on the block delivering theirs) are walked further down,
+            // and "Continue episode" is what moves the night from one stage to the next.
             if (state.phase == EpisodePhase.Eviction && !state.evictionResolved && !state.votes.Any(vote => vote.voterId == state.playerId)
+                && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             { yield return ClickSeasonButton("Vote to evict " + state.Find(state.nominees[0]).name); yield break; }
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)

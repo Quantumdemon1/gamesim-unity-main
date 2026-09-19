@@ -39,6 +39,15 @@ namespace Gamesim.House
         [SerializeField, Min(0f)] private float occlusionMargin = 0.25f;
         private float appliedDistance;
         private static readonly RaycastHit[] occlusionHits = new RaycastHit[16];
+        // Phase 3 (MASTER-PLAN §3.E). Every control arrives through one Input Actions map, so a
+        // mouse, the keyboard and a gamepad are the same code path and a test drives any of them
+        // by queueing device state. Nothing assigned means the map built in code.
+        [SerializeField] private InputActionAsset actionsAsset;
+        [SerializeField, Min(1f)] private float gamepadOrbitSpeed = 120f;
+        [SerializeField, Min(0.1f)] private float gamepadZoomSpeed = 8f;
+        [SerializeField, Min(1f)] private float edgePanBand = 12f;
+        [SerializeField] private bool edgePan = true;
+        private HouseCameraActions actions;
 
         private Vector3 desiredFocus;
         private float desiredDistance;
@@ -77,6 +86,30 @@ namespace Gamesim.House
         public float PitchFor(float wantedDistance) =>
             Mathf.Lerp(closePitch, farPitch, Mathf.InverseLerp(minimumDistance, maximumDistance, wantedDistance));
         public bool ReducedMotion => reducedMotion;
+
+        /// <summary>The rig's actions, for whoever else reads them - the director, for the shoulders.</summary>
+        public HouseCameraActions Actions { get { EnsureActions(); return actions; } }
+
+        /// <summary>
+        /// Whether the screen's edges pan. On by default in a full-screen window, where the cursor
+        /// cannot leave; in a window the cursor leaves through the very band that would pan, and
+        /// the last position it reported sits inside it, so a windowed player has to opt in.
+        /// </summary>
+        public bool EdgePan { get => edgePan; set => edgePan = value; }
+        public bool EdgePanInWindow { get; set; }
+        public float EdgePanBand => edgePanBand;
+        private bool EdgePanActive => edgePan && (Screen.fullScreen || EdgePanInWindow);
+
+        private void EnsureActions()
+        {
+            if (actions != null) return;
+            actions = new HouseCameraActions(actionsAsset);
+            if (isActiveAndEnabled) actions.Enable();
+        }
+
+        private void OnEnable() { EnsureActions(); actions.Enable(); }
+        private void OnDisable() { actions?.Disable(); }
+        private void OnDestroy() { actions?.Dispose(); actions = null; }
 
         private void Awake()
         {
@@ -340,15 +373,23 @@ namespace Gamesim.House
         private void ReadInput()
         {
             if (!ControlsEnabled) return;
-            var mouse = Mouse.current;
+            EnsureActions();
+            float dt = Time.unscaledDeltaTime;
             bool pointerOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-            if (mouse != null && !pointerOverUi)
+            var pointer = actions.Point.ReadValue<Vector2>();
+            if (!pointerOverUi)
             {
-                if (mouse.rightButton.isPressed)
+                var orbit = actions.Orbit.ReadValue<Vector2>();
+                if (orbit.sqrMagnitude > 0f) ApplyOrbit(orbit * orbitSensitivity);
+
+                // Middle-drag: the ground that was under the cursor stays under it. The point under
+                // the cursor a frame ago and the point under it now differ by exactly the move the
+                // focus has to make, on the same plane the zoom uses.
+                var drag = actions.Drag.ReadValue<Vector2>();
+                if (drag.sqrMagnitude > 0f && TryCursorPoint(pointer - drag, out var was) && TryCursorPoint(pointer, out var now))
                 {
-                    var delta = mouse.delta.ReadValue();
-                    yaw = Mathf.Repeat(yaw + delta.x * orbitSensitivity, 360f);
-                    pitchOffset = Mathf.Clamp(pitchOffset - delta.y * orbitSensitivity, -20f, 20f);
+                    ClearSubject();
+                    desiredFocus = ClampFocus(desiredFocus + (was - now));
                 }
 
                 // Wheel deltas do not arrive in one unit. Windows reports 120 per notch, and other
@@ -357,48 +398,82 @@ namespace Gamesim.House
                 // did here: every notch moved the camera a eightieth of a metre, so the control the
                 // on-screen hint advertised looked completely dead. Fold both onto a notch count
                 // before applying the step, and the same code feels right either way.
-                float wheel = mouse.scroll.ReadValue().y;
+                float wheel = actions.Zoom.ReadValue<float>();
                 if (!Mathf.Approximately(wheel, 0f))
                 {
                     float notches = Mathf.Abs(wheel) >= 20f ? wheel / 120f : wheel;
-                    float before = desiredDistance;
-                    desiredDistance = Mathf.Clamp(desiredDistance - notches * zoomStep,
-                        minimumDistance, maximumDistance);
-                    // Toward the cursor: the point under it on the focus plane draws the focus in by
-                    // the fraction the boom shortened, so what was under the cursor stays under it;
-                    // zooming out pushes it away by the same rule. A followed subject keeps the focus.
-                    if (subject == null && TryCursorPoint(mouse.position.ReadValue(), out var under))
-                    {
-                        float fraction = 1f - desiredDistance / Mathf.Max(before, 0.001f);
-                        desiredFocus = ClampFocus(Vector3.LerpUnclamped(desiredFocus, under, fraction));
-                    }
+                    ZoomBy(notches * zoomStep, pointer, true);
+                }
+
+                if (EdgePanActive && Pointer.current != null)
+                {
+                    var edge = EdgeDirection(pointer);
+                    if (edge.sqrMagnitude > 0f) PanBy(edge, dt);
                 }
             }
 
-            var keyboard = Keyboard.current;
-            if (keyboard == null)
-            {
-                return;
-            }
+            // A stick is a rate: degrees, metres and pan per second, times the frame - so its speed
+            // is the same at any frame rate, which a per-frame mouse delta never has to be.
+            var stick = actions.OrbitRate.ReadValue<Vector2>();
+            if (stick.sqrMagnitude > 0f) ApplyOrbit(stick * (gamepadOrbitSpeed * dt));
+            float zoomRate = actions.ZoomRate.ReadValue<float>();
+            if (!Mathf.Approximately(zoomRate, 0f)) ZoomBy(zoomRate * gamepadZoomSpeed * dt, pointer, false);
 
-            if (keyboard.fKey.wasPressedThisFrame && playerTarget != null)
+            if (actions.Recenter.WasPressedThisFrame() && playerTarget != null)
             {
                 ClearSubject();
                 desiredFocus = ClampFocus(new Vector3(playerTarget.position.x, houseCenter.y, playerTarget.position.z));
             }
 
-            var movement = Vector2.zero;
-            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) movement.x -= 1f;
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) movement.x += 1f;
-            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) movement.y -= 1f;
-            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) movement.y += 1f;
-            if (movement.sqrMagnitude > 0f)
+            var movement = actions.Pan.ReadValue<Vector2>();
+            if (movement.sqrMagnitude > 0f) PanBy(Vector2.ClampMagnitude(movement, 1f), dt);
+        }
+
+        /// <summary>A drag in pixels, or a stick's share of a second, turned into yaw and tilt.</summary>
+        private void ApplyOrbit(Vector2 amount)
+        {
+            yaw = Mathf.Repeat(yaw + amount.x, 360f);
+            pitchOffset = Mathf.Clamp(pitchOffset - amount.y, -20f, 20f);
+        }
+
+        /// <summary>
+        /// Shortens the boom by <paramref name="metres"/> (negative lengthens it). Toward the cursor
+        /// when asked: the point under it on the focus plane draws the focus in by the fraction the
+        /// boom shortened, so what was under the cursor stays under it; zooming out pushes it away by
+        /// the same rule. A followed subject keeps the focus, and a stick has no cursor to zoom toward.
+        /// </summary>
+        private void ZoomBy(float metres, Vector2 pointer, bool towardCursor)
+        {
+            float before = desiredDistance;
+            desiredDistance = Mathf.Clamp(desiredDistance - metres, minimumDistance, maximumDistance);
+            if (towardCursor && subject == null && TryCursorPoint(pointer, out var under))
             {
-                ClearSubject();
-                movement.Normalize();
-                var direction = Quaternion.Euler(0f, yaw, 0f) * new Vector3(movement.x, 0f, movement.y);
-                desiredFocus = ClampFocus(desiredFocus + direction * (panSpeed * desiredDistance / 24f) * Time.unscaledDeltaTime);
+                float fraction = 1f - desiredDistance / Mathf.Max(before, 0.001f);
+                desiredFocus = ClampFocus(Vector3.LerpUnclamped(desiredFocus, under, fraction));
             }
+        }
+
+        /// <summary>Pans the focus along the camera's yaw. Panning releases a followed subject.</summary>
+        private void PanBy(Vector2 direction, float dt)
+        {
+            ClearSubject();
+            var flat = Quaternion.Euler(0f, yaw, 0f) * new Vector3(direction.x, 0f, direction.y);
+            desiredFocus = ClampFocus(desiredFocus + flat * (panSpeed * desiredDistance / 24f) * dt);
+        }
+
+        /// <summary>
+        /// Which way the screen's edge under the cursor pans, or zero away from every edge. A cursor
+        /// outside the screen altogether counts as no edge: it is not on the game.
+        /// </summary>
+        public Vector2 EdgeDirection(Vector2 screen)
+        {
+            if (screen.x < 0f || screen.y < 0f || screen.x > Screen.width || screen.y > Screen.height) return Vector2.zero;
+            var direction = Vector2.zero;
+            if (screen.x <= edgePanBand) direction.x -= 1f;
+            else if (screen.x >= Screen.width - edgePanBand) direction.x += 1f;
+            if (screen.y <= edgePanBand) direction.y -= 1f;
+            else if (screen.y >= Screen.height - edgePanBand) direction.y += 1f;
+            return direction.normalized;
         }
 
         private Vector3 ConversationFocus()

@@ -22,6 +22,7 @@ namespace Gamesim.Episode
         // --gamesim-house-size: profile a season of this many houseguests rather than the six the
         // scene starts with. The C-row thresholds were derived at six; the plan asks for sixteen.
         private int houseSize, measuredHouseSize;
+        private string houseSizeNote = "";
         private readonly List<string> errors = new List<string>();
         private readonly List<float> frames = new List<float>(180000);
         private readonly List<long> allocations = new List<long>(180000);
@@ -72,10 +73,21 @@ namespace Gamesim.Episode
             if (player == null || rooms.Length < 5) errors.Add("Expected a navigable player and five room markers.");
             if (houseSize > 0 && director.Snapshot.contestants.Count != houseSize)
             {
-                director.StartSeason(new SeasonBuilder.Choice { HouseSize = houseSize });
+                // A roster seats twelve, and the builder will not pad a season with the other
+                // roster to reach a number (SeasonBuilder.LargestHouse). Sixteen is what a save may
+                // hold, not what a season can start with, so a larger request profiles the largest
+                // house there is and the report says so, rather than failing a run that measured
+                // exactly what it could.
+                var choice = new SeasonBuilder.Choice { HouseSize = houseSize };
+                int seated = SeasonBuilder.ClampHouseSize(choice.Roster, houseSize);
+                if (seated != houseSize)
+                    houseSizeNote = "The " + CastTemplates.RosterName(choice.Roster) + " roster seats " + seated
+                        + "; profiled at " + seated + " (" + houseSize + " requested).";
+                choice.HouseSize = seated;
+                director.StartSeason(choice);
                 for (int i = 0; i < 30; i++) yield return null;
-                if (director.Snapshot.contestants.Count != houseSize)
-                    errors.Add("The requested house size did not start: " + director.Snapshot.contestants.Count + " of " + houseSize + ".");
+                if (director.Snapshot.contestants.Count != seated)
+                    errors.Add("The requested house size did not start: " + director.Snapshot.contestants.Count + " of " + seated + ".");
             }
             measuredHouseSize = director.Snapshot.contestants.Count;
             director.SaveNow();
@@ -188,6 +200,7 @@ namespace Gamesim.Episode
                 frameMedianMs = Percentile(frames, .5), frameP95Ms = Percentile(frames, .95), frameP99Ms = Percentile(frames, .99),
                 gcCounterAvailable = allocations.Count > 0, gcMedianBytes = Percentile(allocations, .5), gcP95Bytes = Percentile(allocations, .95),
                 graphical = graphical, resolution = Screen.width + "x" + Screen.height, houseSize = measuredHouseSize,
+                houseSizeRequested = houseSize, houseSizeNote = houseSizeNote,
                 unityVersion = Application.unityVersion, processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 developmentBuild = Debug.isDebugBuild, errors = errors.ToArray(), saveDirectory = outputDirectory
@@ -208,7 +221,8 @@ namespace Gamesim.Episode
             public string overallStatus, overallFinishedUtc, seasonStatus, seasonReport, studyStatus, blocsStatus, autonomyStatus;
             public bool studyRequested, blocsRequested, autonomyRequested;
             public double requestedSeconds, measuredSeconds, frameMedianMs, frameP95Ms, frameP99Ms, gcMedianBytes, gcP95Bytes;
-            public int frameCount, systemMemoryMB, graphicsMemoryMB, houseSize;
+            public int frameCount, systemMemoryMB, graphicsMemoryMB, houseSize, houseSizeRequested;
+            public string houseSizeNote;
             public bool graphical, developmentBuild, gcCounterAvailable;
             public string[] errors;
         }

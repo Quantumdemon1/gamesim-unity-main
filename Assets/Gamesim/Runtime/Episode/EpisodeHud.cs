@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -827,10 +828,44 @@ namespace Gamesim.Episode
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
 
+        // Full-screen screens that sit over the HUD: the weekly recap and the season report. While
+        // one is up it is the keyboard's whole world - its controls get the ring and the HUD's get
+        // none - so Enter cannot press a button behind a scrim. Before this, a recap opened with
+        // the selection still on a HUD control underneath it.
+        private readonly List<CanvasGroup> overlays = new List<CanvasGroup>();
+        private RectTransform lastOverlay;
+        private int overlayControls;
+
+        public void RegisterOverlay(CanvasGroup group)
+        {
+            if (group != null && !overlays.Contains(group)) overlays.Add(group);
+        }
+
+        /// <summary>The topmost visible overlay, by canvas sorting order; null when the HUD is on top.</summary>
+        private RectTransform ActiveOverlay()
+        {
+            RectTransform top = null; int order = int.MinValue;
+            foreach (var group in overlays)
+            {
+                if (group == null || group.alpha <= 0f || !group.gameObject.activeInHierarchy) continue;
+                var owner = group.GetComponent<Canvas>();
+                int sorting = owner != null ? owner.sortingOrder : 0;
+                if (sorting >= order) { order = sorting; top = group.transform as RectTransform; }
+            }
+            return top;
+        }
+
         private void LateUpdate()
         {
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
+            var overlay = ActiveOverlay();
+            if (overlay != lastOverlay) { lastOverlay = overlay; restoreSelection = true; }
+            // A screen that rebuilds its form on every press (the character creator) hands the ring
+            // a new set of controls each time; rewire when the count moves.
+            int controls = overlay != null ? overlay.GetComponentsInChildren<Selectable>().Length : 0;
+            if (controls != overlayControls) { overlayControls = controls; if (overlay != null) restoreSelection = true; }
+            var scope = overlay != null ? overlay : modal;
             if (restoreSelection)
             {
                 Canvas.ForceUpdateCanvases();
@@ -847,12 +882,17 @@ namespace Gamesim.Episode
                     }
                     Canvas.ForceUpdateCanvases();
                 }
-                var all = canvas.GetComponentsInChildren<Selectable>().Where(item => item.IsActive() && item.IsInteractable()).ToArray();
-                var eligible = modal == null ? all : all.Where(item => item.transform.IsChildOf(modal)).ToArray();
+                // Scrollbars stay out of the ring: the panel scrolls to whatever is selected, and a
+                // scrollbar the ScrollRect auto-hides after layout would sit in the ring inactive,
+                // where Down and Tab both refuse to land - the keyboard stuck on the control before it.
+                var all = canvas.GetComponentsInChildren<Selectable>()
+                    .Concat(overlay != null ? overlay.GetComponentsInChildren<Selectable>() : Enumerable.Empty<Selectable>())
+                    .Where(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar)).ToArray();
+                var eligible = scope == null ? all : all.Where(item => item.transform.IsChildOf(scope)).ToArray();
                 foreach (var item in all)
                 {
                     var navigation = item.navigation;
-                    navigation.mode = modal != null && !item.transform.IsChildOf(modal) ? Navigation.Mode.None : Navigation.Mode.Explicit;
+                    navigation.mode = scope != null && !item.transform.IsChildOf(scope) ? Navigation.Mode.None : Navigation.Mode.Explicit;
                     navigation.selectOnLeft = null; navigation.selectOnRight = null;
                     navigation.selectOnUp = null; navigation.selectOnDown = null;
                     item.navigation = navigation;
@@ -864,7 +904,12 @@ namespace Gamesim.Episode
                     navigation.selectOnDown = eligible[(index + 1) % eligible.Length];
                     eligible[index].navigation = navigation;
                 }
-                var focus = eligible.FirstOrDefault(item => item.name == preferredSelection)
+                // Whatever is already selected and still eligible keeps the focus: a rewire is not a
+                // reason to move the keyboard. The HUD's own rebuilds destroy the old selection, so
+                // for them this is null and the named restore below takes over as before.
+                var current = events.currentSelectedGameObject;
+                var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
+                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection)
                     ?? eligible.FirstOrDefault(item => content != null && item.transform.IsChildOf(content))
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
                     ?? eligible.FirstOrDefault();
@@ -886,10 +931,10 @@ namespace Gamesim.Episode
                     selected = next.gameObject;
                 }
             }
-            if (modal != null && (selected == null || !selected.transform.IsChildOf(modal)))
+            if (scope != null && (selected == null || !selected.transform.IsChildOf(scope)))
             {
-                var focus = content.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
-                    ?? modal.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
+                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
+                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
                 events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;
             }

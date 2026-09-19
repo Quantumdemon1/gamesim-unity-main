@@ -5,6 +5,7 @@ using Gamesim.Episode;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Gamesim.Presentation
@@ -136,7 +137,37 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- build
 
+        private bool rebuilding;
+
+        /// <summary>
+        /// Rebuilds the form once, however many things ask during the rebuild. Tearing a field
+        /// down raises its <c>onEndEdit</c>, whose listener is this method; a rebuild that
+        /// re-entered itself would parent a new scrim under a root that is mid-deactivation, which
+        /// Unity refuses. Keyboard focus survives by control name, so pressing a chip does not throw
+        /// the selection back to the first field.
+        /// </summary>
         private void Rebuild()
+        {
+            if (rebuilding) return;
+            rebuilding = true;
+            var events = EventSystem.current;
+            var selected = events != null ? events.currentSelectedGameObject : null;
+            string keep = selected != null && selected.transform.IsChildOf(transform) ? selected.name : null;
+            try
+            {
+                RebuildForm();
+            }
+            finally
+            {
+                rebuilding = false;
+            }
+            if (keep == null || events == null) return;
+            var again = GetComponentsInChildren<Selectable>(true)
+                .FirstOrDefault(item => item.name == keep && item.IsActive() && item.IsInteractable());
+            if (again != null) events.SetSelectedGameObject(again.gameObject);
+        }
+
+        private void RebuildForm()
         {
             // Deactivated before the deferred Destroy, for the reason CastSelect.Rebuild explains:
             // this screen rebuilds on every click and a control would otherwise match twice for a
@@ -475,8 +506,11 @@ namespace Gamesim.Presentation
             input.text = value ?? string.Empty;
             input.onValueChanged.AddListener(written => write(written));
             // The preview only catches up when the field is left. Rebuilding on every keystroke
-            // would destroy the field being typed into.
-            input.onEndEdit.AddListener(_ => Rebuild());
+            // would destroy the field being typed into. And only while the field is alive: a
+            // focused field raises onEndEdit from its own OnDisable, which is also what a scene
+            // unload or a rebuild does to it, and a form rebuilt under a root being torn down is
+            // a scrim parented mid-deactivation.
+            input.onEndEdit.AddListener(_ => { if (input.isActiveAndEnabled && isActiveAndEnabled) Rebuild(); });
         }
 
         private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)

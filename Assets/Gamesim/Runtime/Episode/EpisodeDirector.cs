@@ -132,9 +132,15 @@ namespace Gamesim.Episode
             opening = OpeningSequence.Attach(gameObject);
             seasonReport = SeasonReport.Attach(gameObject);
             weeklyRecap = WeeklyRecapScreen.Attach(gameObject);
+            hud.RegisterOverlay(seasonReport.GetComponent<CanvasGroup>());
+            hud.RegisterOverlay(weeklyRecap.GetComponent<CanvasGroup>());
             castSelect = CastSelect.Attach(gameObject);
             characterCreator = CharacterCreator.Attach(gameObject);
             mainMenu = MainMenu.Attach(gameObject);
+            // The front door is a screen too: while any of these is up, it owns the keyboard.
+            hud.RegisterOverlay(castSelect.GetComponent<CanvasGroup>());
+            hud.RegisterOverlay(characterCreator.GetComponent<CanvasGroup>());
+            hud.RegisterOverlay(mainMenu.GetComponent<CanvasGroup>());
             ApplyPreferences(); Project(); Render(); IsReady = true;
             // A real launch opens at the front door. A run with an explicit save root is a test or
             // the standalone verification driving the house directly, and a menu it never asked for
@@ -1614,8 +1620,14 @@ namespace Gamesim.Episode
             var keyboard = Keyboard.current;
             if (keyboard != null)
             {
+                // Edge-triggered rather than level-triggered, so the panel's hold and release
+                // buttons keep working when a keyboard is attached: polling isPressed every
+                // frame overwrote a grip taken with the button on the very next tick.
                 if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance)
-                    challengeRun.SetHolding(keyboard.spaceKey.isPressed);
+                {
+                    if (keyboard.spaceKey.wasPressedThisFrame) challengeRun.SetHolding(true);
+                    else if (keyboard.spaceKey.wasReleasedThisFrame) challengeRun.SetHolding(false);
+                }
                 else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
                          && keyboard.spaceKey.wasPressedThisFrame)
                     TapTarget();

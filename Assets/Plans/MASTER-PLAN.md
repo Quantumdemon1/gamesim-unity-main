@@ -530,7 +530,7 @@ HUD idiom before finishing the seven steps; the STYLARTS download.
 
 An increment is done when all of the following hold, and *only* then is it merged:
 
-- Offline compile clean; **EditMode ≥ 1208 and PlayMode ≥ 152 passing**, run via
+- Offline compile clean; **EditMode ≥ 1253 and PlayMode ≥ 181 passing** (the full run of 2026-09-19: 1253 and 181, none failed), run via
   `Tools/sync-and-run.sh`, results read from the XML.
 - Every new asset has a `.meta`; no duplicate GUIDs; `GAMESIM_UMA` not in `ProjectSettings.asset`
   — the CI invariants job is green.

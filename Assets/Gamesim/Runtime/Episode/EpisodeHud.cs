@@ -862,7 +862,7 @@ namespace Gamesim.Episode
         }
         public void SetChallenge(float value,int hits)
         { if(challengeMeter!=null) challengeMeter.value=value; if(challengeCaption!=null) challengeCaption.text="Attempt " + (hits+1) + " of 3 · Aim for the center"; }
-        public void SetPrompt(string value) { if(prompt==null)return; prompt.text=value; prompt.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value)); }
+        public void SetPrompt(string value) { if(prompt==null)return; prompt.text=Localisation.Text(value); prompt.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value)); }
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
 
@@ -1031,6 +1031,9 @@ namespace Gamesim.Episode
         }
         private TMP_Text NewText(Transform parent,string value,int size,Color color)
         {
+            // The one place the HUD turns a string into text on screen: the caption stays the
+            // control's name and key, and the table decides the words (MASTER-PLAN §3.D).
+            value = Localisation.Text(value);
             var text=new GameObject("Text",typeof(RectTransform),typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>(); text.transform.SetParent(parent,false);
             text.font=font;
             // Rounded so the scaled size stays an exact integer, which the HUD scaling tests assert.

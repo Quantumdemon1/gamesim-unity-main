@@ -1,3 +1,4 @@
+using Gamesim.Presentation;
 using UnityEngine;
 
 namespace Gamesim.Episode
@@ -16,6 +17,8 @@ namespace Gamesim.Episode
         private int frameCap;
         private bool fullscreen;
         private bool edgePan = true;
+        private string language = Localisation.DefaultLanguage;
+        public string Language => language;
 
         public int QualityTier => qualityTier;
         public int FrameCap => frameCap;
@@ -41,6 +44,9 @@ namespace Gamesim.Episode
             if (System.Array.IndexOf(FrameCaps, frameCap) < 0) frameCap = 0;
             fullscreen = prefs ? PlayerPrefs.GetInt("Gamesim.Fullscreen", Screen.fullScreen ? 1 : 0) == 1 : Screen.fullScreen;
             edgePan = !prefs || PlayerPrefs.GetInt("Gamesim.EdgePan", 1) == 1;
+            language = prefs ? PlayerPrefs.GetString("Gamesim.Language", Localisation.DefaultLanguage) : Localisation.DefaultLanguage;
+            Localisation.Load(language);
+            language = Localisation.Language;
         }
 
         private void ApplyDisplayPreferences()
@@ -54,8 +60,10 @@ namespace Gamesim.Episode
             // The editor and a batchmode run ignore this, so the field is the record of the choice.
             if (!Application.isEditor && Screen.fullScreen != fullscreen) Screen.fullScreen = fullscreen;
             if (cameraRig != null) cameraRig.EdgePan = edgePan;
+            if (Localisation.Language != language) { Localisation.Load(language); language = Localisation.Language; }
             if (SaveRootOverride == null)
             {
+                PlayerPrefs.SetString("Gamesim.Language", language);
                 PlayerPrefs.SetInt("Gamesim.Quality", qualityTier);
                 PlayerPrefs.SetInt("Gamesim.FrameCap", frameCap);
                 PlayerPrefs.SetInt("Gamesim.Fullscreen", fullscreen ? 1 : 0);
@@ -79,6 +87,14 @@ namespace Gamesim.Episode
             hud.Action(fullscreen ? "Play in a window" : "Play full screen", () => { fullscreen = !fullscreen; ApplyPreferences(); Render(); });
             hud.Action(edgePan ? "Stop the screen edges panning" : "Let the screen edges pan", () => { edgePan = !edgePan; ApplyPreferences(); Render(); });
             hud.Paragraph("The edges pan the camera only in full screen, where the cursor cannot leave the game.");
+            // Only when a table ships: a control that cycles one language is a dead control.
+            var languages = Localisation.Available();
+            if (languages.Count > 1)
+                hud.Action("Language: " + language + "  (change)", () =>
+                {
+                    int at = languages.IndexOf(language);
+                    language = languages[(at + 1) % languages.Count]; ApplyPreferences(); Render();
+                });
         }
     }
 }

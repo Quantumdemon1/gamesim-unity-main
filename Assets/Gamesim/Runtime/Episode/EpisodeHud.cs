@@ -163,6 +163,10 @@ namespace Gamesim.Episode
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             preferredSelection = selected != null && modal != null && selected.transform.IsChildOf(modal)
                 ? selected.name : null;
+            // A panel that is closing fades out for a few frames instead of vanishing. The old
+            // modal goes to a ghost canvas that owns no controls (HudFade strips them), so the
+            // rebuild below can throw the rest away as it always has.
+            if (modal != null && !open && !recovery) HudFade.Ghost(modal, canvas, ReducedMotion);
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
@@ -172,7 +176,8 @@ namespace Gamesim.Episode
             // The cast rail owns the far-left gutter, so the panel column starts to the right of it.
             // Six faces on screen at all times is what makes the rest of the HUD able to say "the
             // replacement nominee" and have that mean a person rather than a name.
-            CastRail.Build(canvas.transform, state, FontScale, font, Portrait);
+            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest);
+            FollowChip(director.FollowedName);
 
             var leftColumn = new GameObject("Left column",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>();
             leftColumn.SetParent(canvas.transform,false);
@@ -235,7 +240,7 @@ namespace Gamesim.Episode
             // character line is what broke it — so the panel grew downward instead. It stays in the
             // lower right, well clear of the ceremony banner that must not overlap the chrome.
             var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,140));
-            FixedText(help,"Click a houseguest: follow\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,122));
+            FixedText(help,"Click a houseguest: follow\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,122));
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
             var status = Chrome("Status",canvas.transform,Ink);
@@ -807,10 +812,43 @@ namespace Gamesim.Episode
             track.offsetMin = new Vector2(16, 14); track.offsetMax = new Vector2(-16, 22);
             track.GetComponent<Image>().raycastTarget = false;
 
+            // The fill travels from where this meter was last drawn to where it is now, so a
+            // budget that just spent an action is seen draining. The last value survives the
+            // rebuild by caption; a meter seen for the first time is drawn where it is.
+            float target = total <= 0 ? 0f : (float)held / total;
+            float shown = meterShown.TryGetValue(caption, out var previous) ? previous : target;
+            meterShown[caption] = target;
             var fill = Panel("Fill", track, tint, 3);
-            fill.anchorMin = Vector2.zero; fill.anchorMax = new Vector2(total <= 0 ? 0f : (float)held / total, 1f);
+            fill.anchorMin = Vector2.zero; fill.anchorMax = new Vector2(target, 1f);
             fill.offsetMin = Vector2.zero; fill.offsetMax = Vector2.zero;
             fill.GetComponent<Image>().raycastTarget = false;
+            if (!ReducedMotion && Mathf.Abs(shown - target) > 0.001f) fill.gameObject.AddComponent<HudFill>().Play(shown, target);
+        }
+        private readonly Dictionary<string, float> meterShown = new Dictionary<string, float>();
+
+        public const string FollowChipName = "Follow chip";
+
+        /// <summary>
+        /// The chip under the house pill naming who the camera is following, and how to stop.
+        /// Rebuilt with the chrome, and redrawn on its own when the subject changes between
+        /// renders - a click on a body changes the camera without changing the episode.
+        /// </summary>
+        public void ShowFollowing(string name)
+        {
+            if (canvas == null) return;
+            var old = canvas.transform.Find(FollowChipName);
+            if (old != null) { old.gameObject.SetActive(false); Destroy(old.gameObject); }
+            FollowChip(name);
+        }
+
+        private void FollowChip(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            var chip = Chrome(FollowChipName, canvas.transform, Ink);
+            Anchor(chip, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -78), new Vector2(360, 34));
+            var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Gold,
+                new Vector2(12, -8), new Vector2(336, 20));
+            text.alignment = TextAlignmentOptions.Center;
         }
 
         public void ChallengeMeter()
@@ -973,6 +1011,7 @@ namespace Gamesim.Episode
             var button=rect.gameObject.AddComponent<Button>(); var colors=button.colors;
             colors.highlightedColor=new Color(1.2f,1.6f,1.45f); colors.selectedColor=colors.highlightedColor; colors.pressedColor=new Color(.65f,1.1f,.9f); button.colors=colors;
             var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,leftInset,5,16,5); text.alignment=TextAlignmentOptions.Left;
+            rect.gameObject.AddComponent<HudPress>().ReducedMotion = ReducedMotion;
             button.onClick.AddListener(()=>action()); return button;
         }
         private TMP_Text FixedText(RectTransform parent,string value,int size,Color color,Vector2 position,Vector2 dimensions)

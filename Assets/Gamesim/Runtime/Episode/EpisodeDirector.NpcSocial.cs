@@ -298,12 +298,16 @@ namespace Gamesim.Episode
         private void UpdateNpcConversationPresentation()
         {
             if (!NpcCanAdvance) { npcCaption?.Hide(); return; }
-            var talking = new HashSet<string>(); var seated = new HashSet<string>();
+            var talking = new HashSet<string>(); var seated = new HashSet<string>(); var speaking = new HashSet<string>();
             var facing = new Dictionary<string, float>(); bool witnessed = false;
             foreach (var pending in projected.npcSocial.pending)
             {
                 if (!npcPendingWorld.TryGetValue(pending.sequence, out var lease) || !npcMeetings.ValidateArrivedPair(lease, out _)) continue;
                 talking.Add(pending.firstId); talking.Add(pending.secondId);
+                // They take turns: the floor changes hands every four seconds of world time, offset
+                // by the conversation's sequence so two pairs in the house are not in step.
+                bool firstSpeaks = (((long)(npcFreeSeconds / 4.0) + pending.sequence) & 1) == 0;
+                speaking.Add(firstSpeaks ? pending.firstId : pending.secondId);
                 if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); }
                 facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
                 if (!witnessed && npcMeetings.CanWitness(player, lease))
@@ -321,6 +325,7 @@ namespace Gamesim.Episode
                 var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                 if (visual == null) continue;
                 visual.SetTalking(talking.Contains(npc.Id));
+                visual.SetSpeaking(speaking.Contains(npc.Id));
                 visual.SetSeated(seated.Contains(npc.Id));
                 visual.SetFacing(facing.TryGetValue(npc.Id, out float yaw) ? yaw : float.NaN);
             }

@@ -55,7 +55,8 @@ namespace Gamesim.Tests.PlayMode
             float settled = Time.realtimeSinceStartup + 1f;
             while (!(first.IsSeated && second.IsSeated) && Time.realtimeSinceStartup < settled) yield return null;
             Assert.That(first.IsSeated && second.IsSeated, Is.True, "Both sit once the pair has arrived at the table.");
-            Assert.That(first.IsTalking && second.IsTalking, Is.True);
+            Assert.That(first.IsTalking && second.IsTalking, Is.True, "both are in the conversation");
+            Assert.That(first.IsSpeaking != second.IsSpeaking, Is.True, "and exactly one of them has the floor");
             Assert.That(first.FacingYaw, Is.EqualTo(lease.FirstFacing).Within(.01f));
             Assert.That(second.FacingYaw, Is.EqualTo(lease.SecondFacing).Within(.01f));
             Assert.That(Mathf.DeltaAngle(lease.FirstFacing, lease.SecondFacing), Is.EqualTo(180f).Within(.5f).Or.EqualTo(-180f).Within(.5f),

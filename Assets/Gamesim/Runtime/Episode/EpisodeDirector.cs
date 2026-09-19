@@ -9,6 +9,7 @@ using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 namespace Gamesim.Episode
@@ -19,6 +20,7 @@ namespace Gamesim.Episode
     {
         [SerializeField] private HousePlayerController player;
         [SerializeField] private HouseCameraRig cameraRig;
+        private FollowRing followRing;
         [SerializeField] private HouseNpc[] housemates;
         public static string SaveRootOverride { get; set; }
         private EpisodeEngine engine;
@@ -270,8 +272,87 @@ namespace Gamesim.Episode
 
         private int seenBodiesCompleted;
 
+        /// <summary>The name of the houseguest the camera is following, or null.</summary>
+        public string FollowedName
+        {
+            get
+            {
+                var subject = cameraRig != null ? cameraRig.FocusedSubject : null;
+                if (subject == null || projected == null) return null;
+                var npc = subject.GetComponentInParent<HouseNpc>();
+                if (npc != null) return projected.Find(npc.Id)?.name;
+                return subject.GetComponentInParent<HousePlayerController>() != null ? projected.Find(projected.playerId)?.name : null;
+            }
+        }
+
+        /// <summary>
+        /// Follows a houseguest by id, from the cast rail: the camera rides them until something
+        /// else is asked of it. The same id again lets go. Honoured under reduced motion for the
+        /// reason click-to-follow is: the viewer asked for this shot.
+        /// </summary>
+        public void FollowHouseguest(string id)
+        {
+            if (cameraRig == null || string.IsNullOrEmpty(id)) return;
+            var body = BodyFor(id);
+            if (body == null) return;
+            if (cameraRig.FocusedSubject == body) cameraRig.ClearSubject();
+            else cameraRig.FocusSubject(body);
+            hud?.ShowFollowing(FollowedName);
+            lastFollowed = FollowedName;
+        }
+
+        /// <summary>Tab follows the next active houseguest in cast order, Shift+Tab the previous; the player is in the ring.</summary>
+        public void FollowNext(bool backwards)
+        {
+            if (cameraRig == null || projected == null) return;
+            var ring = new List<Transform>();
+            foreach (var actor in projected.contestants)
+            {
+                if (actor.status != ContestantStatus.Active) continue;
+                var body = BodyFor(actor.id);
+                if (body != null) ring.Add(body);
+            }
+            if (ring.Count == 0) return;
+            int at = ring.IndexOf(cameraRig.FocusedSubject);
+            int next = at < 0 ? (backwards ? ring.Count - 1 : 0) : (at + (backwards ? ring.Count - 1 : 1)) % ring.Count;
+            cameraRig.FocusSubject(ring[next]);
+            hud?.ShowFollowing(FollowedName);
+            lastFollowed = FollowedName;
+        }
+
+        private Transform BodyFor(string id)
+        {
+            if (housemates != null)
+                foreach (var npc in housemates)
+                    if (npc != null && npc.Id == id && npc.gameObject.activeInHierarchy) return npc.transform;
+            return player != null && projected != null && id == projected.playerId ? player.transform : null;
+        }
+
+        private string lastFollowed;
+
         private void Update()
         {
+            // ] and [ (or the shoulders) cycle who the camera follows, out in the house with no panel
+            // open. Tab does the same only when no HUD control is focused - a mouse player who
+            // clicked the house - because with one focused, Tab is the keyboard ring's, and the HUD
+            // keeps a control focused whenever it can.
+            if (IsReady && !IsPanelOpen && !challengeActive && cameraRig != null)
+            {
+                var actions = cameraRig.Actions;
+                bool nothingFocused = EventSystem.current == null || EventSystem.current.currentSelectedGameObject == null;
+                if (actions.Next.WasPressedThisFrame()) FollowNext(false);
+                else if (actions.Previous.WasPressedThisFrame()) FollowNext(true);
+                else if (nothingFocused && Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame)
+                    FollowNext(Keyboard.current.shiftKey.isPressed);
+            }
+            // The chip follows the subject however it was chosen: a click on a body sets the
+            // camera without a render, so the chip is redrawn on its own when the name changes.
+            if (IsReady && hud != null && FollowedName != lastFollowed)
+            {
+                lastFollowed = FollowedName;
+                hud.ShowFollowing(lastFollowed);
+            }
+            if (cameraRig != null && followRing == null) followRing = FollowRing.Attach(cameraRig);
             // A body that has just finished assembling changes what the HUD can show: its portraits
             // are rendered from the live character, and anything drawn before this point is holding
             // a fallback face until something else happens to trigger a render.
@@ -437,6 +518,8 @@ namespace Gamesim.Episode
                 : 0d;
             var wasActive = new HashSet<string>(engine.Snapshot.contestants
                 .Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id));
+            // Who was on the block before this command: a veto ceremony is the difference.
+            var wasNominated = new HashSet<string>(engine.Snapshot.nominees ?? new List<string>());
             // Player and NPC candidates share durable publication ordering. A phase
             // transition cancels invalid NPC activity inside this same saved candidate.
             var candidate = new EpisodeEngine(engine.Snapshot);
@@ -527,6 +610,8 @@ namespace Gamesim.Episode
                     // the strip would only flash under it and vanish mid-tally. Everywhere else the
                     // two still pair up: card opens the scene, strip reports the result.
                     if (sting != null && !revealed) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
+                    // The bodies act the beat out in the house while the card and the strip report it.
+                    ReactToCeremony(result.state, ceremony.kind, wasActive, wasNominated);
                     // The week's recap, once the beats that narrate the eviction have had their say.
                     // It waits rather than opening now because the reveal outlives its own strip by
                     // seconds and the two canvases share a sorting order — a recap that appeared
@@ -1262,6 +1347,49 @@ namespace Gamesim.Episode
         }
 
         /// <summary>Whoever stopped being active during this commit, or null.</summary>
+        /// <summary>
+        /// The houseguests a ceremony is about act it out: the nominees when the keys are turned,
+        /// whoever came off the block (and whoever replaced them) at the veto ceremony, the evicted
+        /// on the vote, the winner at the end. A body plays its clip only when its controller has
+        /// one and it is standing; the beat is recorded on every body regardless.
+        /// </summary>
+        private void ReactToCeremony(EpisodeState state, string kind, HashSet<string> wasActive, HashSet<string> wasNominated)
+        {
+            if (state == null) return;
+            switch (kind)
+            {
+                case CeremonySting.NominationKind:
+                    foreach (var id in state.nominees ?? new List<string>()) React(id, CharacterPresentation.Reaction.Nominated);
+                    break;
+                case CeremonySting.VetoKind:
+                    foreach (var id in wasNominated)
+                        if (state.nominees == null || !state.nominees.Contains(id)) React(id, CharacterPresentation.Reaction.Saved);
+                    foreach (var id in state.nominees ?? new List<string>())
+                        if (!wasNominated.Contains(id)) React(id, CharacterPresentation.Reaction.Nominated);
+                    break;
+                case CeremonySting.EvictionKind:
+                    foreach (var actor in state.contestants)
+                        if (actor.status != ContestantStatus.Active && wasActive.Contains(actor.id))
+                            React(actor.id, CharacterPresentation.Reaction.Evicted);
+                    break;
+                case CeremonySting.WinnerKind:
+                    React(state.winnerId, CharacterPresentation.Reaction.Won);
+                    break;
+            }
+        }
+
+        private void React(string id, CharacterPresentation.Reaction kind)
+        {
+            if (string.IsNullOrEmpty(id)) return;
+            CharacterPresentation visual = null;
+            if (housemates != null)
+                foreach (var npc in housemates)
+                    if (npc != null && npc.Id == id) { visual = npc.GetComponent<CharacterPresentation>(); break; }
+            if (visual == null && player != null && projected != null && id == projected.playerId)
+                visual = player.GetComponent<CharacterPresentation>();
+            if (visual != null) visual.React(kind);
+        }
+
         private static string EvictedThisCommit(EpisodeState state, HashSet<string> wasActive)
         {
             if (state?.contestants == null || wasActive == null) return null;

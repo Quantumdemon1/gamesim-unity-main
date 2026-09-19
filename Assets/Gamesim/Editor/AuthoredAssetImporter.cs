@@ -54,11 +54,16 @@ namespace Gamesim.Editor
 
         public static bool IsTexture(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Textures/", StringComparison.Ordinal);
+        /// <summary>A map that is numbers, not colour: metallic/smoothness or occlusion.</summary>
+        public static bool IsDataMap(string path) => path.EndsWith("_metallic.png", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("_occlusion.png", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// A baked texture (bb_bake.py) is one of a pair: <c>*_albedo.png</c> is colour and imports
         /// as sRGB, <c>*_normal.png</c> is a tangent normal and imports as a normal map, never as
         /// colour. Both repeat, because they are floor and wall tiles, and both keep their mips.
+        /// A Poly Haven piece (bb_polyhaven.py) adds <c>*_metallic.png</c> (smoothness in alpha) and
+        /// <c>*_occlusion.png</c>, which are data too and import linear.
         /// </summary>
         private void OnPreprocessTexture()
         {
@@ -66,7 +71,7 @@ namespace Gamesim.Editor
             var importer = (TextureImporter)assetImporter;
             bool normal = assetPath.EndsWith("_normal.png", StringComparison.OrdinalIgnoreCase);
             importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
-            importer.sRGBTexture = !normal;
+            importer.sRGBTexture = !normal && !IsDataMap(assetPath);
             importer.wrapMode = UnityEngine.TextureWrapMode.Repeat;
             importer.mipmapEnabled = true;
             importer.maxTextureSize = 2048;

@@ -44,6 +44,9 @@ namespace Gamesim.Editor
             ("Private room rug",     "rugRound",           Fit.Flat),
         };
 
+        /// <summary>Every model id the plan names, for the catalogue audit.</summary>
+        public static IEnumerable<string> PlanModels => Plan.Select(entry => entry.Model);
+
         // Absorbed by the model that replaces the piece they sit on.
         private static readonly string[] Absorbed = { "Sofa back", "Countertop", "Duvet", "Pillow" };
 
@@ -103,7 +106,7 @@ namespace Gamesim.Editor
 
         private static GameObject Place(string model, Bounds slot, Fit mode, Transform parent, string name)
         {
-            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Kit + model + ".glb");
+            var source = HouseCatalogue.Resolve(model, out _);
             if (source == null)
             {
                 Debug.LogWarning($"Furnishing model missing, leaving the primitive visible: {model}");
@@ -146,7 +149,7 @@ namespace Gamesim.Editor
 
         private static void PlaceRun(string model, Bounds slot, Transform parent, string name)
         {
-            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Kit + model + ".glb");
+            var source = HouseCatalogue.Resolve(model, out _);
             if (source == null)
             {
                 Debug.LogWarning($"Furnishing model missing, leaving the primitive visible: {model}");

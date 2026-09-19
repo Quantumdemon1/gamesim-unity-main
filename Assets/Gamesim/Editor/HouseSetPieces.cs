@@ -71,6 +71,9 @@ namespace Gamesim.Editor
             }
         }
 
+        /// <summary>Every model id the plan names, for the catalogue audit.</summary>
+        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model);
+
         // Heights are in metres and chosen to read at a glance rather than to be exact: a stove
         // that is waist-high and a lamp that is head-high is the whole requirement. A *negative*
         // height means "lay it flat, this many metres across" — the rule rugs are sized by.
@@ -90,11 +93,25 @@ namespace Gamesim.Editor
             new Prop("Kitchen floor", "stoolBar",               0.02f, -0.06f,   0f, 0.78f),
             new Prop("Kitchen floor", "stoolBar",               0.14f, -0.06f,   0f, 0.78f),
             // A dining table the whole cast can sit at — the room this format eats and argues in.
-            new Prop("Kitchen floor", "tableRound",             0.16f, -0.30f,   0f, 0.76f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.092f,-0.300f,  90f, 0.88f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.228f,-0.300f, 270f, 0.88f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.160f,-0.205f, 180f, 0.88f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.160f,-0.395f,   0f, 0.88f),
+            // The long table where the house argues: sixteen seats, seven a side and one at each
+            // end, at authored size (a zero height). It replaces the round table for four.
+            new Prop("Kitchen floor", "bb_set_diningtable",     0.060f, -0.300f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.079f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.033f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.014f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.060f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.106f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.153f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.199f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.079f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.033f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.014f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.060f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.106f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.153f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.199f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",    -0.133f, -0.300f,  90f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.253f, -0.300f, 270f, 0f),
             new Prop("Kitchen floor", "books",                  0.40f,  0.40f, 180f, 0.22f, 0.95f),
             new Prop("Kitchen floor", "trashcan",               0.44f, -0.38f,   0f, 0.60f),
             new Prop("Kitchen floor", "plantSmall1",           -0.44f, -0.40f,   0f, 0.55f),
@@ -156,8 +173,9 @@ namespace Gamesim.Editor
 
             // ---------------------------------------------------------------- HoH suite
             // Was empty. The bed, a sitting corner, and the ensuite that makes it a prize.
-            new Prop("HoH floor", "bedDouble",                 -0.12f,  0.22f, 180f, 0.62f),
-            new Prop("HoH floor", "pillowBlue",                -0.19f,  0.35f, 180f, 0.11f, 0.58f),
+            // The reward room's bed, authored with its own pillows and a headboard kept under the
+            // south wing's 1.1 m wall; at its own size (a zero height).
+            new Prop("HoH floor", "bb_set_hohbed",             -0.12f,  0.22f, 180f, 0f),
             new Prop("HoH floor", "pillow",                    -0.05f,  0.35f, 180f, 0.11f, 0.58f),
             new Prop("HoH floor", "cabinetBedDrawer",          -0.33f,  0.40f,   0f, 0.52f),
             new Prop("HoH floor", "lampSquareTable",           -0.33f,  0.40f,   0f, 0.42f, 0.52f),
@@ -218,13 +236,24 @@ namespace Gamesim.Editor
             new Prop("Games floor", "plantSmall3",              0.42f,  0.40f,   0f, 0.55f),
             new Prop("Games floor", "trashcan",                 0.42f,  0.22f,   0f, 0.55f),
 
+            // ---------------------------------------------------------------- Private room
+            // The diary chair stands just behind the diary marker at (7, 3), facing the camera, so
+            // the player who walks to the marker stands in front of it rather than inside it.
+            new Prop("Private room floor", "bb_set_diarychair",   0.00f, -0.10f, 180f, 0f),
+
             // ---------------------------------------------------------------- Competition yard
+            // The east end is the pool end: the authored pool, hot tub and loungers sit where two
+            // of the planters used to, at their own size (a zero height). The yard floor is 28 x
+            // 10 m centred at z = 15, so 0.34 of its width is 9.5 m east of the circle.
+            new Prop("Competition yard floor", "bb_set_pool",     0.34f,  0.00f,   0f, 0f),
+            new Prop("Competition yard floor", "bb_set_hottub",   0.44f, -0.34f,   0f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.25f, -0.34f, 180f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.30f, -0.34f, 180f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.35f, -0.34f, 180f, 0f),
             new Prop("Competition yard floor", "pottedPlant",  -0.42f, -0.34f,   0f, 0.90f),
-            new Prop("Competition yard floor", "pottedPlant",   0.42f, -0.34f,   0f, 0.90f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.34f,   0f, 1.05f),
             new Prop("Competition yard floor", "pottedPlant",   0.46f,  0.34f,   0f, 1.05f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.02f,   0f, 1.05f),
-            new Prop("Competition yard floor", "pottedPlant",   0.46f,  0.02f,   0f, 1.05f),
             new Prop("Competition yard floor", "plantSmall2",  -0.30f,  0.40f,   0f, 0.55f),
             new Prop("Competition yard floor", "plantSmall3",   0.30f,  0.40f,   0f, 0.55f),
             new Prop("Competition yard floor", "plantSmall1",  -0.16f,  0.44f,   0f, 0.50f),
@@ -269,14 +298,15 @@ namespace Gamesim.Editor
             int entrance = Entrance(world.transform, root);
             int greenery = Greenery(world.transform, root);
             int podiums = Podiums(world.transform, root);
+            int shell = Shell(world.transform, root);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
             Debug.Log(string.Format(
                 "[Gamesim] set pieces · {0} props placed, {1} skipped, {2} floor tiles, {3} entrance parts, "
-                + "{4} plants swapped in, {5} podium parts",
-                placed, missing, tiles, entrance, greenery, podiums));
+                + "{4} plants swapped in, {5} podium parts, {6} primitive walls dressed by the authored shell",
+                placed, missing, tiles, entrance, greenery, podiums, shell));
         }
 
         /// <summary>
@@ -305,7 +335,7 @@ namespace Gamesim.Editor
         /// </summary>
         private static GameObject Model(string model, Transform parent, float yaw, float height)
         {
-            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Kit + model + ".glb");
+            var source = HouseCatalogue.Resolve(model, out var tier);
             if (source == null) { Debug.LogWarning("[Gamesim] set pieces · missing model: " + model); return null; }
 
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
@@ -316,17 +346,62 @@ namespace Gamesim.Editor
             // A negative height means "lay it flat and make it this many metres across" — the rule
             // rugs need, because a rug's own height is a centimetre or two and scaling to that
             // shrinks the whole model to a coaster.
+            // A zero height means "as authored": a piece built in metres by its own script is
+            // already the size it should be, and scaling it to a guessed height would undo that.
             var raw = Measure(instance);
-            float scale = height < 0f
+            float scale = height == 0f ? 1f
+                : height < 0f
                 ? Mathf.Abs(height) / Mathf.Max(Mathf.Max(raw.size.x, raw.size.z), 0.001f)
                 : raw.size.y > 0.001f ? height / raw.size.y : 1f;
             instance.transform.localScale = Vector3.one * scale;
 
+            // Kit models never carry collision. An authored piece keeps only the shape its export
+            // promised, the _col child - which is what stops a click landing in the pool.
             foreach (var collider in instance.GetComponentsInChildren<Collider>(true))
-                UnityEngine.Object.DestroyImmediate(collider);
+                if (tier != HouseCatalogue.Tier.Authored || !collider.name.EndsWith(AuthoredAssetImporter.ColliderSuffix, StringComparison.Ordinal))
+                    UnityEngine.Object.DestroyImmediate(collider);
 
             instance.name = model;
             return instance;
+        }
+
+        /// <summary>
+        /// The authored shell (Part 4, Tier 2): caps, skirting and door jambs laid exactly over the
+        /// wall colliders, from <c>ArtSource/shell/bb_shell.py</c>. The primitives stay where they
+        /// are with their colliders - the NavMesh is baked from them - and only their renderers go,
+        /// and only once the shell has resolved, so a missing export never leaves the house bare.
+        /// Returns how many primitive walls the shell now stands in for.
+        /// </summary>
+        private static int Shell(Transform world, Transform root)
+        {
+            var source = HouseCatalogue.Resolve("bb_shell_house", out var tier);
+            if (source == null || tier != HouseCatalogue.Tier.Authored)
+            {
+                Debug.LogWarning("[Gamesim] set pieces · no authored shell; the primitive walls stay visible.");
+                return 0;
+            }
+            var previous = root.Find("bb_shell_house");
+            if (previous != null) UnityEngine.Object.DestroyImmediate(previous.gameObject);
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
+            instance.transform.SetParent(root, false);
+            instance.transform.SetPositionAndRotation(world.position, Quaternion.identity);
+            instance.transform.localScale = Vector3.one;
+            instance.name = "bb_shell_house";
+
+            int dressed = 0;
+            foreach (var box in world.GetComponentsInChildren<BoxCollider>(true))
+            {
+                if (box.transform.IsChildOf(root) || !box.enabled || !box.gameObject.activeInHierarchy) continue;
+                var size = Vector3.Scale(box.size, box.transform.lossyScale);
+                bool wallLike = size.y >= 1f && Mathf.Min(size.x, size.z) <= 0.3f && Mathf.Max(size.x, size.z) >= 1f
+                    && box.name != "Television";
+                if (!wallLike) continue;
+                var renderer = box.GetComponent<Renderer>();
+                if (renderer == null || !renderer.enabled) continue;
+                renderer.enabled = false;
+                dressed++;
+            }
+            return dressed;
         }
 
         /// <summary>

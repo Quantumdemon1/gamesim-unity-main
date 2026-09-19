@@ -10,6 +10,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | `offline-compile.ps1` | Replays Unity's Bee `.rsp` files through `csc` for all eight Gamesim assemblies, adding sources created since the last editor compile. Type-checks a change without the editor. Non-zero exit on any error. | seconds |
 | `player-compile.ps1` | Same, against the *player* response files, which catches editor-only API used in runtime code — the editor compile cannot see that. Needs a player build to have generated the `P.dag` on the acceptance copy. | seconds |
 | `sync-and-run.sh` | Waits for the acceptance copy to be free, mirrors `Assets/` and `ProjectSettings/` over it, then runs each `name:Platform:Assembly` suite headless and prints the totals and any failures. | ~1 min EditMode, 10–15 min PlayMode |
+| `build-and-verify.sh` | Mirrors, builds the Windows player on the copy with the same entry point the editor menu uses, then runs the exe's self-verification (`--gamesim-verify`, plus `--gamesim-verify-season` unless `--no-season`) into an isolated save root and prints both reports. `--graphical` for a windowed run (the C rows), `--no-build` to reuse the exe, anything else goes to the player, e.g. `--gamesim-profile-seconds 300 --gamesim-house-size 16`. | ~10 min build, 5–10 min season |
 
 ```bash
 powershell -NoProfile -File Tools/offline-compile.ps1
@@ -44,12 +45,22 @@ its save slots are untouched.
   and `grep -c 'Crash!!!'`; a run that neither completed nor crashed is a stale log from a previous
   day — check its timestamp before believing it.
 - **Never sync while a run is live.** The script serialises on `waitfree` for that reason.
+- **While a run is live, the Unity MCP may be attached to it.** The acceptance copy carries the
+  same MCP package, and the relay serves the most recent editor instance - a batchmode run is
+  one. Check `GetProjectRoot` before any scene or asset call, and do editor-side work on C:
+  before launching a run or after it exits.
 - **Compile errors come back from the editor's console as type `Log`.** When reading the Unity
   console over the MCP, ask for `Types: ["All"]`.
 - **`GAMESIM_UMA` must never be committed** in `ProjectSettings/ProjectSettings.asset`; the editor
   adds it locally on any machine with UMA. Check `git status` before every commit.
 
 ## Blender
+
+Authored assets are built and exported by the scripts in `ArtSource/` (see its README): a `bpy`
+script per set piece, an export checklist that enforces the conventions, and an
+`AssetPostprocessor` on the Unity side. Run a script headless with
+`blender --background --python ArtSource/setpieces/<script>.py -- <out.fbx>`.
+
 
 Blender 5.2.2 LTS is at `C:\Program Files\Blender Foundation\Blender 5.2\`. Claude drives it through
 **mcp-for-blender** (the renamed `blender-mcp`): the add-on

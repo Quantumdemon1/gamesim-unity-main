@@ -1,0 +1,130 @@
+using System;
+using UnityEditor;
+
+namespace Gamesim.Editor
+{
+    /// <summary>
+    /// Fixed import settings for the Blender-authored assets under <c>Art/Authored</c>, so nobody
+    /// sets them by hand and a re-export cannot drift them (MASTER-PLAN §4.6).
+    ///
+    /// <para>The exporter on the Blender side (<c>ArtSource/tools/bb_export.py</c>) writes metres
+    /// with the axis conversion baked in, so the importer takes the file's scale as it is and bakes
+    /// nothing twice. Colliders are never generated: furniture is collider-free by design, and the
+    /// shell and set pieces carry their own <c>_col</c> meshes. Materials are extracted beside the
+    /// model and matched by name, which is what lets a re-export keep the material a scene already
+    /// references.</para>
+    ///
+    /// <para>Anything under <c>Characters/</c>, <c>Wardrobe/</c> or <c>Animation/</c> imports as a
+    /// Humanoid, and a clip whose name ends in <c>_loop</c> loops with its pose matched, so the
+    /// seated idle and the talk and listen loops arrive ready for the controller.</para>
+    /// </summary>
+    public sealed class AuthoredAssetImporter : AssetPostprocessor
+    {
+        public const string Root = "Assets/Gamesim/Art/Authored/";
+        private const string LoopSuffix = "_loop";
+        public const string ColliderSuffix = "_col";
+
+        public static bool IsAuthored(string path) => path != null && path.StartsWith(Root, StringComparison.Ordinal);
+
+        public static bool IsRigged(string path) => IsAuthored(path)
+            && (path.StartsWith(Root + "Characters/", StringComparison.Ordinal)
+                || path.StartsWith(Root + "Wardrobe/", StringComparison.Ordinal)
+                || path.StartsWith(Root + "Animation/", StringComparison.Ordinal));
+
+        public static bool IsAnimation(string path) => IsAuthored(path)
+            && path.StartsWith(Root + "Animation/", StringComparison.Ordinal);
+
+        private void OnPreprocessModel()
+        {
+            if (!IsAuthored(assetPath)) return;
+            var importer = (ModelImporter)assetImporter;
+            importer.globalScale = 1f;
+            importer.useFileScale = true;
+            importer.useFileUnits = true;
+            importer.bakeAxisConversion = true;
+            importer.isReadable = false;
+            importer.addCollider = false;
+            importer.importBlendShapes = true;
+            importer.importVisibility = false;
+            importer.importCameras = false;
+            importer.importLights = false;
+            importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
+            importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
+            importer.materialSearch = ModelImporterMaterialSearch.Local;
+            importer.materialLocation = ModelImporterMaterialLocation.External;
+            importer.animationType = IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
+            importer.importAnimation = IsAnimation(assetPath);
+        }
+
+        /// <summary>
+        /// A child named <c>*_col</c> is the collision shape the export promised: it becomes a convex
+        /// MeshCollider and stops rendering. Nothing else in an authored model gets a collider.
+        /// </summary>
+        private void OnPostprocessModel(UnityEngine.GameObject root)
+        {
+            if (!IsAuthored(assetPath)) return;
+            foreach (var filter in root.GetComponentsInChildren<UnityEngine.MeshFilter>(true))
+            {
+                if (!filter.name.EndsWith(ColliderSuffix, StringComparison.Ordinal)) continue;
+                var collider = filter.gameObject.AddComponent<UnityEngine.MeshCollider>();
+                collider.sharedMesh = filter.sharedMesh;
+                collider.convex = true;
+                var renderer = filter.GetComponent<UnityEngine.Renderer>();
+                if (renderer != null) UnityEngine.Object.DestroyImmediate(renderer);
+            }
+        }
+
+        /// <summary>
+        /// Water and glass come through the FBX opaque, whatever alpha the Blender material carried.
+        /// A material named for them is made a URP/Lit alpha-blended surface with its base alpha,
+        /// and a glow so it reads under the dark set.
+        /// </summary>
+        private void OnPostprocessMaterial(UnityEngine.Material material)
+        {
+            if (!IsAuthored(assetPath) || material == null) return;
+            string name = material.name.ToLowerInvariant();
+            bool translucent = name.Contains("water") || name.Contains("glass");
+            if (!translucent || !material.HasProperty("_Surface")) return;
+            var tint = material.color;
+            tint.a = name.Contains("water") ? 0.55f : 0.35f;
+            material.color = tint;
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetFloat("_ZWrite", 0f);
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.DisableKeyword("_ALPHATEST_ON");
+            if (name.Contains("water"))
+            {
+                material.EnableKeyword("_EMISSION");
+                material.globalIlluminationFlags = UnityEngine.MaterialGlobalIlluminationFlags.RealtimeEmissive;
+                // Faint: the set's bloom threshold is low, and a water plane that glowed at the
+                // neon's strength read as a white rectangle from the overhead camera.
+                material.SetColor("_EmissionColor", new UnityEngine.Color(0.02f, 0.08f, 0.14f));
+            }
+        }
+
+        private void OnPreprocessAnimation()
+        {
+            if (!IsAnimation(assetPath)) return;
+            var importer = (ModelImporter)assetImporter;
+            var clips = importer.clipAnimations.Length > 0 ? importer.clipAnimations : importer.defaultClipAnimations;
+            foreach (var clip in clips)
+            {
+                bool loop = clip.name.EndsWith(LoopSuffix, StringComparison.Ordinal);
+                clip.loopTime = loop;
+                clip.loopPose = loop;
+                clip.lockRootRotation = true;
+                clip.lockRootHeightY = true;
+                clip.lockRootPositionXZ = true;
+                clip.keepOriginalOrientation = true;
+                clip.keepOriginalPositionY = true;
+                clip.keepOriginalPositionXZ = true;
+            }
+            importer.clipAnimations = clips;
+        }
+    }
+}

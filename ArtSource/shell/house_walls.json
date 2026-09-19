@@ -1,0 +1,381 @@
+{
+ "source": "Assets/Gamesim/Scenes/EpisodeHouse.unity",
+ "note": "thin tall BoxColliders under House Architecture: the walls, dividers and fences the NavMesh is baked from. Regenerate with the extractor in Tools/README.",
+ "walls": [
+  {
+   "name": "South wing south wall",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    0.075,
+    0.55,
+    -20.0
+   ],
+   "size": [
+    28.65,
+    1.1,
+    0.25
+   ]
+  },
+  {
+   "name": "South wing divider 1 south",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -4.617,
+    0.55,
+    -18.2
+   ],
+   "size": [
+    0.25,
+    1.1,
+    3.6
+   ]
+  },
+  {
+   "name": "South wing divider 2 south",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    4.767,
+    0.55,
+    -18.2
+   ],
+   "size": [
+    0.25,
+    1.1,
+    3.6
+   ]
+  },
+  {
+   "name": "South wing west wall",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -14.0,
+    0.55,
+    -15.0
+   ],
+   "size": [
+    0.25,
+    1.1,
+    10.0
+   ]
+  },
+  {
+   "name": "South wing east wall",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    14.15,
+    0.55,
+    -15.0
+   ],
+   "size": [
+    0.25,
+    1.1,
+    10.0
+   ]
+  },
+  {
+   "name": "South wing divider 1 north",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -4.617,
+    0.55,
+    -11.8
+   ],
+   "size": [
+    0.25,
+    1.1,
+    3.6
+   ]
+  },
+  {
+   "name": "South wing divider 2 north",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    4.767,
+    0.55,
+    -11.8
+   ],
+   "size": [
+    0.25,
+    1.1,
+    3.6
+   ]
+  },
+  {
+   "name": "South wing link left",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -7.662,
+    0.55,
+    -10.0
+   ],
+   "size": [
+    12.675,
+    1.1,
+    0.25
+   ]
+  },
+  {
+   "name": "South cutaway wall",
+   "active": false,
+   "kind": "wall",
+   "center": [
+    0.0,
+    0.55,
+    -10.0
+   ],
+   "size": [
+    28.3,
+    1.1,
+    0.25
+   ]
+  },
+  {
+   "name": "South wing link right",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    7.812,
+    0.55,
+    -10.0
+   ],
+   "size": [
+    12.675,
+    1.1,
+    0.25
+   ]
+  },
+  {
+   "name": "Living / kitchen south",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    0.0,
+    0.75,
+    -7.5
+   ],
+   "size": [
+    0.25,
+    1.5,
+    2.2
+   ]
+  },
+  {
+   "name": "Living / kitchen north",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    0.0,
+    0.75,
+    -1.8
+   ],
+   "size": [
+    0.25,
+    1.5,
+    3.6
+   ]
+  },
+  {
+   "name": "West wall",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -14.0,
+    0.75,
+    0.0
+   ],
+   "size": [
+    0.25,
+    1.5,
+    20.0
+   ]
+  },
+  {
+   "name": "Living / bedroom left",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -11.2,
+    0.75,
+    0.0
+   ],
+   "size": [
+    5.6,
+    1.5,
+    0.25
+   ]
+  },
+  {
+   "name": "Living / bedroom right",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -2.8,
+    0.75,
+    0.0
+   ],
+   "size": [
+    5.6,
+    1.5,
+    0.25
+   ]
+  },
+  {
+   "name": "Kitchen / private room left",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    2.8,
+    0.75,
+    0.0
+   ],
+   "size": [
+    5.6,
+    1.5,
+    0.25
+   ]
+  },
+  {
+   "name": "Kitchen / private room right",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    11.2,
+    0.75,
+    0.0
+   ],
+   "size": [
+    5.6,
+    1.5,
+    0.25
+   ]
+  },
+  {
+   "name": "East wall",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    14.0,
+    0.75,
+    0.0
+   ],
+   "size": [
+    0.25,
+    1.5,
+    20.0
+   ]
+  },
+  {
+   "name": "Bedroom / private room south",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    0.0,
+    0.75,
+    1.8
+   ],
+   "size": [
+    0.25,
+    1.5,
+    3.6
+   ]
+  },
+  {
+   "name": "Bedroom / private room north",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    0.0,
+    0.75,
+    7.5
+   ],
+   "size": [
+    0.25,
+    1.5,
+    2.2
+   ]
+  },
+  {
+   "name": "House / yard left",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    -7.7,
+    0.75,
+    10.0
+   ],
+   "size": [
+    12.6,
+    1.5,
+    0.25
+   ]
+  },
+  {
+   "name": "House / yard right",
+   "active": true,
+   "kind": "wall",
+   "center": [
+    7.7,
+    0.75,
+    10.0
+   ],
+   "size": [
+    12.6,
+    1.5,
+    0.25
+   ]
+  },
+  {
+   "name": "West garden fence",
+   "active": true,
+   "kind": "fence",
+   "center": [
+    -14.0,
+    0.6,
+    15.0
+   ],
+   "size": [
+    0.18,
+    1.2,
+    10.0
+   ]
+  },
+  {
+   "name": "East garden fence",
+   "active": true,
+   "kind": "fence",
+   "center": [
+    14.0,
+    0.6,
+    15.0
+   ],
+   "size": [
+    0.18,
+    1.2,
+    10.0
+   ]
+  },
+  {
+   "name": "North garden fence",
+   "active": true,
+   "kind": "fence",
+   "center": [
+    0.0,
+    0.6,
+    20.0
+   ],
+   "size": [
+    28.2,
+    1.2,
+    0.18
+   ]
+  }
+ ]
+}

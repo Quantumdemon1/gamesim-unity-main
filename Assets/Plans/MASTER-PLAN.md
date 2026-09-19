@@ -118,11 +118,11 @@ Standing between "every item delivered" and "done."
 | Step | Status | Note |
 | --- | --- | --- |
 | Merge PR #1 to `main` | **open** | Nothing blocks it. `main` has none of Part 1. |
-| Extend `PortVerification.Season` to deals, events, storylines, minigames | **open** | The built player is verified only against the season it used to have. |
+| Extend `PortVerification.Season` to deals, events, storylines, minigames | **written 2026-09-19; standalone run pending** | `PortVerification.Season.Systems.cs`: the weekly recap (which would have stranded the old walk after the first eviction), pending house events, one played minigame, an optional deal, and the season's storyline/event/deal counts in the report. The first standalone run showed `-nographics` cannot host the portrait RenderTextures — `Tools/build-and-verify.sh` runs `-batchmode` alone now — and then failed at its own first save/reload check, which now reports what it saw. |
 | Run Section E, once | **open** | Three fresh participants, one timed episode each, one losing run to its end. `PLAYTEST_PROTOCOL.md` is how. |
 | Re-measure C1–C5 in a window, on named hardware, at sixteen | **open** | The thresholds are windowed; the last measurement was not. |
-| Tier 5 writing pass — triple every template set | **open** | 112 dialogue strings, 6 events, 3 storylines, 6 jury reasons. A player sees repetition inside two seasons. No engineering. |
-| D2 — one test that walks every action by keyboard | **open** | Every panel added this month has controls that test has not visited. |
+| Tier 5 writing pass — triple every template set | **done 2026-09-19** | 17 dialogue blocks × 6 voices × 3 variants, 6 situations × 3 narratives, 3 storyline chapters × 3, 6 jury reasons × 3. Wording is chosen by week (jury: by seat), never by a roll, so a seeded season plays out identically however it is phrased — `WritingPassTests` pins that. Labels and captions untouched. |
+| D2 — one test that walks every action by keyboard | **done 2026-09-19** | `Accessibility_EveryPanelIsWalkableAndCommittableByKeyboard`: a whole season plus notebook, settings, conversation, recap and report, committed only by `Submit`. It found three real defects on its first runs — the recap and report never took focus, an auto-hidden scrollbar sat in the ring where Down and Tab both refuse to land, and the creator's name field rebuilt the form from its own teardown — all fixed in `EpisodeHud`, `EpisodeDirector` and `CharacterCreator`. |
 | Carry the post-processing volume into `EpisodeHouse.unity` | **done 2026-09-19** | `Gamesim/U07/Carry the volume and decor to the episode house` — volume, camera post-processing flag, and the 46-object `Decor` subtree the first pass could not carry. |
 | Housekeeping: `SampleScene` out of the build list; decide `HousePrototype`; delete the 42 MB unreferenced `QuaterniusBaseCharacters`; extract panels from the 2,230-line director | **partly done** | Build list is Bootstrap, HousePrototype, EpisodeHouse. `HousePrototype` stays: three PlayMode suites load it by name and it is the authored source the episode scene is dressed from. Deleting `Assets/Scenes/` and `QuaterniusBaseCharacters/` (43 MB, no GUID referenced outside the folder) awaits a human `git rm`. Director extraction open. |
 | Repoint `README.md`, `COMMIT_NOTES.md`, `UNITY_PORT_ROADMAP.md` at this plan | **done with this document** | The root roadmap's "completion boundary" paragraph is superseded by §1.2. |
@@ -140,12 +140,11 @@ Standing between "every item delivered" and "done."
 | Props and decoration (`Decor` subtree, 46 objects) | Done in both (carried 2026-09-19; the first pass had copied only the lamp shades and plants) |
 | Mirror into `HousePrototypeSetup.cs` | **Resolved differently.** `HousePrototype.unity` is the hand-authored source of the art; the shipping scene is *derived* from it by the two `EpisodeHouseDressing` passes, which are re-runnable. `HousePrototypeSetup` regenerates only the shell, and regenerating it would discard the authored art — so it must not be re-run, and the plan no longer asks it to carry values it never produced. |
 | SSAO renderer feature | Present in `PC_Renderer.asset` |
-| Catalogue seam (`HouseCatalogue`, logical prop ids, resolution audit) | **Not done** — 132 hard-coded Kenney ids |
-| Big Brother set pieces (pool, hot tub, long table, diary chair, have-not room) | **Not done** — and no pack ships them |
+| Catalogue seam (`HouseCatalogue`, logical prop ids, resolution audit) | **Done 2026-09-19** — `HouseCatalogue.Resolve` (authored `bb_` ids first, registered replacements, then the Kenney kit), both furnishing passes route through it, `Gamesim/U07/Audit set piece resolution` lists every id by tier: 51 ids, 3 authored, 48 Kenney, 0 missing |
+| Big Brother set pieces (pool, hot tub, long table, diary chair, have-not room) | **Begun** — pool, hot tub and loungers authored and placed at the yard's east end (2026-09-19); long table, diary chair, memory wall, HoH room, podiums, have-not room open |
 | STYLARTS swap | **Cancelled by Part 4.** Never downloaded; cannot be committed; authored for full-height rooms against 1.5 m cutaway walls — the plan's own first risk. |
 
-**Remaining, in order:** build the catalogue
-seam → replace the shell and set pieces with Blender-authored assets (Part 4) → per-room prop
+**Remaining, in order:** replace the shell and set pieces with Blender-authored assets (Part 4) → per-room prop
 replacement → clutter pass → mirror the final state into the generator.
 
 **Watch:** the accessibility captures render with `camera.Render()` into a texture, which skips the
@@ -286,7 +285,11 @@ something, and the house is never half-furnished during the transition.
   `execute_blender_code`, a viewport capture is the review, and Poly Haven's CC0 textures and
   HDRIs are the one external source that *can* be committed. Telemetry is off on both sides.
   Paths and the `user_prompt` quirk are in `Tools/README.md`.
-- **Sources live outside `Assets/`.** `ArtSource/` at the repository root, tracked with **Git LFS**
+- **Sources live outside `Assets/`.** `ArtSource/` at the repository root. The first assets are
+  *procedural*: a `bpy` script per set piece (`ArtSource/setpieces/bb_set_*.py`) builds it from
+  boxes, rings and discs through `ArtSource/tools/bb_build.py` and exports it through the checklist
+  in `bb_export.py` — a few kilobytes of text that regenerates the FBX exactly, so nothing needs
+  LFS until a hand-modelled `.blend` arrives. When one does, it is tracked with **Git LFS**
   (`*.blend`, `*.psd`, `*.kra`). Unity will try to import a `.blend` placed under `Assets/` by
   invoking Blender through the importer, which is slow, version-fragile, and fails on any machine
   without Blender — a clone must not depend on Blender being installed. Git LFS 3.7.1 is
@@ -317,10 +320,13 @@ something, and the house is never half-furnished during the transition.
 | **Textures** | Baked to power-of-two, 1024 for props, 2048 for hero pieces and characters. **URP/Lit packing:** Base Map (RGB albedo, A alpha) · Metallic map (**R metallic, A smoothness** — bake roughness and invert into the alpha) · Normal map (**OpenGL, +Y**, which is Blender's default) · Occlusion in its own map's G. Emission where the material glows. | URP/Lit reads exactly these channels. A Unity-side "convert roughness" step is a step that gets forgotten. |
 | **Colliders** | Export a separate simplified mesh named `bb_<name>_col` for anything a houseguest must path around. **Do not add colliders to furniture that has none today.** | The NavMesh bakes from colliders; the furniture is collider-free by design because carving it broke seventeen tests (memory: *furniture is collider-free and carving it breaks NPCs*). Colliders are for the shell and the set pieces the navigation audit already accounts for. |
 
-An export checklist as a Blender Python script — apply transforms, check origin at Z=0, check name
-prefix, check no n-gons, export with the fixed FBX settings — is worth writing in the first week
-and running on every export. It is the difference between a pipeline and a habit. Run it through
-the MCP's `execute_blender_code` and a review needs nobody at the keyboard.
+The export checklist is `ArtSource/tools/bb_export.py` (2026-09-19): every export goes through
+`export_collection`, which refuses a collection that breaks a convention — name prefix, applied
+transforms, root origin on the floor, no n-gons, mesh named like its object — and writes the FBX
+with the one set of settings above. Its counterpart in Unity is
+`Assets/Gamesim/Editor/AuthoredAssetImporter.cs`, and `AuthoredAssetImportTests` pins the contract
+on the assets that ship. Run either side headless (`blender --background --python <script> -- <out>`)
+or through the MCP's `execute_blender_code`; a review needs nobody at the keyboard.
 
 ### 4.4 What to build, in order
 
@@ -330,16 +336,18 @@ Priority is by how much each piece changes the read of the shipping scene per ho
 
 | Piece | Where | What makes it the show |
 | --- | --- | --- |
-| **Pool and hot tub** | competition yard | The most recognisable thing about the backyard. Basin, coping, water plane (a shader, not geometry), jets, a seating ring on the tub, loungers around both. |
-| **Long dining table + sixteen chairs** | kitchen | Replaces the round table. One chair per houseguest — the house does most of its arguing here. Sixteen because the cast can be sixteen. |
-| **Diary room hero chair** | private room | Lit separately; the one piece the camera sees in close-up during reflections. 2048 textures. |
+| **Pool and hot tub** | competition yard | The most recognisable thing about the backyard. Basin, coping, water plane (a shader, not geometry), jets, a seating ring on the tub, loungers around both. **Authored 2026-09-19** — `bb_set_pool` (7.0 × 4.4 m raised deck, tiled basin, steps, translucent lit water, `_col`), `bb_set_hottub` (2.4 m drum, seat ring, `_col`), `bb_set_lounger`; single LOD so far; not yet placed — placement is the catalogue seam's job. |
+| **Long dining table + sixteen chairs** | kitchen | Replaces the round table. One chair per houseguest — the house does most of its arguing here. Sixteen because the cast can be sixteen. **Authored and placed 2026-09-19** — `bb_set_diningtable` (4.8 × 1.1 m on two trestles) and `bb_set_diningchair` ×16, seven a side and one at each end. |
+| **Diary room hero chair** | private room | Lit separately; the one piece the camera sees in close-up during reflections. 2048 textures. **Authored and placed 2026-09-19** — `bb_set_diarychair`, a velvet throne on a brass plinth behind the diary marker, facing the camera; its own light and close-up framing still open. |
 | **Memory wall** | living room | Sixteen portrait frames in a grid; the frames are geometry, the portraits are the existing RenderTextures — `MemoryWall` already refreshes them. |
-| **HoH room** | HoH floor | The bed, the door with the key, the basket. The reward room should look like one. |
+| **HoH room** | HoH floor | The bed, the door with the key, the basket. The reward room should look like one. **Bed authored and placed 2026-09-19** — `bb_set_hohbed`, velvet and brass under the wing's 1.1 m wall; door, key and basket open. |
 | **Competition yard podiums and rings** | yard | The gold rings exist as 144 primitive segments; replace with one authored ring mesh and podiums that match. |
 | **Have-not room** | game room south | Cold palette, harsh surfaces. Set dressing only — the simulation has no have-not mechanic and this plan does not add one. |
 
 **Tier 2 — the shell.** Walls, floors, wall caps, door frames, skirting, the cutaway edge itself
-as an authored trim. **The collider bounds do not move.** The authored shell is visual geometry
+as an authored trim. *(Walls, caps, skirting and jambs landed 2026-09-19 as `bb_shell_house`,
+generated from the scene's own colliders; floors and the cutaway trim are open.)* **The collider
+bounds do not move.** The authored shell is visual geometry
 placed over the existing box colliders, or replaces them with `_col` meshes of identical bounds,
 and the navigation audit (`Gamesim/Audit house navigation`) passes before it is committed. The
 28 × 20 footprint, the 1.5 m / 1.1 m heights, and every doorway are fixed inputs.
@@ -424,12 +432,20 @@ Every export passes, in order:
 
 ### 4.8 Production order for Part 4
 
-1. Export checklist script, the `AssetPostprocessor`, and `git lfs track` for `ArtSource/` — one
-   day, before any asset. *(The MCP that makes the checklist scriptable landed 2026-09-18.)*
+1. ~~Export checklist script and the `AssetPostprocessor`~~ **done 2026-09-19** (`bb_export.py`,
+   `bb_build.py`, `AuthoredAssetImporter`, `AuthoredAssetImportTests`). LFS waits for the first
+   hand-modelled `.blend`; procedural sources need none.
 2. **The seated clip** — one afternoon; the most visible defect in the house, fixed.
 3. **The catalogue seam** — so every later asset has somewhere to land.
-4. Tier 1 set pieces, pool first.
-5. Tier 2 shell.
+4. Tier 1 set pieces, pool first — pool, hot tub, loungers, the long table and its sixteen chairs, the
+   diary chair and the HoH bed authored and placed 2026-09-19 (eight scripts, all through the
+   checklist, all pinned by `AuthoredAssetImportTests`); memory wall frames, podiums and ring, HoH
+   door and basket, and the have-not dressing open.
+5. Tier 2 shell — **first pass 2026-09-19**: `ArtSource/shell/extract_walls.py` reads the 24 active wall
+   and fence colliders out of the shipping scene, `bb_shell.py` builds caps, skirting and doorway
+   jambs over them, and the set-pieces pass places the export and switches the primitive walls'
+   renderers off with their colliders untouched (reachability 28/28 after). Still to come: floors,
+   floor trim at the cutaway edge, and the wall material itself (the slab is still a flat tone).
 6. Tier 3 furniture, kitchen first (it has the long table).
 7. Conversation and reaction clips; faces.
 8. Tier 4 clutter.

@@ -84,13 +84,20 @@ namespace Gamesim.Editor
             // ---------------------------------------------------------------- Kitchen
             // A working counter run along the north wall. Everything stays at counter height:
             // see the note on Lift for why there are no wall units.
-            new Prop("Kitchen floor", "kitchenStove",          -0.30f,  0.40f, 180f, 0.95f),
-            new Prop("Kitchen floor", "kitchenSink",           -0.08f,  0.40f, 180f, 0.95f),
-            new Prop("Kitchen floor", "kitchenMicrowave",       0.12f,  0.40f, 180f, 0.32f),
-            new Prop("Kitchen floor", "kitchenCoffeeMachine",   0.26f,  0.40f, 180f, 0.34f),
-            new Prop("Kitchen floor", "toaster",                0.36f,  0.40f, 180f, 0.22f),
-            new Prop("Kitchen floor", "kitchenCabinetDrawer",  -0.44f,  0.40f, 180f, 0.90f),
-            new Prop("Kitchen floor", "kitchenBarEnd",          0.44f,  0.16f, 270f, 1.05f),
+            // Tier 3 begins here: the kitchen run replaces the kit's stove, sink, cabinet and bar
+            // end with one authored counter from the fridge to the end panel along the north wall
+            // (x 1.0 to 7.4, its back a couple of centimetres off the wall's face). The kit's small
+            // appliances stay, lifted onto its counter over the doors, the drawers and the doors.
+            new Prop("Kitchen floor", "bb_set_kitchenrun",     -0.20f,  0.455f,  0f, 0f),
+            new Prop("Kitchen floor", "kitchenMicrowave",      -0.329f, 0.455f, 180f, 0.32f, 0.92f),
+            new Prop("Kitchen floor", "kitchenCoffeeMachine",  -0.189f, 0.455f, 180f, 0.34f, 0.92f),
+            new Prop("Kitchen floor", "toaster",               -0.05f,  0.455f, 180f, 0.22f, 0.92f),
+            // Tier 4 clutter: on the counter, and on the long table (its top is 0.76 m).
+            new Prop("Kitchen floor", "bb_set_mug",            -0.29f,  0.455f,  30f, 0f, 0.92f),
+            new Prop("Kitchen floor", "bb_set_bottle",         -0.02f,  0.455f,   0f, 0f, 0.92f),
+            new Prop("Kitchen floor", "bb_set_mug",            -0.04f, -0.285f, 200f, 0f, 0.76f),
+            new Prop("Kitchen floor", "bb_set_mug",             0.11f, -0.315f, 340f, 0f, 0.76f),
+            new Prop("Kitchen floor", "bb_set_bottle",          0.03f, -0.300f,   0f, 0f, 0.76f),
             new Prop("Kitchen floor", "stoolBar",              -0.10f, -0.06f,   0f, 0.78f),
             new Prop("Kitchen floor", "stoolBar",               0.02f, -0.06f,   0f, 0.78f),
             new Prop("Kitchen floor", "stoolBar",               0.14f, -0.06f,   0f, 0.78f),
@@ -114,7 +121,6 @@ namespace Gamesim.Editor
             new Prop("Kitchen floor", "bb_set_diningchair",     0.199f, -0.378f,   0f, 0f),
             new Prop("Kitchen floor", "bb_set_diningchair",    -0.133f, -0.300f,  90f, 0f),
             new Prop("Kitchen floor", "bb_set_diningchair",     0.253f, -0.300f, 270f, 0f),
-            new Prop("Kitchen floor", "books",                  0.40f,  0.40f, 180f, 0.22f, 0.95f),
             new Prop("Kitchen floor", "trashcan",               0.44f, -0.38f,   0f, 0.60f),
             new Prop("Kitchen floor", "plantSmall1",           -0.44f, -0.40f,   0f, 0.55f),
             new Prop("Kitchen floor", "pottedPlant",            0.44f,  0.40f,   0f, 0.95f),
@@ -128,12 +134,12 @@ namespace Gamesim.Editor
             new Prop("Living room floor", "loungeChairRelax",   0.22f, -0.20f, 210f, 0.90f),
             new Prop("Living room floor", "loungeDesignChair", -0.24f, -0.22f, 150f, 0.82f),
             new Prop("Living room floor", "loungeDesignSofa",   0.40f,  0.02f, 270f, 0.78f),
+            new Prop("Living room floor", "bb_set_cushion",     0.40f,  0.07f, 270f, 0f, 0.54f),
+            new Prop("Living room floor", "bb_set_cushion",     0.40f, -0.03f, 300f, 0f, 0.54f),
             // Against the north wall's west segment, not the west wall: the memory wall hangs there
             // now, two rows of eight along the living room's half of it, and a bookcase stood in
             // front of its middle.
             new Prop("Living room floor", "bookcaseOpen",      -0.30f,  0.44f,   0f, 1.45f),
-            new Prop("Living room floor", "books",             -0.30f,  0.42f,   0f, 0.24f, 0.95f),
-            new Prop("Living room floor", "books",             -0.28f,  0.42f,   0f, 0.24f, 0.62f),
             new Prop("Living room floor", "sideTableDrawers",   0.30f,  0.40f,   0f, 0.62f),
             new Prop("Living room floor", "lampSquareTable",    0.30f,  0.40f,   0f, 0.45f, 0.62f),
             new Prop("Living room floor", "rugSquare",         -0.18f, -0.30f,   0f, -3.2f),
@@ -144,11 +150,10 @@ namespace Gamesim.Editor
             // The shared bedroom is the one room this format fills wall to wall with beds.
             new Prop("Bedroom floor", "bedBunk",               -0.42f,  0.30f,  90f, 1.45f),
             new Prop("Bedroom floor", "bedBunk",               -0.42f, -0.02f,  90f, 1.45f),
-            new Prop("Bedroom floor", "bedSingle",             -0.16f,  0.42f, 180f, 0.55f),
-            new Prop("Bedroom floor", "bedSingle",              0.06f,  0.42f, 180f, 0.55f),
-            new Prop("Bedroom floor", "bedSingle",              0.28f,  0.42f, 180f, 0.55f),
+            new Prop("Bedroom floor", "bedSingle",             -0.16f,  0.42f, 180f, 0f),
+            new Prop("Bedroom floor", "bedSingle",              0.06f,  0.42f, 180f, 0f),
+            new Prop("Bedroom floor", "bedSingle",              0.28f,  0.42f, 180f, 0f),
             new Prop("Bedroom floor", "pillowBlue",            -0.16f,  0.45f, 180f, 0.10f, 0.52f),
-            new Prop("Bedroom floor", "pillow",                 0.06f,  0.45f, 180f, 0.10f, 0.52f),
             new Prop("Bedroom floor", "pillowBlue",             0.28f,  0.45f, 180f, 0.10f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",      -0.05f,  0.42f,   0f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",       0.17f,  0.42f,   0f, 0.52f),
@@ -169,7 +174,6 @@ namespace Gamesim.Editor
             new Prop("Private room floor", "plantSmall3",       0.43f,  0.40f,   0f, 0.55f),
             new Prop("Private room floor", "plantSmall1",       0.43f, -0.40f,   0f, 0.55f),
             new Prop("Private room floor", "bookcaseOpen",      0.44f,  0.06f, 270f, 1.45f),
-            new Prop("Private room floor", "books",             0.42f,  0.06f, 270f, 0.24f, 0.95f),
             new Prop("Private room floor", "loungeDesignChair", 0.18f, -0.30f, 200f, 0.82f),
             new Prop("Private room floor", "sideTableDrawers", -0.42f, -0.16f,  90f, 0.62f),
             new Prop("Private room floor", "lampSquareTable",  -0.42f, -0.16f,  90f, 0.45f, 0.62f),
@@ -187,6 +191,8 @@ namespace Gamesim.Editor
             // week's basket on the coffee table.
             new Prop("HoH floor", "bb_set_hohdoor",             0.4587f, 0.00f,  0f, 0f),
             new Prop("HoH floor", "bb_set_hohbasket",          -0.30f, -0.34f,  30f, 0f, 0.42f),
+            new Prop("HoH floor", "bb_set_mug",                -0.245f, -0.34f, 120f, 0f, 0.42f),
+            new Prop("HoH floor", "bb_set_towel",               0.38f,  0.42f, 270f, 0f, 0.60f),
             new Prop("HoH floor", "pillow",                    -0.05f,  0.35f, 180f, 0.11f, 0.58f),
             new Prop("HoH floor", "cabinetBedDrawer",          -0.33f,  0.40f,   0f, 0.52f),
             new Prop("HoH floor", "lampSquareTable",           -0.33f,  0.40f,   0f, 0.42f, 0.52f),
@@ -196,12 +202,10 @@ namespace Gamesim.Editor
             new Prop("HoH floor", "loungeDesignSofa",          -0.42f, -0.20f,  90f, 0.78f),
             new Prop("HoH floor", "loungeChairRelax",          -0.14f, -0.34f,   0f, 0.88f),
             new Prop("HoH floor", "tableCoffee",               -0.30f, -0.34f,   0f, 0.42f),
-            new Prop("HoH floor", "cabinetTelevision",         -0.12f, -0.44f, 180f, 0.45f),
-            new Prop("HoH floor", "televisionModern",          -0.12f, -0.45f, 180f, 0.55f, 0.46f),
+            new Prop("HoH floor", "cabinetTelevision",         -0.12f, -0.44f, 180f, 0f),
             new Prop("HoH floor", "lampSquareFloor",           -0.42f,  0.42f,   0f, 1.05f),
             new Prop("HoH floor", "pottedPlant",                0.42f, -0.42f,   0f, 0.90f),
             new Prop("HoH floor", "bookcaseOpen",              -0.42f,  0.06f,  90f, 1.05f),
-            new Prop("HoH floor", "books",                     -0.40f,  0.06f,  90f, 0.22f, 0.70f),
             // The ensuite, along the east wall.
             new Prop("HoH floor", "bathtub",                    0.38f,  0.38f, 270f, 0.60f),
             new Prop("HoH floor", "showerRound",                0.40f,  0.14f, 270f, 1.05f),
@@ -230,8 +234,7 @@ namespace Gamesim.Editor
             new Prop("Games floor", "loungeSofaCorner",        -0.22f, -0.22f,   0f, 0.80f),
             new Prop("Games floor", "tableCoffee",              0.06f, -0.20f,   0f, 0.42f),
             new Prop("Games floor", "rugSquare",               -0.06f, -0.22f,   0f, -3.0f),
-            new Prop("Games floor", "cabinetTelevision",        0.00f,  0.42f, 180f, 0.45f),
-            new Prop("Games floor", "televisionModern",         0.00f,  0.43f, 180f, 0.55f, 0.46f),
+            new Prop("Games floor", "cabinetTelevision",        0.00f,  0.42f, 180f, 0f),
             new Prop("Games floor", "speaker",                 -0.30f,  0.42f, 180f, 0.95f),
             new Prop("Games floor", "speaker",                  0.30f,  0.42f, 180f, 0.95f),
             new Prop("Games floor", "kitchenBar",               0.36f, -0.02f, 270f, 1.05f),
@@ -240,8 +243,10 @@ namespace Gamesim.Editor
             new Prop("Games floor", "stoolBar",                 0.20f, -0.18f,  90f, 0.78f),
             new Prop("Games floor", "loungeChairRelax",        -0.40f,  0.16f,  70f, 0.88f),
             new Prop("Games floor", "bookcaseOpen",            -0.42f,  0.40f,  90f, 1.05f),
-            new Prop("Games floor", "books",                   -0.40f,  0.40f,  90f, 0.22f, 0.70f),
             new Prop("Games floor", "desk",                     0.40f, -0.36f, 270f, 0.74f),
+            new Prop("Games floor", "bb_set_laptop",            0.40f, -0.33f, 270f, 0f, 0.74f),
+            new Prop("Games floor", "bb_set_bookstack",         0.40f, -0.40f, 280f, 0f, 0.74f),
+            new Prop("Games floor", "bb_set_tray",              0.36f, -0.02f, 270f, 0f, 1.05f),
             new Prop("Games floor", "loungeDesignChair",        0.26f, -0.36f,  90f, 0.82f),
             new Prop("Games floor", "lampRoundFloor",          -0.42f, -0.42f,   0f, 1.05f),
             // The have-not end: two steel cots along the south wall, cold and hard. Dressing only.

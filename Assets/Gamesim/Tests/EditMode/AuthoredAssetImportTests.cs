@@ -39,8 +39,8 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(importer.bakeAxisConversion, Is.True, path + ": the axis conversion is baked once, here.");
                 Assert.That(importer.addCollider, Is.False, path + ": colliders come only from _col meshes.");
                 Assert.That(importer.isReadable, Is.False, path);
-                Assert.That(importer.animationType, Is.EqualTo(AuthoredAssetImporter.IsRigged(path)
-                    ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None), path);
+                Assert.That(importer.animationType, Is.EqualTo(AuthoredAssetImporter.IsGenericAnimation(path) ? ModelImporterAnimationType.Generic
+                    : AuthoredAssetImporter.IsRigged(path) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None), path);
                 Assert.That(importer.importAnimation, Is.EqualTo(AuthoredAssetImporter.IsAnimation(path)), path);
                 Assert.That(importer.materialLocation, Is.EqualTo(ModelImporterMaterialLocation.External),
                     path + ": materials are extracted beside the model so a re-export keeps them.");
@@ -55,6 +55,8 @@ namespace Gamesim.Tests.EditMode
                 var root = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                 Assert.That(root, Is.Not.Null, path);
                 Assert.That(root.name, Does.StartWith("bb_"), path + ": the file and the root share the bb_ name.");
+                // A clip file is an armature and its takes: nothing to render, nothing to stand.
+                if (AuthoredAssetImporter.IsAnimation(path)) continue;
                 var bounds = RenderBounds(root);
                 // The memory wall hangs on a wall; its origin is the floor beneath it, and nothing of
                 // it touches the floor. Everything else stands.
@@ -193,6 +195,104 @@ namespace Gamesim.Tests.EditMode
             Assert.That(cot.size.x, Is.EqualTo(0.9f).Within(0.02f), "cot width");
             Assert.That(cot.size.z, Is.EqualTo(1.9f).Within(0.02f), "cot length");
             Assert.That(cot.size.y, Is.InRange(0.45f, 0.55f), "the head rail is the tallest thing on it");
+        }
+
+        [Test]
+        public void TheKitchenRunFitsTheNorthWallUnderTheCutaway()
+        {
+            var run = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_kitchenrun.fbx"));
+            Assert.That(run.size.x, Is.EqualTo(6.4f).Within(0.05f), "fridge to end panel");
+            Assert.That(run.size.y, Is.EqualTo(1.45f).Within(0.02f), "the fridge is the tallest thing on it, under the 1.5 m wall");
+            Assert.That(run.size.z, Is.InRange(0.62f, 0.75f), "a counter's depth plus its handles");
+        }
+
+        [Test]
+        public void TheStoolAndTheBinStandInForTheKitWhereverARoomHasOne()
+        {
+            var stool = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_barstool.fbx"));
+            Assert.That(stool.size.y, Is.EqualTo(0.78f).Within(0.02f), "seat height, the height the plan's stool rows ask for");
+            Assert.That(stool.size.x, Is.EqualTo(0.38f).Within(0.02f), "seat across");
+            var bin = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_bin.fbx"));
+            Assert.That(bin.size.y, Is.InRange(0.54f, 0.58f), "a pedal bin's height");
+            Assert.That(bin.size.x, Is.EqualTo(0.31f).Within(0.02f), "drum with its lid");
+
+            var replaced = HouseCatalogue.Replaced.ToDictionary(pair => pair.Key, pair => pair.Value);
+            Assert.That(replaced["stoolBar"], Is.EqualTo("bb_set_barstool"));
+            Assert.That(replaced["trashcan"], Is.EqualTo("bb_set_bin"));
+            Assert.That(HouseCatalogue.Resolve("stoolBar", out var tier), Is.Not.Null);
+            Assert.That(tier, Is.EqualTo(HouseCatalogue.Tier.Authored), "a kit id with an authored stand-in resolves to it");
+            Assert.That(HouseCatalogue.Resolve("trashcan", out tier).name, Is.EqualTo("bb_set_bin"));
+        }
+
+        [Test]
+        public void TheLivingRoomSetIsAuthoredAtTheHeightsItsRowsAskFor()
+        {
+            // (piece, x across, y tall, z deep), within 5 cm: the rows scale by height, so a piece
+            // authored at its row's height lands at its own size.
+            var expected = new[]
+            {
+                ("bb_set_sofa", 2.2f, 0.78f, 0.85f),
+                ("bb_set_armchair", 0.9f, 0.88f, 0.85f),
+                ("bb_set_floorlamp", 0.37f, 1.5f, 0.37f),
+                ("bb_set_tablelamp", 0.26f, 0.45f, 0.26f),
+                ("bb_set_bookcase", 0.8f, 1.45f, 0.32f),
+                ("bb_set_sidetable", 0.53f, 0.62f, 0.43f),
+                ("bb_set_coffeetable", 1.2f, 0.42f, 0.6f),
+                ("bb_set_speaker", 0.24f, 0.95f, 0.24f),
+                ("bb_set_rug", 1f, 0.01f, 1f),
+                ("bb_set_rug_round", 1f, 0.01f, 1f),
+                ("bb_set_bed", 0.95f, 0.85f, 2.0f),
+                ("bb_set_bunk", 1.0f, 1.45f, 2.0f),
+                ("bb_set_tvconsole", 1.42f, 1.10f, 0.47f),
+                ("bb_set_desk", 1.3f, 0.74f, 0.65f),
+                ("bb_set_roundtable", 1.5f, 0.78f, 1.5f),
+                ("bb_set_bathtub", 0.75f, 0.76f, 1.7f),
+                ("bb_set_shower", 0.9f, 1.05f, 0.9f),
+                ("bb_set_basin", 0.55f, 0.97f, 0.45f),
+                ("bb_set_toilet", 0.4f, 0.72f, 0.62f),
+                ("bb_set_bar", 1.86f, 1.05f, 0.7f),
+                ("bb_set_microwave", 0.5f, 0.32f, 0.42f),
+                ("bb_set_coffeemachine", 0.26f, 0.34f, 0.33f),
+                ("bb_set_toaster", 0.3f, 0.225f, 0.16f),
+                ("bb_set_doublebed", 1.6f, 0.85f, 2.0f),
+                ("bb_set_cabinet", 0.6f, 0.92f, 0.68f),
+                ("bb_set_fridge", 0.8f, 1.45f, 0.75f),
+                ("bb_set_tv", 1.1f, 0.65f, 0.18f),
+                ("bb_set_pillow", 0.5f, 0.11f, 0.34f),
+                ("bb_set_coatrack", 0.4f, 1.45f, 0.4f),
+                // Tier 4 clutter, native size, lifted onto surfaces by their rows.
+                ("bb_set_mug", 0.13f, 0.10f, 0.09f),
+                ("bb_set_bottle", 0.072f, 0.28f, 0.07f),
+                ("bb_set_bookstack", 0.245f, 0.135f, 0.185f),
+                ("bb_set_towel", 0.32f, 0.06f, 0.22f),
+                ("bb_set_cushion", 0.40f, 0.12f, 0.40f),
+                ("bb_set_laptop", 0.33f, 0.235f, 0.31f),
+                ("bb_set_tray", 0.40f, 0.132f, 0.30f),
+            };
+            foreach (var (name, x, y, z) in expected)
+            {
+                var piece = AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + name + ".fbx");
+                Assert.That(piece, Is.Not.Null, name);
+                var bounds = RenderBounds(piece);
+                Assert.That(bounds.size.x, Is.EqualTo(x).Within(0.05f), name + " across");
+                Assert.That(bounds.size.y, Is.EqualTo(y).Within(0.05f), name + " tall");
+                Assert.That(bounds.size.z, Is.EqualTo(z).Within(0.05f), name + " deep");
+                Assert.That(piece.GetComponentsInChildren<Collider>(true), Is.Empty, name + ": furniture is collider-free by design");
+            }
+            foreach (var pair in HouseCatalogue.Replaced)
+                Assert.That(HouseCatalogue.Resolve(pair.Key, out var tier) != null && tier == HouseCatalogue.Tier.Authored, Is.True,
+                    pair.Key + " resolves to its authored stand-in " + pair.Value);
+            // Tier 3's finish line: no plan row, in either pass, resolves to the kit any more.
+            var kit = HouseSetPieces.PlanModels.Concat(HouseFurnishing.PlanModels).Distinct()
+                .Where(id => { HouseCatalogue.Resolve(id, out var t); return t == HouseCatalogue.Tier.Kenney; }).ToArray();
+            Assert.That(kit, Is.Empty, "still resolving to the Kenney kit: " + string.Join(", ", kit));
+
+            // The plants fan their leaves, so their footprint is a range rather than a number.
+            var plant = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_plant.fbx"));
+            Assert.That(plant.size.y, Is.InRange(0.8f, 1.0f), "a potted plant, near the rows' 0.85-1.05");
+            Assert.That(plant.size.x, Is.InRange(0.5f, 0.9f), "leaves fanned out past the pot");
+            var small = RenderBounds(AssetDatabase.LoadAssetAtPath<GameObject>(SetPieces + "bb_set_plantsmall.fbx"));
+            Assert.That(small.size.y, Is.InRange(0.35f, 0.55f), "a small plant, near the rows' 0.5");
         }
 
         [Test]

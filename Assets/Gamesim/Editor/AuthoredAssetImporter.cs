@@ -33,6 +33,13 @@ namespace Gamesim.Editor
 
         public static bool IsAnimation(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Animation/", StringComparison.Ordinal);
+        /// <summary>
+        /// Clips authored on the shipped Quaternius skeleton (bb_anim.py): Generic, not Humanoid,
+        /// because that rig is Generic and a Generic clip plays by bone path on the six bodies as
+        /// they are. Humanoid retargeting would need every body re-imported as Humanoid first.
+        /// </summary>
+        public static bool IsGenericAnimation(string path) => IsAuthored(path)
+            && path.StartsWith(Root + "Animation/Generic/", StringComparison.Ordinal);
 
         public static bool IsTexture(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Textures/", StringComparison.Ordinal);
@@ -74,7 +81,8 @@ namespace Gamesim.Editor
             importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
             importer.materialSearch = ModelImporterMaterialSearch.Local;
             importer.materialLocation = ModelImporterMaterialLocation.External;
-            importer.animationType = IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
+            importer.animationType = IsGenericAnimation(assetPath) ? ModelImporterAnimationType.Generic
+                : IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
             importer.importAnimation = IsAnimation(assetPath);
         }
 
@@ -151,6 +159,9 @@ namespace Gamesim.Editor
             var clips = importer.clipAnimations.Length > 0 ? importer.clipAnimations : importer.defaultClipAnimations;
             foreach (var clip in clips)
             {
+                // A take exported from Blender is named "<armature>|<take>"; the clip is the take.
+                int bar = clip.name.LastIndexOf('|');
+                if (bar >= 0 && bar < clip.name.Length - 1) clip.name = clip.name.Substring(bar + 1);
                 bool loop = clip.name.EndsWith(LoopSuffix, StringComparison.Ordinal);
                 clip.loopTime = loop;
                 clip.loopPose = loop;

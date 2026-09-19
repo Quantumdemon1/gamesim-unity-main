@@ -25,6 +25,20 @@ namespace Gamesim.House
         [SerializeField, Min(0.1f)] private float zoomStep = 2f;
         [SerializeField, Min(1f)] private float subjectDistance = 7f;
         [SerializeField] private float subjectHeight = 1.1f;
+        // Phase 1 (MASTER-PLAN §3.E). The pitch follows the distance: steep from far away, where
+        // the whole house has to read as a plan, shallower close in, where a face has to. A
+        // right-drag sets an offset on top of that rather than an absolute angle, so zooming
+        // never fights the orbit and the orbit survives the zoom.
+        [SerializeField, Range(45f, 70f)] private float closePitch = 45f;
+        [SerializeField, Range(45f, 70f)] private float farPitch = 62f;
+        private float pitchOffset;
+        // Occlusion: a wall or prop between the camera and its focus shortens the boom for the
+        // frame and lets it back out when clear. It changes what is applied, never the distance
+        // the player asked for, so nothing that waits on the rig arriving is affected.
+        [SerializeField, Min(0f)] private float occlusionRadius = 0.3f;
+        [SerializeField, Min(0f)] private float occlusionMargin = 0.25f;
+        private float appliedDistance;
+        private static readonly RaycastHit[] occlusionHits = new RaycastHit[16];
 
         private Vector3 desiredFocus;
         private float desiredDistance;
@@ -53,6 +67,15 @@ namespace Gamesim.House
         public bool IsSubjectFocused => subject != null;
         public Transform FocusedSubject => subject;
         public bool ControlsEnabled { get; set; } = true;
+        public float Pitch => pitch;
+        public float Distance => distance;
+        public float DesiredDistance => desiredDistance;
+        public Vector3 DesiredFocus => desiredFocus;
+        /// <summary>The boom length actually applied this frame, after occlusion.</summary>
+        public float AppliedDistance => appliedDistance;
+        /// <summary>The pitch the rig chooses for a distance before any orbit offset.</summary>
+        public float PitchFor(float wantedDistance) =>
+            Mathf.Lerp(closePitch, farPitch, Mathf.InverseLerp(minimumDistance, maximumDistance, wantedDistance));
         public bool ReducedMotion => reducedMotion;
 
         private void Awake()
@@ -89,6 +112,14 @@ namespace Gamesim.House
             Initialize();
             if (reducedMotion == value) return;
             reducedMotion = value;
+            if (value)
+            {
+                // Reduced motion stops every reframe in flight, the pitch's included: whatever angle
+                // the camera is actually at becomes the offset, so the next frame changes nothing.
+                float actual = transform.rotation.eulerAngles.x;
+                if (actual > 180f) actual -= 360f;
+                pitchOffset = actual - PitchFor(distance);
+            }
             if (value)
             {
                 // Freeze any in-flight automatic framing at the currently visible position.
@@ -198,6 +229,7 @@ namespace Gamesim.House
         /// composing a scripted move without having to know the rig's serialized fields.</summary>
         public Vector3 HouseCenter => houseCenter;
         public float FarthestDistance => maximumDistance;
+        public float NearestDistance => minimumDistance;
 
         public void EndConversation()
         {
@@ -251,12 +283,58 @@ namespace Gamesim.House
                 }
             }
 
+            pitch = Mathf.Clamp(PitchFor(desiredDistance) + pitchOffset, 45f, 70f);
             var blend = reducedMotion ? 1f : 1f - Mathf.Exp(-smoothing * Time.unscaledDeltaTime);
             transform.position = Vector3.Lerp(transform.position, desiredFocus, blend);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(pitch, yaw, 0f), blend);
             distance = Mathf.Lerp(distance, desiredDistance, blend);
-            viewCamera.transform.localPosition = new Vector3(0f, 0f, -distance);
+            appliedDistance = OccludedDistance(distance);
+            viewCamera.transform.localPosition = new Vector3(0f, 0f, -appliedDistance);
             viewCamera.transform.localRotation = Quaternion.identity;
+        }
+
+        /// <summary>Where a screen point lands on the focus plane, for zooming toward the cursor.</summary>
+        private bool TryCursorPoint(Vector2 screen, out Vector3 point)
+        {
+            point = desiredFocus;
+            if (viewCamera == null) return false;
+            var ray = viewCamera.ScreenPointToRay(screen);
+            var plane = new Plane(Vector3.up, new Vector3(0f, desiredFocus.y, 0f));
+            if (!plane.Raycast(ray, out float enter) || enter <= 0f) return false;
+            point = ray.GetPoint(enter);
+            return true;
+        }
+
+        /// <summary>
+        /// The boom shortened to just in front of whatever stands between the focus and the camera.
+        /// The tracked houseguests never count: the camera rides them, it does not hide from them.
+        /// </summary>
+        private float OccludedDistance(float wanted)
+        {
+            // Nothing nearer the focus than the player could zoom to counts: the sofa the focus
+            // sits beside, or a low wall, must never yank the camera onto the floor. The pull-in
+            // stops at that same limit, so the camera is never closer than the player could ask.
+            float skip = minimumDistance;
+            if (occlusionRadius <= 0f || wanted <= skip) return wanted;
+            var back = transform.rotation * Vector3.back;
+            int count = Physics.SphereCastNonAlloc(transform.position + back * skip, occlusionRadius, back,
+                occlusionHits, wanted - skip, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            float nearest = wanted;
+            for (int i = 0; i < count; i++)
+            {
+                var hit = occlusionHits[i];
+                if (hit.distance <= 0f || IsTracked(hit.transform)) continue;
+                nearest = Mathf.Min(nearest, skip + hit.distance - occlusionMargin);
+            }
+            return Mathf.Max(Mathf.Min(wanted, nearest), skip);
+        }
+
+        private bool IsTracked(Transform hit)
+        {
+            if (playerTarget != null && hit.IsChildOf(playerTarget)) return true;
+            if (subject != null && hit.IsChildOf(subject)) return true;
+            if (conversationNpc != null && hit.IsChildOf(conversationNpc)) return true;
+            return hit.GetComponentInParent<HouseNpc>() != null || hit.GetComponentInParent<HousePlayerController>() != null;
         }
 
         private void ReadInput()
@@ -270,7 +348,7 @@ namespace Gamesim.House
                 {
                     var delta = mouse.delta.ReadValue();
                     yaw = Mathf.Repeat(yaw + delta.x * orbitSensitivity, 360f);
-                    pitch = Mathf.Clamp(pitch - delta.y * orbitSensitivity, 45f, 70f);
+                    pitchOffset = Mathf.Clamp(pitchOffset - delta.y * orbitSensitivity, -20f, 20f);
                 }
 
                 // Wheel deltas do not arrive in one unit. Windows reports 120 per notch, and other
@@ -283,8 +361,17 @@ namespace Gamesim.House
                 if (!Mathf.Approximately(wheel, 0f))
                 {
                     float notches = Mathf.Abs(wheel) >= 20f ? wheel / 120f : wheel;
+                    float before = desiredDistance;
                     desiredDistance = Mathf.Clamp(desiredDistance - notches * zoomStep,
                         minimumDistance, maximumDistance);
+                    // Toward the cursor: the point under it on the focus plane draws the focus in by
+                    // the fraction the boom shortened, so what was under the cursor stays under it;
+                    // zooming out pushes it away by the same rule. A followed subject keeps the focus.
+                    if (subject == null && TryCursorPoint(mouse.position.ReadValue(), out var under))
+                    {
+                        float fraction = 1f - desiredDistance / Mathf.Max(before, 0.001f);
+                        desiredFocus = ClampFocus(Vector3.LerpUnclamped(desiredFocus, under, fraction));
+                    }
                 }
             }
 
@@ -350,6 +437,9 @@ namespace Gamesim.House
             pitch = Mathf.Clamp(pitch, 45f, 70f);
             distance = Mathf.Clamp(distance, minimumDistance, maximumDistance);
             desiredDistance = distance;
+            // The authored pitch is kept exactly, as the offset from what the distance would choose:
+            // the first frame must not reframe a view somebody set up, reduced motion or not.
+            pitchOffset = Mathf.Clamp(pitch - PitchFor(distance), -20f, 20f);
             desiredFocus = houseCenter;
             transform.position = desiredFocus;
             ApplyCameraImmediately();
@@ -360,6 +450,7 @@ namespace Gamesim.House
             transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
             if (ViewCamera != null)
             {
+                appliedDistance = distance;
                 viewCamera.transform.localPosition = new Vector3(0f, 0f, -distance);
                 viewCamera.transform.localRotation = Quaternion.identity;
             }

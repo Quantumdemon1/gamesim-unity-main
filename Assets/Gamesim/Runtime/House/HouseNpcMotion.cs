@@ -14,6 +14,13 @@ namespace Gamesim.House
     [DisallowMultipleComponent]
     public sealed class HouseNpcMotion : MonoBehaviour
     {
+        /// <summary>
+        /// The highest cast slot a houseguest can bind from. This was 4 for the six-person slice and
+        /// stayed there after the cast screen learned to seat sixteen, so a new season whose
+        /// houseguests landed on roots beyond the first five was refused its rebind and every
+        /// houseguest stood still - which is what the standalone verifier saw after a reload.
+        /// </summary>
+        public const int MaxCastIndex = 15;
         private HouseNpc npc;
         private HouseRoomQuery rooms;
         private CapsuleCollider capsule;
@@ -59,7 +66,7 @@ namespace Gamesim.House
             motion = null;
             reason = null;
             if (!Application.isPlaying || character == null || !character.gameObject.activeInHierarchy || query == null
-                || character.gameObject.scene != query.Scene || castIndex < 0 || castIndex > 4
+                || character.gameObject.scene != query.Scene || castIndex < 0 || castIndex > MaxCastIndex
                 || navFilter.agentTypeID < 0 || NavMesh.GetSettingsByID(navFilter.agentTypeID).agentTypeID == -1 || navFilter.areaMask == 0)
             { reason = "Motion creation requires Play Mode, a local active NPC, room query and cast index 0–4."; return false; }
             if (character.GetComponent<HouseNpcMotion>() != null)
@@ -118,7 +125,7 @@ namespace Gamesim.House
         {
             reason = null;
             if (!isActiveAndEnabled || state != HouseNpcMotionState.Unbound || ownedAgent == null || ownedAgent.enabled
-                || npc == null || rooms == null || string.IsNullOrWhiteSpace(npc.Id) || castIndex < -1 || castIndex > 4)
+                || npc == null || rooms == null || string.IsNullOrWhiteSpace(npc.Id) || castIndex < -1 || castIndex > MaxCastIndex)
             { reason = "Identity rebinding requires an explicitly unbound active owner, disabled owned agent and valid identity/index."; return false; }
             if (!ValidateOwnedComponents(out reason) || !rooms.TryValidateScene(out reason)) return false;
             boundId = npc.Id;

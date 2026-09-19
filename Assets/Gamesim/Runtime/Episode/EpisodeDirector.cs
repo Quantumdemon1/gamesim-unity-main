@@ -174,8 +174,16 @@ namespace Gamesim.Episode
             for (int i = bodies.Count; i < cast.Count; i++)
             {
                 var clone = Instantiate(template.gameObject, template.transform.parent);
-                clone.transform.SetPositionAndRotation(
-                    SpawnNear(template.transform.position, i), template.transform.rotation);
+                // The template is usually a bound body. Its motion owner and the agent that owner
+                // created are per-body runtime state: a copy of either is a component nobody owns,
+                // and the coordinator refused every such clone its rebind - which is how a season
+                // larger than the authored five stood still after its first reload. Strip them so the
+                // clone gets its own, and give it back the carving obstacle a bound body has off.
+                foreach (var owner in clone.GetComponents<HouseNpcMotion>()) DestroyImmediate(owner);
+                foreach (var agent in clone.GetComponents<NavMeshAgent>()) DestroyImmediate(agent);
+                var carving = clone.GetComponent<NavMeshObstacle>();
+                if (carving != null) carving.enabled = true;
+                clone.transform.SetPositionAndRotation(SpawnNear(template, i), template.transform.rotation);
                 var body = clone.GetComponent<HouseNpc>();
                 if (body == null) { Destroy(clone); break; }
                 bodies.Add(body);
@@ -224,13 +232,40 @@ namespace Gamesim.Episode
             initialNpcRotations = rotations;
         }
 
-        /// <summary>A walkable spot near the template, spiralling outward so bodies do not stack.</summary>
-        private static Vector3 SpawnNear(Vector3 origin, int index)
+        /// <summary>
+        /// A walkable spot near the template, spiralling outward so bodies do not stack - and one the
+        /// house can name. A bare NavMesh sample once put a twelfth houseguest in a doorway, between
+        /// two floors, where the motion owner refuses to bind ("not inside one bound floor's safe
+        /// interior"), so every candidate is checked the way binding will check it: on one floor's
+        /// safe interior, and clear of every body already standing there.
+        /// </summary>
+        private Vector3 SpawnNear(HouseNpc template, int index)
         {
-            float angle = index * 137.5f * Mathf.Deg2Rad;   // golden angle: no two early picks align
-            float radius = 1.6f + index * 0.7f;
-            var wanted = origin + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-            return NavMesh.SamplePosition(wanted, out var hit, 6f, NavMesh.AllAreas) ? hit.position : origin;
+            var origin = template.transform.position;
+            var body = template.GetComponent<CapsuleCollider>();
+            float radius = body != null ? body.radius : 0.35f, height = body != null ? body.height : 1.9f;
+            HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out _);
+            var agent = player != null ? player.Agent : null;
+            var filter = new NavMeshQueryFilter
+            {
+                agentTypeID = agent != null ? agent.agentTypeID : 0,
+                areaMask = agent != null ? agent.areaMask : NavMesh.AllAreas,
+            };
+            var fallback = origin;
+            for (int attempt = 0; attempt < 12; attempt++)
+            {
+                int step = index + attempt * 5;
+                float angle = step * 137.5f * Mathf.Deg2Rad;   // golden angle: no two early picks align
+                float reach = 1.6f + (step % 9) * 0.7f;
+                var wanted = origin + new Vector3(Mathf.Cos(angle) * reach, 0f, Mathf.Sin(angle) * reach);
+                if (!NavMesh.SamplePosition(wanted, out var hit, 6f, NavMesh.AllAreas)) continue;
+                if (attempt == 0) fallback = hit.position;
+                if (rooms == null) return hit.position;
+                if (rooms.TrySampleFloor(hit.position, radius, filter, .25f, out var sampled, out _)
+                    && rooms.HasCapsuleClearance(sampled, radius, height, template.transform))
+                    return sampled;
+            }
+            return fallback;
         }
 
         private int seenBodiesCompleted;

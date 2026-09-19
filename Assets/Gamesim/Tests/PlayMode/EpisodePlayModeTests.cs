@@ -31,6 +31,7 @@ namespace Gamesim.Tests.PlayMode
         private HousePlayerController player;
         private HouseCameraRig cameraRig;
         private Keyboard testKeyboard;
+        private Mouse testMouse;
 
         [UnitySetUp]
         public IEnumerator LoadIsolatedEpisode()
@@ -55,6 +56,8 @@ namespace Gamesim.Tests.PlayMode
         {
             if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
             testKeyboard = null;
+            if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);
+            testMouse = null;
             if (director != null) director.ClosePanels();
             var episode = SceneManager.GetSceneByName(EpisodeScene);
             if (episode.IsValid() && episode.isLoaded)

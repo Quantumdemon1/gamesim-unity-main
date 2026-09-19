@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshGamesStartInWeekOneAndThePrimitiveIsDetachedInEverySnapshot()
         {
             var input = ContentCatalog.Create(501);
-            Assert.That(input.schemaVersion, Is.EqualTo(6));
+            Assert.That(input.schemaVersion, Is.EqualTo(12));
             Assert.That(input.blocRulesStartWeek, Is.EqualTo(1));
             var engine = new EpisodeEngine(input);
             var copy = engine.Snapshot; copy.blocRulesStartWeek = 2; input.blocRulesStartWeek = 2;
@@ -37,10 +37,12 @@ namespace Gamesim.Tests.EditMode
             var v4 = version < 4 ? EpisodeSaveMigrations.PrepareV4Payload(original, out _) : original;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(6));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(12));
             Assert.That((int)migrated["blocRulesStartWeek"], Is.EqualTo(8));
             Assert.That((uint)migrated["randomState"], Is.Zero);
-            AssertOldFieldsEqual(v4, migrated);
+            // Without schema 7's card copy: see the note on the v4 twin.
+            AssertOldFieldsEqual(v4, PersistenceMigrationTests.StripCardCopy(
+                PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12((JObject)migrated.DeepClone())))))));
             Assert.That(original.ToString(Formatting.None), Is.EqualTo(before));
             var second = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
             Assert.That(changed, Is.False);
@@ -61,7 +63,7 @@ namespace Gamesim.Tests.EditMode
             var engine = new EpisodeEngine(ContentCatalog.Create(502));
             var phases = new HashSet<EpisodePhase>();
             bool partial = false, revealed = false, terminal = false;
-            for (int guard = 0; guard < 160; guard++)
+            for (int guard = 0; guard < 280; guard++)
             {
                 var state = engine.Snapshot; phases.Add(state.phase);
                 partial |= state.phase == EpisodePhase.Eviction && state.votes.Count > 0 && !state.evictionResolved;
@@ -201,7 +203,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, envelope.ToString(Formatting.None));
             Assert.That(files.Store.TryLoad(out _, out string message), Is.False);
             Assert.That(message, Does.Contain("checksum").IgnoreCase);
-            foreach (string value in new[] { "null", "4.5", "'4'", "7", "2147483648" })
+            foreach (string value in new[] { "null", "4.5", "'4'", "10", "2147483648" })   // 8: still unsupported.
             {
                 var old = Historical(4); old["schemaVersion"] = JToken.Parse(value);
                 File.WriteAllText(files.Store.SavePath, PersistenceMigrationTests.Envelope(old));
@@ -255,7 +257,8 @@ namespace Gamesim.Tests.EditMode
         }
         private static JObject CaptureV4(EpisodeState state)
         {
-            var source = CaptureCurrent(state); source.Remove("npcSocial"); source.Remove("blocRulesStartWeek"); source["schemaVersion"] = 4; return source;
+            var source = PersistenceMigrationTests.StripCardCopy(PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12(CaptureCurrent(state)))))));
+            source.Remove("npcSocial"); source.Remove("blocRulesStartWeek"); source["schemaVersion"] = 4; return source;
         }
         private static readonly PublicFieldContractResolver SharedCaptureResolver = new PublicFieldContractResolver();
         private static JObject CaptureCurrent(EpisodeState state) => JObject.FromObject(state,
@@ -270,6 +273,23 @@ namespace Gamesim.Tests.EditMode
             foreach (var property in old.Properties()) if (property.Name != "schemaVersion")
                 Assert.That(JToken.DeepEquals(property.Value, migrated[property.Name]), Is.True, "Historical field changed: " + property.Name);
         }
+        /// <summary>Whether this live field post-dates the frozen shape, and where it sits.</summary>
+        private static bool AddedSinceV4(string path, string field)
+        {
+            switch (path)
+            {
+                case "state": return new[] { "blocRulesStartWeek", "npcSocial",
+                    "evictionStage", "evictionSpeeches", "backdoorTargetId",
+                    "outOfPhaseSocialActions", "openingBeatsSeen",
+                    "socialBudgetRulesStartWeek",
+                    "deals", "dealRulesStartWeek",
+                    "boughtActionPoints", "houseEvents", "eventRulesStartWeek",
+                    "storylines", "activeModifiers", "storyRulesStartWeek" }.Contains(field);
+                case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio" }.Contains(field);
+                default: return false;
+            }
+        }
+
         private static void CompareFields(Type live, Type frozen, string path, HashSet<string> visited)
         {
             if (live.IsEnum) { Assert.That(frozen, Is.EqualTo(typeof(int)), path); return; }
@@ -277,7 +297,9 @@ namespace Gamesim.Tests.EditMode
             { Assert.That(frozen.GetGenericTypeDefinition(), Is.EqualTo(typeof(List<>)), path); CompareFields(live.GetGenericArguments()[0], frozen.GetGenericArguments()[0], path + "[]", visited); return; }
             if (live.IsPrimitive || live == typeof(string)) { Assert.That(frozen, Is.EqualTo(live), path); return; }
             if (!visited.Add(live.FullName + ":" + frozen.FullName)) return;
-            var a = live.GetFields(BindingFlags.Public | BindingFlags.Instance).Where(field => path != "state" || (field.Name != "blocRulesStartWeek" && field.Name != "npcSocial")).ToArray();
+            // See the note on the v4 twin: fields added after this frozen version, by location.
+            var a = live.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                .Where(field => !AddedSinceV4(path, field.Name)).ToArray();
             var b = frozen.GetFields(BindingFlags.Public | BindingFlags.Instance);
             Assert.That(a.Select(field => field.Name), Is.EquivalentTo(b.Select(field => field.Name)), path);
             foreach (var field in a) CompareFields(field.FieldType, b.Single(other => other.Name == field.Name).FieldType, path + "." + field.Name, visited);

@@ -31,6 +31,29 @@ namespace Gamesim.Tests.EditMode
         {
             var fixture = Fixture(); var initial = ContentCatalog.Create((uint)fixture["seed"]);
             if (rulesWeek.HasValue) initial.blocRulesStartWeek = rulesWeek.Value;
+            // This witness was recorded when a social week allowed a flat eighteen actions, and it
+            // spends four in week one. The budget is half the active house now, so the recording is
+            // replayed under the allowance it was made with — the same rule-version boundary this
+            // fixture already uses for the voting-bloc rules a line above.
+            //
+            // Trimming a conversation instead would not have been a smaller change: every Change
+            // consumes the season's generator, so removing one re-rolls every competition and vote
+            // after it, and the expectations this fixture asserts came from the web build rather
+            // than from here, so they cannot be regenerated locally.
+            initial.socialBudgetRulesStartWeek = 2;
+            // And houseguests were not forming their own alliances or giving their own word when
+            // this was recorded. Both write to the ledger and move nextSequence, so a replay with
+            // autonomy running is a different season from the one on file.
+            //
+            // Two, not something larger: validation refuses a boundary beyond next week, so a save
+            // cannot claim one indefinitely far off. The witness spans a single week, which is
+            // exactly what this buys.
+            initial.npcSocial.rulesStartWeek = 2;
+            // And nobody was striking deals when this was recorded. Deals are weighed by the very
+            // evaluator this fixture pins — DealObligation scores an active vote_save at +35 — so a
+            // replay with them running is not the season on file.
+            initial.dealRulesStartWeek = 2;
+            initial.eventRulesStartWeek = 2;
             var engine = new EpisodeEngine(initial);
             foreach (var item in fixture["commands"]) Apply(engine, Read<EpisodeCommand>(item));
             return engine;
@@ -69,11 +92,20 @@ namespace Gamesim.Tests.EditMode
         public void LegalPactReplayMatchesOriginalSourceAndChangesTargetThroughPrivatePressure()
         {
             var fixture = Fixture(); var state = Witness().Snapshot;
-            Assert.That(state.schemaVersion, Is.EqualTo(6));
+            Assert.That(state.schemaVersion, Is.EqualTo(12));
             Assert.That((int)fixture["state"]["schemaVersion"], Is.EqualTo(5), "Keep the original witness unchanged.");
-            Assert.That(JToken.DeepEquals(JObject.FromObject(state.npcSocial), JObject.FromObject(NpcSocialState.Create(state.seed))), Is.True,
+            // Compared against a subsystem created with the same declared boundary, because that
+            // boundary is configuration rather than activity. What this asserts is unchanged: no
+            // conversation started, no clock advanced, no pair memory was written.
+            Assert.That(JToken.DeepEquals(JObject.FromObject(state.npcSocial),
+                    JObject.FromObject(NpcSocialState.Create(state.seed, 2))), Is.True,
                 "The explicit command replay must not silently run background conversations.");
-            var historicalView = JObject.FromObject(state); historicalView.Remove("npcSocial");
+            // The fixture is a v5 witness, so the replayed state is compared in v5's shape: without
+            // the NPC subsystem schema 6 added, and without the contestant card copy schema 7 did.
+            var historicalView = PersistenceMigrationTests.StripCardCopy(
+                PersistenceMigrationTests.StripSchema8(
+                    PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12(JObject.FromObject(state)))))));
+            historicalView.Remove("npcSocial");
             historicalView["schemaVersion"] = fixture["state"]["schemaVersion"].DeepClone();
             WebVotingBlocParityTests.Equivalent(fixture["state"], historicalView, "legal command replay");
             Assert.That(state.phase, Is.EqualTo(EpisodePhase.Eviction));
@@ -101,7 +133,11 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void PrivateNpcBatchPreservesRandomnessAndSocialStateUntilHumanBallotAndReveal()
         {
-            var engine = Witness(); var before = engine.Snapshot; var plan = Plan(before);
+            var engine = Witness();
+            // The witness ends where campaigning closes, which is the speeches. Walk the night to
+            // the stage that takes ballots before asking for the NPC batch.
+            EpisodeEngineTests.OpenTheVote(engine);
+            var before = engine.Snapshot; var plan = Plan(before);
             var command = Command(before, EpisodeCommandKind.Advance); Apply(engine, command);
             var after = engine.Snapshot;
             Assert.That(after.evictionResolved, Is.False);
@@ -146,7 +182,11 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void CastingHumanVoteFirstDoesNotChangeCoordinationOrRewriteItsReceipt()
         {
-            var engine = Witness(); var before = engine.Snapshot; var expected = Plan(before);
+            var engine = Witness();
+            // The witness ends where campaigning closes, which is the speeches. The house votes
+            // after those, so walk the night to the stage that takes a ballot.
+            EpisodeEngineTests.OpenTheVote(engine);
+            var before = engine.Snapshot; var expected = Plan(before);
             var human = Command(before, EpisodeCommandKind.CastVote); human.targetId = before.nominees[0]; Apply(engine, human);
             var ballot = Json(engine.Snapshot.votes.Single());
             Assert.That(Json(Plan(engine.Snapshot).coordination), Is.EqualTo(Json(expected.coordination)));
@@ -161,6 +201,8 @@ namespace Gamesim.Tests.EditMode
         public void RestoredCommittedNpcBallotIsNeverOverwrittenByNewPlan()
         {
             var state = Witness().Snapshot;
+            // A night holding a committed ballot is at its voting stage by definition.
+            state.evictionStage = EvictionStage.Voting;
             // Persistence regression fixture: deliberately retain a valid historical ballot that
             // differs from the new rules. This is not the legal-gameplay parity witness above.
             state.votes.Add(new VoteState { voterId = "maya-hassan", targetId = "taylor-kim", reason = "Previously committed public explanation" });
@@ -178,6 +220,9 @@ namespace Gamesim.Tests.EditMode
         public void CapturedOldWeekUsesLegacyEvaluatorIncludingOriginalNomineeOrder(bool reverseNominees)
         {
             var state = Witness(2).Snapshot;
+            // This fixture is about the ballots one Advance collects, so it starts where they are
+            // collected. The witness ends at the speeches, which come first.
+            state.evictionStage = EvictionStage.Voting;
             if (reverseNominees) state.nominees.Reverse();
             var expected = EpisodeEngine.Voters(state).Where(c => !c.isPlayer).Select(c => WebEvictionVoting.EvaluateNative(state, c.id)).ToArray();
             var engine = new EpisodeEngine(state); Apply(engine, Command(state, EpisodeCommandKind.Advance));
@@ -194,7 +239,8 @@ namespace Gamesim.Tests.EditMode
         public void MigratedCohortEnablesNewRoundOnlyAtFollowingWeekWithoutNewRandomStream()
         {
             var engine = Witness(2);
-            for (int guard = 0; guard < 100 && !(engine.Snapshot.week == 2 && engine.Snapshot.phase == EpisodePhase.Eviction); guard++)
+            for (int guard = 0; guard < 190 && !(engine.Snapshot.week == 2 && engine.Snapshot.phase == EpisodePhase.Eviction
+                && engine.Snapshot.evictionStage == EvictionStage.Voting); guard++)
                 Apply(engine, EpisodeEngineTests.NextCommand(engine.Snapshot));
             var state = engine.Snapshot;
             Assert.That(state.week, Is.EqualTo(2)); Assert.That(state.phase, Is.EqualTo(EpisodePhase.Eviction));
@@ -212,7 +258,8 @@ namespace Gamesim.Tests.EditMode
         public void NoAllianceNewRoundStillUsesSourceCastOrderAndNoDirective()
         {
             var initial = ContentCatalog.Create(4); var engine = new EpisodeEngine(initial);
-            for (int guard = 0; guard < 80 && engine.Snapshot.phase != EpisodePhase.Eviction; guard++)
+            for (int guard = 0; guard < 160 && !(engine.Snapshot.phase == EpisodePhase.Eviction
+                && engine.Snapshot.evictionStage == EvictionStage.Voting); guard++)
                 Apply(engine, EpisodeEngineTests.NextCommand(engine.Snapshot));
             var state = engine.Snapshot; Assert.That(state.alliances, Is.Empty);
             var plan = Plan(state); Assert.That(plan.coordination.directives, Is.Empty);
@@ -230,7 +277,8 @@ namespace Gamesim.Tests.EditMode
             for (uint seed = 1; seed <= 40 && engine == null; seed++)
             {
                 var candidate = new EpisodeEngine(ContentCatalog.Create(seed));
-                for (int guard = 0; guard < 90 && !(candidate.Snapshot.week == 2 && candidate.Snapshot.phase == EpisodePhase.Eviction); guard++)
+                for (int guard = 0; guard < 170 && !(candidate.Snapshot.week == 2 && candidate.Snapshot.phase == EpisodePhase.Eviction
+                        && candidate.Snapshot.evictionStage == EvictionStage.Voting); guard++)
                     Apply(candidate, EpisodeEngineTests.NextCommand(candidate.Snapshot));
                 var snapshot = candidate.Snapshot;
                 if (snapshot.week == 2 && snapshot.phase == EpisodePhase.Eviction && snapshot.hohId != snapshot.playerId &&
@@ -258,14 +306,14 @@ namespace Gamesim.Tests.EditMode
         public void FinaleAndJuryRemainIdenticalForBothRulesCohortsAndOldTextIsNotRewritten()
         {
             var engine = Witness();
-            for (int guard = 0; guard < 130 && engine.Snapshot.phase != EpisodePhase.FinalHoHPart1; guard++)
+            for (int guard = 0; guard < 240 && engine.Snapshot.phase != EpisodePhase.FinalHoHPart1; guard++)
                 Apply(engine, EpisodeEngineTests.NextCommand(engine.Snapshot));
             var original = engine.Snapshot; Assert.That(original.phase, Is.EqualTo(EpisodePhase.FinalHoHPart1));
             string events = Json(original.events);
             var oldCohort = original.Clone(); oldCohort.blocRulesStartWeek = oldCohort.week + 1;
             var a = new EpisodeEngine(original); var b = new EpisodeEngine(oldCohort);
             Assert.That(Json(a.Snapshot.events), Is.EqualTo(events)); Assert.That(Json(b.Snapshot.events), Is.EqualTo(events));
-            for (int guard = 0; guard < 60 && a.Snapshot.phase != EpisodePhase.Finished; guard++)
+            for (int guard = 0; guard < 140 && a.Snapshot.phase != EpisodePhase.Finished; guard++)
             {
                 var command = EpisodeEngineTests.NextCommand(a.Snapshot); Apply(a, command); Apply(b, command);
                 var left = JObject.FromObject(a.Snapshot); var right = JObject.FromObject(b.Snapshot);

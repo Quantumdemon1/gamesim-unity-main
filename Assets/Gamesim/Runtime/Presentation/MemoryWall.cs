@@ -46,6 +46,7 @@ namespace Gamesim.Presentation
         {
             if (state?.contestants == null) return;
             Collect();
+            Arrange(state.contestants.Count);
 
             Bind(state);
 
@@ -108,6 +109,38 @@ namespace Gamesim.Presentation
         /// <summary>The frame showing a given houseguest, or null. For tests and tooling.</summary>
         public Transform FrameFor(string contestantId) =>
             contestantId != null && bound.TryGetValue(contestantId, out var frame) ? frame : null;
+
+        /// <summary>
+        /// Shows one frame per houseguest and centres them along the wall's rows. The authored wall
+        /// is built for sixteen - two rows of eight - and a season of six lit at one end of it
+        /// would read as ten empty keys; so the first <paramref name="count"/> frames are laid out
+        /// as two centred rows (the primitive three-by-two wall is left as built), and the rest go
+        /// dark and inactive. The pitch and the row heights are read from the placed frames, so the
+        /// grid is stated once, in the export.
+        /// </summary>
+        private void Arrange(int count)
+        {
+            if (frames.Count < 16 || count <= 0 || arrangedFor == count) return;
+            arrangedFor = count;
+            int perRow = Mathf.Clamp(Mathf.CeilToInt(count / 2f), 1, 8);
+            float pitch = Mathf.Abs(frames[1].localPosition.z - frames[0].localPosition.z);
+            float topY = frames[0].localPosition.y, bottomY = frames[8].localPosition.y;
+            for (int i = 0; i < frames.Count; i++)
+            {
+                var frame = frames[i];
+                if (frame == null) continue;
+                bool used = i < Mathf.Min(count, frames.Count);
+                if (frame.gameObject.activeSelf != used) frame.gameObject.SetActive(used);
+                if (!used) continue;
+                int row = i / perRow, column = i % perRow;
+                int inRow = Mathf.Min(perRow, count - row * perRow);
+                float z = (column - (inRow - 1) * 0.5f) * pitch;
+                float y = row == 0 ? topY : bottomY;
+                frame.localPosition = new Vector3(frame.localPosition.x, y, z);
+            }
+        }
+
+        private int arrangedFor;
 
         private void Collect()
         {

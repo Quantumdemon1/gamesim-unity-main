@@ -51,7 +51,7 @@ namespace Gamesim.Presentation
         /// </summary>
         public static RectTransform Build(
             Transform parent, EpisodeState state, float fontScale, TMP_FontAsset font,
-            System.Func<string, Texture> portrait)
+            System.Func<string, Texture> portrait, System.Action<string> onSelect = null)
         {
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
@@ -65,7 +65,23 @@ namespace Gamesim.Presentation
 
             for (int index = 0; index < order.Count; index++)
             {
-                Entry(root, state, order[index], index, fontScale, font, portrait);
+                var entry = Entry(root, state, order[index], index, fontScale, font, portrait);
+                // A portrait is a button: click it and the camera follows that houseguest. The
+                // button carries the name chip as its caption, so the keyboard and a screen reader
+                // find it the way they find every other control.
+                if (onSelect == null) continue;
+                string id = order[index].id;
+                var hit = entry.gameObject.AddComponent<Image>();
+                hit.color = new Color(0f, 0f, 0f, 0f);
+                hit.raycastTarget = true;
+                var button = entry.gameObject.AddComponent<Button>();
+                var colours = button.colors;
+                colours.normalColor = new Color(1f, 1f, 1f, 0f);
+                colours.highlightedColor = new Color(1f, 1f, 1f, 0.12f);
+                colours.selectedColor = colours.highlightedColor;
+                colours.pressedColor = new Color(1f, 1f, 1f, 0.25f);
+                button.colors = colours;
+                button.onClick.AddListener(() => onSelect(id));
             }
             return root;
         }
@@ -119,7 +135,7 @@ namespace Gamesim.Presentation
             return new Standing(null, UiTheme.Outline, false);
         }
 
-        private static void Entry(
+        private static RectTransform Entry(
             RectTransform root, EpisodeState state, ContestantState actor, int index, float scale,
             TMP_FontAsset font, System.Func<string, Texture> portrait)
         {
@@ -194,7 +210,7 @@ namespace Gamesim.Presentation
             name.rectTransform.anchoredPosition = new Vector2(0f, -(ring + 12f * scale));
             name.rectTransform.sizeDelta = new Vector2(0f, 17f * scale);
 
-            if (string.IsNullOrEmpty(standing.Badge)) return;
+            if (string.IsNullOrEmpty(standing.Badge)) return entry;
 
             // The badge sits over the bottom of the rim rather than beside it, so the rail stays one
             // column wide however many people are holding something this week.
@@ -212,6 +228,7 @@ namespace Gamesim.Presentation
             badge.rectTransform.anchorMax = Vector2.one;
             badge.rectTransform.offsetMin = Vector2.zero;
             badge.rectTransform.offsetMax = Vector2.zero;
+            return entry;
         }
 
         private static RectTransform Disc(string name, Transform parent, Color colour)

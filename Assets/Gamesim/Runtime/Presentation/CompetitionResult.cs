@@ -170,12 +170,14 @@ namespace Gamesim.Presentation
 
             // The banner: the result stated once, loudly, before any of the detail. A player who
             // looks away and back should be able to read the outcome without parsing the board.
-            // Violet, not gold. Gold is this project's colour for the veto itself, so a gold
-            // banner announcing an HoH win said "veto" at a glance. The web build reserves violet
-            // for the result banner and it is the one place that colour appears.
-            var banner = HudPrimitives.Fill("Winner banner", column, UiTheme.Award, UiTheme.PanelRadius);
+            // Tinted by the competition's category, not by the award. The reference build colours an
+            // endurance banner green and a mental one violet, which is a correction to an earlier
+            // pass here that painted every banner violet: two thirds of them were then the wrong
+            // colour, and the pill underneath disagreed with the banner above it.
+            var categoryTint = CategoryTint(category);
+            var banner = HudPrimitives.Fill("Winner banner", column, categoryTint, UiTheme.PanelRadius);
             Place(banner, width * scale, 86f * scale, ref y);
-            var bannerInk = UiTheme.OnColor(UiTheme.Award);
+            var bannerInk = UiTheme.OnColor(categoryTint);
 
             var bannerText = HudPrimitives.Label("Winner banner text", banner, 26f * scale,
                 bannerInk, TextAlignmentOptions.Center);
@@ -201,9 +203,9 @@ namespace Gamesim.Presentation
 
             if (!string.IsNullOrEmpty(category))
             {
-                var pill = HudPrimitives.Fill("Category", column, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .20f), 10);
+                var pill = HudPrimitives.Fill("Category", column, new Color(categoryTint.r, categoryTint.g, categoryTint.b, .22f), 10);
                 Place(pill, 132f * scale, 24f * scale, ref y);
-                var pillText = HudPrimitives.Label("Category text", pill, 13f * scale, UiTheme.Accent, TextAlignmentOptions.Center);
+                var pillText = HudPrimitives.Label("Category text", pill, 13f * scale, categoryTint, TextAlignmentOptions.Center);
                 pillText.text = category.ToUpperInvariant();
                 pillText.characterSpacing = 6f;
                 pillText.rectTransform.anchorMin = Vector2.zero;
@@ -303,5 +305,23 @@ namespace Gamesim.Presentation
             rect.sizeDelta = new Vector2(width, height);
             y -= height;
         }
+        /// <summary>
+        /// The colour a competition category wears. Endurance is green and mental is violet in the
+        /// reference build; skill takes the room-outline blue, which is the remaining accent and the
+        /// one this project already uses for a competition in progress.
+        /// </summary>
+        private static Color CategoryTint(string category)
+        {
+            if (string.IsNullOrEmpty(category)) return UiTheme.Award;
+            switch (category.Trim().ToLowerInvariant())
+            {
+                case "endurance": return UiTheme.PositiveDeep;
+                case "mental": return UiTheme.Award;
+                case "skill": return UiTheme.AccentDeep;
+                default: return UiTheme.Award;
+            }
+        }
+
+
     }
 }

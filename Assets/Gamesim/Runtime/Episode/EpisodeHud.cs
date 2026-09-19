@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -16,6 +17,8 @@ namespace Gamesim.Episode
         public const string JuryContinueCaption = "Continue jury questioning";
         public const string JurySkipCaption = "Skip remaining questions";
         public const string SpeechSubmitCaption = "Submit final speech";
+        public const string EvictionSpeechCaption = "Deliver your speech";
+        public const string EvictionSpeechSkipCaption = "Say nothing";
         public const string SpeechSkipCaption = "Skip my final speech";
         public const string SpeechContinueCaption = "Continue to jury voting";
         public const string DiaryTravelCaption = "Go to diary room [R]";
@@ -33,6 +36,74 @@ namespace Gamesim.Episode
         public const string StudyConfirmCaption = "Confirm study · use 1 social action";
         public const string StudyCancelCaption = "Back to diary (discard study)";
         public const string SimulateCompetitionCaption = "Simulate competition · weighted rules";
+        /// <summary>
+        /// Throwing is a real strategic option in the reference build, sitting beside playing and
+        /// simulating. It is a competition entered at the floor rather than a refusal to enter.
+        /// </summary>
+        public const string ThrowCompetitionCaption = "Throw this competition on purpose";
+        /// <summary>
+        /// The words on a deal control. Captions are a contract — tests and screen readers find a
+        /// control by what it says — so the deal type is spelled out here once and the chance is
+        /// drawn as a tag beside the button rather than appended to it.
+        /// </summary>
+        public const string DealAcceptCaption = "Accept this offer";
+        public const string DealDeclineCaption = "Turn this offer down";
+        public static string DealProposeCaption(string title) => "Propose a " + title;
+        /// <summary>The words on a week-review control, one per week the notebook lists.</summary>
+        public static string ReviewWeekCaption(int week) => "Read the week " + week + " recap";
+        /// <summary>
+        /// The five ways of having a conversation, and the two house-wide moves.
+        ///
+        /// <para>Each says what it is for rather than what it is called, because the difference
+        /// between them is the whole point: small talk is safe and slight, a secret is the largest
+        /// swing in the game in either direction.</para>
+        /// </summary>
+        public const string SmallTalkCaption = "Make small talk";
+        public const string PersonalChatCaption = "Tell them something personal";
+        public const string RelationshipBuildingCaption = "Spend real time with them";
+        public const string StrategicDiscussionCaption = "Talk tactics";
+        public const string DiscussGameCaption = "Talk game openly";
+        public const string ShareSecretCaption = "Trust them with a secret";
+        public static string WhisperCaption(string about) => "Whisper about " + about;
+        public static string CalloutCaption(string about) => "Call " + about + " out publicly";
+        public const string RallyHouseCaption = "Call a house meeting and rally the room";
+        public const string AirLaundryCaption = "Call a house meeting and air everything";
+        /// <summary>Buying a turn, which says what it costs before it is pressed.</summary>
+        public const string BuyBurnOneCaption = "Buy an action by burning one bridge";
+        public const string BuySpreadCaption = "Buy an action at the whole house's expense";
+
+        /// <summary>
+        /// The words on one way of answering a situation.
+        ///
+        /// <para>The option's own label, unchanged. It comes from the save, and a screen that
+        /// decorated it would be showing something other than what the engine will match against.
+        /// </para>
+        /// </summary>
+        public static string EventChoiceCaption(string label) => label;
+
+        /// <summary>
+        /// How far a choice could rebound, in a word.
+        ///
+        /// <para>Said rather than only coloured: a warning that exists only as a shade of red is a
+        /// warning some players never receive.</para>
+        /// </summary>
+        public static string RiskTag(string risk) =>
+            risk == HouseEventRisk.High ? "high risk"
+            : risk == HouseEventRisk.Medium ? "some risk"
+            : "low risk";
+
+        /// <summary>The words on each competition minigame's controls.</summary>
+        public const string HoldGripCaption = "Hold on  [hold Space]";
+        public const string ReleaseGripCaption = "Let go  [release Space]";
+        public const string TapTargetCaption = "Hit the target  [Space]";
+        /// <summary>
+        /// A memory card, named by what it shows once it is face up.
+        ///
+        /// <para>In words, not only in colour: this screen is the only place the board exists, so a
+        /// player reading it aloud has no other way to know what they just turned over.</para>
+        /// </summary>
+        public static string CardCaption(int index, string face) =>
+            "Card " + (index + 1) + (face == null ? "" : ": " + face);
         // Palette lives in UiTheme so the HUD and the 3D set stay in step; these aliases keep
         // the existing call sites unchanged.
         private static readonly Color Ink = UiTheme.Ink;
@@ -92,6 +163,13 @@ namespace Gamesim.Episode
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             preferredSelection = selected != null && modal != null && selected.transform.IsChildOf(modal)
                 ? selected.name : null;
+            // A panel that is closing fades out for a few frames instead of vanishing. The old
+            // modal goes to a ghost canvas that owns no controls (HudFade strips them), so the
+            // rebuild below can throw the rest away as it always has.
+            if (modal != null && !open && !recovery) HudFade.Ghost(modal, canvas, ReducedMotion);
+            // UI foley: a panel arriving or leaving says so. A rebuild of an open panel is neither.
+            if (open && modal == null) Foley(HouseAudio.Cue.PanelOpen);
+            else if (!open && modal != null && !recovery) Foley(HouseAudio.Cue.PanelClose);
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
@@ -101,7 +179,8 @@ namespace Gamesim.Episode
             // The cast rail owns the far-left gutter, so the panel column starts to the right of it.
             // Six faces on screen at all times is what makes the rest of the HUD able to say "the
             // replacement nominee" and have that mean a person rather than a name.
-            CastRail.Build(canvas.transform, state, FontScale, font, Portrait);
+            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest);
+            FollowChip(director.FollowedName);
 
             var leftColumn = new GameObject("Left column",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>();
             leftColumn.SetParent(canvas.transform,false);
@@ -164,7 +243,7 @@ namespace Gamesim.Episode
             // character line is what broke it — so the panel grew downward instead. It stays in the
             // lower right, well clear of the ceremony banner that must not overlap the chrome.
             var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,140));
-            FixedText(help,"Click a houseguest: follow\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,122));
+            FixedText(help,"Click a houseguest: follow\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,122));
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
             var status = Chrome("Status",canvas.transform,Ink);
@@ -235,6 +314,16 @@ namespace Gamesim.Episode
         }
 
         public void Heading(string value) { FlowText(value,26,Accent); }
+
+        /// <summary>A heading in a given colour. The recap uses gold, as the reference build does.</summary>
+        public void Heading(string value,Color colour) { FlowText(value,26,colour); }
+
+        /// <summary>Small letterspaced copy above a section, the reference build's eyebrow.</summary>
+        public void Eyebrow(string value,Color colour)
+        {
+            var text = FlowText(value,15,colour);
+            text.characterSpacing = 10f;
+        }
         public void Paragraph(string value) { FlowText(value,21,Paper); }
 
         /// <summary>
@@ -495,12 +584,28 @@ namespace Gamesim.Episode
             }
             Paragraph("Write your final speech, or skip it. Your speech becomes part of the saved record; no jury result is promised.");
             Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
-            var rect = Panel("Final speech draft",content,Surface);
+            var input = SpeechDraft("Final speech draft","What do you want the jury to remember about your game?",
+                "Final speech character count");
+            Action(SpeechSubmitCaption,() => director.SubmitSpeech(input.text));
+            Action(SpeechSkipCaption,() => director.SubmitSpeech(""));
+        }
+        /// <summary>
+        /// The speech editor: a retained multi-line draft with a character count.
+        ///
+        /// <para>Shared by the finale and by a nominee's speech from the block. The two are
+        /// different speeches with different captions and different stakes, but the widget is the
+        /// same one, and it carries behaviour worth having in one place — Tab moves focus rather
+        /// than inserting a tab, and the draft survives a HUD rebuild, so a repaint cannot silently
+        /// erase what someone was part way through writing.</para>
+        /// </summary>
+        private EpisodeSpeechInputField SpeechDraft(string panelName,string hintText,string counterName)
+        {
+            var rect = Panel(panelName,content,Surface);
             rect.gameObject.AddComponent<LayoutElement>().minHeight = 210 * FontScale;
             var input = rect.gameObject.AddComponent<EpisodeSpeechInputField>();
             var text = NewText(rect,"",21,Paper); Stretch(text.rectTransform,14,12,14,12);
             text.alignment = TextAlignmentOptions.TopLeft;
-            var hint = NewText(rect,"What do you want the jury to remember about your game?",21,UiTheme.Muted);
+            var hint = NewText(rect,hintText,21,UiTheme.Muted);
             Stretch(hint.rectTransform,14,12,14,12);
             input.textComponent = text; input.placeholder = hint;
             input.characterLimit = 2000; input.lineType = TMP_InputField.LineType.MultiLineNewline;
@@ -509,11 +614,21 @@ namespace Gamesim.Episode
             input.selectionColor = new Color(Accent.r,Accent.g,Accent.b,.3f);
             input.text = retainedSpeech;
             var count = FlowText(retainedSpeech.Length + " / 2000 characters",17,Paper);
-            count.gameObject.name = "Final speech character count";
+            count.gameObject.name = counterName;
             input.onValueChanged.AddListener(value => { retainedSpeech = value; count.text = value.Length + " / 2000 characters"; });
-            Action(SpeechSubmitCaption,() => director.SubmitSpeech(input.text));
-            Action(SpeechSkipCaption,() => director.SubmitSpeech(""));
+            return input;
         }
+
+        /// <summary>A nominee's speech from the block, using the editor the finale uses.</summary>
+        public void EvictionSpeech(Action<string> commit)
+        {
+            Paragraph("Up to 2,000 characters. Enter adds a line; Tab or Shift+Tab moves to another control.");
+            var input = SpeechDraft("Block speech draft",
+                "What do you want the house to have heard before it votes?","Block speech character count");
+            Action(EvictionSpeechCaption,() => commit(input.text));
+            Action(EvictionSpeechSkipCaption,() => commit(""));
+        }
+
         private TMP_Text FlowText(string value,int size,Color color)
         {
             var text = NewText(content,value,size,color); var element = text.gameObject.AddComponent<LayoutElement>(); element.minHeight = size * FontScale + 8;
@@ -700,10 +815,51 @@ namespace Gamesim.Episode
             track.offsetMin = new Vector2(16, 14); track.offsetMax = new Vector2(-16, 22);
             track.GetComponent<Image>().raycastTarget = false;
 
+            // The fill travels from where this meter was last drawn to where it is now, so a
+            // budget that just spent an action is seen draining. The last value survives the
+            // rebuild by caption; a meter seen for the first time is drawn where it is.
+            float target = total <= 0 ? 0f : (float)held / total;
+            float shown = meterShown.TryGetValue(caption, out var previous) ? previous : target;
+            meterShown[caption] = target;
             var fill = Panel("Fill", track, tint, 3);
-            fill.anchorMin = Vector2.zero; fill.anchorMax = new Vector2(total <= 0 ? 0f : (float)held / total, 1f);
+            fill.anchorMin = Vector2.zero; fill.anchorMax = new Vector2(target, 1f);
             fill.offsetMin = Vector2.zero; fill.offsetMax = Vector2.zero;
             fill.GetComponent<Image>().raycastTarget = false;
+            if (!ReducedMotion && Mathf.Abs(shown - target) > 0.001f) fill.gameObject.AddComponent<HudFill>().Play(shown, target);
+        }
+        private readonly Dictionary<string, float> meterShown = new Dictionary<string, float>();
+
+        public const string FollowChipName = "Follow chip";
+
+        private HouseAudio foley;
+        /// <summary>The director's audio, for the HUD's own sounds; found once, absent in a bare test.</summary>
+        private void Foley(HouseAudio.Cue cue)
+        {
+            if (foley == null && director != null) foley = director.GetComponent<HouseAudio>();
+            if (foley != null) foley.PlayCue(cue);
+        }
+
+        /// <summary>
+        /// The chip under the house pill naming who the camera is following, and how to stop.
+        /// Rebuilt with the chrome, and redrawn on its own when the subject changes between
+        /// renders - a click on a body changes the camera without changing the episode.
+        /// </summary>
+        public void ShowFollowing(string name)
+        {
+            if (canvas == null) return;
+            var old = canvas.transform.Find(FollowChipName);
+            if (old != null) { old.gameObject.SetActive(false); Destroy(old.gameObject); }
+            FollowChip(name);
+        }
+
+        private void FollowChip(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            var chip = Chrome(FollowChipName, canvas.transform, Ink);
+            Anchor(chip, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -78), new Vector2(360, 34));
+            var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Gold,
+                new Vector2(12, -8), new Vector2(336, 20));
+            text.alignment = TextAlignmentOptions.Center;
         }
 
         public void ChallengeMeter()
@@ -717,14 +873,48 @@ namespace Gamesim.Episode
         }
         public void SetChallenge(float value,int hits)
         { if(challengeMeter!=null) challengeMeter.value=value; if(challengeCaption!=null) challengeCaption.text="Attempt " + (hits+1) + " of 3 · Aim for the center"; }
-        public void SetPrompt(string value) { if(prompt==null)return; prompt.text=value; prompt.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value)); }
+        public void SetPrompt(string value) { if(prompt==null)return; prompt.text=Localisation.Text(value); prompt.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value)); }
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
+
+        // Full-screen screens that sit over the HUD: the weekly recap and the season report. While
+        // one is up it is the keyboard's whole world - its controls get the ring and the HUD's get
+        // none - so Enter cannot press a button behind a scrim. Before this, a recap opened with
+        // the selection still on a HUD control underneath it.
+        private readonly List<CanvasGroup> overlays = new List<CanvasGroup>();
+        private RectTransform lastOverlay;
+        private int overlayControls;
+
+        public void RegisterOverlay(CanvasGroup group)
+        {
+            if (group != null && !overlays.Contains(group)) overlays.Add(group);
+        }
+
+        /// <summary>The topmost visible overlay, by canvas sorting order; null when the HUD is on top.</summary>
+        private RectTransform ActiveOverlay()
+        {
+            RectTransform top = null; int order = int.MinValue;
+            foreach (var group in overlays)
+            {
+                if (group == null || group.alpha <= 0f || !group.gameObject.activeInHierarchy) continue;
+                var owner = group.GetComponent<Canvas>();
+                int sorting = owner != null ? owner.sortingOrder : 0;
+                if (sorting >= order) { order = sorting; top = group.transform as RectTransform; }
+            }
+            return top;
+        }
 
         private void LateUpdate()
         {
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
+            var overlay = ActiveOverlay();
+            if (overlay != lastOverlay) { lastOverlay = overlay; restoreSelection = true; }
+            // A screen that rebuilds its form on every press (the character creator) hands the ring
+            // a new set of controls each time; rewire when the count moves.
+            int controls = overlay != null ? overlay.GetComponentsInChildren<Selectable>().Length : 0;
+            if (controls != overlayControls) { overlayControls = controls; if (overlay != null) restoreSelection = true; }
+            var scope = overlay != null ? overlay : modal;
             if (restoreSelection)
             {
                 Canvas.ForceUpdateCanvases();
@@ -741,12 +931,17 @@ namespace Gamesim.Episode
                     }
                     Canvas.ForceUpdateCanvases();
                 }
-                var all = canvas.GetComponentsInChildren<Selectable>().Where(item => item.IsActive() && item.IsInteractable()).ToArray();
-                var eligible = modal == null ? all : all.Where(item => item.transform.IsChildOf(modal)).ToArray();
+                // Scrollbars stay out of the ring: the panel scrolls to whatever is selected, and a
+                // scrollbar the ScrollRect auto-hides after layout would sit in the ring inactive,
+                // where Down and Tab both refuse to land - the keyboard stuck on the control before it.
+                var all = canvas.GetComponentsInChildren<Selectable>()
+                    .Concat(overlay != null ? overlay.GetComponentsInChildren<Selectable>() : Enumerable.Empty<Selectable>())
+                    .Where(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar)).ToArray();
+                var eligible = scope == null ? all : all.Where(item => item.transform.IsChildOf(scope)).ToArray();
                 foreach (var item in all)
                 {
                     var navigation = item.navigation;
-                    navigation.mode = modal != null && !item.transform.IsChildOf(modal) ? Navigation.Mode.None : Navigation.Mode.Explicit;
+                    navigation.mode = scope != null && !item.transform.IsChildOf(scope) ? Navigation.Mode.None : Navigation.Mode.Explicit;
                     navigation.selectOnLeft = null; navigation.selectOnRight = null;
                     navigation.selectOnUp = null; navigation.selectOnDown = null;
                     item.navigation = navigation;
@@ -758,7 +953,12 @@ namespace Gamesim.Episode
                     navigation.selectOnDown = eligible[(index + 1) % eligible.Length];
                     eligible[index].navigation = navigation;
                 }
-                var focus = eligible.FirstOrDefault(item => item.name == preferredSelection)
+                // Whatever is already selected and still eligible keeps the focus: a rewire is not a
+                // reason to move the keyboard. The HUD's own rebuilds destroy the old selection, so
+                // for them this is null and the named restore below takes over as before.
+                var current = events.currentSelectedGameObject;
+                var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
+                    ?? eligible.FirstOrDefault(item => item.name == preferredSelection)
                     ?? eligible.FirstOrDefault(item => content != null && item.transform.IsChildOf(content))
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
                     ?? eligible.FirstOrDefault();
@@ -780,10 +980,10 @@ namespace Gamesim.Episode
                     selected = next.gameObject;
                 }
             }
-            if (modal != null && (selected == null || !selected.transform.IsChildOf(modal)))
+            if (scope != null && (selected == null || !selected.transform.IsChildOf(scope)))
             {
-                var focus = content.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
-                    ?? modal.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
+                var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
+                    ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
                 events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;
             }
@@ -822,6 +1022,8 @@ namespace Gamesim.Episode
             var button=rect.gameObject.AddComponent<Button>(); var colors=button.colors;
             colors.highlightedColor=new Color(1.2f,1.6f,1.45f); colors.selectedColor=colors.highlightedColor; colors.pressedColor=new Color(.65f,1.1f,.9f); button.colors=colors;
             var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,leftInset,5,16,5); text.alignment=TextAlignmentOptions.Left;
+            var press = rect.gameObject.AddComponent<HudPress>(); press.ReducedMotion = ReducedMotion;
+press.Hovered = () => Foley(HouseAudio.Cue.Hover);
             button.onClick.AddListener(()=>action()); return button;
         }
         private TMP_Text FixedText(RectTransform parent,string value,int size,Color color,Vector2 position,Vector2 dimensions)
@@ -841,6 +1043,9 @@ namespace Gamesim.Episode
         }
         private TMP_Text NewText(Transform parent,string value,int size,Color color)
         {
+            // The one place the HUD turns a string into text on screen: the caption stays the
+            // control's name and key, and the table decides the words (MASTER-PLAN §3.D).
+            value = Localisation.Text(value);
             var text=new GameObject("Text",typeof(RectTransform),typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>(); text.transform.SetParent(parent,false);
             text.font=font;
             // Rounded so the scaled size stays an exact integer, which the HUD scaling tests assert.

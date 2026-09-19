@@ -76,8 +76,17 @@ namespace Gamesim.Editor
                 HorizontalDoor(world.transform, "Living / bedroom", -14, 0, 0, -7, wall);
                 HorizontalDoor(world.transform, "Kitchen / private room", 0, 14, 0, 7, wall);
                 HorizontalDoor(world.transform, "House / yard", -14, 14, 10, 0, wall);
-                VerticalDoor(world.transform, "Living / kitchen", -10, 0, -5, wall);
-                VerticalDoor(world.transform, "Bedroom / private room", 0, 10, 5, wall);
+                // Both of these stop short of the outer wall line rather than running to it, and
+                // the shortfall is deliberate. The house/yard opening is 2.8 m of gap centred on
+                // x = 0, and the south wing's is the same; a divider that runs all the way to
+                // z = ±10 lands exactly in the middle of one, splitting a single 2.8 m doorway into
+                // two 1.27 m slivers. The bake then erodes half a metre from each side for the agent
+                // radius and what survives is about a quarter of a metre either side of the wall —
+                // thin enough that whether the yard is reachable at all comes down to which way the
+                // voxels round. It baked connected once and stopped, and the failure reads as three
+                // rooms nobody can walk to rather than as a wall being a few metres too long.
+                VerticalDoor(world.transform, "Living / kitchen", -8.6f, 0, -5, wall);
+                VerticalDoor(world.transform, "Bedroom / private room", 0, 8.6f, 5, wall);
                 Box(world.transform, "North garden fence", new Vector3(0, 0.6f, 20), new Vector3(28.2f, 1.2f, 0.18f), dark);
                 Box(world.transform, "West garden fence", new Vector3(-14, 0.6f, 15), new Vector3(0.18f, 1.2f, 10), dark);
                 Box(world.transform, "East garden fence", new Vector3(14, 0.6f, 15), new Vector3(0.18f, 1.2f, 10), dark);

@@ -271,7 +271,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(nested.reason, Does.Contain("transaction"));
                 director.LoadNow();
                 director.RecoverBackup();
-                director.NewSeason();
+                director.StartSeason(null);
                 director.ImportFile(Path.Combine(isolatedRoot, "not-an-import.json"));
                 director.SaveNow();
                 AssertStateEquals(before, director.Snapshot);

@@ -22,7 +22,11 @@ namespace Gamesim.Simulation
                         !Text(e.type, 100) || !Text(e.description, 4000) || !Finite(e.impactScore) || Math.Abs(e.impactScore) > 200))
                     return Fail(out error, "Invalid relationship history.");
             }
-            if (s.relationshipArcs == null || s.relationshipArcs.Count > 5 || s.relationshipArcs.Any(a => a == null || !Id(a.npcId) || a.npcId == s.playerId || !Text(a.npcName, 100) ||
+            // One arc per houseguest the player has a history with, so the ceiling follows the
+            // cast. It read "> 5" while a house held six, which is the same number by coincidence
+            // and refuses a legal seven-person season the moment the player has met everyone.
+            int arcCeiling = Math.Max(0, s.contestants.Count - 1);
+            if (s.relationshipArcs == null || s.relationshipArcs.Count > arcCeiling || s.relationshipArcs.Any(a => a == null || !Id(a.npcId) || a.npcId == s.playerId || !Text(a.npcName, 100) ||
                 !new[] { "neutral", "friendship", "rivalry" }.Contains(a.arcType) || !Finite(a.intensity) || a.intensity < 0 || a.intensity > 100 ||
                 a.escalationLevel != WebRelationshipArcs.GetEscalationLevel(a.intensity) || a.weeklyHistory == null || a.weeklyHistory.Count > 2000 ||
                 a.weeklyHistory.Any(h => h == null || h.week < 1 || h.week > s.week || !Finite(h.delta) || Math.Abs(h.delta) > 200 || !Text(h.reason, 4000))) ||
@@ -34,7 +38,11 @@ namespace Gamesim.Simulation
                 double intensity = Math.Min(100, arc.weeklyHistory.Sum(h => Math.Min(Math.Abs(h.delta) * 1.5, 15)));
                 if (type != arc.arcType || Math.Abs(intensity - arc.intensity) > 0.0000001) return Fail(out error, "Arc summary does not match its history.");
             }
-            if (s.juryExchanges == null || s.juryExchanges.Count > 4 || s.juryQuestionIndex < 0 || s.juryQuestionIndex > s.juryExchanges.Count ||
+            // Everyone who is out of the house questions the finalists, so this is the cast minus
+            // the two in the final two — "> 4" was that number for a house of six. The floor of two
+            // is the spectator branch, which asks two questions whatever the season's size.
+            int exchangeCeiling = Math.Max(2, s.contestants.Count - 2);
+            if (s.juryExchanges == null || s.juryExchanges.Count > exchangeCeiling || s.juryQuestionIndex < 0 || s.juryQuestionIndex > s.juryExchanges.Count ||
                 s.finalSpeeches == null || s.finalSpeeches.Count > 2 || s.finalSpeeches.Any(x => x == null || !Finalist(x.speakerId) || x.text == null || x.text.Length > 4000 ||
                     x.isPlayerAuthored != (x.speakerId == s.playerId)) || s.finalSpeeches.GroupBy(x => x.speakerId).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid finale records.");

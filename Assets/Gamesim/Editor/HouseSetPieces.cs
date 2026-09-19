@@ -71,6 +71,11 @@ namespace Gamesim.Editor
             }
         }
 
+        /// <summary>Every model id the plan names, for the catalogue audit.</summary>
+        public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model).Concat(SteppedModels);
+        /// <summary>Models placed by a step rather than a plan row: the competition set.</summary>
+        private static readonly string[] SteppedModels = { "bb_set_podium", "bb_set_compring" };
+
         // Heights are in metres and chosen to read at a glance rather than to be exact: a stove
         // that is waist-high and a lamp that is head-high is the whole requirement. A *negative*
         // height means "lay it flat, this many metres across" — the rule rugs are sized by.
@@ -79,23 +84,44 @@ namespace Gamesim.Editor
             // ---------------------------------------------------------------- Kitchen
             // A working counter run along the north wall. Everything stays at counter height:
             // see the note on Lift for why there are no wall units.
-            new Prop("Kitchen floor", "kitchenStove",          -0.30f,  0.40f, 180f, 0.95f),
-            new Prop("Kitchen floor", "kitchenSink",           -0.08f,  0.40f, 180f, 0.95f),
-            new Prop("Kitchen floor", "kitchenMicrowave",       0.12f,  0.40f, 180f, 0.32f),
-            new Prop("Kitchen floor", "kitchenCoffeeMachine",   0.26f,  0.40f, 180f, 0.34f),
-            new Prop("Kitchen floor", "toaster",                0.36f,  0.40f, 180f, 0.22f),
-            new Prop("Kitchen floor", "kitchenCabinetDrawer",  -0.44f,  0.40f, 180f, 0.90f),
-            new Prop("Kitchen floor", "kitchenBarEnd",          0.44f,  0.16f, 270f, 1.05f),
+            // Tier 3 begins here: the kitchen run replaces the kit's stove, sink, cabinet and bar
+            // end with one authored counter from the fridge to the end panel along the north wall
+            // (x 1.0 to 7.4, its back a couple of centimetres off the wall's face). The kit's small
+            // appliances stay, lifted onto its counter over the doors, the drawers and the doors.
+            new Prop("Kitchen floor", "bb_set_kitchenrun",     -0.20f,  0.455f,  0f, 0f),
+            new Prop("Kitchen floor", "kitchenMicrowave",      -0.329f, 0.455f, 180f, 0.32f, 0.92f),
+            new Prop("Kitchen floor", "kitchenCoffeeMachine",  -0.189f, 0.455f, 180f, 0.34f, 0.92f),
+            new Prop("Kitchen floor", "toaster",               -0.05f,  0.455f, 180f, 0.22f, 0.92f),
+            // Tier 4 clutter: on the counter, and on the long table (its top is 0.76 m).
+            new Prop("Kitchen floor", "bb_set_mug",            -0.29f,  0.455f,  30f, 0f, 0.92f),
+            new Prop("Kitchen floor", "bb_set_bottle",         -0.02f,  0.455f,   0f, 0f, 0.92f),
+            new Prop("Kitchen floor", "bb_set_mug",            -0.04f, -0.285f, 200f, 0f, 0.76f),
+            new Prop("Kitchen floor", "bb_set_mug",             0.11f, -0.315f, 340f, 0f, 0.76f),
+            new Prop("Kitchen floor", "bb_set_bottle",          0.03f, -0.300f,   0f, 0f, 0.76f),
+            new Prop("Kitchen floor", "bb_set_fruitbowl",       0.19f, -0.300f,   0f, 0f, 0.76f),
             new Prop("Kitchen floor", "stoolBar",              -0.10f, -0.06f,   0f, 0.78f),
             new Prop("Kitchen floor", "stoolBar",               0.02f, -0.06f,   0f, 0.78f),
             new Prop("Kitchen floor", "stoolBar",               0.14f, -0.06f,   0f, 0.78f),
             // A dining table the whole cast can sit at — the room this format eats and argues in.
-            new Prop("Kitchen floor", "tableRound",             0.16f, -0.30f,   0f, 0.76f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.092f,-0.300f,  90f, 0.88f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.228f,-0.300f, 270f, 0.88f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.160f,-0.205f, 180f, 0.88f),
-            new Prop("Kitchen floor", "chairModernCushion",     0.160f,-0.395f,   0f, 0.88f),
-            new Prop("Kitchen floor", "books",                  0.40f,  0.40f, 180f, 0.22f, 0.95f),
+            // The long table where the house argues: sixteen seats, seven a side and one at each
+            // end, at authored size (a zero height). It replaces the round table for four.
+            new Prop("Kitchen floor", "bb_set_diningtable",     0.060f, -0.300f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.079f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.033f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.014f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.060f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.106f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.153f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.199f, -0.222f, 180f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.079f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     -0.033f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.014f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.060f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.106f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.153f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.199f, -0.378f,   0f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",    -0.133f, -0.300f,  90f, 0f),
+            new Prop("Kitchen floor", "bb_set_diningchair",     0.253f, -0.300f, 270f, 0f),
             new Prop("Kitchen floor", "trashcan",               0.44f, -0.38f,   0f, 0.60f),
             new Prop("Kitchen floor", "plantSmall1",           -0.44f, -0.40f,   0f, 0.55f),
             new Prop("Kitchen floor", "pottedPlant",            0.44f,  0.40f,   0f, 0.95f),
@@ -109,10 +135,14 @@ namespace Gamesim.Editor
             new Prop("Living room floor", "loungeChairRelax",   0.22f, -0.20f, 210f, 0.90f),
             new Prop("Living room floor", "loungeDesignChair", -0.24f, -0.22f, 150f, 0.82f),
             new Prop("Living room floor", "loungeDesignSofa",   0.40f,  0.02f, 270f, 0.78f),
-            new Prop("Living room floor", "bookcaseOpen",      -0.44f,  0.06f,  90f, 1.45f),
-            new Prop("Living room floor", "books",             -0.42f,  0.06f,  90f, 0.24f, 0.95f),
-            new Prop("Living room floor", "books",             -0.42f,  0.14f,  90f, 0.24f, 0.62f),
+            new Prop("Living room floor", "bb_set_cushion",     0.40f,  0.07f, 270f, 0f, 0.54f),
+            new Prop("Living room floor", "bb_set_cushion",     0.40f, -0.03f, 300f, 0f, 0.54f),
+            // Against the north wall's west segment, not the west wall: the memory wall hangs there
+            // now, two rows of eight along the living room's half of it, and a bookcase stood in
+            // front of its middle.
+            new Prop("Living room floor", "bookcaseOpen",      -0.30f,  0.44f,   0f, 1.45f),
             new Prop("Living room floor", "sideTableDrawers",   0.30f,  0.40f,   0f, 0.62f),
+            new Prop("Living room floor", "bb_set_photoframe",  0.30f,  0.40f, 200f, 0f, 0.62f),
             new Prop("Living room floor", "lampSquareTable",    0.30f,  0.40f,   0f, 0.45f, 0.62f),
             new Prop("Living room floor", "rugSquare",         -0.18f, -0.30f,   0f, -3.2f),
             new Prop("Living room floor", "trashcan",          -0.20f,  0.42f,   0f, 0.55f),
@@ -122,16 +152,16 @@ namespace Gamesim.Editor
             // The shared bedroom is the one room this format fills wall to wall with beds.
             new Prop("Bedroom floor", "bedBunk",               -0.42f,  0.30f,  90f, 1.45f),
             new Prop("Bedroom floor", "bedBunk",               -0.42f, -0.02f,  90f, 1.45f),
-            new Prop("Bedroom floor", "bedSingle",             -0.16f,  0.42f, 180f, 0.55f),
-            new Prop("Bedroom floor", "bedSingle",              0.06f,  0.42f, 180f, 0.55f),
-            new Prop("Bedroom floor", "bedSingle",              0.28f,  0.42f, 180f, 0.55f),
+            new Prop("Bedroom floor", "bedSingle",             -0.16f,  0.42f, 180f, 0f),
+            new Prop("Bedroom floor", "bedSingle",              0.06f,  0.42f, 180f, 0f),
+            new Prop("Bedroom floor", "bedSingle",              0.28f,  0.42f, 180f, 0f),
             new Prop("Bedroom floor", "pillowBlue",            -0.16f,  0.45f, 180f, 0.10f, 0.52f),
-            new Prop("Bedroom floor", "pillow",                 0.06f,  0.45f, 180f, 0.10f, 0.52f),
             new Prop("Bedroom floor", "pillowBlue",             0.28f,  0.45f, 180f, 0.10f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",      -0.05f,  0.42f,   0f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",       0.17f,  0.42f,   0f, 0.52f),
             new Prop("Bedroom floor", "cabinetBedDrawer",      -0.42f, -0.28f,  90f, 0.52f),
             new Prop("Bedroom floor", "sideTableDrawers",      -0.34f,  0.02f,   0f, 0.62f),
+            new Prop("Bedroom floor", "bb_set_photoframe",     -0.34f,  0.02f, 160f, 0f, 0.62f),
             new Prop("Bedroom floor", "lampSquareTable",       -0.34f,  0.02f,   0f, 0.45f, 0.62f),
             new Prop("Bedroom floor", "sideTableDrawers",       0.16f,  0.02f,   0f, 0.62f),
             new Prop("Bedroom floor", "lampSquareTable",        0.16f,  0.02f,   0f, 0.45f, 0.62f),
@@ -147,7 +177,6 @@ namespace Gamesim.Editor
             new Prop("Private room floor", "plantSmall3",       0.43f,  0.40f,   0f, 0.55f),
             new Prop("Private room floor", "plantSmall1",       0.43f, -0.40f,   0f, 0.55f),
             new Prop("Private room floor", "bookcaseOpen",      0.44f,  0.06f, 270f, 1.45f),
-            new Prop("Private room floor", "books",             0.42f,  0.06f, 270f, 0.24f, 0.95f),
             new Prop("Private room floor", "loungeDesignChair", 0.18f, -0.30f, 200f, 0.82f),
             new Prop("Private room floor", "sideTableDrawers", -0.42f, -0.16f,  90f, 0.62f),
             new Prop("Private room floor", "lampSquareTable",  -0.42f, -0.16f,  90f, 0.45f, 0.62f),
@@ -156,8 +185,19 @@ namespace Gamesim.Editor
 
             // ---------------------------------------------------------------- HoH suite
             // Was empty. The bed, a sitting corner, and the ensuite that makes it a prize.
-            new Prop("HoH floor", "bedDouble",                 -0.12f,  0.22f, 180f, 0.62f),
-            new Prop("HoH floor", "pillowBlue",                -0.19f,  0.35f, 180f, 0.11f, 0.58f),
+            // The reward room's bed, authored with its own pillows and a headboard kept under the
+            // south wing's 1.1 m wall; at its own size (a zero height).
+            new Prop("HoH floor", "bb_set_hohbed",             -0.12f,  0.22f, 180f, 0f),
+            // The door with the key, dressing the divider's gap into the nomination room (the piece
+            // is placed by its bounds, and the open leaf swings into the suite, so the fraction puts
+            // the jambs on the divider at x -4.617 rather than the piece's middle there), and the
+            // week's basket on the coffee table.
+            new Prop("HoH floor", "bb_set_hohdoor",             0.4587f, 0.00f,  0f, 0f),
+            new Prop("HoH floor", "bb_set_hohbasket",          -0.30f, -0.34f,  30f, 0f, 0.42f),
+            new Prop("HoH floor", "bb_set_mug",                -0.245f, -0.34f, 120f, 0f, 0.42f),
+            new Prop("HoH floor", "bb_set_towel",               0.38f,  0.42f, 270f, 0f, 0.60f),
+            new Prop("HoH floor", "bb_set_magazines",          -0.33f, -0.30f,  20f, 0f, 0.42f),
+            new Prop("HoH floor", "bb_set_candle",              0.34f,  0.33f,   0f, 0f, 0.60f),
             new Prop("HoH floor", "pillow",                    -0.05f,  0.35f, 180f, 0.11f, 0.58f),
             new Prop("HoH floor", "cabinetBedDrawer",          -0.33f,  0.40f,   0f, 0.52f),
             new Prop("HoH floor", "lampSquareTable",           -0.33f,  0.40f,   0f, 0.42f, 0.52f),
@@ -167,12 +207,10 @@ namespace Gamesim.Editor
             new Prop("HoH floor", "loungeDesignSofa",          -0.42f, -0.20f,  90f, 0.78f),
             new Prop("HoH floor", "loungeChairRelax",          -0.14f, -0.34f,   0f, 0.88f),
             new Prop("HoH floor", "tableCoffee",               -0.30f, -0.34f,   0f, 0.42f),
-            new Prop("HoH floor", "cabinetTelevision",         -0.12f, -0.44f, 180f, 0.45f),
-            new Prop("HoH floor", "televisionModern",          -0.12f, -0.45f, 180f, 0.55f, 0.46f),
+            new Prop("HoH floor", "cabinetTelevision",         -0.12f, -0.44f, 180f, 0f),
             new Prop("HoH floor", "lampSquareFloor",           -0.42f,  0.42f,   0f, 1.05f),
             new Prop("HoH floor", "pottedPlant",                0.42f, -0.42f,   0f, 0.90f),
             new Prop("HoH floor", "bookcaseOpen",              -0.42f,  0.06f,  90f, 1.05f),
-            new Prop("HoH floor", "books",                     -0.40f,  0.06f,  90f, 0.22f, 0.70f),
             // The ensuite, along the east wall.
             new Prop("HoH floor", "bathtub",                    0.38f,  0.38f, 270f, 0.60f),
             new Prop("HoH floor", "showerRound",                0.40f,  0.14f, 270f, 1.05f),
@@ -201,8 +239,7 @@ namespace Gamesim.Editor
             new Prop("Games floor", "loungeSofaCorner",        -0.22f, -0.22f,   0f, 0.80f),
             new Prop("Games floor", "tableCoffee",              0.06f, -0.20f,   0f, 0.42f),
             new Prop("Games floor", "rugSquare",               -0.06f, -0.22f,   0f, -3.0f),
-            new Prop("Games floor", "cabinetTelevision",        0.00f,  0.42f, 180f, 0.45f),
-            new Prop("Games floor", "televisionModern",         0.00f,  0.43f, 180f, 0.55f, 0.46f),
+            new Prop("Games floor", "cabinetTelevision",        0.00f,  0.42f, 180f, 0f),
             new Prop("Games floor", "speaker",                 -0.30f,  0.42f, 180f, 0.95f),
             new Prop("Games floor", "speaker",                  0.30f,  0.42f, 180f, 0.95f),
             new Prop("Games floor", "kitchenBar",               0.36f, -0.02f, 270f, 1.05f),
@@ -211,26 +248,49 @@ namespace Gamesim.Editor
             new Prop("Games floor", "stoolBar",                 0.20f, -0.18f,  90f, 0.78f),
             new Prop("Games floor", "loungeChairRelax",        -0.40f,  0.16f,  70f, 0.88f),
             new Prop("Games floor", "bookcaseOpen",            -0.42f,  0.40f,  90f, 1.05f),
-            new Prop("Games floor", "books",                   -0.40f,  0.40f,  90f, 0.22f, 0.70f),
             new Prop("Games floor", "desk",                     0.40f, -0.36f, 270f, 0.74f),
+            new Prop("Games floor", "bb_set_laptop",            0.40f, -0.33f, 270f, 0f, 0.74f),
+            new Prop("Games floor", "bb_set_bookstack",         0.40f, -0.40f, 280f, 0f, 0.74f),
+            new Prop("Games floor", "bb_set_tray",              0.36f, -0.02f, 270f, 0f, 1.05f),
+            new Prop("Games floor", "bb_set_remote",            0.10f, -0.22f, 300f, 0f, 0.42f),
+            new Prop("Games floor", "bb_set_cable",             0.46f, -0.46f,   0f, 0f),
             new Prop("Games floor", "loungeDesignChair",        0.26f, -0.36f,  90f, 0.82f),
             new Prop("Games floor", "lampRoundFloor",          -0.42f, -0.42f,   0f, 1.05f),
+            // The have-not end: two steel cots along the south wall, cold and hard. Dressing only.
+            new Prop("Games floor", "bb_set_havenot_cot",      -0.28f, -0.44f,  90f, 0f),
+            new Prop("Games floor", "bb_set_havenot_cot",      -0.05f, -0.44f,  90f, 0f),
             new Prop("Games floor", "plantSmall3",              0.42f,  0.40f,   0f, 0.55f),
             new Prop("Games floor", "trashcan",                 0.42f,  0.22f,   0f, 0.55f),
 
+            // ---------------------------------------------------------------- Private room
+            // The diary chair stands just behind the diary marker at (7, 3), facing the camera, so
+            // the player who walks to the marker stands in front of it rather than inside it.
+            new Prop("Private room floor", "bb_set_diarychair",   0.00f, -0.10f, 180f, 0f),
+
             // ---------------------------------------------------------------- Competition yard
+            // The east end is the pool end: the authored pool, hot tub and loungers sit where two
+            // of the planters used to, at their own size (a zero height). The yard floor is 28 x
+            // 10 m centred at z = 15, so 0.34 of its width is 9.5 m east of the circle.
+            // The competition set - three gold rings on the yard's centre and the three podiums at
+            // x -6, 0 and 6 on z 17 - is placed by its own steps below, and its podium blocks carry
+            // the colliders the NavMesh was baked from, so the water goes round it: the pool turned
+            // long-ways along the east wall, clear of podium 3 (it used to stand on its corner), the
+            // loungers along the pool's south end facing it, and the hot tub in the north-west corner.
+            new Prop("Competition yard floor", "bb_set_pool",     0.40f,  0.07f,  90f, 0f),
+            new Prop("Competition yard floor", "bb_set_hottub",  -0.357f, 0.30f,   0f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.336f, -0.40f,  0f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.386f, -0.40f,  0f, 0f),
+            new Prop("Competition yard floor", "bb_set_lounger",  0.436f, -0.40f,  0f, 0f),
             new Prop("Competition yard floor", "pottedPlant",  -0.42f, -0.34f,   0f, 0.90f),
-            new Prop("Competition yard floor", "pottedPlant",   0.42f, -0.34f,   0f, 0.90f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.34f,   0f, 1.05f),
-            new Prop("Competition yard floor", "pottedPlant",   0.46f,  0.34f,   0f, 1.05f),
+            new Prop("Competition yard floor", "pottedPlant",   0.24f,  0.44f,   0f, 1.05f),
             new Prop("Competition yard floor", "pottedPlant",  -0.46f,  0.02f,   0f, 1.05f),
-            new Prop("Competition yard floor", "pottedPlant",   0.46f,  0.02f,   0f, 1.05f),
             new Prop("Competition yard floor", "plantSmall2",  -0.30f,  0.40f,   0f, 0.55f),
             new Prop("Competition yard floor", "plantSmall3",   0.30f,  0.40f,   0f, 0.55f),
             new Prop("Competition yard floor", "plantSmall1",  -0.16f,  0.44f,   0f, 0.50f),
             new Prop("Competition yard floor", "plantSmall1",   0.16f,  0.44f,   0f, 0.50f),
             new Prop("Competition yard floor", "plantSmall2",  -0.36f, -0.44f,   0f, 0.50f),
-            new Prop("Competition yard floor", "plantSmall3",   0.36f, -0.44f,   0f, 0.50f),
+            new Prop("Competition yard floor", "plantSmall3",   0.46f, -0.44f,   0f, 0.50f),
         };
 
         [MenuItem("Gamesim/U07/Add the remaining set pieces")]
@@ -269,14 +329,17 @@ namespace Gamesim.Editor
             int entrance = Entrance(world.transform, root);
             int greenery = Greenery(world.transform, root);
             int podiums = Podiums(world.transform, root);
+            int rings = Rings(world.transform, root);
+            int shell = Shell(world.transform, root);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
             Debug.Log(string.Format(
                 "[Gamesim] set pieces · {0} props placed, {1} skipped, {2} floor tiles, {3} entrance parts, "
-                + "{4} plants swapped in, {5} podium parts",
-                placed, missing, tiles, entrance, greenery, podiums));
+                + "{4} plants swapped in, {5} podium parts, {6} ring segments dressed by the authored circle, "
+                + "{7} primitive walls dressed by the authored shell",
+                placed, missing, tiles, entrance, greenery, podiums, rings, shell));
         }
 
         /// <summary>
@@ -305,7 +368,7 @@ namespace Gamesim.Editor
         /// </summary>
         private static GameObject Model(string model, Transform parent, float yaw, float height)
         {
-            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Kit + model + ".glb");
+            var source = HouseCatalogue.Resolve(model, out var tier);
             if (source == null) { Debug.LogWarning("[Gamesim] set pieces · missing model: " + model); return null; }
 
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
@@ -316,17 +379,96 @@ namespace Gamesim.Editor
             // A negative height means "lay it flat and make it this many metres across" — the rule
             // rugs need, because a rug's own height is a centimetre or two and scaling to that
             // shrinks the whole model to a coaster.
+            // A zero height means "as authored": a piece built in metres by its own script is
+            // already the size it should be, and scaling it to a guessed height would undo that.
             var raw = Measure(instance);
-            float scale = height < 0f
+            float scale = height == 0f ? 1f
+                : height < 0f
                 ? Mathf.Abs(height) / Mathf.Max(Mathf.Max(raw.size.x, raw.size.z), 0.001f)
                 : raw.size.y > 0.001f ? height / raw.size.y : 1f;
             instance.transform.localScale = Vector3.one * scale;
 
+            // Kit models never carry collision. An authored piece keeps only the shape its export
+            // promised, the _col child - which is what stops a click landing in the pool.
             foreach (var collider in instance.GetComponentsInChildren<Collider>(true))
-                UnityEngine.Object.DestroyImmediate(collider);
+                if (tier != HouseCatalogue.Tier.Authored || !collider.name.EndsWith(AuthoredAssetImporter.ColliderSuffix, StringComparison.Ordinal))
+                    UnityEngine.Object.DestroyImmediate(collider);
 
             instance.name = model;
             return instance;
+        }
+
+        /// <summary>
+        /// The authored shell (Part 4, Tier 2): caps, skirting and door jambs laid exactly over the
+        /// wall colliders, from <c>ArtSource/shell/bb_shell.py</c>. The primitives stay where they
+        /// are with their colliders - the NavMesh is baked from them - and only their renderers go,
+        /// and only once the shell has resolved, so a missing export never leaves the house bare.
+        /// Returns how many primitive walls the shell now stands in for.
+        /// </summary>
+        private static int Shell(Transform world, Transform root)
+        {
+            var source = HouseCatalogue.Resolve("bb_shell_house", out var tier);
+            if (source == null || tier != HouseCatalogue.Tier.Authored)
+            {
+                Debug.LogWarning("[Gamesim] set pieces · no authored shell; the primitive walls stay visible.");
+                return 0;
+            }
+            var previous = root.Find("bb_shell_house");
+            if (previous != null) UnityEngine.Object.DestroyImmediate(previous.gameObject);
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
+            instance.transform.SetParent(root, false);
+            instance.transform.SetPositionAndRotation(world.position, Quaternion.identity);
+            instance.transform.localScale = Vector3.one;
+            instance.name = "bb_shell_house";
+
+            int dressed = 0;
+            foreach (var box in world.GetComponentsInChildren<BoxCollider>(true))
+            {
+                if (box.transform.IsChildOf(root) || !box.enabled || !box.gameObject.activeInHierarchy) continue;
+                var size = Vector3.Scale(box.size, box.transform.lossyScale);
+                bool wallLike = size.y >= 1f && Mathf.Min(size.x, size.z) <= 0.3f && Mathf.Max(size.x, size.z) >= 1f
+                    && box.name != "Television";
+                if (!wallLike) continue;
+                var renderer = box.GetComponent<Renderer>();
+                if (renderer == null || !renderer.enabled) continue;
+                renderer.enabled = false;
+                dressed++;
+            }
+            return dressed;
+        }
+
+        /// <summary>
+        /// The competition circle (Part 4, Tier 1): one authored mesh of three gold rings, from
+        /// <c>ArtSource/setpieces/bb_set_compring.py</c>, in place of the 144 primitive segments.
+        /// The segments stay in the scene with their renderers off - the yard was authored against
+        /// them and they carry no colliders, so nothing else changes. Returns how many segments the
+        /// authored circle now stands in for.
+        /// </summary>
+        private static int Rings(Transform world, Transform root)
+        {
+            var yard = Room(world, "Competition yard floor");
+            if (yard == null) return 0;
+            var segments = world.GetComponentsInChildren<Transform>(true)
+                .Where(node => !node.IsChildOf(root) && node.parent != null
+                    && node.parent.name.StartsWith("Ring ", StringComparison.Ordinal))
+                .Select(node => node.GetComponent<Renderer>())
+                .Where(renderer => renderer != null)
+                .ToArray();
+            var rings = Model("bb_set_compring", root, 0f, 0f);
+            if (rings == null) return 0;
+            // Where the primitives put the circle - their common centre - on the yard's floor.
+            var centre = segments.Length > 0
+                ? new Vector3(segments.Average(r => r.bounds.center.x), yard.bounds.max.y, segments.Average(r => r.bounds.center.z))
+                : new Vector3(yard.bounds.center.x, yard.bounds.max.y, yard.bounds.center.z);
+            rings.transform.position = centre;
+            int dressed = 0;
+            foreach (var segment in segments)
+            {
+                if (!segment.enabled) continue;
+                segment.enabled = false;
+                dressed++;
+            }
+            return dressed;
         }
 
         /// <summary>
@@ -517,6 +659,26 @@ namespace Gamesim.Editor
 
             var group = new GameObject("Podiums").transform;
             group.SetParent(root, false);
+
+            // Authored first (Part 4, Tier 1): one mesh per podium at the block's own footprint,
+            // from ArtSource/setpieces/bb_set_podium.py. The primitive composition below is the
+            // fallback, so a missing export never leaves the yard without its podiums.
+            var authored = HouseCatalogue.Resolve("bb_set_podium", out var podiumTier);
+            if (authored != null && podiumTier == HouseCatalogue.Tier.Authored)
+            {
+                int placedPodiums = 0;
+                foreach (var block in blocks)
+                {
+                    var slot = block.bounds;
+                    var piece = Model("bb_set_podium", group, 0f, 0f);
+                    if (piece == null) continue;
+                    piece.name = block.name + " (set)";
+                    piece.transform.position = new Vector3(slot.center.x, slot.min.y, slot.center.z);
+                    block.enabled = false;
+                    placedPodiums++;
+                }
+                return placedPodiums;
+            }
 
             int parts = 0;
             foreach (var block in blocks)

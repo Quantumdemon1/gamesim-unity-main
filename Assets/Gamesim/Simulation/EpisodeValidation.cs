@@ -19,12 +19,15 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 6) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 12) return Fail(out error, "Unsupported episode schema.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
-                s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0 || s.socialActions > 18 || !Defined(s.phase))
+                s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0
+                || s.socialActions > MostActionsAWeekCanHold || !Defined(s.phase))
                 return Fail(out error, "Invalid session counters or phase.");
             if (s.blocRulesStartWeek < 1 || s.blocRulesStartWeek > 101 || s.blocRulesStartWeek > s.week + 1)
                 return Fail(out error, "Voting-bloc activation week must be within the saved season boundary.");
+            if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
+                return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
             if (s.contestants == null || s.contestants.Count < MinimumCast || s.contestants.Count > MaximumCast || s.contestants.Any(c => c == null))
                 return Fail(out error, "A house holds between " + MinimumCast + " and " + MaximumCast + " contestants.");
@@ -37,6 +40,11 @@ namespace Gamesim.Simulation
                     c.nominationWeeks.Any(w => w < 1 || w > s.week) || c.timesNominated < 0 || c.hohWins < 0 || c.vetoWins < 0 ||
                     c.timesNominated > 100 || c.hohWins > 100 || c.vetoWins > 100)
                     return Fail(out error, "Invalid contestant data.");
+                // Card copy is optional, so it is bounded rather than required: an old save has none
+                // of it and must stay valid.
+                if (c.age < 0 || c.age > 120 || !ShortOrAbsent(c.occupation, 100) || !ShortOrAbsent(c.archetype, 100)
+                    || !ShortOrAbsent(c.hometown, 100) || !ShortOrAbsent(c.bio, 1000))
+                    return Fail(out error, "Invalid contestant card copy.");
                 var stats = new[] { c.stats.physical, c.stats.mental, c.stats.endurance, c.stats.social, c.stats.luck, c.stats.competition, c.stats.strategic, c.stats.loyalty };
                 if (stats.Any(x => !Finite(x) || x < 0 || x > 10)) return Fail(out error, "Stats must be finite in the supported 0–10 range.");
             }
@@ -68,6 +76,99 @@ namespace Gamesim.Simulation
                 s.events.GroupBy(e => e.sequence).Any(g => g.Count() > 1)) return Fail(out error, "Invalid event history.");
             if (s.acceptedCommandIds == null || s.acceptedCommandIds.Count > 256 || s.acceptedCommandIds.Any(id => !Text(id, 160)) ||
                 s.acceptedCommandIds.Distinct().Count() != s.acceptedCommandIds.Count) return Fail(out error, "Invalid command receipts.");
+            if (!Defined(s.evictionStage)) return Fail(out error, "Unsupported eviction stage.");
+            // A stage only means anything inside eviction night; anywhere else it must be the one a
+            // fresh night opens on, so a stale stage cannot survive into next week.
+            if (s.phase != EpisodePhase.Eviction && s.evictionStage != EvictionStage.Interaction)
+                return Fail(out error, "An eviction stage cannot outlive eviction night.");
+            // Interaction is the campaign phase, so a night that has actually begun is past it.
+            // A migrated save may still carry it, which is why this only bites once a ballot exists
+            // or the night has resolved — both covered by the two checks below.
+            // The stage and the ballots are two records of the same night and must agree. Without
+            // this a save can claim the house has not voted while holding its votes, and the only
+            // symptom is the night appearing to rewind on load.
+            if (s.phase == EpisodePhase.Eviction && s.evictionResolved && s.evictionStage != EvictionStage.Results)
+                return Fail(out error, "A resolved eviction is at the results stage.");
+            if (s.phase == EpisodePhase.Eviction && !s.evictionResolved && s.votes.Count > 0 &&
+                s.evictionStage != EvictionStage.Voting && s.evictionStage != EvictionStage.Tiebreaker)
+                return Fail(out error, "Ballots have been cast, so the night is past the speeches.");
+            if (s.evictionSpeeches == null || s.evictionSpeeches.Count > 2 ||
+                s.evictionSpeeches.Any(x => x == null || !Id(x.speakerId) || x.text == null || x.text.Length > 4000 ||
+                    x.week < 1 || x.week > s.week || x.isPlayerAuthored != (x.speakerId == s.playerId)) ||
+                s.evictionSpeeches.GroupBy(x => x.speakerId).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid eviction speeches.");
+            if (!Optional(s.backdoorTargetId) || (s.backdoorTargetId != null && s.backdoorTargetId == s.playerId))
+                return Fail(out error, "Invalid backdoor plan.");
+            // Bounded at the old flat ceiling rather than at the new budget: a season saved while
+            // eighteen actions were legal is still a legal season, and validation may not
+            // retroactively reject what the rules allowed when it was written. The budget is
+            // enforced where an action is spent, which is the only place it can be.
+            if (s.outOfPhaseSocialActions < 0 || s.outOfPhaseSocialActions > MostActionsAWeekCanHold)
+                return Fail(out error, "Invalid out-of-phase social action count.");
+            // Deals are bounded like promises and for the same reason: nothing legitimately makes
+            // hundreds of them, and an unbounded list is a save that grows until it will not load.
+            if (s.deals == null || s.deals.Count > 200 ||
+                s.deals.Any(d => d == null || !Text(d.id, 160) || !Id(d.proposerId) || !Id(d.recipientId)
+                                 || d.proposerId == d.recipientId || !Optional(d.targetId)
+                                 || !DealKind.IsKnown(d.type) || !DealStatus.IsKnown(d.status)
+                                 || !DealTrust.IsKnown(d.trustImpact)
+                                 || d.week < 1 || d.week > s.week
+                                 || d.expiresWeek < 0 || d.expiresWeek > 101) ||
+                s.deals.GroupBy(d => d.id).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid deal data.");
+            if (s.dealRulesStartWeek < 1 || s.dealRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A deal rules boundary cannot be further off than next week.");
+            // Bought actions are bounded like everything else a player can accumulate: nothing
+            // legitimately buys hundreds, and an unbounded counter is a save that stops loading.
+            if (s.boughtActionPoints < 0 || s.boughtActionPoints > 100)
+                return Fail(out error, "Invalid bought action point count.");
+            if (s.houseEvents == null || s.houseEvents.Count > 400 ||
+                s.houseEvents.Any(e => e == null || !Text(e.id, 160) || !HouseEventKind.IsKnown(e.kind)
+                                       || !Text(e.title, 200) || !Text(e.narrative, 2000)
+                                       || e.week < 1 || e.week > s.week
+                                       || e.involvedIds == null || e.involvedIds.Count > 32
+                                       || e.involvedIds.Any(id => !Id(id))
+                                       || e.involvedIds.Distinct(StringComparer.Ordinal).Count() != e.involvedIds.Count
+                                       || e.choices == null || e.choices.Count > 8
+                                       || e.choices.Any(BadChoice)
+                                       // An unresolved event has chosen nothing; a resolved one has
+                                       // chosen something that exists. Anything else is a save that
+                                       // says a decision was made and cannot say what it was.
+                                       || (e.resolved
+                                           ? e.chosenIndex < -1 || e.chosenIndex >= e.choices.Count
+                                           : e.chosenIndex != -1)
+                                       || !ShortOrAbsent(e.outcome, 2000)
+                                       || e.choices.Any(c => c.impacts.Any(i => !Optional(i.targetId)))) ||
+                s.houseEvents.GroupBy(e => e.id).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid house event data.");
+            if (s.eventRulesStartWeek < 1 || s.eventRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "An event rules boundary cannot be further off than next week.");
+            if (s.storylines == null || s.storylines.Count > 100 ||
+                s.storylines.Any(x => x == null || !Text(x.id, 160) || !Text(x.templateId, 160)
+                                      || !Text(x.title, 200) || !ShortOrAbsent(x.category, 80)
+                                      || !StorylineStatus.IsKnown(x.status)
+                                      || !ShortOrAbsent(x.eventId, 160)
+                                      || x.week < 1 || x.week > s.week
+                                      // A running storyline has not ended; a finished one ended on a
+                                      // week the season has actually reached, and never before it began.
+                                      || (StorylineStatus.Running(x.status)
+                                          ? x.endedWeek != 0
+                                          : x.endedWeek < x.week || x.endedWeek > s.week)) ||
+                s.storylines.GroupBy(x => x.id).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid storyline data.");
+            if (s.activeModifiers == null || s.activeModifiers.Count > 40 ||
+                s.activeModifiers.Any(m => m == null || !Text(m.id, 160) || !Text(m.name, 120)
+                                           || !ShortOrAbsent(m.description, 500)
+                                           || m.weeksLeft < 1 || m.weeksLeft > 20
+                                           || !Finite(m.competitionBonus) || Math.Abs(m.competitionBonus) > 20
+                                           || !Finite(m.socialBonus) || Math.Abs(m.socialBonus) > 100))
+                return Fail(out error, "Invalid story modifier data.");
+            if (s.storyRulesStartWeek < 1 || s.storyRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A storyline rules boundary cannot be further off than next week.");
+            if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
+                s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
+                s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)
+                return Fail(out error, "Invalid opening sequence progress.");
             var activeCount = s.Active.Count();
             if (s.phase == EpisodePhase.Finished)
             {
@@ -119,6 +220,41 @@ namespace Gamesim.Simulation
             if (s.phase == EpisodePhase.Jury && s.votes.Any(v => !Live(v.targetId) || Live(v.voterId))) return Fail(out error, "Invalid jury ballot eligibility.");
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error);
         }
+
+        /// <summary>
+        /// Absent, or present and within bounds.
+        ///
+        /// <para>Not called <c>Optional</c>: <see cref="TryValidate"/> declares a local function of
+        /// that name for optional <i>identities</i>, and a local function hides the enclosing type's
+        /// methods outright rather than overloading them.</para>
+        /// </summary>
+        private static bool ShortOrAbsent(string value, int max) => string.IsNullOrEmpty(value) || value.Length <= max;
+
+        /// <summary>
+        /// Whether one way of answering an event is malformed.
+        ///
+        /// <para>Split out because the expression that walks the event list is already the longest
+        /// condition in this file, and a choice has enough of its own shape to be worth naming. The
+        /// target of an impact is checked by the caller, which is the only place the cast is in
+        /// scope.</para>
+        /// </summary>
+        private static bool BadChoice(HouseEventChoice choice) =>
+            choice == null || !Text(choice.label, 120) || !ShortOrAbsent(choice.description, 500)
+            || !HouseEventRisk.IsKnown(choice.risk)
+            || !Finite(choice.trustChange) || Math.Abs(choice.trustChange) > 100
+            || choice.impacts == null || choice.impacts.Count > 32
+            || choice.impacts.Any(i => i == null || !Finite(i.amount) || Math.Abs(i.amount) > 100);
+
+        /// <summary>
+        /// The most actions one counter can legally hold.
+        ///
+        /// <para>The old flat allowance plus everything a player may buy on top of it. A season
+        /// still under the legacy boundary gets eighteen for free and may buy six more, and all
+        /// twenty-four can land in the same phase — so a bound of eighteen would refuse a season
+        /// that had done nothing wrong.</para>
+        /// </summary>
+        private const int MostActionsAWeekCanHold =
+            EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
         private static bool Text(string value, int max) => !string.IsNullOrWhiteSpace(value) && value.Length <= max;
         private static bool Defined<T>(T value) where T : struct => Enum.IsDefined(typeof(T), value);

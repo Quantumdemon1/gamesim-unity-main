@@ -70,6 +70,9 @@ namespace Gamesim.Editor
             root.transform.SetParent(world.transform, false);
             root.transform.position = new Vector3(faceX, 0f, southHalfCentre);
 
+            int authored = Authored(root.transform, ink, scene, faceX, southHalfCentre);
+            if (authored > 0) return;
+
             float usable = bounds.size.y * UsableHeight;
             float gap = usable * GapFraction;
             float frameSize = (usable - (Rows - 1) * gap) / Rows;
@@ -121,6 +124,67 @@ namespace Gamesim.Editor
 
         private static Material Material(string name) =>
             AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + name + ".mat");
+
+        /// <summary>
+        /// The Part 4 wall: <c>bb_set_memorywall</c> from <c>ArtSource/setpieces/bb_set_memorywall.py</c>,
+        /// sixteen frames in two rows of eight on a dark backing. The export is unpacked so each
+        /// authored frame can become the <see cref="MemoryWall.BorderChild"/> of its own
+        /// "Memory frame NN" - the runtime tints each border's emission by status - with the
+        /// portrait quad added in front, exactly as the primitive grid is built. Returns the frame
+        /// count, or zero when the export is missing and the primitive grid should be built instead.
+        /// </summary>
+        private static int Authored(Transform root, Material ink, UnityEngine.SceneManagement.Scene scene, float faceX, float centreZ)
+        {
+            var source = HouseCatalogue.Resolve("bb_set_memorywall", out var tier);
+            if (source == null || tier != HouseCatalogue.Tier.Authored) return 0;
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(source, scene);
+            instance.transform.SetParent(root, false);
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
+            instance.transform.localScale = Vector3.one;
+            PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            foreach (var collider in instance.GetComponentsInChildren<Collider>(true))
+                UnityEngine.Object.DestroyImmediate(collider);
+
+            var borders = instance.GetComponentsInChildren<Transform>(true)
+                .Where(t => t.name.StartsWith("bb_set_memorywall_f", StringComparison.Ordinal) && t.GetComponent<Renderer>() != null)
+                .OrderBy(t => t.name, StringComparer.Ordinal)
+                .ToArray();
+            if (borders.Length == 0)
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+                return 0;
+            }
+
+            int index = 0;
+            foreach (var border in borders)
+            {
+                var size = border.GetComponent<Renderer>().bounds.size;
+                var frame = new GameObject(MemoryWall.FramePrefix + " " + index.ToString("00"));
+                frame.transform.SetParent(root, false);
+                frame.transform.position = border.GetComponent<Renderer>().bounds.center - new Vector3(size.x * 0.5f, 0f, 0f);
+                border.SetParent(frame.transform, true);
+                border.name = MemoryWall.BorderChild;
+                // The portrait, just proud of the frame's face; the ring's inner square is what it fills.
+                float inner = Mathf.Min(size.y, size.z) - 2f * 0.045f;
+                Box(MemoryWall.PortraitChild, frame.transform, ink,
+                    new Vector3(0.03f, inner, inner),
+                    new Vector3(size.x + 0.005f, 0f, 0f));
+                index++;
+            }
+            var backing = instance.transform.Find("bb_set_memorywall_backing");
+            if (backing != null) backing.name = "Backing";
+            instance.name = "Authored wall";
+
+            root.gameObject.AddComponent<MemoryWall>();
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+            Debug.Log(string.Format("[Gamesim] memory wall · authored, {0} frames at x={1:0.00}, z={2:0.00} on {3}",
+                index, faceX, centreZ, MountWall));
+            return index;
+        }
 
         /// <summary>
         /// A collider-free box. The wall is decoration on a surface the player walks past; giving it

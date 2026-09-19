@@ -88,11 +88,16 @@ namespace Gamesim.Tests.EditMode
             var oldV3 = version < 3 ? EpisodeSaveMigrations.PrepareV3Payload(source, out _) : source;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(source, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(6));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(12));
             Assert.That((int)migrated["playerStudyBonus"], Is.Zero);
             Assert.That((uint)migrated["randomState"], Is.Zero);
+            // Compared without schema 7's card copy, which the last step adds to every contestant.
+            // The claim is that nothing historical changed, not that nothing was added — what the
+            // step adds is pinned separately in PersistenceV7MigrationTests.
+            var historical = PersistenceMigrationTests.StripCardCopy(
+                PersistenceMigrationTests.StripSchema8(PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12((JObject)migrated.DeepClone()))))));
             foreach (var field in oldV3.Properties()) if (field.Name != "schemaVersion")
-                Assert.That(JToken.DeepEquals(field.Value, migrated[field.Name]), Is.True, field.Name);
+                Assert.That(JToken.DeepEquals(field.Value, historical[field.Name]), Is.True, field.Name);
             Assert.That(source.ToString(Formatting.None), Is.EqualTo(before));
             var second = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
             Assert.That(changed, Is.False);
@@ -108,15 +113,15 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, source);
             byte[] before = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 6 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(6));
+            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 12 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(12));
             Assert.That(loaded.playerStudyBonus, Is.Zero);
             Assert.That(loaded.playerPersona.scores.Count, Is.EqualTo(5));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
             Assert.That(Directory.GetFiles(files.DirectoryPath).Length, Is.EqualTo(1));
             files.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(6));
+            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(12));
             Assert.That(files.Store.TryRecoverBackup(out loaded, out message), Is.True, message);
             Assert.That(loaded.playerStudyBonus, Is.Zero);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
@@ -165,7 +170,7 @@ namespace Gamesim.Tests.EditMode
             var payload = V3Fixture();
             if (damage == "smuggled-study") payload["playerStudyBonus"] = 5;
             else if (damage == "truncated-v4") payload["schemaVersion"] = 4;
-            else if (damage == "future-schema") payload["schemaVersion"] = 7;
+            else if (damage == "future-schema") payload["schemaVersion"] = 13;  // Twelve is current.
             else if (damage != "checksum")
             {
                 payload = EpisodeSaveMigrations.UpgradeV3ToV4(payload);
@@ -181,6 +186,23 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
         }
 
+        /// <summary>Whether this live field post-dates the frozen shape, and where it sits.</summary>
+        private static bool AddedSinceV3(string path, string field)
+        {
+            switch (path)
+            {
+                case "state": return new[] { "playerStudyBonus", "blocRulesStartWeek", "npcSocial",
+                    "evictionStage", "evictionSpeeches", "backdoorTargetId",
+                    "outOfPhaseSocialActions", "openingBeatsSeen",
+                    "socialBudgetRulesStartWeek",
+                    "deals", "dealRulesStartWeek",
+                    "boughtActionPoints", "houseEvents", "eventRulesStartWeek",
+                    "storylines", "activeModifiers", "storyRulesStartWeek" }.Contains(field);
+                case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio" }.Contains(field);
+                default: return false;
+            }
+        }
+
         private static void CompareFields(Type live, Type frozen, string path, HashSet<string> visited)
         {
             if (live.IsEnum) { Assert.That(frozen, Is.EqualTo(typeof(int)), path); return; }
@@ -191,7 +213,11 @@ namespace Gamesim.Tests.EditMode
             }
             if (live.IsPrimitive || live == typeof(string)) { Assert.That(frozen, Is.EqualTo(live), path); return; }
             if (!visited.Add(live.FullName + ":" + frozen.FullName)) return;
-            var a = live.GetFields(BindingFlags.Public | BindingFlags.Instance).Where(field => path != "state" || (field.Name != "playerStudyBonus" && field.Name != "blocRulesStartWeek" && field.Name != "npcSocial")).ToArray();
+            // Fields added after this frozen version, keyed by where they live. The list used to
+            // be a root-level check, which quietly stopped covering anything the moment a field was
+            // added to a nested row instead — schema 7 added three to the contestant.
+            var a = live.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                .Where(field => !AddedSinceV3(path, field.Name)).ToArray();
             var b = frozen.GetFields(BindingFlags.Public | BindingFlags.Instance);
             Assert.That(a.Select(field => field.Name), Is.EquivalentTo(b.Select(field => field.Name)), path);
             foreach (var field in a) CompareFields(field.FieldType, b.Single(other => other.Name == field.Name).FieldType, path + "." + field.Name, visited);

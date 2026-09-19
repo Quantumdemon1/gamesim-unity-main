@@ -189,7 +189,16 @@ namespace Gamesim.Tests.PlayMode
         {
             // Install only an unmodified canonical initial seed. Every subsequent
             // gameplay state below is produced by a visible gameplay control.
+            //
+            // The one exception is the social-budget boundary. This walk was recorded when a week
+            // allowed a flat eighteen actions and it spends four; the allowance is half the active
+            // house now. Declaring the recording's own allowance is the same thing the EditMode
+            // bloc witness does, and it is the only option that keeps the walk intact: every
+            // conversation consumes the season's generator, so dropping one to fit the new budget
+            // would re-roll the competitions and invalidate the caption sequence below.
             var initial = ContentCatalog.Create(4);
+            initial.socialBudgetRulesStartWeek = 2;
+            Assert.That(EpisodeValidation.TryValidate(initial, out var reason), Is.True, reason);
             new EpisodeSaveStore(director.SavePath).Save(initial);
             yield return ReloadEpisode();
             AssertEquivalent(initial, director.Snapshot);
@@ -212,7 +221,8 @@ namespace Gamesim.Tests.PlayMode
                 "Continue to the next ceremony",
                 "Save You (HoH chooses replacement)",
                 "Continue episode",
-                "Close campaigning and open voting"
+                "Close campaigning and open voting",
+                "Continue episode" // Eviction night opens on the speeches; the house votes after them.
             };
             foreach (string caption in captions)
             {
@@ -226,7 +236,14 @@ namespace Gamesim.Tests.PlayMode
         {
             // Same source-confirmed seed-4 history as the actual-UI test; no mutable
             // role, relationship, nominee, alliance, memory or RNG fixture assignment.
-            var engine = new EpisodeEngine(ContentCatalog.Create(4));
+            //
+            // The social-budget boundary is declared for the same reason it is there: this history
+            // spends four actions in week one, which was the whole allowance when it was recorded.
+            // Trimming one to fit today's budget would consume a different number of generator
+            // rolls and produce a different season, which is not the history this witness is.
+            var initial = ContentCatalog.Create(4);
+            initial.socialBudgetRulesStartWeek = 2;
+            var engine = new EpisodeEngine(initial);
             for (int social = 0; social < 4; social++)
             {
                 var state = engine.Snapshot;
@@ -236,7 +253,8 @@ namespace Gamesim.Tests.PlayMode
                 var result = engine.Apply(command);
                 Assert.That(result.accepted, Is.True, result.reason);
             }
-            for (int guard = 0; engine.Snapshot.phase != EpisodePhase.Eviction && guard < 20; guard++)
+            for (int guard = 0; !(engine.Snapshot.phase == EpisodePhase.Eviction
+                && engine.Snapshot.evictionStage == EvictionStage.Voting) && guard < 30; guard++)
             {
                 var state = engine.Snapshot;
                 var command = NextCommand(state);

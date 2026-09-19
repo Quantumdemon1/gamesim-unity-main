@@ -153,7 +153,8 @@ namespace Gamesim.Persistence
                 EpisodeSaveValidation.Validate(parsed);
                 state = parsed;
                 message = migrated ? "Schema " + (int)payload["schemaVersion"]
-                    + " history was migrated to schema 6 in memory. Disk format changes only on the next save." : null;
+                    + " history was migrated to schema " + parsed.schemaVersion
+                    + " in memory. Disk format changes only on the next save." : null;
                 if (parsed.blocRulesStartWeek > parsed.week)
                     message = (string.IsNullOrEmpty(message) ? "" : message + " ")
                         + "Voting-bloc rules begin in week " + parsed.blocRulesStartWeek + "; the current week is unchanged.";

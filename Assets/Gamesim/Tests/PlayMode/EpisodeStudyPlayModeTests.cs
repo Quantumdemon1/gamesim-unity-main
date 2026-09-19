@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
@@ -28,7 +29,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.HasDiaryDecisionDraft, Is.True);
             Assert.That(ActiveDiaryText(), Does.Contain("Guaranteed +1 preparation, up to the limit of 5."));
             Assert.That(ActiveDiaryText(), Does.Contain("Cost: 1 social action"));
-            Assert.That(ActiveDiaryText(), Does.Contain("18 of 18 remaining this free-time window"));
+            Assert.That(ActiveDiaryText(), Does.Contain(EpisodeEngine.SocialActionBudget(director.Snapshot)
+                + " of " + EpisodeEngine.SocialActionBudget(director.Snapshot) + " remaining this week"));
             AssertEquivalent(before, director.Snapshot);
             ButtonWithCaption(EpisodeHud.StudyCancelCaption).onClick.Invoke();
             yield return null; yield return null;
@@ -138,7 +140,11 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator StudyDiary_ActionBudgetDisablesStudyAndPendingReflectionCannotBeBypassed()
         {
             yield return OpenDiaryFixturePanel();
-            for (int action = 0; action < 18; action++)
+            // The week's allowance is half the active house, not a flat eighteen, so this spends
+            // exactly what the house gives and then checks the controls are gone.
+            int budget = EpisodeEngine.SocialActionBudget(director.Snapshot);
+            Assert.That(budget, Is.GreaterThan(0));
+            for (int action = 0; action < budget; action++)
             {
                 ButtonWithCaption(EpisodeHud.StudyMemorizeCaption).onClick.Invoke();
                 yield return null; yield return null;
@@ -146,8 +152,9 @@ namespace Gamesim.Tests.PlayMode
                 yield return null; yield return null;
             }
             var exhausted = director.Snapshot;
-            Assert.That(exhausted.socialActions, Is.EqualTo(18));
-            Assert.That(exhausted.playerStudyBonus, Is.EqualTo(5));
+            Assert.That(EpisodeEngine.SocialActionsSpent(exhausted), Is.EqualTo(budget));
+            Assert.That(exhausted.playerStudyBonus, Is.EqualTo(Math.Min(5, budget)),
+                "Memorising banks one point per confirmed action, up to the limit of five.");
             Assert.That(DiaryHasButton(EpisodeHud.StudyMemorizeCaption), Is.False);
             Assert.That(DiaryHasButton(EpisodeHud.StudySneakCaption), Is.False);
             director.ReviewStudyHouse("memorize-layout"); director.ConfirmDiaryDecision();
@@ -185,7 +192,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             var before = director.Snapshot;
             var expected = StudyUiExpected(before, EpisodeCommandKind.SimulateCompetition);
-            Assert.That(DiaryHasButton("Enter precision challenge"), Is.True);
+            // Whichever game this competition routes to, not a fixed caption: the control now names
+            // the game, and week one's HoH is a skill competition rather than the timing bar.
+            Assert.That(DiaryHasButton(CompetitionMiniGames.EnterCaption(
+                CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(before.phase, before.week)))), Is.True);
             Assert.That(ActiveDiaryText(), Does.Contain("WEEK " + before.week + " · " + before.Active.Count() + " houseguests remain"));
             var simulate = ButtonWithCaption(EpisodeHud.SimulateCompetitionCaption).onClick;
             simulate.Invoke(); simulate.Invoke();

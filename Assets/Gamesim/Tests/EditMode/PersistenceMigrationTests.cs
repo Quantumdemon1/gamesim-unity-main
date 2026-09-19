@@ -13,6 +13,97 @@ namespace Gamesim.Tests.EditMode
     /// <summary>Frozen data-only migration and atomic storage integration regressions.</summary>
     public sealed class PersistenceMigrationTests
     {
+        /// <summary>
+        /// Removes the card copy — occupation, archetype and age from schema 7, hometown and bio
+        /// from schema 8 — from a capture of the current runtime state, so it can stand in for a
+        /// save written before those fields existed.
+        ///
+        /// <para>Every downgrade helper in these fixtures needs this. The stored shape is checked
+        /// field for field against the type it claims to be, so a "v5 payload" that still carries
+        /// schema 7's contestant fields is not a v5 payload and the frozen validator says so.</para>
+        /// </summary>
+        /// <summary>
+        /// Removes everything schema 8 added — eviction night's stages and speeches, the backdoor
+        /// plan, the out-of-phase action count, the opening beats, and the last two card fields —
+        /// turning a capture of the current runtime state into a schema 7 payload.
+        ///
+        /// <para>Separate from <see cref="StripCardCopy"/> because the two granularities are both
+        /// needed: a v7 fixture keeps occupation, archetype and age, and a v6 one does not.</para>
+        /// </summary>
+        /// <summary>
+        /// Removes schema 12's storylines and their modifiers, turning a capture of the current
+        /// runtime state into a schema 11 payload.
+        /// </summary>
+        public static JObject StripSchema12(JObject payload)
+        {
+            if (payload == null) return null;
+            foreach (var field in new[] { "storylines", "activeModifiers", "storyRulesStartWeek" })
+                payload.Remove(field);
+            return payload;
+        }
+
+        /// <summary>
+        /// Removes schema 11's bought actions and event layer, turning a schema 11 payload into a
+        /// schema 10 one. Compose with <see cref="StripSchema12"/> to go down from a live capture.
+        /// </summary>
+        public static JObject StripSchema11(JObject payload)
+        {
+            if (payload == null) return null;
+            foreach (var field in new[] { "boughtActionPoints", "houseEvents", "eventRulesStartWeek" })
+                payload.Remove(field);
+            return payload;
+        }
+
+        /// <summary>
+        /// Removes schema 10's deals and their rule boundary, turning a schema 10 payload into a
+        /// schema 9 one. Compose with <see cref="StripSchema11"/> to go down from a live capture.
+        /// </summary>
+        public static JObject StripSchema10(JObject payload)
+        {
+            payload?.Remove("deals");
+            payload?.Remove("dealRulesStartWeek");
+            return payload;
+        }
+
+        /// <summary>
+        /// Removes schema 9's social-budget rule boundary, turning a schema 9 payload into a
+        /// schema 8 one. Compose with <see cref="StripSchema10"/> to go down from a live capture.
+        /// </summary>
+        public static JObject StripSchema9(JObject payload)
+        {
+            payload?.Remove("socialBudgetRulesStartWeek");
+            return payload;
+        }
+
+        public static JObject StripSchema8(JObject payload)
+        {
+            if (payload == null) return null;
+            foreach (var field in new[] { "evictionStage", "evictionSpeeches", "backdoorTargetId",
+                         "outOfPhaseSocialActions", "openingBeatsSeen" })
+                payload.Remove(field);
+            foreach (var row in payload.DescendantsAndSelf().OfType<JObject>().ToArray())
+            {
+                if (row.Property("stats") == null) continue;
+                foreach (var field in new[] { "hometown", "bio" }) row.Remove(field);
+            }
+            return payload;
+        }
+
+        public static JObject StripCardCopy(JObject payload)
+        {
+            if (payload == null) return null;
+            // Every contestant-shaped row, not just the "contestants" array. A capture taken with
+            // the default serializer also carries EpisodeState's computed "Active" list, which holds
+            // the same records — stripping one and not the other leaves a mismatch in a comparison
+            // that reads as a real difference.
+            foreach (var row in payload.DescendantsAndSelf().OfType<JObject>().ToArray())
+            {
+                if (row.Property("stats") == null) continue;
+                foreach (var field in new[] { "occupation", "archetype", "age", "hometown", "bio" }) row.Remove(field);
+            }
+            return payload;
+        }
+
         [TestCase(0)]
         [TestCase(8)]
         [TestCase(12)]
@@ -131,13 +222,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(6));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(12));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(6));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(12));
         }
 
         [Test]
@@ -163,7 +254,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(6));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(12));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -226,7 +317,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(6));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(12));
             Assert.That((int)loaded.phase, Is.EqualTo(phase));
             Assert.That(loaded.juryExchanges, Is.Empty);
             Assert.That(loaded.finalSpeeches, Is.Empty);

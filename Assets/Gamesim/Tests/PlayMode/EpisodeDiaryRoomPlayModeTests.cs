@@ -248,6 +248,7 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator DiaryVote_ActualConfirmRecordsOnlyPlayersBallotWithoutRevealingOrAdvancing()
         {
             yield return InstallDiaryFixture(state => state.phase == EpisodePhase.Eviction && !state.evictionResolved
+                && state.evictionStage == EvictionStage.Voting
                 && EpisodeEngine.Voters(state).Any(voter => voter.isPlayer)
                 && !state.votes.Any(vote => vote.voterId == state.playerId), "eligible private eviction ballot");
             var before = director.Snapshot;
@@ -279,7 +280,10 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator DiaryVote_NomineeHasNoBallotControlsAndEngineRejectsVoting()
         {
+            // The voting stage specifically: this is about who may cast a ballot once the house is
+            // voting, not about the speeches that come before it.
             yield return InstallDiaryFixture(state => state.phase == EpisodePhase.Eviction && !state.evictionResolved
+                && state.evictionStage == EvictionStage.Voting
                 && state.nominees.Contains(state.playerId), "nominated player's ineligible ballot");
             var before = director.Snapshot;
             yield return OpenDiaryFixturePanel();
@@ -479,23 +483,42 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(after,director.Snapshot);
         }
 
+        /// <summary>
+        /// Brings the player's bond with Maya to the point where a loyalty declaration is offered,
+        /// and crosses the milestone with a real conversation.
+        ///
+        /// <para>The history is seeded rather than played out. The milestone sits at a bond of 75
+        /// and a conversation is worth about four, so reaching it takes roughly eighteen actions —
+        /// more than a week's budget of half the active house, and it was only ever possible here
+        /// because the allowance used to be a flat eighteen. Seeding a score is a legal state and
+        /// this test is about the declaration button, not about how long trust takes to build.</para>
+        ///
+        /// <para>The last step is still a real action through a real control, so the milestone is
+        /// triggered by the rule rather than written into the fixture.</para>
+        /// </summary>
         private IEnumerator EarnVisibleOathOpportunity()
         {
+            var seeded = ContentCatalog.Create(11);
+            foreach (var edge in seeded.relationships)
+                if ((edge.fromId == seeded.playerId && edge.toId == ContentCatalog.MayaId)
+                    || (edge.fromId == ContentCatalog.MayaId && edge.toId == seeded.playerId))
+                    edge.score = 72;   // Just under the milestone, so one conversation crosses it.
+            Assert.That(EpisodeValidation.TryValidate(seeded, out var reason), Is.True, reason);
+            new EpisodeSaveStore(director.SavePath).Save(seeded);
+            yield return ReloadEpisode();
+
             var npc = SceneComponents<HouseNpc>().Single(actor => actor.Id == ContentCatalog.MayaId);
             yield return OpenNearbyNpc(npc);
             Assert.That(DiaryHasButton(EpisodeHud.OathDeclareCaption), Is.False);
-            for (int index = 0; index < 18 && !director.Snapshot.oathOpportunities.Contains(npc.Id); index++)
-            {
-                var before = director.Snapshot;
-                // Eighteen +4 talks only reach 72. Use the actual legal alliance action
-                // once reciprocal trust permits it; its +8 crosses 75 within this window.
-                string action = !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
-                    ? "Propose an alliance" : "Spend time together";
-                ButtonWithCaption(action).onClick.Invoke();
-                yield return null; yield return null;
-                Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
-            }
-            Assert.That(director.Snapshot.oathOpportunities, Does.Contain(npc.Id), "A legal conversation history must reach the source milestone before a declaration is offered.");
+
+            var before = director.Snapshot;
+            Assert.That(EpisodeEngine.SocialActionBudget(before), Is.GreaterThan(0));
+            ButtonWithCaption("Spend time together").onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
+
+            Assert.That(director.Snapshot.oathOpportunities, Does.Contain(npc.Id),
+                "Crossing the source milestone through a real conversation must offer the declaration.");
         }
 
         private IEnumerator ReviewDiaryNominations(EpisodeState state)

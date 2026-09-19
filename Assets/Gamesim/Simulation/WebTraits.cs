@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Gamesim.Simulation
 {
@@ -66,6 +67,41 @@ namespace Gamesim.Simulation
         public const int MaximumTraits = 2;
 
         public static bool Known(string trait) => trait != null && Boosts.ContainsKey(trait);
+
+        /// <summary>
+        /// A fresh stat block for a houseguest with these traits: the web's lower-middle base roll,
+        /// then each trait's boosts.
+        ///
+        /// <para>The base is the deterministic centre of <c>creation.ts</c>'s ranges rather than a
+        /// roll — primary 6, secondary 5, everything else 4, against its 5–8 / 4–7 / 3–6 — because a
+        /// season has to replay identically and a random base would make the same seed produce a
+        /// different house.</para>
+        ///
+        /// <para>This is the arithmetic <see cref="ContentCatalog"/> has always used for the shipped
+        /// cast, lifted here so <see cref="CastTemplates"/> cannot quietly disagree with it. Five
+        /// houseguests appear in both, and a test pins that they come out the same either way.</para>
+        /// </summary>
+        public static ContestantStats CreateStats(IEnumerable<string> traits)
+        {
+            var known = (traits ?? Enumerable.Empty<string>()).Where(Known).ToList();
+            var primary = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var secondary = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var trait in known)
+            {
+                primary.Add(Boosts[trait].Primary);
+                secondary.Add(Boosts[trait].Secondary);
+            }
+
+            var stats = new ContestantStats();
+            foreach (var key in StatNames)
+                Set(stats, key, primary.Contains(key) ? 6 : secondary.Contains(key) ? 5 : 4);
+            foreach (var trait in known) Apply(stats, trait, true);
+            return stats;
+        }
+
+        /// <summary>The eight stats, in the order the web form lists them.</summary>
+        public static readonly string[] StatNames =
+            { "physical", "mental", "endurance", "social", "luck", "competition", "strategic", "loyalty" };
 
         /// <summary>
         /// Adds or removes a trait's boosts on a stat block, in place.

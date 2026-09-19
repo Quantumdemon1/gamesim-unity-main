@@ -41,6 +41,9 @@ namespace Gamesim.Editor
             written.Add(Write("gavel", Gavel));
             written.Add(Write("evicted", Evicted));
             written.Add(Write("key", Key));
+            written.Add(Write("houseguest", Houseguest));
+            written.Add(Write("eye", Eye));
+            written.Add(Write("house", House));
 
             AssetDatabase.Refresh();
             foreach (var path in written) Configure(path);
@@ -58,7 +61,8 @@ namespace Gamesim.Editor
         [MenuItem("Gamesim/U07/Preview HUD icons")]
         public static void Preview()
         {
-            var names = new[] { "target", "crown", "veto-token", "trophy", "gavel", "evicted", "key" };
+            var names = new[] { "target", "crown", "veto-token", "trophy", "gavel", "evicted", "key",
+                "houseguest", "eye", "house" };
             const int cell = 160, pad = 16;
             int columns = names.Length, width = columns * cell, height = cell;
 
@@ -178,6 +182,77 @@ namespace Gamesim.Editor
             c.Rect(.50f, .45f, .42f, .10f);
             c.Rect(.74f, .30f, .08f, .16f);
             c.Rect(.88f, .30f, .08f, .16f);
+        }
+
+        /// <summary>
+        /// A houseguest: head and shoulders.
+        ///
+        /// <para>Drawn rather than photographed on purpose. A cast card needs a face before any body
+        /// exists to render one, and the honest answer to "who is this" at that point is a
+        /// silhouette — a generated portrait would be inventing a person's appearance, and initials
+        /// alone make a grid of twenty-four cards read as a spreadsheet.</para>
+        /// </summary>
+        private static void Houseguest(Canvas c)
+        {
+            c.Disc(.50f, .70f, .21f);
+            // Shoulders: a wide arc, flattened where it meets the bottom edge so the shape reads at
+            // 56 px instead of tapering into a point.
+            var shoulders = new List<Vector2>();
+            const int steps = 28;
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                float angle = Mathf.PI * t;
+                shoulders.Add(new Vector2(.50f - Mathf.Cos(angle) * .38f, .08f + Mathf.Sin(angle) * .34f));
+            }
+            shoulders.Add(new Vector2(.88f, .06f));
+            shoulders.Add(new Vector2(.12f, .06f));
+            c.Polygon(shoulders.ToArray());
+        }
+
+        /// <summary>
+        /// A watching eye: a stroked lens with an iris and a pupil.
+        ///
+        /// <para>A generic surveillance motif, not a reproduction of any broadcaster's mark. The
+        /// lens is stroked rather than filled because the canvas only adds coverage — a filled lens
+        /// with a filled iris on top is one solid blob, so the outline has to be drawn as a path.
+        /// </para>
+        /// </summary>
+        private static void Eye(Canvas c)
+        {
+            const int steps = 40;
+            const float stroke = .055f;
+            Vector2 Lens(float t, int side)
+            {
+                float x = Mathf.Lerp(.06f, .94f, t);
+                float y = .50f + side * Mathf.Sin(Mathf.PI * t) * .30f;
+                return new Vector2(x, y);
+            }
+            foreach (int side in new[] { 1, -1 })
+                for (int i = 0; i < steps; i++)
+                {
+                    var a = Lens(i / (float)steps, side);
+                    var b = Lens((i + 1) / (float)steps, side);
+                    c.Bar(a.x, a.y, b.x, b.y, stroke);
+                }
+            c.Ring(.50f, .50f, .17f, .05f);
+            c.Disc(.50f, .50f, .08f);
+        }
+
+        /// <summary>The house itself: a roof over a body, with a door.</summary>
+        private static void House(Canvas c)
+        {
+            c.Polygon(new[]
+            {
+                new Vector2(.50f, .92f), new Vector2(.94f, .54f),
+                new Vector2(.80f, .54f), new Vector2(.50f, .78f),
+                new Vector2(.20f, .54f), new Vector2(.06f, .54f),
+            });
+            // The walls are drawn around the doorway rather than over it. Coverage only adds, so a
+            // door painted on top of a filled body is invisible — the gap has to be left.
+            c.Rect(.18f, .10f, .26f, .46f);   // left wall
+            c.Rect(.56f, .10f, .26f, .46f);   // right wall
+            c.Rect(.44f, .36f, .12f, .20f);   // lintel over the doorway
         }
 
         // ------------------------------------------------------------------ raster

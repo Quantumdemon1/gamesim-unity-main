@@ -20,11 +20,279 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 12) return (JObject)original.DeepClone();
+            if (version < 1 || version > 11) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v11 = version == 11 ? original : PrepareV11Payload(original, out _);
+            var result = UpgradeV11ToV12(v11);
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v10-to-v11 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV11Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 11) return (JObject)original.DeepClone();
+            if (version < 1 || version > 10) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v10 = version == 10 ? original : PrepareV10Payload(original, out _);
+            var current = UpgradeV10ToV11(v10);
+            migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Opens storylines and the modifiers they leave behind, from the week after the save's.
+        ///
+        /// <para>Both lists arrive empty, because there is nothing in a v11 save to infer a
+        /// storyline from. The sixth use of the rule-version boundary, and for the sixth time the
+        /// reason is the same: a season restored mid-week should not suddenly be in the middle of a
+        /// story it was never told.</para>
+        /// </summary>
+        public static JObject UpgradeV11ToV12(JObject original)
+        {
+            FrozenEpisodeV11.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("storylines", new JArray());
+            result.Add("activeModifiers", new JArray());
+            result.Add("storyRulesStartWeek", startWeek);
+            result["schemaVersion"] = 12;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v9-to-v10 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV10Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 10) return (JObject)original.DeepClone();
+            if (version < 1 || version > 9) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v9 = version == 9 ? original : PrepareV9Payload(original, out _);
+            var current = UpgradeV9ToV10(v9);
+            migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Opens the social vocabulary's purchases and the event layer, from the week after the one
+        /// the save is in.
+        ///
+        /// <para>Two systems in one version, and both arrive empty because there is nothing in a v10
+        /// save to infer either from. What the boundary buys is the behaviour: a season restored
+        /// mid-week should not suddenly have things happening to the house it was not being played
+        /// under, any more than it should get a new action budget or start striking deals. The fifth
+        /// use of a rule-version boundary, and the same shape as the other four.</para>
+        ///
+        /// <para><c>boughtActionPoints</c> has no boundary of its own. It is a count of something
+        /// nobody has done yet, and zero is not a rule — it is the truth about every save written
+        /// before the control existed.</para>
+        /// </summary>
+        public static JObject UpgradeV10ToV11(JObject original)
+        {
+            FrozenEpisodeV10.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("boughtActionPoints", 0);
+            result.Add("houseEvents", new JArray());
+            result.Add("eventRulesStartWeek", startWeek);
+            result["schemaVersion"] = 11;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v8-to-v9 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV9Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 9) return (JObject)original.DeepClone();
+            if (version < 1 || version > 8) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v8 = version == 8 ? original : PrepareV8Payload(original, out _);
+            var current = UpgradeV8ToV9(v8);
+            migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Opens deals, from the week after the one the save is in.
+        ///
+        /// <para>An empty list rather than a guess, because there is nothing in a v9 save to infer a
+        /// deal from — the field never existed. What the grace week buys is not the list but the
+        /// behaviour: a season restored mid-week should not suddenly have houseguests striking
+        /// bargains it was not being played under, any more than it should get a new action budget.
+        /// The same boundary <c>socialBudgetRulesStartWeek</c> and <c>npcSocial.rulesStartWeek</c>
+        /// already use.</para>
+        ///
+        /// <para>A fresh season is built at week one, so new play has deals from the first week.</para>
+        /// </summary>
+        public static JObject UpgradeV9ToV10(JObject original)
+        {
+            FrozenEpisodeV9.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("deals", new JArray());
+            result.Add("dealRulesStartWeek", startWeek);
+            result["schemaVersion"] = 10;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v7-to-v8 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV8Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 8) return (JObject)original.DeepClone();
+            if (version < 1 || version > 7) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v7 = version == 7 ? original : PrepareV7Payload(original, out _);
+            var current = UpgradeV7ToV8(v7);
+            migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Moves the social-action allowance onto the rule the reference build uses, from the week
+        /// after the one the save is in.
+        ///
+        /// <para>The allowance was a flat eighteen and is now half the active house. Applying that
+        /// to the week a save is already in would retroactively overspend it — someone who legally
+        /// took six actions on Tuesday would load on Wednesday to find the limit was three. So the
+        /// saved week keeps what it was played under and the new rule starts with the next one,
+        /// which is the same boundary <c>blocRulesStartWeek</c> and the NPC subsystem already use.
+        /// </para>
+        ///
+        /// <para>A fresh season is created at week one and is therefore under the ported rule from
+        /// its first conversation; only migrated history gets the grace week.</para>
+        /// </summary>
+        public static JObject UpgradeV8ToV9(JObject original)
+        {
+            FrozenEpisodeV8.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("socialBudgetRulesStartWeek", startWeek);
+            result["schemaVersion"] = 9;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v6-to-v7 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV7Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 7) return (JObject)original.DeepClone();
+            if (version < 1 || version > 6) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v6 = version == 6 ? original : PrepareV6Payload(original, out _);
+            var current = UpgradeV6ToV7(v6);
+            migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Adds eviction night's stages, the nominee speeches that go with them, the backdoor plan,
+        /// the out-of-phase action count, the opening beats already played, and the last two fields
+        /// of a houseguest's card.
+        ///
+        /// <para><b>Every new field defaults to empty except the eviction stage, which is derived —
+        /// and that distinction matters.</b> "Do not guess" means do not invent information the save
+        /// never held: a season saved before the creator existed has no record of anybody's
+        /// hometown, so it gets none. But eviction night's stage is not new information. A v7 save
+        /// already records whether the eviction resolved and which ballots were cast, and the stage
+        /// is a reading of those facts. Defaulting it to Interaction would take a save with a
+        /// completed vote and put it back before the speeches, which is not a conservative default —
+        /// it is a rewind. The same reasoning is why UpgradeV5ToV6 derives an activation week from
+        /// the stored week rather than defaulting it to one.</para>
+        /// </summary>
+        public static JObject UpgradeV7ToV8(JObject original)
+        {
+            FrozenEpisodeV7.Validate(original);
+            var result = (JObject)original.DeepClone();
+
+            result.Add("evictionStage", (int)StageOf(original));
+            result.Add("evictionSpeeches", new JArray());
+            result.Add("backdoorTargetId", JValue.CreateNull());
+            result.Add("outOfPhaseSocialActions", 0);
+            result.Add("openingBeatsSeen", new JArray());
+
+            if (result["contestants"] is not JArray contestants)
+                throw new InvalidDataException("contestants must be an array.");
+            foreach (var value in contestants)
+            {
+                if (value is not JObject actor) throw new InvalidDataException("contestants contains a null record.");
+                actor.Add("hometown", JValue.CreateNull());
+                actor.Add("bio", JValue.CreateNull());
+            }
+            result["schemaVersion"] = 8;
+            return result;
+        }
+
+        /// <summary>
+        /// Where a stored season's eviction night had got to, read from what it already records.
+        ///
+        /// <para>Only a season sitting in the eviction phase has a stage at all; every other phase
+        /// gets the opening one, which is what a fresh night starts on.</para>
+        /// </summary>
+        private static EvictionStage StageOf(JObject payload)
+        {
+            if (payload["phase"]?.Type != JTokenType.Integer
+                || (long)payload["phase"] != (long)EpisodePhase.Eviction)
+                return EvictionStage.Interaction;
+            if (payload["evictionResolved"]?.Type == JTokenType.Boolean && (bool)payload["evictionResolved"])
+                return EvictionStage.Results;
+            return payload["votes"] is JArray votes && votes.Count > 0
+                ? EvictionStage.Voting
+                : EvictionStage.Interaction;
+        }
+
+        /// <summary>Frozen v1-v5-to-v6 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV6Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 6) return (JObject)original.DeepClone();
             if (version < 1 || version > 5) throw new InvalidDataException("Unsupported simulation schema version.");
             var v5 = version == 5 ? original : PrepareV5Payload(original, out _);
-            var result = UpgradeV5ToV6(v5);
+            var current = UpgradeV5ToV6(v5);
             migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Adds the card copy a houseguest's tile shows: an archetype, an age and a job.
+        ///
+        /// <para>Three new optional fields would not need a schema version in a format that ignored
+        /// unknown properties. This one does not — <see cref="SaveJson.CheckDtoShape"/> requires a
+        /// stored object to carry exactly the fields its type declares, which is what catches a
+        /// truncated or hand-edited save, and that strictness is worth more than the version.</para>
+        ///
+        /// <para>The values are left empty rather than guessed. A season saved before this existed
+        /// has no record of who anybody was outside the house, and every surface that shows the card
+        /// line omits it when it is blank rather than printing a gap.</para>
+        /// </summary>
+        public static JObject UpgradeV6ToV7(JObject original)
+        {
+            FrozenEpisodeV6.Validate(original);
+            var result = (JObject)original.DeepClone();
+            if (result["contestants"] is not JArray contestants)
+                throw new InvalidDataException("contestants must be an array.");
+            foreach (var value in contestants)
+            {
+                if (value is not JObject actor) throw new InvalidDataException("contestants contains a null record.");
+                actor.Add("occupation", JValue.CreateNull());
+                actor.Add("archetype", JValue.CreateNull());
+                actor.Add("age", 0);
+            }
+            result["schemaVersion"] = 7;
             return result;
         }
 

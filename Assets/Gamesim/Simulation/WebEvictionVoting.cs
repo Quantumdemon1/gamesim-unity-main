@@ -135,6 +135,14 @@ namespace Gamesim.Simulation
                     {
                         fromId = p.fromId, toId = p.toId, type = PromiseType(p.kind),
                         status = p.status.ToString().ToLowerInvariant()
+                    }).ToList(),
+                    // The line that was missing. DealObligation and PairDealValue below have read
+                    // this list since they were written and it was never filled, so every deal
+                    // weight in this evaluator has been multiplying zero.
+                    deals = state.deals.Select(d => new WebVoteDeal
+                    {
+                        id = d.id, proposerId = d.proposerId, recipientId = d.recipientId,
+                        type = d.type, status = d.status, targetHouseguestId = d.targetId
                     }).ToList()
                 },
                 memories = state.memories.Where(m => m.ownerId == voterId).Reverse().Take(10).Select(m => m.text).ToList(),

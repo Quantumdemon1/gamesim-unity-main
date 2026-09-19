@@ -4,13 +4,16 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 namespace Gamesim.Editor
 {
     /// <summary>
     /// Brings the prototype set's dressing onto the episode scene: the emissive neon trim, the
-    /// planting, and the Kenney furniture.
+    /// planting, and the Kenney furniture — and, in a second pass, the decor, the post-processing
+    /// volume and the camera flag that lets the volume be seen.
     ///
     /// <para>The two houses are the same house. They have the same footprint to the centimetre —
     /// 28.30 x 30.22 — the same five rooms and the same room names, because the episode scene was
@@ -80,6 +83,133 @@ namespace Gamesim.Editor
                 .Select(s => SceneManager.GetSceneByPath(s.path)).First(s => s.path == EpisodeScene));
             AssetDatabase.SaveAssets();
             Debug.Log("[Gamesim] dressing · episode scene saved.");
+        }
+
+        private const string DecorRoot = "Decor";
+        private const string VolumeRoot = "Global Volume";
+        private const string VolumeProfilePath = "Assets/Gamesim/Art/PostProcessing/HouseVolumeProfile.asset";
+
+        /// <summary>
+        /// The half of the prototype the first pass could not carry: the <c>Decor</c> subtree (lamps
+        /// with their cords, plants, picture frames, the dining area, the accents — 46 objects with
+        /// no colliders), the post-processing volume, and post-processing on the camera.
+        ///
+        /// <para>The first pass copied only subtrees whose every renderer used a dressing material,
+        /// so a lamp shade came across without its cord and a frame not at all. This copies the
+        /// subtree whole and then retires the earlier partial copies it now duplicates, matched by
+        /// name and world position.</para>
+        ///
+        /// <para>The volume is the single largest visual difference between the two scenes: the
+        /// prototype has bloom, tonemapping, colour adjustments and a vignette from
+        /// <c>HouseVolumeProfile</c>, and the shipping scene had none of them — and its camera had
+        /// never been told to render post-processing, so a volume alone would have changed nothing.</para>
+        /// </summary>
+        [MenuItem("Gamesim/U07/Carry the volume and decor to the episode house")]
+        public static void CarryVolumeAndDecor()
+        {
+            var episode = EditorSceneManager.OpenScene(EpisodeScene, OpenSceneMode.Single);
+            var prototype = EditorSceneManager.OpenScene(PrototypeScene, OpenSceneMode.Additive);
+
+            try
+            {
+                var episodeWorld = FindWorld(episode);
+                var prototypeWorld = FindWorld(prototype);
+
+                int copied = TransplantDecor(prototypeWorld, episodeWorld, out int retired);
+                bool volumeAdded = EnsureVolume(episode);
+                bool postEnabled = EnablePostProcessing(episode);
+
+                Debug.Log(string.Format(
+                    "[Gamesim] dressing · decor: {0} renderers copied, {1} earlier partial copies retired"
+                    + " · volume {2} · camera post-processing {3}",
+                    copied, retired, volumeAdded ? "added" : "already present",
+                    postEnabled ? "enabled" : "already on"));
+
+                EditorSceneManager.MarkSceneDirty(episode);
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(prototype, true);
+            }
+
+            EditorSceneManager.SaveScene(SceneManager.GetSceneByPath(EpisodeScene));
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Gamesim] dressing · episode scene saved.");
+        }
+
+        private static int TransplantDecor(Transform source, Transform destination, out int retired)
+        {
+            retired = 0;
+            var decor = source.Find(DecorRoot);
+            if (decor == null)
+            {
+                Debug.LogWarning("[Gamesim] dressing · the prototype has no '" + DecorRoot + "' to carry.");
+                return 0;
+            }
+
+            var root = destination.Find(DressingRoot);
+            if (root == null)
+            {
+                root = new GameObject(DressingRoot).transform;
+                root.SetParent(destination, false);
+            }
+
+            var previous = root.Find(DecorRoot);
+            if (previous != null) UnityEngine.Object.DestroyImmediate(previous.gameObject);
+
+            var copy = UnityEngine.Object.Instantiate(decor.gameObject, root);
+            copy.name = DecorRoot;
+            copy.transform.position = decor.position;
+            copy.transform.rotation = decor.rotation;
+            copy.transform.localScale = decor.lossyScale;
+            foreach (var collider in copy.GetComponentsInChildren<Collider>(true))
+                UnityEngine.Object.DestroyImmediate(collider);
+
+            // The first pass copied lamp shades and plants on their own; the subtree carries them now.
+            var placed = copy.GetComponentsInChildren<Transform>(true);
+            foreach (var earlier in root.Cast<Transform>().Where(t => t != copy.transform).ToList())
+            {
+                bool duplicate = placed.Any(p => p.name == earlier.name
+                    && (p.position - earlier.position).sqrMagnitude < 0.0001f);
+                if (!duplicate) continue;
+                UnityEngine.Object.DestroyImmediate(earlier.gameObject);
+                retired++;
+            }
+
+            return copy.GetComponentsInChildren<Renderer>(true).Length;
+        }
+
+        private static bool EnsureVolume(Scene scene)
+        {
+            foreach (var root in scene.GetRootGameObjects())
+                if (root.name == VolumeRoot && root.GetComponent<Volume>() != null) return false;
+
+            var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumeProfilePath);
+            if (profile == null)
+                throw new InvalidOperationException("Expected the volume profile at " + VolumeProfilePath + ".");
+
+            var holder = new GameObject(VolumeRoot);
+            SceneManager.MoveGameObjectToScene(holder, scene);
+            var volume = holder.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.priority = 0f;
+            volume.weight = 1f;
+            volume.sharedProfile = profile;
+            return true;
+        }
+
+        private static bool EnablePostProcessing(Scene scene)
+        {
+            var cameras = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<Camera>(true))
+                .ToList();
+            var camera = cameras.FirstOrDefault(c => c.CompareTag("MainCamera")) ?? cameras.FirstOrDefault();
+            if (camera == null) throw new InvalidOperationException("Expected a camera in " + scene.path + ".");
+
+            var data = camera.GetUniversalAdditionalCameraData();
+            if (data.renderPostProcessing) return false;
+            data.renderPostProcessing = true;
+            return true;
         }
 
         /// <summary>

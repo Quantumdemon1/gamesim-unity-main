@@ -1,0 +1,87 @@
+name: CI
+
+# What this can and cannot do, stated up front.
+#
+# Running the test suites needs the Unity editor, and that needs a licence — UNITY_EMAIL,
+# UNITY_PASSWORD and UNITY_LICENSE as repository secrets, plus game-ci/unity-test-runner. Nobody
+# has added those, so this workflow does not pretend to run them. See the note at the bottom.
+#
+# What it does instead is enforce the three rules this repository has been keeping in a person's
+# head. Every one of them has actually been broken or nearly broken during development, every one is
+# invisible until something downstream fails strangely, and none of them needs Unity to check.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'port/**'
+
+permissions:
+  contents: read
+
+jobs:
+  invariants:
+    name: Project invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # A define that must never be committed. With UMA absent — which is every fresh clone — a
+      # committed GAMESIM_UMA makes the project fail to compile, and it fails in a way the project
+      # cannot repair itself out of. It is modified in the working tree on purpose and has to stay
+      # unstaged, which is a thing a human has to remember on every single commit until now.
+      - name: GAMESIM_UMA is not committed
+        run: |
+          if grep -n 'GAMESIM_UMA' ProjectSettings/ProjectSettings.asset; then
+            echo "::error file=ProjectSettings/ProjectSettings.asset::GAMESIM_UMA is committed. It must stay unstaged - a UMA-less clone cannot compile with it and cannot repair itself."
+            exit 1
+          fi
+          echo "clean"
+
+      # Unity identifies every asset by the GUID in its .meta file. A source file committed without
+      # one gets a fresh GUID on each machine that imports it, so the same file is a different asset
+      # to different people and references to it break silently.
+      - name: Every asset has a meta file
+        run: |
+          missing=0
+          while IFS= read -r f; do
+            case "$f" in */.*) continue;; esac
+            if [ ! -f "$f.meta" ]; then echo "::error file=$f::no .meta file"; missing=$((missing+1)); fi
+          done < <(find Assets -type f ! -name '*.meta')
+          while IFS= read -r m; do
+            [ -e "${m%.meta}" ] && continue
+            # A FOLDER meta with no folder is normal and must not fail this check. Git cannot track
+            # an empty directory, so a folder that holds nothing committed simply is not in a fresh
+            # checkout — while its .meta is, and has to be: deleting it would make Unity mint a new
+            # GUID for that folder on every machine, which is the exact failure this job exists to
+            # prevent. Assets/Gamesim/Audio is one of these on purpose; the opening sequence's music
+            # lands there and the folder identity should already be settled when it does.
+            if grep -q '^folderAsset: yes' "$m" 2>/dev/null; then continue; fi
+            echo "::error file=$m::orphaned .meta, its asset is gone"; missing=$((missing+1))
+          done < <(find Assets -type f -name '*.meta')
+          [ "$missing" -eq 0 ] || { echo "$missing problem(s)"; exit 1; }
+          echo "every asset accounted for"
+
+      # Two assets sharing a GUID is unrecoverable by hand at any scale: Unity resolves references to
+      # whichever it imported last, so the damage lands somewhere other than the duplicate.
+      - name: No duplicate asset GUIDs
+        run: |
+          dupes=$(grep -rh '^guid: ' Assets --include='*.meta' | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "::error::duplicate GUIDs found:"; echo "$dupes"; exit 1
+          fi
+          echo "all GUIDs unique"
+
+  # The suites this repository actually cares about are EditMode (931) and PlayMode (148), and they
+  # need a licensed editor. To turn them on:
+  #
+  #   1. Add UNITY_EMAIL, UNITY_PASSWORD and UNITY_LICENSE as repository secrets.
+  #   2. Add a job using game-ci/unity-test-runner@v4 with testMode editmode, then playmode,
+  #      unityVersion 6000.6.0f1.
+  #   3. Give it 45+ minutes: a cold Library import dominates the run.
+  #
+  # Until then the local path is scratchpad/sync-and-run.sh, which mirrors to the D: acceptance copy
+  # and runs both suites. Anyone reviewing a change to Assets/Gamesim should ask for its output.

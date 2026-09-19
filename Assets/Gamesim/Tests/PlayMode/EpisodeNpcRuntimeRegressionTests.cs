@@ -237,7 +237,9 @@ namespace Gamesim.Tests.PlayMode
             NpcWrite("npcFrameFraction", 1.01d);
             NpcWrite("npcWorldFraction", .04d);
 
-            director.NewSeason();
+            // StartSeason rather than NewSeason: the control now opens the cast screen, and what
+            // is under test here is the staging transaction behind it.
+            director.StartSeason(null);
 
             Assert.That(director.SavePath, Is.Not.EqualTo(store.SavePath));
             Assert.That(Path.GetFullPath(director.SavePath), Does.StartWith(Path.GetFullPath(temporaryDirectory)));

@@ -15,6 +15,9 @@
 *.inputactions text eol=lf
 *.shader text eol=lf
 *.shadergraph text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.py text eol=lf
 
 *.png binary
 *.jpg binary

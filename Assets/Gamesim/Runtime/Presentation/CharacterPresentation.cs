@@ -18,6 +18,18 @@ namespace Gamesim.Presentation
         private static readonly int LegacyColorId = Shader.PropertyToID("_Color");
         private static readonly int SpeedParam = Animator.StringToHash("Speed");
         private static readonly int SeatedParam = Animator.StringToHash("Seated");
+        private static readonly int TalkingParam = Animator.StringToHash("Talking");
+        private static readonly int ListeningParam = Animator.StringToHash("Listening");
+        /// <summary>The ceremony beats a body can act out: one-shot clips the controller may declare as triggers.</summary>
+        public enum Reaction { Nominated, Saved, Evicted, Won }
+        private static readonly int[] ReactionParams =
+        {
+            Animator.StringToHash("ReactNominated"), Animator.StringToHash("ReactSaved"),
+            Animator.StringToHash("ReactEvicted"), Animator.StringToHash("ReactWon"),
+        };
+        private int reactionParams;
+        /// <summary>The last beat this body was asked to act out, whether or not it had a clip for it.</summary>
+        public Reaction? LastReaction { get; private set; }
 
         [SerializeField] private ContestantState definition;
         [SerializeField] private Color wardrobeColor = new Color(0.26f, 0.76f, 0.65f);
@@ -28,7 +40,8 @@ namespace Gamesim.Presentation
         private Transform visual, chest, head, leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee;
         private Vector3 previousPosition;
         private float walkPhase, movementBlend, phaseOffset, heightScale = 1f;
-        private bool reducedMotion, talking, seated, built;
+        private bool reducedMotion, talking, speaking = true, seated, built;
+        private float facingYaw = float.NaN;
 
         // Model-backed presentation. When animator is null the primitive rig above is in use.
         private Animator animator;
@@ -37,7 +50,7 @@ namespace Gamesim.Presentation
         private CharacterBody providedBody;
         private Transform standIn;
         private RuntimeAnimatorController inspectedController;
-        private bool hasSpeedParam, hasSeatedParam;
+        private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam;
         public string CharacterId { get; private set; }
 
         /// <summary>
@@ -65,7 +78,36 @@ namespace Gamesim.Presentation
                 component.ApplyWardrobe(palette);
             }
             component.enabled = true;
+            // The face wears the simulation's own words, every time the director attaches.
+            component.SetMood(character.mood, character.stressLevel);
             return component;
+        }
+
+        private FaceExpression face;
+        private string mood = "Neutral", stress = "Normal";
+
+        /// <summary>
+        /// The houseguest's mood and stress level, for the eyes (MASTER-PLAN §3.B faces). Held
+        /// until a body with a face exists, then pushed; a deferred body picks it up when it lands.
+        /// </summary>
+        public void SetMood(string moodWord, string stressWord)
+        {
+            mood = moodWord ?? "Neutral";
+            stress = stressWord ?? "Normal";
+            PushMood();
+        }
+
+        /// <summary>The face on this body, or null while there is none.</summary>
+        public FaceExpression Face => face;
+
+        private void PushMood()
+        {
+            if (face == null && providedBody.Exists && standIn == null
+                && providedBody.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) != null)
+                face = FaceExpression.Attach(providedBody.Root);
+            if (face == null) return;
+            face.ReducedMotion = reducedMotion;
+            face.SetMood(mood, stress);
         }
 
         private void Awake()
@@ -73,9 +115,37 @@ namespace Gamesim.Presentation
             if (!built && definition != null) Build(definition, wardrobeColor);
         }
 
-        public void SetReducedMotion(bool value) => reducedMotion = value;
+        public void SetReducedMotion(bool value) { reducedMotion = value; if (face != null) face.ReducedMotion = value; }
         public void SetTalking(bool value) => talking = value;
+        /// <summary>
+        /// Within a conversation, whether this body has the floor. The director alternates it
+        /// between the two; the one without it listens. Defaults to true so a body told only that
+        /// it is talking (the player's conversation) talks.
+        /// </summary>
+        public void SetSpeaking(bool value) => speaking = value;
+        public bool IsSpeaking => talking && speaking;
         public void SetSeated(bool value) => seated = value;
+        /// <summary>
+        /// The heading (yaw, degrees) to settle on once stopped, or NaN to leave the heading to
+        /// whoever moves the body. A conversation sets it: into the chair, or toward the other speaker.
+        /// </summary>
+        public void SetFacing(float yaw) => facingYaw = yaw;
+        public bool IsTalking => talking;
+
+        /// <summary>
+        /// Acts out a ceremony beat. Recorded always; played only when the controller declares the
+        /// trigger, the body is standing, and motion is not reduced - a reaction is the largest
+        /// motion a body makes, and the seated clips have no reaction to cut to.
+        /// </summary>
+        public void React(Reaction kind)
+        {
+            LastReaction = kind;
+            if (animator == null || reducedMotion || seated) return;
+            RefreshAnimatorParameters();
+            if ((reactionParams & (1 << (int)kind)) != 0) animator.SetTrigger(ReactionParams[(int)kind]);
+        }
+        public bool IsSeated => seated;
+        public float FacingYaw => facingYaw;
 
         private void Build(ContestantState character, Color palette)
         {
@@ -196,6 +266,7 @@ namespace Gamesim.Presentation
 
             if (Application.isPlaying) Destroy(standIn.gameObject); else DestroyImmediate(standIn.gameObject);
             standIn = null;
+            PushMood();
             // The HUD photographs these bodies for its portraits, and until this moment there was
             // nothing to photograph — so anything already drawn is holding a fallback face. A
             // counter rather than an event: the director polls it, which cannot leave a subscription
@@ -214,7 +285,7 @@ namespace Gamesim.Presentation
             if (controller == null)
             {
                 inspectedController = null;
-                hasSpeedParam = hasSeatedParam = false;
+                hasSpeedParam = hasSeatedParam = hasTalkingParam = false;
                 return;
             }
 
@@ -224,13 +295,21 @@ namespace Gamesim.Presentation
             if (animator.parameterCount == 0) return;
 
             inspectedController = controller;
-            hasSpeedParam = hasSeatedParam = false;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = false;
+            reactionParams = 0;
             foreach (var parameter in animator.parameters)
             {
                 if (parameter.nameHash == SpeedParam && parameter.type == AnimatorControllerParameterType.Float)
                     hasSpeedParam = true;
                 else if (parameter.nameHash == SeatedParam && parameter.type == AnimatorControllerParameterType.Bool)
                     hasSeatedParam = true;
+                else if (parameter.nameHash == TalkingParam && parameter.type == AnimatorControllerParameterType.Bool)
+                    hasTalkingParam = true;
+                else if (parameter.nameHash == ListeningParam && parameter.type == AnimatorControllerParameterType.Bool)
+                    hasListeningParam = true;
+                else if (parameter.type == AnimatorControllerParameterType.Trigger)
+                    for (int i = 0; i < ReactionParams.Length; i++)
+                        if (parameter.nameHash == ReactionParams[i]) reactionParams |= 1 << i;
             }
         }
 
@@ -400,6 +479,7 @@ namespace Gamesim.Presentation
             // Teleports reposition the actor without producing a false running animation.
             float target = speed > 8f || seated ? 0f : Mathf.Clamp01(speed / 2.5f);
             movementBlend = Mathf.Lerp(movementBlend, target, 1f - Mathf.Exp(-12f * Time.deltaTime));
+            if (!float.IsNaN(facingYaw) && movementBlend < 0.02f) SettleFacing();
 
             if (providedBody.Exists) { AnimateProvidedBody(); return; }
             if (animator != null) { AnimateModel(); return; }
@@ -434,6 +514,10 @@ namespace Gamesim.Presentation
             RefreshAnimatorParameters();
             if (hasSpeedParam) animator.SetFloat(SpeedParam, movementBlend);
             if (hasSeatedParam) animator.SetBool(SeatedParam, seated);
+            // Reduced motion keeps the authored talk loops off: the head-nod cue below is already
+            // gated on it, and a gesturing body is the same kind of motion at a larger size.
+            if (hasTalkingParam) animator.SetBool(TalkingParam, talking && speaking && !reducedMotion);
+            if (hasListeningParam) animator.SetBool(ListeningParam, talking && !speaking && !reducedMotion);
 
             // A provided body streams its rig in over a few frames. Retry on a slow cadence so the
             // hierarchy walk behind ResolveModelHead cannot become a per-frame cost on a body that
@@ -449,6 +533,18 @@ namespace Gamesim.Presentation
                 float time = Time.time + phaseOffset;
                 modelHead.localRotation = modelHeadRest * Quaternion.Euler(Mathf.Sin(time * 3f) * 4f, Mathf.Sin(time * 1.7f) * 3f, 0f);
             }
+        }
+
+        /// <summary>
+        /// Turns a stopped body to its conversation heading. Only the root turns, and only while
+        /// nothing is moving it: a navigating agent owns the heading until it arrives, and the
+        /// movement blend is what says it has.
+        /// </summary>
+        private void SettleFacing()
+        {
+            var wanted = Quaternion.Euler(0f, facingYaw, 0f);
+            transform.rotation = reducedMotion ? wanted
+                : Quaternion.Slerp(transform.rotation, wanted, 1f - Mathf.Exp(-6f * Time.deltaTime));
         }
 
         private void AnimatePrimitives()
@@ -559,6 +655,7 @@ namespace Gamesim.Presentation
 
         private void ReleasePresentation()
         {
+            face = null;
             foreach (var old in replacedRenderers) if (old != null) old.enabled = true;
             replacedRenderers.Clear();
             if (visual != null)
@@ -582,9 +679,9 @@ namespace Gamesim.Presentation
             providedBody = default;
             standIn = null; // destroyed with the visual root above
             inspectedController = null;
-            hasSpeedParam = hasSeatedParam = false;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = false;
             built = false;
-            talking = seated = false;
+            talking = seated = false; facingYaw = float.NaN;
             movementBlend = walkPhase = 0f;
             CharacterId = null;
         }

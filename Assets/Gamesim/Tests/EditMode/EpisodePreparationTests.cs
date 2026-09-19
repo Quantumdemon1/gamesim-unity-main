@@ -105,7 +105,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(files.Store.TryLoad(out loaded, out message), Is.True, message);
             Assert.That(loaded.playerStudyBonus, Is.EqualTo(1));
             Assert.That(loaded.randomState, Is.EqualTo(engine.Snapshot.randomState));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(6));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(12));
         }
 
         [TestCase(EpisodePhase.HoH)]
@@ -161,7 +161,7 @@ namespace Gamesim.Tests.EditMode
             var seeded = ContentCatalog.Create(1706); seeded.playerStudyBonus = 5; seeded.phaseEventCompBonus = 11;
             var b = new EpisodeEngine(seeded);
             var seen = new System.Collections.Generic.HashSet<EpisodePhase>();
-            for (int guard = 0; guard < 160; guard++)
+            for (int guard = 0; guard < 280; guard++)
             {
                 var state = a.Snapshot;
                 if (state.phase != EpisodePhase.HoH && state.phase != EpisodePhase.Veto)

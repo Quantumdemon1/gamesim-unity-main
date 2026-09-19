@@ -14,7 +14,7 @@ namespace Gamesim.Tests.EditMode
             {
                 var engine = new EpisodeEngine(ContentCatalog.Create(seed));
                 int guard = 0;
-                while (engine.Snapshot.phase != EpisodePhase.Finished && guard++ < 150)
+                while (engine.Snapshot.phase != EpisodePhase.Finished && guard++ < 260)
                 {
                     var command = NextCommand(engine.Snapshot);
                     var result = engine.Apply(command);
@@ -65,7 +65,7 @@ namespace Gamesim.Tests.EditMode
         {
             var a = new EpisodeEngine(ContentCatalog.Create(890));
             var b = new EpisodeEngine(ContentCatalog.Create(890));
-            for (int i = 0; i < 150 && a.Snapshot.phase != EpisodePhase.Finished; i++)
+            for (int i = 0; i < 260 && a.Snapshot.phase != EpisodePhase.Finished; i++)
             {
                 var command = NextCommand(a.Snapshot);
                 Assert.That(a.Apply(command).accepted, Is.True);
@@ -131,6 +131,26 @@ namespace Gamesim.Tests.EditMode
         public static EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind) => new EpisodeCommand
             { id = "test-" + s.revision, actorId = s.playerId, expectedRevision = s.revision, expectedPhase = s.phase, kind = kind };
 
+        /// <summary>
+        /// Walks eviction night to the stage at which the house votes.
+        ///
+        /// <para>Reaching a ballot used to be one Advance out of campaigning. The night now runs
+        /// interaction, then speeches, then voting, so a test that wants to cast a vote has to walk
+        /// it to the point where voting is open — which is what a player does too.</para>
+        /// </summary>
+        public static void OpenTheVote(EpisodeEngine engine)
+        {
+            for (int guard = 0; guard < 8; guard++)
+            {
+                var state = engine.Snapshot;
+                if (state.phase == EpisodePhase.Eviction && (state.evictionStage == EvictionStage.Voting
+                    || state.evictionStage == EvictionStage.Tiebreaker)) return;
+                var result = engine.Apply(NextCommand(state));
+                Assert.That(result.accepted, Is.True, result.reason);
+            }
+            Assert.Fail("Eviction night did not reach its voting stage.");
+        }
+
         public static EpisodeCommand NextCommand(EpisodeState s)
         {
             var c = Command(s, EpisodeCommandKind.Advance);
@@ -143,11 +163,19 @@ namespace Gamesim.Tests.EditMode
             }
             else if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && (s.vetoHolderId == s.playerId || (s.hohId == s.playerId && EpisodeEngine.NpcVetoSave(s) != null)))
             {
-                c.kind = EpisodeCommandKind.ResolveVeto; c.useVeto = EpisodeEngine.ReplacementCandidates(s).Any();
+                // Declining is the only legal answer when the Final 4 lock applies, and it is
+                // what the HUD offers there too.
+                c.kind = EpisodeCommandKind.ResolveVeto;
+                c.useVeto = EpisodeEngine.ReplacementCandidates(s).Any() && !EpisodeEngine.VetoIsLockedAtFinalFour(s);
                 c.targetId = s.vetoHolderId == s.playerId ? s.nominees[0] : EpisodeEngine.NpcVetoSave(s);
                 c.secondTargetId = EpisodeEngine.ReplacementCandidates(s).FirstOrDefault()?.id;
             }
-            else if (s.phase == EpisodePhase.Eviction && !s.evictionResolved && !s.votes.Any(v => v.voterId == s.playerId) &&
+            else if (s.phase == EpisodePhase.Eviction && s.evictionStage == EvictionStage.Speeches
+                && s.nominees.Contains(s.playerId) && !s.evictionSpeeches.Any(x => x.speakerId == s.playerId))
+            { c.kind = EpisodeCommandKind.SubmitEvictionSpeech; c.text = "I'd like to stay. I've been straight with all of you."; }
+            else if (s.phase == EpisodePhase.Eviction && !s.evictionResolved
+                && (s.evictionStage == EvictionStage.Voting || s.evictionStage == EvictionStage.Tiebreaker)
+                && !s.votes.Any(v => v.voterId == s.playerId) &&
                 (EpisodeEngine.Voters(s).Any(v => v.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(s)))
             { c.kind = EpisodeCommandKind.CastVote; c.targetId = s.nominees[0]; }
             else if (s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId)

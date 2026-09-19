@@ -194,8 +194,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.ObservedNpcConversation, Is.Empty, "Hiding should clear the caption.");
         }
 
+        // The frames a season shows: the authored wall carries sixteen and switches the rest off.
         private static Transform[] Frames(MemoryWall wall) =>
             wall.transform.Cast<Transform>()
+                .Where(child => child.gameObject.activeSelf)
                 .Where(child => child.name.StartsWith(MemoryWall.FramePrefix, System.StringComparison.Ordinal))
                 .OrderBy(child => child.name, System.StringComparer.Ordinal)
                 .ToArray();

@@ -243,7 +243,7 @@ namespace Gamesim.Presentation
             image.raycastTarget = true;
 
             var label = HudPrimitives.Label("Text", rect, size, ink, TextAlignmentOptions.Center);
-            label.text = caption;
+            label.text = Localisation.Text(caption);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = Vector2.zero;

@@ -201,6 +201,54 @@ namespace Gamesim.Presentation
                 x += 88f * scale;
             }
 
+            // A second row for what an edge's weight means, and a third for the role marks a portrait
+            // can carry. Both describe things the graph already draws: edge weight is lerped by
+            // relationship strength, and the marks are the same sprites the cast rail pins to a face.
+            float row = -22f * scale;
+            var strength = Label(root, "Strength", 11, UiTheme.Muted, scale, font);
+            Place(strength.rectTransform, 6f * scale, row, 58f * scale, 14f * scale);
+
+            foreach (var (caption, weight) in new[] { ("weak", 1.5f), ("strong", 5.5f) })
+            {
+                var sample = HudPrimitives.Fill("Weight", root, UiTheme.Muted, 1);
+                Place(sample, (caption == "weak" ? 66f : 132f) * scale, row - 5f * scale, 22f * scale, weight * scale);
+                sample.GetComponent<Image>().raycastTarget = false;
+                var text = Label(root, caption, 11, UiTheme.Muted, scale, font);
+                Place(text.rectTransform, (caption == "weak" ? 92f : 158f) * scale, row, 44f * scale, 14f * scale);
+            }
+
+            float statusX = 210f * scale;
+            var status = Label(root, "Status", 11, UiTheme.Muted, scale, font);
+            Place(status.rectTransform, statusX, row, 46f * scale, 14f * scale);
+            statusX += 44f * scale;
+
+            foreach (var (icon, caption, tint) in new[]
+            {
+                ("crown", "HoH", UiTheme.Gold),
+                ("veto-token", "veto", UiTheme.Gold),
+                ("target", "nominee", UiTheme.Danger),
+            })
+            {
+                var glyph = UiTheme.Icon(icon);
+                if (glyph != null)
+                {
+                    var art = new GameObject("Key glyph", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                    art.SetParent(root, false);
+                    Place(art, statusX, row - 1f * scale, 12f * scale, 12f * scale);
+                    var image = art.GetComponent<Image>();
+                    image.sprite = glyph; image.color = tint;
+                    image.raycastTarget = false; image.preserveAspect = true;
+                }
+                else
+                {
+                    var pip = HudPrimitives.Disc("Key", root, tint);
+                    Place(pip, statusX, row - 1f * scale, 10f * scale, 10f * scale);
+                }
+                var text = Label(root, caption, 11, UiTheme.Muted, scale, font);
+                Place(text.rectTransform, statusX + 16f * scale, row, 56f * scale, 14f * scale);
+                statusX += 74f * scale;
+            }
+
             var note = Label(root, "Your perspective. Another housemate may feel differently.",
                 12, UiTheme.Muted, scale, font);
             note.rectTransform.anchorMin = new Vector2(1f, 1f);
@@ -209,6 +257,16 @@ namespace Gamesim.Presentation
             note.rectTransform.anchoredPosition = new Vector2(-6f * scale, -1f * scale);
             note.rectTransform.sizeDelta = new Vector2(330f * scale, 16f * scale);
             note.alignment = TextAlignmentOptions.TopRight;
+        }
+
+        /// <summary>Top-left anchored placement, so a legend row reads left to right.</summary>
+        private static void Place(RectTransform rect, float x, float y, float width, float height)
+        {
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = new Vector2(x, y);
+            rect.sizeDelta = new Vector2(width, height);
         }
 
         private static TMP_Text Label(

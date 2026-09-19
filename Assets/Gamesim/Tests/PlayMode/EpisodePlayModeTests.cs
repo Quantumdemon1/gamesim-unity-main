@@ -31,6 +31,7 @@ namespace Gamesim.Tests.PlayMode
         private HousePlayerController player;
         private HouseCameraRig cameraRig;
         private Keyboard testKeyboard;
+        private Mouse testMouse;
 
         [UnitySetUp]
         public IEnumerator LoadIsolatedEpisode()
@@ -55,6 +56,10 @@ namespace Gamesim.Tests.PlayMode
         {
             if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
             testKeyboard = null;
+            if (testMouse != null && testMouse.added) InputSystem.RemoveDevice(testMouse);
+            testMouse = null;
+            if (testGamepad != null && testGamepad.added) InputSystem.RemoveDevice(testGamepad);
+            testGamepad = null;
             if (director != null) director.ClosePanels();
             var episode = SceneManager.GetSceneByName(EpisodeScene);
             if (episode.IsValid() && episode.isLoaded)
@@ -228,7 +233,7 @@ namespace Gamesim.Tests.PlayMode
             rootField.SetValue(director, blockedRoot);
             try
             {
-                Assert.DoesNotThrow(() => director.NewSeason());
+                Assert.DoesNotThrow(() => director.StartSeason(null));
                 Assert.That(director.SavePath, Is.EqualTo(previousPath));
                 AssertEquivalent(before, director.Snapshot);
                 Assert.That(File.ReadAllBytes(previousPath), Is.EqualTo(beforeBytes));
@@ -407,11 +412,24 @@ namespace Gamesim.Tests.PlayMode
             {
                 command.kind = EpisodeCommandKind.ResolveVeto;
                 var replacement = EpisodeEngine.ReplacementCandidates(state).FirstOrDefault();
-                command.useVeto = replacement != null;
+                // At the final four a veto holder who is not on the block may not use it. The
+                // EditMode driver has always checked this; this one did not, and only never hit it
+                // because no season had reached that shape. Driving into a rule the engine enforces
+                // tests the driver, not the game.
+                command.useVeto = replacement != null && !EpisodeEngine.VetoIsLockedAtFinalFour(state);
                 command.targetId = command.useVeto ? state.vetoHolderId == state.playerId ? state.nominees[0] : EpisodeEngine.NpcVetoSave(state) : null;
                 command.secondTargetId = replacement?.id;
             }
-            else if (state.phase == EpisodePhase.Eviction && !state.evictionResolved && !state.votes.Any(vote => vote.voterId == state.playerId)
+            else if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches
+                && state.nominees.Contains(state.playerId)
+                && !state.evictionSpeeches.Any(speech => speech.speakerId == state.playerId))
+            {
+                command.kind = EpisodeCommandKind.SubmitEvictionSpeech;
+                command.text = ""; // The complete-season route exercises the explicit "say nothing" path.
+            }
+            else if (state.phase == EpisodePhase.Eviction && !state.evictionResolved
+                && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
+                && !state.votes.Any(vote => vote.voterId == state.playerId)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             {
                 command.kind = EpisodeCommandKind.CastVote;
@@ -483,6 +501,7 @@ namespace Gamesim.Tests.PlayMode
                     case EpisodeCommandKind.CastVote:
                         caption = before.phase == EpisodePhase.Jury ? "Vote for " + before.Find(next.targetId).name + " to win"
                             : "Vote to evict " + before.Find(next.targetId).name; break;
+                    case EpisodeCommandKind.SubmitEvictionSpeech: caption = EpisodeHud.EvictionSpeechSkipCaption; break;
                     case EpisodeCommandKind.FinalEvict: caption = "Evict " + before.Find(next.targetId).name; break;
                     case EpisodeCommandKind.AnswerJury:
                         var exchange = before.juryExchanges[before.juryQuestionIndex];
@@ -505,7 +524,15 @@ namespace Gamesim.Tests.PlayMode
                 // the first group intentionally corresponds to NextCommand's first nominee.
                 var button = director.GetComponentsInChildren<Button>(true).FirstOrDefault(item => item.IsActive()
                     && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
-                Assert.That(button, Is.Not.Null, before.phase + " is missing action: " + caption);
+                // What the panel is actually showing, when it is not showing what was expected.
+                // This walk has cost two runs to guesswork already; a missing control should say
+                // which controls were there instead.
+                Assert.That(button, Is.Not.Null, before.phase + " is missing action: " + caption
+                    + "  ·  panel open: " + director.IsPanelOpen
+                    + "  ·  visible: " + string.Join(" | ", director.GetComponentsInChildren<Button>(true)
+                        .Where(item => item.IsActive())
+                        .SelectMany(item => item.GetComponentsInChildren<TMPro.TMP_Text>(true))
+                        .Select(text => text.text).Distinct().Take(20)));
                 button.onClick.Invoke();
                 yield return null; yield return null;
                 Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1), before.phase + ": " + director.StatusMessage);

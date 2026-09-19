@@ -63,7 +63,18 @@ namespace Gamesim.House
             {
                 // TextMesh faces its local -Z axis, matching a camera-facing billboard.
                 nameLabel.transform.rotation = labelCamera.transform.rotation;
+                // Close-range only (camera Phase 4): a name over every head from across the house is
+                // a screen of labels; at a conversation's distance it is who you are talking to.
+                float away = Vector3.Distance(labelCamera.transform.position, nameLabel.transform.position);
+                NameTagAlpha = Mathf.Clamp01((NameTagFar - away) / Mathf.Max(0.01f, NameTagFar - NameTagNear));
+                var colour = nameLabel.color;
+                if (!Mathf.Approximately(colour.a, NameTagAlpha)) { colour.a = NameTagAlpha; nameLabel.color = colour; }
             }
         }
+
+        /// <summary>Inside this distance the name tag is fully shown; beyond <see cref="NameTagFar"/> it is gone.</summary>
+        public const float NameTagNear = 9f, NameTagFar = 14f;
+        /// <summary>How much of the name tag the camera's distance leaves visible, 0 to 1.</summary>
+        public float NameTagAlpha { get; private set; } = 1f;
     }
 }

@@ -26,12 +26,14 @@ namespace Gamesim.Editor
             Run,   // repeat along the long axis — sofas, counter runs
         }
 
+        // The television and its console are not here: HouseSetPieces places the authored pair by
+        // its own row, and a Run over the prototype's long console slot put six consoles under one
+        // screen. The sofa is one piece, not a run, for the same reason - three identical sofas
+        // end to end read as a bench, and the living room already has its authored seating.
         private static readonly (string Target, string Model, Fit Mode)[] Plan =
         {
-            ("Sofa seat",            "loungeSofaLong",     Fit.Run),
+            ("Sofa seat",            "loungeSofaLong",     Fit.Solid),
             ("Coffee table",         "tableCoffee",        Fit.Solid),
-            ("Television console",   "cabinetTelevision",  Fit.Run),
-            ("Television",           "televisionModern",   Fit.Wall),
             ("Kitchen island",       "kitchenBar",         Fit.Solid),
             ("Kitchen counters",     "kitchenCabinet",     Fit.Run),
             ("Refrigerator",         "kitchenFridgeLarge", Fit.Solid),
@@ -44,8 +46,11 @@ namespace Gamesim.Editor
             ("Private room rug",     "rugRound",           Fit.Flat),
         };
 
+        /// <summary>Every model id the plan names, for the catalogue audit.</summary>
+        public static IEnumerable<string> PlanModels => Plan.Select(entry => entry.Model);
+
         // Absorbed by the model that replaces the piece they sit on.
-        private static readonly string[] Absorbed = { "Sofa back", "Countertop", "Duvet", "Pillow" };
+        private static readonly string[] Absorbed = { "Sofa back", "Countertop", "Duvet", "Pillow", "Television console", "Television" };
 
         [MenuItem("Gamesim/U02/Apply House Furnishings")]
         private static void ApplyToOpenScene()
@@ -103,7 +108,7 @@ namespace Gamesim.Editor
 
         private static GameObject Place(string model, Bounds slot, Fit mode, Transform parent, string name)
         {
-            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Kit + model + ".glb");
+            var source = HouseCatalogue.Resolve(model, out _);
             if (source == null)
             {
                 Debug.LogWarning($"Furnishing model missing, leaving the primitive visible: {model}");
@@ -146,7 +151,7 @@ namespace Gamesim.Editor
 
         private static void PlaceRun(string model, Bounds slot, Transform parent, string name)
         {
-            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Kit + model + ".glb");
+            var source = HouseCatalogue.Resolve(model, out _);
             if (source == null)
             {
                 Debug.LogWarning($"Furnishing model missing, leaving the primitive visible: {model}");

@@ -57,6 +57,14 @@ namespace Gamesim.Editor
         {
             var payload = JObject.FromObject(state, ProductionSerializer());
             payload.Remove("npcSocial");
+            // Nothing added after schema 5 existed in v5 either, and the stored shape is checked
+            // field for field: a capture that still carries any of it is not a v5 payload.
+            foreach (var field in new[] { "evictionStage", "evictionSpeeches", "backdoorTargetId",
+                         "outOfPhaseSocialActions", "openingBeatsSeen", "socialBudgetRulesStartWeek" })
+                payload.Remove(field);
+            foreach (var value in (JArray)payload["contestants"])
+                foreach (var field in new[] { "occupation", "archetype", "age", "hometown", "bio" })
+                    ((JObject)value).Remove(field);
             payload["schemaVersion"] = 5;
             return payload;
         }

@@ -25,6 +25,22 @@ namespace Gamesim.Simulation
             return new NpcSocialState { rulesStartWeek = startWeek, randomState = InitialRandomState(seed) };
         }
 
+        /// <summary>
+        /// Whether houseguests are acting on their own account yet.
+        ///
+        /// <para>The same boundary the conversation scheduler uses, and for the same reason. A
+        /// season saved before houseguests formed their own alliances and gave their own word keeps
+        /// the week it was in; autonomy starts with the next one. Recorded fixtures set it beyond
+        /// their own length, which is how a replay stays the season it recorded rather than the
+        /// season it would be if run today.</para>
+        ///
+        /// <para>Phase-independent, unlike <see cref="IsEligible"/>: alliances are settled as the
+        /// social week opens and words are given at two points in the week, so the callers decide
+        /// when, and this decides whether.</para>
+        /// </summary>
+        public static bool AutonomyHasBegun(EpisodeState state) =>
+            state?.npcSocial != null && state.week >= state.npcSocial.rulesStartWeek;
+
         public static bool IsEligiblePhase(EpisodePhase phase) => phase == EpisodePhase.Social || phase == EpisodePhase.Campaign;
         public static bool IsEligible(EpisodeState state) => state?.npcSocial != null &&
             state.week >= state.npcSocial.rulesStartWeek && IsEligiblePhase(state.phase) && state.pendingDiary == null &&
@@ -33,8 +49,10 @@ namespace Gamesim.Simulation
         public static bool IsKnownTopic(string topic) => topic == "bonding" || topic == "strategy" || topic == "gossip" ||
             topic == "tension" || topic == "casual" || topic == "nominations" || topic == "alliance_talk" || topic == "rivalry";
 
+        // The seated pair - the kitchen's long table and the yard's loungers - were added with the
+        // authored set pieces; a save that names them is as valid as one naming the standing four.
         public static bool IsKnownRendezvous(string id) => id == "living-east-chat" || id == "kitchen-west-chat" ||
-            id == "bedroom-south-chat" || id == "yard-south-chat";
+            id == "bedroom-south-chat" || id == "yard-south-chat" || id == "kitchen-table-chat" || id == "yard-lounger-chat";
 
         public NpcSocialState Clone()
         {

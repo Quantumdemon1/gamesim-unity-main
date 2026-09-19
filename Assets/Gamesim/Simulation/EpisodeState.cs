@@ -11,6 +11,18 @@ namespace Gamesim.Simulation
         JuryQuestioning, FinalSpeeches // Append: version-one ordinal values remain stable.
     }
 
+    /// <summary>
+    /// Where eviction night has got to.
+    ///
+    /// <para>A stage inside <see cref="EpisodePhase.Eviction"/> rather than five new phases.
+    /// <see cref="EpisodePhase"/> ordinals are frozen — every historical save stores the number, and
+    /// a parity test pins that all sixteen survive a round trip — so the night is modelled as state
+    /// within the phase it already had.</para>
+    ///
+    /// <para>Append only, for the same reason.</para>
+    /// </summary>
+    public enum EvictionStage { Interaction, Speeches, Voting, Tiebreaker, Results }
+
     public enum ContestantStatus { Active, Evicted, Jury, Winner, RunnerUp }
     public enum PromiseKind { Safety, Vote, FinalTwo, AllianceLoyalty, Information }
     public enum PromiseStatus { Active, Fulfilled, Broken, Expired }
@@ -27,6 +39,15 @@ namespace Gamesim.Simulation
     public sealed class ContestantState
     {
         public string id, name, pronouns, motive, homeRoom;
+        // Card copy: who this person is outside the game. Optional by construction — a save written
+        // before these existed deserialises them empty, and every surface treats empty as "omit the
+        // line" rather than printing a blank field.
+        public string occupation, archetype;
+        // Schema 8: the rest of the creator's card. Optional in the same way as the fields above —
+        // a season built before the creator existed has neither, and every surface omits the line
+        // rather than printing a blank one.
+        public string hometown, bio;
+        public int age;
         public string mood = "Neutral", stressLevel = "Normal";
         public bool isPlayer;
         public ContestantStatus status;
@@ -74,6 +95,21 @@ namespace Gamesim.Simulation
         public string answerChoice, answer, opponentAnswer;
         public bool completed;
         public JuryExchangeState Clone() => (JuryExchangeState)MemberwiseClone();
+    }
+
+    /// <summary>
+    /// A nominee addressing the house on eviction night.
+    ///
+    /// <para>Separate from <see cref="FinalSpeechState"/>, which is the finale's plea to the jury.
+    /// They read alike and are not: this one is given by someone who may still be saved, is given
+    /// every week, and carries the week it belongs to.</para>
+    /// </summary>
+    [Serializable] public sealed class EvictionSpeechState
+    {
+        public string speakerId, text;
+        public int week;
+        public bool isPlayerAuthored;
+        public EvictionSpeechState Clone() => (EvictionSpeechState)MemberwiseClone();
     }
 
     [Serializable] public sealed class FinalSpeechState
@@ -155,7 +191,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 6;
+        public int schemaVersion = 12;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;
@@ -192,6 +228,132 @@ namespace Gamesim.Simulation
         public int blocRulesStartWeek = 1;
         public NpcSocialState npcSocial = NpcSocialState.Create(0);
 
+        // ---------------------------------------------------------------- schema 8
+        /// <summary>How far eviction night has got, so a reload resumes rather than rewinds.</summary>
+        public EvictionStage evictionStage = EvictionStage.Interaction;
+        public List<EvictionSpeechState> evictionSpeeches = new List<EvictionSpeechState>();
+        /// <summary>A nominee the Head of Household means to backdoor; not itself a nomination.</summary>
+        public string backdoorTargetId;
+        /// <summary>
+        /// Social actions spent outside the social week. The reference build counts these against
+        /// the same budget but tracks them separately, because the in-phase counter resets on the
+        /// phase and this one does not.
+        /// </summary>
+        public int outOfPhaseSocialActions;
+        /// <summary>Opening beats already played, so the intro does not replay on every load.</summary>
+        public List<string> openingBeatsSeen = new List<string>();
+
+        // ---------------------------------------------------------------- schema 9
+        /// <summary>
+        /// The week the social-action budget starts following the cast.
+        ///
+        /// <para>The allowance used to be a flat eighteen and is now half the active house, rounded
+        /// up. A season already underway keeps its old allowance for the week it is in, because the
+        /// alternative is telling someone mid-week that actions they have already legally spent have
+        /// put them over a limit that did not exist when they spent them.</para>
+        ///
+        /// <para>The same rule-version boundary <see cref="blocRulesStartWeek"/> and
+        /// <see cref="NpcSocialState.rulesStartWeek"/> already use. A fresh season starts at week
+        /// one, so new play is under the ported rule from the first conversation.</para>
+        /// </summary>
+        public int socialBudgetRulesStartWeek = 1;
+
+        // ---------------------------------------------------------------- schema 10
+        /// <summary>
+        /// Deals between houseguests.
+        ///
+        /// <para>The eviction vote has weighed deals since it was written —
+        /// <c>WebEvictionVoting.DealObligation</c> reads this list, scores an active
+        /// <c>vote_save</c> at +35 and a broken one at −35, and <c>PairDealValue</c> has a table
+        /// running from information sharing at 10 to a final two at 50. It has been reading an empty
+        /// list the whole time, because nothing in the project could make a deal. This is the same
+        /// shape as alliances and promises before Phase C: the consumer shipped, the producer did
+        /// not.</para>
+        ///
+        /// <para>Deals sit above promises deliberately. The interaction table this project already
+        /// implements scores <c>deal_fulfilled</c> at +35 and <c>deal_broken</c> at −50, against
+        /// +25 and −40 for a promise — a deal is the heavier commitment, and breaking one is the
+        /// worst thing in the table short of betraying an alliance.</para>
+        /// </summary>
+        public List<DealState> deals = new List<DealState>();
+
+        /// <summary>
+        /// The week deals start being made, so a season already under way is not handed a system it
+        /// was not played under. The same boundary <see cref="blocRulesStartWeek"/> uses.
+        /// </summary>
+        public int dealRulesStartWeek = 1;
+
+        // ---------------------------------------------------------------- schema 11
+        //
+        // One version carrying two systems, deliberately. The social vocabulary and the event layer
+        // both need persisted state, and the save format checks stored objects field for field — so
+        // adding them separately would cost two migrations, two frozen contracts and two sweeps of
+        // every fixture, for one week's work either way.
+
+        /// <summary>
+        /// Extra social actions the player has bought this phase.
+        ///
+        /// <para>The reference's <c>buy_action_point</c> trades relationship damage for another
+        /// action. The budget here has been a hard ceiling with no way past it, which makes a week
+        /// where the house moves faster than the allowance simply unplayable rather than expensive.
+        /// </para>
+        ///
+        /// <para>Counted separately from <see cref="socialActions"/> rather than deducted from it,
+        /// because the two answer different questions: one is what you spent, this is what you paid
+        /// to be allowed to spend it, and a screen that showed the second as the first would be
+        /// telling the player they had actions left when they had bought them.</para>
+        /// </summary>
+        public int boughtActionPoints;
+
+        /// <summary>
+        /// Things that have happened to the house.
+        ///
+        /// <para>Every week in this port happens because the player pressed something. The event
+        /// layer is what the reference uses to make one week feel unlike the last — six systems'
+        /// worth of situations that arrive on their own and sometimes ask a question.</para>
+        ///
+        /// <para>Resolved events stay in the list. They are the record of what the season did to the
+        /// player, which the weekly recap reads and which a screen cannot reconstruct once it is
+        /// gone.</para>
+        /// </summary>
+        public List<HouseEventState> houseEvents = new List<HouseEventState>();
+
+        /// <summary>
+        /// The week the house starts having things happen to it, so a season already under way is
+        /// not suddenly handed a system it was not played under. The fifth use of this boundary,
+        /// after <see cref="blocRulesStartWeek"/>, <see cref="NpcSocialState.rulesStartWeek"/>,
+        /// <see cref="socialBudgetRulesStartWeek"/> and <see cref="dealRulesStartWeek"/>.
+        /// </summary>
+        public int eventRulesStartWeek = 1;
+
+        // ---------------------------------------------------------------- schema 12
+
+        /// <summary>
+        /// Storylines the player has been through, running and finished.
+        ///
+        /// <para>Finished ones stay: they are what the cooldown reads, so the house does not put the
+        /// same situation to somebody twice in four weeks. The chapter itself lives in
+        /// <see cref="houseEvents"/> rather than here, because a chapter is a situation with choices
+        /// and that is already what a house event is.</para>
+        /// </summary>
+        public List<StorylineState> storylines = new List<StorylineState>();
+
+        /// <summary>
+        /// What storyline choices have left behind, and for how long.
+        ///
+        /// <para>A modifier is why a storyline is worth finishing rather than a paragraph with
+        /// buttons. Both of its effects feed paths that already exist and are already read — a bonus
+        /// nothing consumes is the shape this port keeps finding, and adding another would have been
+        /// a poor joke.</para>
+        /// </summary>
+        public List<StoryModifierState> activeModifiers = new List<StoryModifierState>();
+
+        /// <summary>
+        /// The week storylines start, so a season already under way is not handed a system it was
+        /// not played under. The sixth use of the rule-version boundary.
+        /// </summary>
+        public int storyRulesStartWeek = 1;
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -221,6 +383,12 @@ namespace Gamesim.Simulation
             copy.oathOpportunities = new List<string>(oathOpportunities);
             copy.shownOathMilestones = new List<string>(shownOathMilestones);
             copy.npcSocial = npcSocial.Clone();
+            copy.evictionSpeeches = evictionSpeeches.Select(x => x.Clone()).ToList();
+            copy.openingBeatsSeen = new List<string>(openingBeatsSeen);
+            copy.deals = deals.Select(x => x.Clone()).ToList();
+            copy.houseEvents = houseEvents.Select(x => x.Clone()).ToList();
+            copy.storylines = storylines.Select(x => x.Clone()).ToList();
+            copy.activeModifiers = activeModifiers.Select(x => x.Clone()).ToList();
             return copy;
         }
     }
@@ -230,7 +398,53 @@ namespace Gamesim.Simulation
         Advance, Compete, Nominate, ResolveVeto, CastVote, FinalEvict,
         Talk, PromiseSafety, PromiseVote, PromiseFinalTwo, FormAlliance, LeaveAlliance, ShareInformation,
         AnswerJury, SkipQuestioning, SubmitSpeech, ReflectDiary, SkipDiary, SwearLoyalty, DeclineLoyalty,
-        StudyHouse, SimulateCompetition // Append: preserve every pre-v4 command ordinal.
+        StudyHouse, SimulateCompetition,
+        SubmitEvictionSpeech,
+        AskForIntel, Eavesdrop, SpreadLie, VentAbout, SchemeAgainst,
+        SetBackdoorPlan,
+        MarkOpeningBeat,
+        ProposeDeal,
+        RespondToDeal,
+        // The social vocabulary, appended in the reference's own order. Talk stays where it is:
+        // its ordinal is pinned by recorded seasons, and it remains the plain conversation these
+        // five are variations on.
+        SmallTalk,
+        PersonalChat,
+        DiscussGame,
+        StrategicDiscussion,
+        RelationshipBuilding,
+        ShareSecret,
+        SpreadRumor,
+        HouseMeeting,
+        BuyActionPoint,
+        /// <summary>Answering something that happened to the house.</summary>
+        ResolveHouseEvent,
+        /// <summary>Walking in on two houseguests in the same room.</summary>
+        WitnessProximity,
+        /// <summary>Answering the chapter of a storyline.</summary>
+        ProgressStoryline // Append: preserve every pre-v4 command ordinal.
+    }
+
+    /// <summary>
+    /// The five beats that run once, in order, before the first Head of Household competition.
+    ///
+    /// <para>Named rather than numbered because <see cref="EpisodeState.openingBeatsSeen"/> stores
+    /// the names, and a season saved halfway through the opening has to be able to say which of them
+    /// it has already played after the list has been reordered or added to.</para>
+    /// </summary>
+    public static class OpeningBeat
+    {
+        public const string Intro = "intro";
+        public const string HouseEntry = "house-entry";
+        public const string WalkIn = "house-walk-in";
+        public const string Tutorial = "tutorial";
+        public const string MeetAndGreet = "meet-and-greet";
+
+        /// <summary>In the order the reference build plays them.</summary>
+        public static readonly string[] InOrder = { Intro, HouseEntry, WalkIn, Tutorial, MeetAndGreet };
+
+        public static bool IsKnown(string beat) =>
+            beat != null && Array.IndexOf(InOrder, beat) >= 0;
     }
 
     [Serializable]

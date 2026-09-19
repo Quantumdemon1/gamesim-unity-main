@@ -39,7 +39,12 @@ namespace Gamesim.Simulation
                 s.lastDiaryRoomWeek >= prompt.week || s.resolvedDiaryIds.Contains(prompt.id) ||
                 (s.phase != EpisodePhase.Social && !(s.phase == EpisodePhase.Eviction && s.evictionResolved))))
                 return Fail(out error, "Invalid or stale pending diary reflection.");
-            if (s.jurySentiment == null || s.jurySentiment.jurors == null || s.jurySentiment.jurors.Count > 4 || !Finite(s.jurySentiment.overallSentiment) ||
+            // The last three caps in this file that were the number six in disguise. A jury is
+            // everyone who is out of the house, and the player can have one standing declaration per
+            // houseguest — both follow the cast, and both read as literals from a season of six.
+            int jurorCeiling = Math.Max(1, s.contestants.Count - 2);
+            int npcCeiling = Math.Max(1, s.contestants.Count - 1);
+            if (s.jurySentiment == null || s.jurySentiment.jurors == null || s.jurySentiment.jurors.Count > jurorCeiling || !Finite(s.jurySentiment.overallSentiment) ||
                 Math.Abs(s.jurySentiment.overallSentiment) > 100 || s.jurySentiment.jurors.Any(j => j == null ||
                     !(s.Find(j.jurorId)?.status == ContestantStatus.Jury || s.Find(j.jurorId)?.status == ContestantStatus.Evicted) || !Text(j.jurorName, 100) ||
                     !Finite(j.sentiment) || Math.Abs(j.sentiment) > 100 || j.events == null || j.events.Count < 1 || j.events.Count > 512 ||
@@ -47,10 +52,10 @@ namespace Gamesim.Simulation
                 s.jurySentiment.jurors.GroupBy(j => j.jurorId).Any(g => g.Count() > 1)) return Fail(out error, "Invalid jury impression ledger.");
             double overall = s.jurySentiment.jurors.Count == 0 ? 0 : WebRules.JsRound(s.jurySentiment.jurors.Average(j => j.sentiment));
             if (s.jurySentiment.overallSentiment != overall) return Fail(out error, "Jury impression average does not match the recorded jurors.");
-            if (s.loyaltyOaths == null || s.loyaltyOaths.Count > 5 || s.loyaltyOaths.Any(o => o == null || o.playerId != s.playerId || !Npc(o.targetId) ||
+            if (s.loyaltyOaths == null || s.loyaltyOaths.Count > npcCeiling || s.loyaltyOaths.Any(o => o == null || o.playerId != s.playerId || !Npc(o.targetId) ||
                 o.week < 1 || o.week > s.week || o.timestamp < 1 || o.timestamp >= s.nextSequence) || s.loyaltyOaths.GroupBy(o => o.targetId).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid structured loyalty declaration.");
-            if (s.oathOpportunities == null || s.shownOathMilestones == null || s.oathOpportunities.Count > 5 || s.shownOathMilestones.Count > 5 ||
+            if (s.oathOpportunities == null || s.shownOathMilestones == null || s.oathOpportunities.Count > npcCeiling || s.shownOathMilestones.Count > npcCeiling ||
                 s.shownOathMilestones.Any(id => !Npc(id)) || s.shownOathMilestones.Distinct().Count() != s.shownOathMilestones.Count ||
                 s.oathOpportunities.Any(id => !Npc(id) || s.Find(id).status != ContestantStatus.Active || !s.shownOathMilestones.Contains(id) || s.loyaltyOaths.Any(o => o.targetId == id)) ||
                 s.oathOpportunities.Distinct().Count() != s.oathOpportunities.Count)

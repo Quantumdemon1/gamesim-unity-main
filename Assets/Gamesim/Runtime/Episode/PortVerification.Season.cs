@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
 using UnityEngine.AI;
@@ -113,11 +114,24 @@ namespace Gamesim.Episode
             yield return ClickSeasonButton("Save now  [F5]");
             string previousSlot = seasonDirector.SavePath;
             var previousBytes = File.ReadAllBytes(previousSlot);
+            int previousCast = seasonDirector.Snapshot.contestants.Count;
+            // The control opens the cast screen now rather than building a season outright, so this
+            // walks the screen the way a player does — and backing out of it is the case worth
+            // checking hardest, because a cancel that has already written a slot is unrecoverable.
             yield return ClickSeasonButton("New season in a NEW slot (preserves this season)");
+            RequireSeason(seasonDirector.SavePath == previousSlot,"Opening the cast screen must not change the active slot.");
+            yield return ClickSeasonButton(CastSelect.CancelCaption);
+            RequireSeason(seasonDirector.SavePath == previousSlot && File.Exists(previousSlot)
+                && seasonDirector.Snapshot.contestants.Count == previousCast,"Cancelling the cast screen must leave the running season and its slot untouched.");
+
+            yield return ClickSeasonButton("New season in a NEW slot (preserves this season)");
+            yield return ClickSeasonButton(CastSelect.StartCaption);
             var fresh = seasonDirector.Snapshot;
             RequireSeason(seasonDirector.SavePath != previousSlot && File.Exists(previousSlot),"Creating the QA season must preserve the profile's previous save slot.");
-            RequireSeason(fresh.phase == EpisodePhase.Social && fresh.week == 1 && fresh.Active.Count() == 6
-                && fresh.contestants.Count == 6 && fresh.contestants.Count(actor => actor.isPlayer) == 1,"The new season must be a genuine native six-person start.");
+            RequireSeason(fresh.phase == EpisodePhase.Social && fresh.week == 1
+                && fresh.Active.Count() == SeasonBuilder.DefaultHouseSize
+                && fresh.contestants.Count == SeasonBuilder.DefaultHouseSize
+                && fresh.contestants.Count(actor => actor.isPlayer) == 1,"The cast screen must start a genuine default-size season.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;
@@ -125,6 +139,7 @@ namespace Gamesim.Episode
             yield return SaveReloadSeason("fresh-season");
             if (verifyAutonomy) yield return ExerciseAutonomy(graphical);
             if (verifyStudy) yield return ExerciseSeasonStudy(graphical);
+            yield return ExerciseOptionalDeal(graphical);
             yield return ExerciseOptionalOath(graphical);
 
             bool middleReload = false;
@@ -134,6 +149,8 @@ namespace Gamesim.Episode
                 RequireSeason(seasonReport.commands < SeasonCommandLimit,"The season exceeded its bounded command count.");
                 var state = seasonDirector.Snapshot;
                 if (!seasonReport.phases.Contains(state.phase.ToString())) seasonReport.phases.Add(state.phase.ToString());
+                yield return DismissWeeklyRecap(state,graphical);
+                state = seasonDirector.Snapshot;
                 if (state.pendingDiary != null) yield return CompleteSeasonReflection(state,graphical);
                 else
                 {
@@ -153,11 +170,16 @@ namespace Gamesim.Episode
                 { yield return SaveReloadSeason("mid-season"); middleReload = true; }
             }
             var finale = seasonDirector.Snapshot;
-            RequireSeason(finale.contestants.Count(actor => actor.status == ContestantStatus.Jury) == 4
+            // Every evictee sits on the jury (the engine turns each eviction into a juror), so a
+            // season ends with everyone but the two finalists there: four in a six-house, six in
+            // the eight the builder seats by default.
+            int jurors = finale.contestants.Count - 2;
+            RequireSeason(finale.contestants.Count(actor => actor.status == ContestantStatus.Jury) == jurors
                 && !string.IsNullOrEmpty(finale.winnerId) && !string.IsNullOrEmpty(finale.runnerUpId)
-                && finale.winnerId != finale.runnerUpId,"The season must end with four jurors and distinct winner/runner-up.");
+                && finale.winnerId != finale.runnerUpId,"The season must end with " + jurors + " jurors and distinct winner/runner-up.");
             seasonReport.phases.Add(EpisodePhase.Finished.ToString());
             seasonReport.winnerId = finale.winnerId; seasonReport.playerFinalStatus = finale.Find(finale.playerId).status.ToString();
+            RecordSeasonSystems(finale);
             yield return OpenSeasonStation();
             yield return CaptureSeason("finale",graphical);
             yield return ClickSeasonButton("Review the season");
@@ -171,8 +193,13 @@ namespace Gamesim.Episode
 
         private IEnumerator PerformSeasonDecision(EpisodeState state,bool graphical)
         {
+            if (state.phase == EpisodePhase.Social && HouseEvents.Pending(state) != null)
+            { yield return ResolveSeasonHouseEvent(state,graphical); yield break; }
             if (EpisodeEngine.IsCompetition(state.phase))
             {
+                if (!verifyStudy && !state.competitionResolved && seasonReport.minigameKind == null
+                    && EpisodeEngine.CompetitionPlayers(state).Any(actor => actor.isPlayer))
+                { yield return PlaySeasonMiniGame(state,graphical); yield break; }
                 if (verifyStudy)
                 {
                     CheckStudyCompetitionScope(state);
@@ -199,7 +226,11 @@ namespace Gamesim.Episode
                 else yield return ClickSeasonButton("Save " + state.Find(state.nominees[0]).name + " (HoH chooses replacement)");
                 yield break;
             }
+            // The ballot is offered only once the night reaches the vote: the stages before it
+            // (the speeches, and a player on the block delivering theirs) are walked further down,
+            // and "Continue episode" is what moves the night from one stage to the next.
             if (state.phase == EpisodePhase.Eviction && !state.evictionResolved && !state.votes.Any(vote => vote.voterId == state.playerId)
+                && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
             { yield return ClickSeasonButton("Vote to evict " + state.Find(state.nominees[0]).name); yield break; }
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
@@ -250,6 +281,20 @@ namespace Gamesim.Episode
             }
             if (state.phase == EpisodePhase.Jury && !state.Active.Any(actor => actor.isPlayer) && !state.votes.Any(vote => vote.voterId == state.playerId))
             { yield return ClickSeasonButton("Vote for " + state.Active.First().name + " to win"); yield break; }
+            // Eviction night pauses on the block for the nominees' speeches, and a nominated player
+            // has to give theirs before the house will vote. There is no "continue" past it, which
+            // is the point: the speech is a decision, not a presentation.
+            if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches
+                && state.nominees.Contains(state.playerId)
+                && !state.evictionSpeeches.Any(speech => speech.speakerId == state.playerId))
+            {
+                yield return CaptureSeason("block-speech-draft",graphical);
+                yield return ClickSeasonButton(EpisodeHud.EvictionSpeechCaption);
+                RequireSeason(seasonDirector.Snapshot.evictionSpeeches.Any(speech => speech.speakerId == state.playerId),
+                    "The block speech control must commit a speech.");
+                seasonReport.blockSpeeches++;
+                yield break;
+            }
             yield return ClickSeasonButton(state.phase == EpisodePhase.Social ? "Begin the next competition"
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode");
         }
@@ -286,11 +331,17 @@ namespace Gamesim.Episode
             { seasonReport.oathNote = "Optional Maya approach did not complete within its route deadline."; yield break; }
             if (!seasonDirector.TryOpenNpc(npc.Id)) { seasonReport.oathNote = "Maya was not interactable after approach."; yield break; }
             yield return null; yield return null;
-            for (int budget = 0; budget < 18 && !seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id); budget++)
+            // The week's budget is half the active house, not a flat eighteen, so this optional
+            // coverage may simply run out of actions before the milestone. It breaks out and records
+            // a note rather than failing: the oath path is optional by design.
+            int weeklyBudget = EpisodeEngine.SocialActionBudget(seasonDirector.Snapshot);
+            for (int spent = 0; spent < weeklyBudget && !seasonDirector.Snapshot.oathOpportunities.Contains(npc.Id); spent++)
             {
                 var before = seasonDirector.Snapshot;
-                if (before.phase != EpisodePhase.Social || before.socialActions >= 18 || !HasSeasonButton("Spend time together")) break;
-                // Eighteen plain +4 conversations reach only 72 from a neutral start.
+                if (before.phase != EpisodePhase.Social
+                    || EpisodeEngine.SocialActionsSpent(before) >= EpisodeEngine.SocialActionBudget(before)
+                    || !HasSeasonButton("Spend time together")) break;
+                // Plain +4 conversations climb slowly from a neutral start.
                 // Use the same legal alliance opportunity as the live Play Mode fixture.
                 string action = !before.Allied(before.playerId,npc.Id) && before.Score(npc.Id,before.playerId) >= 8
                     && HasSeasonButton("Propose an alliance") ? "Propose an alliance" : "Spend time together";
@@ -374,7 +425,7 @@ namespace Gamesim.Episode
             RequireSeason(File.Exists(expectedPath),"The isolated season save must exist at " + checkpoint);
             yield return ClickSeasonButton("Reload current slot");
             RequireSeason(seasonDirector.SavePath == expectedPath && JsonUtility.ToJson(seasonDirector.Snapshot) == expected,"Save/reload changed the authoritative snapshot at " + checkpoint);
-            RequireSeason(!seasonDirector.IsPanelOpen && seasonDirector.StatusMessage.StartsWith("Local episode loaded and validated.",StringComparison.Ordinal),"Reload must report a validated install, not silently preserve an unsaved in-memory snapshot.");
+            RequireSeason(!seasonDirector.IsPanelOpen && seasonDirector.StatusMessage.StartsWith("Local episode loaded and validated.",StringComparison.Ordinal),"Reload must report a validated install, not silently preserve an unsaved in-memory snapshot." + " Panel open: " + seasonDirector.IsPanelOpen + "; status: " + seasonDirector.StatusMessage);
             if (verifyBlocs)
             {
                 RequireSeason(seasonDirector.Snapshot.blocRulesStartWeek == 1,"Fresh-season rule marker must survive the actual save/reload UI.");
@@ -385,7 +436,8 @@ namespace Gamesim.Episode
 
         private IEnumerator CloseSeasonPanel()
         {
-            if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
+            if (seasonDirector.IsWeeklyRecapOpen) yield return ClickSeasonButton(WeeklyRecapScreen.ContinueCaption);
+            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
         }
 
         private bool HasSeasonButton(string caption) => seasonDirector.GetComponentsInChildren<Button>()
@@ -449,7 +501,11 @@ namespace Gamesim.Episode
             public AutonomyReport autonomy;
             public double elapsedSeconds;
             public float navigationSpeed;
-            public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks;
+            public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks, blockSpeeches;
+            public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
+            public string minigameKind, dealKind, dealOutcome, dealNote;
+            public double minigameScore;
+            public List<string> houseEventKinds = new List<string>();
             public List<string> phases = new List<string>(), reloadCheckpoints = new List<string>(), screenshots = new List<string>();
             public List<SeasonRoute> routes = new List<SeasonRoute>();
             public List<SeasonButton> buttons = new List<SeasonButton>();

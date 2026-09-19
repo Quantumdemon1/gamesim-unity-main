@@ -11,6 +11,7 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 | `player-compile.ps1` | Same, against the *player* response files, which catches editor-only API used in runtime code — the editor compile cannot see that. Needs a player build to have generated the `P.dag` on the acceptance copy. | seconds |
 | `sync-and-run.sh` | Waits for the acceptance copy to be free, mirrors `Assets/` and `ProjectSettings/` over it, then runs each `name:Platform:Assembly` suite headless and prints the totals and any failures. | ~1 min EditMode, 10–15 min PlayMode |
 | `build-and-verify.sh` | Mirrors, builds the Windows player on the copy with the same entry point the editor menu uses, then runs the exe's self-verification (`--gamesim-verify`, plus `--gamesim-verify-season` unless `--no-season`) into an isolated save root and prints both reports. `--graphical` for a windowed run (the C rows), `--no-build` to reuse the exe, anything else goes to the player, e.g. `--gamesim-profile-seconds 300 --gamesim-house-size 16`. | ~10 min build, 5–10 min season |
+| `build-and-verify.sh --look-sheet` | The look sheet: builds, runs the player in a window with `--gamesim-look-sheet`, walks a fresh twelve-house season to the twelve moments the mockups show and captures each as `after-NN.png`, then copies them to `ArtSource/reference/after/` beside `mockups/mockup-NN.webp`; `look-sheet.json` says which moments were reached and which are the nearest real frame. | ~10 min |
 
 ```bash
 powershell -NoProfile -File Tools/offline-compile.ps1

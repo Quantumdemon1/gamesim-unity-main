@@ -9,6 +9,8 @@
 # and prints the reports. Anything else on the command line goes to the player, e.g.
 # --gamesim-profile-seconds 300 --gamesim-house-size 16.
 #   --graphical  run with a window instead of -batchmode -nographics (the C rows need a window)
+#   --look-sheet run the twelve-capture look sheet (VISUAL-TARGET.md V0) in a window and copy the
+#                after-NN.png captures to ArtSource/reference/after; exits 4 when fewer than twelve land
 #   --no-build   reuse the exe already on the copy
 #   --name       label for the output folder and log (default verify-season / verify-profile)
 # Override the copy with GAMESIM_ACCEPTANCE (Windows path).
@@ -24,6 +26,7 @@ graphical=0; season=1; build=1; name=""; extra=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --graphical) graphical=1 ;;
+    --look-sheet) graphical=1; season=0; looksheet=1 ;;
     --no-season) season=0 ;;
     --no-build) build=0 ;;
     --name) shift; name="$1" ;;
@@ -31,7 +34,7 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-[ -n "$name" ] || { if [ "$season" = 1 ]; then name=verify-season; else name=verify-profile; fi; }
+[ -n "$name" ] || { if [ "$looksheet" = 1 ]; then name=look-sheet; elif [ "$season" = 1 ]; then name=verify-season; else name=verify-profile; fi; }
 OUT="$DSTFWD/Logs/$name"
 OUTP="$DSTP/Logs/$name"
 OUTW="$DST\\Logs\\$name"
@@ -50,6 +53,7 @@ echo "exe: $(ls -la --time-style=+%F\ %T "$EXE" | awk '{print $6, $7, $5}') byte
 
 args="--gamesim-verify"
 [ "$season" = 1 ] && args="$args --gamesim-verify-season"
+[ "$looksheet" = 1 ] && args="$args --gamesim-look-sheet -screen-width 1920 -screen-height 1080"
 echo "=== verifying $name ($(date +%T)): $args$extra ==="
 rm -rf "$OUTP"; mkdir -p "$OUTP"
 if [ "$graphical" = 1 ]; then
@@ -71,3 +75,20 @@ for name in ("verification.json", "season-verification.json"):
     print("---", name, "---"); print(json.dumps(keep, indent=1)[:3500])
 PY
 grep -iE "exception|error" "$OUTP.log" 2>/dev/null | grep -v "0 errors" | head -8
+if [ "$looksheet" = 1 ]; then
+  # The look sheet's twelve captures land beside the mockups, as the "after" half of each pair.
+  AFTER="$HERE/../ArtSource/reference/after"
+  mkdir -p "$AFTER"
+  count=0
+  for f in "$OUTP"/after-??.png; do [ -f "$f" ] && cp "$f" "$AFTER/" && count=$((count + 1)); done
+  echo "look sheet: $count of 12 captures copied to ArtSource/reference/after"
+  [ -f "$OUTP/look-sheet.json" ] && python - "$OUTP/look-sheet.json" <<'PY2'
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+print("look-sheet.json:", d.get("status"), d.get("resolution"), "house", d.get("houseSize"))
+for s in d.get("shots", []):
+    print(" ", s.get("mockup"), "reached" if s.get("reached") else "nearest", "|", s.get("label"), "|", s.get("reason") or "")
+for e in d.get("errors", []): print("  error:", e)
+PY2
+  [ "$count" -ge 12 ] || exit 4
+fi

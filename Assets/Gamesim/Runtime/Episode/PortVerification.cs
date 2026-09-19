@@ -49,6 +49,7 @@ namespace Gamesim.Episode
             runner.verifyStudy = args.Contains("--gamesim-verify-study");
             runner.verifyBlocs = args.Contains("--gamesim-verify-blocs");
             runner.verifyAutonomy = args.Contains("--gamesim-verify-autonomy");
+            runner.lookSheet = args.Contains("--gamesim-look-sheet");
             int duration = Array.IndexOf(args, "--gamesim-profile-seconds");
             if (duration >= 0 && duration + 1 < args.Length && double.TryParse(args[duration + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
                 runner.seconds = Math.Clamp(parsed, 10, 1800);
@@ -68,6 +69,8 @@ namespace Gamesim.Episode
             { director = FindAnyObjectByType<EpisodeDirector>(); yield return null; }
             if (director == null || !director.IsReady)
             { errors.Add("The bootstrap did not reach a ready episode."); Finish(0, false); yield break; }
+            // The look sheet is its own mode: twelve captures and a report, no profile, no recorded walk.
+            if (lookSheet) { yield return RunLookSheet(); FinishLookSheet(); yield break; }
             var player = FindAnyObjectByType<HousePlayerController>();
             var rooms = FindObjectsByType<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
             if (player == null || rooms.Length < 5) errors.Add("Expected a navigable player and five room markers.");

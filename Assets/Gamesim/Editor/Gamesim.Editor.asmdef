@@ -8,7 +8,9 @@
     "Unity.InputSystem",
     "UnityEngine.UI",
     "UnityEditor.TestRunner",
-    "UnityEngine.TestRunner"
+    "UnityEngine.TestRunner",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [
     "Editor"

@@ -123,8 +123,8 @@ Standing between "every item delivered" and "done."
 | Re-measure C1–C5 in a window, on named hardware, at sixteen | **open** | The thresholds are windowed; the last measurement was not. |
 | Tier 5 writing pass — triple every template set | **open** | 112 dialogue strings, 6 events, 3 storylines, 6 jury reasons. A player sees repetition inside two seasons. No engineering. |
 | D2 — one test that walks every action by keyboard | **open** | Every panel added this month has controls that test has not visited. |
-| Carry the post-processing volume into `EpisodeHouse.unity` | **open — new finding** | `HouseVolumeProfile.asset` exists; the shipping scene has no `Volume`. See §3.A. |
-| Housekeeping: `SampleScene` out of the build list; decide `HousePrototype`; delete the 42 MB unreferenced `QuaterniusBaseCharacters`; extract panels from the 2,230-line director | **open** | All mechanical. |
+| Carry the post-processing volume into `EpisodeHouse.unity` | **done 2026-09-19** | `Gamesim/U07/Carry the volume and decor to the episode house` — volume, camera post-processing flag, and the 46-object `Decor` subtree the first pass could not carry. |
+| Housekeeping: `SampleScene` out of the build list; decide `HousePrototype`; delete the 42 MB unreferenced `QuaterniusBaseCharacters`; extract panels from the 2,230-line director | **partly done** | Build list is Bootstrap, HousePrototype, EpisodeHouse. `HousePrototype` stays: three PlayMode suites load it by name and it is the authored source the episode scene is dressed from. Deleting `Assets/Scenes/` and `QuaterniusBaseCharacters/` (43 MB, no GUID referenced outside the folder) awaits a human `git rm`. Director extraction open. |
 | Repoint `README.md`, `COMMIT_NOTES.md`, `UNITY_PORT_ROADMAP.md` at this plan | **done with this document** | The root roadmap's "completion boundary" paragraph is superseded by §1.2. |
 
 ### 3.A — Environment art *(the largest visible gap; Part 4 is the how)*
@@ -133,18 +133,18 @@ Standing between "every item delivered" and "done."
 
 | Step | Status |
 | --- | --- |
-| Post-processing volume, bloom, tonemapping, colour adjustments, vignette | Done in `HousePrototype`; **absent from `EpisodeHouse`** |
+| Post-processing volume, bloom, tonemapping, colour adjustments, vignette | Done in both (carried 2026-09-19; the episode camera had never had post-processing enabled, so the profile alone would have changed nothing) |
 | Lighting and atmosphere pass | Done in both (36 fitted lights in the shipping scene) |
 | Emissive materials, gloss | Done |
 | Neon room outlines, gold competition circle | Done in both |
-| Props and decoration (`Decor` root, 47 pieces) | Done in `HousePrototype`; **absent from `EpisodeHouse`** |
-| Mirror into `HousePrototypeSetup.cs` | **Not done** — the generator still has the old values |
+| Props and decoration (`Decor` subtree, 46 objects) | Done in both (carried 2026-09-19; the first pass had copied only the lamp shades and plants) |
+| Mirror into `HousePrototypeSetup.cs` | **Resolved differently.** `HousePrototype.unity` is the hand-authored source of the art; the shipping scene is *derived* from it by the two `EpisodeHouseDressing` passes, which are re-runnable. `HousePrototypeSetup` regenerates only the shell, and regenerating it would discard the authored art — so it must not be re-run, and the plan no longer asks it to carry values it never produced. |
 | SSAO renderer feature | Present in `PC_Renderer.asset` |
 | Catalogue seam (`HouseCatalogue`, logical prop ids, resolution audit) | **Not done** — 132 hard-coded Kenney ids |
 | Big Brother set pieces (pool, hot tub, long table, diary chair, have-not room) | **Not done** — and no pack ships them |
 | STYLARTS swap | **Cancelled by Part 4.** Never downloaded; cannot be committed; authored for full-height rooms against 1.5 m cutaway walls — the plan's own first risk. |
 
-**Remaining, in order:** carry the volume and decor to the shipping scene → build the catalogue
+**Remaining, in order:** build the catalogue
 seam → replace the shell and set pieces with Blender-authored assets (Part 4) → per-room prop
 replacement → clutter pass → mirror the final state into the generator.
 

@@ -106,6 +106,11 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.SetBackdoorPlan: SetBackdoorPlan(s, s.Find(c.targetId)); break;
                 case EpisodeCommandKind.MarkOpeningBeat: MarkOpeningBeat(s, c.targetId); break;
                 case EpisodeCommandKind.RespondToDeal: RespondToDeal(s, c); break;
+                case EpisodeCommandKind.BuyActionPoint: BuyActionPoint(s, c); break;
+                // Addressed to the room rather than to a person, so it cannot go through
+                // Social(), which requires a housemate to approach. It still costs an
+                // action, which it spends for itself.
+                case EpisodeCommandKind.HouseMeeting: HouseMeeting(s, c); break;
                 case EpisodeCommandKind.FinalEvict:
                     Require(s.phase == EpisodePhase.FinalEviction && s.hohId == s.playerId, "Only the final HoH makes this choice.");
                     FinalEvict(s, c.targetId); break;
@@ -385,6 +390,13 @@ namespace Gamesim.Simulation
         /// to leave less room to work than the opening weeks.</para>
         /// </summary>
         public static int SocialActionBudget(EpisodeState s) =>
+            // Bought turns are added on top rather than folded into the rule, because the allowance
+            // and what was paid for beyond it are different facts. A season under the legacy flat
+            // allowance still gets what it bought: refusing it would be charging for nothing.
+            EarnedSocialActionBudget(s) + Math.Max(0, s.boughtActionPoints);
+
+        /// <summary>The allowance before anything is bought: what the week gives you for free.</summary>
+        public static int EarnedSocialActionBudget(EpisodeState s) =>
             s.week < s.socialBudgetRulesStartWeek
                 ? LegacySocialActionBudget
                 : (int)Math.Ceiling(Math.Max(0, s.Active.Count()) / 2.0);
@@ -617,11 +629,35 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.SchemeAgainst: SchemeAgainst(s, target); break;
                 case EpisodeCommandKind.ProposeDeal: ProposeDeal(s, target, c); break;
+                case EpisodeCommandKind.SmallTalk:
+                    Converse(s, target, WebSocialVocabulary.SmallTalk(Roll(s)),
+                        "You passed the time with " + target.name + "."); break;
+                case EpisodeCommandKind.PersonalChat:
+                    Converse(s, target, WebSocialVocabulary.PersonalChat(Roll(s)),
+                        "You told " + target.name + " something about yourself."); break;
+                case EpisodeCommandKind.RelationshipBuilding:
+                    Converse(s, target, WebSocialVocabulary.RelationshipBuilding(Roll(s)),
+                        "You spent real time with " + target.name + "."); break;
+                case EpisodeCommandKind.StrategicDiscussion:
+                    Converse(s, target, WebSocialVocabulary.StrategicDiscussion(Roll(s)),
+                        "You talked tactics with " + target.name + "."); break;
+                case EpisodeCommandKind.DiscussGame: DiscussGame(s, target); break;
+                case EpisodeCommandKind.ShareSecret: ShareSecret(s, target); break;
+                case EpisodeCommandKind.SpreadRumor: SpreadRumor(s, target, c); break;
                 default: throw new RuleException("Unsupported social action.");
             }
-            // Campaigning is not the social week, and the reference build counts those separately
-            // even though they draw on the same budget — the in-phase counter resets with the phase
-            // and this one has to survive it.
+            SpendSocialAction(s);
+        }
+
+        /// <summary>
+        /// Books one social action against the right counter.
+        ///
+        /// <para>Campaigning is not the social week, and the reference build counts those separately
+        /// even though they draw on the same budget — the in-phase counter resets with the phase and
+        /// this one has to survive it.</para>
+        /// </summary>
+        private static void SpendSocialAction(EpisodeState s)
+        {
             if (s.phase == EpisodePhase.Social) s.socialActions++;
             else s.outOfPhaseSocialActions++;
         }
@@ -878,6 +914,213 @@ namespace Gamesim.Simulation
             Remember(s, to, s.playerId, "Made me a " + kind + " promise.", true);
             Remember(s, s.playerId, to, "I promised " + kind + " to " + Name(s, to) + ".", true);
             Log(s, "promise", "You promised " + kind + " to " + Name(s, to) + ".", s.playerId, to);
+        }
+
+        // ---------------------------------------------------------------- the social vocabulary
+        //
+        // Ported from player-action-reducer.ts. Every number is WebSocialVocabulary's, which is
+        // where they can be read and tested; every draw goes through Roll(s), because these are
+        // committed commands whose rolls are recorded and have to replay identically.
+
+        /// <summary>The two ways of spreading a rumour, and the two ways of calling a meeting.</summary>
+        public const string PublicCallout = "public-callout", WhisperCampaign = "whisper-campaign";
+        public const string RallyTroops = "rally-troops", AirDirtyLaundry = "air-dirty-laundry";
+
+        /// <summary>One conversation: a warmth change, a memory, and a line in the log.</summary>
+        private static void Converse(EpisodeState s, ContestantState target, double delta, string line)
+        {
+            Change(s, s.playerId, target.id, delta);
+            Remember(s, target.id, s.playerId, line, true);
+            Log(s, "conversation", line, s.playerId, target.id);
+        }
+
+        /// <summary>
+        /// Talking game, which is the first conversation that can go wrong.
+        ///
+        /// <para>Two draws, in the source's order: whether it lands, then how well. Drawing once and
+        /// reusing the number would tie "did it work" to "how well it worked", which is a different
+        /// game from the one being ported.</para>
+        /// </summary>
+        private static void DiscussGame(EpisodeState s, ContestantState target)
+        {
+            double gate = Roll(s);
+            double delta = WebSocialVocabulary.DiscussGame(gate, Roll(s));
+            bool landed = delta > 0;
+            string line = landed
+                ? "You talked game with " + target.name + " and they were with you."
+                : target.name + " decided you were scheming.";
+            Change(s, s.playerId, target.id, delta);
+            Remember(s, target.id, s.playerId, line, true);
+            Log(s, landed ? "conversation" : "conversation-backfire", line, s.playerId, target.id);
+        }
+
+        /// <summary>
+        /// The most a single conversation can move, either way. Ten to eighteen when they keep it,
+        /// minus fifteen when they decide to use it.
+        /// </summary>
+        private static void ShareSecret(EpisodeState s, ContestantState target)
+        {
+            double gate = Roll(s);
+            double delta = WebSocialVocabulary.ShareSecret(gate, Roll(s));
+            bool kept = delta > 0;
+            string line = kept
+                ? "You told " + target.name + " something you should not have, and they kept it."
+                : target.name + " intends to use what you told them.";
+            Change(s, s.playerId, target.id, delta);
+            Remember(s, target.id, s.playerId, line, true);
+            // The player's own record of having said it, which is the half they can act on later.
+            Remember(s, s.playerId, target.id, kept
+                ? "I trusted " + target.name + " with something."
+                : "I told " + target.name + " too much.", true);
+            Log(s, kept ? "conversation" : "conversation-backfire", line, s.playerId, target.id);
+        }
+
+        /// <summary>
+        /// A rumour about somebody, told either quietly or in front of everyone.
+        ///
+        /// <para>The reference is handed a success flag by its contextual-action generator; there is
+        /// no such generator here, so the engine rolls for it. The odds and every consequence are
+        /// the source's.</para>
+        ///
+        /// <para>A whisper reaches one person and poisons what they think of the subject. A call-out
+        /// reaches two or three and costs more with each. Both cost the player badly with the
+        /// subject when it gets back to them, and a call-out costs twice what a whisper does — which
+        /// is the trade: reach in exchange for exposure.</para>
+        /// </summary>
+        private static void SpreadRumor(EpisodeState s, ContestantState target, EpisodeCommand c)
+        {
+            bool loudly = string.Equals((c.text ?? string.Empty).Trim(), PublicCallout,
+                StringComparison.OrdinalIgnoreCase);
+            var audience = s.Active
+                .Where(x => x.id != s.playerId && x.id != target.id)
+                .OrderBy(x => x.id, StringComparer.Ordinal).ToList();
+            Require(audience.Count > 0, "There is nobody left to tell.");
+
+            if (Roll(s) <= WebSocialVocabulary.RumourFloor)
+            {
+                double cost = loudly ? WebSocialVocabulary.CalloutBackfire : WebSocialVocabulary.WhisperBackfire;
+                Change(s, s.playerId, target.id, cost);
+                Remember(s, target.id, s.playerId, "Spread a rumour about me.", true);
+                Log(s, "rumour-backfire", "Your rumour about " + target.name + " got back to them.",
+                    s.playerId, target.id);
+                return;
+            }
+
+            if (!loudly)
+            {
+                var heard = audience[(int)(Roll(s) * audience.Count) % audience.Count];
+                double damage = WebSocialVocabulary.WhisperDamage(Roll(s));
+                // Between THEM, not between the player and either: a whisper poisons a relationship
+                // the player is not part of, which is the whole point of whispering it.
+                RelationshipLedger.Move(s, heard.id, target.id, damage);
+                RelationshipLedger.Record(s, heard.id, target.id, "heard_a_rumour", damage,
+                    "Heard something about " + target.name + ".");
+                Log(s, "rumour", "You whispered about " + target.name + " to " + heard.name + ".",
+                    s.playerId, heard.id);
+                return;
+            }
+
+            int reach = Math.Min(audience.Count, WebSocialVocabulary.CalloutAudience(Roll(s)));
+            for (int i = 0; i < reach; i++)
+            {
+                double damage = WebSocialVocabulary.CalloutDamage(Roll(s));
+                RelationshipLedger.Move(s, audience[i].id, target.id, damage);
+                RelationshipLedger.Record(s, audience[i].id, target.id, "heard_a_rumour", damage,
+                    "Watched " + Name(s, s.playerId) + " call " + target.name + " out.");
+            }
+            Log(s, "rumour", "You called " + target.name + " out in front of " + reach
+                + (reach == 1 ? " housemate." : " housemates."), s.playerId, target.id);
+        }
+
+        /// <summary>
+        /// Addressing the whole house at once.
+        ///
+        /// <para>The one action that touches every relationship in a single command. Rallying is
+        /// mostly positive with one sceptic; airing everything has no middle — each houseguest
+        /// either agrees with you or does not, which is what makes it the approach that can end a
+        /// game in an afternoon. A meeting that fails costs a little with everybody.</para>
+        /// </summary>
+        private static void HouseMeeting(EpisodeState s, EpisodeCommand c)
+        {
+            Require(s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign,
+                "A house meeting belongs to free time or campaigning.");
+            Require(s.Find(s.playerId).status == ContestantStatus.Active,
+                "Evicted players can follow the season but cannot influence it.");
+            Require(SocialActionsSpent(s) < SocialActionBudget(s),
+                "This social window is complete. Continue the episode.");
+
+            var house = s.Active.Where(x => x.id != s.playerId)
+                .OrderBy(x => x.id, StringComparer.Ordinal).ToList();
+            Require(house.Count > 0, "There is nobody to call together.");
+
+            bool airing = string.Equals((c.text ?? string.Empty).Trim(), AirDirtyLaundry,
+                StringComparison.OrdinalIgnoreCase);
+            bool worked = Roll(s) > WebSocialVocabulary.MeetingFloor;
+            int sceptic = worked && !airing ? (int)(Roll(s) * house.Count) % house.Count : -1;
+
+            for (int i = 0; i < house.Count; i++)
+            {
+                double delta = !worked ? WebSocialVocabulary.MeetingFailure(Roll(s))
+                    : airing ? WebSocialVocabulary.MeetingAiring(Roll(s))
+                    : i == sceptic ? WebSocialVocabulary.MeetingSceptic
+                    : WebSocialVocabulary.MeetingRally(Roll(s));
+                Change(s, s.playerId, house[i].id, delta);
+            }
+
+            Log(s, "house-meeting", !worked
+                ? "You called a house meeting and it did not land."
+                : airing
+                    ? "You called a house meeting and put everything on the table."
+                    : "You called a house meeting and rallied the room.");
+            SpendSocialAction(s);
+        }
+
+        /// <summary>
+        /// Buying another turn, paid for in goodwill.
+        ///
+        /// <para>The budget has been a hard ceiling with no way past it, which makes a week where
+        /// the house moves faster than the allowance unplayable rather than expensive. Two ways to
+        /// pay, both the source's: burn one bridge badly, or make the whole house slightly colder.
+        /// </para>
+        ///
+        /// <para>Buying is not itself a social action — charging one to earn one would be a control
+        /// that does nothing — so it sits outside <see cref="Social"/> and takes no budget check
+        /// beyond having somewhere to put the cost.</para>
+        /// </summary>
+        private static void BuyActionPoint(EpisodeState s, EpisodeCommand c)
+        {
+            Require(s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign,
+                "Actions are only worth buying during free time or campaigning.");
+            Require(s.Find(s.playerId).status == ContestantStatus.Active,
+                "Evicted players can follow the season but cannot influence it.");
+            Require(s.boughtActionPoints < WebSocialVocabulary.PurchaseCeiling,
+                "You have already bought as much time as the house will give you.");
+
+            string cost = (c.text ?? string.Empty).Trim();
+            Require(WebSocialVocabulary.IsKnownCost(cost), "Choose how to pay for the extra action.");
+
+            var house = s.Active.Where(x => x.id != s.playerId)
+                .OrderBy(x => x.id, StringComparer.Ordinal).ToList();
+            Require(house.Count > 0, "There is nobody left to spend goodwill with.");
+
+            if (cost == WebSocialVocabulary.BurnOne)
+            {
+                // Whoever the player named, or somebody the house picks. The reference draws at
+                // random and lets a caller pre-pick; both routes exist here for the same reason.
+                var burned = house.FirstOrDefault(x => x.id == c.targetId)
+                             ?? house[(int)(Roll(s) * house.Count) % house.Count];
+                Change(s, s.playerId, burned.id, WebSocialVocabulary.BurnOneCost);
+                Log(s, "bought-action", "You bought yourself more time, and it cost you with "
+                    + burned.name + ".", s.playerId, burned.id);
+            }
+            else
+            {
+                foreach (var guest in house)
+                    Change(s, s.playerId, guest.id, WebSocialVocabulary.SpreadAllCost);
+                Log(s, "bought-action", "You bought yourself more time, and the whole house felt it.");
+            }
+
+            s.boughtActionPoints = checked(s.boughtActionPoints + 1);
         }
 
         // ---------------------------------------------------------------- the deal table

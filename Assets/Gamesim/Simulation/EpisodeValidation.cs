@@ -21,7 +21,8 @@ namespace Gamesim.Simulation
             error = null;
             if (s == null || s.schemaVersion != 11) return Fail(out error, "Unsupported episode schema.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
-                s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0 || s.socialActions > 18 || !Defined(s.phase))
+                s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0
+                || s.socialActions > MostActionsAWeekCanHold || !Defined(s.phase))
                 return Fail(out error, "Invalid session counters or phase.");
             if (s.blocRulesStartWeek < 1 || s.blocRulesStartWeek > 101 || s.blocRulesStartWeek > s.week + 1)
                 return Fail(out error, "Voting-bloc activation week must be within the saved season boundary.");
@@ -102,7 +103,7 @@ namespace Gamesim.Simulation
             // eighteen actions were legal is still a legal season, and validation may not
             // retroactively reject what the rules allowed when it was written. The budget is
             // enforced where an action is spent, which is the only place it can be.
-            if (s.outOfPhaseSocialActions < 0 || s.outOfPhaseSocialActions > 18)
+            if (s.outOfPhaseSocialActions < 0 || s.outOfPhaseSocialActions > MostActionsAWeekCanHold)
                 return Fail(out error, "Invalid out-of-phase social action count.");
             // Deals are bounded like promises and for the same reason: nothing legitimately makes
             // hundreds of them, and an unbounded list is a save that grows until it will not load.
@@ -221,6 +222,17 @@ namespace Gamesim.Simulation
             || !Finite(choice.trustChange) || Math.Abs(choice.trustChange) > 100
             || choice.impacts == null || choice.impacts.Count > 32
             || choice.impacts.Any(i => i == null || !Finite(i.amount) || Math.Abs(i.amount) > 100);
+
+        /// <summary>
+        /// The most actions one counter can legally hold.
+        ///
+        /// <para>The old flat allowance plus everything a player may buy on top of it. A season
+        /// still under the legacy boundary gets eighteen for free and may buy six more, and all
+        /// twenty-four can land in the same phase — so a bound of eighteen would refuse a season
+        /// that had done nothing wrong.</para>
+        /// </summary>
+        private const int MostActionsAWeekCanHold =
+            EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
         private static bool Text(string value, int max) => !string.IsNullOrWhiteSpace(value) && value.Length <= max;
         private static bool Defined<T>(T value) where T : struct => Enum.IsDefined(typeof(T), value);

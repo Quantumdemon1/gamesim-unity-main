@@ -374,7 +374,19 @@ namespace Gamesim.Simulation
         SetBackdoorPlan,
         MarkOpeningBeat,
         ProposeDeal,
-        RespondToDeal // Append: preserve every pre-v4 command ordinal.
+        RespondToDeal,
+        // The social vocabulary, appended in the reference's own order. Talk stays where it is:
+        // its ordinal is pinned by recorded seasons, and it remains the plain conversation these
+        // five are variations on.
+        SmallTalk,
+        PersonalChat,
+        DiscussGame,
+        StrategicDiscussion,
+        RelationshipBuilding,
+        ShareSecret,
+        SpreadRumor,
+        HouseMeeting,
+        BuyActionPoint // Append: preserve every pre-v4 command ordinal.
     }
 
     /// <summary>

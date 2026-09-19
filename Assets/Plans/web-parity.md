@@ -234,7 +234,7 @@ port already scores every competitor through `WebRules.WeightedCompetitionScore`
 seed, and `CompetitionResult` already shows the standings — a second, unseeded scorer would be a
 second answer to a question already answered.
 
-### 3.2 The social vocabulary is still collapsed
+### 3.2 The social vocabulary is still collapsed — **DONE**
 
 Confirmed against `player-action-reducer.ts` (44 KB, 40 actions) rather than the design document:
 
@@ -244,13 +244,35 @@ Confirmed against `player-action-reducer.ts` (44 KB, 40 actions) rather than the
 - Absent entirely: `spread_rumor_strategic`, `house_meeting_strategic`, `progress_storyline`,
   `deal_coordination_respond`, `fast_forward`, `simulate_weeks`.
 
-### 3.3 Social actions can be bought
+### 3.3 Social actions can be bought — **DONE**
 
 `buy_action_point` trades relationship damage for another action — `costType` of `random_one` (one
 houseguest takes the hit) or `spread_all` (everyone takes a smaller one); `buy_action_point_free` is a
 storyline reward. `SocialActionBudget` here is a hard ceiling with no way past it.
 
 A pressure valve with a real cost, and in none of the other plans in this folder.
+
+**What landed for 3.2 and 3.3.** `WebSocialVocabulary` holds every number; nine appended commands
+carry them. Five ways of having a conversation where there was one, plus `ShareSecret`,
+`SpreadRumor`, `HouseMeeting` and `BuyActionPoint`. `Talk` keeps its ordinal — recorded seasons
+depend on it, and it remains the plain conversation the five are variations on.
+
+A risky conversation draws **twice**, for the gate and then the amount, exactly as the source does;
+drawing once and reusing it would tie whether it worked to how well, which is a different game.
+A whisper moves the listener's opinion of the subject rather than the player's, which is the whole
+point of whispering it.
+
+`buy_action_point` has a ceiling of six here where the reference has none. The reference's budget is
+a counter it can decrement indefinitely; this save format bounds everything it stores, and an
+unbounded purchase count is a season that eventually will not load. Validation's per-counter bound
+moved with it: the legacy flat allowance of eighteen plus six purchases reaches twenty-four in one
+phase, and a bound of eighteen would have refused a migrated season that had done nothing wrong.
+
+**Still absent from 3.2, with reasons.** `progress_storyline` belongs to Tier 5 and has nothing to
+progress yet. `deal_coordination_respond` landed as `RespondToDeal` with the deal system.
+`fast_forward` and `simulate_weeks` skip play rather than add it — this port has
+`SimulateCompetition` for the same impulse at a scale that does not hand whole weeks to the
+simulation unwatched.
 
 ### 3.4 Contextual actions and lobbying
 
@@ -331,7 +353,7 @@ React presentation; the phase components may hold flow logic worth a look before
 | 5 | ~~Deals (1.1)~~ **done** | Best value of any system; the consumer exists and is tested. Landed as schema 10. |
 | 6 | ~~Weekly recap (2.1)~~ **done** | Presentation over an existing event log. No schema change. |
 | 7 | ~~Minigames (3.1)~~ **done** | Every competition currently plays identically. Three games, one per category the engine produces. |
-| 8 | Social vocabulary + action points (3.2, 3.3) | Player-facing breadth; append-only to `EpisodeCommandKind`. |
+| 8 | ~~Social vocabulary + action points (3.2, 3.3)~~ **done** | Player-facing breadth; append-only to `EpisodeCommandKind`. Landed on schema 11. |
 | 9 | Event layer (Tier 4) | Unlocks storylines, which is why they are not earlier. |
 | 10 | Storylines and narrative (1.2, Tier 5) | |
 | 11 | Phase E (Tier 6) | As already planned. |

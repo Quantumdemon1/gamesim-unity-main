@@ -50,6 +50,27 @@ namespace Gamesim.Episode
         public static string DealProposeCaption(string title) => "Propose a " + title;
         /// <summary>The words on a week-review control, one per week the notebook lists.</summary>
         public static string ReviewWeekCaption(int week) => "Read the week " + week + " recap";
+        /// <summary>
+        /// The five ways of having a conversation, and the two house-wide moves.
+        ///
+        /// <para>Each says what it is for rather than what it is called, because the difference
+        /// between them is the whole point: small talk is safe and slight, a secret is the largest
+        /// swing in the game in either direction.</para>
+        /// </summary>
+        public const string SmallTalkCaption = "Make small talk";
+        public const string PersonalChatCaption = "Tell them something personal";
+        public const string RelationshipBuildingCaption = "Spend real time with them";
+        public const string StrategicDiscussionCaption = "Talk tactics";
+        public const string DiscussGameCaption = "Talk game openly";
+        public const string ShareSecretCaption = "Trust them with a secret";
+        public static string WhisperCaption(string about) => "Whisper about " + about;
+        public static string CalloutCaption(string about) => "Call " + about + " out publicly";
+        public const string RallyHouseCaption = "Call a house meeting and rally the room";
+        public const string AirLaundryCaption = "Call a house meeting and air everything";
+        /// <summary>Buying a turn, which says what it costs before it is pressed.</summary>
+        public const string BuyBurnOneCaption = "Buy an action by burning one bridge";
+        public const string BuySpreadCaption = "Buy an action at the whole house's expense";
+
         /// <summary>The words on each competition minigame's controls.</summary>
         public const string HoldGripCaption = "Hold on  [hold Space]";
         public const string ReleaseGripCaption = "Let go  [release Space]";

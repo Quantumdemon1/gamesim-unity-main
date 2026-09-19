@@ -635,7 +635,21 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.ShareInformation:
                 case EpisodeCommandKind.AskForIntel:
                 case EpisodeCommandKind.VentAbout:
+                case EpisodeCommandKind.SmallTalk:
+                case EpisodeCommandKind.PersonalChat:
+                case EpisodeCommandKind.RelationshipBuilding:
                     return "social";
+                // Their own category for the same reason Eavesdrop and SpreadLie have one: these
+                // are the conversations that can rebound, and the chip is the only warning before
+                // an action is spent on one.
+                case EpisodeCommandKind.DiscussGame:
+                case EpisodeCommandKind.ShareSecret:
+                case EpisodeCommandKind.SpreadRumor:
+                case EpisodeCommandKind.HouseMeeting:
+                    return "risky";
+                case EpisodeCommandKind.StrategicDiscussion:
+                case EpisodeCommandKind.BuyActionPoint:
+                    return "strategic";
                 // Their own category on purpose. These are the actions that can rebound on you, and
                 // the chip is the only warning before you spend an action on one.
                 case EpisodeCommandKind.Eavesdrop:
@@ -1325,6 +1339,21 @@ namespace Gamesim.Episode
                 bool allied = state.Allied(state.playerId, npc.id);
                 hud.Tag(hud.Action("Spend time together", () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
                     Category(EpisodeCommandKind.Talk));
+                // Five ways of having a conversation where there was one. Each says what it is for,
+                // because the difference between them is the whole point: small talk is safe and
+                // slight, a secret is the biggest swing either way in the game.
+                hud.Tag(hud.Action(EpisodeHud.SmallTalkCaption, () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
+                    Category(EpisodeCommandKind.SmallTalk));
+                hud.Tag(hud.Action(EpisodeHud.PersonalChatCaption, () => Commit(state, EpisodeCommandKind.PersonalChat, npc.id)),
+                    Category(EpisodeCommandKind.PersonalChat));
+                hud.Tag(hud.Action(EpisodeHud.RelationshipBuildingCaption, () => Commit(state, EpisodeCommandKind.RelationshipBuilding, npc.id)),
+                    Category(EpisodeCommandKind.RelationshipBuilding));
+                hud.Tag(hud.Action(EpisodeHud.StrategicDiscussionCaption, () => Commit(state, EpisodeCommandKind.StrategicDiscussion, npc.id)),
+                    Category(EpisodeCommandKind.StrategicDiscussion));
+                hud.Tag(hud.Action(EpisodeHud.DiscussGameCaption, () => Commit(state, EpisodeCommandKind.DiscussGame, npc.id)),
+                    Category(EpisodeCommandKind.DiscussGame));
+                hud.Tag(hud.Action(EpisodeHud.ShareSecretCaption, () => Commit(state, EpisodeCommandKind.ShareSecret, npc.id)),
+                    Category(EpisodeCommandKind.ShareSecret));
                 hud.Tag(hud.Action("Promise safety", () => Commit(state, EpisodeCommandKind.PromiseSafety, npc.id)),
                     Category(EpisodeCommandKind.PromiseSafety));
                 hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
@@ -1347,6 +1376,18 @@ namespace Gamesim.Episode
                     hud.Tag(hud.ActionFor(about, "Tell them something untrue about " + subject.name,
                         () => Commit(state, EpisodeCommandKind.SpreadLie, npc.id, about)),
                         Category(EpisodeCommandKind.SpreadLie));
+                }
+                // A rumour is about somebody but told to the house rather than to one person, so it
+                // is offered per subject and not per listener.
+                foreach (var subject in state.Active.Where(c => !c.isPlayer && c.id != npc.id))
+                {
+                    string about = subject.id;
+                    hud.Tag(hud.ActionFor(about, EpisodeHud.WhisperCaption(subject.name),
+                        () => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.WhisperCampaign)),
+                        Category(EpisodeCommandKind.SpreadRumor));
+                    hud.Tag(hud.ActionFor(about, EpisodeHud.CalloutCaption(subject.name),
+                        () => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.PublicCallout)),
+                        Category(EpisodeCommandKind.SpreadRumor));
                 }
                 hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
                     Category(EpisodeCommandKind.SchemeAgainst));
@@ -1444,6 +1485,7 @@ namespace Gamesim.Episode
                     hud.Paragraph("Carrying a +" + state.phaseEventSocialBonus + " social bonus from earlier choices.");
                 if (state.playerStudyBonus > 0)
                     hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
+                HouseWideActions(state);
                 hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
                     + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
                 // Listening in needs no one to talk to, so it sits here rather than in a conversation.
@@ -1672,6 +1714,50 @@ namespace Gamesim.Episode
                 default:
                     return who + " wants to partner up properly.";
             }
+        }
+
+        /// <summary>
+        /// The two things you can do to the whole house at once, and the two ways to buy more time.
+        ///
+        /// <para>These live in the phase panel rather than in a conversation because neither is
+        /// addressed to a person. A house meeting is addressed to the room, and buying an action is
+        /// addressed to nobody — it is a trade with the week itself.</para>
+        ///
+        /// <para>Each control says what it costs before it is pressed. A purchase that only revealed
+        /// its price afterwards would be a trap rather than a decision.</para>
+        /// </summary>
+        private void HouseWideActions(EpisodeState state)
+        {
+            bool room = state.Active.Any(c => !c.isPlayer);
+            if (!room) return;
+
+            hud.Heading("THE WHOLE HOUSE");
+            hud.Paragraph("A meeting moves everybody at once. Rallying the room is mostly positive "
+                + "with one sceptic; airing everything has no middle ground — each housemate either "
+                + "comes down with you or against you.");
+            hud.Tag(hud.Action(EpisodeHud.RallyHouseCaption,
+                    () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops)),
+                Category(EpisodeCommandKind.HouseMeeting));
+            hud.Tag(hud.Action(EpisodeHud.AirLaundryCaption,
+                    () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry)),
+                Category(EpisodeCommandKind.HouseMeeting));
+
+            int left = WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints;
+            if (left <= 0)
+            {
+                hud.Paragraph("You have bought as much time as the house will give you this season.");
+                return;
+            }
+            hud.Paragraph("Out of interactions? You can buy another, and it is paid for in goodwill: "
+                + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " points with one housemate, or "
+                + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost) + " with every one of them. "
+                + left + (left == 1 ? " purchase" : " purchases") + " left.");
+            hud.Tag(hud.Action(EpisodeHud.BuyBurnOneCaption,
+                    () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.BurnOne)),
+                Category(EpisodeCommandKind.BuyActionPoint));
+            hud.Tag(hud.Action(EpisodeHud.BuySpreadCaption,
+                    () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.SpreadAll)),
+                Category(EpisodeCommandKind.BuyActionPoint));
         }
 
         private void ChallengePanel()

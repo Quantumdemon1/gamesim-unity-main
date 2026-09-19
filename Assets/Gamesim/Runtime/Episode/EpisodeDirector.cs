@@ -34,6 +34,8 @@ namespace Gamesim.Episode
         private OpeningSequence opening;
         private MemoryWall memoryWall;
         private SeasonReport seasonReport;
+        private WeeklyRecapScreen weeklyRecap;
+        private Coroutine recapWait;
         private CastSelect castSelect;
         private CharacterCreator characterCreator;
         private MainMenu mainMenu;
@@ -63,7 +65,10 @@ namespace Gamesim.Episode
         private EpisodeCommandKind? lastSocialAction;
         public EpisodeState Snapshot => engine?.Snapshot;
         public bool IsReady { get; private set; }
-        public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen || journalOpen || diaryOpen;
+        // The weekly recap counts: it is a full-screen scrim, and a player who can still walk
+        // the house behind it would be steering a character they cannot see.
+        public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen
+                                   || journalOpen || diaryOpen || IsWeeklyRecapOpen;
         public bool IsChallengeActive => challengeActive;
         public float AverageFrameMilliseconds => frameAverage * 1000;
         public string SavePath => saves?.SavePath;
@@ -122,6 +127,7 @@ namespace Gamesim.Episode
             tutorial = HouseTutorial.Attach(gameObject);
             opening = OpeningSequence.Attach(gameObject);
             seasonReport = SeasonReport.Attach(gameObject);
+            weeklyRecap = WeeklyRecapScreen.Attach(gameObject);
             castSelect = CastSelect.Attach(gameObject);
             characterCreator = CharacterCreator.Attach(gameObject);
             mainMenu = MainMenu.Attach(gameObject);
@@ -350,6 +356,9 @@ namespace Gamesim.Episode
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
+            // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
+            // otherwise the scrim stays up while everything behind it believes it is dismissed.
+            if (weeklyRecap != null) weeklyRecap.Hide();
             if (cameraRig != null) { cameraRig.EndConversation(); cameraRig.ControlsEnabled = !blockedRecovery; }
             if (projected != null && player != null) player.SetInputEnabled(!blockedRecovery && projected.Find(projected.playerId).status == ContestantStatus.Active);
             if (render && hud != null) Render();
@@ -468,6 +477,11 @@ namespace Gamesim.Episode
                     // the strip would only flash under it and vanish mid-tally. Everywhere else the
                     // two still pair up: card opens the scene, strip reports the result.
                     if (sting != null && !revealed) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
+                    // The week's recap, once the beats that narrate the eviction have had their say.
+                    // It waits rather than opening now because the reveal outlives its own strip by
+                    // seconds and the two canvases share a sorting order — a recap that appeared
+                    // immediately would cover the tally it is summarising.
+                    if (ceremony.kind == CeremonySting.EvictionKind) QueueWeeklyRecap(wasWeek);
                 }
             }
             Render(); return result;
@@ -976,6 +990,77 @@ namespace Gamesim.Episode
         /// screen of a season is the worst possible place to show an outcome the save does not
         /// hold.</para>
         /// </summary>
+        /// <summary>
+        /// Opens the week's recap once the eviction has finished being narrated.
+        ///
+        /// <para>A season that has just ended does not get one: the finale plays, and
+        /// <see cref="SeasonReport"/> is the screen that closes it. A recap in front of the winner
+        /// would be a summary of the week interrupting the end of the season.</para>
+        /// </summary>
+        private void QueueWeeklyRecap(int week)
+        {
+            if (weeklyRecap == null || week < 1) return;
+            if (recapWait != null) StopCoroutine(recapWait);
+            recapWait = StartCoroutine(OpenWeeklyRecap(week));
+        }
+
+        private IEnumerator OpenWeeklyRecap(int week)
+        {
+            // Nothing here is timed. It waits on the cards' own state, so reduced motion and
+            // batchmode — where those beats collapse to nothing — cost exactly one frame.
+            yield return null;
+            while ((voteReveal != null && voteReveal.IsPlaying)
+                   || (takeover != null && takeover.IsPlaying))
+                yield return null;
+
+            recapWait = null;
+            var committed = Snapshot;
+            if (committed.phase == EpisodePhase.Finished) yield break;
+            if (seasonReport != null && seasonReport.IsShowing) yield break;
+            // ClosePanels is what dismissing does: it puts the player back in the house and
+            // repaints, which hiding the screen on its own would not.
+            OpenRecap(() => weeklyRecap.Show(committed, ClosePanels));
+        }
+
+        /// <summary>
+        /// Puts the recap up the way every other full-screen panel goes up.
+        ///
+        /// <para>Taking the house away is explicit here, not a consequence of rendering: a render
+        /// redraws the HUD and nothing else, and the one call that gates movement on
+        /// <see cref="IsPanelOpen"/> lives in <c>Project</c>, which only runs when a command
+        /// commits. Showing a scrim without this leaves the player walking around behind it.</para>
+        /// </summary>
+        private void OpenRecap(Action show)
+        {
+            PauseNpcSocialForPanel();
+            // Without a render: the panel being cleared is replaced in the same breath, and it
+            // also hides the recap, so a repaint here would draw a screen about to be reopened.
+            ClosePanelsInternal(false);
+            show();
+            if (player != null) player.SetInputEnabled(false);
+            if (cameraRig != null) cameraRig.ControlsEnabled = false;
+            Render();
+        }
+
+        /// <summary>Whether the week's recap is on screen. Read by the HUD's own open-panel test.</summary>
+        public bool IsWeeklyRecapOpen => weeklyRecap != null && weeklyRecap.IsOpen;
+
+        /// <summary>
+        /// Opens a played week's recap for review. The player's own choice, not a beat.
+        ///
+        /// <para>Dismissing puts them back where they came from. Reached from the notebook it
+        /// reopens the notebook, because a control that closes the screen it was pressed on makes
+        /// the player navigate back to it every time they check a second week.</para>
+        /// </summary>
+        public void ReviewWeek(int week)
+        {
+            if (weeklyRecap == null) return;
+            bool fromNotebook = journalOpen;
+            var committed = Snapshot;
+            OpenRecap(() => weeklyRecap.Review(committed, week,
+                fromNotebook ? (Action)OpenJournal : ClosePanels));
+        }
+
         public void ShowSeasonReport()
         {
             if (seasonReport == null) return;
@@ -1176,6 +1261,20 @@ namespace Gamesim.Episode
                         hud.PortraitRow(voter.id,
                             voter.name + " voted to evict " + (target.id == state.playerId ? "you" : target.name),
                             vote.reason);
+                    }
+                }
+                // Every week that has closed, reachable again. The recap opens itself once when a
+                // week ends and is then gone; the notebook is where the player already comes to
+                // check what happened, so it is where the record of a finished week belongs.
+                var played = WeeklyRecap.Season(state).Where(w => w.evicted != null).ToList();
+                if (played.Count > 0)
+                {
+                    hud.Heading("WEEKS SO FAR");
+                    foreach (var week in played)
+                    {
+                        int number = week.week;
+                        hud.Paragraph(week.Headline);
+                        hud.Action(EpisodeHud.ReviewWeekCaption(number), () => ReviewWeek(number));
                     }
                 }
                 hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);

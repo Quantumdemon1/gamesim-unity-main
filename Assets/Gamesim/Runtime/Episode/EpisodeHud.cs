@@ -48,6 +48,8 @@ namespace Gamesim.Episode
         public const string DealAcceptCaption = "Accept this offer";
         public const string DealDeclineCaption = "Turn this offer down";
         public static string DealProposeCaption(string title) => "Propose a " + title;
+        /// <summary>The words on a week-review control, one per week the notebook lists.</summary>
+        public static string ReviewWeekCaption(int week) => "Read the week " + week + " recap";
         // Palette lives in UiTheme so the HUD and the 3D set stay in step; these aliases keep
         // the existing call sites unchanged.
         private static readonly Color Ink = UiTheme.Ink;

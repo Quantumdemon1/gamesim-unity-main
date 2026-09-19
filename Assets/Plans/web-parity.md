@@ -161,11 +161,38 @@ Lower priority than deals — largely reactions to the event layer, so it wants 
 
 ## Tier 2 — Presentation over data that already exists
 
-### 2.1 Weekly recap (`src/utils/recap/`, ~40 KB)
+### 2.1 Weekly recap (`src/utils/recap/`, ~40 KB) — **DONE**
 
 Four builders: weekly, finale, story-context, event-formatter. This port has `SeasonReport` for the
 end of a season and nothing for the end of a week — over an `EpisodeEvent` log that already records
 week, phase, kind and audience. Same shape as `SeasonReport`; no simulation change.
+
+**What landed.** `WeeklyRecap`, a plain static class that reads a week back out of committed state,
+and `WeeklyRecapScreen`, which draws it. The screen opens itself when an eviction has finished being
+narrated — it waits on the cards' own `IsPlaying` rather than on a timer, so reduced motion and
+batchmode cost one frame — and every week that has closed stays reachable from the notebook.
+
+The recap derives nothing the save does not already hold, so it cannot contradict the season, and
+adding it required no simulation change. Two constraints shaped it:
+
+- **It only tells the player what their character knows.** A relationship movement is reported only
+  where the player is one end of it, and a turning point only where they were in its audience. Two
+  houseguests falling out privately is not theirs to read — the same line the notebook and the diary
+  room already draw.
+- **Three readings of the veto, not two.** No meeting at all is not the same as a veto left in the
+  box, so `vetoUsed` is nullable and the screen says "No meeting" for the third case.
+
+`SeasonReport` had private copies of the two parsers this needed — the name out of "Competition
+winner: X · Mental." and the subject of an eviction line. They are now one implementation in
+`WeeklyRecap`, public and tested, because two parsers for one sentence is one too many and the
+second is always the one that drifts.
+
+**Not ported.** The reference's season-level sections — winner, jury votes, rivalries, power
+alliances, blindsides, competition beasts — are `SeasonReport`'s job here and it already draws the
+ones this simulation can support. Rivalry and blindside detection lean on event flags
+(`significance: major`, `blindside: true`) that nothing in this port sets; the turning-points
+section stands in for them by reading the event kinds that only ever fire at a turning point, which
+is honest about what is actually recorded rather than guessing at a flag that does not exist.
 
 ## Tier 3 — Gameplay breadth
 
@@ -273,7 +300,7 @@ React presentation; the phase components may hold flow logic worth a look before
 | 3 | CI (0.3) | The suites exist and nothing runs them. |
 | 4 | Audio (0.4) | Two files and wiring; completes an opening sequence already built. |
 | 5 | ~~Deals (1.1)~~ **done** | Best value of any system; the consumer exists and is tested. Landed as schema 10. |
-| 6 | Weekly recap (2.1) | Presentation over an existing event log. |
+| 6 | ~~Weekly recap (2.1)~~ **done** | Presentation over an existing event log. No schema change. |
 | 7 | Minigames (3.1) | Every competition currently plays identically. |
 | 8 | Social vocabulary + action points (3.2, 3.3) | Player-facing breadth; append-only to `EpisodeCommandKind`. |
 | 9 | Event layer (Tier 4) | Unlocks storylines, which is why they are not earlier. |

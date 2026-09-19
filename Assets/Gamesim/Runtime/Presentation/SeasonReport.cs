@@ -612,25 +612,17 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>Pulls the name out of "Competition winner: NAME · category."</summary>
-        private static string WinnerName(string description)
-        {
-            if (string.IsNullOrEmpty(description)) return "—";
-            int start = description.IndexOf(':');
-            if (start < 0) return "—";
-            int end = description.IndexOf('·', start);
-            string slice = end > start
-                ? description.Substring(start + 1, end - start - 1)
-                : description.Substring(start + 1);
-            return slice.Trim().TrimEnd('.');
-        }
+        // Both of these used to be parsed here. WeeklyRecap needs the same two answers out of the
+        // same two sentences, and two parsers for one sentence is one too many — the second is
+        // always the one that drifts when the log's wording changes. The em dash stays here,
+        // because a table cell wants something to show and a recap wants to know there was nothing.
+
+        private static string WinnerName(string description) =>
+            WeeklyRecap.WinnerName(description) ?? "—";
 
         /// <summary>The cast member an eviction line opens with.</summary>
-        private static string FirstName(string description, EpisodeState state)
-        {
-            var who = state.contestants.FirstOrDefault(
-                c => description.StartsWith(c.name, StringComparison.Ordinal));
-            return who != null ? who.name : "—";
-        }
+        private static string FirstName(string description, EpisodeState state) =>
+            WeeklyRecap.Subject(state, description) ?? "—";
 
         private static string Placement(EpisodeState state, ContestantState you)
         {

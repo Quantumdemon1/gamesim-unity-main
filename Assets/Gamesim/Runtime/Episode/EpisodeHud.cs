@@ -1121,10 +1121,14 @@ press.Hovered = () => Foley(HouseAudio.Cue.Hover);
         /// Major chrome: a larger corner radius plus a hairline border, so panel edges stay legible
         /// against the set's bloom instead of dissolving into it. The border never takes raycasts.
         /// </summary>
+        /// <summary>
+        /// A fixed panel, as one of the mockups' glass cards (VISUAL-TARGET.md V2). The colour is
+        /// kept in the signature for the callers that pass it; the glass ground is the same for all.
+        /// </summary>
         private static RectTransform Chrome(string name,Transform parent,Color color)
         {
-            var rect=Panel(name,parent,color,UiTheme.PanelRadius);
-            UiTheme.AddBorder(rect,UiTheme.PanelRadius,UiTheme.Outline);
+            var rect=Panel(name,parent,UiTheme.GlassFill,UiTheme.GlassRadius);
+            UiTheme.Glass(rect,UiTheme.GlassRadius);
             return rect;
         }
         /// <summary>

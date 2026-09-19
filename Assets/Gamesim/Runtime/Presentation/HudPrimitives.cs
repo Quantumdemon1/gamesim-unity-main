@@ -37,6 +37,46 @@ namespace Gamesim.Presentation
         /// with a bare colour and no sprite does not draw, which cost a debugging pass when a
         /// full-screen scrim silently rendered nothing.
         /// </summary>
+        /// <summary>One of the mockups' glass cards: the night ground, a cyan hairline, a soft glow.</summary>
+        public static RectTransform Glass(string name, Transform parent, int radius = UiTheme.GlassRadius)
+        {
+            var rect = Fill(name, parent, UiTheme.GlassFill, radius);
+            UiTheme.Glass(rect, radius);
+            return rect;
+        }
+
+        /// <summary>
+        /// A card heading in the mockups' voice: the semibold weight, tracked. Uppercasing is the
+        /// caller's, after localisation, as the season report already does.
+        /// </summary>
+        public static TMP_Text Heading(string name, Transform parent, float size, Color colour,
+            TextAlignmentOptions alignment = TextAlignmentOptions.Left)
+        {
+            var label = Label(name, parent, size, colour, alignment);
+            var font = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (font != null) label.font = font;
+            label.characterSpacing = 6f;
+            return label;
+        }
+
+        /// <summary>A pill chip: a tinted ground at 18 %, a hairline in the tint, the word in the tint.</summary>
+        public static RectTransform Chip(string name, Transform parent, string text, Color tint, float width, float height)
+        {
+            int radius = Mathf.Clamp(Mathf.RoundToInt(height * 0.5f), 4, 16);
+            var rect = Fill(name, parent, new Color(tint.r, tint.g, tint.b, 0.18f), radius);
+            rect.sizeDelta = new Vector2(width, height);
+            UiTheme.AddBorder(rect, radius, new Color(tint.r, tint.g, tint.b, 0.8f));
+            var label = Label("Word", rect, Mathf.Max(10f, height * 0.5f), tint, TextAlignmentOptions.Center);
+            label.text = text;
+            var font = UiTheme.Font(UiTheme.Weight.Medium);
+            if (font != null) label.font = font;
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(8f, 0f);
+            label.rectTransform.offsetMax = new Vector2(-8f, 0f);
+            return rect;
+        }
+
         public static RectTransform Fill(string name, Transform parent, Color colour, int radius)
         {
             var rect = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();

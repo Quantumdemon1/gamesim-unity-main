@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -36,6 +37,68 @@ namespace Gamesim.Presentation
         public static readonly Color Award = Hex("7C3AED");
         public static readonly Color Paper = Hex("F2F5FA");
         public static readonly Color Muted = Hex("94A7B8");
+
+        // The mockups' palette (VISUAL-TARGET.md §4), beside the set's own tokens above. The panel
+        // ground is the night background at 85 %, so the set shows through every card; the hairline
+        // and its glow are the cyan every panel edge carries; the rest are colours by meaning.
+        public static readonly Color Background = Hex("0B1220");
+        public static readonly Color GlassFill = Hex("0B1220D9");
+        public static readonly Color Hairline = Hex("3AA0FFC0");
+        public static readonly Color Glow = Hex("5CC8FF");
+        public static readonly Color Flirt = Hex("FF4FA3");     // flirt, playful
+        public static readonly Color Strategic = Hex("A56BFF"); // strategy, gossip, secrets
+        public static readonly Color Joke = Hex("FFC93C");      // joke, ambition
+        public static readonly Color Allied = Hex("4ADE80");    // reassure, chill, allied
+        public static readonly Color Conflict = Hex("FF5A5A");  // conflict, nominated
+
+        /// <summary>The mockups' corner radius, and how far a panel's glow reaches past its edge.</summary>
+        public const int GlassRadius = 14;
+        public const int GlowWidth = 10;
+
+        /// <summary>
+        /// Dresses <paramref name="panel"/> as one of the mockups' glass cards: the night ground at
+        /// 85 %, a cyan hairline on the edge and a soft glow of the same hue outside it. The glow is
+        /// a child that reaches <see cref="GlowWidth"/> px past the rect; layout and overlap checks
+        /// read the rect, not the glow.
+        /// </summary>
+        public static void Glass(RectTransform panel, int radius = GlassRadius)
+        {
+            if (panel == null) return;
+            var image = panel.GetComponent<Image>();
+            if (image == null) image = panel.gameObject.AddComponent<Image>();
+            Style(image, GlassFill, radius);
+            var glow = new GameObject("Glow", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)glow.transform;
+            rect.SetParent(panel, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(-GlowWidth, -GlowWidth); rect.offsetMax = new Vector2(GlowWidth, GlowWidth);
+            var glowImage = glow.GetComponent<Image>();
+            glowImage.sprite = GlowSprite(radius);
+            glowImage.type = Image.Type.Sliced;
+            glowImage.pixelsPerUnitMultiplier = 1f;
+            glowImage.color = new Color(Glow.r, Glow.g, Glow.b, 0.35f);
+            glowImage.raycastTarget = false;
+            AddBorder(panel, radius, Hairline);
+        }
+
+        public enum Weight { Regular, Medium, SemiBold, Bold }
+
+        private static readonly Dictionary<Weight, TMP_FontAsset> fonts = new Dictionary<Weight, TMP_FontAsset>();
+
+        /// <summary>
+        /// The mockups' typeface at a weight: Inter, from <c>Resources/Fonts</c>. Falls back to the
+        /// project's default font asset when the weight is not there, so a clone without the fonts
+        /// still draws every label.
+        /// </summary>
+        public static TMP_FontAsset Font(Weight weight)
+        {
+            if (fonts.TryGetValue(weight, out var cached) && cached != null) return cached;
+            var asset = Resources.Load<TMP_FontAsset>("Fonts/Inter-" + weight + " SDF");
+            if (asset == null) asset = TMP_Settings.defaultFontAsset;
+            fonts[weight] = asset;
+            return asset;
+        }
 
         /// <summary>
         /// Ink or Paper, whichever reads against <paramref name="background"/>.
@@ -168,6 +231,54 @@ namespace Gamesim.Presentation
 
         private static Sprite Fill(int radius) => Cached(FillCache, radius, false);
         private static Sprite OutlineSprite(int radius) => Cached(OutlineCache, radius, true);
+
+        private static readonly Dictionary<int, Sprite> GlowCache = new Dictionary<int, Sprite>();
+
+        /// <summary>
+        /// A soft halo outside a rounded rect: transparent inside the panel, fading over
+        /// <see cref="GlowWidth"/> px beyond its edge. Nine-sliced like the fill, with the border set
+        /// past the glow so corners keep their shape at any panel size.
+        /// </summary>
+        private static Sprite GlowSprite(int radius)
+        {
+            radius = Mathf.Clamp(radius, 1, 64);
+            if (GlowCache.TryGetValue(radius, out var existing) && existing != null) return existing;
+            int reach = radius + GlowWidth;
+            int size = reach * 2 + 4;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Glow " + radius,
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            float half = size * 0.5f;
+            float inner = half - reach;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float px = Mathf.Abs(x + 0.5f - half) - inner;
+                    float py = Mathf.Abs(y + 0.5f - half) - inner;
+                    float qx = Mathf.Max(px, 0f);
+                    float qy = Mathf.Max(py, 0f);
+                    float distance = Mathf.Sqrt(qx * qx + qy * qy) + Mathf.Min(Mathf.Max(px, py), 0f) - radius;
+                    float t = Mathf.Clamp01(distance / GlowWidth);
+                    float alpha = distance <= 0f ? 0f : (1f - t) * (1f - t);
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            float edge = reach + 1f;
+            var sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, .5f), 100f, 0,
+                SpriteMeshType.FullRect, new Vector4(edge, edge, edge, edge));
+            sprite.name = texture.name;
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            GlowCache[radius] = sprite;
+            return sprite;
+        }
 
         private static Sprite Cached(Dictionary<int, Sprite> cache, int radius, bool ring)
         {

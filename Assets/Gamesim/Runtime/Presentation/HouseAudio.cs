@@ -38,6 +38,22 @@ namespace Gamesim.Presentation
         private float volume = 0.35f;
         public bool Muted { get; private set; }
         public float Volume => volume;
+        /// <summary>
+        /// Reduced audio (§3.C), the sound's counterpart to reduced motion: the room tone stops, and
+        /// the cues and the music play at half the volume. Nothing that carries information goes -
+        /// every cue still sounds - it is the bed under it that is taken away.
+        /// </summary>
+        public bool ReducedAudio { get; private set; }
+        /// <summary>The volume the cues are played at, after the preferences.</summary>
+        public float CueVolume => volume * (ReducedAudio ? 0.5f : 1f);
+        /// <summary>Whether the room tone is playing right now.</summary>
+        public bool AmbiencePlaying => ambienceSource != null && ambienceSource.isPlaying;
+
+        public void SetReducedAudio(bool value)
+        {
+            ReducedAudio = value;
+            ApplySettings();
+        }
 
         private void Awake()
         {
@@ -174,7 +190,7 @@ namespace Gamesim.Presentation
             {
                 ambienceSource.mute = Muted;
                 ambienceSource.volume = volume;
-                if (isActiveAndEnabled && ambienceEnabled)
+                if (isActiveAndEnabled && ambienceEnabled && !ReducedAudio)
                 {
                     if (!ambienceSource.isPlaying) ambienceSource.Play();
                 }
@@ -183,13 +199,13 @@ namespace Gamesim.Presentation
             if (cueSource != null)
             {
                 cueSource.mute = Muted;
-                cueSource.volume = volume;
+                cueSource.volume = CueVolume;
             }
             if (musicSource != null)
             {
                 musicSource.mute = Muted;
                 // Under the cues on purpose. A bed that competes with the eviction sting is not a bed.
-                musicSource.volume = volume * 0.45f;
+                musicSource.volume = volume * 0.45f * (ReducedAudio ? 0.5f : 1f);
                 var wanted = music == Music.Theme ? themeBed : music == Music.Season ? seasonBed : null;
                 if (wanted == null || !isActiveAndEnabled) musicSource.Stop();
                 else if (musicSource.clip != wanted || !musicSource.isPlaying)

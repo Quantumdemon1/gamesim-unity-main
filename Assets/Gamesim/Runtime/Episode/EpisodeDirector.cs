@@ -120,6 +120,7 @@ namespace Gamesim.Episode
 
             audioBed = HouseAudio.Attach(gameObject);
             reducedMotion = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedMotion", 0) == 1;
+            reducedAudio = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.ReducedAudio", 0) == 1;
             muted = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.Muted", 0) == 1;
             largeText = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.LargeText", 0) == 1;
             volumePercent = SaveRootOverride == null ? Mathf.Clamp(PlayerPrefs.GetInt("Gamesim.Volume", 35), 0, 100) : 35;

@@ -17,6 +17,9 @@ namespace Gamesim.Episode
         private int frameCap;
         private bool fullscreen;
         private bool edgePan = true;
+        private bool reducedAudio;
+        /// <summary>Reduced audio: the room tone off and the cues and music at half, the sound's reduced motion.</summary>
+        public bool ReducedAudio => reducedAudio;
         private string language = Localisation.DefaultLanguage;
         public string Language => language;
 
@@ -34,6 +37,17 @@ namespace Gamesim.Episode
         }
 
         public static string FrameCapName(int cap) => cap == 0 ? "VSync" : cap < 0 ? "Uncapped" : cap + " fps";
+
+        /// <summary>
+        /// Sets the frame-rate preference from code - the verifier's profile, which is a benchmark
+        /// and must not inherit VSync, or a test. Applied with the other preferences, so a later
+        /// settings toggle keeps it rather than putting the default back.
+        /// </summary>
+        public void SetFrameCap(int cap)
+        {
+            frameCap = System.Array.IndexOf(FrameCaps, cap) < 0 ? 0 : cap;
+            ApplyPreferences();
+        }
 
         private void LoadDisplayPreferences()
         {

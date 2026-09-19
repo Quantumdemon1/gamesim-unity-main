@@ -171,11 +171,13 @@ contrast results in D6b stop being true.
 | **Reactions** — nominated, saved, evicted, won | **First pass 2026-09-19** — four one-shots authored on the rig, wired from Any State on triggers while standing; the director asks the nominees, the saved, the evicted and the winner at their beats (`Reactions_…` PlayMode test) |
 | **Faces from `mood` × `stressLevel`** | **Done 2026-09-19** — `FaceExpression` builds five blend shapes at runtime on the shipped mesh's Face submesh (the Quaternius head is two white eye shapes on a dark head, no mouth, no brows, no UVs: the emoticon's vocabulary — inner corners down, up, a squint to the lid, narrow, wide), one mesh per source mesh shared by every body of that kind; `CharacterPresentation` pushes the contestant's two words on every attach, eased, immediate under reduced motion; the six bodies the prefabs use import Read/Write for it. Two `Faces_*` PlayMode tests. Blender shape keys were the plan's route; the runtime route needs no key per body and no FBX re-export, and gives every body the same five by one rule |
 | Show-specific wardrobe | **Missing** — "Blender-authored content is still the plan" |
+| **An authored body on the shipped rig** | **First one 2026-09-19** — Dan Gheesling (the All-Stars template's body), `ArtSource/characters/bb_char_dan_gheesling.py`: the CC0 base body re-dressed from his character sheet (spiky hair, dark button-up rolled to the elbow, dark jeans, white sneakers, a grin), 1,894 verts, exported as FBX and GLB into `Art/Authored/Characters/Generic/`. A third route beside A and B: the same 32-bone Generic rig the six bodies and every authored clip use, so nothing is re-imported and every clip plays; the importer takes `Characters/Generic/` as a readable Generic rig, `AuthoredCharacterPrefabs` writes the `Resources/GamesimCharacters/<id>` prefab from the file name, and the palette recolour passes him by because his materials are not named for a shirt. What it cannot do is a likeness: the head is the cast's head, and the sheet is carried by silhouette, outfit and palette. |
 | UMA at a full house of sixteen | **Profiled at twelve 2026-09-19** — the roster's full house; the windowed 300 s profile in the matrix (median 3.20 ms, p95 4.32, p99 6.28) ran the UMA cast, since the working tree's define builds UMA bodies. Sixteen is a save's bound, not a cast |
 
 **Decide once: UMA or bespoke.** UMA gives variety cheaply and costs per frame; bespoke rigs give a
 look and cost an artist. The animation set is needed either way and is the part that reads loudest.
-Part 4 §4.5 covers both routes.
+Part 4 §4.5 covers both routes, and the Dan body above is the cheap third: re-dress the shipped base
+per houseguest, in a script, on the rig everything already plays on.
 
 ### 3.C — Audio *(wiring done; first content 2026-09-19)*
 

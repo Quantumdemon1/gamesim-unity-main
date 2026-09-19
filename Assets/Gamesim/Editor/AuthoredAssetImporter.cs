@@ -41,6 +41,17 @@ namespace Gamesim.Editor
         public static bool IsGenericAnimation(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Animation/Generic/", StringComparison.Ordinal);
 
+        /// <summary>
+        /// A body authored on the shipped skeleton (<c>ArtSource/characters/bb_char_*.py</c>): the
+        /// same Generic rig as the six bodies, so every clip in the controller plays on it by bone
+        /// path, and readable, because <c>FaceExpression</c> builds its shapes from the mesh.
+        /// </summary>
+        public static bool IsGenericCharacter(string path) => IsAuthored(path)
+            && path.StartsWith(Root + "Characters/Generic/", StringComparison.Ordinal);
+
+        /// <summary>Anything imported as a Generic rig rather than Humanoid: the clips and the bodies on that rig.</summary>
+        public static bool IsGeneric(string path) => IsGenericAnimation(path) || IsGenericCharacter(path);
+
         public static bool IsTexture(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Textures/", StringComparison.Ordinal);
 
@@ -71,7 +82,7 @@ namespace Gamesim.Editor
             importer.useFileScale = true;
             importer.useFileUnits = true;
             importer.bakeAxisConversion = true;
-            importer.isReadable = false;
+            importer.isReadable = IsGenericCharacter(assetPath);   // a body's face is built from its mesh
             importer.addCollider = false;
             importer.importBlendShapes = true;
             importer.importVisibility = false;
@@ -81,9 +92,11 @@ namespace Gamesim.Editor
             importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
             importer.materialSearch = ModelImporterMaterialSearch.Local;
             importer.materialLocation = ModelImporterMaterialLocation.External;
-            importer.animationType = IsGenericAnimation(assetPath) ? ModelImporterAnimationType.Generic
+            importer.animationType = IsGeneric(assetPath) ? ModelImporterAnimationType.Generic
                 : IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
             importer.importAnimation = IsAnimation(assetPath);
+            // A Generic rig gets no avatar unless asked; the prefab and the six bodies carry one.
+            importer.avatarSetup = IsRigged(assetPath) ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar;
         }
 
         /// <summary>

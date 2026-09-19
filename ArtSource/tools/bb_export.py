@@ -131,6 +131,89 @@ def export_collection(coll, path):
     return path
 
 
+RIG_NAME = "CharacterArmature"
+# The shipped bodies' feet sit this far below the floor; a body on their rig stands where they stand.
+RIG_FOOT_DEPTH = 0.02
+
+
+def check_character(coll):
+    """The checklist for a body on the game's rig.
+
+    Two of the set-piece rules do not apply and are replaced: the armature keeps the shipped rig's
+    name, because every Generic clip binds by that path; and the lowest point may sit the rig's own
+    foot depth below the floor, because the six shipped bodies do, and a body that stood higher
+    would float beside them. Everything else holds: bb_ names on the meshes, applied transforms,
+    mesh named for its object, quads and triangles only, exactly one rig.
+    """
+    problems = []
+    rigs = [obj for obj in coll.all_objects if obj.type == 'ARMATURE']
+    if len(rigs) != 1 or rigs[0].name != RIG_NAME:
+        problems.append("a character carries exactly one armature named " + RIG_NAME)
+    for obj in coll.all_objects:
+        if obj.type == 'ARMATURE':
+            if any(abs(s - 1.0) > 1e-6 for s in obj.scale) or any(abs(r) > 1e-6 for r in obj.rotation_euler):
+                problems.append(obj.name + ": rig transforms are not applied")
+            continue
+        if not NAME.match(obj.name):
+            problems.append(obj.name + ": name must be bb_<category>_<name>[_<variant>][_lodN][_col]")
+        if obj.type != 'MESH':
+            continue
+        if any(abs(s - 1.0) > 1e-6 for s in obj.scale) or any(abs(r) > 1e-6 for r in obj.rotation_euler):
+            problems.append(obj.name + ": scale or rotation is not applied")
+        if obj.data.name != obj.name:
+            problems.append(obj.name + ": mesh data is named " + obj.data.name + "; mesh, object and file share the name")
+        if any(len(poly.vertices) > 4 for poly in obj.data.polygons):
+            problems.append(obj.name + ": n-gons present; quads or triangles only")
+        if not any(m.type == 'ARMATURE' for m in obj.modifiers):
+            problems.append(obj.name + ": not skinned to the rig")
+        lowest = min(((obj.matrix_world @ v.co).z for v in obj.data.vertices), default=0.0)
+        if lowest < -RIG_FOOT_DEPTH - FLOOR_TOLERANCE or lowest > FLOOR_TOLERANCE:
+            problems.append(obj.name + ": lowest point is at z=%.3f; a body stands between z=0 and the rig's foot depth" % lowest)
+        if not any(slot.material is not None and slot.material.name.startswith("Face") for slot in obj.material_slots):
+            problems.append(obj.name + ": no \"Face\" material; the runtime finds the eyes by that name")
+    return problems
+
+
+def export_character(coll, path, glb_path=None):
+    """A rigged body: the FBX the importer takes as a Generic rig, and a GLB beside it when asked."""
+    problems = check_character(coll)
+    if problems:
+        raise ExportError("\n".join(problems))
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in coll.all_objects:
+        obj.select_set(True)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    bpy.ops.export_scene.fbx(
+        filepath=path,
+        use_selection=True,
+        apply_unit_scale=True,
+        apply_scale_options='FBX_SCALE_ALL',
+        axis_forward='-Z',
+        axis_up='Y',
+        bake_space_transform=True,
+        object_types={'MESH', 'EMPTY', 'ARMATURE'},
+        use_mesh_modifiers=False,
+        mesh_smooth_type='FACE',
+        use_triangles=True,
+        add_leaf_bones=False,
+        bake_anim=False,
+        path_mode='COPY',
+        embed_textures=False,
+        use_custom_props=False,
+    )
+    if glb_path:
+        bpy.ops.export_scene.gltf(
+            filepath=glb_path,
+            export_format='GLB',
+            use_selection=True,
+            export_apply=False,
+            export_animations=False,
+            export_yup=True,
+        )
+    bpy.ops.object.select_all(action='DESELECT')
+    return path
+
+
 def output_path(default_name):
     """The path after '--' on the command line, or <this script's folder>/<default_name>."""
     import sys

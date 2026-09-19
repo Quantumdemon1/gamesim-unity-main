@@ -636,7 +636,9 @@ namespace Gamesim.Presentation
             switch (canonicalId)
             {
                 case "maya-hassan": case "taylor-kim": case "jamie-roberts":
-                case "casey-wilson": case "riley-johnson": return canonicalId;
+                case "casey-wilson": case "riley-johnson":
+                // The All-Stars roster's authored body (ArtSource/characters/bb_char_dan_gheesling.py).
+                case "dan-gheesling": return canonicalId;
             }
             // Imported identities retain their real IDs. Select a native visual recipe from traits,
             // with a deterministic ID-only variation; do not infer identity from a displayed name.

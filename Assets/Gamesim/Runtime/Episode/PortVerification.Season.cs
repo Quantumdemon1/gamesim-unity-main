@@ -139,6 +139,7 @@ namespace Gamesim.Episode
             yield return SaveReloadSeason("fresh-season");
             if (verifyAutonomy) yield return ExerciseAutonomy(graphical);
             if (verifyStudy) yield return ExerciseSeasonStudy(graphical);
+            yield return ExerciseOptionalDeal(graphical);
             yield return ExerciseOptionalOath(graphical);
 
             bool middleReload = false;
@@ -148,6 +149,8 @@ namespace Gamesim.Episode
                 RequireSeason(seasonReport.commands < SeasonCommandLimit,"The season exceeded its bounded command count.");
                 var state = seasonDirector.Snapshot;
                 if (!seasonReport.phases.Contains(state.phase.ToString())) seasonReport.phases.Add(state.phase.ToString());
+                yield return DismissWeeklyRecap(state,graphical);
+                state = seasonDirector.Snapshot;
                 if (state.pendingDiary != null) yield return CompleteSeasonReflection(state,graphical);
                 else
                 {
@@ -172,6 +175,7 @@ namespace Gamesim.Episode
                 && finale.winnerId != finale.runnerUpId,"The season must end with four jurors and distinct winner/runner-up.");
             seasonReport.phases.Add(EpisodePhase.Finished.ToString());
             seasonReport.winnerId = finale.winnerId; seasonReport.playerFinalStatus = finale.Find(finale.playerId).status.ToString();
+            RecordSeasonSystems(finale);
             yield return OpenSeasonStation();
             yield return CaptureSeason("finale",graphical);
             yield return ClickSeasonButton("Review the season");
@@ -185,8 +189,13 @@ namespace Gamesim.Episode
 
         private IEnumerator PerformSeasonDecision(EpisodeState state,bool graphical)
         {
+            if (state.phase == EpisodePhase.Social && HouseEvents.Pending(state) != null)
+            { yield return ResolveSeasonHouseEvent(state,graphical); yield break; }
             if (EpisodeEngine.IsCompetition(state.phase))
             {
+                if (!verifyStudy && !state.competitionResolved && seasonReport.minigameKind == null
+                    && EpisodeEngine.CompetitionPlayers(state).Any(actor => actor.isPlayer))
+                { yield return PlaySeasonMiniGame(state,graphical); yield break; }
                 if (verifyStudy)
                 {
                     CheckStudyCompetitionScope(state);
@@ -408,7 +417,7 @@ namespace Gamesim.Episode
             RequireSeason(File.Exists(expectedPath),"The isolated season save must exist at " + checkpoint);
             yield return ClickSeasonButton("Reload current slot");
             RequireSeason(seasonDirector.SavePath == expectedPath && JsonUtility.ToJson(seasonDirector.Snapshot) == expected,"Save/reload changed the authoritative snapshot at " + checkpoint);
-            RequireSeason(!seasonDirector.IsPanelOpen && seasonDirector.StatusMessage.StartsWith("Local episode loaded and validated.",StringComparison.Ordinal),"Reload must report a validated install, not silently preserve an unsaved in-memory snapshot.");
+            RequireSeason(!seasonDirector.IsPanelOpen && seasonDirector.StatusMessage.StartsWith("Local episode loaded and validated.",StringComparison.Ordinal),"Reload must report a validated install, not silently preserve an unsaved in-memory snapshot." + " Panel open: " + seasonDirector.IsPanelOpen + "; status: " + seasonDirector.StatusMessage);
             if (verifyBlocs)
             {
                 RequireSeason(seasonDirector.Snapshot.blocRulesStartWeek == 1,"Fresh-season rule marker must survive the actual save/reload UI.");
@@ -419,7 +428,8 @@ namespace Gamesim.Episode
 
         private IEnumerator CloseSeasonPanel()
         {
-            if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
+            if (seasonDirector.IsWeeklyRecapOpen) yield return ClickSeasonButton(WeeklyRecapScreen.ContinueCaption);
+            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
         }
 
         private bool HasSeasonButton(string caption) => seasonDirector.GetComponentsInChildren<Button>()
@@ -484,6 +494,10 @@ namespace Gamesim.Episode
             public double elapsedSeconds;
             public float navigationSpeed;
             public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks, blockSpeeches;
+            public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
+            public string minigameKind, dealKind, dealOutcome, dealNote;
+            public double minigameScore;
+            public List<string> houseEventKinds = new List<string>();
             public List<string> phases = new List<string>(), reloadCheckpoints = new List<string>(), screenshots = new List<string>();
             public List<SeasonRoute> routes = new List<SeasonRoute>();
             public List<SeasonButton> buttons = new List<SeasonButton>();

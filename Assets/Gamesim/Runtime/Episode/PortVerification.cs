@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Gamesim.House;
+using Gamesim.Simulation;
 using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -18,6 +19,9 @@ namespace Gamesim.Episode
         private string outputDirectory;
         private string profileFinishedUtc;
         private double seconds = 300;
+        // --gamesim-house-size: profile a season of this many houseguests rather than the six the
+        // scene starts with. The C-row thresholds were derived at six; the plan asks for sixteen.
+        private int houseSize, measuredHouseSize;
         private readonly List<string> errors = new List<string>();
         private readonly List<float> frames = new List<float>(180000);
         private readonly List<long> allocations = new List<long>(180000);
@@ -47,6 +51,9 @@ namespace Gamesim.Episode
             int duration = Array.IndexOf(args, "--gamesim-profile-seconds");
             if (duration >= 0 && duration + 1 < args.Length && double.TryParse(args[duration + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
                 runner.seconds = Math.Clamp(parsed, 10, 1800);
+            int size = Array.IndexOf(args, "--gamesim-house-size");
+            if (size >= 0 && size + 1 < args.Length && int.TryParse(args[size + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSize))
+                runner.houseSize = Math.Clamp(parsedSize, 3, 16);
         }
 
         private IEnumerator Start()
@@ -63,6 +70,14 @@ namespace Gamesim.Episode
             var player = FindAnyObjectByType<HousePlayerController>();
             var rooms = FindObjectsByType<HouseRoomMarker>().OrderBy(room => room.RoomName, StringComparer.Ordinal).ToArray();
             if (player == null || rooms.Length < 5) errors.Add("Expected a navigable player and five room markers.");
+            if (houseSize > 0 && director.Snapshot.contestants.Count != houseSize)
+            {
+                director.StartSeason(new SeasonBuilder.Choice { HouseSize = houseSize });
+                for (int i = 0; i < 30; i++) yield return null;
+                if (director.Snapshot.contestants.Count != houseSize)
+                    errors.Add("The requested house size did not start: " + director.Snapshot.contestants.Count + " of " + houseSize + ".");
+            }
+            measuredHouseSize = director.Snapshot.contestants.Count;
             director.SaveNow();
             bool graphical = SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null;
             if (graphical)
@@ -172,7 +187,7 @@ namespace Gamesim.Episode
                 requestedSeconds = seconds, measuredSeconds = measured, frameCount = frames.Count,
                 frameMedianMs = Percentile(frames, .5), frameP95Ms = Percentile(frames, .95), frameP99Ms = Percentile(frames, .99),
                 gcCounterAvailable = allocations.Count > 0, gcMedianBytes = Percentile(allocations, .5), gcP95Bytes = Percentile(allocations, .95),
-                graphical = graphical, resolution = Screen.width + "x" + Screen.height,
+                graphical = graphical, resolution = Screen.width + "x" + Screen.height, houseSize = measuredHouseSize,
                 unityVersion = Application.unityVersion, processor = SystemInfo.processorType, gpu = SystemInfo.graphicsDeviceName,
                 systemMemoryMB = SystemInfo.systemMemorySize, graphicsMemoryMB = SystemInfo.graphicsMemorySize,
                 developmentBuild = Debug.isDebugBuild, errors = errors.ToArray(), saveDirectory = outputDirectory
@@ -193,7 +208,7 @@ namespace Gamesim.Episode
             public string overallStatus, overallFinishedUtc, seasonStatus, seasonReport, studyStatus, blocsStatus, autonomyStatus;
             public bool studyRequested, blocsRequested, autonomyRequested;
             public double requestedSeconds, measuredSeconds, frameMedianMs, frameP95Ms, frameP99Ms, gcMedianBytes, gcP95Bytes;
-            public int frameCount, systemMemoryMB, graphicsMemoryMB;
+            public int frameCount, systemMemoryMB, graphicsMemoryMB, houseSize;
             public bool graphical, developmentBuild, gcCounterAvailable;
             public string[] errors;
         }

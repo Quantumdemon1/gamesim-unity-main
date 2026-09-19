@@ -1,6 +1,6 @@
 #!/bin/sh
 # Runs the Gamesim test suites headless: waits for the batchmode copy on D: to be free, THEN mirrors
-# this working tree over it, THEN runs each requested suite in turn.
+# this working tree over it (Assets, ProjectSettings and ArtSource), THEN runs each requested suite.
 #
 #   Tools/sync-and-run.sh edit:EditMode:Gamesim.EditModeTests play:PlayMode:Gamesim.PlayModeTests
 #
@@ -33,7 +33,7 @@ waitfree () {
 
 waitfree || { echo "project never freed; nothing was synced or run"; exit 1; }
 
-powershell -NoProfile -Command "robocopy '$SRC\\Assets' '$DST\\Assets' /MIR /NJH /NJS /NP /NDL /NFL /XD '$DST\\Assets\\Resources' '$DST\\Assets\\UMAProjectData' | Out-Null; robocopy '$SRC\\ProjectSettings' '$DST\\ProjectSettings' /MIR /NJH /NJS /NP /NDL /NFL | Out-Null; if (\$LASTEXITCODE -lt 8) { 'sync ok' } else { exit 1 }" || { echo "SYNC FAILED"; exit 1; }
+powershell -NoProfile -Command "robocopy '$SRC\\Assets' '$DST\\Assets' /MIR /NJH /NJS /NP /NDL /NFL /XD '$DST\\Assets\\Resources' '$DST\\Assets\\UMAProjectData' | Out-Null; robocopy '$SRC\\ProjectSettings' '$DST\\ProjectSettings' /MIR /NJH /NJS /NP /NDL /NFL | Out-Null; robocopy '$SRC\\ArtSource' '$DST\\ArtSource' /MIR /NJH /NJS /NP /NDL /NFL | Out-Null; if (\$LASTEXITCODE -lt 8) { 'sync ok' } else { exit 1 }" || { echo "SYNC FAILED"; exit 1; }
 
 # Test-copy-only: the PC render pipeline asset's GPU Resident Drawer crashes PlayMode runs
 # intermittently. The repository still ships it enabled; this never travels back.

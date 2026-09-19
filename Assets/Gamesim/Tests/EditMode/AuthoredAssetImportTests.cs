@@ -268,6 +268,12 @@ namespace Gamesim.Tests.EditMode
                 ("bb_set_cushion", 0.40f, 0.12f, 0.40f),
                 ("bb_set_laptop", 0.33f, 0.235f, 0.31f),
                 ("bb_set_tray", 0.40f, 0.132f, 0.30f),
+                ("bb_set_remote", 0.05f, 0.024f, 0.18f),
+                ("bb_set_candle", 0.08f, 0.13f, 0.08f),
+                ("bb_set_photoframe", 0.16f, 0.20f, 0.132f),
+                ("bb_set_magazines", 0.272f, 0.015f, 0.322f),
+                ("bb_set_fruitbowl", 0.28f, 0.13f, 0.28f),
+                ("bb_set_cable", 0.626f, 0.039f, 0.16f),
             };
             foreach (var (name, x, y, z) in expected)
             {

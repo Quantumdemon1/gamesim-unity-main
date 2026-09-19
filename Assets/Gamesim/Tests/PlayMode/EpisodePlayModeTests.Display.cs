@@ -24,8 +24,9 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             try
             {
+                // A platform may exclude levels (batchmode sees one), so the cycle's length is whatever
+                // the platform offers; the control still names the tier and lands where it started.
                 int levels = QualitySettings.names.Length;
-                Assume.That(levels, Is.GreaterThan(1), "Two quality levels are needed to cycle.");
                 int tier = director.QualityTier;
                 ButtonStarting("Quality: ").onClick.Invoke();
                 Assert.That(director.QualityTier, Is.EqualTo((tier + 1) % levels), "The quality control moves to the next tier.");

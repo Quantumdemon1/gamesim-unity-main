@@ -10,6 +10,12 @@ export(), so the checklist's one-script-one-export pairing holds. The pieces:
     bb_set_cushion    a scatter cushion                         0.40 x 0.40 x 0.12
     bb_set_laptop     an open laptop, lid raked back            0.33 x 0.30 x 0.22
     bb_set_tray       a bar tray with four glasses               0.40 x 0.30 x 0.14
+    bb_set_remote     a television remote                        0.05 x 0.18 x 0.02
+    bb_set_candle     a candle in a glass, lit                   0.08 x 0.08 x 0.13
+    bb_set_photoframe a standing photo frame                     0.16 x 0.06 x 0.20
+    bb_set_magazines  two magazines, fanned                      0.30 x 0.32 x 0.02
+    bb_set_fruitbowl  a bowl with five oranges                   0.28 x 0.28 x 0.13
+    bb_set_cable      an extension lead and its cable            0.62 x 0.20 x 0.04
 
 Every one is native size (the plan's rows say 0 for height) and sits on a surface by the row's
 lift. Origin at the base under the centre. Clutter, so no collider.
@@ -40,6 +46,11 @@ def materials():
         "book_a": X.material("book_teal", (0.10, 0.36, 0.40)),
         "book_b": X.material("book_coral", (0.86, 0.38, 0.32)),
         "book_c": X.material("book_brass", (0.78, 0.62, 0.28)),
+        "wax": X.material("candle_wax", (0.95, 0.92, 0.85), roughness=0.5),
+        "flame": X.material("glow_flame", (1.0, 0.78, 0.35), roughness=0.3,
+                            emission=(1.0, 0.62, 0.22), emission_strength=3.0),
+        "orange": X.material("fruit_orange", (0.95, 0.52, 0.12), roughness=0.55),
+        "cream": X.material("cabinet_cream", (0.92, 0.90, 0.84), roughness=0.5),
     }
 
 
@@ -110,6 +121,76 @@ def tray(m):
     return parts
 
 
+def remote(m):
+    parts = [B.box("body", (0.05, 0.18, 0.02), (0.0, 0.0, 0.01), m["ink"])]
+    for i, (x, y) in enumerate([(-0.012, 0.05), (0.012, 0.05), (-0.012, 0.02), (0.012, 0.02), (0.0, -0.02), (0.0, -0.05)]):
+        parts.append(B.cylinder("key_%d" % i, 0.006, 0.004, (x, y, 0.02), m["label"], segments=8))
+    parts.append(B.box("pad", (0.03, 0.03, 0.004), (0.0, -0.035, 0.02), m["coral"]))
+    return parts
+
+
+def candle(m):
+    return [
+        B.ring("glass", 0.04, 0.036, 0.10, (0.0, 0.0, 0.0), m["glass"], segments=16),
+        B.disc("glass_base", 0.04, (0.0, 0.0, 0.0), m["glass"], segments=16),
+        B.cylinder("wax", 0.034, 0.07, (0.0, 0.0, 0.004), m["wax"], segments=16),
+        B.cylinder("wick", 0.003, 0.012, (0.0, 0.0, 0.074), m["ink"], segments=6),
+        B.cylinder("flame", 0.008, 0.03, (0.0, 0.0, 0.086), m["flame"], segments=8),
+        B.cylinder("flame_tip", 0.004, 0.014, (0.0, 0.0, 0.116), m["flame"], segments=8),
+    ]
+
+
+def photoframe(m):
+    frame = B.box("frame", (0.16, 0.012, 0.20), (0.0, 0.0, 0.10), m["brass"])
+    photo = B.box("photo", (0.13, 0.004, 0.17), (0.0, -0.005, 0.10), m["teal"])
+    face = B.box("face", (0.05, 0.003, 0.06), (0.0, -0.008, 0.11), m["coral"])
+    leg = B.box("leg", (0.04, 0.12, 0.012), (0.0, 0.06, 0.006), m["brass"])
+    leg.data.transform(Matrix.Rotation(math.radians(-55.0), 4, 'X'))
+    leg.data.transform(Matrix.Translation(Vector((0.0, 0.02, 0.10))))
+    for part in (frame, photo, face):
+        part.data.transform(Matrix.Rotation(math.radians(8.0), 4, 'X'))
+    return [frame, photo, face, leg]
+
+
+def magazines(m):
+    parts = []
+    for i, (angle, colour, dz) in enumerate([(-12.0, m["coral"], 0.0), (14.0, m["teal"], 0.006)]):
+        cover = B.box("magazine_%d" % i, (0.21, 0.28, 0.006), (0.0, 0.0, 0.003 + dz), colour)
+        cover.data.transform(Matrix.Rotation(math.radians(angle), 4, 'Z'))
+        parts.append(cover)
+        title = B.box("title_%d" % i, (0.14, 0.03, 0.002), (0.0, 0.10, 0.0075 + dz), m["label"])
+        title.data.transform(Matrix.Rotation(math.radians(angle), 4, 'Z'))
+        parts.append(title)
+    return parts
+
+
+def fruitbowl(m):
+    parts = [
+        B.ring("bowl", 0.14, 0.13, 0.07, (0.0, 0.0, 0.01), m["cream"], segments=20),
+        B.disc("bowl_base", 0.14, (0.0, 0.0, 0.01), m["cream"], segments=20),
+        B.cylinder("foot", 0.06, 0.01, (0.0, 0.0, 0.0), m["cream"], segments=16),
+    ]
+    for i, (x, y, z) in enumerate([(-0.05, 0.0, 0.02), (0.05, 0.0, 0.02), (0.0, 0.05, 0.02), (0.0, -0.05, 0.02), (0.0, 0.0, 0.075)]):
+        parts.append(B.cylinder("orange_%d" % i, 0.038, 0.055, (x, y, z), m["orange"], segments=12))
+    return parts
+
+
+def cable(m):
+    parts = [
+        B.box("lead", (0.26, 0.06, 0.035), (0.0, 0.0, 0.0175), m["cream"]),
+        B.box("switch", (0.02, 0.012, 0.008), (-0.11, 0.0, 0.035), m["coral"]),
+        B.box("cord", (0.36, 0.012, 0.012), (0.31, -0.04, 0.006), m["ink"]),
+        B.box("cord_turn", (0.012, 0.09, 0.012), (0.49, -0.085, 0.006), m["ink"]),
+        B.box("plug", (0.05, 0.03, 0.02), (0.13, 0.0, 0.01), m["ink"]),
+    ]
+    for i, x in enumerate([-0.07, -0.02, 0.03, 0.08]):
+        parts.append(B.cylinder("socket_%d" % i, 0.014, 0.003, (x, 0.0, 0.035), m["ink"], segments=10))
+    # The cord runs off to one side; the checklist wants the whole piece centred on its origin.
+    for part in parts:
+        part.data.transform(Matrix.Translation(Vector((-0.183, 0.05, 0.0))))
+    return parts
+
+
 PIECES = {
     "bb_set_mug": mug,
     "bb_set_bottle": bottle,
@@ -118,6 +199,12 @@ PIECES = {
     "bb_set_cushion": cushion,
     "bb_set_laptop": laptop,
     "bb_set_tray": tray,
+    "bb_set_remote": remote,
+    "bb_set_candle": candle,
+    "bb_set_photoframe": photoframe,
+    "bb_set_magazines": magazines,
+    "bb_set_fruitbowl": fruitbowl,
+    "bb_set_cable": cable,
 }
 
 

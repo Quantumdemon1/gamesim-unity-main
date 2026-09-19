@@ -12,7 +12,29 @@ import bpy
 from mathutils import Matrix, Vector
 
 
+def _box_uv(bm):
+    """World-scale box projection: every face is unwrapped on the plane of its dominant normal,
+    one metre of mesh to one UV unit, so a tiling texture reads at the same size on every piece
+    and across the seam between two pieces. Without this the stylised meshes carried no UVs at
+    all, and a texture on them was a single stretched pixel."""
+    uv_layer = bm.loops.layers.uv.verify()
+    for face in bm.faces:
+        n = face.normal
+        ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+        for loop in face.loops:
+            co = loop.vert.co
+            if az >= ax and az >= ay:
+                uv = (co.x, co.y)
+            elif ax >= ay:
+                uv = (co.y, co.z)
+            else:
+                uv = (co.x, co.z)
+            loop[uv_layer].uv = uv
+
+
 def _finish(bm, name, mat=None, smooth_sides=False):
+    bm.normal_update()
+    _box_uv(bm)
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
     bm.free()

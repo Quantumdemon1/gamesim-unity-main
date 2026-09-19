@@ -105,7 +105,7 @@ namespace Gamesim.Editor
         {
             if (!IsAuthored(assetPath) || material == null) return;
             string name = material.name.ToLowerInvariant();
-            if (name.Contains("neon")) Glow(material);
+            if (name.Contains("neon") || name.Contains("glow")) Glow(material);
             bool translucent = name.Contains("water") || name.Contains("glass");
             if (!translucent || !material.HasProperty("_Surface")) return;
             var tint = material.color;
@@ -140,7 +140,8 @@ namespace Gamesim.Editor
             if (!material.HasProperty("_EmissionColor")) return;
             material.EnableKeyword("_EMISSION");
             material.globalIlluminationFlags = UnityEngine.MaterialGlobalIlluminationFlags.RealtimeEmissive;
-            material.SetColor("_EmissionColor", material.color * 3.2f);
+            // A lamp shade glows softly; the neon glows at the house's own strength.
+            material.SetColor("_EmissionColor", material.color * (material.name.ToLowerInvariant().Contains("neon") ? 3.2f : 1.4f));
         }
 
         private void OnPreprocessAnimation()

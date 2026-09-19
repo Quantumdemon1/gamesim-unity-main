@@ -124,6 +124,7 @@ namespace Gamesim.Episode
             largeText = SaveRootOverride == null && PlayerPrefs.GetInt("Gamesim.LargeText", 0) == 1;
             volumePercent = SaveRootOverride == null ? Mathf.Clamp(PlayerPrefs.GetInt("Gamesim.Volume", 35), 0, 100) : 35;
             musicOn = SaveRootOverride != null || PlayerPrefs.GetInt("Gamesim.Music", 1) == 1;
+            LoadDisplayPreferences();
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
             takeover = CeremonyTakeover.Attach(gameObject);

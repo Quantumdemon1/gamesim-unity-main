@@ -62,6 +62,7 @@ namespace Gamesim.Episode
             hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(largeText ? "Use standard text" : "Use larger text", () => { largeText = !largeText; ApplyPreferences(); Render(); });
+            DisplaySettings();
             hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
             hud.Heading("Import a supported web save");
             hud.Paragraph("Supports receipt-free, six-active-cast social snapshots. Complex in-progress web saves are rejected and archived unchanged, never silently simplified.");
@@ -269,6 +270,7 @@ namespace Gamesim.Episode
             if (characterCreator != null) characterCreator.FontScale = largeText ? 1.2f : 1;
             if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
+            ApplyDisplayPreferences();
             if (SaveRootOverride == null)
             { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.SetInt("Gamesim.Volume", volumePercent); PlayerPrefs.SetInt("Gamesim.Music", musicOn ? 1 : 0); PlayerPrefs.Save(); }
         }

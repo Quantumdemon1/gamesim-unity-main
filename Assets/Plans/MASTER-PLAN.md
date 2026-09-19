@@ -236,9 +236,13 @@ once players are asking for more; they are not yet asking.
 ### 3.H — Platform and production
 
 Windows 64 only today. Addressables for the art Part 4 produces (the prototype loads everything from
-the scene; a real house will not fit that way) · Mac and Linux targets · quality tiers, resolution,
-framerate cap · Steam: achievements over the existing event kinds, cloud saves over a save system that
-already validates and rotates · a licensed Unity CI runner so the 1,360 tests run on every push.
+the scene; a real house will not fit that way) · Mac and Linux targets · ~~quality tiers, resolution,
+framerate cap~~ **done 2026-09-19**: the settings panel's Display block cycles the quality tier (the
+pipeline's Lean and Full levels), the frame rate (VSync, 30, 60, 120, uncapped), full screen or a
+window, and edge panning, kept in PlayerPrefs beside the sound and accessibility preferences
+(`EpisodeDirector.Display`, `Display_*` PlayMode test); resolution follows the window · Steam:
+achievements over the existing event kinds, cloud saves over a save system that already validates
+and rotates · a licensed Unity CI runner so the 1,360 tests run on every push.
 
 ### 3.I — The quality bar
 
@@ -354,7 +358,7 @@ Priority is by how much each piece changes the read of the shipping scene per ho
 as an authored trim. *(Walls, caps, skirting and jambs landed 2026-09-19 as `bb_shell_house`,
 generated from the scene's own colliders. Floors textured 2026-09-19: `bb_tex_floors.py` bakes oak and
 walnut planks, slate and lawn through `bb_bake.py`, and `HouseFloorDressing` lays one tiled material
-per room floor. The cutaway trim and the wall material are open.)* **The collider
+per room floor. The wall material is the baked plaster on the slab since the floors commit; the shell's caps are the cutaway edge's trim. Open: a trim along the floor's own cut edge, if the camera ever shows it.)* **The collider
 bounds do not move.** The authored shell is visual geometry
 placed over the existing box colliders, or replaces them with `_col` meshes of identical bounds,
 and the navigation audit (`Gamesim/Audit house navigation`) passes before it is committed. The
@@ -475,7 +479,7 @@ Every export passes, in order:
    renderers off with their colliders untouched (reachability 28/28 after). **Floors 2026-09-19**:
    the first baked textures (`bb_bake.py`: Cycles on the CPU, headless; albedo + tangent normal,
    power of two), laid per room by `HouseFloorDressing`, pinned by `AuthoredTextureTests`. Still to
-   come: floor trim at the cutaway edge, and the wall material itself (the slab is still a flat tone).
+   come: floor trim at the floor's cut edge only - the wall material landed with the floors (the slab is still a flat tone).
 6. Tier 3 furniture, kitchen first (it has the long table) — **first pass complete 2026-09-19**: the
    kitchen run and thirty-three catalogue stand-ins; no plan row resolves to the kit.
 7. Conversation and reaction clips; faces — **clips first pass 2026-09-19** (eight takes on the

@@ -27,7 +27,7 @@ namespace Gamesim.Tests.EditMode
         {
             foreach (var state in new[] { ContentCatalog.Create(11u), SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u) })
             {
-                Assert.That(state.schemaVersion, Is.EqualTo(11));
+                Assert.That(state.schemaVersion, Is.EqualTo(12));
                 Assert.That(state.deals, Is.Empty, "A season starts with nothing agreed.");
                 Assert.That(state.dealRulesStartWeek, Is.EqualTo(1),
                     "New play deals immediately; only migrated history gets a grace week.");
@@ -129,8 +129,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 9").And.Contain("schema 11 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(11), "A load runs the whole chain, not one step.");
+            Assert.That(message, Does.Contain("Schema 9").And.Contain("schema 12 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(12), "A load runs the whole chain, not one step.");
             Assert.That(loaded.deals, Is.Empty);
             Assert.That(loaded.dealRulesStartWeek, Is.EqualTo(loaded.week + 1));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
@@ -249,7 +249,7 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The current runtime state expressed in schema 9's shape.</summary>
         private static JObject CaptureV9(EpisodeState state)
         {
-            var payload = PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(Capture(state)));
+            var payload = PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12(Capture(state))));
             payload["schemaVersion"] = 9;
             return payload;
         }

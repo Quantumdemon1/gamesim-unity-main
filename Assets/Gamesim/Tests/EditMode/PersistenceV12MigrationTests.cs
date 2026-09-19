@@ -12,7 +12,7 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// Schema 11: bought action points, and things happening to the house.
+    /// Schema 12: storylines, and what their choices leave behind.
     ///
     /// <para><b>One version carrying two systems, deliberately.</b> The social vocabulary needs a
     /// count of purchased actions and the event layer needs somewhere to keep events, and the save
@@ -26,7 +26,7 @@ namespace Gamesim.Tests.EditMode
     /// something nobody has done yet, and zero is not a rule but the truth about every save written
     /// before the control existed.</para>
     /// </summary>
-    public sealed class PersistenceV11MigrationTests
+    public sealed class PersistenceV12MigrationTests
     {
         [Test]
         public void AFreshSeasonHasBoughtNothingAndMayHaveEventsFromItsFirstWeek()
@@ -34,36 +34,36 @@ namespace Gamesim.Tests.EditMode
             foreach (var state in new[] { ContentCatalog.Create(11u), SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u) })
             {
                 Assert.That(state.schemaVersion, Is.EqualTo(12));
-                Assert.That(state.boughtActionPoints, Is.Zero);
-                Assert.That(state.houseEvents, Is.Empty);
-                Assert.That(state.eventRulesStartWeek, Is.EqualTo(1),
+                Assert.That(state.storylines, Is.Empty);
+                Assert.That(state.activeModifiers, Is.Empty);
+                Assert.That(state.storyRulesStartWeek, Is.EqualTo(1),
                     "New play gets the event layer immediately; only migrated history waits a week.");
             }
         }
 
         [TestCase(1)] [TestCase(2)] [TestCase(7)] [TestCase(40)]
-        public void TheSavedWeekGetsNoEventsAndTheNextWeekMay(int week)
+        public void TheSavedWeekTellsNoStoriesAndTheNextWeekMay(int week)
         {
-            var before = CaptureV10(ContentCatalog.Create(601));
+            var before = CaptureV11(ContentCatalog.Create(601));
             before["week"] = week;
 
-            var after = EpisodeSaveMigrations.UpgradeV10ToV11(before);
-            Assert.That((int)after["schemaVersion"], Is.EqualTo(11));
-            Assert.That((int)after["eventRulesStartWeek"], Is.EqualTo(week + 1));
-            Assert.That((int)after["boughtActionPoints"], Is.Zero);
-            Assert.That(after["houseEvents"], Is.Empty);
+            var after = EpisodeSaveMigrations.UpgradeV11ToV12(before);
+            Assert.That((int)after["schemaVersion"], Is.EqualTo(12));
+            Assert.That((int)after["storyRulesStartWeek"], Is.EqualTo(week + 1));
+            Assert.That((int)after["storylines"].Count(), Is.Zero);
+            Assert.That(after["activeModifiers"], Is.Empty);
 
             var parsed = after.ToObject<EpisodeState>(Serializer());
-            Assert.That(parsed.week, Is.LessThan(parsed.eventRulesStartWeek),
+            Assert.That(parsed.week, Is.LessThan(parsed.storyRulesStartWeek),
                 "The week the save was in keeps the rules it was played under.");
             parsed.week = week + 1;
-            Assert.That(parsed.week, Is.GreaterThanOrEqualTo(parsed.eventRulesStartWeek));
+            Assert.That(parsed.week, Is.GreaterThanOrEqualTo(parsed.storyRulesStartWeek));
         }
 
         [TestCase(1)] [TestCase(6)] [TestCase(40)] [TestCase(100)]
         public void NoMigratedSeasonArrivesInvalid(int week)
         {
-            var before = CaptureV10(ContentCatalog.Create(601));
+            var before = CaptureV11(ContentCatalog.Create(601));
             before["week"] = week;
 
             // The whole chain, not one step: what has to stay legal is what a load actually
@@ -71,22 +71,22 @@ namespace Gamesim.Tests.EditMode
             // every later version, which is exactly what happened to V9's and V10's.
             var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(before, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, error);
-            Assert.That(parsed.eventRulesStartWeek, Is.EqualTo(Math.Min(101, week + 1)),
+            Assert.That(parsed.storyRulesStartWeek, Is.EqualTo(Math.Min(101, week + 1)),
                 "A season in its hundredth week may not name a start week validation would reject.");
         }
 
         [Test]
         public void TheUpgradeAddsOnlyTheThreeNewFieldsAndChangesNothingElse()
         {
-            var before = CaptureV10(ContentCatalog.Create(601));
+            var before = CaptureV11(ContentCatalog.Create(601));
             string original = before.ToString(Formatting.None);
 
-            var after = EpisodeSaveMigrations.UpgradeV10ToV11(before);
+            var after = EpisodeSaveMigrations.UpgradeV11ToV12(before);
 
             Assert.That(before.ToString(Formatting.None), Is.EqualTo(original), "The source payload must not be mutated.");
             CollectionAssert.AreEquivalent(
                 before.Properties().Select(p => p.Name)
-                    .Concat(new[] { "boughtActionPoints", "houseEvents", "eventRulesStartWeek" }).ToArray(),
+                    .Concat(new[] { "storylines", "activeModifiers", "storyRulesStartWeek" }).ToArray(),
                 after.Properties().Select(p => p.Name).ToArray());
             foreach (var property in before.Properties())
                 if (property.Name != "schemaVersion")
@@ -94,18 +94,18 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void EveryHistoricalVersionMigratesAllTheWayToSchemaEleven()
+        public void EveryHistoricalVersionMigratesAllTheWayToSchemaTwelve()
         {
-            for (int version = 1; version <= 10; version++)
+            for (int version = 1; version <= 11; version++)
             {
                 var old = Historical(version);
-                // PrepareV11Payload, not PrepareCurrentPayload: this file pins the step that ends
+                // PrepareCurrentPayload, not PrepareCurrentPayload: this file pins the step that ends
                 // at schema 11, and "current" moved on when schema 12 opened storylines.
-                var result = EpisodeSaveMigrations.PrepareV11Payload(old, out bool migrated);
+                var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
 
                 Assert.That(migrated, Is.True, "version " + version);
-                Assert.That((int)result["schemaVersion"], Is.EqualTo(11), "version " + version);
-                foreach (string field in new[] { "boughtActionPoints", "houseEvents", "eventRulesStartWeek" })
+                Assert.That((int)result["schemaVersion"], Is.EqualTo(12), "version " + version);
+                foreach (string field in new[] { "storylines", "activeModifiers", "storyRulesStartWeek" })
                     Assert.That(result.Property(field), Is.Not.Null, "version " + version + ", " + field);
             }
         }
@@ -113,160 +113,143 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void MigratingAgainIsANoOpAndTheResultLoadsAndValidates()
         {
-            var old = CaptureV10(ContentCatalog.Create(601));
-            var result = EpisodeSaveMigrations.PrepareV11Payload(old, out bool migrated);
+            var old = CaptureV11(ContentCatalog.Create(601));
+            var result = EpisodeSaveMigrations.PrepareCurrentPayload(old, out bool migrated);
             Assert.That(migrated, Is.True);
 
-            var repeat = EpisodeSaveMigrations.PrepareV11Payload(result, out migrated);
-            Assert.That(migrated, Is.False, "A schema 11 payload must not be migrated again.");
+            var repeat = EpisodeSaveMigrations.PrepareCurrentPayload(result, out migrated);
+            Assert.That(migrated, Is.False, "A schema 12 payload must not be migrated again.");
             Assert.That(ReferenceEquals(result, repeat), Is.False, "The payload must be cloned, not handed back.");
             Assert.That(JToken.DeepEquals(result, repeat), Is.True);
 
             var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(old, out _).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(parsed, out var error), Is.True, error);
-            Assert.That(parsed.houseEvents, Is.Empty);
-            Assert.That(parsed.boughtActionPoints, Is.Zero);
+            Assert.That(parsed.storylines, Is.Empty);
+            Assert.That(parsed.activeModifiers, Is.Empty);
         }
 
         [Test]
-        public void AV10SaveOnDiskLoadsUnchangedAndOnlyRewritesOnAnExplicitSave()
+        public void AV11SaveOnDiskLoadsUnchangedAndOnlyRewritesOnAnExplicitSave()
         {
             using var files = new Files();
-            files.Write(CaptureV10(ContentCatalog.Create(601)));
+            files.Write(CaptureV11(ContentCatalog.Create(601)));
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 10").And.Contain("schema 12 in memory"));
+            Assert.That(message, Does.Contain("Schema 11").And.Contain("schema 12 in memory"));
             Assert.That(loaded.schemaVersion, Is.EqualTo(12), "A load runs the whole chain, not one step.");
-            Assert.That(loaded.houseEvents, Is.Empty);
-            Assert.That(loaded.eventRulesStartWeek, Is.EqualTo(loaded.week + 1));
+            Assert.That(loaded.storylines, Is.Empty);
+            Assert.That(loaded.storyRulesStartWeek, Is.EqualTo(loaded.week + 1));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
                 "Loading must not rewrite the file.");
 
             files.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(originalBytes));
             Assert.That(files.Store.TryLoad(out var again, out message), Is.True, message);
-            Assert.That(again.eventRulesStartWeek, Is.EqualTo(loaded.eventRulesStartWeek));
+            Assert.That(again.storyRulesStartWeek, Is.EqualTo(loaded.storyRulesStartWeek));
         }
 
         /// <summary>
-        /// A season carrying events survives the round trip with its choices intact — which is the
-        /// whole reason the choices are stored rather than regenerated.
+        /// A season carrying storylines survives the round trip with its modifiers intact.
         /// </summary>
         [Test]
-        public void AHouseFullOfEventsSurvivesBeingSavedAndLoaded()
+        public void AHouseFullOfStoriesSurvivesBeingSavedAndLoaded()
         {
             using var files = new Files();
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 10 }, 5u);
             state.week = 3;
-            state.boughtActionPoints = 2;
-            state.houseEvents.Add(Event(state, "event-1", resolved: false));
-            state.houseEvents.Add(Event(state, "event-2", resolved: true));
+            Assert.That(Storylines.Begin(state, 0.1, 1, out var story, out var chapter), Is.True);
+            state.storylines.Add(story);
+            state.houseEvents.Add(chapter);
+            state.activeModifiers.Add(new StoryModifierState
+            {
+                id = "power_move", name = "Power Move", description = "You showed the house.",
+                weeksLeft = 2, competitionBonus = 2, socialBonus = -5,
+            });
 
             files.Store.Save(state);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(loaded.boughtActionPoints, Is.EqualTo(2));
-            CollectionAssert.AreEqual(state.houseEvents.Select(Describe).ToList(),
-                loaded.houseEvents.Select(Describe).ToList());
+            Assert.That(loaded.storylines.Single().templateId, Is.EqualTo(story.templateId));
+            Assert.That(loaded.storylines.Single().eventId, Is.EqualTo(chapter.id));
+            var modifier = loaded.activeModifiers.Single();
+            Assert.That(modifier.weeksLeft, Is.EqualTo(2));
+            Assert.That(modifier.competitionBonus, Is.EqualTo(2));
+            Assert.That(modifier.socialBonus, Is.EqualTo(-5));
         }
 
-        // ---------------------------------------------------------------- what validation refuses
-
-        [Test]
-        public void AnUnresolvedEventCannotClaimAChoiceAndAResolvedOneMustNameOneThatExists()
+        /// <summary>
+        /// A running story has not ended and a finished one ended on a week the season reached.
+        /// Anything else is a save that says a story closed and cannot say when.
+        /// </summary>
+        [TestCase("running-but-ended")]
+        [TestCase("ended-before-it-began")]
+        [TestCase("ended-in-the-future")]
+        [TestCase("unknown-status")]
+        [TestCase("duplicate")]
+        public void ASeasonWithBadStorylineDataDoesNotValidate(string damage)
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice(), 5u);
-            var open = Event(state, "e", resolved: false);
-            open.chosenIndex = 0;
-            state.houseEvents.Add(open);
-            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False,
-                "An event nobody has answered cannot say what was chosen.");
+            state.week = 5;
+            var story = new StorylineState
+            {
+                id = "s", templateId = "fallback_power_play", category = Storylines.PowerPlay,
+                title = "The Power Struggle", status = StorylineStatus.Completed, week = 2, endedWeek = 3,
+            };
+            state.storylines.Add(story);
+            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.True, "The fixture must start valid.");
 
-            state.houseEvents.Clear();
-            var done = Event(state, "e", resolved: true);
-            done.chosenIndex = 9;
-            state.houseEvents.Add(done);
-            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False,
-                "A resolved event cannot point at a choice that is not there.");
-        }
-
-        [TestCase("kind")] [TestCase("risk")] [TestCase("week")] [TestCase("bought")]
-        [TestCase("duplicate")] [TestCase("impact")] [TestCase("stranger")]
-        public void ASeasonWithBadEventDataDoesNotValidate(string damage)
-        {
-            var state = SeasonBuilder.Create(new SeasonBuilder.Choice(), 5u);
-            var item = Event(state, "e", resolved: false);
-            state.houseEvents.Add(item);
             switch (damage)
             {
-                case "kind": item.kind = "not-a-kind"; break;
-                case "risk": item.choices[0].risk = "catastrophic"; break;
-                case "week": item.week = state.week + 1; break;
-                case "bought": state.boughtActionPoints = -1; break;
-                case "duplicate": state.houseEvents.Add(Event(state, "e", resolved: false)); break;
-                case "impact": item.choices[0].impacts[0].amount = double.NaN; break;
-                case "stranger": item.choices[0].impacts[0].targetId = "nobody-by-that-name"; break;
+                case "running-but-ended": story.status = StorylineStatus.Active; break;
+                case "ended-before-it-began": story.endedWeek = 1; break;
+                case "ended-in-the-future": story.endedWeek = state.week + 1; break;
+                case "unknown-status": story.status = "halfway"; break;
+                case "duplicate": state.storylines.Add(story.Clone()); break;
             }
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False, damage);
         }
 
-        [TestCase("week", "101")]
-        [TestCase("revision", "1000001")]
-        [TestCase("dealRulesStartWeek", "0")]
-        [TestCase("socialBudgetRulesStartWeek", "0")]
-        [TestCase("contestants[0].stats.luck", "10.1")]
-        public void FrozenV10RejectsFormerlyInvalidValuesBeforeAddingAnyDefaults(string path, string value)
+        [TestCase("weeks")] [TestCase("competition")] [TestCase("social")] [TestCase("name")]
+        public void ASeasonWithBadModifierDataDoesNotValidate(string damage)
         {
-            var old = CaptureV10(ContentCatalog.Create(601));
-            old.SelectToken(path).Replace(JToken.Parse(value));
+            var state = SeasonBuilder.Create(new SeasonBuilder.Choice(), 5u);
+            var modifier = new StoryModifierState
+            {
+                id = "m", name = "Something", weeksLeft = 2, competitionBonus = 2,
+            };
+            state.activeModifiers.Add(modifier);
+            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.True, "The fixture must start valid.");
 
-            string before = old.ToString(Formatting.None);
-            Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV10ToV11(old));
-            Assert.That(old.ToString(Formatting.None), Is.EqualTo(before));
+            switch (damage)
+            {
+                // Zero weeks is not a modifier that is nearly over; it is one that should have been
+                // removed, and a save carrying it has lost track of its own clock.
+                case "weeks": modifier.weeksLeft = 0; break;
+                case "competition": modifier.competitionBonus = double.NaN; break;
+                case "social": modifier.socialBonus = 1000; break;
+                case "name": modifier.name = ""; break;
+            }
+            Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False, damage);
         }
 
+        /// <summary>A v11 save carrying house events still migrates, and carries them across.</summary>
         [Test]
-        public void FrozenV10RejectsUnknownAndMissingFieldsOnEveryRow()
-        {
-            var valid = CaptureV10(ContentCatalog.Create(601));
-            Assert.DoesNotThrow(() => EpisodeSaveMigrations.UpgradeV10ToV11(valid));
-
-            foreach (string field in new[] { "boughtActionPoints", "houseEvents", "eventRulesStartWeek" })
-            {
-                var ahead = CaptureV10(ContentCatalog.Create(601));
-                ahead.Add(field, field == "houseEvents" ? (JToken)new JArray() : 1);
-                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV10ToV11(ahead), field);
-            }
-
-            var paths = valid.DescendantsAndSelf().OfType<JObject>().Select(row => row.Path).ToArray();
-            Assert.That(paths.Length, Is.GreaterThan(25));
-            foreach (string path in paths)
-            {
-                var copy = (JObject)valid.DeepClone();
-                var row = path.Length == 0 ? copy : (JObject)copy.SelectToken(path);
-                row.Properties().Last().Remove();
-                Assert.Throws<InvalidDataException>(() => EpisodeSaveMigrations.UpgradeV10ToV11(copy), path);
-            }
-        }
-
-        /// <summary>A v10 save carrying deals still migrates, and carries them across.</summary>
-        [Test]
-        public void ThePreviousVersionsDealsSurviveTheUpgrade()
+        public void ThePreviousVersionsEventsSurviveTheUpgrade()
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 10 }, 5u);
             state.week = 3;
-            foreach (var edge in state.relationships) edge.score = 60;
-            NpcDeals.Settle(state);
-            Assert.That(state.deals, Is.Not.Empty, "The fixture needs deals to carry.");
+            var drawn = HouseEvents.Draw(state, 0.5, 1);
+            Assert.That(drawn, Is.Not.Null, "The fixture needs an event to carry.");
+            state.houseEvents.Add(drawn);
 
-            var payload = CaptureV10(state);
-            // The whole chain, not one step: a schema 11 payload no longer describes a state the
-            // simulation accepts. Validating a step's output is what makes these break on every
-            // later version, which has now happened three times.
-            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(payload, out _)
+            // The whole chain even though one step reaches current today, because this exact shape
+            // has broken on three successive versions: what has to stay legal is what a load
+            // produces, and a test that pins a step is a test that breaks on the next bump.
+            var parsed = EpisodeSaveMigrations.PrepareCurrentPayload(CaptureV11(state), out _)
                 .ToObject<EpisodeState>(Serializer());
 
-            Assert.That(parsed.deals, Has.Count.EqualTo(state.deals.Count));
+            Assert.That(parsed.houseEvents, Has.Count.EqualTo(1));
+            Assert.That(parsed.houseEvents[0].narrative, Is.EqualTo(drawn.narrative));
             Assert.That(EpisodeValidation.TryValidate(parsed, out string error), Is.True, error);
         }
 
@@ -313,17 +296,17 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>The current runtime state expressed in schema 10's shape.</summary>
-        private static JObject CaptureV10(EpisodeState state)
+        private static JObject CaptureV11(EpisodeState state)
         {
-            var payload = PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12(Capture(state)));
-            payload["schemaVersion"] = 10;
+            var payload = PersistenceMigrationTests.StripSchema12((Capture(state)));
+            payload["schemaVersion"] = 11;
             return payload;
         }
 
         private static JObject Historical(int version)
         {
-            if (version == 10) return CaptureV10(ContentCatalog.Create(601));
-            return (JObject)typeof(PersistenceV10MigrationTests)
+            if (version == 11) return CaptureV11(ContentCatalog.Create(601));
+            return (JObject)typeof(PersistenceV11MigrationTests)
                 .GetMethod("Historical", BindingFlags.NonPublic | BindingFlags.Static)
                 .Invoke(null, new object[] { version });
         }
@@ -337,7 +320,7 @@ namespace Gamesim.Tests.EditMode
         private sealed class Files : IDisposable
         {
             public readonly string DirectoryPath =
-                Path.Combine(Path.GetTempPath(), "GamesimV11MigrationTests-" + Guid.NewGuid().ToString("N"));
+                Path.Combine(Path.GetTempPath(), "GamesimV12MigrationTests-" + Guid.NewGuid().ToString("N"));
             public readonly EpisodeSaveStore Store;
 
             public Files()

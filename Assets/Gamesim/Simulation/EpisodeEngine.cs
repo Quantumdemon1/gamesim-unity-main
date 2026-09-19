@@ -242,6 +242,11 @@ namespace Gamesim.Simulation
                         NpcSocialActions.Settle(s);
                         NpcDeals.Settle(s);
                         NpcDeals.Propose(s);
+                        // The week has turned, so what the last one left behind gets a week older
+                        // and anything the player walked away from is written off.
+                        Storylines.AgeModifiers(s);
+                        Storylines.AbandonStale(s);
+                        BeginStoryline(s);
                         OfferHouseEvent(s);
                         NarrateHouse(s);
                         return;
@@ -360,7 +365,8 @@ namespace Gamesim.Simulation
                 // this challenge only. This bonus policy is native; stored stats never change.
                 var effectivePlayers = players.Select(contestant => contestant.Clone()).ToArray();
                 foreach (var contestant in effectivePlayers.Where(contestant => contestant.isPlayer))
-                    contestant.stats.endurance = Math.Min(10, contestant.stats.endurance + performance * 2);
+                    contestant.stats.endurance = Math.Min(10,
+                        contestant.stats.endurance + performance * 2 + Storylines.CompetitionBonus(s));
                 s.competitionScores = WebEnduranceCompetition.Run(effectivePlayers, () => Roll(s)).scores;
             }
             else
@@ -368,7 +374,10 @@ namespace Gamesim.Simulation
                 foreach (var contestant in players)
                 {
                     // Native precision challenge supplies a bounded player bonus to the web runner's existing bonus input.
-                    double bonus = contestant.isPlayer ? performance * 2 : 0;
+                    // A storyline modifier rides on the same input, which is the one place a
+                    // competition bonus is already read — a second path would be a second answer.
+                    double bonus = contestant.isPlayer
+                        ? performance * 2 + Storylines.CompetitionBonus(s) : 0;
                     double score = WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, Roll(s), 0);
                     s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
                 }
@@ -401,7 +410,11 @@ namespace Gamesim.Simulation
             // Bought turns are added on top rather than folded into the rule, because the allowance
             // and what was paid for beyond it are different facts. A season under the legacy flat
             // allowance still gets what it bought: refusing it would be charging for nothing.
-            EarnedSocialActionBudget(s) + Math.Max(0, s.boughtActionPoints);
+            // What the week gives, what was bought, and what a storyline left behind — which can be
+            // negative, so the whole thing is floored at one. A week with no interactions at all
+            // would be a week the player cannot play.
+            Math.Max(1, EarnedSocialActionBudget(s) + Math.Max(0, s.boughtActionPoints)
+                        + Storylines.SocialActions(s));
 
         /// <summary>The allowance before anything is bought: what the week gives you for free.</summary>
         public static int EarnedSocialActionBudget(EpisodeState s) =>
@@ -968,6 +981,25 @@ namespace Gamesim.Simulation
         public const double CrisisChance = 0.25;
 
         /// <summary>
+        /// Starts a story, if the season is in a position to tell one.
+        ///
+        /// <para>Before the week's ordinary situation, and it takes the slot when it lands — a
+        /// storyline chapter <i>is</i> a house event, so offering one of each would be two
+        /// situations in a week that allows one.</para>
+        /// </summary>
+        private static void BeginStoryline(EpisodeState s)
+        {
+            if (!HouseEvents.Ready(s)) return;
+            if (!Storylines.Ready(s)) return;
+            if (!Storylines.Begin(s, Roll(s), s.nextSequence, out var story, out var chapter)) return;
+
+            // Both or neither. A record whose chapter went missing is a story nobody can answer.
+            s.houseEvents.Add(chapter);
+            s.storylines.Add(story);
+            Log(s, "storyline", story.title + ". " + chapter.narrative, s.playerId);
+        }
+
+        /// <summary>
         /// The house being a house: narration, no question, and no place in the week's one situation.
         ///
         /// <para>Kept separate from <see cref="OfferHouseEvent"/> because an ambient line is not a
@@ -988,6 +1020,40 @@ namespace Gamesim.Simulation
             if (line == null) return;
             s.houseEvents.Add(line);
             Log(s, "house-ambient", line.narrative, s.playerId);
+        }
+
+        /// <summary>
+        /// Finishes the story a chapter belonged to, and banks what the choice left behind.
+        ///
+        /// <para>Only a chapter has a story; an ordinary situation answers to nobody and this does
+        /// nothing for it. The modifier is looked up from the template rather than stored on the
+        /// choice, because a modifier is the template's business and storing it on every choice
+        /// would put the same three objects in every save that ever saw one.</para>
+        /// </summary>
+        private static void CloseStoryline(EpisodeState s, HouseEventState chapter, int index)
+        {
+            var story = Storylines.For(s, chapter.id);
+            if (story == null) return;
+
+            story.status = StorylineStatus.Completed;
+            story.endedWeek = s.week;
+
+            var template = Storylines.Find(story.templateId);
+            var chosen = template != null && index >= 0 && index < template.options.Length
+                ? template.options[index].modifier : null;
+            if (chosen == null) return;
+
+            // One of each at a time. Taking the same choice twice in a season should not stack a
+            // bonus on itself; it should reset the clock on the one already running.
+            s.activeModifiers.RemoveAll(m => m.id == chosen.id);
+            s.activeModifiers.Add(new StoryModifierState
+            {
+                id = chosen.id, name = chosen.name, description = chosen.description,
+                weeksLeft = chosen.weeks,
+                competitionBonus = chosen.competition, socialBonus = chosen.social,
+            });
+            Log(s, "storyline-outcome", story.title + " — " + chosen.name + ": " + chosen.description,
+                s.playerId);
         }
 
         /// <summary>
@@ -1055,6 +1121,7 @@ namespace Gamesim.Simulation
             item.resolved = true;
             item.chosenIndex = index;
             item.outcome = HouseEvents.Outcome(s, item, index);
+            CloseStoryline(s, item, index);
             Remember(s, s.playerId, item.involvedIds.FirstOrDefault() ?? s.playerId,
                 item.title + ": " + choice.label, true);
             Log(s, "house-event-outcome", item.outcome, s.playerId);

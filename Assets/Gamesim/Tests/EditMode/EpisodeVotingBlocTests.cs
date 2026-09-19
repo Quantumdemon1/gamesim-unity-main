@@ -92,7 +92,7 @@ namespace Gamesim.Tests.EditMode
         public void LegalPactReplayMatchesOriginalSourceAndChangesTargetThroughPrivatePressure()
         {
             var fixture = Fixture(); var state = Witness().Snapshot;
-            Assert.That(state.schemaVersion, Is.EqualTo(11));
+            Assert.That(state.schemaVersion, Is.EqualTo(12));
             Assert.That((int)fixture["state"]["schemaVersion"], Is.EqualTo(5), "Keep the original witness unchanged.");
             // Compared against a subsystem created with the same declared boundary, because that
             // boundary is configuration rather than activity. What this asserts is unchanged: no
@@ -104,7 +104,7 @@ namespace Gamesim.Tests.EditMode
             // the NPC subsystem schema 6 added, and without the contestant card copy schema 7 did.
             var historicalView = PersistenceMigrationTests.StripCardCopy(
                 PersistenceMigrationTests.StripSchema8(
-                    PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(JObject.FromObject(state))))));
+                    PersistenceMigrationTests.StripSchema9(PersistenceMigrationTests.StripSchema10(PersistenceMigrationTests.StripSchema11(PersistenceMigrationTests.StripSchema12(JObject.FromObject(state)))))));
             historicalView.Remove("npcSocial");
             historicalView["schemaVersion"] = fixture["state"]["schemaVersion"].DeepClone();
             WebVotingBlocParityTests.Equivalent(fixture["state"], historicalView, "legal command replay");

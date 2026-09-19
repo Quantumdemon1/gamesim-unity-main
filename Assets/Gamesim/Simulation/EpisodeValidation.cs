@@ -19,7 +19,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 11) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 12) return Fail(out error, "Unsupported episode schema.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0
                 || s.socialActions > MostActionsAWeekCanHold || !Defined(s.phase))
@@ -143,6 +143,28 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid house event data.");
             if (s.eventRulesStartWeek < 1 || s.eventRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "An event rules boundary cannot be further off than next week.");
+            if (s.storylines == null || s.storylines.Count > 100 ||
+                s.storylines.Any(x => x == null || !Text(x.id, 160) || !Text(x.templateId, 160)
+                                      || !Text(x.title, 200) || !ShortOrAbsent(x.category, 80)
+                                      || !StorylineStatus.IsKnown(x.status)
+                                      || !ShortOrAbsent(x.eventId, 160)
+                                      || x.week < 1 || x.week > s.week
+                                      // A running storyline has not ended; a finished one ended on a
+                                      // week the season has actually reached, and never before it began.
+                                      || (StorylineStatus.Running(x.status)
+                                          ? x.endedWeek != 0
+                                          : x.endedWeek < x.week || x.endedWeek > s.week)) ||
+                s.storylines.GroupBy(x => x.id).Any(g => g.Count() > 1))
+                return Fail(out error, "Invalid storyline data.");
+            if (s.activeModifiers == null || s.activeModifiers.Count > 40 ||
+                s.activeModifiers.Any(m => m == null || !Text(m.id, 160) || !Text(m.name, 120)
+                                           || !ShortOrAbsent(m.description, 500)
+                                           || m.weeksLeft < 1 || m.weeksLeft > 20
+                                           || !Finite(m.competitionBonus) || Math.Abs(m.competitionBonus) > 20
+                                           || !Finite(m.socialBonus) || Math.Abs(m.socialBonus) > 100))
+                return Fail(out error, "Invalid story modifier data.");
+            if (s.storyRulesStartWeek < 1 || s.storyRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A storyline rules boundary cannot be further off than next week.");
             if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
                 s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
                 s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)

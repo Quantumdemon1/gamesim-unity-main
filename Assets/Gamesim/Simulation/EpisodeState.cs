@@ -191,7 +191,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 11;
+        public int schemaVersion = 12;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;
@@ -326,6 +326,34 @@ namespace Gamesim.Simulation
         /// </summary>
         public int eventRulesStartWeek = 1;
 
+        // ---------------------------------------------------------------- schema 12
+
+        /// <summary>
+        /// Storylines the player has been through, running and finished.
+        ///
+        /// <para>Finished ones stay: they are what the cooldown reads, so the house does not put the
+        /// same situation to somebody twice in four weeks. The chapter itself lives in
+        /// <see cref="houseEvents"/> rather than here, because a chapter is a situation with choices
+        /// and that is already what a house event is.</para>
+        /// </summary>
+        public List<StorylineState> storylines = new List<StorylineState>();
+
+        /// <summary>
+        /// What storyline choices have left behind, and for how long.
+        ///
+        /// <para>A modifier is why a storyline is worth finishing rather than a paragraph with
+        /// buttons. Both of its effects feed paths that already exist and are already read — a bonus
+        /// nothing consumes is the shape this port keeps finding, and adding another would have been
+        /// a poor joke.</para>
+        /// </summary>
+        public List<StoryModifierState> activeModifiers = new List<StoryModifierState>();
+
+        /// <summary>
+        /// The week storylines start, so a season already under way is not handed a system it was
+        /// not played under. The sixth use of the rule-version boundary.
+        /// </summary>
+        public int storyRulesStartWeek = 1;
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -359,6 +387,8 @@ namespace Gamesim.Simulation
             copy.openingBeatsSeen = new List<string>(openingBeatsSeen);
             copy.deals = deals.Select(x => x.Clone()).ToList();
             copy.houseEvents = houseEvents.Select(x => x.Clone()).ToList();
+            copy.storylines = storylines.Select(x => x.Clone()).ToList();
+            copy.activeModifiers = activeModifiers.Select(x => x.Clone()).ToList();
             return copy;
         }
     }
@@ -390,7 +420,9 @@ namespace Gamesim.Simulation
         /// <summary>Answering something that happened to the house.</summary>
         ResolveHouseEvent,
         /// <summary>Walking in on two houseguests in the same room.</summary>
-        WitnessProximity // Append: preserve every pre-v4 command ordinal.
+        WitnessProximity,
+        /// <summary>Answering the chapter of a storyline.</summary>
+        ProgressStoryline // Append: preserve every pre-v4 command ordinal.
     }
 
     /// <summary>

@@ -20,11 +20,46 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 12) return (JObject)original.DeepClone();
+            if (version < 1 || version > 11) throw new InvalidDataException("Unsupported simulation schema version.");
+            var v11 = version == 11 ? original : PrepareV11Payload(original, out _);
+            var result = UpgradeV11ToV12(v11);
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v10-to-v11 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV11Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 11) return (JObject)original.DeepClone();
             if (version < 1 || version > 10) throw new InvalidDataException("Unsupported simulation schema version.");
             var v10 = version == 10 ? original : PrepareV10Payload(original, out _);
-            var result = UpgradeV10ToV11(v10);
+            var current = UpgradeV10ToV11(v10);
             migrated = true;
+            return current;
+        }
+
+        /// <summary>
+        /// Opens storylines and the modifiers they leave behind, from the week after the save's.
+        ///
+        /// <para>Both lists arrive empty, because there is nothing in a v11 save to infer a
+        /// storyline from. The sixth use of the rule-version boundary, and for the sixth time the
+        /// reason is the same: a season restored mid-week should not suddenly be in the middle of a
+        /// story it was never told.</para>
+        /// </summary>
+        public static JObject UpgradeV11ToV12(JObject original)
+        {
+            FrozenEpisodeV11.Validate(original);
+            int startWeek = checked((int)original["week"] + 1);
+            var result = (JObject)original.DeepClone();
+            result.Add("storylines", new JArray());
+            result.Add("activeModifiers", new JArray());
+            result.Add("storyRulesStartWeek", startWeek);
+            result["schemaVersion"] = 12;
             return result;
         }
 

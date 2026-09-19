@@ -24,6 +24,7 @@ from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "tools"))
+import bb_build as B  # noqa: E402
 import bb_export as X  # noqa: E402
 
 NAME = "bb_char_dan_gheesling"
@@ -277,6 +278,14 @@ with bpy.context.temp_override(active_object=body, selected_editable_objects=[bo
     bpy.ops.object.join()
 me = body.data
 me.name = NAME
+
+# The base ships without UVs. A world-scale box projection, as every set piece carries, so a
+# texture could tile on him and the authored-mesh rule holds for a body too.
+bm = bmesh.new()
+bm.from_mesh(me)
+B._box_uv(bm)
+bm.to_mesh(me)
+bm.free()
 
 # The base imports facing -Y and the six shipped bodies face +Z in Unity; through this pipeline's
 # axis baking that needs the model facing +Y here. Rotated in the data, mesh and bones alike, so

@@ -266,11 +266,17 @@ namespace Gamesim.Episode
                 yield return ClickSeasonButton(EpisodeHud.DealProposeCaption(DealKind.Title(chosenKind).ToLowerInvariant()));
                 var after = seasonDirector.Snapshot;
                 var deal = after.deals.FirstOrDefault(d => d.proposerId == after.playerId && d.recipientId == chosen.Id && d.type == chosenKind);
-                RequireSeason(after.revision == before.revision + 1 && deal != null,
-                    "A proposal control must record the deal it proposes: " + chosenKind);
+                // A refusal records no deal - the engine adds one only when the housemate agrees - but
+                // the proposal is a committed command either way: one revision, and the house says
+                // something about it. The first standalone run to reach this branch failed here for
+                // demanding a record of a deal the housemate had turned down.
+                bool said = after.events.Skip(before.events.Count).Any(e => e.kind == "deal");
+                RequireSeason(after.revision == before.revision + 1 && said,
+                    "A proposal control must commit the proposal it names: " + chosenKind
+                    + " (revision " + before.revision + " -> " + after.revision + "; status: " + seasonDirector.StatusMessage + ")");
                 seasonReport.dealsProposed++;
                 seasonReport.dealKind = chosenKind;
-                seasonReport.dealOutcome = deal.status;
+                seasonReport.dealOutcome = deal != null ? deal.status : "Refused";
                 seasonReport.dealNote = "Put to " + chosen.Id + " through the conversation panel; the housemate's answer is the season's own.";
                 yield return CaptureSeason("deal-proposed", graphical);
             }

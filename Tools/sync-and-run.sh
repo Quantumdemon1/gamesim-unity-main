@@ -4,7 +4,9 @@
 #
 #   Tools/sync-and-run.sh edit:EditMode:Gamesim.EditModeTests play:PlayMode:Gamesim.PlayModeTests
 #
-# Each argument is name:platform:assembly; results land in <copy>/Logs/<name>.xml and .log.
+# Each argument is name:platform:assembly[:filter]; results land in <copy>/Logs/<name>.xml and .log.
+# The optional fourth field is a -testFilter regex over full test names (no spaces or colons),
+# for one failing test or one fixture instead of a 25-minute PlayMode run.
 # Override the copy with GAMESIM_ACCEPTANCE (Windows path). See Tools/README.md for the traps.
 #
 # The sync has to be inside the wait: a robocopy issued while a previous run was still going once
@@ -41,12 +43,13 @@ sed -i 's/m_GPUResidentDrawerMode: 1/m_GPUResidentDrawerMode: 0/' "$DSTP/Assets/
 
 mkdir -p "$DSTP/Logs"
 for pair in "$@"; do
-  n=$(echo "$pair"|cut -d: -f1); p=$(echo "$pair"|cut -d: -f2); a=$(echo "$pair"|cut -d: -f3)
+  n=$(echo "$pair"|cut -d: -f1); p=$(echo "$pair"|cut -d: -f2); a=$(echo "$pair"|cut -d: -f3); f=$(echo "$pair"|cut -d: -f4)
+  filter=""; [ -n "$f" ] && filter="-testFilter $f"
   waitfree || { echo "$n: project never freed"; continue; }
   rm -f "$DSTP/Logs/$n.log" "$DSTP/Logs/$n.xml"
   # Forward slashes on purpose: backslash paths here silently drop segments and disable -assemblyNames.
   "$UNITY" -batchmode -accept-apiupdate -projectPath "$DSTFWD" -runTests \
-    -testPlatform "$p" -assemblyNames "$a" \
+    -testPlatform "$p" -assemblyNames "$a" $filter \
     -testResults "$DSTFWD/Logs/$n.xml" -logFile "$DSTFWD/Logs/$n.log"
   echo "=== $n: $(grep -o 'Test run completed.*' "$DSTP/Logs/$n.log" 2>/dev/null | tail -1) crashes: $(grep -c 'Crash!!!' "$DSTP/Logs/$n.log" 2>/dev/null)"
   if [ -f "$DSTP/Logs/$n.xml" ]; then

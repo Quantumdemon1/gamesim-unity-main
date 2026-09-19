@@ -474,7 +474,7 @@ namespace Gamesim.Presentation
             var row = Row(height);
 
             var label = HudPrimitives.Label(caption, row, 14f, UiTheme.Muted, TextAlignmentOptions.Left);
-            label.text = caption;
+            label.text = Localisation.Text(caption);
             label.rectTransform.anchorMin = new Vector2(0f, 1f);
             label.rectTransform.anchorMax = new Vector2(0f, 1f);
             label.rectTransform.pivot = new Vector2(0f, 1f);
@@ -528,7 +528,7 @@ namespace Gamesim.Presentation
 
             var label = HudPrimitives.Label("Label", pill, 13f, active ? UiTheme.Paper : UiTheme.Muted,
                 TextAlignmentOptions.Center);
-            label.text = text;
+            label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(6f, 0f);
@@ -544,7 +544,7 @@ namespace Gamesim.Presentation
             Vector2 offset, float width)
         {
             var label = HudPrimitives.Label("Caption", parent, size, colour, TextAlignmentOptions.Left);
-            label.text = value;
+            label.text = Localisation.Text(value);
             var rect = label.rectTransform;
             rect.anchorMin = new Vector2(0f, 0.5f);
             rect.anchorMax = new Vector2(0f, 0.5f);
@@ -569,7 +569,7 @@ namespace Gamesim.Presentation
         private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Text", content, size, colour, align);
-            label.text = value;
+            label.text = Localisation.Text(value);
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
             cursor += height;
         }

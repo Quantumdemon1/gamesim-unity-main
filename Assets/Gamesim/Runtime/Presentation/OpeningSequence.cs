@@ -397,7 +397,7 @@ namespace Gamesim.Presentation
         private TMP_Text Title(string value, float size, Color colour, float height)
         {
             var label = HudPrimitives.Label("Title", stage, size, colour, TextAlignmentOptions.Center);
-            label.text = value;
+            label.text = Localisation.Text(value);
             var rect = label.rectTransform;
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);

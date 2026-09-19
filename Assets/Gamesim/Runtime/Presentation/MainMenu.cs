@@ -179,7 +179,7 @@ namespace Gamesim.Presentation
 
             var label = HudPrimitives.Label("Label", panel, 18f,
                 primary ? UiTheme.Paper : UiTheme.Muted, TextAlignmentOptions.Center);
-            label.text = caption;
+            label.text = Localisation.Text(caption);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(12f, 0f);
@@ -195,7 +195,7 @@ namespace Gamesim.Presentation
             float height, ref float cursor)
         {
             var label = HudPrimitives.Label("Text", parent, size, colour, TextAlignmentOptions.Center);
-            label.text = value;
+            label.text = Localisation.Text(value);
             Place(label.rectTransform, Width, height, -cursor);
             cursor += height;
         }

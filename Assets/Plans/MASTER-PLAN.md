@@ -17,11 +17,17 @@ All are recoverable from git at `ac00ee6`. Nothing they decided is dropped here;
 
 ### 1.1 The headline
 
-**The simulation is finished. The presentation is a prototype.** Every system the web reference
-runs offline is ported, deterministic, save-versioned and tested — 11,432 lines of pure C# with no
-Unity dependency and 23,135 lines of tests behind it, more test than runtime. What sits on top of it
-is twelve flat materials, a furniture pack, a synthesised chord for a theme, and a HUD built from
-rectangles. The distance between those two halves is the whole of this plan.
+**The simulation is finished. The presentation is now a dressed house, not a prototype.** Every
+system the web reference runs offline is ported, deterministic, save-versioned and tested — pure C#
+with no Unity dependency and more test than runtime. Since 2026-09-19 what sits on top of it is an
+authored house: the shell with baked plaster, textured floors laid per room, 158 authored props and
+no kit model in the shipping scene, a cast whose eyes carry its mood, seated conversations and
+reaction clips on the shipped rig, a composed theme and season bed, eleven cues, a room tone per
+room and UI foley, a camera with four phases done and one map for mouse, keyboard and pad, display
+and sound preferences, a localisation key layer, and a standalone season walk that finishes with a
+winner on the reference machine. What remains is listed in §3.0 as human steps, in §3.H as platform
+work that needs modules and SDKs this machine does not have, and in §3.G as depth for after players
+ask for it.
 
 ### 1.2 Status by area — verified against the code
 
@@ -194,7 +200,7 @@ Part 4 §4.5 covers both routes.
 | **6 Motion and feedback** | **First pass 2026-09-19** — a closing panel fades out on a ghost canvas that owns no controls (`HudFade`), a pressed button dips (`HudPress`), a meter's fill travels to its new value (`HudFill`); the modal and the status line already rose in. Every one is nothing under reduced motion (`Motion_*` PlayMode tests). Left: card travel is the stings' own; hover states are Unity's |
 | **7 Layout containers** | **Partial** — four `LayoutGroup` uses; the fixed chrome is still absolute-positioned |
 | Controller and Steam Deck navigation | **First pass 2026-09-19** — the UI module's default map already walked panels from a pad; the house's shortcuts (Escape, J, F5, R, E, Space) now come through a Shortcuts map in `HouseCamera.inputactions` with Start, Select, the left stick's press, North, West and South beside them, and the camera has the sticks, triggers and shoulders (§3.E Phase 3). Start opens the settings when nothing is open, because a pad has no other way there. `Controller_*` PlayMode test. Open: the cast screen and the main menu are keyboard-and-mouse only; a pad has no way to type a speech; button glyphs in the HUD's hints |
-| **Localisation** | **Key layer in place 2026-09-19; no table ships.** `Localisation` maps an English caption to translated text from `Resources/Localisation/<language>`, the HUD asks it at its one text sink and its prompt line, and a control keeps its English caption as its name and key while the words change — the caption contract holds. The language is a display preference, shown only once a table ships. Open: the overlays (menu, cast screen, ceremonies, report) draw their own text and do not ask yet; composed sentences fall through untranslated until written as formats; no translation exists |
+| **Localisation** | **Key layer in place 2026-09-19; no table ships.** `Localisation` maps an English caption to translated text from `Resources/Localisation/<language>`, the HUD asks it at its one text sink and its prompt line, and a control keeps its English caption as its name and key while the words change — the caption contract holds. The language is a display preference, shown only once a table ships. The menu, cast screen, creator, opening, tutorial, report and recap ask at their own text helpers (2026-09-19). Open: the ceremony cards, the reveal and the key ceremony compose their lines around names and stay untranslated until written as formats; no translation exists |
 
 **Do the idiom change before adding more panels.** Every panel built this month (deals, events,
 storylines, minigames, recap) was built to the current idiom. A new idiom re-does them.
@@ -486,9 +492,11 @@ Every export passes, in order:
    kitchen run and thirty-three catalogue stand-ins; no plan row resolves to the kit.
 7. Conversation and reaction clips; faces — **clips first pass 2026-09-19** (eight takes on the
    shipped Generic rig; the importer takes `Animation/Generic` as Generic, names clips after their
-   takes and loops `*_loop`; `AuthoredClipWiring` builds the states). Faces open.
-8. Tier 4 clutter — **begun 2026-09-19**, seven pieces on fourteen rows.
-9. Wardrobe (Route A) or the cast (Route B), whichever §3.B decided.
+   takes and loops `*_loop`; `AuthoredClipWiring` builds the states). **Faces done 2026-09-19** by
+   the runtime route (§3.B).
+8. Tier 4 clutter — **thirteen pieces on twenty-two rows 2026-09-19**; more is a matter of rows.
+9. Wardrobe (Route A) or the cast (Route B), whichever §3.B decided — **open**; the UMA cast is
+   what the mirror and the profile run, and the shipped prefabs are what a UMA-less clone gets.
 
 ---
 
@@ -505,6 +513,13 @@ and the Blender pipeline is the art track of the vertical slice.
 | **2 — Content** | 3–4 | Tier 5 writing pass, every template set tripled; Part 4 tier 3 furniture; conversation and reaction clips; faces | No repetition inside a season; every room off Kenney |
 | **3 — Platform** | 2–3 | Addressables, three desktop targets, settings, Steam, localisation keys | A stranger can install and play it |
 | **4 — Depth** | ongoing | §3.G; generated content if adopted; wardrobe or cast; clutter | Players are asking for more |
+
+**Where the phases stand at the end of 2026-09-19.** Phase 0 is done but for the human steps in
+§3.0 (merge PR #1, Section E, the two `git rm`s) and the C-threshold decision the matrix names.
+Phase 1's A, B, C and D are done; E's ceremonies run on the director's own framing presets rather
+than Timeline and Cinemachine, which remain the way to raise them further. Phase 2 is done but for
+wardrobe. Phase 3 has its settings and its localisation keys; Addressables, the Mac and Linux
+targets (Hub modules) and Steam (its SDK) remain. Phase 4 has begun with clutter.
 
 **What not to spend on:** more simulation before the slice; multiplayer, accounts or cloud; a new
 HUD idiom before finishing the seven steps; the STYLARTS download.

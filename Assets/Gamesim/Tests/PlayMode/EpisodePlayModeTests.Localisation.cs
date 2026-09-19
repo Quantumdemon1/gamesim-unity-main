@@ -51,6 +51,27 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaption("Notebook [J]"), Is.Not.Null, "Without a table the English caption is the words again.");
         }
 
+        [UnityTest]
+        public IEnumerator Localisation_AnOverlayAsksTheTableAtItsOwnText()
+        {
+            var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
+            try
+            {
+                Localisation.Use("de", new Dictionary<string, string> { { WeeklyRecapScreen.ContinueCaption, "Weiter zur nächsten Woche" } });
+                screen.Show(director.Snapshot, () => { });
+                yield return null;
+                var shown = director.GetComponentsInChildren<Button>(true).FirstOrDefault(b => b.IsActive()
+                    && b.GetComponentsInChildren<TMP_Text>(true).Any(x => x.text == "Weiter zur nächsten Woche"));
+                Assert.That(shown, Is.Not.Null, "The recap's Continue is drawn in the table's words.");
+                Assert.That(ButtonWithCaptionOrNull(WeeklyRecapScreen.ContinueCaption), Is.Null);
+            }
+            finally
+            {
+                Localisation.Use(null, null);
+                screen.Hide();
+            }
+        }
+
         private Button ButtonWithCaptionOrNull(string caption) =>
             director.GetComponentsInChildren<Button>(true).FirstOrDefault(b => b.IsActive()
                 && b.GetComponentsInChildren<TMP_Text>(true).Any(t => t.text == caption));

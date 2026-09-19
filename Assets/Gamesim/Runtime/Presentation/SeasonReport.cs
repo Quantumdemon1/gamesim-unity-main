@@ -575,7 +575,7 @@ namespace Gamesim.Presentation
 
             var label = HudPrimitives.Label("Label", pill, 12f, active ? UiTheme.Paper : UiTheme.Muted,
                 TextAlignmentOptions.Center);
-            label.text = text;
+            label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(5f, 0f);
@@ -697,7 +697,7 @@ namespace Gamesim.Presentation
         {
             Space(16f);
             var label = HudPrimitives.Label("Heading", content, 18f, UiTheme.Gold, TextAlignmentOptions.Left);
-            label.text = text.ToUpperInvariant();
+            label.text = Localisation.Text(text).ToUpperInvariant();
             Place(label.rectTransform, Width - Pad * 2f, 26f, -cursor);
             cursor += 30f;
         }
@@ -713,7 +713,7 @@ namespace Gamesim.Presentation
         private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Text", content, size, colour, align);
-            label.text = value;
+            label.text = Localisation.Text(value);
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
             cursor += height;
         }
@@ -733,7 +733,7 @@ namespace Gamesim.Presentation
             Color colour, TextAlignmentOptions align, float y = 0f)
         {
             var label = HudPrimitives.Label("Cell", parent, size, colour, align);
-            label.text = value;
+            label.text = Localisation.Text(value);
             var rect = label.rectTransform;
             rect.anchorMin = new Vector2(0f, 0.5f);
             rect.anchorMax = new Vector2(0f, 0.5f);
@@ -754,7 +754,7 @@ namespace Gamesim.Presentation
             UiTheme.AddBorder(panel, 8, UiTheme.Outline);
 
             var label = HudPrimitives.Label("Label", panel, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
-            label.text = text;
+            label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.sizeDelta = Vector2.zero;

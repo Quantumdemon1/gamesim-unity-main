@@ -276,7 +276,7 @@ namespace Gamesim.Presentation
         private void Row(string label, string value, Color tint)
         {
             var panel = Panel(30f, UiTheme.Surface);
-            Cell(panel, 20f, 300f, label.ToUpperInvariant(), 13f, UiTheme.Muted, TextAlignmentOptions.Left);
+            Cell(panel, 20f, 300f, Localisation.Text(label).ToUpperInvariant(), 13f, UiTheme.Muted, TextAlignmentOptions.Left);
             Cell(panel, 330f, Width - 380f, value, 15f, tint, TextAlignmentOptions.Left);
             lines.Add(label + ": " + value);
         }
@@ -285,7 +285,7 @@ namespace Gamesim.Presentation
         {
             Space(14f);
             var label = HudPrimitives.Label("Heading", content, 17f, UiTheme.Gold, TextAlignmentOptions.Left);
-            label.text = text.ToUpperInvariant();
+            label.text = Localisation.Text(text).ToUpperInvariant();
             Place(label.rectTransform, Width - Pad * 2f, 24f, -cursor);
             cursor += 28f;
         }
@@ -301,7 +301,7 @@ namespace Gamesim.Presentation
         private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Text", content, size, colour, align);
-            label.text = value;
+            label.text = Localisation.Text(value);
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
             cursor += height;
         }
@@ -321,7 +321,7 @@ namespace Gamesim.Presentation
             Color colour, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Cell", parent, size, colour, align);
-            label.text = value;
+            label.text = Localisation.Text(value);
             var rect = label.rectTransform;
             rect.anchorMin = new Vector2(0f, 0.5f);
             rect.anchorMax = new Vector2(0f, 0.5f);
@@ -342,7 +342,7 @@ namespace Gamesim.Presentation
             UiTheme.AddBorder(panel, 8, UiTheme.Outline);
 
             var label = HudPrimitives.Label("Label", panel, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
-            label.text = text;
+            label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.sizeDelta = Vector2.zero;

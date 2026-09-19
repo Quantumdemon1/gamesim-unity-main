@@ -139,6 +139,24 @@ namespace Gamesim.Simulation
         public const double FinalImpression = 10;
 
         /// <summary>Why a juror voted as they did, in a sentence the reveal can show.</summary>
+        /// <summary>
+        /// One of three phrasings, by the juror's seat in the cast list, so four jurors giving the
+        /// same reason do not give it in the same words. Deterministic and roll-free: a reason is
+        /// presentation, and the vote it explains is already decided.
+        /// </summary>
+        private static string Say(EpisodeState state, string jurorId, string first, string second, string third)
+        {
+            int seat = 0;
+            for (int index = 0; index < state.contestants.Count; index++)
+                if (state.contestants[index] != null && state.contestants[index].id == jurorId) { seat = index; break; }
+            switch (seat % 3)
+            {
+                case 1: return second;
+                case 2: return third;
+                default: return first;
+            }
+        }
+
         public static string Reason(EpisodeState state, string jurorId, ContestantState chosen, ContestantState other)
         {
             double likedChosen = state.Score(jurorId, chosen.id);
@@ -149,16 +167,16 @@ namespace Gamesim.Simulation
             // The interesting case, and the one the old rule could never produce: a juror who prefers
             // the other finalist as a person and votes against them anyway.
             if (likedOther > likedChosen && respectChosen > respectOther)
-                return "They played the better game, whatever I think of them.";
+                return Say(state, jurorId, "They played the better game, whatever I think of them.", "I don't like them. They played the better game, and this vote is about the game.", "The better game wins, even when I would rather it didn't.");
             if (respectOther > respectChosen && likedChosen > likedOther)
-                return "I know what they did in here, and I am voting with my gut anyway.";
+                return Say(state, jurorId, "I know what they did in here, and I am voting with my gut anyway.", "My gut says this, and I have stopped arguing with it.", "I could list what they did. I am going with my gut instead.");
             if (state.Allied(jurorId, chosen.id))
-                return "We were in this together and I am not walking away from that now.";
+                return Say(state, jurorId, "We were in this together and I am not walking away from that now.", "We had an alliance, and I am keeping my end of it tonight.", "I do not abandon people I made plans with. This is that.");
             if (Obligations(state, jurorId, chosen.id) > 10)
-                return "They kept their word to me when it cost them something.";
+                return Say(state, jurorId, "They kept their word to me when it cost them something.", "Every deal they made me, they kept. That decides it.", "They paid for keeping a promise to me. I am paying it back.");
             if (respectChosen > respectOther)
-                return "They won when they had to. That is the game.";
-            return "Personal trust and this juror's final impression.";
+                return Say(state, jurorId, "They won when they had to. That is the game.", "When it mattered, they won. That is what I respect.", "They took the competitions that counted. That is a winner.");
+            return Say(state, jurorId, "Personal trust and this juror's final impression.", "Trust, mostly, and how they left me feeling at the end.", "It comes down to who I believe, and I believe them.");
         }
     }
 }

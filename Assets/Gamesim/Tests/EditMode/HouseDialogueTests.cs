@@ -96,10 +96,13 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void SafetyAcknowledgement_RequiresMatchingCurrentActiveDirectPromise()
         {
+            // The baseline is taken at week three, where the rest of the test runs: lines vary by
+            // week on purpose, and this test is about which promise is acknowledged, not about a
+            // line staying the same across weeks.
+            state.week = 3;
             var before = HouseDialogue.Response(state,Maya,EpisodeCommandKind.PromiseSafety);
             var promise = Promise(Maya,PromiseStatus.Active);
-            promise.expiresWeek = state.week - 1;
-            state.week = 3; promise.week = 1; promise.expiresWeek = 2;
+            promise.week = 1; promise.expiresWeek = 2;
             state.promises.Add(promise);
             Assert.That(HouseDialogue.Response(state,Maya,EpisodeCommandKind.PromiseSafety), Is.EqualTo(before));
             promise.expiresWeek = state.week;

@@ -38,6 +38,8 @@ namespace Gamesim.Simulation
         public sealed class Template
         {
             public string id, category, title, chapterTitle, narrative;
+            /// <summary>Further phrasings of the chapter, by week; the mechanics never vary.</summary>
+            public string[] alternatives;
             public string[] roles;
             public int minimumWeek, cooldownWeeks;
             public Option[] options;
@@ -70,6 +72,11 @@ namespace Gamesim.Simulation
                 narrative = "{RIVAL} has been talking behind your back, rallying votes against you. "
                     + "The house is starting to take sides. You need to decide how to respond before "
                     + "it is too late.",
+                alternatives = new[]
+                {
+                    "{RIVAL} is running a campaign against you - quiet conversations, one housemate at a time - and it is working. If you are going to answer it, this is the week.",
+                    "The word is that {RIVAL} wants you gone and has been counting the votes to do it. People are watching to see what you do about that.",
+                },
                 roles = new[] { HouseEvents.Rival },
                 minimumWeek = 2, cooldownWeeks = 4,
                 options = new[]
@@ -116,6 +123,11 @@ namespace Gamesim.Simulation
                 narrative = "You overhear {ALLY} sharing details of your strategy with another group. "
                     + "They do not know you heard everything. The betrayal stings, but how you handle "
                     + "it could define your game.",
+                alternatives = new[]
+                {
+                    "Through the wall you hear {ALLY} explaining your plan - your plan - to people who were never meant to hear it. They walk out smiling, unaware you were on the other side.",
+                    "{ALLY} thought the yard was empty when they laid out your strategy to another group. It was not. What you do with what you heard is now the whole question.",
+                },
                 roles = new[] { HouseEvents.Ally },
                 minimumWeek = 1, cooldownWeeks = 4,
                 options = new[]
@@ -149,6 +161,11 @@ namespace Gamesim.Simulation
                 narrative = "{HOH} has made it clear — you are the target this week. The votes are "
                     + "stacking up against you. You have one last chance to flip the house before "
                     + "eviction night.",
+                alternatives = new[]
+                {
+                    "{HOH} is not hiding it: you are the one they want out, and the count already leans their way. There is a little time left to change some minds.",
+                    "Everyone knows what {HOH} wants this week, and it is you on the block and out the door. The numbers are against you, and the clock is short.",
+                },
                 roles = new[] { HouseEvents.Hoh },
                 minimumWeek = 1, cooldownWeeks = 5,
                 options = new[]
@@ -249,7 +266,7 @@ namespace Gamesim.Simulation
                 id = "house-event-" + sequence,
                 kind = HouseEventKind.House,
                 title = template.chapterTitle,
-                narrative = HouseEvents.Fill(state, template.narrative, roles),
+                narrative = HouseEvents.Fill(state, HouseEvents.Narrative(template.narrative, template.alternatives, state.week), roles),
                 involvedIds = template.roles.Select(r => roles[r]).Distinct(StringComparer.Ordinal).ToList(),
                 week = state.week,
                 resolved = false,

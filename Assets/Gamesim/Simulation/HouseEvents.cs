@@ -38,6 +38,8 @@ namespace Gamesim.Simulation
         public sealed class Template
         {
             public string id, title, narrative;
+            /// <summary>Further phrasings of the narrative, by week; the mechanics never vary.</summary>
+            public string[] alternatives;
             public string[] roles;
             public Option[] options;
         }
@@ -65,6 +67,11 @@ namespace Gamesim.Simulation
                 id = "overheard-conversation", title = "Overheard Conversation",
                 narrative = "You walk into the storage room and overhear {RIVAL} telling {ALLY} that "
                     + "you're their next target. They haven't noticed you yet.",
+                alternatives = new[]
+                {
+                    "Passing the bathroom door you catch {RIVAL}'s voice, low and certain: you're the name they are putting up next, and {ALLY} is listening. Neither has seen you.",
+                    "Late in the kitchen, {RIVAL} is laying out the week for {ALLY}, and the plan has your name at the top of it. You are standing just out of their eyeline.",
+                },
                 roles = new[] { Rival, Ally },
                 options = new[]
                 {
@@ -85,6 +92,11 @@ namespace Gamesim.Simulation
                 narrative = "{RIVAL} pulls you aside after dinner with an unexpected offer. They want "
                     + "to form a secret side-deal to protect each other, but your alliance doesn't "
                     + "know about it.",
+                alternatives = new[]
+                {
+                    "{RIVAL} finds you alone in the yard and keeps their voice down: a quiet arrangement, just the two of you, each keeping the other off the block. Your alliance would not be told.",
+                    "{RIVAL} catches you on the stairs with a proposal they have clearly rehearsed - a private pact, safety for safety, kept from everyone you are already working with.",
+                },
                 roles = new[] { Rival },
                 options = new[]
                 {
@@ -104,6 +116,11 @@ namespace Gamesim.Simulation
                 id = "house-divide", title = "House Divide",
                 narrative = "The house is split after a heated argument between {HOH} and {NOMINEE}. "
                     + "Everyone is picking sides, and both are looking to you for support.",
+                alternatives = new[]
+                {
+                    "{HOH} and {NOMINEE} have stopped speaking after a row the whole house heard through the walls. Camps are forming, and both of them want to know which one you are in.",
+                    "A dinner turned into a shouting match between {HOH} and {NOMINEE}, and nobody has sat at the same table since. Each has asked you, separately, where you stand.",
+                },
                 roles = new[] { Hoh, Nominee },
                 options = new[]
                 {
@@ -123,6 +140,11 @@ namespace Gamesim.Simulation
                 id = "late-night-alliance-talk", title = "Late Night Alliance Talk",
                 narrative = "{ALLY} wakes you up in the middle of the night, worried that someone in "
                     + "your alliance is leaking information. They suspect {RIVAL} is playing both sides.",
+                alternatives = new[]
+                {
+                    "It is past two when {ALLY} shakes you awake. Something you said in confidence has come back to them from the other side of the house, and they think {RIVAL} carried it.",
+                    "{ALLY} corners you before anyone else is up. A detail only your alliance knew is out, and they are sure {RIVAL} has been talking to both camps.",
+                },
                 roles = new[] { Ally, Rival },
                 options = new[]
                 {
@@ -142,6 +164,11 @@ namespace Gamesim.Simulation
                 id = "competition-sabotage", title = "Competition Sabotage",
                 narrative = "You discover that {RIVAL} has been studying the house layout for an "
                     + "upcoming memory competition. {ALLY} suggests you could sabotage their preparation.",
+                alternatives = new[]
+                {
+                    "{RIVAL} has been pacing the rooms counting steps and doors, getting ready for a memory competition. {ALLY} points out how easy it would be to feed them the wrong count.",
+                    "You find {RIVAL}'s notes on the house layout tucked under a cushion - competition prep. {ALLY} wonders aloud whether the notes need to stay accurate.",
+                },
                 roles = new[] { Rival, Ally },
                 options = new[]
                 {
@@ -161,6 +188,11 @@ namespace Gamesim.Simulation
                 id = "emotional-breakdown", title = "Emotional Breakdown",
                 narrative = "{NOMINEE} breaks down crying in the bathroom, feeling isolated and "
                     + "targeted. No one else has noticed yet, and you're the only one who can comfort them.",
+                alternatives = new[]
+                {
+                    "{NOMINEE} is sitting on the bathroom floor with the door half open, not really crying any more, just done. Nobody else has come looking.",
+                    "You find {NOMINEE} in the yard after dark, alone, convinced the whole house has already decided. Whatever gets said next, you are the one saying it.",
+                },
                 roles = new[] { Nominee },
                 options = new[]
                 {
@@ -252,6 +284,18 @@ namespace Gamesim.Simulation
         /// does, which is the reference's own recovery rather than a placeholder in the narrative.
         /// </para>
         /// </summary>
+        /// <summary>
+        /// The narrative for this week: the original the first week, then the alternatives in turn.
+        /// Keyed on the week and never on a roll, so the words change and the season's randomness
+        /// does not.
+        /// </summary>
+        public static string Narrative(string first, string[] alternatives, int week)
+        {
+            if (alternatives == null || alternatives.Length == 0) return first;
+            int index = (Math.Max(1, week) - 1) % (alternatives.Length + 1);
+            return index == 0 ? first : alternatives[index - 1];
+        }
+
         public static HouseEventState Draw(EpisodeState state, double roll, long sequence)
         {
             if (!Ready(state)) return null;
@@ -272,7 +316,7 @@ namespace Gamesim.Simulation
                 id = "house-event-" + sequence,
                 kind = HouseEventKind.House,
                 title = template.title,
-                narrative = Fill(state, template.narrative, roles),
+                narrative = Fill(state, Narrative(template.narrative, template.alternatives, state.week), roles),
                 involvedIds = template.roles.Select(r => roles[r]).Distinct(StringComparer.Ordinal).ToList(),
                 week = state.week,
                 resolved = false,

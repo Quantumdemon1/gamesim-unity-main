@@ -78,7 +78,36 @@ namespace Gamesim.Presentation
                 component.ApplyWardrobe(palette);
             }
             component.enabled = true;
+            // The face wears the simulation's own words, every time the director attaches.
+            component.SetMood(character.mood, character.stressLevel);
             return component;
+        }
+
+        private FaceExpression face;
+        private string mood = "Neutral", stress = "Normal";
+
+        /// <summary>
+        /// The houseguest's mood and stress level, for the eyes (MASTER-PLAN §3.B faces). Held
+        /// until a body with a face exists, then pushed; a deferred body picks it up when it lands.
+        /// </summary>
+        public void SetMood(string moodWord, string stressWord)
+        {
+            mood = moodWord ?? "Neutral";
+            stress = stressWord ?? "Normal";
+            PushMood();
+        }
+
+        /// <summary>The face on this body, or null while there is none.</summary>
+        public FaceExpression Face => face;
+
+        private void PushMood()
+        {
+            if (face == null && providedBody.Exists && standIn == null
+                && providedBody.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) != null)
+                face = FaceExpression.Attach(providedBody.Root);
+            if (face == null) return;
+            face.ReducedMotion = reducedMotion;
+            face.SetMood(mood, stress);
         }
 
         private void Awake()
@@ -86,7 +115,7 @@ namespace Gamesim.Presentation
             if (!built && definition != null) Build(definition, wardrobeColor);
         }
 
-        public void SetReducedMotion(bool value) => reducedMotion = value;
+        public void SetReducedMotion(bool value) { reducedMotion = value; if (face != null) face.ReducedMotion = value; }
         public void SetTalking(bool value) => talking = value;
         /// <summary>
         /// Within a conversation, whether this body has the floor. The director alternates it
@@ -237,6 +266,7 @@ namespace Gamesim.Presentation
 
             if (Application.isPlaying) Destroy(standIn.gameObject); else DestroyImmediate(standIn.gameObject);
             standIn = null;
+            PushMood();
             // The HUD photographs these bodies for its portraits, and until this moment there was
             // nothing to photograph — so anything already drawn is holding a fallback face. A
             // counter rather than an event: the director polls it, which cannot leave a subscription
@@ -625,6 +655,7 @@ namespace Gamesim.Presentation
 
         private void ReleasePresentation()
         {
+            face = null;
             foreach (var old in replacedRenderers) if (old != null) old.enabled = true;
             replacedRenderers.Clear();
             if (visual != null)

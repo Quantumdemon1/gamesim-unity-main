@@ -73,7 +73,7 @@ including a v5 to v6 migration in the shipped executable.
 | --- | --- |
 | `ACCEPTANCE_MATRIX.md` | U08's gate referenced a matrix that did not exist, which made it unfalsifiable |
 | `PLAYTEST_PROTOCOL.md` | Turns section E's five judgements into thresholds with a way to observe each |
-| `Assets/Plans/uma-character-pipeline.md` | The architecture and the traps, including two that cost hours |
+| `Assets/Plans/uma-character-pipeline.md` | The architecture and the traps, including two that cost hours — since folded into `Assets/Plans/MASTER-PLAN.md` §3.B and §4.5 |
 
 ## Before committing
 

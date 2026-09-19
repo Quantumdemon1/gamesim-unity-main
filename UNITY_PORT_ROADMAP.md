@@ -177,10 +177,12 @@ The committed value must stay `SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY`.
   `Assets/Gamesim/Runtime/Presentation/CharacterBodyProvider.cs`, and the `GAMESIM_UMA` define
   bootstrap in `Assets/Gamesim/Editor/UmaPresenceDefine.cs`. A UMA character was measured building
   correctly in play mode (16,277 verts, 229 bones, 1.99 m, URP shader graphs) before the integration
-  was written; the integration itself has not been run. See `Assets/Plans/uma-character-pipeline.md`.
+  was written; the integration itself has not been run. See `Assets/Plans/MASTER-PLAN.md` §3.B and §4.5,
+  which absorbed the pipeline plan.
 - **Ceremony title cards** — `Assets/Gamesim/Runtime/Presentation/CeremonySting.cs`, hooked into
   `EpisodeDirector.Submit`, with `Assets/Gamesim/Tests/PlayMode/CeremonyStingPlayModeTests.cs`.
-  Closes the last open step of `Assets/Plans/big-brother-ui-ux-overhaul.md`.
+  Closes the ceremony-sting step of the UI/UX overhaul; its remaining steps (motion, layout
+  containers) are §3.D of `Assets/Plans/MASTER-PLAN.md`.
 - **Provider-seam regression tests** — `Assets/Gamesim/Tests/PlayMode/CharacterBodyProviderPlayModeTests.cs`
   pins the property the rest of the suite depends on: with no provider registered, houseguests get
   the primitive rig they always had, and no test leaves a provider installed.
@@ -215,6 +217,12 @@ Generated output under Builds, Library and Logs is excluded from Git. Commit the
 See `UNITY_PORT_IMPLEMENTATION.md` for the integrated material-change inventory, preservation evidence, tests/build/profile results and remaining limits. `ACCEPTANCE_MATRIX.md` is the checkable list a pinned build is measured against, including the human criteria no automated pass can substitute for, and `PLAYTEST_PROTOCOL.md` is how to run those. `U02_IMPLEMENTATION.md` remains the historical baseline report.
 
 ## Completion boundary
+
+> **Superseded 2026-09-18.** The paragraphs below record the boundary as it stood at V6/V7 and are
+> kept as the record of what those increments accepted. Deals, house events, crises, storylines, the
+> minigame catalogue, the player's social vocabulary and the reference jury model have since been
+> ported (schema 12; EditMode 1208, PlayMode 152). The current boundary is Part 1 of
+> `Assets/Plans/MASTER-PLAN.md`.
 
 September13 accepted V6: source-derived NPC-to-NPC conversations, real paired house routes, independent saved social time/RNG, schema6 migration and save-before-publication pass640 Edit Mode and84 Play Mode tests, a strict clean build, headless and graphical seasons, and a clean five-minute graphical profile. Fresh seasons activate NPC conversations in week1; historical/imported saves activate next week without rewriting existing history. This does not port the full strategic/activity planner.
 

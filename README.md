@@ -133,7 +133,7 @@ Two notes:
 | [`PLAYTEST_PROTOCOL.md`](PLAYTEST_PROTOCOL.md) | How to run section E, the part no automated suite can decide. |
 | [`UNITY_PORT_ROADMAP.md`](UNITY_PORT_ROADMAP.md) | The U01–U08 work packages. |
 | [`UNITY_PORT_IMPLEMENTATION.md`](UNITY_PORT_IMPLEMENTATION.md) | Implementation record. |
-| [`Assets/Plans/uma-character-pipeline.md`](Assets/Plans/uma-character-pipeline.md) | The UMA pipeline and the traps in it. |
+| [`Assets/Plans/MASTER-PLAN.md`](Assets/Plans/MASTER-PLAN.md) | The one development plan: verified status of every area, the constraints, the workstreams, and the Blender asset pipeline. It replaced the eight per-area plans. |
 
 **The acceptance matrix has one open section.** E1–E5 are human playtests — pacing, whether
 first-time players reach the eviction unaided, whether a decision felt consequential, whether losing

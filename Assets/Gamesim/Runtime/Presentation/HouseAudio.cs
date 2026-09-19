@@ -15,6 +15,13 @@ namespace Gamesim.Presentation
 
         private const int SampleRate = 22050;
         private readonly Dictionary<Cue, AudioClip> clips = new Dictionary<Cue, AudioClip>();
+        // The clips this component synthesised and therefore owns. A clip loaded from Resources is
+        // an asset: it is shared, and destroying it is refused by the engine.
+        private readonly HashSet<AudioClip> owned = new HashSet<AudioClip>();
+        /// <summary>Where a recorded cue lives: <c>Resources/Audio/Cues/&lt;Cue&gt;</c>.</summary>
+        public const string CueResourceFolder = "Audio/Cues/";
+        /// <summary>How many of the cues came from a recording rather than the composition.</summary>
+        public int RecordedCues { get; private set; }
         /// <summary>
         /// What the music bed is doing.
         ///
@@ -133,28 +140,30 @@ namespace Gamesim.Presentation
             musicSource.priority = 200;
 
             // A supplied recording wins over the synthesised bed, and neither is required.
-            themeBed = Resources.Load<AudioClip>("Audio/Theme") ?? BuildBed("Theme bed", ThemeChords, 1.5f);
-            seasonBed = Resources.Load<AudioClip>("Audio/Season") ?? BuildBed("Season bed", SeasonChords, 2.4f);
-            HasRecordedMusic = Resources.Load<AudioClip>("Audio/Theme") != null;
+            var recordedTheme = Resources.Load<AudioClip>("Audio/Theme");
+            var recordedSeason = Resources.Load<AudioClip>("Audio/Season");
+            themeBed = recordedTheme != null ? recordedTheme : Own(BuildBed("Theme bed", ThemeChords, 1.5f));
+            seasonBed = recordedSeason != null ? recordedSeason : Own(BuildBed("Season bed", SeasonChords, 2.4f));
+            HasRecordedMusic = recordedTheme != null;
 
-            ambience = BuildAmbience();
+            ambience = Own(BuildAmbience());
             ambienceSource.clip = ambience;
-            clips[Cue.Button] = Compose("Button", 0.07f, new Tone(600, 0.06f, 0, 0.11f));
-            clips[Cue.Save] = Compose("Save", 0.24f, new Tone(1000, 0.08f, 0, 0.12f), new Tone(1200, 0.10f, 0.10f, 0.12f));
-            clips[Cue.SocialUp] = Compose("Connection", 0.33f, new Tone(330, 0.18f, 0, 0.13f), new Tone(523.25f, 0.22f, 0.10f, 0.13f));
-            clips[Cue.SocialDown] = Compose("Tension", 0.33f, new Tone(523.25f, 0.18f, 0, 0.12f), new Tone(330, 0.22f, 0.10f, 0.12f));
-            clips[Cue.CompetitionStart] = Compose("Competition begins", 0.65f, new Tone(220, 0.6f, 0, 0.15f), new Tone(330, 0.55f, 0.05f, 0.10f));
-            clips[Cue.CompetitionWin] = Compose("Competition result", 1.1f,
+            clips[Cue.Button] = Recorded(Cue.Button) ?? Own(Compose("Button", 0.07f, new Tone(600, 0.06f, 0, 0.11f)));
+            clips[Cue.Save] = Recorded(Cue.Save) ?? Own(Compose("Save", 0.24f, new Tone(1000, 0.08f, 0, 0.12f), new Tone(1200, 0.10f, 0.10f, 0.12f)));
+            clips[Cue.SocialUp] = Recorded(Cue.SocialUp) ?? Own(Compose("Connection", 0.33f, new Tone(330, 0.18f, 0, 0.13f), new Tone(523.25f, 0.22f, 0.10f, 0.13f)));
+            clips[Cue.SocialDown] = Recorded(Cue.SocialDown) ?? Own(Compose("Tension", 0.33f, new Tone(523.25f, 0.18f, 0, 0.12f), new Tone(330, 0.22f, 0.10f, 0.12f)));
+            clips[Cue.CompetitionStart] = Recorded(Cue.CompetitionStart) ?? Own(Compose("Competition begins", 0.65f, new Tone(220, 0.6f, 0, 0.15f), new Tone(330, 0.55f, 0.05f, 0.10f)));
+            clips[Cue.CompetitionWin] = Recorded(Cue.CompetitionWin) ?? Own(Compose("Competition result", 1.1f,
                 new Tone(523.25f, 0.3f, 0, 0.14f), new Tone(659.25f, 0.3f, 0.23f, 0.14f),
-                new Tone(783.99f, 0.45f, 0.46f, 0.14f), new Tone(1046.5f, 0.35f, 0.72f, 0.10f));
-            clips[Cue.Nomination] = Compose("Nomination", 0.85f, new Tone(110, 0.75f, 0, 0.16f), new Tone(220, 0.5f, 0.2f, 0.07f));
-            clips[Cue.Veto] = Compose("Veto result", 0.75f,
-                new Tone(587.33f, 0.28f, 0, 0.13f), new Tone(739.99f, 0.3f, 0.18f, 0.13f), new Tone(880, 0.36f, 0.37f, 0.12f));
-            clips[Cue.Vote] = Compose("Vote recorded", 0.20f, new Tone(880, 0.18f, 0, 0.11f));
-            clips[Cue.Eviction] = Compose("Eviction", 0.95f, new Tone(82.41f, 0.85f, 0, 0.15f), new Tone(164.81f, 0.6f, 0.12f, 0.07f));
-            clips[Cue.Finale] = Compose("Final result", 1.5f,
+                new Tone(783.99f, 0.45f, 0.46f, 0.14f), new Tone(1046.5f, 0.35f, 0.72f, 0.10f)));
+            clips[Cue.Nomination] = Recorded(Cue.Nomination) ?? Own(Compose("Nomination", 0.85f, new Tone(110, 0.75f, 0, 0.16f), new Tone(220, 0.5f, 0.2f, 0.07f)));
+            clips[Cue.Veto] = Recorded(Cue.Veto) ?? Own(Compose("Veto result", 0.75f,
+                new Tone(587.33f, 0.28f, 0, 0.13f), new Tone(739.99f, 0.3f, 0.18f, 0.13f), new Tone(880, 0.36f, 0.37f, 0.12f)));
+            clips[Cue.Vote] = Recorded(Cue.Vote) ?? Own(Compose("Vote recorded", 0.20f, new Tone(880, 0.18f, 0, 0.11f)));
+            clips[Cue.Eviction] = Recorded(Cue.Eviction) ?? Own(Compose("Eviction", 0.95f, new Tone(82.41f, 0.85f, 0, 0.15f), new Tone(164.81f, 0.6f, 0.12f, 0.07f)));
+            clips[Cue.Finale] = Recorded(Cue.Finale) ?? Own(Compose("Final result", 1.5f,
                 new Tone(523.25f, 1.35f, 0, 0.10f), new Tone(659.25f, 1.25f, 0.10f, 0.09f),
-                new Tone(783.99f, 1.15f, 0.20f, 0.09f), new Tone(1046.5f, 0.75f, 0.55f, 0.065f));
+                new Tone(783.99f, 1.15f, 0.20f, 0.09f), new Tone(1046.5f, 0.75f, 0.55f, 0.065f)));
             ApplySettings();
         }
 
@@ -238,6 +247,20 @@ namespace Gamesim.Presentation
             return clip;
         }
 
+        /// <summary>The recorded cue for <paramref name="cue"/> when the project ships one, or null.</summary>
+        private AudioClip Recorded(Cue cue)
+        {
+            var clip = Resources.Load<AudioClip>(CueResourceFolder + cue);
+            if (clip != null) RecordedCues++;
+            return clip;
+        }
+
+        private AudioClip Own(AudioClip clip)
+        {
+            if (clip != null) owned.Add(clip);
+            return clip;
+        }
+
         private readonly struct Tone
         {
             public readonly float frequency, duration, start, gain;
@@ -300,8 +323,8 @@ namespace Gamesim.Presentation
         {
             if (ambienceSource != null) { ambienceSource.Stop(); Release(ambienceSource); }
             if (cueSource != null) { cueSource.Stop(); Release(cueSource); }
-            if (ambience != null) Release(ambience);
-            foreach (var clip in clips.Values) if (clip != null) Release(clip);
+            foreach (var clip in owned) if (clip != null) Release(clip);
+            owned.Clear();
             clips.Clear();
         }
 

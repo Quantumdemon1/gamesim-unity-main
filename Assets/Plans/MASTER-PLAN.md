@@ -171,12 +171,12 @@ contrast results in D6b stop being true.
 look and cost an artist. The animation set is needed either way and is the part that reads loudest.
 Part 4 §4.5 covers both routes.
 
-### 3.C — Audio *(wiring done; content absent)*
+### 3.C — Audio *(wiring done; first content 2026-09-19)*
 
 - A composed theme and a season bed, dropped into `Resources/Audio/Theme` and `Resources/Audio/Season`
-  — the swap already exists.
+  — the swap already exists. **Rendered 2026-09-19** by `ArtSource/audio/bb_music.py` under Blender's Python: a sixteen-second C-major fanfare and a forty-six-second A-minor bed, both seamless loops (rendered twice, second pass kept); `HasRecordedMusic` is true for the first time. `bb_check.py` reports peak, loudness, offset, clipping and the seam.
 - An SFX set keyed to `HouseAudio.Cue`: button, competition start/win, nomination, veto, eviction,
-  finale. Room tone per room. UI foley.
+  finale. Room tone per room. UI foley. **Eleven cues rendered 2026-09-19** by `bb_cues.py` into `Resources/Audio/Cues/<Cue>`; `HouseAudio` loads a recording when one ships and composes the old tone when it does not. Room tone per room and UI foley remain.
 - A mixer with buses, and a "reduced audio" preference beside reduced motion.
 - A bark set for ceremonies covers most of the value of VO at a fraction of the cost.
 

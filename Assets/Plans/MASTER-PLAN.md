@@ -585,6 +585,7 @@ and the Blender pipeline is the art track of the vertical slice.
 | **2 — Content** | 3–4 | Tier 5 writing pass, every template set tripled; Part 4 tier 3 furniture; conversation and reaction clips; faces | No repetition inside a season; every room off Kenney |
 | **3 — Platform** | 2–3 | Addressables, three desktop targets, settings, Steam, localisation keys | A stranger can install and play it |
 | **4 — Depth** | ongoing | §3.G; generated content if adopted; wardrobe or cast; clutter; **§3.J J2 watch a season** | Players are asking for more |
+| **5 — The visual target** | 3–5 weeks | `VISUAL-TARGET.md` (2026-09-19): the twelve mockups in `ArtSource/reference/mockups/` as the target; V0 look sheet, V1 light the house, V2 the chrome, V3 the UMA cast, V4 Poly Haven surfaces, V5 camera modes and the live feed, V6 motion | The look sheet's twelve pairs read as the same screens; the C rows hold at twelve |
 
 **Where the phases stand at the end of 2026-09-19.** Phase 0 is done but for the human steps in
 §3.0 (merge PR #1, Section E, the two `git rm`s) and the C-threshold decision the matrix names.

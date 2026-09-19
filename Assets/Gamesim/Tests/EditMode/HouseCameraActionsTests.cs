@@ -39,6 +39,15 @@ namespace Gamesim.Tests.EditMode
                 foreach (var name in new[] { "Orbit", "Pan", "Drag", "Zoom", "ZoomRate", "Recenter", "Point" })
                     Assert.That(map.FindAction(name).bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.KeyboardMouseScheme)),
                         name + " must have a keyboard-and-mouse binding.");
+
+                // The shortcuts: every one of the director's keys has a gamepad button beside it.
+                var shortcuts = asset.FindActionMap(HouseCameraActions.ShortcutsMapName, throwIfNotFound: true);
+                Assert.That(shortcuts.actions.Select(a => a.name), Is.EquivalentTo(HouseCameraActions.ShortcutNames));
+                foreach (var action in shortcuts.actions)
+                {
+                    Assert.That(action.bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.KeyboardMouseScheme)), action.name + ": a key.");
+                    Assert.That(action.bindings.Any(b => (b.groups ?? "").Contains(HouseCameraActions.GamepadScheme)), action.name + ": a gamepad button.");
+                }
             }
             finally
             {
@@ -86,6 +95,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(map, Is.Not.Null, "The exported asset must carry the Camera map.");
             Assert.That(map.actions.Select(a => a.name), Is.EquivalentTo(HouseCameraActions.ActionNames),
                 "The export is derived from the code; re-run Gamesim/U07/Export the camera actions.");
+            var shortcuts = exported.FindActionMap(HouseCameraActions.ShortcutsMapName);
+            Assert.That(shortcuts, Is.Not.Null, "The exported asset must carry the Shortcuts map too.");
+            Assert.That(shortcuts.actions.Select(a => a.name), Is.EquivalentTo(HouseCameraActions.ShortcutNames));
         }
     }
 }

@@ -23,6 +23,8 @@ namespace Gamesim.House
     public sealed class HouseCameraActions : IDisposable
     {
         public const string MapName = "Camera";
+        /// <summary>The house's shortcuts, a second map in the same asset: what the director reads.</summary>
+        public const string ShortcutsMapName = "Shortcuts";
         public const string KeyboardMouseScheme = "Keyboard&Mouse";
         public const string GamepadScheme = "Gamepad";
 
@@ -46,6 +48,21 @@ namespace Gamesim.House
         public InputAction Next { get; }
         /// <summary>The left shoulder, or [: the previous one.</summary>
         public InputAction Previous { get; }
+
+        // The Shortcuts map (§3.D controller navigation): each of the director's keys with a
+        // gamepad button beside it, so a controller reaches every panel the keyboard does.
+        /// <summary>Escape, or Start: close the top panel, or open the settings when none is open.</summary>
+        public InputAction Menu { get; }
+        /// <summary>J, or Select: the notebook.</summary>
+        public InputAction Notebook { get; }
+        /// <summary>F5, or the left stick pressed: save now.</summary>
+        public InputAction Save { get; }
+        /// <summary>R, or North: walk to the diary room.</summary>
+        public InputAction Diary { get; }
+        /// <summary>E, or West: talk, enter the diary, or open the episode screen.</summary>
+        public InputAction Interact { get; }
+        /// <summary>Space, or South: a competition's tap or hold.</summary>
+        public InputAction Hit { get; }
 
         public InputActionAsset Asset { get; }
         private readonly bool ownsAsset;
@@ -71,17 +88,24 @@ namespace Gamesim.House
             Point = map.FindAction(nameof(Point), throwIfNotFound: true);
             Next = map.FindAction(nameof(Next), throwIfNotFound: true);
             Previous = map.FindAction(nameof(Previous), throwIfNotFound: true);
+            var shortcuts = Asset.FindActionMap(ShortcutsMapName, throwIfNotFound: true);
+            Menu = shortcuts.FindAction(nameof(Menu), throwIfNotFound: true);
+            Notebook = shortcuts.FindAction(nameof(Notebook), throwIfNotFound: true);
+            Save = shortcuts.FindAction(nameof(Save), throwIfNotFound: true);
+            Diary = shortcuts.FindAction(nameof(Diary), throwIfNotFound: true);
+            Interact = shortcuts.FindAction(nameof(Interact), throwIfNotFound: true);
+            Hit = shortcuts.FindAction(nameof(Hit), throwIfNotFound: true);
         }
 
-        public void Enable() { if (!disposed) Asset.FindActionMap(MapName).Enable(); }
-        public void Disable() { if (!disposed && Asset != null) Asset.FindActionMap(MapName).Disable(); }
+        public void Enable() { if (!disposed) Asset.Enable(); }
+        public void Disable() { if (!disposed && Asset != null) Asset.Disable(); }
 
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
             if (Asset == null) return;
-            Asset.FindActionMap(MapName)?.Disable();
+            Asset.Disable();
             if (ownsAsset)
             {
                 if (Application.isPlaying) UnityEngine.Object.Destroy(Asset);
@@ -145,10 +169,36 @@ namespace Gamesim.House
             previous.AddBinding("<Gamepad>/leftShoulder", groups: pad);
             previous.AddBinding("<Keyboard>/leftBracket", groups: km);
 
+            var shortcuts = asset.AddActionMap(ShortcutsMapName);
+            var menu = shortcuts.AddAction(nameof(Menu), InputActionType.Button);
+            menu.AddBinding("<Keyboard>/escape", groups: km);
+            menu.AddBinding("<Gamepad>/start", groups: pad);
+            var notebook = shortcuts.AddAction(nameof(Notebook), InputActionType.Button);
+            notebook.AddBinding("<Keyboard>/j", groups: km);
+            notebook.AddBinding("<Gamepad>/select", groups: pad);
+            var save = shortcuts.AddAction(nameof(Save), InputActionType.Button);
+            save.AddBinding("<Keyboard>/f5", groups: km);
+            save.AddBinding("<Gamepad>/leftStickPress", groups: pad);
+            var diary = shortcuts.AddAction(nameof(Diary), InputActionType.Button);
+            diary.AddBinding("<Keyboard>/r", groups: km);
+            diary.AddBinding("<Gamepad>/buttonNorth", groups: pad);
+            var interact = shortcuts.AddAction(nameof(Interact), InputActionType.Button);
+            interact.AddBinding("<Keyboard>/e", groups: km);
+            interact.AddBinding("<Gamepad>/buttonWest", groups: pad);
+            var hit = shortcuts.AddAction(nameof(Hit), InputActionType.Button);
+            hit.AddBinding("<Keyboard>/space", groups: km);
+            hit.AddBinding("<Gamepad>/buttonSouth", groups: pad);
+
             asset.AddControlScheme(km).WithRequiredDevice<Keyboard>().WithRequiredDevice<Mouse>();
             asset.AddControlScheme(pad).WithRequiredDevice<Gamepad>();
             return asset;
         }
+
+        /// <summary>The shortcut names, in the map's order.</summary>
+        public static readonly string[] ShortcutNames =
+        {
+            nameof(Menu), nameof(Notebook), nameof(Save), nameof(Diary), nameof(Interact), nameof(Hit),
+        };
 
         /// <summary>The ten action names, in the map's order, for the export and its test.</summary>
         public static readonly string[] ActionNames =

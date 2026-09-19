@@ -163,7 +163,7 @@ contrast results in D6b stop being true.
 | **Seated pose** | **Done 2026-09-19** — the clip was there; nothing set the parameter. `HouseMeetingCoordinator` has two *seated* venues (two chairs facing each other across the long table, two loungers by the pool) whose slots are the placed seats' floor positions, every lease carries a facing per slot (into the seat, or toward the other speaker at a standing chat), and `CharacterPresentation` sits, talks and turns to it once arrived. `Idle` and `Walk` loop now (they never did). Pinned by `Meeting_ASeatedVenue…`, `NpcRuntime_ASavedTableMeeting…` and `HouseSeatedVenueTests` (slots on chairs, in the shipping scene) |
 | **Conversation blocking** — two people facing each other, talk/listen loops | **First pass 2026-09-19** — a facing per lease slot turns the pair toward each other (or into their chairs); `Talk_loop`, `SitTalk_loop` and `Listen_loop` authored on the shipped rig by `bb_anim_casual.py`; `Talking` drives them. Listen is exported and not yet wired |
 | **Reactions** — nominated, saved, evicted, won | **First pass 2026-09-19** — four one-shots authored on the rig, wired from Any State on triggers while standing; the director asks the nominees, the saved, the evicted and the winner at their beats (`Reactions_…` PlayMode test) |
-| **Faces from `mood` × `stressLevel`** | **Missing** — five moods and five stress levels exist per houseguest; the only reader is a text line about the player (`EpisodeDirector.cs:1384`) |
+| **Faces from `mood` × `stressLevel`** | **Done 2026-09-19** — `FaceExpression` builds five blend shapes at runtime on the shipped mesh's Face submesh (the Quaternius head is two white eye shapes on a dark head, no mouth, no brows, no UVs: the emoticon's vocabulary — inner corners down, up, a squint to the lid, narrow, wide), one mesh per source mesh shared by every body of that kind; `CharacterPresentation` pushes the contestant's two words on every attach, eased, immediate under reduced motion; the six casual models import Read/Write for it. Two `Faces_*` PlayMode tests. Blender shape keys were the plan's route; the runtime route needs no key per body and no FBX re-export, and gives every body the same five by one rule |
 | Show-specific wardrobe | **Missing** — "Blender-authored content is still the plan" |
 | UMA at a full house of sixteen | **Unprofiled** |
 
@@ -193,7 +193,7 @@ Part 4 §4.5 covers both routes.
 | 5 Relationships at a glance (`SocialGraphPanel`, trust chips) | Done |
 | **6 Motion and feedback** | **First pass 2026-09-19** — a closing panel fades out on a ghost canvas that owns no controls (`HudFade`), a pressed button dips (`HudPress`), a meter's fill travels to its new value (`HudFill`); the modal and the status line already rose in. Every one is nothing under reduced motion (`Motion_*` PlayMode tests). Left: card travel is the stings' own; hover states are Unity's |
 | **7 Layout containers** | **Partial** — four `LayoutGroup` uses; the fixed chrome is still absolute-positioned |
-| Controller and Steam Deck navigation | Not started — D2 is the test that will demand it |
+| Controller and Steam Deck navigation | **First pass 2026-09-19** — the UI module's default map already walked panels from a pad; the house's shortcuts (Escape, J, F5, R, E, Space) now come through a Shortcuts map in `HouseCamera.inputactions` with Start, Select, the left stick's press, North, West and South beside them, and the camera has the sticks, triggers and shoulders (§3.E Phase 3). Start opens the settings when nothing is open, because a pad has no other way there. `Controller_*` PlayMode test. Open: the cast screen and the main menu are keyboard-and-mouse only; a pad has no way to type a speech; button glyphs in the HUD's hints |
 | **Localisation** | Not started — no package, no tables, every caption a C# string. Needs a key layer that preserves the caption contract. |
 
 **Do the idiom change before adding more panels.** Every panel built this month (deals, events,
@@ -412,11 +412,11 @@ loops, *Root Transform* baked, and assign them in `GamesimCharacter.controller` 
 declares `Speed` and `Seated` and has empty states waiting.
 
 **Faces.** `mood` (five values) and `stressLevel` (five values) are simulated per houseguest and
-reach the screen only as a text line about the player. In Blender: **shape keys** — five mood targets and a stress target on the
-head mesh, exported as blend shapes. In Unity: a small layer in `CharacterPresentation` that lerps
-`SkinnedMeshRenderer` blend-shape weights from the two fields. That wires a system that has
-never reached a body to the one place a player would see it. Route A: UMA supports blend
-shapes on its base races; Route B: they come with the mesh.
+reached the screen only as a text line about the player. **Done 2026-09-19 by a third route:** the
+shipped heads have no mouth, no brows and no UVs, so the five shapes are built at runtime from the
+Face submesh's two eye clusters (`FaceExpression`), and `CharacterPresentation` lerps the weights
+from the two fields. A Blender shape key remains the route for a head that has features to move;
+UMA bodies have no Face material and show no expression until Route A is taken.
 
 ### 4.6 Bringing it into Unity
 

@@ -373,15 +373,17 @@ namespace Gamesim.Episode
             TickProximityWatch(Time.unscaledDeltaTime);
             frameAverage = Mathf.Lerp(frameAverage, Time.unscaledDeltaTime, 0.03f);
             if (diaryOpen && !CanUseDiary) { ClosePanels(); return; }
+            // The house's shortcuts come through the actions map's second page: each key has a
+            // gamepad button beside it there, so a controller reaches every panel the keyboard does.
+            var shortcuts = cameraRig != null ? cameraRig.Actions : null;
             if (challengeActive && challengeRun != null) TickMiniGame();
             else if (challengeActive)
             {
                 challengeValue = Mathf.PingPong((Time.unscaledTime - challengeStarted) * 0.75f, 1f);
                 hud.SetChallenge(challengeValue, challengeHits);
-                if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) RecordChallengeHit();
+                if (shortcuts != null && shortcuts.Hit.WasPressedThisFrame()) RecordChallengeHit();
             }
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+            if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame())
             {
                 // Topmost first. The main menu sits above the cast screen, which sits above the
                 // HUD; closing a panel underneath either of them would leave a screen on top of the
@@ -392,15 +394,23 @@ namespace Gamesim.Episode
                 // the screen underneath would close out from under the form on top of it.
                 else if (characterCreator != null && characterCreator.IsShowing) characterCreator.Dismiss();
                 else if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
-                else ClosePanels();
+                else
+                {
+                    // With nothing open, Escape does nothing - the keyboard has the HUD's own
+                    // buttons - but a pad has no other way to the settings, so Start opens them.
+                    bool wasOpen = IsPanelOpen;
+                    ClosePanels();
+                    var pressed = shortcuts.Menu.activeControl;
+                    if (!wasOpen && pressed != null && pressed.device is Gamepad) OpenSettings();
+                }
                 return;
             }
-            if (keyboard != null && !hud.IsTyping)
+            if (shortcuts != null && !hud.IsTyping)
             {
-                if (keyboard.jKey.wasPressedThisFrame) OpenJournal();
-                if (keyboard.f5Key.wasPressedThisFrame) SaveNow();
-                if (keyboard.rKey.wasPressedThisFrame && !IsPanelOpen) GoToDiary();
-                if (keyboard.eKey.wasPressedThisFrame && !IsPanelOpen)
+                if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
+                if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
+                if (shortcuts.Diary.WasPressedThisFrame() && !IsPanelOpen) GoToDiary();
+                if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen)
                 {
                     if (!TryOpenDiary())
                     {
@@ -1781,18 +1791,18 @@ namespace Gamesim.Episode
         private void TickMiniGame()
         {
             var keyboard = Keyboard.current;
-            if (keyboard != null)
+            var hit = cameraRig != null ? cameraRig.Actions.Hit : null;
+            if (hit != null)
             {
                 // Edge-triggered rather than level-triggered, so the panel's hold and release
                 // buttons keep working when a keyboard is attached: polling isPressed every
                 // frame overwrote a grip taken with the button on the very next tick.
                 if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance)
                 {
-                    if (keyboard.spaceKey.wasPressedThisFrame) challengeRun.SetHolding(true);
-                    else if (keyboard.spaceKey.wasReleasedThisFrame) challengeRun.SetHolding(false);
+                    if (hit.WasPressedThisFrame()) challengeRun.SetHolding(true);
+                    else if (hit.WasReleasedThisFrame()) challengeRun.SetHolding(false);
                 }
-                else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
-                         && keyboard.spaceKey.wasPressedThisFrame)
+                else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction && hit.WasPressedThisFrame())
                     TapTarget();
             }
 

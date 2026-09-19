@@ -170,9 +170,13 @@ namespace Gamesim.Episode
                 { yield return SaveReloadSeason("mid-season"); middleReload = true; }
             }
             var finale = seasonDirector.Snapshot;
-            RequireSeason(finale.contestants.Count(actor => actor.status == ContestantStatus.Jury) == 4
+            // Every evictee sits on the jury (the engine turns each eviction into a juror), so a
+            // season ends with everyone but the two finalists there: four in a six-house, six in
+            // the eight the builder seats by default.
+            int jurors = finale.contestants.Count - 2;
+            RequireSeason(finale.contestants.Count(actor => actor.status == ContestantStatus.Jury) == jurors
                 && !string.IsNullOrEmpty(finale.winnerId) && !string.IsNullOrEmpty(finale.runnerUpId)
-                && finale.winnerId != finale.runnerUpId,"The season must end with four jurors and distinct winner/runner-up.");
+                && finale.winnerId != finale.runnerUpId,"The season must end with " + jurors + " jurors and distinct winner/runner-up.");
             seasonReport.phases.Add(EpisodePhase.Finished.ToString());
             seasonReport.winnerId = finale.winnerId; seasonReport.playerFinalStatus = finale.Find(finale.playerId).status.ToString();
             RecordSeasonSystems(finale);

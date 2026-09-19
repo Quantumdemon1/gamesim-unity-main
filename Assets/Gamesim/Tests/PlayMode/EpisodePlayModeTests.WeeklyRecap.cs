@@ -96,6 +96,28 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(before, director.Snapshot);
         }
 
+        [UnityTest]
+        public IEnumerator WeeklyRecap_BackFromAReviewOpenedOverTheLiveWeekReturnsToItsContinue()
+        {
+            var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
+            var state = director.Snapshot;
+            screen.Show(state, () => { });
+            yield return null;
+            Assert.That(screen.IsOpen && !screen.Browsing, Is.True);
+            // The same path the recap's own Review button takes, for a week that has one behind it.
+            screen.Review(state, 1);
+            yield return null;
+            Assert.That(screen.Browsing, Is.True);
+            ButtonWithCaption(WeeklyRecapScreen.BackCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(screen.IsOpen, Is.True, "Back from a review over the live week returns to that week's recap,");
+            Assert.That(screen.Browsing, Is.False);
+            Assert.That(DirectorHasButton(WeeklyRecapScreen.ContinueCaption), Is.True, "with its Continue.");
+            ButtonWithCaption(WeeklyRecapScreen.ContinueCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(screen.IsOpen, Is.False);
+        }
+
         private bool DirectorHasButton(string caption) =>
             director.GetComponentsInChildren<Button>(true).Any(button => button.IsActive()
                 && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));

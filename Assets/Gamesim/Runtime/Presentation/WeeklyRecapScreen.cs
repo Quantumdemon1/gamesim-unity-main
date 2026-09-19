@@ -107,6 +107,7 @@ namespace Gamesim.Presentation
             this.onDismiss = onDismiss;
             openWeek = state.week;
             browsing = false;
+            liveWeekBehindReview = 0;
             Rebuild();
             group.alpha = 1f;
             group.blocksRaycasts = true;
@@ -117,6 +118,10 @@ namespace Gamesim.Presentation
         public void Review(EpisodeState state, int week, Action onDismiss = null)
         {
             if (state == null) return;
+            // Looking back from the week that just finished: Back returns there, with its
+            // Continue, rather than closing a recap the player has not finished reading. From the
+            // notebook there is no live week behind the review, and Back closes as it always did.
+            liveWeekBehindReview = IsOpen && !browsing ? openWeek : 0;
             shown = state;
             if (onDismiss != null) this.onDismiss = onDismiss;
             openWeek = Mathf.Clamp(week, 1, Mathf.Max(1, state.week));
@@ -232,7 +237,7 @@ namespace Gamesim.Presentation
             var bar = Panel(56f, new Color(0f, 0f, 0f, 0f));
             if (browsing)
             {
-                Button(bar, BackCaption, 0f, Dismiss);
+                Button(bar, BackCaption, 0f, Back);
             }
             else
             {
@@ -247,6 +252,23 @@ namespace Gamesim.Presentation
         {
             Hide();
             onDismiss?.Invoke();
+        }
+
+        /// <summary>The week a review was opened over, or 0 when it came from the notebook.</summary>
+        private int liveWeekBehindReview;
+
+        private void Back()
+        {
+            if (liveWeekBehindReview > 0 && shown != null)
+            {
+                int week = liveWeekBehindReview;
+                liveWeekBehindReview = 0;
+                openWeek = week;
+                browsing = false;
+                Rebuild();
+                return;
+            }
+            Dismiss();
         }
 
         // ---------------------------------------------------------------- layout

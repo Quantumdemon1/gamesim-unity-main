@@ -161,19 +161,21 @@ does not. Both are correct; what the seam guarantees is that no provider supplie
 Measured on the reference machine (GTX 1060 6 GB / i5-8400, 1600×900). These are frame intervals from
 an automated profile, not isolated GPU measurement or broad hardware certification.
 
-| # | Criterion | Threshold | V6 measured | V7 batchmode |
-|---|---|---|---|---|
-| C1 | Median frame time | _proposed_ ≤ 2.0 ms | 1.310 ms | 0.285 ms |
-| C2 | p95 frame time | _proposed_ ≤ 3.0 ms | 1.903 ms | 0.528 ms |
-| C3 | p99 frame time | _proposed_ ≤ 4.0 ms | 2.411 ms | 0.659 ms |
-| C4 | Profile duration | ≥ 300 s unbroken, no overlapping asset work | 300.03 s, 211,388 frames | 300.02 s, 946,359 frames |
-| C5 | Frame cost with six UMA bodies | _proposed_ ≤ 2× the C1–C3 figures | not measured | **1.24×–1.52×** over two runs |
+| # | Criterion | Threshold | V6 measured | V7 batchmode | V7 windowed, 12 houseguests (2026-09-19) |
+|---|---|---|---|---|---|
+| C1 | Median frame time | _proposed_ ≤ 2.0 ms | 1.310 ms | 0.285 ms | **3.197 ms** (over) |
+| C2 | p95 frame time | _proposed_ ≤ 3.0 ms | 1.903 ms | 0.528 ms | **4.322 ms** (over) |
+| C3 | p99 frame time | _proposed_ ≤ 4.0 ms | 2.411 ms | 0.659 ms | **6.278 ms** (over) |
+| C4 | Profile duration | ≥ 300 s unbroken, no overlapping asset work | 300.03 s, 211,388 frames | 300.02 s, 946,359 frames | 300.07 s, 84,833 frames, no errors |
+| C5 | Frame cost with six UMA bodies | _proposed_ ≤ 2× the C1–C3 figures | not measured | **1.24×–1.52×** over two runs | see the UMA note |
 
 **Do not read the V7 column as a pass.** It was captured in `-batchmode`, which renders without
 presenting to a window: 946,359 frames in 300 s is roughly 3,150 fps against V6's 704, and the
 difference is mostly the absent present and vsync path, not the game getting four times faster. The
 thresholds were derived from a windowed run and must be re-measured in one. The column is recorded
 because it is real evidence of *stability* — 300 s unbroken with zero runtime errors — not of speed.
+
+**The windowed column is the first honest measurement, and it is over the proposed thresholds.** Captured 2026-09-19 in a 1600×900 window on the reference machine with the full authored house — the shell, the textured floors, 158 authored props, the furnishing pass and 12 bodies — after the sixteen-houseguest request was clamped to the roster's twelve (a roster seats twelve; the builder will not pad a season with the other roster). Median 3.20 ms, p95 4.32 ms, p99 6.28 ms over 300.1 s and 84,833 frames, uncapped by the verifier (the display preference defaults to VSync, which a benchmark must not inherit). The 2 / 3 / 4 ms thresholds were proposed from the primitive prototype at six; the dressed house costs more and still runs at roughly 312 fps. Either the thresholds are restated for this scene (a 60 fps target is 16.7 ms a frame) or the frame is profiled and trimmed; the plan carries that decision. The standalone season walk on the same build: Passed, 89 commands, finished with a winner.
 
 C5 is now measured by `UmaCastCostPlayModeTests`, which builds the same six houseguests twice under
 identical conditions — once on the authored prefabs, once on UMA — and compares medians. Two runs

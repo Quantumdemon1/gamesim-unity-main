@@ -40,7 +40,12 @@ namespace Gamesim.Episode
         private IEnumerator DismissWeeklyRecap(EpisodeState state, bool graphical)
         {
             if (recapWeekSeen == 0) recapWeekSeen = state.week;
-            bool owed = state.week > recapWeekSeen && state.phase == EpisodePhase.Social;
+            // The eviction has stages now: the recap is queued when the ballots resolve and opens
+            // after the reveal, while the night is still at its results - and the director drops
+            // it if anything commits first. So it is owed here, before the walk presses Continue,
+            // as well as in the week after for a save that resumed past the reveal.
+            bool owed = (state.week > recapWeekSeen && state.phase == EpisodePhase.Social)
+                || (state.phase == EpisodePhase.Eviction && state.evictionResolved && state.week >= recapWeekSeen);
             double deadline = Time.realtimeSinceStartupAsDouble + 15;
             while (owed && !seasonDirector.IsWeeklyRecapOpen && Time.realtimeSinceStartupAsDouble < deadline)
             { CheckSeasonDeadline(); yield return null; }
@@ -67,7 +72,9 @@ namespace Gamesim.Episode
                 && seasonDirector.Snapshot.revision == before.revision,
                 "Continuing past the recap must return the player to the house without committing anything.");
             seasonReport.weeklyRecaps++;
-            recapWeekSeen = state.week;
+            // Seen for this week: at the results stage the week has not advanced yet, so the next
+            // week's social phase must not wait for it again.
+            recapWeekSeen = state.phase == EpisodePhase.Eviction ? state.week + 1 : state.week;
         }
 
         // ---------------------------------------------------------------- house events

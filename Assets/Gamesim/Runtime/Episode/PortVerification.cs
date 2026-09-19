@@ -90,6 +90,11 @@ namespace Gamesim.Episode
                     errors.Add("The requested house size did not start: " + director.Snapshot.contestants.Count + " of " + seated + ".");
             }
             measuredHouseSize = director.Snapshot.contestants.Count;
+            // A benchmark, so uncapped: the display preference defaults to VSync, which would make
+            // every windowed profile read as 16.7 ms and say nothing about the frame's cost. Set
+            // as the director's own preference, because the workload toggles other preferences
+            // and every toggle re-applies the lot.
+            director.SetFrameCap(-1);
             director.SaveNow();
             bool graphical = SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null;
             if (graphical)

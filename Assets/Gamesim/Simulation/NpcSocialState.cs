@@ -49,8 +49,10 @@ namespace Gamesim.Simulation
         public static bool IsKnownTopic(string topic) => topic == "bonding" || topic == "strategy" || topic == "gossip" ||
             topic == "tension" || topic == "casual" || topic == "nominations" || topic == "alliance_talk" || topic == "rivalry";
 
+        // The seated pair - the kitchen's long table and the yard's loungers - were added with the
+        // authored set pieces; a save that names them is as valid as one naming the standing four.
         public static bool IsKnownRendezvous(string id) => id == "living-east-chat" || id == "kitchen-west-chat" ||
-            id == "bedroom-south-chat" || id == "yard-south-chat";
+            id == "bedroom-south-chat" || id == "yard-south-chat" || id == "kitchen-table-chat" || id == "yard-lounger-chat";
 
         public NpcSocialState Clone()
         {

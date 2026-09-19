@@ -238,6 +238,43 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(npc.GetComponent<NavMeshObstacle>().enabled, Is.True);
         }
 
+        [UnityTest]
+        public IEnumerator Meeting_ASeatedVenueBringsBothToTheTableAndFacesThemAcrossIt()
+        {
+            var query = CreateNpcRoomQuery();
+            var cast = CreateMeetingCast(2);
+            var ids = cast.Select(npc => npc.Id).ToArray();
+            var coordinator = CreateMeetingCoordinator(query);
+            try
+            {
+                Assert.That(coordinator.Reconcile("test-session:1", cast, ids, ids, out var reason), Is.True, reason);
+                yield return WaitForMeetingBinding(coordinator, cast);
+                Assert.That(coordinator.TryReserveAtVenue("table", ids[0], ids[1], "kitchen-table-chat", out var lease, out reason), Is.True, reason);
+                Assert.That(lease.Seated, Is.True, "The long table's venue is a seated one.");
+                Assert.That(lease.FirstFacing, Is.EqualTo(180f).Within(.01f), "The north chair faces south, across the table.");
+                Assert.That(lease.SecondFacing, Is.EqualTo(0f).Within(.01f), "The south chair faces north.");
+                // The slots are the chairs' floor positions, so an arrived houseguest is in the chair.
+                Assert.That(HorizontalTestDistance(lease.FirstSlot, new Vector3(7.2f, 0, -7.22f)), Is.LessThan(.3f));
+                Assert.That(HorizontalTestDistance(lease.SecondSlot, new Vector3(7.2f, 0, -8.78f)), Is.LessThan(.3f));
+                float deadline = Time.realtimeSinceStartup + 25;
+                while (!coordinator.ValidateArrivedPair(lease, out _) && Time.realtimeSinceStartup < deadline)
+                { coordinator.Tick(); yield return null; }
+                Assert.That(coordinator.ValidateArrivedPair(lease, out reason), Is.True, reason);
+                coordinator.Tick();
+                Assert.That(lease.Status, Is.EqualTo(HouseMeetingStatus.Arrived));
+                Assert.That(HorizontalTestDistance(cast[0].transform.position, lease.FirstSlot), Is.LessThanOrEqualTo(.25f));
+                Assert.That(HorizontalTestDistance(cast[1].transform.position, lease.SecondSlot), Is.LessThanOrEqualTo(.25f));
+
+                // A standing venue turns the pair toward each other instead.
+                Assert.That(coordinator.Release(lease), Is.True);
+                Assert.That(coordinator.TryReserveAtVenue("stand", ids[0], ids[1], "living-east-chat", out var standing, out reason), Is.True, reason);
+                Assert.That(standing.Seated, Is.False);
+                Assert.That(Mathf.DeltaAngle(standing.FirstFacing, 90f), Is.EqualTo(0f).Within(1f), "The west slot faces east, toward the east slot.");
+                Assert.That(Mathf.DeltaAngle(standing.SecondFacing, -90f), Is.EqualTo(0f).Within(1f), "The east slot faces west.");
+            }
+            finally { coordinator.Dispose(); }
+        }
+
         private HouseNpc[] CreateMeetingCast(int count)
         {
             var first = MotionMaya();

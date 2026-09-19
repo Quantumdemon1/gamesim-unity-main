@@ -18,13 +18,22 @@ namespace Gamesim.House
         public string RoomId { get; }
         public Vector3 FirstSlot { get; }
         public Vector3 SecondSlot { get; }
+        /// <summary>True at a venue whose slots are seats: the pair sits for the conversation.</summary>
+        public bool Seated { get; }
+        /// <summary>
+        /// The heading (yaw, degrees) each actor settles on once arrived: into the seat at a seated
+        /// venue, toward the other actor at a standing one. Presentation only; nothing here moves.
+        /// </summary>
+        public float FirstFacing { get; }
+        public float SecondFacing { get; }
         public HouseMeetingStatus Status { get; internal set; }
         public string FailureReason { get; internal set; }
         internal HouseMeetingLease(string token, string generation, string first, string second,
-            string venue, string room, Vector3 a, Vector3 b)
+            string venue, string room, Vector3 a, Vector3 b, bool seated, float firstFacing, float secondFacing)
         {
             Token = token; Generation = generation; FirstId = first; SecondId = second;
             VenueId = venue; RoomId = room; FirstSlot = a; SecondSlot = b;
+            Seated = seated; FirstFacing = firstFacing; SecondFacing = secondFacing;
             Status = HouseMeetingStatus.Travelling;
         }
     }
@@ -46,8 +55,10 @@ namespace Gamesim.House
         {
             public string id, room;
             public Vector3 first, second;
-            public Venue(string key, string roomId, Vector3 a, Vector3 b)
-            { id = key; room = roomId; first = a; second = b; }
+            public bool seated;
+            public float firstYaw, secondYaw;
+            public Venue(string key, string roomId, Vector3 a, Vector3 b, bool seats = false, float yawA = float.NaN, float yawB = float.NaN)
+            { id = key; room = roomId; first = a; second = b; seated = seats; firstYaw = yawA; secondYaw = yawB; }
         }
         private static readonly Venue[] Venues =
         {
@@ -56,8 +67,45 @@ namespace Gamesim.House
             // Clear both Riley's saved-scene spawn and the preserved U02 room
             // destination at (-7,0,2), including its 1.25 m keep-clear radius.
             new Venue("bedroom-south-chat", "Bedroom", new Vector3(-8.7f,0,3.5f), new Vector3(-7.3f,0,3.5f)),
-            new Venue("yard-south-chat", "Yard", new Vector3(3.3f,0,13.5f), new Vector3(4.7f,0,13.5f))
+            new Venue("yard-south-chat", "Yard", new Vector3(3.3f,0,13.5f), new Vector3(4.7f,0,13.5f)),
+            // Seated venues. The slots are the floor positions of two authored seats - a pair of
+            // chairs facing each other across the kitchen's long table, and two loungers at the
+            // yard's east end - and the facing is the seat's own yaw, so a houseguest who arrives
+            // sits in the chair rather than beside it. HouseSeatedVenueTests pins each slot to the
+            // placed prop; the simulation's IsKnownRendezvous lists both ids. Appended, so the
+            // authored order the tie rule relies on is unchanged for the four above.
+            new Venue("kitchen-table-chat", "Kitchen", new Vector3(7.2f,0,-7.22f), new Vector3(7.2f,0,-8.78f), true, 180f, 0f),
+            new Venue("yard-lounger-chat", "Yard", new Vector3(9.4f,0,11f), new Vector3(10.8f,0,11f), true, 0f, 0f)
         };
+
+        /// <summary>One slot of a seated venue, for audits and tests.</summary>
+        public readonly struct VenueSlot
+        {
+            public readonly string VenueId;
+            public readonly Vector3 Position;
+            public readonly float Yaw;
+            public VenueSlot(string venueId, Vector3 position, float yaw) { VenueId = venueId; Position = position; Yaw = yaw; }
+        }
+
+        /// <summary>Every slot of every seated venue, in authored order.</summary>
+        public static IEnumerable<VenueSlot> SeatedSlots
+        {
+            get
+            {
+                foreach (var venue in Venues)
+                {
+                    if (!venue.seated) continue;
+                    yield return new VenueSlot(venue.id, venue.first, venue.firstYaw);
+                    yield return new VenueSlot(venue.id, venue.second, venue.secondYaw);
+                }
+            }
+        }
+
+        public static bool IsSeatedVenue(string venueId)
+        {
+            foreach (var venue in Venues) if (venue.id == venueId) return venue.seated;
+            return false;
+        }
         private readonly HouseRoomQuery rooms;
         private readonly NavMeshQueryFilter filter;
         private readonly List<Actor> cast = new List<Actor>(5);
@@ -252,8 +300,9 @@ namespace Gamesim.House
             if (!secondReserved) return Fail(out reason, "The second route failed; the first reservation was released.");
             // The final native path owners may sample a few millimetres differently
             // than the preliminary pair query. Expose their accepted endpoints.
-            lease = new HouseMeetingLease(token, Generation, firstId, secondId, best.id, best.room,
-                first.motion.ReservedDestination, second.motion.ReservedDestination);
+            var firstAt = first.motion.ReservedDestination; var secondAt = second.motion.ReservedDestination;
+            lease = new HouseMeetingLease(token, Generation, firstId, secondId, best.id, best.room, firstAt, secondAt, best.seated,
+                best.seated ? best.firstYaw : YawToward(firstAt, secondAt), best.seated ? best.secondYaw : YawToward(secondAt, firstAt));
             leases.Add(token, lease); LastFailure = null;
             return true;
         }
@@ -396,6 +445,7 @@ namespace Gamesim.House
             return first != 0 ? first : string.Compare(a.Token,b.Token,StringComparison.Ordinal);
         }
         private static float HorizontalSquared(Vector3 a, Vector3 b) { var delta = a-b; return delta.x*delta.x + delta.z*delta.z; }
+        private static float YawToward(Vector3 from, Vector3 to) => Mathf.Atan2(to.x - from.x, to.z - from.z) * Mathf.Rad2Deg;
         private bool Fail(out string reason, string message) { reason = message; LastFailure = message; return false; }
     }
 }

@@ -29,6 +29,7 @@ namespace Gamesim.Presentation
         private Vector3 previousPosition;
         private float walkPhase, movementBlend, phaseOffset, heightScale = 1f;
         private bool reducedMotion, talking, seated, built;
+        private float facingYaw = float.NaN;
 
         // Model-backed presentation. When animator is null the primitive rig above is in use.
         private Animator animator;
@@ -76,6 +77,14 @@ namespace Gamesim.Presentation
         public void SetReducedMotion(bool value) => reducedMotion = value;
         public void SetTalking(bool value) => talking = value;
         public void SetSeated(bool value) => seated = value;
+        /// <summary>
+        /// The heading (yaw, degrees) to settle on once stopped, or NaN to leave the heading to
+        /// whoever moves the body. A conversation sets it: into the chair, or toward the other speaker.
+        /// </summary>
+        public void SetFacing(float yaw) => facingYaw = yaw;
+        public bool IsTalking => talking;
+        public bool IsSeated => seated;
+        public float FacingYaw => facingYaw;
 
         private void Build(ContestantState character, Color palette)
         {
@@ -400,6 +409,7 @@ namespace Gamesim.Presentation
             // Teleports reposition the actor without producing a false running animation.
             float target = speed > 8f || seated ? 0f : Mathf.Clamp01(speed / 2.5f);
             movementBlend = Mathf.Lerp(movementBlend, target, 1f - Mathf.Exp(-12f * Time.deltaTime));
+            if (!float.IsNaN(facingYaw) && movementBlend < 0.02f) SettleFacing();
 
             if (providedBody.Exists) { AnimateProvidedBody(); return; }
             if (animator != null) { AnimateModel(); return; }
@@ -449,6 +459,18 @@ namespace Gamesim.Presentation
                 float time = Time.time + phaseOffset;
                 modelHead.localRotation = modelHeadRest * Quaternion.Euler(Mathf.Sin(time * 3f) * 4f, Mathf.Sin(time * 1.7f) * 3f, 0f);
             }
+        }
+
+        /// <summary>
+        /// Turns a stopped body to its conversation heading. Only the root turns, and only while
+        /// nothing is moving it: a navigating agent owns the heading until it arrives, and the
+        /// movement blend is what says it has.
+        /// </summary>
+        private void SettleFacing()
+        {
+            var wanted = Quaternion.Euler(0f, facingYaw, 0f);
+            transform.rotation = reducedMotion ? wanted
+                : Quaternion.Slerp(transform.rotation, wanted, 1f - Mathf.Exp(-6f * Time.deltaTime));
         }
 
         private void AnimatePrimitives()
@@ -584,7 +606,7 @@ namespace Gamesim.Presentation
             inspectedController = null;
             hasSpeedParam = hasSeatedParam = false;
             built = false;
-            talking = seated = false;
+            talking = seated = false; facingYaw = float.NaN;
             movementBlend = walkPhase = 0f;
             CharacterId = null;
         }

@@ -288,7 +288,7 @@ namespace Gamesim.Episode
                 var actor = committed.Find(id);
                 return actor == null ? null : CharacterPortraits.Get(
                     CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)));
-            }, OpenJournal);
+            }, OpenJournal, CareerNow());
         }
     }
 }

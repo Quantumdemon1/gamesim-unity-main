@@ -90,16 +90,17 @@ namespace Gamesim.Presentation
         /// a failed load or a retained slot gets explained.
         /// </summary>
         public void Show(bool canContinue, string note,
-            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit)
+            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit,
+            string career = null)
         {
-            Rebuild(canContinue, note, onContinue, onNewSeason, onSettings, onQuit);
+            Rebuild(canContinue, note, onContinue, onNewSeason, onSettings, onQuit, career);
             group.alpha = 1f;
             group.blocksRaycasts = true;
             group.interactable = true;
         }
 
         private void Rebuild(bool canContinue, string note,
-            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit)
+            Action onContinue, Action onNewSeason, Action onSettings, Action onQuit, string career)
         {
             // Deactivated before Destroy, which runs at the end of the frame: otherwise a rebuild
             // leaves the previous controls live alongside the new ones for a frame.
@@ -157,6 +158,11 @@ namespace Gamesim.Presentation
             Button(column, NewSeasonCaption, !canContinue, onNewSeason, ref cursor);
             Button(column, SettingsCaption, false, onSettings, ref cursor);
             Button(column, QuitCaption, false, onQuit, ref cursor);
+
+            // The career line, once there is a career: what the seasons so far add up to. It
+            // sits under the buttons rather than the title because it is a fact about the
+            // player, not a note about this launch.
+            if (!string.IsNullOrEmpty(career)) Text(column, career, 13f, UiTheme.Accent, 24f, ref cursor);
 
             cursor += 10f;
             Text(column, "Plays offline. No account, no connection, and nothing is uploaded.",

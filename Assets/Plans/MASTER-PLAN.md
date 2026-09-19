@@ -273,16 +273,16 @@ stats between seasons; play another season by hand, or set up a cast and watch i
 | Interactive houseguests, a season with choices | **Present** | 41 command kinds: fourteen social actions, promises, alliances (propose and leave, from any conversation), deals with counter-answers, intel, lies, rumours, schemes, backdoor plans, house meetings; house events and storylines the player resolves by choice; NPCs with motives, meetings, proximity and their own alliances |
 | Competitions: play, simulate or throw; HoH, nominations, veto, replacement, final HoH in three parts | **Present** | `EpisodeEngine` phases HoH → Nomination → VetoSelection → Veto → VetoMeeting → Campaign → Eviction (five stages) → FinalHoH 1–3 → FinalEviction; three mini-games and an untimed assisted option |
 | Sway the house before the vote | **Present** | the Campaign phase, conversations, deals, promises, the block speech, the eviction stages |
-| A jury that votes on its own motivations | **Present in the engine, partly on screen** | `WebJuryVoting` (the web's `calculateJuryScore` and `calculateGameplayRespect`: competition wins, times nominated, the strategic stat, alliances, deals, and the relationship) with `WebJurySentiment` and the questioning; the report says who beat whom, not why each juror voted |
+| A jury that votes on its own motivations | **Present, on screen since 2026-09-19** | `WebJuryVoting` (the web's `calculateJuryScore` and `calculateGameplayRespect`: competition wins, times nominated, the strategic stat, alliances, deals, and the relationship) with `WebJurySentiment` and the questioning; the finale panel and the report list each juror's ballot with its recorded reason (J3) |
 | Spectate after eviction | **Present** | the season plays on; the HUD names it; the report badges it |
-| Career stats between seasons | **Absent** | the web kept these behind sign-in as a cloud leaderboard, which §1.3 deliberately did not port; nothing offline replaced it |
+| Career stats between seasons | **Present since 2026-09-19** | `CareerLedger` (`career.json` beside the saves): one entry per finished season; seasons, wins, runner-ups, jury finishes, median and best placement, competition record on the main menu, the settings panel and the report (J1) |
 | Set up a cast and watch a season play | **Absent** | the web had no such mode either (its "simulate" is a competition, not a season); the engine already runs NPC-only weeks for the verifier and for a spectating player |
 
 Three items follow. The first and third are small and belong in Phase 0 or 2; the second is a
 feature and belongs after the slice gate, beside clutter and wardrobe.
 
-**J1 — A career ledger, offline.** One JSON file beside the saves (`career.json`, versioned like a
-save) that the director appends to when a season reaches `Finished`: the season's seed, roster,
+**J1 — A career ledger, offline. Done 2026-09-19.** One JSON file beside the saves (`career.json`,
+versioned like a save) that the director appends to when a season reaches `Finished`: the season's seed, roster,
 house size, the player's placement, HoH and veto wins, times nominated, days on the block, jury
 votes received, whether they were evicted or spectated, and the winner. From it: seasons played,
 wins, runner-ups, jury finishes, median and best placement, competition record, win rate. Shown on
@@ -292,6 +292,14 @@ the tests' isolated roots keep their own; `SaveRootOverride` respected. Tests: t
 entry per finished season and never one for an abandoned one; the median is the median; the report
 card reads the ledger; a corrupt file is archived, not trusted. No accounts, no network - the
 "unranked local season" notice the web showed becomes the truth rather than a caveat.
+*As built:* `Runtime/Persistence/CareerLedger.cs` (envelope, checksum and exact-shape check like
+the save store; schema 1; a file that fails any of them is moved to `career.json.damaged-<stamp>`;
+entries keyed by `sessionId`, so a reloaded finale is not a second season); the placement is read
+from the jury sentiment ledger's order, which holds every evictee including the final eviction's,
+rather than from the capped event log. `EpisodeDirector.Career.cs` records on every durable commit
+and every install, carries the line to the menu and the settings panel, and resets in two clicks
+by moving the file to `career.json.reset-<stamp>`. Tests: `CareerLedgerTests` (seven) and
+`EpisodePlayModeTests.Career` (three, one of them a full season under the director with a reload).
 
 **J2 — Watch a season.** A third entry on the main menu, "Watch a season", that takes the cast
 screen as it is (roster, house size, the creator for a guest star) with no seat for the player, and
@@ -306,7 +314,7 @@ make it worth watching; this is the item that turns the presentation work into a
 NPC-only season reaches `Finished` under the director in batchmode; the pace control changes the
 world's clock and nothing else; a watched season's report has no "you" card and a full cast one.
 
-**J3 — The jury's reasons, on screen.** The engine already records one: every `jury-vote` ballot
+**J3 — The jury's reasons, on screen. Done 2026-09-19.** The engine already records one: every `jury-vote` ballot
 carries `WebJuryVoting.Reason` - the term that decided it, from the juror's own score of each
 finalist - and the notebook shows the eviction ballots' reasons the same way. The season report
 does not show the jury's. Add a "HOW THE JURY VOTED" section to the report and a line per juror to
@@ -314,6 +322,12 @@ the finale's reveal, read from the recorded ballots, so a player learns whether 
 on competitions, on the block, on a broken promise or on the person they were. No schema change; the
 reasons are in the events. Tests: the report lists every juror with their reason; a reloaded
 finished season shows the same lines.
+*As built:* `SeasonReport.JuryBallots` reads the recorded ballots (a voter on the jury, a target
+among the finalists, so a mid-season state's eviction ballots never qualify); the report's "HOW THE
+JURY VOTED" section lists juror, pick and reason with the tally above it, and the finale panel
+prints one line per juror under the winner. The player's own ballot is listed as theirs, with no
+reason invented for it. Tests: `Report_ListsEveryJurorWithTheirReason` and the reload half of the
+career season test.
 
 ## Part 4 — The Blender pipeline
 
@@ -564,7 +578,7 @@ and the Blender pipeline is the art track of the vertical slice.
 
 | Phase | Weeks | Deliverable | Gate |
 | --- | --- | --- | --- |
-| **0 — Finish** | 1 | §3.0 complete: merged, verified, housekept, E run once, volume in the shipping scene; **§3.J J1 career ledger and J3 jury reasons** | Section E has a first result; C1–C5 measured windowed |
+| **0 — Finish** | 1 | §3.0 complete: merged, verified, housekept, E run once, volume in the shipping scene; §3.J J1 career ledger and J3 jury reasons **(done 2026-09-19)** | Section E has a first result; C1–C5 measured windowed |
 | **1 — Vertical slice** | 5–7 | **One week of one season at final quality.** Part 4 tiers 1–2 and the seated clip (A, B); theme, bed and cue SFX (C); UI motion and layout (D); ceremonies on Timeline with Cinemachine framing (E) | *Does one week look like a shipped game?* If yes, the rest is production. If no, the answer is in 3.A or 3.B and nothing below fixes it. |
 | **2 — Content** | 3–4 | Tier 5 writing pass, every template set tripled; Part 4 tier 3 furniture; conversation and reaction clips; faces | No repetition inside a season; every room off Kenney |
 | **3 — Platform** | 2–3 | Addressables, three desktop targets, settings, Steam, localisation keys | A stranger can install and play it |
@@ -586,7 +600,7 @@ HUD idiom before finishing the seven steps; the STYLARTS download.
 
 An increment is done when all of the following hold, and *only* then is it merged:
 
-- Offline compile clean; **EditMode ≥ 1253 and PlayMode ≥ 181 passing** (the full run of 2026-09-19: 1253 and 181, none failed), run via
+- Offline compile clean; **EditMode ≥ 1260 and PlayMode ≥ 186 passing** (the full run of 2026-09-19: 1260 and 186, none failed), run via
   `Tools/sync-and-run.sh`, results read from the XML.
 - Every new asset has a `.meta`; no duplicate GUIDs; `GAMESIM_UMA` not in `ProjectSettings.asset`
   — the CI invariants job is green.

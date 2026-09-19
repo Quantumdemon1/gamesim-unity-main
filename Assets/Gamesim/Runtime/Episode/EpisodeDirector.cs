@@ -107,10 +107,11 @@ namespace Gamesim.Episode
             var slot = SaveRootOverride == null ? PlayerPrefs.GetString("Gamesim.ActiveSave", "episode.json") : "episode.json";
             if (slot != Path.GetFileName(slot) || !slot.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) slot = "episode.json";
             saves = new EpisodeSaveStore(Path.Combine(saveRoot, slot));
+            career = new CareerLedger(saveRoot);
             engine = new EpisodeEngine(ContentCatalog.Create(20260910));
             if (File.Exists(saves.SavePath) || File.Exists(saves.BackupPath))
             {
-                if (saves.TryLoad(out var loaded, out var loadMessage)) { engine = new EpisodeEngine(loaded); message = loadMessage; }
+                if (saves.TryLoad(out var loaded, out var loadMessage)) { engine = new EpisodeEngine(loaded); message = loadMessage; RecordCareer(loaded); }
                 else { blockedRecovery = true; message = loadMessage; }
             }
             // After the save is loaded, because the cast size is a property of the season being
@@ -472,6 +473,8 @@ namespace Gamesim.Episode
                     lastSocialDelta = result.state.Score(result.state.playerId, focusedNpc.Id) - trustBefore;
                 }
                 message += "  ·  Saved locally."; Project();
+                // A finale joins the career record the moment it is durable, and not before.
+                RecordCareer(result.state);
                 if (phaseOpen && wasYard != EpisodeEngine.IsCompetition(result.state.phase)) ClosePanels();
                 var kind = result.state.events.LastOrDefault()?.kind;
                 audioBed.PlayCue(kind == "winner" ? HouseAudio.Cue.Finale : kind == "eviction" ? HouseAudio.Cue.Eviction :
@@ -811,6 +814,13 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.Finished)
             {
                 hud.Paragraph("Winner: " + state.Find(state.winnerId).name + ". Runner-up: " + state.Find(state.runnerUpId).name + ".");
+                // The jury's reasons, one line each, from the ballots the engine recorded.
+                var ballots = SeasonReport.JuryBallots(state);
+                if (ballots.Count > 0)
+                {
+                    hud.Heading("HOW THE JURY VOTED");
+                    foreach (var ballot in ballots) hud.Paragraph(ballot.Line);
+                }
                 hud.Paragraph("Your choices and votes are preserved in the notebook. Start another season from Settings; the old save is retained.");
                 hud.Action("Season report", ShowSeasonReport);
                 hud.Action("Review the season", OpenJournal);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Gamesim.Persistence;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
@@ -84,6 +85,7 @@ namespace Gamesim.Presentation
         private EpisodeState shown;
         private Func<string, Texture> shownPortrait;
         private Action shownReview;
+        private CareerSummary shownCareer;
 
         /// <summary>
         /// The "larger text" accessibility setting, applied by scaling the whole screen rather than
@@ -144,12 +146,14 @@ namespace Gamesim.Presentation
         /// Builds the report for a finished season. <paramref name="portrait"/> resolves a
         /// contestant id to a face; it may return null, and the portrait helper draws a hole.
         /// </summary>
-        public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview)
+        public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview,
+            CareerSummary career = null)
         {
             if (state == null) return;
             shown = state;
             shownPortrait = portrait ?? (_ => null);
             shownReview = onReview;
+            shownCareer = career;
             sortBy = CastSort.Placement;
             filter = CastFilter.Everyone;
             Rebuild(state, shownPortrait, onReview);
@@ -192,6 +196,8 @@ namespace Gamesim.Presentation
             Winner(state, portrait);
             WinnersJourney(state);
             YourJourney(state);
+            YourCareer(shownCareer);
+            HowTheJuryVoted(state);
             Standings(state);
             WeekByWeek(state);
             Cast(state, portrait);
@@ -335,6 +341,103 @@ namespace Gamesim.Presentation
             var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
             note.text = ClosingNote(state, you);
             Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
+        }
+
+        /// <summary>
+        /// The player's record across seasons, when there is one. Sits beside "Your season"
+        /// because that is the question it answers next: this one, and then all of them.
+        /// </summary>
+        private void YourCareer(CareerSummary career)
+        {
+            if (career == null || career.Seasons == 0) return;
+
+            Heading("Your career");
+            var card = Panel(132f, UiTheme.Surface);
+
+            Stat(card, 0, "SEASONS", career.Seasons.ToString(), UiTheme.Paper);
+            Stat(card, 1, "WINS", career.Wins.ToString(), UiTheme.Gold);
+            Stat(card, 2, "MEDIAN FINISH", CareerSummary.PlaceWord(career.MedianPlacement), UiTheme.Accent);
+            Stat(card, 3, "BEST FINISH", CareerSummary.PlaceWord(career.BestPlacement), UiTheme.Positive);
+            Stat(card, 4, "COMP WINS", (career.HohWins + career.VetoWins).ToString(), UiTheme.Positive);
+
+            var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
+            note.text = career.Note();
+            Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
+        }
+
+        /// <summary>One juror's ballot as the screens say it: who, for whom, and the recorded why.</summary>
+        public readonly struct JuryBallot
+        {
+            public readonly string Juror;
+            public readonly string Finalist;
+            /// <summary>The engine's recorded reason; null for the player's own ballot, which needs none.</summary>
+            public readonly string Reason;
+            public readonly bool IsPlayer;
+
+            public JuryBallot(string juror, string finalist, string reason, bool isPlayer)
+            {
+                Juror = juror; Finalist = finalist; Reason = reason; IsPlayer = isPlayer;
+            }
+
+            /// <summary>The one-line form the finale panel shows.</summary>
+            public string Line => (IsPlayer ? "You" : Juror) + " voted for " + Finalist + "."
+                                  + (string.IsNullOrEmpty(Reason) ? string.Empty : " " + Reason);
+        }
+
+        /// <summary>
+        /// The jury's ballots, in the order they were cast, read from the recorded votes.
+        ///
+        /// <para>Every jury ballot carries the term that decided it — the engine writes one when it
+        /// resolves the jury — so nothing here is inferred. A ballot counts when its voter is on the
+        /// jury and its target is a finalist; the eviction ballots a mid-season state still holds
+        /// fail the second test and are never mistaken for these.</para>
+        /// </summary>
+        public static List<JuryBallot> JuryBallots(EpisodeState state)
+        {
+            var ballots = new List<JuryBallot>();
+            if (state?.votes == null) return ballots;
+            foreach (var vote in state.votes)
+            {
+                var juror = state.Find(vote.voterId);
+                var finalist = state.Find(vote.targetId);
+                if (juror == null || finalist == null) continue;
+                if (juror.status != ContestantStatus.Jury && juror.status != ContestantStatus.Evicted) continue;
+                if (finalist.status != ContestantStatus.Winner && finalist.status != ContestantStatus.RunnerUp) continue;
+                ballots.Add(new JuryBallot(juror.name, finalist.name, juror.isPlayer ? null : vote.reason, juror.isPlayer));
+            }
+            return ballots;
+        }
+
+        /// <summary>
+        /// Why the season ended the way it did: each juror, their pick, and the recorded reason,
+        /// so a player learns whether they lost the jury on competitions, on the block, on a broken
+        /// promise or on the person they were.
+        /// </summary>
+        private void HowTheJuryVoted(EpisodeState state)
+        {
+            var ballots = JuryBallots(state);
+            if (ballots.Count == 0) return;
+
+            Heading("How the jury voted");
+            var winner = state.Find(state.winnerId);
+            var runnerUp = state.Find(state.runnerUpId);
+            if (winner != null && runnerUp != null)
+                Text(winner.name + " " + ballots.Count(b => b.Finalist == winner.name)
+                     + " · " + runnerUp.name + " " + ballots.Count(b => b.Finalist == runnerUp.name),
+                    15f, UiTheme.Muted, 24f, TextAlignmentOptions.Left);
+
+            for (int i = 0; i < ballots.Count; i++)
+            {
+                var ballot = ballots[i];
+                var line = Panel(36f, i % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
+                Cell(line, 22f, 230f, ballot.Juror + (ballot.IsPlayer ? "  (You)" : string.Empty), 15f,
+                    ballot.IsPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
+                Cell(line, 260f, 230f, "voted for " + ballot.Finalist, 14f,
+                    winner != null && ballot.Finalist == winner.name ? UiTheme.Gold : UiTheme.Muted,
+                    TextAlignmentOptions.Left);
+                Cell(line, 500f, 600f, ballot.IsPlayer ? "Your ballot" : ballot.Reason, 13f, UiTheme.Paper,
+                    TextAlignmentOptions.Left);
+            }
         }
 
         private void Standings(EpisodeState state)

@@ -64,6 +64,7 @@ namespace Gamesim.Episode
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
             hud.Action(largeText ? "Use standard text" : "Use larger text", () => { largeText = !largeText; ApplyPreferences(); Render(); });
             DisplaySettings();
+            CareerSettings();
             hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
             hud.Heading("Import a supported web save");
             hud.Paragraph("Supports receipt-free, six-active-cast social snapshots. Complex in-progress web saves are rejected and archived unchanged, never silently simplified.");
@@ -122,7 +123,7 @@ namespace Gamesim.Episode
             if (cameraRig != null) cameraRig.ControlsEnabled = false;
             bool canContinue = saves != null && (File.Exists(saves.SavePath) || File.Exists(saves.BackupPath));
             mainMenu.Show(canContinue, blockedRecovery ? message : null,
-                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame);
+                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame, CareerLine());
             Render();
         }
 
@@ -238,6 +239,8 @@ namespace Gamesim.Episode
         {
             ResetNpcSocialForLoad();
             ClosePanels(); engine = new EpisodeEngine(state); blockedRecovery = false;
+            // A finished season arriving by load, recovery or import is still a finished season.
+            RecordCareer(state);
             // Before the placement loop below, which indexes the anchor arrays by body: the season
             // being installed can hold a different house from the one on screen, and until seasons
             // could differ in size this loop was indexing an array that always happened to match.

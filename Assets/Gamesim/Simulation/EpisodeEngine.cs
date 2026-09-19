@@ -110,6 +110,9 @@ namespace Gamesim.Simulation
                 // Not a social action: the situation came to the player, and charging them
                 // an interaction for being walked in on would be charging for the weather.
                 case EpisodeCommandKind.ResolveHouseEvent: ResolveHouseEvent(s, c); break;
+                // The house telling the engine where the player is. Only the director knows, which
+                // is why this arrives as a command rather than being computed in the week.
+                case EpisodeCommandKind.WitnessProximity: WitnessProximity(s, c); break;
                 // Addressed to the room rather than to a person, so it cannot go through
                 // Social(), which requires a housemate to approach. It still costs an
                 // action, which it spends for itself.
@@ -240,6 +243,7 @@ namespace Gamesim.Simulation
                         NpcDeals.Settle(s);
                         NpcDeals.Propose(s);
                         OfferHouseEvent(s);
+                        NarrateHouse(s);
                         return;
                     }
                     // Eviction night runs as stages inside this phase rather than as phases of its
@@ -937,8 +941,69 @@ namespace Gamesim.Simulation
         private static void OfferHouseEvent(EpisodeState s)
         {
             if (!HouseEvents.Ready(s)) return;
-            var drawn = HouseEvents.Draw(s, Roll(s), s.nextSequence);
+
+            // The season's own state first. An emergent situation is about something the player has
+            // spent weeks building, and a catalogue entry drawn over the top of it would be the
+            // house talking about nothing while a rivalry it can see goes unremarked.
+            var drawn = HouseEventSources.Emergent(s, s.nextSequence);
+
+            // Then the week going wrong, which only starts once the house has been in it a while.
+            if (drawn == null && Roll(s) < CrisisChance) drawn = HouseEventSources.Crisis(s, Roll(s), s.nextSequence);
+
+            // Then the catalogue.
+            if (drawn == null) drawn = HouseEvents.Draw(s, Roll(s), s.nextSequence);
             if (drawn == null) return;
+
+            s.houseEvents.Add(drawn);
+            Log(s, "house-event", drawn.title + ". " + drawn.narrative, s.playerId);
+        }
+
+        /// <summary>
+        /// How often a week goes wrong, once the house has been in it long enough.
+        ///
+        /// <para>Not the reference's — its crises are scheduled by a system with its own cadence and
+        /// phase filters. One in four weeks is frequent enough to be a risk the player plans around
+        /// and rare enough that it is still bad luck when it happens.</para>
+        /// </summary>
+        public const double CrisisChance = 0.25;
+
+        /// <summary>
+        /// The house being a house: narration, no question, and no place in the week's one situation.
+        ///
+        /// <para>Kept separate from <see cref="OfferHouseEvent"/> because an ambient line is not a
+        /// situation — it arrives already settled and must never occupy the slot that asks the
+        /// player something.</para>
+        /// </summary>
+        private static void NarrateHouse(EpisodeState s)
+        {
+            if (s.week < s.eventRulesStartWeek) return;
+            if (s.houseEvents.Count >= HouseEvents.Ceiling) return;
+            if (s.Active.Count(c => !c.isPlayer) == 0) return;
+            if (s.houseEvents.Any(e => e.kind == HouseEventKind.Ambient && e.week == s.week)) return;
+
+            // Every draw happens AFTER the guards. Passing the room in as an argument spent a roll
+            // on choosing one even in the weeks that narrate nothing — and a draw spent is a season
+            // re-rolled, whether or not anything was done with it.
+            var line = HouseEventSources.Ambient(s, Roll(s), Roll(s), HouseRooms.Any(s, Roll(s)), s.nextSequence);
+            if (line == null) return;
+            s.houseEvents.Add(line);
+            Log(s, "house-ambient", line.narrative, s.playerId);
+        }
+
+        /// <summary>
+        /// Walking in on two houseguests.
+        ///
+        /// <para>The only event source the engine cannot originate, because where everybody is
+        /// standing lives in the house rather than in the save. The director offers it; the engine
+        /// still decides whether it is allowed, so a malformed or out-of-turn offer changes nothing.
+        /// </para>
+        /// </summary>
+        private static void WitnessProximity(EpisodeState s, EpisodeCommand c)
+        {
+            Require(HouseEvents.Ready(s), "Nothing more is going to happen this week.");
+            Require(HouseEvents.Pending(s) == null, "Deal with what is already in front of you first.");
+            var drawn = HouseEventSources.Proximity(s, c.targetId, c.secondTargetId, c.text, s.nextSequence);
+            Require(drawn != null, "There is nobody there to walk in on.");
             s.houseEvents.Add(drawn);
             Log(s, "house-event", drawn.title + ". " + drawn.narrative, s.playerId);
         }

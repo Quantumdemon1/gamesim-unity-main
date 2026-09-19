@@ -248,6 +248,7 @@ namespace Gamesim.Episode
 
             if (!IsReady) return;
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
+            TickProximityWatch(Time.unscaledDeltaTime);
             frameAverage = Mathf.Lerp(frameAverage, Time.unscaledDeltaTime, 0.03f);
             if (diaryOpen && !CanUseDiary) { ClosePanels(); return; }
             if (challengeActive && challengeRun != null) TickMiniGame();
@@ -687,6 +688,70 @@ namespace Gamesim.Episode
             return parts.Count == 0 ? null : string.Join(" · ", parts);
         }
 
+        /// <summary>How often the house checks whether the player has walked in on anything.</summary>
+        private const float ProximityWatchSeconds = 4f;
+        private float proximityWatch;
+
+        /// <summary>
+        /// Watches for the player standing in a room with two other houseguests.
+        ///
+        /// <para>On a cadence rather than every frame: the check walks every character in the scene
+        /// to find its room, and doing that sixty times a second to answer a question that can only
+        /// come true once a week would be a lot of work for nothing.</para>
+        ///
+        /// <para>Only while the player is actually walking around. A proximity event is about being
+        /// somewhere, so offering one while a panel is open would be the house reporting on a room
+        /// the player is not currently in.</para>
+        /// </summary>
+        private void TickProximityWatch(float delta)
+        {
+            if (IsPanelOpen || challengeActive || projected == null) return;
+            if (projected.phase != EpisodePhase.Social && projected.phase != EpisodePhase.Campaign) return;
+
+            proximityWatch += delta;
+            if (proximityWatch < ProximityWatchSeconds) return;
+            proximityWatch = 0f;
+            OfferProximityEvent(Snapshot);
+        }
+
+        /// <summary>
+        /// Two houseguests the player has actually walked in on.
+        ///
+        /// <para>The one event source this port can serve better than the reference, which picks a
+        /// location from a list of strings. Here the room is a room the player is standing in and
+        /// the pair are whoever is standing in it with them.</para>
+        ///
+        /// <para>Offered rather than committed: it writes nothing until the player answers, and it
+        /// waits for the ordinary one-situation-a-week rule like everything else.</para>
+        /// </summary>
+        private void OfferProximityEvent(EpisodeState state)
+        {
+            if (weeklyRecap == null || state == null) return;
+            if (!HouseEvents.Ready(state)) return;
+            if (HouseEvents.Pending(state) != null) return;
+
+            var here = HouseOccupancy(state)
+                .FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
+            if (string.IsNullOrEmpty(here.Name)) return;
+
+            var others = here.Occupants
+                .Where(person => !person.IsPlayer && !string.IsNullOrEmpty(person.Id))
+                .OrderBy(person => person.Id, StringComparer.Ordinal)
+                .ToList();
+            if (others.Count < 2) return;
+
+            var drawn = HouseEventSources.Proximity(state, others[0].Id, others[1].Id,
+                here.Name, state.nextSequence);
+            if (drawn == null) return;
+            Submit(new EpisodeCommand
+            {
+                id = Guid.NewGuid().ToString("N"), actorId = state.playerId,
+                kind = EpisodeCommandKind.WitnessProximity, expectedPhase = state.phase,
+                expectedRevision = state.revision, targetId = others[0].Id,
+                secondTargetId = others[1].Id, text = here.Name,
+            });
+        }
+
         private List<HouseMap.Room> HouseOccupancy(EpisodeState state)
         {
             var rooms = new List<HouseMap.Room>();
@@ -718,7 +783,7 @@ namespace Gamesim.Episode
                 }
                 if (nearest == null) continue;
 
-                occupants[nearest.RoomName].Add(new HouseMap.Occupant(actor.name,
+                occupants[nearest.RoomName].Add(new HouseMap.Occupant(actor.id, actor.name,
                     CharacterPortraits.Get(
                         CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id))),
                     actor.id == state.playerId));

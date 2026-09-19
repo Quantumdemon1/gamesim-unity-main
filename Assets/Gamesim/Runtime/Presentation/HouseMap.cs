@@ -28,13 +28,22 @@ namespace Gamesim.Presentation
         /// <summary>One person standing in a room.</summary>
         public readonly struct Occupant
         {
+            /// <summary>
+            /// Who this is, in the simulation's terms.
+            ///
+            /// <para>The map itself only ever draws the name. The id is here because the proximity
+            /// event source needs to say which two houseguests were in a room together, and this is
+            /// already the one place that knows — computing it a second time would be two answers to
+            /// one question, and the second is always the one that drifts.</para>
+            /// </summary>
+            public readonly string Id;
             public readonly string Name;
             public readonly Texture Portrait;
             public readonly bool IsPlayer;
 
-            public Occupant(string name, Texture portrait, bool isPlayer)
+            public Occupant(string id, string name, Texture portrait, bool isPlayer)
             {
-                Name = name; Portrait = portrait; IsPlayer = isPlayer;
+                Id = id; Name = name; Portrait = portrait; IsPlayer = isPlayer;
             }
         }
 

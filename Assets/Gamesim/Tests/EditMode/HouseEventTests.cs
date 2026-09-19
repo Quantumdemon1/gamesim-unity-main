@@ -318,10 +318,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(finished.houseEvents, Is.Not.Empty,
                 "A whole season should have had something happen to it.");
             CollectionAssert.AllItemsAreUnique(finished.houseEvents.Select(e => e.id).ToList());
-            // Nothing answers for the player, so a season played without touching them leaves them open.
-            Assert.That(finished.houseEvents, Has.All.Matches<HouseEventState>(e => !e.resolved));
-            Assert.That(finished.houseEvents.Select(e => e.week).Distinct().Count(),
-                Is.EqualTo(finished.houseEvents.Count), "One a week, no more.");
+            // Nothing answers for the player, so a season played without touching them leaves every
+            // situation open. Ambient narration is the exception and arrives settled by design,
+            // because there is nothing in it to answer.
+            var asked = finished.houseEvents.Where(e => HouseEventKind.Asks(e.kind)).ToList();
+            Assert.That(asked, Is.Not.Empty);
+            Assert.That(asked, Has.All.Matches<HouseEventState>(e => !e.resolved));
+            Assert.That(asked.Select(e => e.week).Distinct().Count(), Is.EqualTo(asked.Count),
+                "One situation a week, no more.");
             Assert.That(EpisodeValidation.TryValidate(finished, out string error), Is.True, error);
         }
 

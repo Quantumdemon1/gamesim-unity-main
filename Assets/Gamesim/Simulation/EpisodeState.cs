@@ -388,7 +388,9 @@ namespace Gamesim.Simulation
         HouseMeeting,
         BuyActionPoint,
         /// <summary>Answering something that happened to the house.</summary>
-        ResolveHouseEvent // Append: preserve every pre-v4 command ordinal.
+        ResolveHouseEvent,
+        /// <summary>Walking in on two houseguests in the same room.</summary>
+        WitnessProximity // Append: preserve every pre-v4 command ordinal.
     }
 
     /// <summary>

@@ -587,12 +587,21 @@ namespace Gamesim.Simulation
             foreach (var juror in s.contestants.Where(c => c.status == ContestantStatus.Jury || c.status == ContestantStatus.Evicted))
             {
                 if (juror.isPlayer || s.votes.Any(v => v.voterId == juror.id)) continue;
-                // Source JuryVotingWrapper: directed trust plus two independent +/-10 rolls.
-                // Persist only gameplay randomness; browser animation-delay draws have no native equivalent.
-                double firstScore = s.Score(juror.id, finalists[0].id) + Roll(s) * 20 - 10;
-                double secondScore = s.Score(juror.id, finalists[1].id) + Roll(s) * 20 - 10;
+                // Two independent final impressions, the same size as the two rolls this used to be
+                // the whole of. What changed is what they are applied to: a juror now weighs how a
+                // finalist played as well as how they were treated, so the game a finalist ran is
+                // worth something at the end rather than nothing.
+                double firstScore = WebJuryVoting.Score(s, juror.id, finalists[0].id)
+                                    + Roll(s) * WebJuryVoting.FinalImpression * 2 - WebJuryVoting.FinalImpression;
+                double secondScore = WebJuryVoting.Score(s, juror.id, finalists[1].id)
+                                     + Roll(s) * WebJuryVoting.FinalImpression * 2 - WebJuryVoting.FinalImpression;
                 var preferred = firstScore > secondScore ? finalists[0] : finalists[1];
-                s.votes.Add(new VoteState { voterId = juror.id, targetId = preferred.id, reason = "Personal trust and this juror's final impression." });
+                var passedOver = preferred.id == finalists[0].id ? finalists[1] : finalists[0];
+                s.votes.Add(new VoteState
+                {
+                    voterId = juror.id, targetId = preferred.id,
+                    reason = WebJuryVoting.Reason(s, juror.id, preferred, passedOver),
+                });
                 Log(s, "jury-vote", Name(s, juror.id) + Verb(s, juror.id, " votes for ", " vote for ")
                     + Target(s, preferred.id, juror.id) + " to win.");
             }

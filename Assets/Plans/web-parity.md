@@ -342,13 +342,42 @@ Ranked below agency deliberately: a cutscene about a week where nothing happened
 nothing. But note this is the size of the template bank behind the Phase E honesty note in
 `npc-behaviour.md` — reflections will read flatter here partly because the bank is a quarter the size.
 
-## Tier 6 — Layer 3 cognition
+## Tier 6 — Layer 3 cognition — **the one real gap is closed**
 
 `ai/memory-manager` (19 KB) · `ai/npc-decision-engine` (17 KB) · `ai/fallback-generator` (23 KB).
 Already scoped as Phase E of `npc-behaviour.md`; assessment unchanged.
 
 `fallback-generator` is worth having regardless of the rest — the source's own note is that it is
 reproducible, which is what makes NPC behaviour testable without network access.
+
+**Reading it against this port turned up less than the size suggests.** The generator's job is to
+decide for an NPC when the AI call fails, and almost all of those decisions already exist here, most
+of them in richer form:
+
+| Its fallback | Here |
+| --- | --- |
+| Nomination, veto, replacement | `EpisodeEngine`, already weighted on the relationship |
+| Eviction vote | `WebEvictionVoting` — a full evaluator with bloc directives and deal obligations |
+| Alliance proposal and response | `NpcAlliances`, ported in Phase C |
+| Dialogue | `HouseDialogue` |
+| **Jury vote** | **Nothing. `relationship + a roll`, and that was all.** |
+
+So Tier 6's honest scope was one function rather than three files, and it is now `WebJuryVoting`.
+
+**Why it mattered more than its size.** A juror voted on how much they liked a finalist plus a ten
+point jitter. The finalist who had been nicer won, and how either of them actually played was worth
+zero — which makes winning competitions, surviving the block and outmanoeuvring people pointless the
+moment the finale starts. The reference weighs four things: thirty per cent relationship, **forty per
+cent respect for how they played**, fifteen for an alliance and fifteen for what was agreed. Respect
+outweighing affection is the design, and it is what lets a jury crown somebody it does not much
+like — an outcome the old rule could not produce at all.
+
+No schema version: every term reads something already recorded. `Obligations` reads the deals and
+promises systems, so it is a function that could not have been written before them.
+
+`memory-manager` and `npc-decision-engine` stay unported. Their jobs are done by
+`RelationshipLedger`, `ThreatAssessment` and `WebEvictionVoting`, and porting them would be adding a
+second answer to questions this project already answers.
 
 ---
 
@@ -388,8 +417,8 @@ React presentation; the phase components may hold flow logic worth a look before
 | 7 | ~~Minigames (3.1)~~ **done** | Every competition currently plays identically. Three games, one per category the engine produces. |
 | 8 | ~~Social vocabulary + action points (3.2, 3.3)~~ **done** | Player-facing breadth; append-only to `EpisodeCommandKind`. Landed on schema 11. |
 | 9 | Event layer (Tier 4) — **house events done** | Unlocks storylines, which is why they are not earlier. Four of six systems remain. |
-| 10 | Storylines and narrative (1.2, Tier 5) | |
-| 11 | Phase E (Tier 6) | As already planned. |
+| 10 | ~~Storylines (1.2)~~ **done** · narrative (Tier 5) outstanding | Storylines landed on schema 12. The text bank is untouched and is a content job, not a systems one. |
+| 11 | ~~Phase E (Tier 6)~~ **the real gap closed** | The jury now weighs how a finalist played. The rest of Tier 6 was already here in richer form. |
 
 Items 1–4 are days rather than weeks and only one is a port. Items 8 and 9 both add persisted state —
 **batch them into one schema version**, per the constraint above.

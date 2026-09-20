@@ -111,33 +111,42 @@ namespace Gamesim.Episode
         private IEnumerator Shot(int index, string label, Func<LookShot, IEnumerator> route)
         {
             var shot = new LookShot { index = index, mockup = "mockup-" + index.ToString("00"), label = label, reached = true };
-            var routine = Guard(route(shot), shot);
-            while (true)
-            {
-                bool moved;
-                try { moved = routine.MoveNext(); }
-                catch (Exception error) { shot.reached = false; shot.reason = Append(shot.reason, error.Message); break; }
-                if (!moved) break;
-                yield return routine.Current;
-            }
-            yield return CaptureLook(shot);
+            yield return Guard(route(shot), shot);
+            // The capture and the tidy-up are guarded too: a moment that cannot be reached must still
+            // leave a picture and a reason behind it, and the sheet must still reach its report.
+            yield return Guard(CaptureLook(shot), shot);
             var state = seasonDirector.Snapshot;
             shot.phase = state.phase.ToString();
             shot.week = state.week;
             shot.secondsSinceStart = Time.realtimeSinceStartupAsDouble - lookStarted;
             lookReport.shots.Add(shot);
-            yield return CloseEverything();
+            yield return Guard(CloseEverything(), shot);
         }
 
+        /// <summary>
+        /// Runs a route and turns whatever it throws into that moment's reason.
+        ///
+        /// <para>The nested routines have to be driven here rather than handed to Unity. A coroutine
+        /// that yields another coroutine hands it to Unity's runner, which iterates it outside this
+        /// try - so the first thing a route threw from inside a nested wait escaped the guard, killed
+        /// the whole sheet and left the player sitting on a window with no report. Flattening the
+        /// stack here means every step of every nested routine is a MoveNext this catch can see.</para>
+        /// </summary>
         private static IEnumerator Guard(IEnumerator inner, LookShot shot)
         {
-            while (true)
+            var stack = new Stack<IEnumerator>();
+            stack.Push(inner);
+            while (stack.Count > 0)
             {
+                var top = stack.Peek();
                 bool moved;
-                try { moved = inner.MoveNext(); }
+                try { moved = top.MoveNext(); }
                 catch (Exception error) { shot.reached = false; shot.reason = Append(shot.reason, error.Message); yield break; }
-                if (!moved) yield break;
-                yield return inner.Current;
+                if (!moved) { stack.Pop(); continue; }
+                // A nested routine (a wait, a walk, a click) is driven here; anything else - a null,
+                // a YieldInstruction - is Unity's to wait on.
+                if (top.Current is IEnumerator nested) { stack.Push(nested); continue; }
+                yield return top.Current;
             }
         }
 
@@ -169,8 +178,15 @@ namespace Gamesim.Episode
             if (cast != null && cast.IsShowing) yield return ClickAny(CastSelect.CancelCaption);
             var recap = FindAnyObjectByType<WeeklyRecapScreen>();
             if (recap != null && recap.IsOpen) yield return ClickAny(WeeklyRecapScreen.ContinueCaption);
+            // The front door too. The cast screen is reached through the main menu, and a menu left
+            // showing sat over every capture that followed it - eleven pictures of the house behind
+            // a title card, which is exactly the thing the sheet exists to notice.
+            var menu = FindAnyObjectByType<MainMenu>();
+            if (menu != null && menu.IsShowing && seasonDirector.SeasonInProgress) seasonDirector.CloseMainMenu();
             seasonDirector.ClosePanels();
             yield return null; yield return null;
+            var stillShowing = FindAnyObjectByType<MainMenu>();
+            if (stillShowing != null && stillShowing.IsShowing) throw new InvalidOperationException("The main menu would not close over the house.");
         }
 
         private IEnumerator SkipOpening()
@@ -441,7 +457,7 @@ namespace Gamesim.Episode
                 var picks = EpisodeEngine.NominationCandidates(state).Take(2).ToArray();
                 command.kind = EpisodeCommandKind.Nominate; command.targetId = picks[0].id; command.secondTargetId = picks[1].id;
             }
-            else if (state.phase == EpisodePhase.VetoMeeting && state.vetoHolderId == state.playerId)
+            else if (state.phase == EpisodePhase.VetoMeeting && state.vetoHolderId == state.playerId && !state.vetoResolved)
             {
                 command.kind = EpisodeCommandKind.ResolveVeto; command.useVeto = false;
             }

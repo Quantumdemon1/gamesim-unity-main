@@ -36,7 +36,15 @@ namespace Gamesim.Tests.PlayMode
                 var visual = Body(id);
                 Assert.That(visual, Is.Not.Null, id + " has a body in the house");
                 Assert.That(visual.LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Nominated), id + " was asked to react as nominated");
+                Assert.That(visual.LookTarget, Is.Null, id + " is the one being looked at, not a looker");
             }
+            // V6: the room turns to look at the first nominee; the nominees themselves do not.
+            var lookedAt = Body(nominees[0]).transform;
+            var crowd = director.Snapshot.contestants.Where(c => c.status == ContestantStatus.Active && !nominees.Contains(c.id))
+                .Select(c => Body(c.id)).Where(b => b != null).ToArray();
+            Assert.That(crowd, Is.Not.Empty);
+            foreach (var onlooker in crowd)
+                Assert.That(onlooker.LookTarget, Is.SameAs(lookedAt), onlooker.CharacterId + " turns to the nominee");
 
             string evicted = null;
             for (int guard = 0; guard < 400 && evicted == null; guard++)

@@ -187,6 +187,7 @@ namespace Gamesim.Episode
             {
                 case CeremonySting.NominationKind:
                     foreach (var id in state.nominees ?? new List<string>()) React(id, CharacterPresentation.Reaction.Nominated);
+                    TurnHeads(state, (state.nominees ?? new List<string>()).FirstOrDefault(), state.nominees);
                     break;
                 case CeremonySting.VetoKind:
                     foreach (var id in wasNominated)
@@ -198,10 +199,35 @@ namespace Gamesim.Episode
                     foreach (var actor in state.contestants)
                         if (actor.status != ContestantStatus.Active && wasActive.Contains(actor.id))
                             React(actor.id, CharacterPresentation.Reaction.Evicted);
+                    TurnHeads(state, EvictedThisCommit(state, wasActive), null);
                     break;
                 case CeremonySting.WinnerKind:
                     React(state.winnerId, CharacterPresentation.Reaction.Won);
+                    TurnHeads(state, state.winnerId, null);
                     break;
+            }
+        }
+
+        /// <summary>How long the room looks at the ceremony's subject: the card's strip and a beat after.</summary>
+        public const float HeadTurnSeconds = 7f;
+
+        /// <summary>
+        /// The crowd turns to look (V6): every other body in the house turns its head toward the
+        /// ceremony's subject for the card's length, except the subjects themselves, who are
+        /// acting the beat out. Heads only: the bodies stay where the venues put them.
+        /// </summary>
+        private void TurnHeads(EpisodeState state, string towardId, ICollection<string> except)
+        {
+            if (string.IsNullOrEmpty(towardId)) return;
+            var target = BodyFor(towardId);
+            if (target == null) return;
+            foreach (var actor in state.contestants)
+            {
+                if (actor.id == towardId || actor.status != ContestantStatus.Active) continue;
+                if (except != null && except.Contains(actor.id)) continue;
+                var body = BodyFor(actor.id);
+                var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+                if (visual != null) visual.LookAt(target, HeadTurnSeconds);
             }
         }
 

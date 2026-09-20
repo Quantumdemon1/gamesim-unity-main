@@ -50,6 +50,26 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void TheMockupsTokens_ClearTheirMinimumsOnGlass()
+        {
+            // VISUAL-TARGET.md V2: the five action colours are chip words (15px, body text) on the
+            // glass ground, and the glow and the accent are headings on it. The glass fill is
+            // translucent, so a lit set behind it lifts the ground; the arithmetic half is here and
+            // the bloom half stays with a captured frame, as for every other panel.
+            AssertContrast(UiTheme.Flirt, UiTheme.GlassFill, BodyMinimum, "flirt chip word on glass");
+            AssertContrast(UiTheme.Strategic, UiTheme.GlassFill, BodyMinimum, "strategic chip word on glass");
+            AssertContrast(UiTheme.Joke, UiTheme.GlassFill, BodyMinimum, "joke chip word on glass");
+            AssertContrast(UiTheme.Allied, UiTheme.GlassFill, BodyMinimum, "allied chip word on glass");
+            AssertContrast(UiTheme.Conflict, UiTheme.GlassFill, BodyMinimum, "conflict chip word on glass");
+            AssertContrast(UiTheme.Paper, UiTheme.GlassFill, BodyMinimum, "body copy on glass");
+            AssertContrast(UiTheme.Paper, UiTheme.Background, BodyMinimum, "body copy on the night ground");
+            AssertContrast(UiTheme.Accent, UiTheme.GlassFill, LargeMinimum, "accent headings on glass");
+            AssertContrast(UiTheme.Glow, UiTheme.GlassFill, LargeMinimum, "glow headings on glass");
+            double edge = Contrast(UiTheme.Hairline, UiTheme.GlassFill);
+            Assert.That(edge, Is.GreaterThan(1.2), "The hairline is nearly the glass's own luminance (" + edge.ToString("F2") + ":1).");
+        }
+
+        [Test]
         public void MutedText_IsHonestlyReportedRatherThanAssumedFine()
         {
             // Muted is placeholder and de-emphasised copy. It is held to the large-text bar because

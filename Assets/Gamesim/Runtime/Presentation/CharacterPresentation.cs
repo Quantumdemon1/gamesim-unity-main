@@ -31,6 +31,41 @@ namespace Gamesim.Presentation
         /// <summary>The last beat this body was asked to act out, whether or not it had a clip for it.</summary>
         public Reaction? LastReaction { get; private set; }
 
+        // V6 (VISUAL-TARGET.md): a head that turns to look. The crowd at a ceremony turns to the
+        // nominee, the evicted, the winner; a conversation partner is already faced by the whole
+        // body, so the head adds nothing there. Applied as a world-space turn about the vertical and
+        // the body's right axis on top of whatever the clip posed, so it works on any rig's head bone
+        // whatever that bone's local axes are, and on the primitive head the same way.
+        private Transform lookTarget;
+        private float lookUntil, lookBlend;
+        public const float LookYawLimit = 60f;
+        public const float LookPitchLimit = 20f;
+        /// <summary>What the head is turned toward, or null; for the tests and the director.</summary>
+        public Transform LookTarget => lookTarget != null && Time.time < lookUntil ? lookTarget : null;
+
+        /// <summary>Turns the head toward a target for a while. Null, or the time passing, lets it go.</summary>
+        public void LookAt(Transform target, float seconds)
+        {
+            lookTarget = target;
+            lookUntil = target != null ? Time.time + Mathf.Max(0f, seconds) : 0f;
+        }
+
+        private void ApplyLook(Transform headBone)
+        {
+            if (headBone == null) return;
+            bool looking = lookTarget != null && Time.time < lookUntil && !reducedMotion;
+            lookBlend = Mathf.Lerp(lookBlend, looking ? 1f : 0f, 1f - Mathf.Exp(-5f * Time.deltaTime));
+            if (lookBlend < 0.002f) { lookBlend = 0f; return; }
+            if (lookTarget == null) return;
+            var to = lookTarget.position + Vector3.up * 1.5f - headBone.position;
+            var flat = new Vector3(to.x, 0f, to.z);
+            if (flat.sqrMagnitude < 0.0001f) return;
+            float yaw = Mathf.Clamp(Vector3.SignedAngle(transform.forward, flat, Vector3.up), -LookYawLimit, LookYawLimit);
+            float pitch = Mathf.Clamp(Mathf.Atan2(to.y, flat.magnitude) * Mathf.Rad2Deg, -LookPitchLimit, LookPitchLimit);
+            headBone.rotation = Quaternion.AngleAxis(yaw * lookBlend, Vector3.up)
+                * Quaternion.AngleAxis(-pitch * lookBlend, transform.right) * headBone.rotation;
+        }
+
         [SerializeField] private ContestantState definition;
         [SerializeField] private Color wardrobeColor = new Color(0.26f, 0.76f, 0.65f);
         private readonly List<Material> materials = new List<Material>();
@@ -158,6 +193,9 @@ namespace Gamesim.Presentation
             bool analyst = appearanceId == "riley-johnson";
             heightScale = analyst ? 1.05f : athlete ? 1.03f : diplomat ? 1.01f : wildcard ? 0.96f : 1f;
             phaseOffset = diplomat ? 0.4f : athlete ? 1.5f : caregiver ? 2.7f : wildcard ? 3.9f : analyst ? 5.1f : 0f;
+            // V6: sixteen people are not five. Each body idles, nods and sways on its own phase, from
+            // its id, so a room of houseguests never breathes in unison.
+            phaseOffset += (Mathf.Abs(CharacterId.GetHashCode()) % 628) / 100f;
 
             // Tests and markers key off this exact name, whichever body is built underneath it.
             visual = Joint("Gamesim Character Visual", transform, Vector3.zero);
@@ -533,6 +571,7 @@ namespace Gamesim.Presentation
                 float time = Time.time + phaseOffset;
                 modelHead.localRotation = modelHeadRest * Quaternion.Euler(Mathf.Sin(time * 3f) * 4f, Mathf.Sin(time * 1.7f) * 3f, 0f);
             }
+            ApplyLook(modelHead);
         }
 
         /// <summary>
@@ -557,6 +596,7 @@ namespace Gamesim.Presentation
             visual.localPosition = new Vector3(0, seated ? -0.32f : idle, 0);
             chest.localRotation = Quaternion.Euler(0, 0, reducedMotion || seated ? 0f : Mathf.Sin(time * 0.9f) * 0.65f);
             head.localRotation = Quaternion.Euler(talking && !reducedMotion ? Mathf.Sin(time * 3f) * 2f : 0f, 0f, 0f);
+            ApplyLook(head);
             leftArm.localRotation = Quaternion.Euler(-swing + gesture, 0f, seated ? 0f : 7f);
             rightArm.localRotation = Quaternion.Euler(swing + gesture * 0.35f, 0f, seated ? 0f : -7f);
             leftLeg.localRotation = Quaternion.Euler(seated ? -82f : swing, 0f, 0f);
@@ -683,7 +723,7 @@ namespace Gamesim.Presentation
             inspectedController = null;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = false;
             built = false;
-            talking = seated = false; facingYaw = float.NaN;
+            talking = seated = false; facingYaw = float.NaN; lookTarget = null; lookBlend = 0f;
             movementBlend = walkPhase = 0f;
             CharacterId = null;
         }

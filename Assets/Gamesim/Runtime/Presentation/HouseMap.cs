@@ -22,8 +22,28 @@ namespace Gamesim.Presentation
     {
         public const string RootName = "House map";
 
-        private const float CardHeight = 74f;
+        /// <summary>The pitch between cards: the card, plus room for its glow to clear the next.</summary>
+        private const float CardHeight = 86f;
+        private const float CardGap = 12f;
         private const float FaceSize = 32f;
+
+        /// <summary>
+        /// The glyph a room's chip carries, the way mockup-03 labels every room with one. Matched
+        /// on the marker's name, so a house with new rooms gets the house mark rather than nothing.
+        /// </summary>
+        public static string RoomIcon(string roomName)
+        {
+            string name = (roomName ?? string.Empty).ToLowerInvariant();
+            if (name.Contains("hoh")) return "crown";
+            if (name.Contains("bed")) return "bed";
+            if (name.Contains("kitchen") || name.Contains("dining")) return "fork";
+            if (name.Contains("gym")) return "dumbbell";
+            if (name.Contains("diary")) return "chat";
+            if (name.Contains("nomination")) return "target";
+            if (name.Contains("living") || name.Contains("lounge")) return "people";
+            if (name.Contains("yard") || name.Contains("pool")) return "star";
+            return "house";
+        }
 
         /// <summary>One person standing in a room.</summary>
         public readonly struct Occupant
@@ -81,25 +101,52 @@ namespace Gamesim.Presentation
             bool hasPlayer = false;
             for (int i = 0; i < room.Occupants.Count; i++) if (room.Occupants[i].IsPlayer) hasPlayer = true;
 
-            // The player's room is outlined rather than filled, so the eye finds it without the card
-            // competing with the portraits inside it.
-            var card = HudPrimitives.Fill("Room card", root,
-                hasPlayer ? new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .14f) : UiTheme.Surface,
-                UiTheme.ControlRadius);
+            // One of the mockups' glass cards a room. The player's room is outlined in the accent
+            // on top of the hairline, so the eye finds it without the card competing with the
+            // portraits inside it.
+            var card = HudPrimitives.Glass("Room card", root);
             card.anchorMin = new Vector2(0f, 1f);
             card.anchorMax = new Vector2(1f, 1f);
             card.pivot = new Vector2(.5f, 1f);
             card.offsetMin = new Vector2(2f, 0f);
             card.offsetMax = new Vector2(-2f, 0f);
             card.anchoredPosition = new Vector2(0f, -index * CardHeight * scale);
-            card.sizeDelta = new Vector2(-4f, (CardHeight - 6f) * scale);
+            card.sizeDelta = new Vector2(-4f, (CardHeight - CardGap) * scale);
+            if (hasPlayer) UiTheme.AddBorder(card, UiTheme.GlassRadius, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .85f));
 
-            var name = Label(card, room.Name, 15, hasPlayer ? UiTheme.Accent : UiTheme.Paper, scale, font);
+            // The room's chip: a glyph and the name in the mockups' tracked capitals.
+            float textLeft = 12f * scale;
+            var glyph = UiTheme.Icon(RoomIcon(room.Name));
+            if (glyph != null)
+            {
+                var art = new GameObject("Room glyph", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                art.SetParent(card, false);
+                art.anchorMin = new Vector2(0f, 1f);
+                art.anchorMax = new Vector2(0f, 1f);
+                art.pivot = new Vector2(0f, 1f);
+                art.anchoredPosition = new Vector2(12f * scale, -8f * scale);
+                art.sizeDelta = new Vector2(15f * scale, 15f * scale);
+                var image = art.GetComponent<Image>();
+                image.sprite = glyph;
+                image.color = hasPlayer ? UiTheme.Accent : UiTheme.Glow;
+                image.raycastTarget = false;
+                image.preserveAspect = true;
+                textLeft += 22f * scale;
+            }
+
+            var name = HudPrimitives.Heading("Text", card, Mathf.RoundToInt(13f * scale),
+                hasPlayer ? UiTheme.Accent : UiTheme.Paper);
+            if (name.font == null && font != null) name.font = font;
+            name.text = Localisation.Text(room.Name).ToUpperInvariant();
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.enableAutoSizing = true;
+            name.fontSizeMax = name.fontSize;
+            name.fontSizeMin = Mathf.Min(9f * scale, name.fontSize);
             name.rectTransform.anchorMin = new Vector2(0f, 1f);
             name.rectTransform.anchorMax = new Vector2(0f, 1f);
             name.rectTransform.pivot = new Vector2(0f, 1f);
-            name.rectTransform.anchoredPosition = new Vector2(12f * scale, -6f * scale);
-            name.rectTransform.sizeDelta = new Vector2(240f * scale, 20f * scale);
+            name.rectTransform.anchoredPosition = new Vector2(textLeft, -6f * scale);
+            name.rectTransform.sizeDelta = new Vector2(260f * scale, 20f * scale);
 
             // An empty room says so. A card with a name and nothing under it reads as a rendering
             // failure rather than as an empty kitchen.
@@ -109,18 +156,20 @@ namespace Gamesim.Presentation
                 empty.rectTransform.anchorMin = new Vector2(0f, 1f);
                 empty.rectTransform.anchorMax = new Vector2(0f, 1f);
                 empty.rectTransform.pivot = new Vector2(0f, 1f);
-                empty.rectTransform.anchoredPosition = new Vector2(12f * scale, -30f * scale);
-                empty.rectTransform.sizeDelta = new Vector2(200f * scale, 18f * scale);
+                empty.rectTransform.anchoredPosition = new Vector2(12f * scale, -32f * scale);
+                empty.rectTransform.sizeDelta = new Vector2(200f * scale, 20f * scale);
                 return;
             }
 
-            var tally = Label(card, room.Occupants.Count.ToString(), 13, UiTheme.Muted, scale, font);
-            tally.rectTransform.anchorMin = new Vector2(1f, 1f);
-            tally.rectTransform.anchorMax = new Vector2(1f, 1f);
-            tally.rectTransform.pivot = new Vector2(1f, 1f);
-            tally.rectTransform.anchoredPosition = new Vector2(-12f * scale, -6f * scale);
-            tally.rectTransform.sizeDelta = new Vector2(40f * scale, 18f * scale);
-            tally.alignment = TextAlignmentOptions.TopRight;
+            // The head count as a pill, the way the mockups' cards carry their counts.
+            var tally = HudPrimitives.Chip("Tally", card, room.Occupants.Count.ToString(),
+                hasPlayer ? UiTheme.Accent : UiTheme.Glow, 36f * scale, 20f * scale);
+            tally.anchorMin = new Vector2(1f, 1f);
+            tally.anchorMax = new Vector2(1f, 1f);
+            tally.pivot = new Vector2(1f, 1f);
+            tally.anchoredPosition = new Vector2(-10f * scale, -6f * scale);
+            var tallyLabel = tally.GetComponentInChildren<TMP_Text>();
+            if (tallyLabel != null) tallyLabel.textWrappingMode = TextWrappingModes.NoWrap;
 
             float x = 12f * scale;
             float step = (FaceSize + 8f) * scale;
@@ -132,7 +181,7 @@ namespace Gamesim.Presentation
                 rim.anchorMin = new Vector2(0f, 1f);
                 rim.anchorMax = new Vector2(0f, 1f);
                 rim.pivot = new Vector2(0f, 1f);
-                rim.anchoredPosition = new Vector2(x, -28f * scale);
+                rim.anchoredPosition = new Vector2(x, -32f * scale);
                 x += step;
             }
         }

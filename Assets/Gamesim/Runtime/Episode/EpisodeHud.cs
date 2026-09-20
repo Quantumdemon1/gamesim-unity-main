@@ -419,7 +419,7 @@ namespace Gamesim.Episode
         public void SocialGraphPanel(EpisodeState state)
         {
             if (content == null || state == null) return;
-            SocialGraph.Build(content, state, FontScale, font, Portrait);
+            RelationshipWeb.Build(content, state, FontScale, font, Portrait, id => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network));
         }
 
         /// <summary>Adds the room-occupancy cards to the current panel.</summary>

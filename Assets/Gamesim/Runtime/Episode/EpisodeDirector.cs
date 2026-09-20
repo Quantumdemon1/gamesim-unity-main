@@ -498,10 +498,18 @@ namespace Gamesim.Episode
                 var competition = result.state.events.Skip(knownEvents)
                     .LastOrDefault(entry => entry.kind == "competition"
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
-                if (competition != null && competitionCard != null)
-                    competitionCard.Play(AwardTitle(wasPhase),
-                        EpisodeEngine.CompetitionCategory(wasPhase, wasWeek), result.state.week,
-                        CompetitionStandings(result.state), reducedMotion);
+                if (competition != null)
+                {
+                    // The standings are the one authority on who won: the card reads them and so
+                    // does the body that cheers, so a houseguest can never celebrate a result the
+                    // card puts second. The player cheers on the same terms as anyone else.
+                    var standings = CompetitionStandings(result.state);
+                    if (competitionCard != null)
+                        competitionCard.Play(AwardTitle(wasPhase),
+                            EpisodeEngine.CompetitionCategory(wasPhase, wasWeek), result.state.week,
+                            standings, reducedMotion);
+                    React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
+                }
 
                 // The veto field. Previously the one phase the episode passed through in silence.
                 var field = result.state.events.Skip(knownEvents)
@@ -555,6 +563,25 @@ namespace Gamesim.Episode
                 }
             }
             Render(); return result;
+        }
+
+        /// <summary>
+        /// The houseguest behind the top line of the standings, or null when the field is empty.
+        /// The standings already know who won - they are ordered best first and flag the winner -
+        /// but they carry a name for the card rather than an id, so the committed scores the same
+        /// row was built from are read back for it. Nothing here decides the result a second time.
+        /// </summary>
+        private static string CompetitionWinnerId(EpisodeState state, List<CompetitionResult.Standing> standings)
+        {
+            if (state?.competitionScores == null || standings == null || standings.Count == 0) return null;
+            var top = standings[0];
+            if (!top.IsWinner) return null;
+            foreach (var entry in state.competitionScores)
+            {
+                var actor = state.Find(entry.contestantId);
+                if (actor != null && actor.name == top.Name && entry.score == top.Score) return actor.id;
+            }
+            return null;
         }
 
         /// <summary>How often the house checks whether the player has walked in on anything.</summary>

@@ -291,7 +291,12 @@ namespace Gamesim.Episode
             if (npcMeetings == null) return;
             npcMeetings.SetPaused(paused);
             if (paused && !npcWorldPaused)
-                foreach (var npc in housemates) if (npc != null) npc.GetComponent<CharacterPresentation>()?.SetTalking(false);
+                foreach (var npc in housemates)
+                {
+                    var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
+                    if (visual == null) continue;
+                    visual.SetTalking(false); visual.SetArguing(false);
+                }
             npcWorldPaused = paused;
         }
 
@@ -299,6 +304,7 @@ namespace Gamesim.Episode
         {
             if (!NpcCanAdvance) { npcCaption?.Hide(); return; }
             var talking = new HashSet<string>(); var seated = new HashSet<string>(); var speaking = new HashSet<string>();
+            var arguing = new HashSet<string>();
             var facing = new Dictionary<string, float>(); bool witnessed = false;
             foreach (var pending in projected.npcSocial.pending)
             {
@@ -308,6 +314,12 @@ namespace Gamesim.Episode
                 // by the conversation's sequence so two pairs in the house are not in step.
                 bool firstSpeaks = (((long)(npcFreeSeconds / 4.0) + pending.sequence) & 1) == 0;
                 speaking.Add(firstSpeaks ? pending.firstId : pending.secondId);
+                // The two topics the witnessed caption calls a tense conversation are the two the
+                // bodies argue through. This reads the topic the same way the caption does and
+                // changes nothing about what it says or when it is shown: a body waving its arms
+                // across the house tells a passer-by that something is going on, which is exactly
+                // what the caption already tells whoever is close enough to witness it.
+                if (IsTenseTopic(pending.topic)) { arguing.Add(pending.firstId); arguing.Add(pending.secondId); }
                 if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); }
                 facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
                 if (!witnessed && npcMeetings.CanWitness(player, lease))
@@ -327,9 +339,17 @@ namespace Gamesim.Episode
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
                 visual.SetSeated(seated.Contains(npc.Id));
+                visual.SetArguing(arguing.Contains(npc.Id));
                 visual.SetFacing(facing.TryGetValue(npc.Id, out float yaw) ? yaw : float.NaN);
             }
         }
+
+        /// <summary>
+        /// The topics a body argues through: the same two <see cref="HouseConversationCaption.Describe"/>
+        /// calls a tense conversation. Kept beside the presentation it drives rather than inside the
+        /// caption, which receives an allowlisted topic and never answers questions about one.
+        /// </summary>
+        private static bool IsTenseTopic(string topic) => topic == "tension" || topic == "rivalry";
 
         private void StopNpcWorld(string reason)
         {
@@ -351,7 +371,7 @@ namespace Gamesim.Episode
                 {
                     var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                     if (visual == null) continue;
-                    visual.SetTalking(false); visual.SetSeated(false); visual.SetFacing(float.NaN);
+                    visual.SetTalking(false); visual.SetSeated(false); visual.SetArguing(false); visual.SetFacing(float.NaN);
                 }
             npcCaption?.Hide(); npcMeetings?.Dispose(); npcMeetings = null;
             npcShownLease = null;

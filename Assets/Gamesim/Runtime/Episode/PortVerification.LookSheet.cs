@@ -286,7 +286,7 @@ namespace Gamesim.Episode
             var rig = FindAnyObjectByType<HouseCameraRig>();
             yield return WaitUntil(() => rig.HasArrived() && rig.LensOrthographic >= 0.999f, 4);
             yield return null;
-            shot.reason = "the live feed arrives with V5's second half";
+            shot.reason = "the roofless cutaway arrives with V4";
         }
 
         private IEnumerator RelationshipGraph(LookShot shot)
@@ -452,7 +452,7 @@ namespace Gamesim.Episode
             {
                 command.kind = EpisodeCommandKind.Compete; command.performance = .5;
             }
-            else if (state.phase == EpisodePhase.Nomination && state.hohId == state.playerId)
+            else if (state.phase == EpisodePhase.Nomination && state.hohId == state.playerId && state.nominees.Count == 0)
             {
                 var picks = EpisodeEngine.NominationCandidates(state).Take(2).ToArray();
                 command.kind = EpisodeCommandKind.Nominate; command.targetId = picks[0].id; command.secondTargetId = picks[1].id;

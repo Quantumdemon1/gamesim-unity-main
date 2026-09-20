@@ -49,7 +49,9 @@ namespace Gamesim.Tests.PlayMode
                     .FirstOrDefault(label => label.name == CastRail.MoodWordName);
                 Assert.That(word, Is.Not.Null, actor.name + "'s chip has no mood word.");
 
-                bool gone = actor.status != ContestantStatus.Active;
+                // The rail's own reckoning, not a second copy of it: a winner and a runner-up are
+                // inactive and are not out.
+                bool gone = CastRail.IsOut(actor);
                 string expected = gone ? "Evicted"
                     : string.IsNullOrEmpty(actor.mood) ? "Neutral" : actor.mood;
                 Assert.That(word.text, Is.EqualTo(expected),
@@ -77,9 +79,9 @@ namespace Gamesim.Tests.PlayMode
                 .Where(rect => rect.name == CastRail.BadgeName)
                 .ToArray();
             Assert.That(badges, Has.Length.EqualTo(1), "The player's chip keeps exactly one standing badge.");
-            Assert.That(badges[0].GetComponentInChildren<TMP_Text>(true).text,
-                Is.AnyOf("YOU", "HOH", "VETO", "NOM", "WINNER", "FINAL 2"),
-                "The badge word is one the rail already used.");
+            string standing = badges[0].GetComponentInChildren<TMP_Text>(true).text;
+            Assert.That(new[] { "YOU", "HOH", "VETO", "NOM", "WINNER", "FINAL 2", "OUT" }, Does.Contain(standing),
+                "The badge word is one the rail already used, and this one is '" + standing + "'.");
         }
 
         /// <summary>

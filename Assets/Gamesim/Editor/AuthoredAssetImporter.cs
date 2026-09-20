@@ -71,6 +71,11 @@ namespace Gamesim.Editor
             var importer = (TextureImporter)assetImporter;
             bool normal = assetPath.EndsWith("_normal.png", StringComparison.OrdinalIgnoreCase);
             importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            // A flat map, always. A hand-written .meta copied from another asset can carry a cube
+            // shape, and a texture twice as tall as it is wide then imports as a Cubemap: the file
+            // is fine, the importer is there, and every LoadAssetAtPath<Texture2D> for it returns
+            // null, which is a confusing way to lose a plant's leaves.
+            importer.textureShape = TextureImporterShape.Texture2D;
             importer.sRGBTexture = !normal && !IsDataMap(assetPath);
             importer.wrapMode = UnityEngine.TextureWrapMode.Repeat;
             importer.mipmapEnabled = true;

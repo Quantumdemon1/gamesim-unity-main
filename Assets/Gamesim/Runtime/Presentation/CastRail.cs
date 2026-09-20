@@ -162,11 +162,23 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>
+        /// Whether a houseguest is out of the house, and so drawn dimmed with their mood replaced by
+        /// the fact of it. A winner and a runner-up are not active either, and they are not out: the
+        /// finale's two are the whole point of the rail on its last night. Public because the test
+        /// that pins the dimming has to ask the same question rather than guess at it - they drifted
+        /// apart once already.
+        /// </summary>
+        public static bool IsOut(ContestantState actor) => actor != null
+            && actor.status != ContestantStatus.Active
+            && actor.status != ContestantStatus.Winner
+            && actor.status != ContestantStatus.RunnerUp;
+
         private static Standing Read(EpisodeState state, ContestantState actor)
         {
             if (actor.status == ContestantStatus.Winner) return new Standing("WINNER", UiTheme.Gold, false);
             if (actor.status == ContestantStatus.RunnerUp) return new Standing("FINAL 2", UiTheme.Accent, false);
-            if (actor.status != ContestantStatus.Active) return new Standing("OUT", UiTheme.Muted, true);
+            if (IsOut(actor)) return new Standing("OUT", UiTheme.Muted, true);
             if (actor.id == state.hohId) return new Standing("HOH", UiTheme.Gold, false);
             if (actor.id == state.vetoHolderId) return new Standing("VETO", UiTheme.Gold, false);
             if (state.nominees != null && state.nominees.Contains(actor.id)) return new Standing("NOM", UiTheme.Danger, false);

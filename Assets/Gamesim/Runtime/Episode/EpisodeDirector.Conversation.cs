@@ -289,6 +289,7 @@ namespace Gamesim.Episode
 
             hud.Heading(item.title.ToUpperInvariant());
             hud.Paragraph(item.narrative);
+            hud.KnownHouseEventContext(state,item);
             foreach (var choice in item.choices)
             {
                 string label = choice.label;

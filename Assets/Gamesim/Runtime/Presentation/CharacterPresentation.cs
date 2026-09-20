@@ -93,19 +93,73 @@ namespace Gamesim.Presentation
         private RuntimeAnimatorController inspectedController;
         private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam, hasArguingParam;
         public string CharacterId { get; private set; }
+        public string AppearanceKey { get; private set; }
+        public CharacterAppearance AppearanceSnapshot => definition?.appearance?.Clone();
+        /// <summary>The visual hierarchy may fit furniture while navigation continues to own the actor root.</summary>
+        public Transform VisualRoot => visual;
 
         /// <summary>
         /// How many deferred bodies have finished assembling this session. Monotonic; readers keep
         /// their own last-seen value.
         /// </summary>
         public static int BodiesCompleted { get; private set; }
+        private static int deferredCloneBuilds;
+
+        /// <summary>
+        /// Copies an authored actor's collision/label hierarchy without copying a generated body
+        /// or starting a build for the old identity. Attach supplies the new identity afterward.
+        /// The source's presentation is detached only during the synchronous Instantiate call;
+        /// restoring it in finally preserves its transform and its provider's resource ownership.
+        /// </summary>
+        public static GameObject CloneUnbound(GameObject template, Transform parent)
+        {
+            var source = template.GetComponent<CharacterPresentation>();
+            if (source == null) return Instantiate(template, parent);
+            var detached = new List<(Transform child, Vector3 position, Quaternion rotation, Vector3 scale, int sibling)>();
+            for (int i = 0; i < template.transform.childCount; i++)
+            {
+                var child = template.transform.GetChild(i);
+                if (child != source.visual && child.name != "Gamesim Character Visual" && child.name != "Retired Gamesim Character Visual") continue;
+                detached.Add((child,child.localPosition,child.localRotation,child.localScale,child.GetSiblingIndex()));
+            }
+            GameObject inactiveHolder = null;
+            if (!template.activeInHierarchy)
+            {
+                inactiveHolder = new GameObject("Inactive character clone staging");
+                inactiveHolder.SetActive(false);
+            }
+            deferredCloneBuilds++;
+            try
+            {
+                foreach (var item in detached) item.child.SetParent(inactiveHolder != null ? inactiveHolder.transform : null,true);
+                var clone = Instantiate(template,parent);
+                // Inline Unity serialization can materialize null custom classes. Defer Awake
+                // explicitly, then clear the copied identity before an inactive clone is enabled.
+                clone.GetComponent<CharacterPresentation>().definition = null;
+                return clone;
+            }
+            finally
+            {
+                deferredCloneBuilds--;
+                foreach (var item in detached)
+                {
+                    if (item.child == null) continue;
+                    item.child.SetParent(template.transform,false);
+                    item.child.SetLocalPositionAndRotation(item.position,item.rotation);
+                    item.child.localScale = item.scale;
+                    item.child.SetSiblingIndex(item.sibling);
+                }
+                if (inactiveHolder != null) Destroy(inactiveHolder);
+            }
+        }
 
         public static CharacterPresentation Attach(GameObject root, ContestantState character, Color palette)
         {
             if (root == null || character == null) return null;
             var component = root.GetComponent<CharacterPresentation>();
             if (component == null) component = root.AddComponent<CharacterPresentation>();
-            if (component.built && component.CharacterId != ContentCatalog.CanonicalId(character.id))
+            if (component.built && (component.CharacterId != ContentCatalog.CanonicalId(character.id)
+                || component.AppearanceKey != AppearanceKeyFor(character)))
                 component.ReleasePresentation();
             if (!component.built)
             {
@@ -165,7 +219,7 @@ namespace Gamesim.Presentation
 
         private void Awake()
         {
-            if (!built && definition != null) Build(definition, wardrobeColor);
+            if (!built && definition != null && deferredCloneBuilds == 0) Build(definition, wardrobeColor);
         }
 
         public void SetReducedMotion(bool value) { reducedMotion = value; if (face != null) face.ReducedMotion = value; }
@@ -215,6 +269,7 @@ namespace Gamesim.Presentation
         private void Build(ContestantState character, Color palette)
         {
             CharacterId = ContentCatalog.CanonicalId(character.id);
+            AppearanceKey = AppearanceKeyFor(character);
             var appearanceId = AppearanceId(character, CharacterId);
             bool diplomat = appearanceId == "maya-hassan";
             bool athlete = appearanceId == "taylor-kim";
@@ -222,6 +277,7 @@ namespace Gamesim.Presentation
             bool wildcard = appearanceId == "casey-wilson";
             bool analyst = appearanceId == "riley-johnson";
             heightScale = analyst ? 1.05f : athlete ? 1.03f : diplomat ? 1.01f : wildcard ? 0.96f : 1f;
+            if (character.appearance != null) heightScale = 1f;
             phaseOffset = diplomat ? 0.4f : athlete ? 1.5f : caregiver ? 2.7f : wildcard ? 3.9f : analyst ? 5.1f : 0f;
             // V6: sixteen people are not five. Each body idles, nods and sways on its own phase, from
             // its id, so a room of houseguests never breathes in unison.
@@ -275,6 +331,7 @@ namespace Gamesim.Presentation
             if (modelHead != null) modelHeadRest = modelHead.localRotation;
 
             ApplyWardrobe(palette);
+            face = FaceExpression.Attach(instance);
             return true;
         }
 
@@ -287,7 +344,8 @@ namespace Gamesim.Presentation
         {
             var provider = CharacterBodySource.Provider;
             if (provider == null || !Application.isPlaying) return false;
-            if (!provider.TryCreate(appearanceId, visual, palette, out var created) || !created.Exists)
+            if (!CharacterBodySource.TryCreate(new CharacterBodyRequest(CharacterId, appearanceId,
+                    definition?.appearance), visual, palette, out var created) || !created.Exists)
                 return false;
 
             providedBody = created;
@@ -330,6 +388,8 @@ namespace Gamesim.Presentation
         {
             if (standIn == null) return;
             if (!providedBody.Exists) return;
+            var state = providedBody.Root.GetComponent<CharacterBodyBuildState>();
+            if (state != null && !state.Ready) return;
             if (providedBody.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) return;
 
             if (Application.isPlaying) Destroy(standIn.gameObject); else DestroyImmediate(standIn.gameObject);
@@ -418,7 +478,7 @@ namespace Gamesim.Presentation
         {
             if (providedBody.Exists)
             {
-                CharacterBodySource.Provider?.SetWardrobeColor(providedBody, palette);
+                (providedBody.Owner ?? CharacterBodySource.Provider)?.SetWardrobeColor(providedBody, palette);
                 return;
             }
 
@@ -706,6 +766,22 @@ namespace Gamesim.Presentation
         /// </summary>
         public static string AppearanceId(ContestantState character, string canonicalId)
         {
+            string templateId = character.appearance?.presetId ?? character.sourceTemplateId;
+            if (!string.IsNullOrEmpty(templateId) && templateId != ContentCatalog.PlayerId)
+            {
+                var template = CastTemplates.Find(templateId);
+                if (template != null)
+                {
+                    var source = CastTemplates.ToContestant(template, false);
+                    return LegacyAppearanceId(source, template.Id);
+                }
+            }
+            if (!string.IsNullOrEmpty(character.appearance?.fallbackId)) return character.appearance.fallbackId;
+            return LegacyAppearanceId(character, canonicalId);
+        }
+
+        private static string LegacyAppearanceId(ContestantState character, string canonicalId)
+        {
             if (character.isPlayer) return ContentCatalog.PlayerId;
             switch (canonicalId)
             {
@@ -723,6 +799,9 @@ namespace Gamesim.Presentation
             foreach (char value in canonicalId ?? string.Empty) hash = (hash ^ value) * 16777619;
             return (hash & 1) == 0 ? "maya-hassan" : "casey-wilson";
         }
+
+        public static string AppearanceKeyFor(ContestantState character) => character?.appearance?.ContentKey()
+            ?? "legacy:" + (character?.sourceTemplateId ?? character?.id ?? ContentCatalog.PlayerId);
 
         private void OnDestroy()
         {

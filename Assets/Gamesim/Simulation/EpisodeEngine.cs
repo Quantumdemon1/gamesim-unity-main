@@ -346,28 +346,97 @@ namespace Gamesim.Simulation
         /// scores the engine rolled as "Mental". It is a pure function of committed state, so the
         /// card recomputes rather than reading the category back out of the event sentence.</para>
         /// </summary>
-        public static string CompetitionCategory(EpisodePhase phase, int week)
+        public static string CompetitionCategory(EpisodeState state) =>
+            CompetitionCategory(state.phase, state.week, state.competitionRulesVersion);
+
+        public static string CompetitionCategory(EpisodePhase phase, int week, int rulesVersion = 1)
         {
             if (phase == EpisodePhase.FinalHoHPart1) return "Endurance";
             if (phase == EpisodePhase.FinalHoHPart2) return "Skill";
             if (phase == EpisodePhase.FinalHoHPart3) return "Mental";
-            return week % 3 == 1 ? "Skill" : week % 3 == 2 ? "Mental" : "Endurance";
+            int rotation = week + (rulesVersion >= 2 && phase == EpisodePhase.Veto ? 1 : 0);
+            return rotation % 3 == 1 ? "Skill" : rotation % 3 == 2 ? "Mental" : "Endurance";
+        }
+
+        /// <summary>Rules 3 applies the same earned preparation to every player entry route.</summary>
+        public static double CommonCompetitionBonus(EpisodeState state) =>
+            state.playerStudyBonus + state.phaseEventCompBonus + Storylines.CompetitionBonus(state);
+
+        private static string CompetitionNumber(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        private static string CompetitionSigned(double value) => value.ToString("+0.##;-0.##;0", System.Globalization.CultureInfo.InvariantCulture);
+
+        private static void LogCompetitionInput(EpisodeState state, double performance, bool simulated, string numericExplanation = null)
+        {
+            if (state.competitionRulesVersion < 3 || !CompetitionPlayers(state).Any(actor => actor.isPlayer)) return;
+            double manual = simulated ? 0 : performance * 2;
+            double bonus = CommonCompetitionBonus(state) + manual;
+            string detail = (simulated ? "Simulated: no performance bonus" : "Performance " + CompetitionNumber(performance * 100)
+                + "%: " + CompetitionSigned(manual))
+                + " · preparation " + CompetitionSigned(state.playerStudyBonus)
+                + " · event " + CompetitionSigned(state.phaseEventCompBonus)
+                + " · storyline " + CompetitionSigned(Storylines.CompetitionBonus(state)) + ". ";
+            if (state.phase == EpisodePhase.FinalHoHPart1)
+            {
+                double original = state.Find(state.playerId).stats.endurance;
+                double effective = Math.Max(0, Math.Min(10, original + bonus));
+                detail += "Effective endurance " + CompetitionNumber(original) + " → " + CompetitionNumber(effective)
+                    + " (" + CompetitionSigned(effective - original) + " after the 0–10 cap). Seeded survival rolls decide placement; stored stats stay unchanged.";
+            }
+            else detail += "Total player bonus " + CompetitionSigned(bonus)
+                + ". Weighted stats, the nominee bonus and seeded rolls decide the remaining score. A zero performance bonus can still win.";
+            Log(state, "competition-performance", numericExplanation ?? detail);
+        }
+
+        private static void LogCompetitionDefinition(EpisodeState state)
+        {
+            var definition = CompetitionDefinitions.For(state);
+            if (definition != null) Log(state, "competition-definition", definition.Id + " · " + definition.Title
+                + " · " + definition.Category + ". " + definition.Summary);
         }
 
         private static void ResolveCompetition(EpisodeState s, double performance)
         {
             var players = CompetitionPlayers(s).ToArray(); Require(players.Length > 0, "No eligible competitors.");
-            string category = CompetitionCategory(s.phase, s.week);
+            string category = CompetitionCategory(s);
             s.competitionScores.Clear();
+            string numericExplanation = null;
             if (s.phase == EpisodePhase.FinalHoHPart1)
             {
                 // Native input adapter: precision earns up to two effective endurance points for
                 // this challenge only. This bonus policy is native; stored stats never change.
                 var effectivePlayers = players.Select(contestant => contestant.Clone()).ToArray();
                 foreach (var contestant in effectivePlayers.Where(contestant => contestant.isPlayer))
-                    contestant.stats.endurance = Math.Min(10,
-                        contestant.stats.endurance + performance * 2 + Storylines.CompetitionBonus(s));
-                s.competitionScores = WebEnduranceCompetition.Run(effectivePlayers, () => Roll(s)).scores;
+                    contestant.stats.endurance = s.competitionRulesVersion >= 3
+                        ? Math.Max(0, Math.Min(10, contestant.stats.endurance + performance * 2 + CommonCompetitionBonus(s)))
+                        : Math.Min(10, contestant.stats.endurance + performance * 2 + Storylines.CompetitionBonus(s));
+                var rounds = s.competitionRulesVersion >= 3 ? new List<string>() : null;
+                var endurance = WebEnduranceCompetition.Run(effectivePlayers, () => Roll(s),
+                    rounds == null ? null : (Action<double, string, double, double, bool>)((time, id, roll, chance, eliminated) =>
+                    {
+                        if (id == s.playerId) rounds.Add(ScoreNumber(time) + "s: survival " + ScoreNumber(chance)
+                            + " from roll " + ScoreNumber(roll) + (eliminated ? " (eliminated)" : " (survived)"));
+                    }));
+                s.competitionScores = endurance.scores;
+                if (rounds != null && players.Any(c => c.isPlayer))
+                {
+                    var original = players.First(c => c.isPlayer).stats;
+                    var effective = effectivePlayers.First(c => c.isPlayer).stats;
+                    var score = s.competitionScores.First(c => c.contestantId == s.playerId).score;
+                    double capAdjustment = effective.endurance - original.endurance - CommonCompetitionBonus(s) - performance * 2;
+                    decimal enduranceRounding = DisplayedScore(effective.endurance) - (DisplayedScore(original.endurance)
+                        + DisplayedScore(s.playerStudyBonus) + DisplayedScore(s.phaseEventCompBonus)
+                        + DisplayedScore(Storylines.CompetitionBonus(s)) + DisplayedScore(performance * 2) + DisplayedScore(capAdjustment));
+                    numericExplanation = "Final endurance · stored " + ScoreNumber(original.endurance)
+                        + "; preparation " + CompetitionSigned(s.playerStudyBonus) + "; event " + CompetitionSigned(s.phaseEventCompBonus)
+                        + "; storyline " + CompetitionSigned(Storylines.CompetitionBonus(s)) + "; performance " + CompetitionSigned(performance * 2)
+                        + "; cap adjustment " + ScoreNumber(capAdjustment) + "; rounding " + SignedScore(enduranceRounding)
+                        + ". Effective endurance " + ScoreNumber(original.endurance) + " → " + ScoreNumber(effective.endurance)
+                        + " (" + CompetitionSigned(effective.endurance - original.endurance) + " after the 0–10 cap). Physical contribution " + ScoreNumber(original.physical * .3)
+                        + ". Each survival value = (effective endurance + physical contribution) × (0.5 + roll × 0.5). "
+                        + string.Join("; ", rounds) + ". Committed score " + ScoreNumber(score) + "s"
+                        + (endurance.winnerId == s.playerId ? " (last elimination time + 10s winner margin)." : " (elimination time).")
+                        + " Values shown rounded; stored statistics stay unchanged.";
+                }
             }
             else
             {
@@ -377,9 +446,12 @@ namespace Gamesim.Simulation
                     // A storyline modifier rides on the same input, which is the one place a
                     // competition bonus is already read — a second path would be a second answer.
                     double bonus = contestant.isPlayer
-                        ? performance * 2 + Storylines.CompetitionBonus(s) : 0;
-                    double score = WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, Roll(s), 0);
+                        ? performance * 2 + (s.competitionRulesVersion >= 3 ? CommonCompetitionBonus(s) : Storylines.CompetitionBonus(s)) : 0;
+                    double roll = Roll(s);
+                    double score = WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, 0);
                     s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
+                    if (s.competitionRulesVersion >= 3 && contestant.isPlayer)
+                        numericExplanation = WeightedCompetitionExplanation(s, contestant, category, performance, false, roll, score);
                 }
             }
             var winner = s.competitionScores.OrderByDescending(x => x.score).First().contestantId;
@@ -389,7 +461,25 @@ namespace Gamesim.Simulation
             else if (s.phase == EpisodePhase.FinalHoHPart2) s.finalPart2WinnerId = winner;
             else { s.hohId = winner; s.Find(winner).hohWins++; }
             s.competitionResolved = true;
+            LogCompetitionDefinition(s);
+            LogCompetitionStandings(s);
+            if (s.competitionRulesVersion >= 3) LogCompetitionInput(s, performance, false, numericExplanation);
+            else if (s.competitionRulesVersion >= 2 && players.Any(c => c.isPlayer))
+                Log(s, "competition-performance", "Player performance input: " + Math.Round(performance * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "% · "
+                    + Math.Round(performance * 2, 2).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + (s.phase == EpisodePhase.FinalHoHPart1
+                        ? " effective endurance points (capped at 10)." : " performance bonus points.")
+                    + " Character statistics and seeded competition rolls also determine placement; full performance does not guarantee a win.");
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + ".");
+        }
+
+        private static void LogCompetitionStandings(EpisodeState state)
+        {
+            if (state.competitionRulesVersion < 2) return;
+            int place = 0;
+            Log(state, "competition-standings", "Committed competition standings: " + string.Join("; ",
+                state.competitionScores.OrderByDescending(score => score.score).Select(score =>
+                    (++place) + ". " + Name(state, score.contestantId) + " "
+                    + score.score.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))) + ".");
         }
 
         public static IEnumerable<ContestantState> NominationCandidates(EpisodeState s) => s.Active.Where(c => c.id != s.hohId);

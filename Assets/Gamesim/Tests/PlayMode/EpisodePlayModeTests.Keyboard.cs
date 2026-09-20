@@ -20,7 +20,7 @@ namespace Gamesim.Tests.PlayMode
     /// D2: every panel the season puts up can be walked with the keyboard and committed with Enter.
     ///
     /// <para>One test, one season, no mouse. Each panel is checked the same way: focus starts inside
-    /// it, the Down ring visits every interactable control and nothing else, nothing outside it is
+    /// it, actual Tab presses visit every interactable control and nothing else, nothing outside it is
     /// reachable, Tab moves one step, and the decision is committed by <c>Submit</c> on the selected
     /// control — the event Enter raises through the input module — never by invoking a click.
     /// The conversation, notebook and settings panels, the weekly recap and the season report are
@@ -35,6 +35,70 @@ namespace Gamesim.Tests.PlayMode
         private const string ModalRoot = "Episode panel";
         private const string RecapRoot = "Gamesim Weekly Recap";
         private const string ReportRoot = "Gamesim Season Report";
+        private const string CompetitionResultRoot = "Gamesim Competition Result";
+
+        [UnityTest]
+        public IEnumerator Conversation_ArrowKeysMoveSpatiallyWhileTabKeepsReadingOrder()
+        {
+            var maya=SceneComponents<HouseNpc>().Single(npc=>npc.Id==ContentCatalog.MayaId);
+            yield return OpenNearbyNpc(maya);
+            var grid=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
+            var buttons=grid.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
+            Assert.That(buttons.Length,Is.GreaterThan(5));
+            EventSystem.current.SetSelectedGameObject(buttons[0].gameObject);yield return null;
+            yield return PressKey(Key.RightArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[1].gameObject));
+            yield return PressKey(Key.DownArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[5].gameObject));
+            yield return PressKey(Key.Tab,shift:true);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[4].gameObject));
+            director.ClosePanels();yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Conversation_GridBoundaryArrowsReachTheFollowingRowsWithoutMovingSideways()
+        {
+            var maya=SceneComponents<HouseNpc>().Single(npc=>npc.Id==ContentCatalog.MayaId);
+            yield return OpenNearbyNpc(maya);
+            var grid=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
+            var buttons=grid.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
+            Assert.That(buttons.Length,Is.EqualTo(7),"The final row has three cells and an empty fourth column.");
+            var following=ButtonWithCaption(EpisodeHud.DiscussGameCaption);
+            var revision=director.Snapshot.revision;
+            EventSystem.current.SetSelectedGameObject(buttons[0].gameObject);yield return null;
+
+            // Only this initial focus is staged. Every transition below is real input through
+            // the UI module, including both the first and middle cells of the bottom row.
+            yield return PressKey(Key.LeftArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[0].gameObject));
+            yield return PressKey(Key.RightArrow);
+            yield return PressKey(Key.DownArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[5].gameObject));
+            yield return PressKey(Key.DownArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"Down exits the middle bottom cell to the rows below.");
+            yield return PressKey(Key.UpArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[6].gameObject),"The first row returns to the grid's last topic.");
+            yield return PressKey(Key.RightArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[6].gameObject));
+            yield return PressKey(Key.LeftArrow);yield return PressKey(Key.LeftArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[4].gameObject));
+            yield return PressKey(Key.LeftArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[4].gameObject));
+            yield return PressKey(Key.DownArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"Down must not move sideways to the next bottom-row topic.");
+            yield return PressKey(Key.Tab,shift:true);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[6].gameObject),"Shift+Tab retains reading order.");
+            yield return PressKey(Key.Tab);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject));
+            yield return PressKey(Key.UpArrow);yield return PressKey(Key.UpArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[2].gameObject));
+            yield return PressKey(Key.RightArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[3].gameObject));
+            yield return PressKey(Key.DownArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"An empty cell below also exits vertically rather than wrapping left.");
+            Assert.That(director.Snapshot.revision,Is.EqualTo(revision),"Moving focus must not commit a conversation.");
+            director.ClosePanels();yield return null;
+        }
 
         [UnityTest]
         public IEnumerator Accessibility_EveryPanelIsWalkableAndCommittableByKeyboard()
@@ -68,6 +132,11 @@ namespace Gamesim.Tests.PlayMode
             var previous = director.Snapshot;
             for (int guard = 0; guard < 200 && director.Snapshot.phase != EpisodePhase.Finished; guard++)
             {
+                if (SceneComponents<CompetitionResult>().Any(result => result.IsPlaying))
+                {
+                    yield return ContinueCompetitionResults(byKeyboard: true);
+                    walked.Add("competition results");
+                }
                 yield return AwaitRecap(previous, director.Snapshot);
                 if (director.IsWeeklyRecapOpen)
                 {
@@ -108,6 +177,7 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished), "The keyboard alone must carry a season to its end.");
             Assert.That(walked, Does.Contain("weekly recap"), "A regular eviction owes a recap, and the walk must have met one.");
+            Assert.That(walked, Does.Contain("competition results"), "Committed results need their own keyboard dismissal before the phase can continue.");
             Assert.That(walked, Does.Contain(EpisodePhase.Nomination.ToString()).And.Contain(EpisodePhase.Eviction.ToString())
                 .And.Contain(EpisodePhase.JuryQuestioning.ToString()));
 
@@ -155,6 +225,42 @@ namespace Gamesim.Tests.PlayMode
                        || SceneComponents<CeremonyTakeover>().Any(card => card.IsPlaying)
                        || SceneComponents<KeyCeremony>().Any(key => key.IsPlaying)))
                 yield return null;
+        }
+
+        /// <summary>Presses the persistent result's real Continue control before touching its underlying phase.</summary>
+        private IEnumerator ContinueCompetitionResults(bool byKeyboard)
+        {
+            var result = SceneComponents<CompetitionResult>().SingleOrDefault(card => card.IsPlaying);
+            if (result == null) yield break;
+            var before = director.Snapshot;
+            bool hadPanel = director.IsWeeklyRecapOpen || director.GetComponentsInChildren<RectTransform>(true)
+                .Any(rect => rect.name == ModalRoot && rect.gameObject.activeInHierarchy);
+            Assert.That(player.InputEnabled, Is.False, "The results scrim must keep house movement disabled.");
+            Assert.That(cameraRig.ControlsEnabled, Is.False, "The result also owns camera input.");
+            yield return AssertKeyboardRing("competition results", CompetitionResultRoot);
+            // The opening press is deliberately ignored for 250 ms so resolving a competition
+            // cannot instantly dismiss its results with the same Enter or controller press.
+            yield return new WaitForSecondsRealtime(.3f);
+            Assert.That(result.IsPlaying, Is.True, "Results must wait for an explicit Continue.");
+            var button = result.GetComponentsInChildren<Button>().Single(item => item.name == "Continue from competition results");
+            Assert.That(button.IsInteractable(), Is.True);
+            Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(button.gameObject));
+            if (byKeyboard) yield return PressKey(Key.Enter);
+            else
+            {
+                var click = new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left };
+                Assert.That(ExecuteEvents.Execute(button.gameObject, click, ExecuteEvents.pointerClickHandler), Is.True);
+                Assert.That(player.InputEnabled, Is.False, "The dismissal click must not become a house movement click in the same frame.");
+                Assert.That(cameraRig.ControlsEnabled, Is.False);
+            }
+            yield return null; yield return null;
+            Assert.That(result.IsPlaying, Is.False, "Continue must dismiss the results.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "Dismissing results must not submit the next decision.");
+            Assert.That(director.Snapshot.phase, Is.EqualTo(before.phase), "The dismissal key must not leak into the phase underneath.");
+            Assert.That(director.IsPanelOpen, Is.EqualTo(hadPanel), "Continue restores the context beneath the result.");
+            Assert.That(player.InputEnabled, Is.EqualTo(!hadPanel && before.Find(before.playerId).status == ContestantStatus.Active),
+                "House input returns only when no underlying panel owns it and the player is still active.");
+            Assert.That(cameraRig.ControlsEnabled, Is.EqualTo(!hadPanel));
         }
 
         /// <summary>
@@ -232,7 +338,7 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator AssertKeyboardRing(string label, string rootName)
         {
             yield return null;
-            var root = director.GetComponentsInChildren<RectTransform>(true)
+            var root = SceneComponents<RectTransform>()
                 .FirstOrDefault(rect => rect.name == rootName && rect.gameObject.activeInHierarchy);
             // When this fails it matters a great deal whether the director thinks a panel is open -
             // a panel that never opened and a panel that opened and was torn down again are two
@@ -264,16 +370,18 @@ namespace Gamesim.Tests.PlayMode
             var start = selected.GetComponent<Selectable>();
             Assert.That(start, Is.Not.Null, label + ": the focused object must be selectable.");
             var ring = new List<Selectable> { start };
-            var cursor = start;
-            for (int step = 0; step < eligible.Count + 1; step++)
+            for (int step = 0; step < eligible.Count; step++)
             {
-                var next = cursor.navigation.selectOnDown;
-                if (next == null || next == start) break;
+                yield return PressKey(Key.Tab);
+                var selectedAfterTab=EventSystem.current.currentSelectedGameObject;
+                Assert.That(selectedAfterTab,Is.Not.Null,label+": Tab must retain a focused control.");
+                var next=selectedAfterTab.GetComponent<Selectable>();
+                if(next==start)break;
                 ring.Add(next);
-                cursor = next;
             }
             Assert.That(ring.Select(item => item.name), Is.EquivalentTo(eligible.Select(item => item.name)),
-                label + ": the Down ring must visit every control in the panel exactly once and return.");
+                label + ": actual Tab input must visit every control in the panel exactly once and return.");
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(start.gameObject),label+": Tab wraps to its starting control.");
 
             foreach (var outside in director.GetComponentsInChildren<Selectable>(true)
                 .Where(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar) && !item.transform.IsChildOf(root)))

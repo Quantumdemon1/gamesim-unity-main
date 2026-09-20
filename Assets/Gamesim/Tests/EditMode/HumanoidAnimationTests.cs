@@ -100,15 +100,31 @@ namespace Gamesim.Tests.EditMode
                         + "does not declare, and that is what keeps the body still rather than wrong");
             }
             Assert.That(HumanoidClipWiring.WiredReactions.Select(r => r.trigger).ToArray(),
-                Is.EqualTo(new[] { "ReactWon", "ReactCheered" }),
-                "a win and a cheer are the beats these mocap takes cover honestly");
-            // The save is not an oversight and must not be wired on its own: a veto ceremony fires
-            // Saved and Nominated in the same instant, so acting one and not the other leaves the
-            // houseguest just put on the block the only body in the room standing still.
+                Is.EqualTo(new[] { "ReactNominated", "ReactSaved", "ReactEvicted", "ReactWon", "ReactCheered" }),
+                "every beat now has a distinct authored or captured motion");
             Assert.That(HumanoidClipWiring.Reactions.Single(r => r.trigger == "ReactSaved").state,
-                Is.Null, "the save waits for the nomination's take, and lands with it");
+                Is.EqualTo("ReactSaved"));
             Assert.That(HumanoidClipWiring.Reactions.Single(r => r.trigger == "ReactNominated").state,
-                Is.Null, "and the nomination waits for a take that is dejection, not a shrug");
+                Is.EqualTo("ReactNominated"));
+        }
+
+        [Test]
+        public void AuthoredReactionsHaveHumanoidMuscleMotionAndListeningHasATransition()
+        {
+            foreach (string take in HumanoidReactionAuthoring.Takes)
+            {
+                var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(HumanoidClipWiring.Path(take));
+                Assert.That(clip, Is.Not.Null, take);
+                Assert.That(clip.humanMotion, Is.True, take);
+                Assert.That(clip.isLooping, Is.EqualTo(take.EndsWith("_loop", StringComparison.Ordinal)));
+                var muscle = AnimationUtility.GetCurveBindings(clip).Single(b => b.propertyName == "Head Nod Down-Up");
+                var curve = AnimationUtility.GetEditorCurve(clip, muscle);
+                Assert.That(Math.Abs(curve.Evaluate(clip.length * .28f) - curve.Evaluate(0)), Is.GreaterThan(.02f), take);
+                Assert.That(curve.Evaluate(clip.length), Is.EqualTo(curve.Evaluate(0)).Within(.001f), take);
+            }
+            var controller = Controller();
+            Assert.That(Leads(State(controller, "Idle"), State(controller, "Listen"), HumanoidClipWiring.ListeningParameter), Is.True);
+            Assert.That(Leads(State(controller, "Listen"), State(controller, "Talk"), HumanoidClipWiring.TalkingParameter), Is.True);
         }
 
         [Test]
@@ -124,7 +140,10 @@ namespace Gamesim.Tests.EditMode
                 var state = State(controller, name);
                 Assert.That(state, Is.Not.Null, name);
                 Assert.That(state.motion, Is.Not.Null, name + " has a take to play");
-                Assert.That(state.motion.name, Is.EqualTo(take), name + " plays " + take);
+                var expected = HumanoidReactionAuthoring.Takes.Contains(take) ? "bb_anim_" + take : take;
+                Assert.That(state.motion.name, Is.EqualTo(expected), name + " plays " + take);
+                Assert.That(AssetDatabase.GetAssetPath(state.motion), Is.EqualTo(HumanoidClipWiring.Path(take)),
+                    name + " references the authored motion for this beat");
             }
 
             // Reachable: the default state, anything an Any State transition fires, and anything

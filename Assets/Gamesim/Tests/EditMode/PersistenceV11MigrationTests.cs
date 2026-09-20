@@ -33,7 +33,7 @@ namespace Gamesim.Tests.EditMode
         {
             foreach (var state in new[] { ContentCatalog.Create(11u), SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u) })
             {
-                Assert.That(state.schemaVersion, Is.EqualTo(12));
+                Assert.That(state.schemaVersion, Is.EqualTo(13));
                 Assert.That(state.boughtActionPoints, Is.Zero);
                 Assert.That(state.houseEvents, Is.Empty);
                 Assert.That(state.eventRulesStartWeek, Is.EqualTo(1),
@@ -136,8 +136,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 10").And.Contain("schema 12 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(12), "A load runs the whole chain, not one step.");
+            Assert.That(message, Does.Contain("Schema 10").And.Contain("schema 13 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(13), "A load runs the whole chain, not one step.");
             Assert.That(loaded.houseEvents, Is.Empty);
             Assert.That(loaded.eventRulesStartWeek, Is.EqualTo(loaded.week + 1));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),

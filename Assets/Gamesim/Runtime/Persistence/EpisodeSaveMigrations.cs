@@ -20,6 +20,36 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 13) return (JObject)original.DeepClone();
+            if (version < 1 || version > 12) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV12ToV13(version == 12 ? original : PrepareV12Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        public static JObject UpgradeV12ToV13(JObject original)
+        {
+            FrozenEpisodeV12.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("competitionRulesVersion", 1);
+            foreach (JObject person in (JArray)result["contestants"])
+            {
+                // The old format did not retain a chosen template. Null preserves its original resolver;
+                // guessing from names or traits would change the person when loading a season.
+                person.Add("sourceTemplateId", JValue.CreateNull());
+                person.Add("appearance", JValue.CreateNull());
+            }
+            result["schemaVersion"] = 13;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v11-to-v12 dispatch.</summary>
+        public static JObject PrepareV12Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 12) return (JObject)original.DeepClone();
             if (version < 1 || version > 11) throw new InvalidDataException("Unsupported simulation schema version.");
             var v11 = version == 11 ? original : PrepareV11Payload(original, out _);

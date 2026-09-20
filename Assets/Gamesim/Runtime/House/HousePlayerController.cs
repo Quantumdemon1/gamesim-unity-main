@@ -9,7 +9,7 @@ namespace Gamesim.House
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(100)]
     [RequireComponent(typeof(NavMeshAgent))]
-    public sealed class HousePlayerController : MonoBehaviour
+    public sealed partial class HousePlayerController : MonoBehaviour
     {
         [SerializeField] private Camera viewCamera;
         [SerializeField] private bool isSelected = true;
@@ -28,9 +28,11 @@ namespace Gamesim.House
             ? cameraRig
             : cameraRig = viewCamera != null ? viewCamera.GetComponentInParent<HouseCameraRig>() : null;
 
-        public bool InputEnabled { get; private set; } = true;
+        private bool requestedInputEnabled = true;
+        public bool InputEnabled => requestedInputEnabled && activityOwner == null;
         public bool IsSelected => isSelected;
         public NavMeshAgent Agent => agent != null ? agent : agent = GetComponent<NavMeshAgent>();
+        public event System.Action<HouseInteractionAnchor> FurnitureSelected;
 
         public bool HasArrived
         {
@@ -63,7 +65,7 @@ namespace Gamesim.House
             };
             if (!NavMesh.SamplePosition(transform.position, out var spawn, destinationSampleRadius, filter))
             {
-                InputEnabled = false;
+                requestedInputEnabled = false;
                 Debug.LogError("Gamesim player spawn has no compatible baked NavMesh.", this);
                 return;
             }
@@ -80,7 +82,7 @@ namespace Gamesim.House
 
         public void SetInputEnabled(bool enabled)
         {
-            InputEnabled = enabled;
+            requestedInputEnabled = enabled;
             ApplyPauseState();
         }
 
@@ -88,9 +90,12 @@ namespace Gamesim.House
         /// Accepts only reachable destinations. Failed commands leave the current path intact.
         /// </summary>
         public bool TryMoveTo(Vector3 position)
+            => InputEnabled && TrySetReachablePath(position,destinationSampleRadius);
+
+        private bool TrySetReachablePath(Vector3 position,float sampleRadius)
         {
             var currentAgent = Agent;
-            if (!InputEnabled || currentAgent == null || !currentAgent.enabled || !currentAgent.isOnNavMesh
+            if (currentAgent == null || !currentAgent.enabled || !currentAgent.isOnNavMesh
                 || !IsFinite(position))
             {
                 return false;
@@ -101,7 +106,7 @@ namespace Gamesim.House
                 agentTypeID = currentAgent.agentTypeID,
                 areaMask = currentAgent.areaMask
             };
-            if (!NavMesh.SamplePosition(position, out var hit, destinationSampleRadius, filter))
+            if (!NavMesh.SamplePosition(position, out var hit, sampleRadius, filter))
             {
                 return false;
             }
@@ -128,6 +133,7 @@ namespace Gamesim.House
 
         private void Update()
         {
+            ValidateActivityOwner();
             ApplyPauseState();
             var mouse = Mouse.current;
             if (!InputEnabled || viewCamera == null || mouse == null
@@ -138,6 +144,11 @@ namespace Gamesim.House
             }
 
             var ray = viewCamera.ScreenPointToRay(mouse.position.ReadValue());
+            if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,out var seatedGuest))
+            {
+                CameraRig?.FocusSubject(seatedGuest.transform);
+                return;
+            }
             if (!Physics.Raycast(ray, out var hit, 500f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
             {
                 return;
@@ -160,6 +171,10 @@ namespace Gamesim.House
                 return;
             }
 
+            var furniture=HouseFurniture.AtProp(gameObject.scene,hit.transform);
+            if(furniture!=null && FurnitureSelected!=null)
+            {FurnitureSelected(furniture);return;}
+
             if (isSelected && hit.collider.GetComponentInParent<HouseWalkable>() != null)
             {
                 // Sending the player somewhere means you want to watch them go, not keep staring at
@@ -172,11 +187,12 @@ namespace Gamesim.House
         private void ApplyPauseState()
         {
             var currentAgent = Agent;
+            bool mayMove = activityOwner != null ? !activityPaused : requestedInputEnabled;
             if (currentAgent != null && currentAgent.enabled && currentAgent.isOnNavMesh
-                && currentAgent.isStopped == InputEnabled)
+                && currentAgent.isStopped == mayMove)
             {
                 // isStopped preserves the path so closing dialogue can resume the same walk.
-                currentAgent.isStopped = !InputEnabled;
+                currentAgent.isStopped = !mayMove;
             }
         }
 

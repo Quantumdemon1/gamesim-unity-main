@@ -25,6 +25,25 @@ namespace Gamesim.Tests.PlayMode
     {
         private OpeningSequence Opening() => director.GetComponentInChildren<OpeningSequence>(true);
 
+        [UnityTest]
+        public IEnumerator Tutorial_IsolatedSessionDoesNotReadOrWritePlayerCompletion()
+        {
+            var tutorial = director.gameObject.scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<HouseTutorial>(true)).Single();
+            bool hadKey = PlayerPrefs.HasKey(HouseTutorial.SeenKey);
+            int previous = PlayerPrefs.GetInt(HouseTutorial.SeenKey, -1);
+            Assert.That(tutorial.RememberCompletion, Is.False);
+            Assert.That(tutorial.HasSeen, Is.False, "An isolated first session has its own completion state.");
+            tutorial.Show(_ => null);
+            yield return null;
+            Assert.That(tutorial.IsShowing, Is.True);
+            tutorial.Skip();
+            Assert.That(tutorial.IsShowing, Is.False);
+            Assert.That(tutorial.HasSeen, Is.True, "Skipping is still remembered for this isolated session.");
+            Assert.That(PlayerPrefs.HasKey(HouseTutorial.SeenKey), Is.EqualTo(hadKey));
+            Assert.That(PlayerPrefs.GetInt(HouseTutorial.SeenKey, -1), Is.EqualTo(previous));
+        }
+
         /// <summary>
         /// The camera rig, which the director holds a reference to but does not own — it is a scene
         /// object beside the house, so it is not in the director's subtree.

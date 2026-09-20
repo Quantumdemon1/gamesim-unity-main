@@ -240,7 +240,7 @@ namespace Gamesim.Persistence
                 if (token.Type != JTokenType.Integer) throw new InvalidDataException(path + " must be an integer.");
                 return;
             }
-            if (type == typeof(double))
+            if (type == typeof(double) || type == typeof(float))
             {
                 if (token.Type != JTokenType.Float && token.Type != JTokenType.Integer)
                     throw new InvalidDataException(path + " must be numeric.");

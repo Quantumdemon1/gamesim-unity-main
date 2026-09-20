@@ -4,7 +4,7 @@ namespace Gamesim.House
 {
     /// <summary>Authored identity for a house character. Simulation state is added in a later slice.</summary>
     [DisallowMultipleComponent]
-    [DefaultExecutionOrder(100)]
+    [DefaultExecutionOrder(210)]
     public sealed class HouseNpc : MonoBehaviour
     {
         [SerializeField] private string id = "maya";
@@ -12,6 +12,8 @@ namespace Gamesim.House
 
         private TextMesh nameLabel;
         private Camera labelCamera;
+        private Vector3 labelRestPosition;
+        private bool labelPositionKnown;
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -43,6 +45,7 @@ namespace Gamesim.House
 
             if (nameLabel != null)
             {
+                if(!labelPositionKnown){labelRestPosition=nameLabel.transform.localPosition;labelPositionKnown=true;}
                 nameLabel.text = displayName;
             }
         }
@@ -53,6 +56,10 @@ namespace Gamesim.House
             {
                 return;
             }
+
+            var seat=GetComponent<HouseSeatPresentation>();
+            if(seat!=null && seat.Active)nameLabel.transform.position=seat.VisualFocus+Vector3.up*.35f;
+            else if(labelPositionKnown)nameLabel.transform.localPosition=labelRestPosition;
 
             if (labelCamera == null || !labelCamera.isActiveAndEnabled)
             {

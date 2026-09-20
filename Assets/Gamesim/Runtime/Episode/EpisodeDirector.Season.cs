@@ -62,7 +62,7 @@ namespace Gamesim.Episode
             hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
-            hud.Action(largeText ? "Use standard text" : "Use larger text", () => { largeText = !largeText; ApplyPreferences(); Render(); });
+            hud.Action(largeText ? "Use standard text" : "Use larger text", () => SetLargeText(!largeText));
             DisplaySettings();
             CareerSettings();
             hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
@@ -176,7 +176,11 @@ namespace Gamesim.Episode
             if (fromMenu) mainMenu.Hide();
             Action back = fromMenu ? (Action)OpenMainMenu : Render;
             castSelect.Show(StartSeason, back, characterCreator == null ? (Action<SeasonBuilder.Choice, CharacterDraft>)null
-                : (choice, draft) => characterCreator.Show(choice, draft, StartSeason, castSelect.Resume));
+                : (choice, draft) => characterCreator.Show(choice, draft, StartSeason, () =>
+                {
+                    castSelect.SetDraft(characterCreator.Draft);
+                    castSelect.Resume();
+                }));
         }
 
         /// <summary>
@@ -192,6 +196,8 @@ namespace Gamesim.Episode
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
                 var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
+                fresh.competitionRulesVersion = 3;
+                CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.
                 saves = nextStore; Install(fresh);
@@ -199,7 +205,11 @@ namespace Gamesim.Episode
                 message = SeasonMessage(fresh, choice);
             }
             catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
-            { message = "New season could not be saved. Your current session and slot were preserved. " + error.Message; }
+            {
+                message = "New season could not be saved. Your current session and slot were preserved. " + error.Message;
+                if (choice?.Authored != null && characterCreator != null) characterCreator.Resume(message);
+                else if (choice != null && castSelect != null) castSelect.Resume(message);
+            }
             Render();
         }
 
@@ -252,6 +262,15 @@ namespace Gamesim.Episode
                     if (housemates[i] != null) housemates[i].transform.SetPositionAndRotation(initialNpcPositions[i], initialNpcRotations[i]);
             if (player.Agent.isOnNavMesh) { player.Agent.Warp(initialPlayerPosition); player.Agent.ResetPath(); }
             Project();
+        }
+
+        public bool LargeText => largeText;
+
+        public void SetLargeText(bool enabled)
+        {
+            largeText = enabled;
+            ApplyPreferences();
+            Render();
         }
 
         private void ApplyPreferences()

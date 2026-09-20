@@ -192,6 +192,32 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator NpcMotion_VisualOnlySeatHelperPreservesReviewedMovementOwnership()
+        {
+            var npc = MotionMaya();
+            var capsule = npc.GetComponent<CapsuleCollider>();
+            var originalCenter = capsule.center;
+            var helper = npc.gameObject.AddComponent<HouseSeatPresentation>();
+            Assert.That(HouseNpcMotion.TryCreate(npc, CreateNpcRoomQuery(), NpcMotionFilter(), 0,
+                out var motion, out var reason), Is.True, reason);
+            var obstacle = npc.GetComponent<NavMeshObstacle>();
+            yield return WaitForNpcBinding(motion, obstacle);
+            Object.Destroy(helper);
+            yield return null;
+            npc.gameObject.AddComponent<HouseSeatPresentation>();
+            yield return null;
+            Assert.That(motion.IsBound, Is.True, motion.FailureReason);
+            Assert.That(capsule.enabled && !capsule.isTrigger, Is.True);
+            Assert.That(capsule.center, Is.EqualTo(originalCenter));
+            Assert.That(obstacle.enabled, Is.False);
+            Assert.That(npc.GetComponents<NavMeshAgent>(), Has.Length.EqualTo(1));
+            Assert.That(motion.TryReserveAndPath("seat-helper-route", new Vector3(3,0,-3)), Is.True);
+            yield return null;
+            Assert.That(motion.LeaseId, Is.EqualTo("seat-helper-route"));
+            Assert.That(motion.IsBound, Is.True, motion.FailureReason);
+        }
+
+        [UnityTest]
         public IEnumerator NpcMotion_UnknownMoversAreRejectedBeforeChangingOriginalOwnership()
         {
             var npc = MotionMaya();

@@ -262,6 +262,8 @@ namespace Gamesim.Simulation
             return new ContestantState
             {
                 id = template.Id,
+                sourceTemplateId = template.Id,
+                appearance = CharacterAppearance.Preset(template.Id),
                 name = template.Name,
                 pronouns = template.Pronouns,
                 archetype = template.Archetype,

@@ -34,8 +34,7 @@ namespace Gamesim.Episode
                 if (actor == null) continue;
                 standings.Add(new CompetitionResult.Standing(
                     actor.name, entry.score, actor.id == winner, actor.id == state.playerId,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+                    CharacterPortraits.Get(actor), actor));
             }
             return standings;
         }
@@ -67,128 +66,231 @@ namespace Gamesim.Episode
             Commit(state, EpisodeCommandKind.Compete, performance: 0d);
         }
 
-        private void StartChallenge(EpisodeState state)
+        private CompetitionGameScreen competitionScreen;
+        private bool challengePractice, challengeResultShown, challengeCommitting;
+        private string challengeCommandId;
+        private bool competitionInputSuspended, competitionAssemblyHudHidden;
+
+        private void SyncCompetitionResultInput()
         {
-            challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0; challengeStarted = Time.unscaledTime;
-            FrameCompetition();
-            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state.phase, state.week));
-            // The board's shuffle and the targets' placement come from a generator this run owns,
-            // seeded from the wall clock rather than from the season. A minigame's draws are not
-            // part of the committed command, so spending the season's randomState on them would
-            // re-roll everything that follows — the same reason the cast is not shuffled.
-            challengeRun = kind == CompetitionMiniGames.Kind.Precision
-                ? null
-                : new MiniGameRun(kind, (uint)Environment.TickCount);
-            audioBed.PlayCue(HouseAudio.Cue.CompetitionStart); Render();
+            if (!isActiveAndEnabled || projected == null) return;
+            competitionInputSuspended = competitionCard != null && competitionCard.OwnsInput;
+            bool blocked = blockedRecovery || IsPanelOpen || competitionInputSuspended;
+            if (player != null) player.SetInputEnabled(!blocked && projected.Find(projected.playerId).status == ContestantStatus.Active);
+            if (cameraRig != null) cameraRig.ControlsEnabled = !blocked;
         }
 
-        /// <summary>
-        /// Advances the running minigame and commits it when it ends.
-        ///
-        /// <para>Input is read here rather than from the panel's buttons because two of the three
-        /// are held or timed: an endurance grip has to know the frame the key came up, and a
-        /// reaction tap is only worth anything while a target is live. The panel still carries
-        /// equivalent controls, so nothing here is keyboard-only.</para>
-        /// </summary>
+        private static string CompetitionTitle(EpisodeState state)
+        {
+            var definition = CompetitionDefinitions.For(state);
+            return AwardTitle(state.phase) + (definition != null ? " · " + definition.Title : "");
+        }
+
+        private void CompetitionBriefing(EpisodeState state)
+        {
+            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Competition);
+            var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
+            var definition = CompetitionDefinitions.For(state);
+            hud.Heading(CompetitionTitle(state) + " · " + EpisodeEngine.CompetitionCategory(state));
+            hud.Paragraph(state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
+                : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
+                : "At stake: progress toward the final Head of Household decision.");
+            hud.Paragraph("Competing: " + string.Join(", ", field.Select(c => c.name)) + ".");
+            var excluded = state.Active.Where(c => !field.Any(p => p.id == c.id)).ToArray();
+            foreach (var c in excluded)
+                hud.Paragraph(c.name + (state.phase == EpisodePhase.Veto ? ": not drawn for this veto field."
+                    : state.phase == EpisodePhase.FinalHoHPart2 ? ": already qualified by winning part one."
+                    : state.phase == EpisodePhase.FinalHoHPart3 ? ": did not qualify for this round."
+                    : ": outgoing HoH is ineligible this week."));
+            hud.Paragraph(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));
+            if (definition != null) hud.Paragraph(definition.Summary);
+            hud.Paragraph("Rules " + state.competitionRulesVersion + ". Practice cannot alter your season. Ranked attempts use the same board after cancel or reload. "
+                + "Pause stops the clock, including when this window loses focus.");
+            hud.Paragraph(state.phase == EpisodePhase.FinalHoHPart1
+                ? "Performance adds 0–2 effective endurance points, capped at 10, for this competition only. Statistics and seeded survival rolls still matter; full marks do not guarantee a win."
+                : "Performance adds a 0–2 point bonus. Character statistics and seeded rolls determine the remaining score; full marks do not guarantee a win.");
+            if (state.competitionRulesVersion >= 3)
+                hud.Paragraph("Every entry route keeps the same earned bonuses: preparation " + state.playerStudyBonus
+                    + ", event " + state.phaseEventCompBonus + ", storyline " + Storylines.CompetitionBonus(state)
+                    + ". Playing or the accessible alternative adds performance on top; preparation is retained.");
+            hud.Action("Practice this competition", () => StartChallenge(state, true));
+            hud.Action(CompetitionMiniGames.EnterCaption(game), () => StartChallenge(state));
+            hud.Action("Accessible alternative: steady 1-point bonus", () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
+            if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
+            {
+                hud.Paragraph(state.competitionRulesVersion >= 3
+                    ? "Simulate: the same statistics, earned bonuses and seeded rolls as playing, with zero performance bonus."
+                    : "Simulate: weighted statistics plus preparation " + state.playerStudyBonus + "/5 and event bonus "
+                        + state.phaseEventCompBonus + ". No minigame performance bonus. Preparation is retained for later weeks.");
+                hud.Action(EpisodeHud.SimulateCompetitionCaption, () => SimulateCompetition(state));
+                hud.Paragraph("Throw: receive zero performance bonus. Your statistics and seeded rolls still count, so you may still win.");
+                hud.Action(EpisodeHud.ThrowCompetitionCaption, () => ThrowCompetition(state));
+            }
+        }
+
+        private void StartChallenge(EpisodeState state) => StartChallenge(state, false);
+
+        private void StartChallenge(EpisodeState state, bool practice)
+        {
+            if (!phaseOpen || challengeActive || !IsCurrentDiaryRevision(state) || state.competitionResolved
+                || !EpisodeEngine.IsCompetition(state.phase)
+                || !EpisodeEngine.CompetitionPlayers(state).Any(c => c.isPlayer)) return;
+            challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0;
+            challengeStarted = Time.unscaledTime; challengePractice = practice; challengeResultShown = false;
+            challengeCommandId = Guid.NewGuid().ToString("N");
+            if (!BeginCompetitionArena(state))
+            { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; Render(); return; }
+            FrameCompetition();
+            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
+                CompetitionMiniGames.AttemptSeed(state.seed, state.week, (int)state.phase, state.competitionRulesVersion, practice),
+                state.competitionRulesVersion, CompetitionDefinitions.For(state));
+            if (challengeRun != null)
+            {
+                if (competitionScreen == null)
+                {
+                    competitionScreen = CompetitionGameScreen.Attach(gameObject);
+                    hud.RegisterOverlay(competitionScreen.GetComponent<CanvasGroup>());
+                }
+                competitionScreen.FontScale = largeText ? 1.2f : 1f;
+                competitionScreen.Show(challengeRun, CompetitionTitle(state),
+                    string.Join("\n", EpisodeEngine.CompetitionPlayers(state).Select(c => c.name + (c.isPlayer ? " (You)" : ""))),
+                    practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, CancelChallenge, MissReactionTarget, !reducedMotion);
+            }
+            audioBed.PlayCue(HouseAudio.Cue.CompetitionStart); Render();
+            competitionAssemblyHudHidden = competitionScreen != null && competitionScreen.IsAssembling;
+            if (competitionAssemblyHudHidden) hud.SetVisible(false);
+        }
+
+        private void ToggleChallengeGrip()
+        {
+            if (competitionScreen != null && competitionScreen.IsPlaying && challengeRun != null)
+                challengeRun.SetHolding(!challengeRun.Holding);
+        }
+
         private void TickMiniGame()
         {
+            if (challengeRun == null || competitionScreen == null || challengeResultShown) return;
+            competitionScreen.SetArenaStatus(competitionArenaStatus);
+            if (competitionScreen.IsAssembling)
+            { competitionScreen.AdvanceAssembly(Time.unscaledDeltaTime, CompetitionArenaReady); return; }
+            RestoreCompetitionAssemblyHud();
+            if (!CompetitionArenaReady) { competitionScreen.HoldReady("Houseguests are taking their places"); return; }
+            if (!competitionScreen.AdvanceReady(Time.unscaledDeltaTime)) return;
             var keyboard = Keyboard.current;
-            var hit = cameraRig != null ? cameraRig.Actions.Hit : null;
-            if (hit != null)
+            var pad = Gamepad.current;
+            if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance)
             {
-                // Edge-triggered rather than level-triggered, so the panel's hold and release
-                // buttons keep working when a keyboard is attached: polling isPressed every
-                // frame overwrote a grip taken with the button on the very next tick.
-                if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance)
-                {
-                    if (hit.WasPressedThisFrame()) challengeRun.SetHolding(true);
-                    else if (hit.WasReleasedThisFrame()) challengeRun.SetHolding(false);
-                }
-                else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction && hit.WasPressedThisFrame())
-                    TapTarget();
+                if ((keyboard != null && keyboard.spaceKey.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame))
+                    challengeRun.SetHolding(true);
+                if ((keyboard != null && keyboard.spaceKey.wasReleasedThisFrame) || (pad != null && pad.rightTrigger.wasReleasedThisFrame))
+                    challengeRun.SetHolding(false);
             }
-
-            // What the panel currently says, before the frame moves anything.
-            var was = PanelShape();
+            else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
+                && challengeRun.RulesVersion == CompetitionMiniGames.LegacyRules
+                && keyboard != null && keyboard.spaceKey.wasPressedThisFrame) TapTarget();
             challengeRun.Tick(Time.unscaledDeltaTime);
-
-            // The meter updates in place, every frame. A full Render rebuilds the panel's controls,
-            // so doing it per frame would destroy and recreate the buttons sixty times a second —
-            // which is both wasteful and a good way to swallow the click that is being made on one.
-            hud.SetChallenge((float)MiniGameMeter(), challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
-                ? challengeRun.Hits : challengeRun.MatchedPairs);
-
-            if (challengeRun.Finished) { CommitMiniGame(); return; }
-            // Redraw only when the panel would actually read differently: a target appearing or
-            // going, a grip taken or let go, a pair turning back over.
-            if (PanelShape() != was) Render();
+            competitionScreen.Refresh();
+            if (!challengeRun.Finished) return;
+            challengeResultShown = true;
+            if (challengePractice)
+                competitionScreen.ShowFinished("Practice complete. No competition result or season state was changed.", "Return to briefing", CancelChallenge);
+            else CommitMiniGame();
         }
 
-        /// <summary>
-        /// A signature of everything the panel's words and controls depend on.
-        ///
-        /// <para>Deliberately not the clock: a countdown that ticked in text would force a rebuild
-        /// every frame for the sake of one number, and the meter already carries the same
-        /// information without one.</para>
-        /// </summary>
-        private string PanelShape()
-        {
-            if (challengeRun == null) return "none";
-            switch (challengeRun.Kind)
-            {
-                case CompetitionMiniGames.Kind.Endurance:
-                    return "hold:" + challengeRun.Holding;
-                case CompetitionMiniGames.Kind.Reaction:
-                    return "target:" + challengeRun.TargetLive + ":" + challengeRun.Hits + "/" + challengeRun.Spawned;
-                default:
-                    return "board:" + challengeRun.MatchedPairs + ":" + challengeRun.WrongFlips
-                           + ":" + challengeRun.FirstFlip + ":" + challengeRun.SecondFlip;
-            }
-        }
-
-        /// <summary>What the HUD's single meter shows, which differs per game.</summary>
-        private double MiniGameMeter()
-        {
-            switch (challengeRun.Kind)
-            {
-                case CompetitionMiniGames.Kind.Endurance:
-                    return challengeRun.Meter / CompetitionMiniGames.MeterFull;
-                case CompetitionMiniGames.Kind.Memory:
-                    return challengeRun.Pairs == 0 ? 0 : (double)challengeRun.MatchedPairs / challengeRun.Pairs;
-                default:
-                    return challengeRun.TimeLimit <= 0 ? 0 : challengeRun.Remaining / challengeRun.TimeLimit;
-            }
-        }
-
-        /// <summary>Hitting the target that is up, if one is. Harmless when none is.</summary>
         public void TapTarget()
         {
-            if (!challengeActive || challengeRun == null) return;
-            if (challengeRun.Tap()) audioBed.PlayCue(HouseAudio.Cue.Button);
+            if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
+            bool hit = challengeRun.RulesVersion >= CompetitionMiniGames.ImprovedRules
+                ? challengeRun.Tap(challengeRun.TargetDirection) : challengeRun.Tap();
+            if (hit) audioBed.PlayCue(HouseAudio.Cue.Button);
+            competitionScreen.Refresh();
         }
 
-        /// <summary>
-        /// Turning a card over.
-        ///
-        /// <para>This one redraws immediately rather than waiting for the next tick, because the
-        /// card the player just pressed has to show its face before they look away from it.</para>
-        /// </summary>
+        private void TapDirection(MiniGameRun.Direction direction)
+        {
+            if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
+            if (challengeRun.Tap(direction)) audioBed.PlayCue(HouseAudio.Cue.Button);
+            competitionScreen.Refresh();
+        }
+
+        private void MissReactionTarget()
+        {
+            if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
+            challengeRun.MissPointer(); competitionScreen.Refresh();
+        }
+
         public void FlipCard(int index)
         {
-            if (!challengeActive || challengeRun == null) return;
+            if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
             if (challengeRun.Flip(index)) audioBed.PlayCue(HouseAudio.Cue.Button);
-            if (challengeRun.Finished) CommitMiniGame(); else Render();
+            competitionScreen.Refresh();
+            // The frame loop owns completion, so a submit cannot dismiss the result it created.
         }
 
         private void CommitMiniGame()
         {
-            var run = challengeRun;
-            challengeRun = null;
+            if (challengeRun == null || !challengeRun.Finished || challengePractice || challengeCommitting) return;
+            if (!IsCurrentDiaryRevision(challengeOrigin))
+            {
+                competitionScreen.ShowFinished("The episode changed during this attempt. Return to the briefing to refresh.", "Return to briefing", CancelChallenge);
+                return;
+            }
+            challengeCommitting = true;
+            EndCompetitionArena();
             challengeActive = false;
-            Commit(challengeOrigin, EpisodeCommandKind.Compete, performance: run.Performance);
+            var result = Submit(new EpisodeCommand { id = challengeCommandId, actorId = challengeOrigin.playerId,
+                expectedPhase = challengeOrigin.phase, expectedRevision = challengeOrigin.revision,
+                kind = EpisodeCommandKind.Compete, performance = challengeRun.Performance });
+            challengeCommitting = false;
+            if (!result.accepted)
+            {
+                challengeActive = true;
+                competitionScreen.ShowFinished("Result was not committed: " + result.reason, "Retry saving this result", CommitMiniGame);
+                Render(); return;
+            }
+            competitionScreen.Hide(); challengeRun = null; challengeOrigin = null;
             if (cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
         }
 
+        private void CancelChallenge()
+        {
+            CloseCompetitionPresentation();
+            if (cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
+            Render();
+        }
+
+        private void RestoreCompetitionAssemblyHud()
+        {
+            if (!competitionAssemblyHudHidden) return;
+            competitionAssemblyHudHidden = false; hud?.SetVisible(true);
+        }
+
+        private void CloseCompetitionPresentation()
+        {
+            RestoreCompetitionAssemblyHud();
+            EndCompetitionArena();
+            competitionScreen?.Hide(); challengeRun = null; challengeOrigin = null;
+            challengeActive = false; challengeResultShown = false; challengeCommitting = false;
+        }
+
+        private string CompetitionPerformanceExplanation(EpisodeState state)
+        {
+            var explanation = state.events.LastOrDefault(e => e.week == state.week && e.phase == state.phase && e.kind == "competition-performance");
+            if (explanation != null) return explanation.text;
+            var result = state.events.LastOrDefault(e => e.week == state.week && e.phase == state.phase && e.kind == "competition");
+            return result != null && result.text.Contains("(simulated)")
+                ? "Simulated result: weighted statistics, preparation and event bonuses, and seeded rolls. No minigame bonus was used."
+                : "Committed scores combine character statistics, competition modifiers and seeded rolls. Minigame performance adds up to two points; it does not guarantee a win.";
+        }
+
+        private void ReviewCompetitionResult(EpisodeState state)
+        {
+            if (competitionCard == null || !state.competitionResolved) return;
+            competitionCard.Play(CompetitionTitle(state), EpisodeEngine.CompetitionCategory(state), state.week,
+                CompetitionStandings(state), reducedMotion, CompetitionPerformanceExplanation(state));
+        }
         /// <summary>
         /// The competition wide (V5): the yard from the house's side, over the wall line, the
         /// lanes and the ring in the middle of the frame. Taken when the minigame starts, let go
@@ -212,81 +314,18 @@ namespace Gamesim.Episode
 
         private void ChallengePanel()
         {
-            if (challengeRun == null)
-            {
-                hud.Paragraph("Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.");
-                hud.ChallengeMeter(); hud.Action("STOP marker  [Space]", RecordChallengeHit);
-                return;
-            }
-
-            hud.Paragraph(CompetitionMiniGames.Brief(challengeRun.Kind)
-                + "  You have " + challengeRun.TimeLimit.ToString("0")
-                + " seconds. Escape cancels without committing.");
-            hud.ChallengeMeter();
-
-            switch (challengeRun.Kind)
-            {
-                case CompetitionMiniGames.Kind.Endurance:
-                    hud.Paragraph("Grip: " + challengeRun.Meter.ToString("0")
-                        + "%  ·  held " + challengeRun.Held.ToString("0.0") + "s of "
-                        + challengeRun.TimeLimit.ToString("0") + "s");
-                    // Holding is a key, so the button is a toggle rather than a second way to hold:
-                    // a control you have to keep the mouse down on is not usable with a keyboard,
-                    // a switch, or one hand.
-                    hud.Action(challengeRun.Holding ? EpisodeHud.ReleaseGripCaption : EpisodeHud.HoldGripCaption,
-                        () => challengeRun?.SetHolding(!challengeRun.Holding));
-                    break;
-
-                case CompetitionMiniGames.Kind.Reaction:
-                    hud.Paragraph(challengeRun.TargetLive
-                        ? "A target is up. Hit it."
-                        : "Wait for the next target.");
-                    hud.Paragraph("Hit " + challengeRun.Hits + " of " + challengeRun.Spawned + ".");
-                    hud.Action(EpisodeHud.TapTargetCaption, TapTarget);
-                    break;
-
-                case CompetitionMiniGames.Kind.Memory:
-                    hud.Paragraph("Matched " + challengeRun.MatchedPairs + " of " + challengeRun.Pairs
-                        + (challengeRun.WrongFlips > 0 ? "  ·  " + challengeRun.WrongFlips + " wrong flips" : ""));
-                    MemoryBoard();
-                    break;
-            }
+            if (challengeRun != null) return;
+            hud.Paragraph("Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.");
+            hud.ChallengeMeter(); hud.Action("STOP marker  [Space]", RecordChallengeHit);
         }
-
-        /// <summary>
-        /// The board, as one control per card.
-        ///
-        /// <para>A card says what it is when it is face up and says so in words — "Card 3: star" —
-        /// rather than only in colour. The screen is the only place the board exists, so a player
-        /// using a screen reader has no other way to know what they just turned over.</para>
-        /// </summary>
-        private void MemoryBoard()
-        {
-            for (int index = 0; index < challengeRun.Faces.Count; index++)
-            {
-                int card = index;
-                bool up = challengeRun.Matched[card] || card == challengeRun.FirstFlip
-                          || card == challengeRun.SecondFlip;
-                var button = hud.Action(EpisodeHud.CardCaption(card, up ? MemoryFace(challengeRun.Faces[card]) : null),
-                    () => FlipCard(card));
-                if (button != null) button.interactable = !challengeRun.Matched[card];
-                if (challengeRun.Matched[card]) hud.Tag(button, "matched");
-            }
-        }
-
-        /// <summary>A name per face, so a card reads as something rather than as an index.</summary>
-        private static string MemoryFace(int face)
-        {
-            string[] names = { "star", "key", "crown", "eye", "flame", "anchor", "clover", "moon" };
-            return face >= 0 && face < names.Length ? names[face] : "symbol " + face;
-        }
-
         public void RecordChallengeHit()
         {
-            if (!challengeActive) return;
+            if (!challengeActive || challengeRun != null) return;
             challengeTotal += Math.Max(0, 1 - Math.Abs(challengeValue - .5) * 2); challengeHits++;
             audioBed.PlayCue(HouseAudio.Cue.Button);
             if (challengeHits < 3) return;
+            if (challengePractice) { message = "Practice complete. Your season is unchanged."; CancelChallenge(); return; }
+            EndCompetitionArena();
             challengeActive = false; Commit(challengeOrigin, EpisodeCommandKind.Compete, performance:challengeTotal / 3);
             if (cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
         }

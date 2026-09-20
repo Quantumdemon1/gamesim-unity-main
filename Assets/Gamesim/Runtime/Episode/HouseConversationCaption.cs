@@ -32,8 +32,6 @@ namespace Gamesim.Episode
         private const float BubbleWidth = 430f, BubbleHeight = 62f;
         /// <summary>How far over the anchor the bubble floats, in canvas units.</summary>
         private const float BubbleRise = 26f;
-        /// <summary>The band at the top of the canvas the top bar owns; the bubble stays under it.</summary>
-        private const float ChromeBand = 196f;
         private const float SideMargin = 24f;
 
         private GameObject root;
@@ -41,6 +39,7 @@ namespace Gamesim.Episode
         private TMP_Text label;
         private Vector3 anchorWorld;
         private bool anchored;
+        private EpisodeHud episodeHud;
 
         public string CurrentText => root != null && root.activeSelf ? label.text : "";
 
@@ -49,10 +48,9 @@ namespace Gamesim.Episode
         {
             Fill(firstName, secondName, topic, fontScale);
             anchored = false;
-            panel.anchorMin = panel.anchorMax = new Vector2(.5f, 1f);
+            panel.anchorMin = panel.anchorMax = Vector2.zero;
             panel.pivot = new Vector2(.5f, 1f);
-            panel.sizeDelta = new Vector2(BannerWidth, BannerHeight);
-            panel.anchoredPosition = new Vector2(0f, -108f);
+            PlaceBanner();
             tail.gameObject.SetActive(false);
         }
 
@@ -64,14 +62,34 @@ namespace Gamesim.Episode
             anchorWorld = worldAnchor;
             panel.anchorMin = panel.anchorMax = Vector2.zero;
             panel.pivot = new Vector2(.5f, 0f);
-            panel.sizeDelta = new Vector2(BubbleWidth, BubbleHeight);
+            SizeForText(BubbleWidth,BubbleHeight);
             tail.gameObject.SetActive(true);
             Place();
         }
 
         public void Hide() { if (root != null) root.SetActive(false); }
 
-        private void LateUpdate() { if (anchored && root != null && root.activeSelf) Place(); }
+        private void LateUpdate()
+        {
+            if(root==null || !root.activeSelf)return;
+            if(anchored)Place();else PlaceBanner();
+        }
+
+        private Rect SafeBounds()
+        {
+            if(episodeHud==null)episodeHud=GetComponent<EpisodeHud>();
+            var size=canvasRect.rect.size;
+            return episodeHud!=null ? episodeHud.WorldCaptionSafeBounds
+                : Rect.MinMaxRect(SideMargin,100f,size.x-SideMargin,size.y-104f);
+        }
+
+        private void PlaceBanner()
+        {
+            if(canvasRect==null)return;
+            var safe=SafeBounds();
+            SizeForText(Mathf.Min(BannerWidth,safe.width),BannerHeight);
+            panel.anchoredPosition=new Vector2(safe.center.x,safe.yMax);
+        }
 
         /// <summary>
         /// Puts the bubble over its anchor, in the canvas's own units, and keeps it on screen.
@@ -93,11 +111,21 @@ namespace Gamesim.Episode
                     canvasRect, screen, null, out var local)) return;
 
             var size = canvasRect.rect.size;
+            var safe=SafeBounds();
+            float width=Mathf.Min(label.text.Length>85 ? BannerWidth : BubbleWidth,safe.width);
+            SizeForText(width,BubbleHeight);
             float halfWidth = panel.sizeDelta.x * .5f;
-            float x = Mathf.Clamp(local.x + size.x * .5f, halfWidth + SideMargin, size.x - halfWidth - SideMargin);
+            float x = Mathf.Clamp(local.x + size.x * .5f, safe.xMin+halfWidth,safe.xMax-halfWidth);
             float y = Mathf.Clamp(local.y + size.y * .5f + BubbleRise,
-                BubbleHeight + SideMargin, size.y - ChromeBand);
+                safe.yMin,Mathf.Max(safe.yMin,safe.yMax-panel.sizeDelta.y));
             panel.anchoredPosition = new Vector2(x, y);
+            tail.anchoredPosition=new Vector2(Mathf.Clamp(local.x+size.x*.5f-x,-halfWidth+20f,halfWidth-20f),2f);
+        }
+
+        private void SizeForText(float width,float minimumHeight)
+        {
+            float preferred=label.GetPreferredValues(label.text,Mathf.Max(1,width-32f),float.PositiveInfinity).y+18f;
+            panel.sizeDelta=new Vector2(width,Mathf.Max(minimumHeight,preferred));
         }
 
         public static string Describe(string firstName, string secondName, string topic)
@@ -162,7 +190,8 @@ namespace Gamesim.Episode
                 : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
             label.color = new Color(.95f, .96f, .98f); label.alignment = TextAlignmentOptions.Center;
             label.richText = false; label.raycastTarget = false;
-            label.enableAutoSizing = true; label.fontSizeMin = 13f;
+            label.enableAutoSizing = false;
+            label.textWrappingMode = TextWrappingModes.Normal;
         }
 
         private void OnDisable() => Hide();

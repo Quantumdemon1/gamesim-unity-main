@@ -4,6 +4,7 @@ using Gamesim.Episode;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -32,12 +33,18 @@ namespace Gamesim.Tests.PlayMode
             // Each frame shows the portrait of the contestant it is bound to. Asserted against the
             // exact texture rather than merely "something is assigned", because every frame sharing
             // one face would satisfy the weaker check and be the more likely bug.
+            double portraitDeadline = Time.realtimeSinceStartupAsDouble + 60;
             for (int i = 0; i < frames.Length; i++)
             {
                 var actor = state.contestants[i];
-                var expected = CharacterPortraits.Get(
-                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)));
-                if (expected == null) continue; // persona without authored art; the slot stays dark
+                Texture expected = null;
+                while (expected == null && Time.realtimeSinceStartupAsDouble < portraitDeadline)
+                {
+                    expected = CharacterPortraits.Get(actor);
+                    yield return null;
+                }
+                Assert.That(expected, Is.Not.Null, "The shared appearance portrait must finish for " + actor.name + ".");
+                yield return null; // Let the wall's asynchronous binding publish the completed image.
 
                 Assert.That(PortraitTexture(frames[i]), Is.SameAs(expected),
                     "Frame " + i + " should show " + actor.name + ".");
@@ -252,6 +259,65 @@ namespace Gamesim.Tests.PlayMode
             caption.Hide();
             yield return null;
             Assert.That(director.ObservedNpcConversation, Is.Empty, "Hiding should clear the caption.");
+        }
+
+        [UnityTest]
+        public IEnumerator AmbientCaption_LongNamesWrapWithoutShrinkingLargerTextOrCoveringChrome()
+        {
+            director.ClosePanels();yield return null;
+            var caption=SceneComponents<Gamesim.Episode.HouseConversationCaption>().First();
+            var camera=Camera.main;
+            caption.Show("Alexandria Alexandra Montgomery", "Christopher Nathaniel Rutherford", "alliance_talk",1.2f,
+                camera.transform.position+camera.transform.forward*6);
+            Canvas.ForceUpdateCanvases();
+            var panel=caption.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==Gamesim.Episode.HouseConversationCaption.PanelName);
+            var label=panel.GetComponentInChildren<TMP_Text>();label.ForceMeshUpdate();
+            Assert.That(label.fontSize,Is.EqualTo(23));Assert.That(label.enableAutoSizing,Is.False);
+            Assert.That(label.isTextOverflowing,Is.False,"The bubble grows around the requested text size.");
+            foreach(var name in new[]{"Objective","Status","House pill",EpisodeDirector.LiveFeedCardName})
+            {
+                var chrome=director.GetComponentsInChildren<RectTransform>().FirstOrDefault(rect=>rect.name==name);
+                if(chrome!=null)Assert.That(ScreenRect(panel).Overlaps(ScreenRect(chrome)),Is.False,name);
+            }
+            caption.Hide();
+        }
+
+        [UnityTest]
+        public IEnumerator AmbientCaption_OverviewRoomListRemainsClearAtBothTextSizesAndHudDensities()
+        {
+            bool originalLarge=director.LargeText,originalCompact=director.CompactHud;
+            var caption=SceneComponents<HouseConversationCaption>().First();
+            try
+            {
+                foreach(bool compact in new[]{false,true})
+                foreach(bool larger in new[]{false,true})
+                {
+                    director.SetLargeText(larger);director.SetCompactHud(compact);
+                    Assert.That(director.ShowOverview(),Is.True);
+                    yield return null;Canvas.ForceUpdateCanvases();
+                    var column=ActiveRect(EpisodeHud.OverviewColumnName);
+                    Assert.That(column,Is.Not.Null,"The room list is useful in either HUD density.");
+                    // Place an observed pair behind the room list. The visible caption must clamp
+                    // left of the whole list, not only left of the narrower exploration-help card.
+                    caption.Show("Maya Hassan","Riley Johnson","strategy",larger ? 1.2f : 1f,
+                        Camera.main.ViewportToWorldPoint(new Vector3(.98f,.65f,6f)));
+                    Canvas.ForceUpdateCanvases();
+                    var panel=caption.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==HouseConversationCaption.PanelName);
+                    var label=panel.GetComponentInChildren<TMP_Text>();label.ForceMeshUpdate();
+                    Assert.That(ScreenRect(panel).Overlaps(ScreenRect(column)),Is.False,
+                        "Overview captions must not cover occupants at compact="+compact+", larger="+larger);
+                    Assert.That(ScreenRect(panel).xMax,Is.LessThan(ScreenRect(column).xMin));
+                    Assert.That(label.fontSize,Is.EqualTo(larger ? 23 : 19));
+                    Assert.That(label.enableAutoSizing,Is.False);
+                    Assert.That(label.isTextOverflowing,Is.False);
+                    caption.Hide();director.EndOverview();yield return null;
+                }
+            }
+            finally
+            {
+                caption.Hide();director.EndOverview();
+                director.SetLargeText(originalLarge);director.SetCompactHud(originalCompact);
+            }
         }
 
         // The frames a season shows: the authored wall carries sixteen and switches the rest off.

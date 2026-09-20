@@ -8,55 +8,10 @@ using UnityEngine;
 namespace Gamesim.Editor
 {
     /// <summary>
-    /// Wires the Humanoid mocap takes under <c>Art/Authored/Animation/Humanoid/</c> into
-    /// <c>GamesimHumanoid.controller</c>, the controller the UMA cast plays.
-    ///
-    /// <para>The shipped cast is UMA, which is Humanoid and is a gigabyte this repository
-    /// deliberately does not track. Until now a UMA body was handed UMA's own <c>Locomotion</c>
-    /// controller, fetched by name through the asset indexer, and that controller declares
-    /// <c>Speed</c> and nothing else — so every other cue <c>CharacterPresentation</c> sends
-    /// (<c>Seated</c>, <c>Talking</c>, <c>Listening</c>, <c>Arguing</c>, the five reaction
-    /// triggers) was dropped on the floor and the bodies never sat, talked, argued or reacted.
-    /// This builds a controller that declares the seven of them the mocap takes can honestly act
-    /// out, on the same parameter names and the same shape as <see cref="AuthoredClipWiring"/>
-    /// gives the Generic cast, so one presentation drives both skeletons.</para>
-    ///
-    /// <para>Three beats stay undeclared: a nomination, a veto save and an eviction. Each is felt
-    /// by the houseguest it happens to, and no take here is that feeling - the nearest the library
-    /// has is a shrug, which would have a houseguest shrug off their own eviction and would act a
-    /// nomination and an eviction identically besides. <c>CharacterPresentation</c> sends a trigger
-    /// only to a controller that declares it, so leaving them out costs the body its idle for a
-    /// beat and nothing else - which is what a UMA body did before any of this, and is a smaller
-    /// lie than the wrong emotion. The Generic cast acts all five out from authored takes.</para>
-    ///
-    /// <para><b>The save and the nomination must land together.</b> A veto ceremony fires both in
-    /// the same instant - <c>Saved</c> at whoever came off the block and <c>Nominated</c> at
-    /// whoever replaced them (<c>EpisodeDirector.Ceremony.ReactToCeremony</c>) - and one implies
-    /// the other, because the block keeps its size. Acting only the save would leave the person
-    /// just put up, who is what the scene is about, the one body in the room not moving. That is
-    /// not half the scene; it is the scene inverted. So neither is wired until both have a take,
-    /// and the take for the save has to change the silhouette: a ceremony is framed room-wide at
-    /// <c>CeremonyFraming.CeremonyDistance</c>, where a breath and a shoulder drop read as
-    /// nothing.</para>
-    ///
-    /// <para><b>No UMA asset may be referenced by GUID.</b> A clone without UMA must still open
-    /// this project cleanly, so the committed controller points only at the twelve takes in this
-    /// repository. The twelve are missing a standing idle and a walk, which is exactly what UMA's
-    /// Locomotion already has — so <c>Idle</c> and <c>Walk</c> are wired here to the two takes no
-    /// cue reaches (<c>Sleep_loop</c> and <c>SleepLying_loop</c>), purely as override keys, and
-    /// <c>UmaBodyProvider</c> swaps them for UMA's own idle and run through an
-    /// <see cref="AnimatorOverrideController"/> built at runtime from clips it reads off the
-    /// Locomotion controller the indexer resolves by name. Nothing about UMA is serialised.</para>
-    ///
-    /// <para>Runtime cannot reach an asset outside <c>Resources</c>, and the controller lives in
-    /// <c>Art/Characters</c> beside the Generic one — so this also maintains a handle at
-    /// <c>Resources/Animation/GamesimHumanoid.overrideController</c>, an override controller with
-    /// no overrides whose only job is to carry the real controller into a build the way a
-    /// <c>Resources/GamesimCharacters</c> prefab carries the Generic one.</para>
-    ///
-    /// <para>Re-runnable: states are found by name, their transitions cleared and rebuilt in a
-    /// fixed order, never duplicated, and the controller is created from scratch if it is not
-    /// there at all.</para>
+    /// Builds the controller shared by runtime Humanoid bodies. Twelve imported takes cover
+    /// locomotion overrides, conversation, sitting and celebration; four authored muscle clips
+    /// supply listening, nomination, relief and eviction. Every asset is project-owned so the
+    /// controller remains importable without the optional UMA package.
     /// </summary>
     public static class HumanoidClipWiring
     {
@@ -100,9 +55,13 @@ namespace Gamesim.Editor
             ("Talk", "Talk_loop", 520, 180),
             ("TalkB", "TalkB_loop", 760, 180),
             ("TalkC", "TalkC_loop", 1000, 180),
+            ("Listen", "Listen_loop", 1240, 180),
             ("Argue", "Argue_loop", 520, 330),
             ("ReactWon", "React_won", 1000, 420),
             ("ReactCheered", "Cheer_loop", 1000, 490),
+            ("ReactNominated", "React_nominated", 1240, 350),
+            ("ReactSaved", "React_saved", 1240, 420),
+            ("ReactEvicted", "React_evicted", 1240, 490),
         };
 
         /// <summary>
@@ -114,7 +73,7 @@ namespace Gamesim.Editor
         /// </summary>
         public static readonly (string trigger, string state)[] Reactions =
         {
-            ("ReactNominated", null), ("ReactSaved", null), ("ReactEvicted", null),
+            ("ReactNominated", "ReactNominated"), ("ReactSaved", "ReactSaved"), ("ReactEvicted", "ReactEvicted"),
             ("ReactWon", "ReactWon"), ("ReactCheered", "ReactCheered"),
         };
 
@@ -133,7 +92,7 @@ namespace Gamesim.Editor
         public static void Apply()
         {
             var clips = LoadTakes();
-            var missing = Takes.Where(t => !clips.ContainsKey(t)).ToArray();
+            var missing = Takes.Concat(HumanoidReactionAuthoring.Takes).Where(t => !clips.ContainsKey(t)).ToArray();
             if (missing.Length > 0)
                 throw new InvalidOperationException("No Humanoid take for " + string.Join(", ", missing)
                     + " under " + ClipFolder + "; each take is one FBX named bb_anim_<take>.fbx.");
@@ -210,6 +169,13 @@ namespace Gamesim.Editor
                 ring.exitTime = RingExit;
             }
 
+            Go(states["Idle"], states["Listen"], .18f, Bool(ListeningParameter, true), Bool(TalkingParameter, false), Moving(false));
+            Go(states["Listen"], states["SitIdle"], SeatedFade, Seated(true));
+            Go(states["Listen"], states["Walk"], .15f, Moving(true));
+            Go(states["Listen"], states["Argue"], .15f, Bool(ArguingParameter, true));
+            Go(states["Listen"], states["Talk"], .15f, Bool(TalkingParameter, true));
+            Go(states["Listen"], states["Idle"], .18f, Bool(ListeningParameter, false));
+
             Go(states["Argue"], states["SitIdle"], SeatedFade, Seated(true));
             Go(states["Argue"], states["Walk"], 0.15f, Moving(true));
             Go(states["Argue"], states["Talk"], 0.15f, Bool(ArguingParameter, false), Bool(TalkingParameter, true));
@@ -238,7 +204,7 @@ namespace Gamesim.Editor
             AssetDatabase.SaveAssets();
             Debug.Log("[Gamesim] humanoid · " + Takes.Length + " mocap takes wired into " + Controller
                 + ": " + States.Length + " states, " + WiredReactions.Count() + " of " + Reactions.Length
-                + " reaction beats acted (the rest hold the idle); Idle and Walk stand in on "
+                + " reaction beats acted; Idle and Walk use override keys "
                 + IdleStandIn + " and " + WalkStandIn + " until UmaBodyProvider overrides them.");
         }
 
@@ -246,7 +212,7 @@ namespace Gamesim.Editor
         public static Dictionary<string, AnimationClip> LoadTakes()
         {
             var clips = new Dictionary<string, AnimationClip>();
-            foreach (var take in Takes)
+            foreach (var take in Takes.Concat(HumanoidReactionAuthoring.Takes))
             {
                 var clip = AssetDatabase.LoadAllAssetsAtPath(Path(take)).OfType<AnimationClip>()
                     .FirstOrDefault(c => !c.name.StartsWith("__preview", StringComparison.Ordinal));
@@ -256,7 +222,8 @@ namespace Gamesim.Editor
         }
 
         /// <summary>The file a take arrived in.</summary>
-        public static string Path(string take) => ClipFolder + AuthoredAssetImporter.AnimationPrefix + take + ".fbx";
+        public static string Path(string take) => ClipFolder + AuthoredAssetImporter.AnimationPrefix + take
+            + (HumanoidReactionAuthoring.Takes.Contains(take) ? ".anim" : ".fbx");
 
         /// <summary>
         /// Keeps the Resources handle pointing at the controller, creating it if a clone has the

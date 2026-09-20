@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -24,6 +25,13 @@ namespace Gamesim.Presentation
         private RenderTexture texture;
         private Vector3 subject;
         private float yaw;
+        private string pendingCaption = "";
+
+        /// <summary>Published only after the matching image has finished rendering.</summary>
+        public event Action<string> FrameCaptured;
+        public string CapturedCaption { get; private set; } = "";
+        public Vector3 CapturedSubject { get; private set; }
+        public int CaptureRevision { get; private set; }
 
         public static LiveFeed Attach(GameObject host)
         {
@@ -44,9 +52,13 @@ namespace Gamesim.Presentation
 
         /// <summary>Aims the feed at a point in the house, from a yaw, above the walls.</summary>
         public void Aim(Vector3 at, float fromYaw)
+            => Aim(at, fromYaw, pendingCaption);
+
+        public void Aim(Vector3 at, float fromYaw, string caption)
         {
             subject = at;
             yaw = fromYaw;
+            pendingCaption = caption ?? "";
             HasSubject = true;
         }
 
@@ -86,6 +98,12 @@ namespace Gamesim.Presentation
             feedCamera.transform.position = eye;
             feedCamera.transform.rotation = Quaternion.LookRotation(subject + Vector3.up * 0.9f - eye, Vector3.up);
             feedCamera.Render();
+            // Camera.Render completes before the overlay is drawn. The card's caption and pixels
+            // therefore become visible in the same frame, even when re-aiming between cadence ticks.
+            CapturedSubject = subject;
+            CapturedCaption = pendingCaption;
+            CaptureRevision++;
+            FrameCaptured?.Invoke(CapturedCaption);
         }
 
         private void OnDestroy()

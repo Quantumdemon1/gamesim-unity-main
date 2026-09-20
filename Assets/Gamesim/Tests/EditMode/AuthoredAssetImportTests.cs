@@ -48,9 +48,37 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(importer.avatarSetup, Is.EqualTo(AuthoredAssetImporter.IsRigged(path)
                     ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar),
                     path + ": a rig carries its avatar; a prop carries none.");
-                Assert.That(importer.materialLocation, Is.EqualTo(ModelImporterMaterialLocation.External),
-                    path + ": materials are extracted beside the model so a re-export keeps them.");
+                Assert.That(importer.materialLocation, Is.EqualTo(ModelImporterMaterialLocation.InPrefab),
+                    path + ": supported import mode; existing local materials are assigned explicitly.");
             }
+        }
+
+        [Test]
+        public void AuthoredModelsKeepTheirExistingLocalMaterialAssets()
+        {
+            int matchedSlots = 0;
+            foreach (var path in AuthoredModels())
+            {
+                var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                var remaps = AssetImporter.GetAtPath(path).GetExternalObjectMap();
+                string directory = Path.GetDirectoryName(path).Replace('\\', '/');
+                foreach (var renderer in model.GetComponentsInChildren<Renderer>(true))
+                foreach (var material in renderer.sharedMaterials)
+                {
+                    Assert.That(material, Is.Not.Null, path + ": every rendered slot has a material.");
+                    var identifier = new AssetImporter.SourceAssetIdentifier(typeof(Material), material.name);
+                    if (remaps.TryGetValue(identifier, out var mapped) && mapped is Material explicitMaterial)
+                    {
+                        Assert.That(material, Is.SameAs(explicitMaterial), path + ": explicit artist remap is preserved.");
+                        continue;
+                    }
+                    var local = AssetDatabase.LoadAssetAtPath<Material>(directory + "/Materials/" + material.name + ".mat");
+                    if (local == null) continue;
+                    Assert.That(material, Is.SameAs(local), path + ": keep the existing material GUID, shader and texture bindings.");
+                    matchedSlots++;
+                }
+            }
+            Assert.That(matchedSlots, Is.GreaterThan(80), "The authored set has many shared external slots; this must exercise their actual bindings.");
         }
 
         [Test]

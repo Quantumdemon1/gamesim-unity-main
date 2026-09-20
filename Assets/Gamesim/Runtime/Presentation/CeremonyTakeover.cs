@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -41,10 +42,12 @@ namespace Gamesim.Presentation
             public readonly string Name;
             public readonly string Badge;
             public readonly Texture Portrait;
+            public readonly ContestantState Character;
 
-            public Subject(string name, string badge, Texture portrait)
+            public Subject(string name, string badge, Texture portrait, ContestantState character = null)
             {
                 Name = name; Badge = badge; Portrait = portrait;
+                Character = character?.Clone();
             }
         }
 
@@ -420,7 +423,7 @@ namespace Gamesim.Presentation
                 frame.sizeDelta = new Vector2(portrait, portrait);
                 frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
 
-                if (subject.Portrait != null)
+                if (subject.Portrait != null || subject.Character != null)
                 {
                     var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage))
                         .GetComponent<RawImage>();
@@ -430,6 +433,7 @@ namespace Gamesim.Presentation
                     raw.rectTransform.offsetMin = Vector2.zero;
                     raw.rectTransform.offsetMax = Vector2.zero;
                     raw.texture = subject.Portrait;
+                    if (subject.Character != null) CharacterPortraits.Bind(raw, subject.Character);
                     raw.raycastTarget = false;
                 }
                 else

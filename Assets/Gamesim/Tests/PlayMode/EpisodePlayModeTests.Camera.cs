@@ -18,6 +18,25 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         [UnityTest]
+        public IEnumerator Camera_CloseAuthoredShotsCheckObstaclesInsideTheExplorationMinimum()
+        {
+            cameraRig.SetReducedMotion(true);cameraRig.ControlsEnabled=false;
+            cameraRig.MoveTo(new HouseCameraRig.Shot { Focus=new Vector3(0,5,0),Distance=2.8f,Pitch=10,Yaw=0,Seconds=0 });
+            yield return null;
+            var wall=TestWall(1.8f);
+            try
+            {
+                Assert.That(cameraRig.AppliedDistance,Is.LessThan(1.8f),"A close interview cannot put its camera through a nearby wall.");
+                Assert.That(cameraRig.AppliedDistance,Is.GreaterThanOrEqualTo(.4f));
+                Assert.That(cameraRig.DesiredDistance,Is.EqualTo(2.8f).Within(.001f),"Occlusion preserves the authored framing request.");
+            }
+            finally{Object.Destroy(wall);}
+            yield return null;yield return null;
+            Assert.That(cameraRig.AppliedDistance,Is.EqualTo(cameraRig.Distance).Within(.05f));
+            cameraRig.ReleaseShot(0);cameraRig.SetReducedMotion(false);cameraRig.ControlsEnabled=true;
+        }
+
+        [UnityTest]
         public IEnumerator Camera_PitchFollowsTheDistanceAndKeepsTheOrbitOffset()
         {
             SetCameraDistance(cameraRig.FarthestDistance);

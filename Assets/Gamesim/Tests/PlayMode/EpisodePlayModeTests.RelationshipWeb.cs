@@ -18,6 +18,152 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        [UnityTest]
+        public IEnumerator RelationshipWeb_LegalLongNamesKeepFullCastLabelsSeparateAndFullIdentityReadable()
+        {
+            RelationshipWeb.ClearSelection();
+            var canvasObject=new GameObject("Long-name relationship canvas",typeof(RectTransform),typeof(Canvas));
+            canvasObject.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;
+            var fixture=new GameObject("Long-name relationship viewport",typeof(RectTransform),typeof(VerticalLayoutGroup));
+            fixture.transform.SetParent(canvasObject.transform,false);
+            try
+            {
+                var viewport=(RectTransform)fixture.transform;viewport.sizeDelta=new Vector2(1160,490);
+                var layout=fixture.GetComponent<VerticalLayoutGroup>();layout.childControlWidth=true;layout.childControlHeight=true;
+                layout.childForceExpandWidth=true;layout.childForceExpandHeight=false;
+                var state=SeasonBuilder.Create(new SeasonBuilder.Choice{HouseSize=12},711);
+                int index=0;
+                foreach(var actor in state.Active)
+                {
+                    var draft=CharacterDraft.Blank();draft.Name=(char)('A'+index++)+new string('W',CharacterDraft.NameLimit-1);
+                    Assert.That(draft.TryValidate(out var error),Is.True,error);
+                    actor.name=draft.Name;
+                }
+                var root=RelationshipWeb.Build(viewport,state,1.2f,TMP_Settings.defaultFontAsset,_=>null,_=>{},490f);
+                yield return null;LayoutRebuilder.ForceRebuildLayoutImmediate(viewport);
+                var graph=Under(root,RelationshipWeb.GraphName);
+                var nodes=graph.GetComponentsInChildren<Button>();
+                Assert.That(nodes.Select(node=>node.name),Is.EquivalentTo(state.Active.Select(actor=>RelationshipWeb.NodeName(actor.name))));
+                var chips=graph.GetComponentsInChildren<RectTransform>().Where(rect=>rect.name=="Name chip").ToArray();
+                Assert.That(chips.Length,Is.EqualTo(12));
+                for(int i=0;i<chips.Length;i++)
+                {
+                    var bounds=RectTransformUtility.CalculateRelativeRectTransformBounds(graph,chips[i]);
+                    Assert.That(bounds.min.x,Is.GreaterThanOrEqualTo(graph.rect.xMin));
+                    Assert.That(bounds.max.x,Is.LessThanOrEqualTo(graph.rect.xMax));
+                    var label=chips[i].GetComponentInChildren<TMP_Text>();label.ForceMeshUpdate(true);
+                    Assert.That(label.fontSize,Is.EqualTo(14));
+                    Assert.That(label.enableAutoSizing,Is.False,"Large text is preserved when a name is abbreviated.");
+                    if(label.text!="YOU")Assert.That(label.isTextTruncated,Is.True,"A 100-character word must end in an ellipsis.");
+                    for(int j=i+1;j<chips.Length;j++)
+                        Assert.That(ScreenRect(chips[i]).Overlaps(ScreenRect(chips[j])),Is.False,"Long names must not merge adjacent houseguests.");
+                }
+                var selected=state.Active.Last();
+                nodes.Single(node=>node.name==RelationshipWeb.NodeName(selected.name)).onClick.Invoke();
+                Assert.That(RelationshipWeb.Selected,Is.EqualTo(selected.id));
+                Object.Destroy(root.gameObject);yield return null;
+                root=RelationshipWeb.Build(viewport,state,1.2f,TMP_Settings.defaultFontAsset,_=>null,_=>{},490f);
+                yield return null;LayoutRebuilder.ForceRebuildLayoutImmediate(viewport);
+                var column=Under(root,RelationshipWeb.ColumnName);
+                var fullName=column.GetComponentsInChildren<TMP_Text>().Single(label=>label.text==selected.name);
+                fullName.ForceMeshUpdate(true);
+                Assert.That(fullName.fontSize,Is.EqualTo(20));
+                Assert.That(fullName.enableAutoSizing,Is.False);
+                Assert.That(fullName.isTextOverflowing,Is.False,"The detail view wraps the complete identity at the requested size.");
+                Assert.That(fullName.textInfo.characterCount,Is.EqualTo(CharacterDraft.NameLimit));
+                Assert.That(fullName.textInfo.lineCount,Is.GreaterThan(1));
+                Assert.That(column.GetComponentInParent<ScrollRect>().vertical,Is.True,"Long identity details remain scrollable.");
+            }
+            finally{Object.Destroy(canvasObject);RelationshipWeb.ClearSelection();}
+        }
+
+        [UnityTest]
+        public IEnumerator RelationshipWeb_ShortViewportKeepsFullCastAndEveryLegendLabelVisible()
+        {
+            var fixture=new GameObject("Short relationship viewport",typeof(RectTransform),typeof(VerticalLayoutGroup));
+            try
+            {
+                var viewport=(RectTransform)fixture.transform;viewport.sizeDelta=new Vector2(1160,490);
+                var layout=fixture.GetComponent<VerticalLayoutGroup>();layout.childControlWidth=true;layout.childControlHeight=true;
+                layout.childForceExpandWidth=true;layout.childForceExpandHeight=false;
+                var state=SeasonBuilder.Create(new SeasonBuilder.Choice{HouseSize=12},711);
+                var root=RelationshipWeb.Build(viewport,state,1.2f,TMP_Settings.defaultFontAsset,_=>null,_=>{},490f);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(viewport);
+                yield return null;
+                LayoutRebuilder.ForceRebuildLayoutImmediate(viewport);
+                var graph=Under(root,RelationshipWeb.GraphName);
+                Assert.That(graph.rect.height,Is.LessThanOrEqualTo(viewport.rect.height));
+                Assert.That(graph.GetComponentsInChildren<Button>().Length,Is.EqualTo(12));
+                var legend=Under(root,RelationshipWeb.LegendName);
+                var bounds=RectTransformUtility.CalculateRelativeRectTransformBounds(graph,legend);
+                Assert.That(bounds.min.y,Is.GreaterThanOrEqualTo(graph.rect.yMin-1));
+                Assert.That(bounds.max.x,Is.LessThanOrEqualTo(graph.rect.xMax+1));
+                Assert.That(Copy(legend),Does.Contain("Friendship").And.Contain("Alliance").And.Contain("Rivalry")
+                    .And.Contain("Distrust").And.Contain("Neutral").And.Contain(RelationshipWeb.PerspectiveCopy));
+                var selected=root.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name=="Selected relationship filter");
+                Assert.That(selected.parent.name,Is.EqualTo("Filter relationships: All"),"Selected filters have a visible shape beyond color.");
+            }
+            finally{Object.Destroy(fixture);RelationshipWeb.ClearSelection();}
+        }
+
+        [UnityTest]
+        public IEnumerator RelationshipWeb_DetailsScrollWithoutMovingTheGraphAndFiltersCommitNothing()
+        {
+            RelationshipWeb.ClearSelection();
+            director.OpenJournal();yield return null;
+            var state=director.Snapshot;
+            for(int i=0;i<3;i++)state.memories.Add(new MemoryState{ownerId=state.playerId,week=99-i,
+                text=string.Join(" ",Enumerable.Repeat("A remembered conversation explains this relationship.",18))});
+            var hud=director.GetComponent<EpisodeHud>();
+            hud.Begin(state,director.StatusMessage,false,true);
+            hud.SocialGraphPanel(state);hud.Mark(EpisodeDirector.NotebookSection.Network);
+            yield return null;yield return null;Canvas.ForceUpdateCanvases();
+            var graph=Under(Section(),RelationshipWeb.GraphName);
+            var before=ScreenRect(graph);
+            var details=Under(Section(),RelationshipWeb.DetailsScrollName).GetComponent<ScrollRect>();
+            Assert.That(details.content.rect.height,Is.GreaterThan(details.viewport.rect.height));
+            var read=details.GetComponentsInChildren<Button>().Single(button=>button.name=="Read later details");
+            read.onClick.Invoke();yield return null;Canvas.ForceUpdateCanvases();
+            Assert.That(details.verticalNormalizedPosition,Is.LessThan(1));
+            Assert.That(ScreenRect(graph),Is.EqualTo(before),"Reading long known history leaves the complete graph in place.");
+
+            // Return to the real committed snapshot before checking the filter's normal callback.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);yield return null;yield return null;
+            var revision=director.Snapshot.revision;
+            var filterButton=director.GetComponentsInChildren<Button>().Single(button=>button.name=="Filter relationships: Tension");
+            filterButton.onClick.Invoke();yield return null;yield return null;
+            Assert.That(director.Snapshot.revision,Is.EqualTo(revision));
+            Assert.That(RelationshipWeb.CurrentFilter,Is.EqualTo(RelationshipWeb.Filter.Tension));
+            graph=Under(Section(),RelationshipWeb.GraphName);
+            Assert.That(graph.GetComponentsInChildren<Button>().Length,Is.EqualTo(RelationshipWeb.FilteredOthers(director.Snapshot).Count+1));
+            director.ClosePanels();RelationshipWeb.ClearSelection();yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator RelationshipWeb_WholeGraphAndLegendFitTheDedicatedViewportAtBothTextSizes()
+        {
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return ApplyTextSize(larger);
+                director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
+                yield return null; yield return null;
+                Canvas.ForceUpdateCanvases();
+                var hud = director.GetComponent<EpisodeHud>();
+                Assert.That(hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Relationships));
+                var graph = Under(Section(), RelationshipWeb.GraphName);
+                var scroll = graph.GetComponentInParent<ScrollRect>();
+                Assert.That(scroll, Is.Not.Null);
+                var viewport = ScreenRect(scroll.viewport);
+                var frame = ScreenRect(graph);
+                Assert.That(frame.yMax, Is.LessThanOrEqualTo(viewport.yMax + 1f));
+                Assert.That(frame.yMin, Is.GreaterThanOrEqualTo(viewport.yMin - 1f), "The complete graph and key must be visible together.");
+                Assert.That(frame.xMin, Is.GreaterThanOrEqualTo(viewport.xMin - 1f));
+                Assert.That(frame.xMax, Is.LessThanOrEqualTo(viewport.xMax + 1f));
+                director.ClosePanels();
+                yield return null;
+            }
+        }
+
         /// <summary>
         /// One node per houseguest still in the house, one edge per node — never an edge between
         /// two NPCs, because the player cannot know what they think of each other — and the column

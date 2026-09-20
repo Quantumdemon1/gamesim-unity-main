@@ -1,5 +1,11 @@
 # U08 acceptance matrix
 
+**20 September 2026 candidate update:** schema 13, modular character creation, UI/house and
+competition changes are in integrated verification. The V6/V7 results below are retained historical
+evidence. They do not certify this working tree; a new source manifest, suite results, standalone
+captures and performance run must be attached before this candidate is marked passed. E1–E5 still
+require actual participants. Do not use the old pinned executable to accept the new functionality.
+
 U08's gate is "one pinned build passes the agreed acceptance matrix." That matrix was never written
 down, which left the gate unfalsifiable — there was no list a build could be checked against. This is
 that list.

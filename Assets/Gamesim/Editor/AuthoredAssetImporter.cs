@@ -10,8 +10,8 @@ namespace Gamesim.Editor
     /// <para>The exporter on the Blender side (<c>ArtSource/tools/bb_export.py</c>) writes metres
     /// with the axis conversion baked in, so the importer takes the file's scale as it is and bakes
     /// nothing twice. Colliders are never generated: furniture is collider-free by design, and the
-    /// shell and set pieces carry their own <c>_col</c> meshes. Materials are extracted beside the
-    /// model and matched by name, which is what lets a re-export keep the material a scene already
+    /// shell and set pieces carry their own <c>_col</c> meshes. Existing materials beside the
+    /// model are matched by name, which is what lets a re-export keep the material a scene already
     /// references.</para>
     ///
     /// <para>Anything under <c>Characters/</c>, <c>Wardrobe/</c> or <c>Animation/</c> imports as a
@@ -23,6 +23,9 @@ namespace Gamesim.Editor
         public const string Root = "Assets/Gamesim/Art/Authored/";
         private const string LoopSuffix = "_loop";
         public const string ColliderSuffix = "_col";
+
+        // Reimport authored models after replacing Unity's obsolete External material mode.
+        public override uint GetVersion() => 2;
 
         public static bool IsAuthored(string path) => path != null && path.StartsWith(Root, StringComparison.Ordinal);
 
@@ -120,7 +123,7 @@ namespace Gamesim.Editor
             importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
             importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
             importer.materialSearch = ModelImporterMaterialSearch.Local;
-            importer.materialLocation = ModelImporterMaterialLocation.External;
+            importer.materialLocation = ModelImporterMaterialLocation.InPrefab;
             // A Humanoid clip is retargeted onto whatever UMA builds, so it is imported against the
             // rig it was captured on. The take is what is wanted; the actor who performed it is not,
             // so nothing of their materials comes with it.
@@ -135,6 +138,22 @@ namespace Gamesim.Editor
             // A Generic rig gets no avatar unless asked; the prefab and the six bodies carry one.
             importer.avatarSetup = IsRigged(assetPath) || IsHumanoidAnimation(assetPath)
                 ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar;
+        }
+
+        /// <summary>
+        /// Keep the shipped material assets (including their textures and hand-tuned water/neon
+        /// settings) instead of creating replacement sub-assets. An explicit importer remap wins;
+        /// otherwise use the same local Materials/name.mat convention as the former External mode.
+        /// A new, unmatched material can safely remain a model sub-asset until an artist extracts it.
+        /// </summary>
+        private UnityEngine.Material OnAssignMaterialModel(UnityEngine.Material material, UnityEngine.Renderer renderer)
+        {
+            if (!IsAuthored(assetPath) || material == null) return null;
+            var identifier = new AssetImporter.SourceAssetIdentifier(typeof(UnityEngine.Material), material.name);
+            if (assetImporter.GetExternalObjectMap().TryGetValue(identifier, out var mapped)
+                && mapped is UnityEngine.Material explicitMaterial) return explicitMaterial;
+            string directory = System.IO.Path.GetDirectoryName(assetPath).Replace('\\', '/');
+            return AssetDatabase.LoadAssetAtPath<UnityEngine.Material>(directory + "/Materials/" + material.name + ".mat");
         }
 
         /// <summary>

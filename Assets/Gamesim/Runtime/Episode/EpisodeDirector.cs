@@ -22,6 +22,7 @@ namespace Gamesim.Episode
         [SerializeField] private HouseCameraRig cameraRig;
         private FollowRing followRing;
         [SerializeField] private HouseNpc[] housemates;
+        private readonly List<HouseNpc> spareHousemates = new List<HouseNpc>();
         public static string SaveRootOverride { get; set; }
         private EpisodeEngine engine;
         private EpisodeState projected;
@@ -74,7 +75,7 @@ namespace Gamesim.Episode
         // The weekly recap counts: it is a full-screen scrim, and a player who can still walk
         // the house behind it would be steering a character they cannot see.
         public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen
-                                   || journalOpen || diaryOpen || IsWeeklyRecapOpen;
+                                   || journalOpen || diaryOpen || houseActivitiesOpen || IsWeeklyRecapOpen || (competitionCard != null && competitionCard.IsPlaying);
         public bool IsChallengeActive => challengeActive;
         public float AverageFrameMilliseconds => frameAverage * 1000;
         public string SavePath => saves?.SavePath;
@@ -133,8 +134,11 @@ namespace Gamesim.Episode
             takeover = CeremonyTakeover.Attach(gameObject);
             voteReveal = VoteReveal.Attach(gameObject);
             competitionCard = CompetitionResult.Attach(gameObject);
+            competitionCard.VisibilityChanged += SyncCompetitionResultInput;
+            hud.RegisterOverlay(competitionCard.GetComponent<CanvasGroup>());
             keyCeremony = KeyCeremony.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
+            tutorial.RememberCompletion = SaveRootOverride == null;
             opening = OpeningSequence.Attach(gameObject);
             seasonReport = SeasonReport.Attach(gameObject);
             weeklyRecap = WeeklyRecapScreen.Attach(gameObject);
@@ -142,6 +146,10 @@ namespace Gamesim.Episode
             hud.RegisterOverlay(weeklyRecap.GetComponent<CanvasGroup>());
             castSelect = CastSelect.Attach(gameObject);
             characterCreator = CharacterCreator.Attach(gameObject);
+            var profileStore = new CharacterProfileStore(SaveRootOverride == null ? null : Path.Combine(saveRoot, "Houseguests"));
+            characterCreator.ConfigureProfiles(profileStore);
+            castSelect.ConfigureProfiles(profileStore);
+            castSelect.ConfigureCreator(characterCreator);
             mainMenu = MainMenu.Attach(gameObject);
             // The front door is a screen too: while any of these is up, it owns the keyboard.
             hud.RegisterOverlay(castSelect.GetComponent<CanvasGroup>());
@@ -152,7 +160,7 @@ namespace Gamesim.Episode
             // the standalone verification driving the house directly, and a menu it never asked for
             // would block every one of them — so those keep the previous behaviour and reach the
             // menu through OpenMainMenu when they mean to.
-            if (SaveRootOverride == null) OpenMainMenu();
+            if (SaveRootOverride == null || launchArguments.Contains("--gamesim-front-door")) OpenMainMenu();
             // After the first Render, so the chrome the tour points at exists to be found.
             else PlayOpening();
             Debug.Log("Gamesim episode ready: " + engine.Snapshot.contestants.Count + " contestants, validated simulation, local recovery and accessible HUD connected.");
@@ -174,12 +182,15 @@ namespace Gamesim.Episode
         {
             var cast = state.contestants.Where(c => !c.isPlayer).ToList();
             var bodies = housemates.Where(npc => npc != null).ToList();
+            foreach (var spare in spareHousemates)
+                if (spare != null && !bodies.Contains(spare)) bodies.Add(spare);
+            spareHousemates.Clear();
             var template = bodies.FirstOrDefault();
             if (template == null || cast.Count == 0) return;
 
             for (int i = bodies.Count; i < cast.Count; i++)
             {
-                var clone = Instantiate(template.gameObject, template.transform.parent);
+                var clone = CharacterPresentation.CloneUnbound(template.gameObject, template.transform.parent);
                 // The template is usually a bound body. Its motion owner and the agent that owner
                 // created are per-body runtime state: a copy of either is a component nobody owns,
                 // and the coordinator refused every such clone its rebind - which is how a season
@@ -195,7 +206,11 @@ namespace Gamesim.Episode
                 bodies.Add(body);
             }
 
-            for (int i = cast.Count; i < bodies.Count; i++) bodies[i].gameObject.SetActive(false);
+            for (int i = cast.Count; i < bodies.Count; i++)
+            {
+                bodies[i].gameObject.SetActive(false);
+                spareHousemates.Add(bodies[i]);
+            }
 
             housemates = bodies.Take(cast.Count).ToArray();
             for (int i = 0; i < housemates.Length; i++)
@@ -206,7 +221,7 @@ namespace Gamesim.Episode
                 npc.gameObject.name = cast[i].name;
                 // Attach releases and rebuilds when the character id changed, so a recycled body
                 // never keeps the previous houseguest's face.
-                CharacterPresentation.Attach(npc.gameObject, cast[i], CastPalette.For(cast[i].id));
+                CharacterPresentation.Attach(npc.gameObject, CharacterOutfits.ForPhase(cast[i], state.phase), CastPalette.For(cast[i].id));
             }
             Physics.SyncTransforms();
         }
@@ -317,10 +332,14 @@ namespace Gamesim.Episode
             }
 
             if (!IsReady) return;
+            // A dismissing key is consumed for the whole frame, even if the result updated first.
+            if (competitionCard != null && competitionCard.OwnsInput) return;
+            if (competitionInputSuspended) SyncCompetitionResultInput();
             TickNpcSocialRuntime(Time.unscaledDeltaTime);
+            TickHouseActivities();
             TickProximityWatch(Time.unscaledDeltaTime);
             frameAverage = Mathf.Lerp(frameAverage, Time.unscaledDeltaTime, 0.03f);
-            if (diaryOpen && !CanUseDiary) { ClosePanels(); return; }
+            if (diaryOpen && (!CanUseDiary || diarySeat == null || !diarySeat.Active)) { ClosePanels(); return; }
             // The house's shortcuts come through the actions map's second page: each key has a
             // gamepad button beside it there, so a controller reaches every panel the keyboard does.
             var shortcuts = cameraRig != null ? cameraRig.Actions : null;
@@ -336,6 +355,9 @@ namespace Gamesim.Episode
             }
             if (shortcuts != null && shortcuts.Menu.WasPressedThisFrame())
             {
+                // The game surface consumes Escape / Start itself, including the dismissal frame.
+                if (competitionScreen != null && competitionScreen.OwnsMenuInput) return;
+                if (challengeActive) { CancelChallenge(); return; }
                 // Topmost first. The main menu sits above the cast screen, which sits above the
                 // HUD; closing a panel underneath either of them would leave a screen on top of the
                 // house with nothing behind it. The menu itself ignores Escape when there is no
@@ -381,7 +403,7 @@ namespace Gamesim.Episode
             else hud.SetPrompt("");
         }
 
-        public Vector3 StationPosition => EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social) ? new Vector3(0, 0, 14) : new Vector3(-5, 0, -7);
+        public Vector3 StationPosition => ResolveStationPosition();
         private bool CanUseStation() => !playerIsActive ||
             Vector3.Distance(player.transform.position, StationPosition) < 3;
 
@@ -396,6 +418,7 @@ namespace Gamesim.Episode
         public void GoToStation()
         {
             ClosePanels();
+            EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
             if (!player.TryMoveTo(StationPosition)) message = "The episode screen is not reachable from here.";
             else message = "Walk to the highlighted room, then press E to open the episode screen.";
@@ -406,11 +429,17 @@ namespace Gamesim.Episode
 
         private void ClosePanelsInternal(bool render)
         {
+            CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // Escape cancels without committing, so the run goes with the panel. Leaving it would
             // let a competition keep ticking behind a closed screen and commit itself later.
             challengeRun = null;
+            CloseCompetitionPresentation();
+            // Results persist until dismissed, so replacing the panel or loading a season must
+            // retire them too. A new competition result is shown after commit-time panel changes.
+            if (competitionCard != null) competitionCard.Cancel();
+            EndDiaryVisit(!render);
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
@@ -505,9 +534,9 @@ namespace Gamesim.Episode
                     // card puts second. The player cheers on the same terms as anyone else.
                     var standings = CompetitionStandings(result.state);
                     if (competitionCard != null)
-                        competitionCard.Play(AwardTitle(wasPhase),
-                            EpisodeEngine.CompetitionCategory(wasPhase, wasWeek), result.state.week,
-                            standings, reducedMotion);
+                        competitionCard.Play(CompetitionTitle(result.state),
+                            EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion), result.state.week,
+                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state));
                     React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
                 }
 
@@ -647,10 +676,10 @@ namespace Gamesim.Episode
                 var model = npcStates[i];
                 npc.Configure(model.id, model.name);
                 npc.gameObject.SetActive(model.status == ContestantStatus.Active || model.status == ContestantStatus.Winner || model.status == ContestantStatus.RunnerUp);
-                CharacterPresentation.Attach(npc.gameObject, model, Palette(i)).SetReducedMotion(reducedMotion);
+                CharacterPresentation.Attach(npc.gameObject, CharacterOutfits.ForPhase(model, state.phase), Palette(i)).SetReducedMotion(reducedMotion);
                 var label = npc.GetComponentInChildren<TextMesh>(); if (label != null) label.text = model.name;
             }
-            CharacterPresentation.Attach(player.gameObject, state.Find(state.playerId), new Color(0.4f, 0.88f, 0.76f)).SetReducedMotion(reducedMotion);
+            CharacterPresentation.Attach(player.gameObject, CharacterOutfits.ForPhase(state.Find(state.playerId), state.phase), new Color(0.4f, 0.88f, 0.76f)).SetReducedMotion(reducedMotion);
             player.SetInputEnabled(!IsPanelOpen && state.Find(state.playerId).status == ContestantStatus.Active);
             cameraRig.ControlsEnabled = !IsPanelOpen;
             ReconcileNpcSocialWorld();
@@ -678,12 +707,13 @@ namespace Gamesim.Episode
             // The committed snapshot, not the projection: a projected eviction is not a fact
             // yet, and the set must never show an outcome the save does not hold.
             if (memoryWall != null) memoryWall.Refresh(engine.Snapshot);
-            hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen);
+            hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen);
             // Committed state, not the projection: a projected eviction is not a fact, and telling
             // someone they are out of the game is the last claim that should run ahead of the save.
             if (Spectating(engine.Snapshot)) hud.SpectatorNote(SpectatorDetail(engine.Snapshot));
             if (settingsOpen || blockedRecovery) { Settings(state); return; }
             if (diaryOpen) { RenderDiary(state); return; }
+            if (houseActivitiesOpen) { RenderHouseActivities(); return; }
             if (journalOpen)
             {
                 hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
@@ -694,6 +724,7 @@ namespace Gamesim.Episode
                 hud.Heading("WHO IS WHERE");
                 hud.Mark(NotebookSection.Rooms);
                 hud.HouseMapPanel(HouseOccupancy(state));
+                hud.Action("House activities",OpenHouseActivities);
                 // Name, then who they are outside the game, then where you stand — the order the
                 // reference build's houseguest list uses. The card line is omitted rather than left
                 // blank when a save predates those fields.
@@ -883,29 +914,13 @@ namespace Gamesim.Episode
                 {
                     if (EpisodeEngine.CompetitionPlayers(state).Any(c => c.isPlayer))
                     {
-                        var game = CompetitionMiniGames.For(
-                            EpisodeEngine.CompetitionCategory(state.phase, state.week));
-                        hud.Paragraph(CompetitionMiniGames.Brief(game));
-                        hud.Paragraph(state.phase == EpisodePhase.FinalHoHPart1
-                            ? "How you do adds 0–2 effective endurance points (capped at 10) for the survival challenge; stored stats are unchanged."
-                            : "How you do supplies a 0–2 point bonus; housemate stats and the saved seed determine the rest.");
-                        hud.Action(CompetitionMiniGames.EnterCaption(game), () => StartChallenge(state));
-                        hud.Action("Accessible alternative: steady 1-point bonus", () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
-                        if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
-                        {
-                            hud.Paragraph("Or simulate this weekly competition using weighted rules. Preparation: "
-                                + state.playerStudyBonus + "/5; event bonus: " + state.phaseEventCompBonus
-                                + ". These boost only your simulated score, with no precision bonus. Preparation is kept for later weeks and does not boost final HoH.");
-                            hud.Action(EpisodeHud.SimulateCompetitionCaption, () => SimulateCompetition(state));
-                            hud.Paragraph("Or throw it. You still compete and the result still stands — "
-                                + "you simply do not try, which is sometimes the safer week.");
-                            hud.Action(EpisodeHud.ThrowCompetitionCaption, () => ThrowCompetition(state));
-                        }
+                        CompetitionBriefing(state);
                     }
                     else hud.Action("Watch eligible housemates compete", () => Commit(state, EpisodeCommandKind.Advance));
                 }
                 else
                 {
+                    hud.Action("Review competition results", () => ReviewCompetitionResult(state));
                     foreach (var score in state.competitionScores.OrderByDescending(x => x.score)) hud.Paragraph(state.Find(score.contestantId).name + "   " + score.score.ToString("0.00"));
                     hud.Action("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
                 }
@@ -986,12 +1001,15 @@ namespace Gamesim.Episode
         // The sting is a scene root rather than a child, so it has to be taken down explicitly.
         private void OnDestroy()
         {
+            EndDiaryVisit(true);
             DisposeNpcSocialWorld();
             if (hud != null) Destroy(hud);
             if (sting != null) { Destroy(sting.gameObject); sting = null; }
             if (takeover != null) { Destroy(takeover.gameObject); takeover = null; }
             if (voteReveal != null) { Destroy(voteReveal.gameObject); voteReveal = null; }
-            if (competitionCard != null) { Destroy(competitionCard.gameObject); competitionCard = null; }
+            if (competitionCard != null)
+            { competitionCard.VisibilityChanged -= SyncCompetitionResultInput; Destroy(competitionCard.gameObject); competitionCard = null; }
+            if (competitionScreen != null) { Destroy(competitionScreen.gameObject); competitionScreen = null; }
             if (keyCeremony != null) { Destroy(keyCeremony.gameObject); keyCeremony = null; }
             if (tutorial != null) { Destroy(tutorial.gameObject); tutorial = null; }
             if (opening != null) { Destroy(opening.gameObject); opening = null; }

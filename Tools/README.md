@@ -7,11 +7,15 @@ Unity (it sits outside `Assets/`). Machine-specific paths are derived or overrid
 
 | Script | What it does | Time |
 | --- | --- | --- |
-| `offline-compile.ps1` | Replays Unity's Bee `.rsp` files through `csc` for all eight Gamesim assemblies, adding sources created since the last editor compile. Type-checks a change without the editor. Non-zero exit on any error. | seconds |
-| `player-compile.ps1` | Same, against the *player* response files, which catches editor-only API used in runtime code — the editor compile cannot see that. Needs a player build to have generated the `P.dag` on the acceptance copy. | seconds |
+| `offline-compile.ps1` | Smoke-compiles all eight owned assemblies from current source lists using cached editor references. Missing assemblies/configuration mismatches fail; outputs and dependencies are unique to this invocation. `-WithoutUma` requires matching UMA-free cached responses. | seconds |
+| `player-compile.ps1` | Same for all three player assemblies (two with `-WithoutUma`); validates player/UMA defines and refuses stale dependency outputs. Cached compiler checks do not replace Unity tests/builds. | seconds |
+| `verify-review-candidate.ps1 -Name <fresh-name>` | Runs every owned suite, retains before/after complete input manifests, exact `.meta` archives, XML/log hashes and individual test names. Unexpected product-input drift fails. `-WithoutUma` requires the existing separate UMA-free copy. | depends on suites and input hashing |
+| `build-review-candidate.ps1 -TestName <passing-name>` | Requires a passing complete same-configuration test summary. Checks live and synced inputs, builds Review13, checks final inputs, retains a timestamped report and hashes the entire build tree. Supports `-WithoutUma`. | depends on changed assets |
+| `test-review-evidence.ps1` | Exercises evidence comparisons against temporary synthetic fixtures. No Unity, mirroring or acceptance-copy access. | seconds |
+| `test-acceptance-mirror.ps1` | Exercises the real mirror runner against temporary fixture projects, including retained subtrees, folder GUIDs, ordinary deletion and manifest prediction. No Unity or real acceptance-copy writes. | seconds |
+| `sync-acceptance.ps1` | Checks source/destination boundaries and that the acceptance editor is idle, then checks every folder mirror. GPU Resident Drawer is disabled only when explicitly requested for tests. | depends on changes |
 | `sync-and-run.sh` | Waits for the acceptance copy to be free, mirrors `Assets/` and `ProjectSettings/` over it, then runs each `name:Platform:Assembly` suite headless and prints the totals and any failures. | ~1 min EditMode, 10–15 min PlayMode |
-| `build-and-verify.sh` | Mirrors, builds the Windows player on the copy with the same entry point the editor menu uses, then runs the exe's self-verification (`--gamesim-verify`, plus `--gamesim-verify-season` unless `--no-season`) into an isolated save root and prints both reports. `--graphical` for a windowed run (the C rows), `--no-build` to reuse the exe, anything else goes to the player, e.g. `--gamesim-profile-seconds 300 --gamesim-house-size 16`. | ~10 min build, 5–10 min season |
-| `build-and-verify.sh --look-sheet` | The look sheet: builds, runs the player in a window with `--gamesim-look-sheet`, walks a fresh twelve-house season to the twelve moments the mockups show and captures each as `after-NN.png`, then copies them to `ArtSource/reference/after/` beside `mockups/mockup-NN.webp`; `look-sheet.json` says which moments were reached and which are the nearest real frame. | ~10 min |
+| `build-and-verify.sh` | Retired and fail-closed. It never builds, launches an old executable, or recursively removes a named output folder. Use the current PowerShell runners. | immediate |
 
 ```bash
 powershell -NoProfile -File Tools/offline-compile.ps1
@@ -21,7 +25,50 @@ powershell -NoProfile -File Tools/offline-compile.ps1
 Tools/sync-and-run.sh edit:EditMode:Gamesim.EditModeTests play:PlayMode:Gamesim.PlayModeTests
 ```
 
-Baseline the suites must not drop below: **EditMode 1208/1208, PlayMode 152/152.**
+Run EditMode, PlayMode and UMA PlayMode separately, preserving each XML and its candidate manifest.
+The release requirement is zero failures and skipped tests; a historical test count is not evidence
+that the current source passes. Record added/removed tests explicitly rather than lowering a count
+to accommodate a regression.
+
+Use the review-candidate scripts for acceptance. A test snapshot disables GPU Resident Drawer to avoid
+the editor harness crash. The build explicitly permits only its 0-to-1 shipping difference when matching
+the tested BEFORE snapshot, and compares post-build inputs with the tested AFTER snapshot. The build's
+window settings and known input-action preload are the only other permitted build changes. All other
+product differences fail. Workflow changes under `Tools` are retained separately and never described
+as tested product changes. Keep feature/source edits frozen through the final tests and build.
+
+Before hashing, both test and build copies remove only the `SENTIS_ANALYTICS_ENABLED` Standalone
+symbol that the installed inference package removes on batch startup. The live editor's analytics
+preference is untouched. `-WithoutUma` also removes the exact Standalone `GAMESIM_UMA` token.
+The source preview applies those same declared copy settings. Explicitly retained `Assets/Resources`
+and `Assets/UMAProjectData` directories retain their `.meta` companions as well as their contents.
+Dynamic font assets start with cleared generated caches, matching TextMesh Pro's documented-in-source
+editor-exit behavior; font files are still fully hashed and any further byte changes fail the audit.
+
+Both runners hash every file under `Assets` (including local UMA and retained resources), `ProjectSettings`,
+`Packages`, `ArtSource`, plus the live workflow `Tools` directory. Full `.meta` bytes are archived before
+and after import so a drift report can be reviewed. The only built-in import allowance is an authored FBX
+changing solely `materialLocation: 0` to `1`. Other import changes fail unless a reviewed JSON array is
+supplied to `-ApprovedMetaDrift`, with exact `path`, `beforeSha256`, `afterSha256`, and a nonempty `reason`.
+Only `Assets/*.meta` entries are accepted; a null before hash is allowed for a newly generated `.meta`.
+Approvals are retained inside the drift report. Do not approve unexplained GUID/material/rig changes.
+
+The named summary binds XML/log hashes, before/after manifests, the drift report and individual test names.
+The build retains a timestamped copy of the fresh Unity report, pre/post-build input manifests and a
+SHA256 manifest of **every** player file, including managed DLLs and data. The launcher hash alone is not
+the player identity. The fixed Review13 output may be rebuilt later; verify its retained tree manifest
+before treating an older graphical report as evidence for the files currently in that directory.
+
+```powershell
+powershell -NoProfile -File Tools/verify-review-candidate.ps1 -Name review13-f
+powershell -NoProfile -File Tools/build-review-candidate.ps1 -TestName review13-f
+```
+
+For UMA-free acceptance, set `GAMESIM_ACCEPTANCE` to the existing UMA-free project and pass `-WithoutUma`
+to both commands. This configuration never removes a locally installed UMA package. The test suites
+exercise the editor configuration; run the reported player explicitly for shipping-render visual and
+performance checks, always providing a fresh isolated `--gamesim-save-root`. Neither a successful build
+nor passing automated tests establishes visual quality or a frame-time improvement.
 
 ## The acceptance copy
 

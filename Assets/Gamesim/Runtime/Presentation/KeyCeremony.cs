@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -38,10 +39,11 @@ namespace Gamesim.Presentation
             public readonly string Id;
             public readonly string Name;
             public readonly Texture Portrait;
+            public readonly ContestantState Character;
 
-            public Person(string id, string name, Texture portrait)
+            public Person(string id, string name, Texture portrait, ContestantState character = null)
             {
-                Id = id; Name = name; Portrait = portrait;
+                Id = id; Name = name; Portrait = portrait; Character = character?.Clone();
             }
         }
 
@@ -273,7 +275,7 @@ namespace Gamesim.Presentation
             float scale = Mathf.Max(0.5f, FontScale);
             float portrait = 132f * scale;
 
-            var rim = HudPrimitives.Portrait(stage, person.Value.Portrait, tint, portrait, 5f * scale, false);
+            var rim = HudPrimitives.Portrait(stage, person.Value.Portrait, tint, portrait, 5f * scale, false, person.Value.Character);
             rim.anchorMin = new Vector2(.5f, 1f); rim.anchorMax = new Vector2(.5f, 1f); rim.pivot = new Vector2(.5f, 1f);
             rim.anchoredPosition = Vector2.zero;
 
@@ -311,7 +313,7 @@ namespace Gamesim.Presentation
             {
                 var person = nominated[i];
 
-                var rim = HudPrimitives.Portrait(stage, person.Portrait, UiTheme.Danger, portrait, 5f * scale, false);
+                var rim = HudPrimitives.Portrait(stage, person.Portrait, UiTheme.Danger, portrait, 5f * scale, false, person.Character);
                 rim.anchorMin = new Vector2(.5f, 1f); rim.anchorMax = new Vector2(.5f, 1f); rim.pivot = new Vector2(.5f, 1f);
                 rim.anchoredPosition = new Vector2(start + i * slotWidth, 0f);
 

@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -50,10 +51,11 @@ namespace Gamesim.Presentation
             public readonly string Id;
             public readonly string Name;
             public readonly Texture Portrait;
+            public readonly ContestantState Character;
 
-            public Nominee(string id, string name, Texture portrait)
+            public Nominee(string id, string name, Texture portrait, ContestantState character = null)
             {
-                Id = id; Name = name; Portrait = portrait;
+                Id = id; Name = name; Portrait = portrait; Character = character?.Clone();
             }
         }
 
@@ -254,7 +256,7 @@ namespace Gamesim.Presentation
             {
                 float x = (i == 0 ? -1f : 1f) * slot * 0.5f;
 
-                var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, 4f * scale, false);
+                var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, 4f * scale, false, nominees[i].Character);
 
                 // Both faces here are on the block, so both carry the target the web build uses.
                 HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, portrait);

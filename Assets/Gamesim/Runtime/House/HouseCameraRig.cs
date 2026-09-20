@@ -148,6 +148,7 @@ namespace Gamesim.House
         public bool HasShot => activeShot.HasValue;
         /// <summary>The close-up volume's weight this frame: how far the depth of field is in.</summary>
         public float DepthOfFieldWeight => depthOfFieldWeight;
+        public float DesiredDepthOfFieldWeight => activeShot.HasValue ? Mathf.Clamp01(activeShot.Value.DepthOfFieldWeight) : 0f;
         /// <summary>How orthographic the lens is this frame, 0 (the camera's own) to 1.</summary>
         public float LensOrthographic => lensOrthographic;
         public float DesiredDistance => desiredDistance;
@@ -410,6 +411,20 @@ namespace Gamesim.House
             BeginTravel(seconds);
         }
 
+        /// <summary>Tracks a staged subject as its seated pose settles, without restarting the camera move.</summary>
+        public void RetargetShot(Vector3 focus,Vector3 eye)
+        {
+            if(!activeShot.HasValue)return;
+            var line=focus-eye;
+            float length=line.magnitude;
+            if(length<.5f)return;
+            var shot=activeShot.Value;
+            shot.Focus=focus; shot.Distance=length;
+            shot.Pitch=Mathf.Asin(Mathf.Clamp(-line.y/length,-1f,1f))*Mathf.Rad2Deg;
+            shot.Yaw=Mathf.Atan2(line.x,line.z)*Mathf.Rad2Deg;
+            activeShot=shot; desiredFocus=ClampFocus(focus); desiredDistance=length; yaw=Mathf.Repeat(shot.Yaw,360f);
+        }
+
         /// <summary>A move or an input that takes the camera decides the view itself; the shot just ends.</summary>
         private void DropShot(bool restoreYaw)
         {
@@ -652,10 +667,13 @@ namespace Gamesim.House
             // Nothing nearer the focus than the player could zoom to counts: the sofa the focus
             // sits beside, or a low wall, must never yank the camera onto the floor. The pull-in
             // stops at that same limit, so the camera is never closer than the player could ask.
-            float skip = minimumDistance;
+            // Close authored shots have a different envelope from free exploration. Their complete
+            // camera segment must be tested, including the diary's sub-four-metre interview.
+            float skip = activeShot.HasValue ? .4f : minimumDistance;
             if (occlusionRadius <= 0f || wanted <= skip) return wanted;
             var back = transform.rotation * Vector3.back;
-            int count = Physics.SphereCastNonAlloc(transform.position + back * skip, occlusionRadius, back,
+            float radius = activeShot.HasValue ? Mathf.Min(.18f,occlusionRadius) : occlusionRadius;
+            int count = Physics.SphereCastNonAlloc(transform.position + back * skip, radius, back,
                 occlusionHits, wanted - skip, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             float nearest = wanted;
             for (int i = 0; i < count; i++)
@@ -799,6 +817,8 @@ namespace Gamesim.House
         /// </summary>
         private Vector3 SubjectFocus()
         {
+            var seat=subject.GetComponent<HouseSeatPresentation>();
+            if(seat!=null && seat.Active)return ClampFocus(seat.VisualFocus-Vector3.up*.15f);
             var focus = ClampFocus(subject.position);
             focus.y = subject.position.y + subjectHeight;
             return focus;

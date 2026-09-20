@@ -20,7 +20,8 @@ namespace Gamesim.Simulation
     /// <summary>Pure runEnduranceCompetition port from the web competition runner.</summary>
     public static class WebEnduranceCompetition
     {
-        public static WebEnduranceResult Run(IReadOnlyList<ContestantState> participants, Func<double> random)
+        public static WebEnduranceResult Run(IReadOnlyList<ContestantState> participants, Func<double> random,
+            Action<double, string, double, double, bool> observeRound = null)
         {
             if (participants == null || participants.Count == 0) throw new ArgumentException("Competition requires at least one participant.", nameof(participants));
             if (participants.Any(c => c == null || c.stats == null) || participants.Select(c => c.id).Distinct().Count() != participants.Count)
@@ -39,14 +40,18 @@ namespace Gamesim.Simulation
             while (remaining.Count > 1)
             {
                 time += 10 + Next(random) * 20;
-                var chances = remaining.Select(contestant => new
+                var chances = remaining.Select(contestant =>
                 {
-                    contestant,
-                    chance = (contestant.stats.endurance + contestant.stats.physical * 0.3) * (0.5 + Next(random) * 0.5)
+                    double roll = Next(random);
+                    return new { contestant, roll,
+                        chance = (contestant.stats.endurance + contestant.stats.physical * 0.3) * (0.5 + roll * 0.5) };
                 }).ToArray();
                 // LINQ's stable ordering matches JS stable sort: equal survival eliminates the
                 // earliest remaining participant, not the highest ID or the last tied candidate.
                 var eliminated = chances.OrderBy(entry => entry.chance).First().contestant;
+                if (observeRound != null)
+                    foreach (var entry in chances)
+                        observeRound(time, entry.contestant.id, entry.roll, entry.chance, entry.contestant == eliminated);
                 result.eliminationOrder.Add(new WebEnduranceElimination { contestantId = eliminated.id, time = time });
                 remaining.Remove(eliminated);
             }

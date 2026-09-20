@@ -20,10 +20,9 @@ namespace Gamesim.Episode
     ///
     /// <para>It is a separate mode, not a bolt-on to the recorded walk: it commits its own decisions
     /// (skipping the opening, a ballot in the diary, one small talk) so it must never share the
-    /// walk's revision assertions, and it never fails a moment it cannot reach — the sheet's value is
-    /// twelve files, so an unreachable moment writes the best available frame and says why. Those
-    /// reasons are the phase checklist: night light, the radial, bubbles and the roofless overview
-    /// each name the phase that supplies them.</para>
+    /// walk's revision assertions. Every required moment and resolution/text-size capture must
+    /// be reached; failures remain in the report. Capturing a frame establishes route coverage,
+    /// while visual acceptance still requires inspection of the actual images.</para>
     /// </summary>
     public sealed partial class PortVerification
     {
@@ -43,10 +42,20 @@ namespace Gamesim.Episode
         private sealed class LookSheetReport
         {
             public string status, startedUtc, finishedUtc, resolution;
+            public string visualStatus = "Pending inspection of captured frames";
             public int houseSize;
             public uint seed;
             public List<LookShot> shots = new List<LookShot>();
+            public List<LayoutCapture> layouts = new List<LayoutCapture>();
             public List<string> errors = new List<string>();
+        }
+
+        [Serializable]
+        private sealed class LayoutCapture
+        {
+            public int shot, width, height;
+            public bool largeText, compactHud;
+            public string path;
         }
 
         private LookSheetReport lookReport;
@@ -61,8 +70,7 @@ namespace Gamesim.Episode
                 lookReport.errors.Add("The look sheet needs a window; -batchmode captures are black.");
                 yield break;
             }
-            Screen.SetResolution(1920, 1080,
-                Display.main.systemWidth >= 1920 && Display.main.systemHeight >= 1080 ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed);
+            Screen.SetResolution(1920, 1080, FullScreenMode.Windowed);
             for (int i = 0; i < 15; i++) yield return null;
             lookReport.resolution = Screen.width + "x" + Screen.height;
 
@@ -78,6 +86,11 @@ namespace Gamesim.Episode
             yield return SkipOpening();
             lookReport.houseSize = seasonDirector.Snapshot.contestants.Count;
             lookReport.seed = seasonDirector.Snapshot.seed;
+
+            yield return CloseEverything();
+            var exploration = new LookShot { index = 0, label = "exploration HUD", reached = true };
+            yield return Guard(CaptureLayoutMatrix(exploration), exploration);
+            if (!exploration.reached) lookReport.errors.Add("Exploration layout capture failed: " + exploration.reason);
 
             yield return Shot(2, "cast screen", CastScreen);
             yield return Shot(1, "living room, a houseguest selected, the action panel", LivingRoom);
@@ -97,7 +110,8 @@ namespace Gamesim.Episode
         {
             if (lookReport == null) return;
             int written = lookReport.shots.Count(s => s.path != null && File.Exists(s.path) && new FileInfo(s.path).Length > 0);
-            lookReport.status = written == 12 && lookReport.errors.Count == 0 ? "Passed" : "Failed";
+            lookReport.status = written == 12 && lookReport.shots.All(s => s.reached)
+                && lookReport.layouts.Count == 31 && lookReport.errors.Count == 0 ? "Passed" : "Failed";
             lookReport.finishedUtc = DateTime.UtcNow.ToString("O");
             File.WriteAllText(Path.Combine(outputDirectory, "look-sheet.json"), JsonUtility.ToJson(lookReport, true));
             Debug.Log("Gamesim look sheet " + lookReport.status + ": " + written + " of 12 captures, "
@@ -107,7 +121,7 @@ namespace Gamesim.Episode
 
         // ---------------------------------------------------------------- the frame
 
-        /// <summary>Runs a moment's route, then captures whatever is on screen; a route that throws becomes a reason, not a failure.</summary>
+        /// <summary>Captures each route and records its failure without abandoning the remaining evidence.</summary>
         private IEnumerator Shot(int index, string label, Func<LookShot, IEnumerator> route)
         {
             var shot = new LookShot { index = index, mockup = "mockup-" + index.ToString("00"), label = label, reached = true };
@@ -115,6 +129,8 @@ namespace Gamesim.Episode
             // The capture and the tidy-up are guarded too: a moment that cannot be reached must still
             // leave a picture and a reason behind it, and the sheet must still reach its report.
             yield return Guard(CaptureLook(shot), shot);
+            if (shot.reached && (index == 1 || index == 2 || index == 7 || index == 11))
+                yield return Guard(CaptureLayoutMatrix(shot), shot);
             var state = seasonDirector.Snapshot;
             shot.phase = state.phase.ToString();
             shot.week = state.week;
@@ -173,6 +189,64 @@ namespace Gamesim.Episode
                 shot.reason = Append(shot.reason, "capture not written");
             }
             else shot.path = path;
+        }
+
+        // Render the existing interaction at each supported viewport/text size. These are visual
+        // evidence, not a claim that having written a PNG proves absence of overlap or clipping.
+        private IEnumerator CaptureLayoutMatrix(LookShot shot)
+        {
+            bool originalLarge = seasonDirector.LargeText, originalCompact = seasonDirector.CompactHud;
+            int originalWidth = Screen.width, originalHeight = Screen.height;
+            var originalMode = Screen.fullScreenMode;
+            try
+            {
+                foreach (var size in new[] { new Vector2Int(1280,720), new Vector2Int(1600,900), new Vector2Int(1920,1080) })
+                {
+                    Screen.SetResolution(size.x,size.y,FullScreenMode.Windowed);
+                    for (int frame=0;frame<15;frame++) yield return null;
+                    foreach (bool large in new[] { false,true })
+                    {
+                        seasonDirector.SetLargeText(large);
+                        seasonDirector.SetCompactHud(false);
+                        yield return CaptureLayout(shot,large,false,size.x,size.y);
+                    }
+                }
+                if (shot.index == 0)
+                {
+                    Screen.SetResolution(1280,720,FullScreenMode.Windowed);
+                    for (int frame=0;frame<15;frame++) yield return null;
+                    seasonDirector.SetLargeText(true);
+                    seasonDirector.SetCompactHud(true);
+                    yield return CaptureLayout(shot,true,true,1280,720);
+                }
+            }
+            finally
+            {
+                seasonDirector.SetLargeText(originalLarge);
+                seasonDirector.SetCompactHud(originalCompact);
+                Screen.SetResolution(originalWidth,originalHeight,originalMode);
+            }
+            for (int frame=0;frame<15;frame++) yield return null;
+        }
+
+        private IEnumerator CaptureLayout(LookShot shot,bool large,bool compact,int requestedWidth,int requestedHeight)
+        {
+            Canvas.ForceUpdateCanvases();
+            for (int frame=0;frame<5;frame++) yield return null;
+            string filename="layout-"+shot.index.ToString("00")+"-"+Screen.width+"x"+Screen.height
+                +(large ? "-large" : "-standard")+(compact ? "-compact" : "")+".png";
+            string path=Path.Combine(outputDirectory,filename);
+            if(File.Exists(path))File.Delete(path);
+            ScreenCapture.CaptureScreenshot(path);
+            double deadline=Time.realtimeSinceStartupAsDouble+5;
+            while((!File.Exists(path)||new FileInfo(path).Length==0)&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
+            if(!File.Exists(path)||new FileInfo(path).Length==0)
+                lookReport.errors.Add("Layout capture was not written: "+filename);
+            if(Screen.width!=requestedWidth||Screen.height!=requestedHeight)
+                lookReport.errors.Add("Requested layout "+requestedWidth+"x"+requestedHeight+" rendered at "+Screen.width+"x"+Screen.height+".");
+            lookReport.layouts.Add(new LayoutCapture { shot=shot.index,width=Screen.width,height=Screen.height,
+                largeText=large,compactHud=compact,path=path });
+            yield return null;
         }
 
         /// <summary>Back to a quiet house between moments: every panel closed, the cast free to move.</summary>
@@ -250,9 +324,25 @@ namespace Gamesim.Episode
         private IEnumerator WaitForShot()
         {
             var rig = FindAnyObjectByType<HouseCameraRig>();
+            if (seasonDirector.IsDiaryOpen)
+            {
+                yield return WaitUntil(() => seasonDirector.IsDiarySettled, 25);
+                if (!seasonDirector.IsDiarySettled)
+                    throw new TimeoutException("The diary did not reach its seated decision state before capture.");
+            }
             if (rig == null || !rig.HasShot) yield break;
-            yield return WaitUntil(() => rig.HasArrived(0.1f) && !rig.IsTravelling, 3);
-            yield return WaitUntil(() => Mathf.Abs(rig.DepthOfFieldWeight - Mathf.Clamp01(rig.DepthOfFieldWeight)) < 0.01f, 1);
+            bool Settled()
+            {
+                if (!rig.HasShot || !rig.HasArrived(.1f) || rig.IsTravelling
+                    || Mathf.Abs(rig.DepthOfFieldWeight-rig.DesiredDepthOfFieldWeight)>.01f) return false;
+                var diary = seasonPlayer.GetComponent<DiarySeatPose>();
+                if (diary == null || !diary.Active) return true;
+                var seat = seasonPlayer.GetComponent<HouseSeatPresentation>();
+                var build = seasonPlayer.GetComponentInChildren<CharacterBodyBuildState>();
+                return seat != null && seat.Settled && (build == null || build.Ready);
+            }
+            yield return WaitUntil(Settled, 15);
+            if (!Settled()) throw new TimeoutException("The camera, depth of field or diary seating did not settle before capture.");
             yield return null;
         }
 
@@ -281,11 +371,8 @@ namespace Gamesim.Episode
             if (npc == null) throw new InvalidOperationException("No active houseguest to select.");
             seasonDirector.FollowHouseguest(npc.Id);
             yield return ApproachAndOpen(npc, shot);
-            // The bubble landed 2026-09-20. What mockup-01 still has and this does not is its
-            // right column - a Relationships card of faces, moods and hearts, and a Social Goals
-            // card - and its navigation rail, which would want the cast strip moved to the bottom.
-            shot.reason = "the relationships and social-goals cards, and the navigation rail, are "
-                + "what mockup-01 still has that this does not";
+            shot.reason = "Conversation controls use the activity layout; relationship details remain in the notebook. "
+                + "Compare the visible pair, house and cast clearance with the reference.";
         }
 
         private IEnumerator Overview(LookShot shot)
@@ -294,7 +381,7 @@ namespace Gamesim.Episode
             var rig = FindAnyObjectByType<HouseCameraRig>();
             yield return WaitUntil(() => rig.HasArrived() && rig.LensOrthographic >= 0.999f, 4);
             yield return null;
-            shot.reason = "the roofless cutaway arrives with V4";
+            shot.reason = "Inspect the authored cutaway, room labels and unobstructed house area around the HUD.";
         }
 
         private IEnumerator RelationshipGraph(LookShot shot)
@@ -359,10 +446,10 @@ namespace Gamesim.Episode
                     yield return WaitUntil(() => HouseEvents.Pending(seasonDirector.Snapshot) != null, 40);
                 }
             }
-            if (HouseEvents.Pending(seasonDirector.Snapshot) == null) throw new InvalidOperationException("No house event was offered; the conflict meter and vibe bars arrive with V2.");
+            if (HouseEvents.Pending(seasonDirector.Snapshot) == null) throw new InvalidOperationException("No house event was offered during this capture route.");
             yield return OpenSeasonStation();
-            shot.reason = "the vibe bars are in; the conflict meter - two portraits either side of "
-                + "a tension bar - is not";
+            shot.reason = "The event shows its involved houseguests and counts of known events. "
+                + "Those counts describe activity, commitments and game stakes, not private NPC feelings.";
         }
 
         private IEnumerator CompetitionMidPlay(LookShot shot)
@@ -371,21 +458,27 @@ namespace Gamesim.Episode
             var state = seasonDirector.Snapshot;
             if (!EpisodeEngine.IsCompetition(state.phase)) throw new InvalidOperationException("No competition with the player was reached.");
             yield return OpenSeasonStation();
-            var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state.phase, state.week));
+            var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             yield return ClickSeasonButton(CompetitionMiniGames.EnterCaption(game));
+            double prepareUntil = Time.realtimeSinceStartupAsDouble + 40;
+            while (seasonDirector.IsChallengeActive && CompetitionSurface() != null && !CompetitionSurface().IsPlaying
+                && Time.realtimeSinceStartupAsDouble < prepareUntil)
+            {
+                if (CompetitionSurface().Paused) yield return TryClickCompetitionControl(CompetitionSurface().IsAssembling ? "Pause assembly" : "Pause competition");
+                else yield return null;
+            }
             double until = Time.realtimeSinceStartupAsDouble + 3.5;
             int inputs = 0;
             while (Time.realtimeSinceStartupAsDouble < until && seasonDirector.IsChallengeActive)
             {
-                if (HasSeasonButtonText("Hit")) { yield return TryClickSeasonButton("Hit"); inputs++; }
+                if (CompetitionSurface() != null && CompetitionSurface().Paused)
+                { yield return TryClickCompetitionControl(CompetitionSurface().IsAssembling ? "Pause assembly" : "Pause competition"); continue; }
+                if (VisibleSeasonButtons().Any(b => b.name == "Reaction target"))
+                { yield return TryClickCompetitionControl("Reaction target"); if(lastClickLanded)inputs++; }
                 yield return null;
             }
-            // The lanes, the gates, the stacking props and the lit backdrop landed on 2026-09-20.
-            // What the mockup still has and this does not is the crowd: the houseguests who are not
-            // competing are scattered around the house rather than seated along the yard watching,
-            // and a competition with no audience reads as a rehearsal.
-            shot.reason = "the yard has its course and its lit stage; the watching crowd does not sit "
-                + "in the yard yet";
+            shot.reason = "The player and available cast reserve yard positions before the attempt. "
+                + "Spectators use real loungers when available, with standing places otherwise; inspect visibility and body contact.";
         }
 
         private IEnumerator NominationDiscussion(LookShot shot)
@@ -395,13 +488,16 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.Nomination && state.hohId == state.playerId)
             {
                 yield return OpenSeasonStation();
-                shot.reason = "the private chat, the threat bars and the insight arrive with V2";
+                foreach (var candidate in EpisodeEngine.NominationCandidates(state).Take(2))
+                    yield return ClickSeasonButton(candidate.name, true);
+                yield return ClickSeasonButton(EpisodeHud.ShowCandidateContextCaption, true);
+                shot.reason = "Selected nominees expose their public competition record and the player's own relationship and promises.";
                 yield break;
             }
             var npc = ActiveNpcs().FirstOrDefault();
             if (npc == null) throw new InvalidOperationException("Nobody to discuss nominations with.");
             yield return ApproachAndOpen(npc, shot);
-            shot.reason = "not the HoH this week; the private chat, the threat bars and the insight arrive with V2";
+            shot.reason = "The player is not HoH in this route; this frame shows the available conversation, not the nomination comparison.";
         }
 
         private IEnumerator KeyCeremonyShot(LookShot shot)
@@ -434,7 +530,8 @@ namespace Gamesim.Episode
             if (!seasonPlayer.TryMoveTo(seasonDirector.DiaryPosition)) throw new InvalidOperationException("The walk to the diary room was refused.");
             yield return WaitSeasonWalk("look ballot", seasonDirector.DiaryPosition, false);
             if (!seasonDirector.TryOpenDiary()) throw new InvalidOperationException("The diary room did not open for the ballot.");
-            yield return null; yield return null;
+            yield return WaitUntil(() => seasonDirector.IsDiarySettled, 25);
+            if (!seasonDirector.IsDiarySettled) throw new TimeoutException("The diary ballot did not become ready after seating.");
             var nominee = state.Find(state.nominees.First());
             if (HasSeasonButtonText("Vote to evict " + nominee.name)) yield return ClickSeasonButton("Vote to evict " + nominee.name);
             yield return WaitForShot();

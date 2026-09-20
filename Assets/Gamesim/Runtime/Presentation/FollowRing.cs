@@ -33,7 +33,7 @@ namespace Gamesim.Presentation
         private const float DiamondTall = 0.26f;
 
         private HouseCameraRig rig;
-        private Transform marker, ring;
+        private Transform marker, ring, diamond;
 
         public static FollowRing Attach(HouseCameraRig rig)
         {
@@ -58,7 +58,10 @@ namespace Gamesim.Presentation
             }
             if (marker == null) Build();
             if (!marker.gameObject.activeSelf) marker.gameObject.SetActive(true);
-            marker.position = subject.position;
+            var seat=subject.GetComponent<HouseSeatPresentation>();
+            marker.position = seat!=null && seat.Active ? seat.VisualFeet : subject.position;
+            if(diamond!=null)diamond.position=seat!=null && seat.Active ? seat.VisualFocus+Vector3.up*.45f
+                : subject.position+Vector3.up*DiamondHeight;
         }
 
         private void Build()
@@ -77,6 +80,7 @@ namespace Gamesim.Presentation
             var gem = new GameObject(DiamondName, typeof(MeshFilter), typeof(MeshRenderer));
             gem.transform.SetParent(marker, false);
             gem.transform.localPosition = new Vector3(0f, DiamondHeight, 0f);
+            diamond=gem.transform;
             gem.GetComponent<MeshFilter>().sharedMesh = Diamond();
             Paint(gem.GetComponent<Renderer>(), UiTheme.Positive, 2.6f);
         }

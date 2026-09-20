@@ -9,8 +9,7 @@ using UnityEngine.UI;
 namespace Gamesim.Episode
 {
     /// <summary>
-    /// The conversation dial (mockup-06, mockup-12, VISUAL-TARGET.md V2 item 5): the speaker's face
-    /// at the hub and the ways of talking to them around it, with everything else one level in.
+    /// Compact conversation topics beside the speaker header, with advanced actions one level in.
     ///
     /// <para>The petals carry the build's own captions, unshortened. That is not a stylistic choice:
     /// a test and a screen reader both identify a control by the words on it, and there is exactly
@@ -33,8 +32,30 @@ namespace Gamesim.Episode
         /// <summary>The dial's block, so a test can find it the way it finds a named panel.</summary>
         public const string DialName = "Conversation radial";
 
-        private HudPrimitives.Dial dial;
         private RectTransform dialRoot;
+        private int topicSeats, topicTaken;
+        private Selectable[] tabOrder = Array.Empty<Selectable>();
+
+        private void WireConversationGrid()
+        {
+            if (dialRoot == null || !dialRoot.gameObject.activeInHierarchy) return;
+            var cells = dialRoot.GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.IsInteractable()).ToArray();
+            int columns = dialRoot.GetComponent<GridLayoutGroup>().constraintCount;
+            var before = AdjacentRadialControl(false);
+            var after = AdjacentRadialControl(true);
+            for (int i = 0; i < cells.Length; i++)
+            {
+                var navigation = cells[i].navigation;
+                int column = i % columns;
+                navigation.selectOnLeft = column > 0 ? cells[i - 1] : cells[i];
+                navigation.selectOnRight = column + 1 < columns && i + 1 < cells.Length ? cells[i + 1] : cells[i];
+                // At a vertical edge, leave the grid vertically instead of inheriting the
+                // one-dimensional Tab successor (which may be the next cell on this row).
+                navigation.selectOnUp = i >= columns ? cells[i - columns] : before != null ? before : cells[i];
+                navigation.selectOnDown = i + columns < cells.Length ? cells[i + columns] : after != null ? after : cells[i];
+                cells[i].navigation = navigation;
+            }
+        }
 
         /// <summary>
         /// Opens a dial around <paramref name="contestantId"/> with room for
@@ -43,28 +64,32 @@ namespace Gamesim.Episode
         /// </summary>
         public void ConversationRadial(string contestantId, int seats)
         {
-            dial = null; dialRoot = null;
+            dialRoot = null;
             if (content == null) return;
 
-            dial = HudPrimitives.Radial(DialName, content, Portrait(contestantId), seats, FontScale);
-            dialRoot = dial.Root;
-            // The panel is short by default so the set stays visible over it. A dial does not fit
-            // in short, so seating one restores the taller footprint the dial was tuned against -
-            // the same height and the same top edge it had when the panel was centred.
-            if (modal != null)
-            {
-                modal.sizeDelta = new Vector2(modal.sizeDelta.x, ModalDialHeight);
-                modal.anchoredPosition = new Vector2(modal.anchoredPosition.x, ModalDialLift);
-            }
+            SetActivityLayout(ActivityLayout.Conversation);
+            topicSeats = Mathf.Max(1, seats); topicTaken = 0;
+            dialRoot = new GameObject(DialName, typeof(RectTransform), typeof(GridLayoutGroup)).GetComponent<RectTransform>();
+            dialRoot.SetParent(content, false);
+            // Four columns leave the people visible above the topic chooser. Every existing caption
+            // and category survives; long captions wrap instead of forcing an oversized radial.
+            var grid = dialRoot.GetComponent<GridLayoutGroup>();
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 4;
+            grid.spacing = new Vector2(8f, 8f);
+            grid.padding = new RectOffset(0,0,Mathf.RoundToInt(30f * FontScale),0);
+            float available = modal.sizeDelta.x - 74f;
+            grid.cellSize = new Vector2((available - 24f) / 4f, 112f * FontScale);
+            int rows = (topicSeats + 3) / 4;
+            float height = 30f * FontScale + rows * grid.cellSize.y + (rows - 1) * 8f;
             var element = dialRoot.gameObject.AddComponent<LayoutElement>();
-            element.minHeight = dialRoot.sizeDelta.y;
-            element.preferredHeight = dialRoot.sizeDelta.y;
+            element.minHeight = height;
+            element.preferredHeight = height;
 
             var line = NewText(dialRoot, DialPrompt, 13, UiTheme.Muted);
-            Anchor(line.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, .5f),
-                new Vector2(0f, -86f * FontScale), new Vector2(190f * FontScale, 40f * FontScale));
-            line.alignment = TextAlignmentOptions.Top;
-            AutoSize(line, 11);
+            line.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            Anchor(line.rectTransform, new Vector2(0,1), new Vector2(0,1),
+                Vector2.zero, new Vector2(available,24f * FontScale));
+            line.alignment = TextAlignmentOptions.Left;
         }
 
         /// <summary>
@@ -73,25 +98,26 @@ namespace Gamesim.Episode
         /// </summary>
         public Button Petal(string caption, string icon, Color tint, Action action)
         {
-            if (dial == null || dial.Taken >= dial.Seats) return Action(caption, action);
+            if (dialRoot == null || topicTaken >= topicSeats) return Action(caption, action);
 
             var rect = Chrome(caption, dialRoot, Ink);
-            dial.Place(rect);
+            topicTaken++;
             // A second hairline over the glass one, in the petal's own colour: this is the whole of
             // what the mockup's single-word labels carried, so it has to be visible at a glance.
             UiTheme.AddBorder(rect, UiTheme.GlassRadius, new Color(tint.r, tint.g, tint.b, .6f));
             var button = Pressable(rect, action);
 
-            float width = dial.Petal.x, height = dial.Petal.y;
-            float side = 26f * FontScale;
+            var cell = dialRoot.GetComponent<GridLayoutGroup>().cellSize;
+            float width = cell.x, height = cell.y;
+            float side = 18f * FontScale;
             var art = HudPrimitives.Glyph("Petal mark", rect, icon, tint,
-                new Vector2((width - side) * .5f, -10f * FontScale), side);
-            float top = (art != null ? 42f : 16f) * FontScale;
+                new Vector2(width - side - 10f, -8f * FontScale), side);
+            float top = 10f * FontScale;
 
             var label = NewText(rect, caption, 15, Paper);
             Anchor(label.rectTransform, new Vector2(0, 1), new Vector2(0, 1),
                 new Vector2(10f * FontScale, -top),
-                new Vector2(width - 20f * FontScale, height - top - 30f * FontScale));
+                new Vector2(width - (art != null ? 44f : 20f) * FontScale, height - top - 32f * FontScale));
             label.alignment = TextAlignmentOptions.Top;
             // The captions are sentences of very different lengths in a petal of one size, so the
             // longest of them is allowed to shrink rather than to clip.
@@ -106,14 +132,24 @@ namespace Gamesim.Episode
         public void RevealBeyondRadial()
         {
             if (content == null || EventSystem.current == null) return;
+            var next = AdjacentRadialControl(true);
+            if (next != null) EventSystem.current.SetSelectedGameObject(next.gameObject);
+        }
+
+        private Selectable AdjacentRadialControl(bool after)
+        {
+            if (content == null || dialRoot == null || dialRoot.parent != content) return null;
             // Beneath, not merely outside: an oath declaration is drawn above the dial, and handing
             // the keyboard backwards to it would be the opposite of what the petal says it does.
-            int after = dialRoot != null && dialRoot.parent == content ? dialRoot.GetSiblingIndex() : -1;
-            Selectable next = null;
-            for (int i = after + 1; i < content.childCount && next == null; i++)
-                next = content.GetChild(i).GetComponentsInChildren<Selectable>()
-                    .FirstOrDefault(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar));
-            if (next != null) EventSystem.current.SetSelectedGameObject(next.gameObject);
+            int step = after ? 1 : -1;
+            for (int i = dialRoot.GetSiblingIndex() + step; i >= 0 && i < content.childCount; i += step)
+            {
+                var controls = content.GetChild(i).GetComponentsInChildren<Selectable>()
+                    .Where(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar));
+                var adjacent = after ? controls.FirstOrDefault() : controls.LastOrDefault();
+                if (adjacent != null) return adjacent;
+            }
+            return null;
         }
 
         /// <summary>

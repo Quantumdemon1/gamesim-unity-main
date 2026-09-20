@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -252,7 +253,7 @@ namespace Gamesim.Presentation
         /// persona has no authored art.
         /// </summary>
         public static RectTransform Portrait(
-            Transform parent, Texture face, Color ring, float diameter, float ringWidth, bool dim)
+            Transform parent, Texture face, Color ring, float diameter, float ringWidth, bool dim, ContestantState character = null)
         {
             var rim = Disc("Ring", parent, ring);
             rim.sizeDelta = new Vector2(diameter + ringWidth * 2f, diameter + ringWidth * 2f);
@@ -265,7 +266,7 @@ namespace Gamesim.Presentation
             frame.sizeDelta = new Vector2(diameter, diameter);
             frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
 
-            if (face != null)
+            if (face != null || character != null)
             {
                 var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
                 raw.rectTransform.SetParent(frame, false);
@@ -276,6 +277,7 @@ namespace Gamesim.Presentation
                 raw.texture = face;
                 raw.raycastTarget = false;
                 raw.color = dim ? new Color(.6f, .65f, .7f, 1f) : Color.white;
+                if (character != null) CharacterPortraits.Bind(raw, character);
             }
             else
             {

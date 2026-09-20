@@ -126,7 +126,14 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
 
             AssertGlass(result, "Card glass");
-            AssertNothingTakesAClick(result);
+            Assert.That(result.GetComponent<CanvasGroup>().blocksRaycasts, Is.True,
+                "A persistent result owns input until Continue is pressed.");
+            Assert.That(result.GetComponentsInChildren<Button>().Select(button=>button.name), Is.EquivalentTo(new[] { "Continue from competition results", "Review competition score details" }));
+            yield return new WaitForSecondsRealtime(4);
+            Assert.That(result.IsPlaying, Is.True, "Reading time is controlled by the player, including reduced motion.");
+            result.GetComponentsInChildren<Button>().Single(button=>button.name=="Continue from competition results").onClick.Invoke();
+            Assert.That(result.IsPlaying, Is.False);
+            Assert.That(result.OwnsInput, Is.True, "The dismissing input cannot activate a control underneath in the same frame.");
         }
 
         /// <summary>

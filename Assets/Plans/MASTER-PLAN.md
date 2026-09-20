@@ -1,5 +1,11 @@
 # Gamesim Big Brother — Master Development Plan
 
+**20 September implementation update:** work now includes schema-13 appearance snapshots, the
+modular creator/library, custom cast slots, activity layouts, prop-bound house interactions and
+versioned competition improvements. Integrated verification is in progress. The dated baseline
+below remains historical; consult fresh XML, build reports and source manifests before claiming a
+current pass. PR #1 was merged on 19 September; human acceptance is still outstanding.
+
 *One plan, replacing eight. Written 2026-09-18 against the code at `ac00ee6` on
 `port/game-flow-v2-pass` — 29 commits ahead of `main`, CI green, EditMode 1208/1208, PlayMode
 152/152. Every status below was read from the tree, not from the plan it supersedes; where a plan
@@ -123,7 +129,7 @@ Standing between "every item delivered" and "done."
 
 | Step | Status | Note |
 | --- | --- | --- |
-| Merge PR #1 to `main` | **open** | Nothing blocks it. `main` has none of Part 1. |
+| Merge PR #1 to `main` | **done — 2026-09-19** | Historical integration completed; subsequent branch work needs its own verification. |
 | Extend `PortVerification.Season` to deals, events, storylines, minigames | **written 2026-09-19; standalone walk passed (89 commands, a winner)** — two gates fixed on the way (a refused proposal records no deal; the ballot is offered only once the night reaches the voting stage); the full season walk is the next build's job | `PortVerification.Season.Systems.cs`: the weekly recap (which would have stranded the old walk after the first eviction), pending house events, one played minigame, an optional deal, and the season's storyline/event/deal counts in the report. The first standalone run showed `-nographics` cannot host the portrait RenderTextures — `Tools/build-and-verify.sh` runs `-batchmode` alone now — and then failed at its own first save/reload check, which now reports what it saw. **That failure was real:** a houseguest body cloned for a season larger than the authored five copied its template's motion owner and agent, and the coordinator refused every such clone its rebind — `FitHousematesToCast` strips them now, `NpcRuntime_ASeasonSeatedBeyondTheSixthSlotBindsAndSurvivesAReload` pins it, and the standalone season is to be rerun. |
 | Run Section E, once | **open** | Three fresh participants, one timed episode each, one losing run to its end. `PLAYTEST_PROTOCOL.md` is how. |
 | Re-measure C1–C5 in a window, on named hardware, at sixteen | **measured at twelve 2026-09-19 on the full authored house, uncapped: median 3.20 ms, p95 4.32, p99 6.28 — above the proposed thresholds, recorded in the matrix** | A roster seats twelve and the builder will not pad a season with the other roster, so sixteen is a save's bound, not a cast; the verifier now clamps and says so. Windowed 1600×900 on the reference machine: median 3.24 ms, p95 4.45 ms, p99 6.32 ms over 300 s and 82,928 frames. The 2 / 3 / 4 ms thresholds came from the primitive prototype; the shell, 139 authored props and twelve bodies cost about 2.5× that. Next: a clean re-run after the verifier fix, then either a profile of where the frame goes or thresholds that name this scene |
@@ -233,7 +239,8 @@ its final frame breaks a guarantee that currently passes.
   text and choices travel inside the recorded command that introduced it.* Events and storylines
   already persist their choices for exactly this reason; the remaining step is to carry generated
   content in the `Advance` payload rather than deriving it inside the commit. `SENTIS_ANALYTICS_ENABLED`
-  exists; Sentis is not installed. This is a project, not a task.
+  exists; `com.unity.ai.inference` 2.6.1 is present in the manifest. That package entry does not
+  establish a generated-content feature; such a feature remains separate future scope.
 
 ### 3.G — Systems depth *(only after the slice)*
 

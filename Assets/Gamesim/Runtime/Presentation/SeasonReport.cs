@@ -260,7 +260,7 @@ namespace Gamesim.Presentation
             holder.SetParent(parent, false);
             holder.anchoredPosition = new Vector2(x, 0f);
 
-            var face = HudPrimitives.Portrait(holder, portrait(who.id), tint, size, 4f, false);
+            var face = HudPrimitives.Portrait(holder, portrait(who.id), tint, size, 4f, false, who);
             face.anchoredPosition = new Vector2(0f, 26f);
 
             var name = HudPrimitives.Label("Name", holder, 19f, UiTheme.Paper, TextAlignmentOptions.Center);
@@ -550,7 +550,7 @@ namespace Gamesim.Presentation
                 var row = Panel(64f, UiTheme.Surface);
 
                 var face = HudPrimitives.Portrait(row, portrait(who.id),
-                    PlacementTint(who.status), 42f, 2f, who.status == ContestantStatus.Evicted);
+                    PlacementTint(who.status), 42f, 2f, who.status == ContestantStatus.Evicted, who);
                 face.anchorMin = new Vector2(0f, 0.5f);
                 face.anchorMax = new Vector2(0f, 0.5f);
                 face.pivot = new Vector2(0.5f, 0.5f);

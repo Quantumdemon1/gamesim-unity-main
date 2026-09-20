@@ -144,6 +144,83 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EpisodeValidation.TryValidate(fresh, out var error), Is.True, error);
         }
 
+        [UnityTest]
+        public IEnumerator CastSelect_FailedSlotCreationShowsItsReasonAndRetriesTheEditedCast()
+        {
+            var draft = CharacterDraft.FromAppearance(CastTemplates.Find("emma-brown"));
+            draft.Name = "Library guest";
+            var profile = CharacterProfile.FromDraft(System.Guid.NewGuid().ToString("N"), draft);
+            Assert.That(CastScreen().ProfileStore.Save(profile, out var profileError), Is.True, profileError);
+
+            yield return OpenCastScreen();
+            CastButtons(CastTemplates.RosterName(CastTemplates.Roster.AllStars))[0].onClick.Invoke();
+            CastButtons("More houseguests")[0].onClick.Invoke();
+            CastButtons("Cast slots")[0].onClick.Invoke();
+            CastButtons("Add Library guest to the cast")[0].onClick.Invoke();
+            CastButtons("Add Library guest to the cast")[0].onClick.Invoke();
+            CastButtons("Edit slot 1")[0].onClick.Invoke();
+            CastButtons("Identity")[0].onClick.Invoke();
+            Creator().GetComponentsInChildren<TMPro.TMP_InputField>()
+                .Single(field => field.name == "Name field").text = "Retry guest";
+            CastButtons(CharacterCreator.ApplySlotCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.True);
+            Assert.That(Creator().IsShowing, Is.False);
+
+            director.SaveNow();
+            var before = director.Snapshot;
+            string previousPath = director.SavePath;
+            byte[] previousBytes = File.ReadAllBytes(previousPath);
+            string blockedRoot = Path.Combine(temporaryDirectory, "blocked-cast-slot-root");
+            File.WriteAllText(blockedRoot, "test-owned file prevents creating a save directory");
+            var rootField = director.GetType().GetField("saveRoot",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(rootField, Is.Not.Null);
+            rootField.SetValue(director, blockedRoot);
+            try
+            {
+                CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+                yield return null;
+                yield return null;
+
+                Assert.That(CastScreen().IsShowing, Is.True, "The failed default-newcomer start returns to its cast setup.");
+                Assert.That(Creator().IsShowing, Is.False, "Editing an NPC must not make that NPC the player draft.");
+                Assert.That(director.StatusMessage, Does.StartWith("New season could not be saved."));
+                var visibleError = CastScreen().GetComponentsInChildren<TMPro.TMP_Text>()
+                    .Single(label => label.gameObject.activeInHierarchy && label.text == director.StatusMessage);
+                Assert.That(visibleError.transform.parent.name, Is.EqualTo("Fixed season footer"),
+                    "The failure must be on the active modal beside retry, outside the scrolling cast list.");
+                Assert.That(CastButtons(CastSelect.StartCaption), Has.Length.EqualTo(1));
+                Assert.That(CastButtons("Edit slot 1"), Has.Length.EqualTo(1));
+                Assert.That(CastButtons("Edit slot 2"), Has.Length.EqualTo(1));
+                Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>()
+                    .Any(label => label.text == "Slot 1: Retry guest"), Is.True);
+                Assert.That(director.SavePath, Is.EqualTo(previousPath));
+                AssertEquivalent(before, director.Snapshot);
+                Assert.That(File.ReadAllBytes(previousPath), Is.EqualTo(previousBytes));
+            }
+            finally
+            {
+                rootField.SetValue(director, temporaryDirectory);
+            }
+
+            CastButtons(CastSelect.StartCaption)[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.False);
+            var fresh = director.Snapshot;
+            Assert.That(fresh.contestants, Has.Count.EqualTo(SeasonBuilder.DefaultHouseSize + 1));
+            Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo("You"));
+            Assert.That(fresh.Find("custom-1").name, Is.EqualTo("Retry guest"));
+            Assert.That(fresh.Find("custom-2").name, Is.EqualTo("Library guest"));
+            var allStars = CastTemplates.In(CastTemplates.Roster.AllStars).Select(template => template.Id).ToArray();
+            Assert.That(fresh.contestants.Where(person => !person.isPlayer && !person.id.StartsWith("custom-"))
+                .All(person => allStars.Contains(person.id)), Is.True, "Retry must retain the selected roster.");
+            Assert.That(File.ReadAllBytes(previousPath), Is.EqualTo(previousBytes));
+            Assert.That(CastScreen().ProfileStore.TryLoad(profile.id, out var savedProfile, out profileError), Is.True, profileError);
+            Assert.That(savedProfile.name, Is.EqualTo("Library guest"), "Cast edits remain independent of the library profile.");
+        }
+
         /// <summary>
         /// Every houseguest in the built season gets a body, and none of the old season's bodies are
         /// left standing in the house as nameless extras.

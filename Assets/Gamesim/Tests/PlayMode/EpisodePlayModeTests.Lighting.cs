@@ -43,6 +43,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(practicals, Is.Not.Empty);
             Assert.That(practicals.All(l => l.lightmapBakeType == LightmapBakeType.Mixed), Is.True, "Bounce baked, direct live.");
             Assert.That(practicals.Any(l => l.shadows != LightShadows.None), Is.True, "The lamps cast shadows.");
+            var fitted = director.gameObject.scene.GetRootGameObjects()
+                .Single(root => root.name == "Gamesim Fitted Lighting");
+            var shadowedLamps = fitted.GetComponentsInChildren<Light>(true)
+                .Where(l => l.type == LightType.Point && l.shadows != LightShadows.None).ToArray();
+            Assert.That(shadowedLamps, Has.Length.EqualTo(14), "All fourteen authored practicals keep their shadows.");
+            Assert.That(shadowedLamps.All(l => l.shadowResolution == LightShadowResolution.FromQualitySettings
+                && l.GetUniversalAdditionalLightData().additionalLightsShadowResolutionTier
+                    == UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierHigh), Is.True,
+                "The authored per-light settings remain intact; unsupported numeric enum overrides must not run at startup.");
 
             var camera = cameraRig.ViewCamera;
             Assert.That(camera, Is.Not.Null);
@@ -58,6 +67,58 @@ namespace Gamesim.Tests.PlayMode
             var grade = volumes.First(v => v.name == "Global Volume").sharedProfile;
             Assert.That(grade.TryGet<Tonemapping>(out var tonemapping) && tonemapping.mode.value == TonemappingMode.ACES, Is.True);
             Assert.That(grade.TryGet<ShadowsMidtonesHighlights>(out var bands) && bands.active, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator Lighting_SeasonRestartPreservesFittedLightsAndThePipelineShadowSettings()
+        {
+            var fitted = director.gameObject.scene.GetRootGameObjects()
+                .Single(root => root.name == "Gamesim Fitted Lighting");
+            var lights = fitted.GetComponentsInChildren<Light>(true)
+                .Select(light => new
+                {
+                    Light = light, light.enabled, light.type, light.intensity, light.range, light.color,
+                    light.shadows, light.shadowStrength, light.shadowResolution, light.shadowCustomResolution,
+                    light.lightmapBakeType,
+                    Data = light.GetComponent<UniversalAdditionalLightData>(),
+                    Tier = light.GetComponent<UniversalAdditionalLightData>()?.additionalLightsShadowResolutionTier,
+                }).ToArray();
+            var pipeline = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            Assert.That(pipeline, Is.Not.Null);
+            int atlas = pipeline.additionalLightsShadowmapResolution;
+            int low = pipeline.additionalLightsShadowResolutionTierLow;
+            int medium = pipeline.additionalLightsShadowResolutionTierMedium;
+            int high = pipeline.additionalLightsShadowResolutionTierHigh;
+            var bakedMaps = LightmapSettings.lightmaps.Select(map => map.lightmapColor).ToArray();
+
+            director.StartSeason(null);
+            yield return null;
+            yield return null;
+
+            foreach (var original in lights)
+            {
+                var light = original.Light;
+                Assert.That(light, Is.Not.Null, "Starting a season must retain every authored light.");
+                Assert.That(light.enabled, Is.EqualTo(original.enabled), light.name);
+                Assert.That(light.type, Is.EqualTo(original.type), light.name);
+                Assert.That(light.intensity, Is.EqualTo(original.intensity), light.name);
+                Assert.That(light.range, Is.EqualTo(original.range), light.name);
+                Assert.That(light.color, Is.EqualTo(original.color), light.name);
+                Assert.That(light.shadows, Is.EqualTo(original.shadows), light.name);
+                Assert.That(light.shadowStrength, Is.EqualTo(original.shadowStrength), light.name);
+                Assert.That(light.shadowResolution, Is.EqualTo(original.shadowResolution), light.name);
+                Assert.That(light.shadowCustomResolution, Is.EqualTo(original.shadowCustomResolution), light.name);
+                Assert.That(light.lightmapBakeType, Is.EqualTo(original.lightmapBakeType), light.name);
+                var data = light.GetComponent<UniversalAdditionalLightData>();
+                Assert.That(data, Is.SameAs(original.Data), light.name);
+                Assert.That(data?.additionalLightsShadowResolutionTier, Is.EqualTo(original.Tier), light.name);
+            }
+            Assert.That(GraphicsSettings.currentRenderPipeline, Is.SameAs(pipeline));
+            Assert.That(pipeline.additionalLightsShadowmapResolution, Is.EqualTo(atlas));
+            Assert.That(pipeline.additionalLightsShadowResolutionTierLow, Is.EqualTo(low));
+            Assert.That(pipeline.additionalLightsShadowResolutionTierMedium, Is.EqualTo(medium));
+            Assert.That(pipeline.additionalLightsShadowResolutionTierHigh, Is.EqualTo(high));
+            Assert.That(LightmapSettings.lightmaps.Select(map => map.lightmapColor).ToArray(), Is.EqualTo(bakedMaps));
         }
     }
 }

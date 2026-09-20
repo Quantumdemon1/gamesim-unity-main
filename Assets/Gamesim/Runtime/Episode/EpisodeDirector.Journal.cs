@@ -95,9 +95,8 @@ namespace Gamesim.Episode
                 if (nearest == null) continue;
 
                 occupants[nearest.RoomName].Add(new HouseMap.Occupant(actor.id, actor.name,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id))),
-                    actor.id == state.playerId));
+                    CharacterPortraits.Get(actor),
+                    actor.id == state.playerId, actor));
             }
 
             foreach (var marker in markers) rooms.Add(new HouseMap.Room(marker.RoomName, occupants[marker.RoomName]));
@@ -288,8 +287,7 @@ namespace Gamesim.Episode
             seasonReport.Show(committed, id =>
             {
                 var actor = committed.Find(id);
-                return actor == null ? null : CharacterPortraits.Get(
-                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)));
+                return actor == null ? null : CharacterPortraits.Get(actor);
             }, OpenJournal, CareerNow());
         }
     }

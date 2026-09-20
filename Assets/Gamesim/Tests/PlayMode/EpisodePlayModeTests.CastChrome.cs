@@ -22,6 +22,37 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         [UnityTest]
+        public IEnumerator CastRail_TwelveHouseguestsFitAtLargerTextWithoutOverlapping()
+        {
+            director.ClosePanels();
+            yield return null;
+            var canvas = director.GetComponentsInChildren<Canvas>()
+                .Single(item => item.name == "Gamesim Episode HUD");
+            var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 12 }, 2042);
+            var rail = CastRail.Build(canvas.transform, state, 1.2f, TMP_Settings.defaultFontAsset, _ => null, _ => { });
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+                yield return null;
+                var entries = rail.Cast<Transform>().Select(item => (RectTransform)item).ToArray();
+                Assert.That(entries.Length, Is.EqualTo(12));
+                var status = ActiveRect("Status");
+                Assert.That(ScreenRect(rail).yMin, Is.GreaterThan(ScreenRect(status).yMax));
+                for (int a = 0; a < entries.Length; a++)
+                {
+                    var rect = ScreenRect(entries[a]);
+                    Assert.That(rect.xMin, Is.GreaterThanOrEqualTo(0));
+                    Assert.That(rect.yMin, Is.GreaterThan(ScreenRect(status).yMax));
+                    var mood = entries[a].GetComponentsInChildren<TMP_Text>().Single(label => label.name == CastRail.MoodWordName);
+                    Assert.That(mood.fontSize, Is.EqualTo(Mathf.RoundToInt(11 * 1.2f)), "Full cast must not cancel larger text.");
+                    for (int b = a + 1; b < entries.Length; b++)
+                        Assert.That(rect.Overlaps(ScreenRect(entries[b])), Is.False, entries[a].name + " overlaps " + entries[b].name);
+                }
+            }
+            finally { Object.Destroy(rail.gameObject); }
+        }
+
+        [UnityTest]
         public IEnumerator CastRail_ChipsCarryAMoodFaceAndAMoodWordInTheMoodsColour()
         {
             director.ClosePanels();

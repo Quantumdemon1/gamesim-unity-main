@@ -95,6 +95,7 @@ namespace Gamesim.Episode
             if (npcShownLease != null && (!NpcCanAdvance || !npcMeetings.CanWitness(player, npcShownLease)))
             { npcCaption?.Hide(); npcShownLease = null; }
             if (!IsReady || npcDiagnosticsSuspended) return;
+            if (competitionArenaStaging) { TickCompetitionArena(); return; }
             EnsureNpcSocialWorld();
             if (npcMeetings != null && !npcMeetings.IsReady && !npcWorldFailed && Time.unscaledTime >= npcNextBindingCheck)
             {
@@ -324,13 +325,11 @@ namespace Gamesim.Episode
                 if (IsTenseTopic(pending.topic)) { arguing.Add(pending.firstId); arguing.Add(pending.secondId); }
                 if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); }
                 facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
-                if (!witnessed && npcMeetings.CanWitness(player, lease))
+                if (!witnessed && npcMeetings.CanWitness(player, lease,out var visibleMidpoint))
                 {
-                    // Over the pair, not over the top of the screen: the caption is anchored at the
-                    // midpoint of the two slots the coordinator seated them in, at head height, so
-                    // the sentence and the people it is about arrive together. The slots are where
-                    // the bodies are standing by the time a conversation can be witnessed at all.
-                    var between = (lease.FirstSlot + lease.SecondSlot) * .5f + Vector3.up * CaptionHeadHeight;
+                    // Use the same current body endpoints that passed visibility. Navigation
+                    // approaches stay reserved; they are not where seated faces are rendered.
+                    var between = visibleMidpoint+Vector3.up*(lease.Seated ? .35f : CaptionHeadHeight-1.15f);
                     npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
                         pending.topic, largeText ? 1.2f : 1, between);
                     npcShownLease = lease;
@@ -344,8 +343,17 @@ namespace Gamesim.Episode
             {
                 var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                 if (visual == null) continue;
+                if(npcMeetings.TryGetActivity(npc.Id,out var activity) && npcMeetings.ActivityValid(activity))continue;
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
+                var seatPose=npc.GetComponent<HouseSeatPresentation>();
+                if(seated.Contains(npc.Id) && npcMeetings.TryGetSeat(npc.Id,out var seat))
+                {
+                    if(seatPose==null)seatPose=npc.gameObject.AddComponent<HouseSeatPresentation>();
+                    string id=npc.Id;
+                    seatPose.Begin(seat,()=>npcMeetings!=null && npcMeetings.TryGetSeat(id,out var current) && current==seat);
+                }
+                else seatPose?.End();
                 visual.SetSeated(seated.Contains(npc.Id));
                 visual.SetArguing(arguing.Contains(npc.Id));
                 visual.SetFacing(facing.TryGetValue(npc.Id, out float yaw) ? yaw : float.NaN);
@@ -372,6 +380,9 @@ namespace Gamesim.Episode
         }
         private void DisposeNpcSocialWorld()
         {
+            EndDiaryVisit(true);
+            DisposeHouseActivities();
+            EndCompetitionArena();
             // Disable/re-enable also replaces world ownership, even without a save load.
             loadGeneration = checked(loadGeneration + 1);
             if (housemates != null)

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -102,33 +103,87 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Shots_TheDiaryRoomFramesTheChairOverTheShoulder()
+        public IEnumerator Shots_InterruptedDiaryRestoresInputAndRefusesAnUnavailableChair()
+        {
+            WarpPlayer(director.DiaryPosition);
+            yield return null;
+            var position=player.transform.position;
+            Assert.That(director.TryOpenDiary(),Is.True);
+            yield return null;
+            var anchor=SceneComponents<HouseInteractionAnchor>().Single(a=>a.VenueId==HouseInteractionAnchors.DiaryVenue);
+            anchor.gameObject.SetActive(false);
+            yield return null;yield return null;
+            Assert.That(director.IsDiaryOpen,Is.False);
+            Assert.That(director.HasDiaryRoom,Is.False);
+            Assert.That(director.CanUseDiary,Is.False);
+            Assert.That(director.TryOpenDiary(),Is.False);
+            Assert.That(player.InputEnabled && cameraRig.ControlsEnabled,Is.True);
+            Assert.That(player.Agent.enabled && player.Agent.isOnNavMesh && player.Agent.updatePosition,Is.True);
+            Assert.That(player.GetComponent<Collider>().enabled,Is.True);
+            Assert.That(player.GetComponent<HouseSeatPresentation>().Active,Is.False);
+            Assert.That(Vector3.Distance(player.transform.position,position),Is.LessThan(.05f));
+        }
+
+        [UnityTest]
+        public IEnumerator Shots_TheDiaryRoomSeatsAndFramesThePlayerThenRestoresNavigation()
         {
             WarpPlayer(director.DiaryPosition + Vector3.right * 1.5f);
             yield return null;
+            var returnPosition=player.transform.position;
+            var beforeVisual=player.GetComponent<CharacterPresentation>().VisualRoot.localPosition;
+            bool updatePosition=player.Agent.updatePosition;
             var chair = SceneComponents<Transform>().FirstOrDefault(t => t.name == EpisodeDirector.DiaryChairName);
             Assert.That(chair, Is.Not.Null, "The set has the confessional chair the shot looks at.");
             Assert.That(director.TryOpenDiary(), Is.True);
+            Assert.That(Vector3.Distance(player.transform.position,returnPosition),Is.LessThan(.01f),"Opening schedules a real route without teleporting.");
+            Assert.That(player.GetComponent<DiarySeatPose>().Phase,Is.EqualTo(DiarySeatPose.VisitPhase.Approaching));
+            var beforeSeating=director.Snapshot;
+            director.ReviewStudyHouse("memorize-layout");director.ConfirmDiaryDecision();
+            Assert.That(director.HasDiaryDecisionDraft,Is.False,"Direct callbacks must not bypass physical seating.");
+            AssertEquivalent(beforeSeating,director.Snapshot);
+            yield return WaitForDiarySeating();
+            var reachedApproach=player.transform.position;
+            Assert.That(Vector3.Distance(reachedApproach,director.DiaryPosition),Is.LessThan(.55f));
+            Assert.That(Vector3.Distance(reachedApproach,returnPosition),Is.GreaterThan(.8f),"The actor must actually walk from the admitted proximity to the approach.");
             Assert.That(cameraRig.HasShot, Is.True, "The diary is a chair shot,");
             Assert.That(cameraRig.IsConversationFocused, Is.False, "not a conversation,");
             Assert.That(cameraRig.ControlsEnabled, Is.False, "and the camera is the director's while it is open.");
+            var seating=player.GetComponent<DiarySeatPose>();
+            Assert.That(seating,Is.Not.Null);
+            Assert.That(seating.IsOccupying,Is.True);
+            Assert.That(player.GetComponent<CharacterPresentation>().IsSeated,Is.True);
+            Assert.That(player.Agent.enabled && player.Agent.isOnNavMesh,Is.True,"The approach's navigation ownership is retained.");
+            Assert.That(player.Agent.updatePosition,Is.False,"Navigation cannot pull the staged actor out of the chair.");
             yield return Settle(() => !cameraRig.IsTravelling && cameraRig.HasArrived(0.05f)
+                && player.GetComponent<HouseSeatPresentation>().Settled
                 && Mathf.Abs(cameraRig.DepthOfFieldWeight - EpisodeDirector.DiaryShotDepthOfField) < 0.02f, 5f);
             Assert.That(cameraRig.Pitch, Is.LessThan(45f), "Below the dollhouse's floor: an eye at standing height.");
             Assert.That(cameraRig.DepthOfFieldWeight, Is.EqualTo(EpisodeDirector.DiaryShotDepthOfField).Within(0.02f));
-            var seen = cameraRig.ViewCamera.WorldToViewportPoint(chair.position + Vector3.up * EpisodeDirector.DiaryShotLookHeight);
-            Assert.That(seen.z > 0f && seen.x > 0.3f && seen.x < 0.7f && seen.y > 0.3f && seen.y < 0.7f, Is.True, "The chair holds the middle of the frame: " + seen);
-            var behind = cameraRig.ViewCamera.transform.position;
-            Assert.That(Vector3.Distance(behind, player.transform.position), Is.LessThan(Vector3.Distance(behind, chair.position)),
-                "Over the player's shoulder: the camera is nearer the player than the chair.");
-            Assert.That(behind.y, Is.EqualTo(EpisodeDirector.DiaryShotEyeHeight).Within(0.15f), "at standing height.");
+            Assert.That(Vector3.Distance(player.transform.position,reachedApproach),Is.LessThan(.05f),
+                "After arrival only the seated visual moves; the navigation root keeps its reached approach.");
+            Assert.That(player.GetComponent<HouseSeatPresentation>().Settled,Is.True);
+            var seen = cameraRig.ViewCamera.WorldToViewportPoint(seating.FacePosition);
+            Assert.That(seen.z > 0f && seen.x > 0.3f && seen.x < 0.7f && seen.y > 0.3f && seen.y < 0.7f, Is.True, "The actual seated face holds the frame: " + seen);
+            Assert.That(Vector3.Dot(player.transform.forward,(cameraRig.ViewCamera.transform.position-player.transform.position).normalized),Is.GreaterThan(.5f),
+                "The interview shows the player's face, not their back.");
+            var screenFace=cameraRig.ViewCamera.WorldToScreenPoint(seating.FacePosition);
+            Assert.That(ScreenRect(ActiveRect("Episode panel")).Contains(new Vector2(screenFace.x,screenFace.y)),Is.False,
+                "The diary choices leave the speaker's face visible.");
+            Assert.That(SceneComponents<Transform>().Any(t=>t.name=="Diary interview backdrop" && t.gameObject.activeInHierarchy),Is.True);
 
             director.ClosePanels();
             Assert.That(director.IsDiaryOpen, Is.False);
             Assert.That(cameraRig.HasShot, Is.False, "Leaving the room releases the chair.");
+            yield return WaitForDiaryExit();
+            Assert.That(seating.Active,Is.False);
+            Assert.That(player.GetComponent<CharacterPresentation>().IsSeated,Is.False);
+            Assert.That(player.Agent.updatePosition,Is.EqualTo(updatePosition));
+            Assert.That(Vector3.Distance(player.transform.position,reachedApproach),Is.LessThan(.1f),"Exit returns to the reached approach, without a navigation shortcut.");
             yield return Settle(() => cameraRig.Pitch >= 45f && cameraRig.DepthOfFieldWeight < 0.02f, 5f);
             Assert.That(cameraRig.Pitch, Is.InRange(45f, 70f));
             Assert.That(cameraRig.ControlsEnabled, Is.True);
+            Assert.That(Vector3.Distance(player.GetComponent<CharacterPresentation>().VisualRoot.localPosition,beforeVisual),Is.LessThan(.025f),
+                "Leaving the chair restores the visual root as well as navigation.");
         }
 
         private static IEnumerator Settle(Func<bool> condition, float seconds)

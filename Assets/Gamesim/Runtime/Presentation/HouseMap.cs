@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -59,11 +60,12 @@ namespace Gamesim.Presentation
             public readonly string Id;
             public readonly string Name;
             public readonly Texture Portrait;
+            public readonly ContestantState Character;
             public readonly bool IsPlayer;
 
-            public Occupant(string id, string name, Texture portrait, bool isPlayer)
+            public Occupant(string id, string name, Texture portrait, bool isPlayer, ContestantState character = null)
             {
-                Id = id; Name = name; Portrait = portrait; IsPlayer = isPlayer;
+                Id = id; Name = name; Portrait = portrait; Character = character?.Clone(); IsPlayer = isPlayer;
             }
         }
 
@@ -177,7 +179,7 @@ namespace Gamesim.Presentation
             {
                 var occupant = room.Occupants[i];
                 var rim = HudPrimitives.Portrait(card, occupant.Portrait,
-                    occupant.IsPlayer ? UiTheme.Accent : UiTheme.Outline, FaceSize * scale, 2f * scale, false);
+                    occupant.IsPlayer ? UiTheme.Accent : UiTheme.Outline, FaceSize * scale, 2f * scale, false, occupant.Character);
                 rim.anchorMin = new Vector2(0f, 1f);
                 rim.anchorMax = new Vector2(0f, 1f);
                 rim.pivot = new Vector2(0f, 1f);

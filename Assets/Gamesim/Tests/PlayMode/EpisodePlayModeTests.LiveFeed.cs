@@ -19,6 +19,48 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         [UnityTest]
+        public IEnumerator LiveFeed_PublishesWordsOnlyWithTheirRenderedFrameAndFreezesBoth()
+        {
+            var host = new GameObject("Atomic feed test");
+            var feed = LiveFeed.Attach(host);
+            try
+            {
+                feed.Paused = true;
+                feed.Aim(new Vector3(1,0,1), 0, "FIRST ROOM");
+                for (int frame = 0; frame < LiveFeed.EveryNthFrame + 1; frame++) yield return null;
+                Assert.That(feed.CaptureRevision, Is.Zero);
+                Assert.That(feed.CapturedCaption, Is.Empty, "An aim request is not a rendered image.");
+
+                feed.Paused = false;
+                float until = Time.realtimeSinceStartup + 3f;
+                while (feed.CaptureRevision == 0 && Time.realtimeSinceStartup < until) yield return null;
+                Assert.That(feed.CaptureRevision, Is.GreaterThan(0), "This visual test requires a rendering device.");
+                Assert.That(feed.CapturedCaption, Is.EqualTo("FIRST ROOM"));
+                Assert.That(feed.CapturedSubject, Is.EqualTo(new Vector3(1,0,1)));
+
+                feed.Paused = true;
+                int revision = feed.CaptureRevision;
+                var capturedEye = feed.Camera.transform.position;
+                feed.Aim(new Vector3(6,0,6), 180, "SECOND ROOM");
+                for (int frame = 0; frame < LiveFeed.EveryNthFrame + 1; frame++) yield return null;
+                Assert.That(feed.CaptureRevision, Is.EqualTo(revision));
+                Assert.That(feed.Camera.transform.position, Is.EqualTo(capturedEye));
+                Assert.That(feed.CapturedCaption, Is.EqualTo("FIRST ROOM"));
+                Assert.That(feed.CapturedSubject, Is.EqualTo(new Vector3(1,0,1)));
+
+                string published = null;
+                feed.FrameCaptured += caption => published = caption;
+                feed.Paused = false;
+                until = Time.realtimeSinceStartup + 3f;
+                while (feed.CaptureRevision == revision && Time.realtimeSinceStartup < until) yield return null;
+                Assert.That(published, Is.EqualTo("SECOND ROOM"));
+                Assert.That(feed.CapturedSubject, Is.EqualTo(new Vector3(6,0,6)));
+                Assert.That(feed.Camera.transform.position, Is.Not.EqualTo(capturedEye));
+            }
+            finally { Object.Destroy(host); }
+        }
+
+        [UnityTest]
         public IEnumerator LiveFeed_WatchesTheHouseFromASecondCameraAndNamesTheRoom()
         {
             Assert.That(director.LiveFeedTexture, Is.Not.Null, "The feed renders into a texture the card can show.");

@@ -21,6 +21,16 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator DiaryRoom_AllFiveRoutesRemainReachableAndActualTravelButtonOpensWithE()
         {
+            // This test measures route reachability and the diary's durable pause. Crossing every
+            // room can legitimately offer proximity content when two NPCs happen to be present.
+            // HouseEventSourceTests covers that content separately; defer its valid week boundary
+            // here so the full state comparison still detects unintended diary effects. NPC
+            // autonomy stays enabled and its real travel/completion changes remain checked below.
+            var fixture=director.Snapshot;
+            fixture.eventRulesStartWeek=fixture.week+1;
+            Assert.That(EpisodeValidation.TryValidate(fixture,out var fixtureReason),Is.True,fixtureReason);
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
             Assert.That(director.HasDiaryRoom, Is.True);
             var before = director.Snapshot;
             player.Agent.speed = 25; player.Agent.acceleration = 100;
@@ -532,9 +542,26 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator OpenDiaryFixturePanel()
         {
             // Fixture positioning is isolated from the real navigation-route acceptance test above.
+            yield return WaitForDiaryExit();
             WarpPlayer(director.DiaryPosition);
             Assert.That(director.TryOpenDiary(), Is.True);
-            yield return null; yield return null;
+            yield return WaitForDiarySeating();
+        }
+
+        private IEnumerator WaitForDiarySeating()
+        {
+            float deadline=Time.realtimeSinceStartup+20f;
+            while(director.IsDiaryOpen && !director.IsDiarySettled && Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(director.IsDiarySettled,Is.True,"Diary decisions must follow actual approach, alignment and seating.");
+            yield return null;
+        }
+
+        private IEnumerator WaitForDiaryExit()
+        {
+            var seat=player.GetComponent<DiarySeatPose>();
+            float deadline=Time.realtimeSinceStartup+3f;
+            while(seat!=null && seat.Active && Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(seat==null || !seat.Active,Is.True,"Normal departure must finish before movement resumes.");
         }
 
         private IEnumerator WaitForDiaryWalk()
@@ -552,6 +579,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState());
             yield return null; yield return null;
+            if(key==Key.E && director.IsDiaryOpen)yield return WaitForDiarySeating();
+            if(key==Key.Escape && !director.IsDiaryOpen)yield return WaitForDiaryExit();
         }
 
         private bool DiaryHasButton(string caption) => director.GetComponentsInChildren<Button>()

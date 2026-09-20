@@ -19,7 +19,9 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 12) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 13) return Fail(out error, "Unsupported episode schema.");
+            if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > 3)
+                return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0
                 || s.socialActions > MostActionsAWeekCanHold || !Defined(s.phase))
@@ -35,6 +37,8 @@ namespace Gamesim.Simulation
                 !s.contestants.Any(c => c.isPlayer && c.id == s.playerId)) return Fail(out error, "Cast/player identity is invalid.");
             foreach (var c in s.contestants)
             {
+                if (!ShortOrAbsent(c.sourceTemplateId, 100)) return Fail(out error, "Invalid source template identity.");
+                if (c.appearance != null && !c.appearance.TryValidate(out error)) return false;
                 if (!Text(c.id, 100) || !Text(c.name, 100) || !Defined(c.status) || c.stats == null || c.traits == null ||
                     c.traits.Count > 20 || c.traits.Any(t => !Text(t, 100)) || c.nominationWeeks == null || c.nominationWeeks.Count > 100 ||
                     c.nominationWeeks.Any(w => w < 1 || w > s.week) || c.timesNominated < 0 || c.hohWins < 0 || c.vetoWins < 0 ||

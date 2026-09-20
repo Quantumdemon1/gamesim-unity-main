@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Gamesim.Persistence;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
@@ -58,6 +59,39 @@ namespace Gamesim.Presentation
         private Action<SeasonBuilder.Choice, CharacterDraft> onCustomise;
 
         private CanvasScaler scaler;
+        private bool libraryMode;
+        private bool castSlotsMode;
+        private readonly List<CharacterProfile> customHouseguests = new List<CharacterProfile>();
+        private CharacterDraft retainedDraft;
+        private string resumeError;
+        private CharacterCreator creator;
+        private CharacterProfileStore profileStore;
+        private readonly CharacterProfileBrowser profileBrowser = new CharacterProfileBrowser();
+        public CharacterProfileStore ProfileStore => profileStore ?? (profileStore = new CharacterProfileStore());
+
+        public void ConfigureCreator(CharacterCreator value) => creator = value;
+        public void ConfigureProfiles(CharacterProfileStore store)
+        {
+            profileStore = store ?? throw new ArgumentNullException(nameof(store));
+            profileBrowser.Reset();
+            if (IsShowing) Rebuild();
+        }
+
+        public void SetDraft(CharacterDraft draft) => retainedDraft = draft?.Copy();
+        private readonly List<KeyValuePair<RawImage, ContestantState>> portraits = new List<KeyValuePair<RawImage, ContestantState>>();
+
+        private void Update()
+        {
+            if (!IsShowing) return;
+            foreach (var item in portraits)
+            {
+                if (item.Key == null || item.Key.texture != null) continue;
+                var texture = CharacterPortraits.Get(item.Value);
+                if (texture == null) continue;
+                item.Key.texture = texture;
+                item.Key.color = Color.white;
+            }
+        }
 
         /// <summary>
         /// The "larger text" accessibility setting, applied by scaling the whole screen rather than
@@ -135,6 +169,12 @@ namespace Gamesim.Presentation
             roster = CastTemplates.Roster.Regular;
             category = CastTemplates.AllCategories;
             selectedId = null;
+            libraryMode = false;
+            castSlotsMode = false;
+            customHouseguests.Clear();
+            profileBrowser.Reset();
+            retainedDraft = null;
+            resumeError = null;
             houseSize = SeasonBuilder.ClampHouseSize(roster, SeasonBuilder.DefaultHouseSize);
             Rebuild();
             group.alpha = 1f;
@@ -155,6 +195,7 @@ namespace Gamesim.Presentation
 
         private void Rebuild()
         {
+            portraits.Clear();
             // Deactivated before Destroy, which is deferred to the end of the frame: the screen
             // rebuilds itself on every click, so for one frame the old controls would otherwise
             // still be live alongside the new ones and "the Start button" would match twice.
@@ -170,12 +211,22 @@ namespace Gamesim.Presentation
                 new Color(UiTheme.Background.r, UiTheme.Background.g, UiTheme.Background.b, 0.97f), 1);
             Stretch(scrim);
 
+            content = new GameObject("Fixed setup navigation", typeof(RectTransform)).GetComponent<RectTransform>();
+            content.SetParent(scrim, false);
+            content.anchorMin = content.anchorMax = new Vector2(.5f, 1f);
+            content.pivot = new Vector2(.5f, 1f);
+            content.sizeDelta = new Vector2(Width, 270f);
+            cursor = 0f;
+            Header(); SetupNavigation();
+            if (!libraryMode && !castSlotsMode) { RosterTabs(); CategoryChips(); }
+
             var viewport = HudPrimitives.Fill("Viewport", scrim, new Color(0f, 0f, 0f, 0f), 1);
             viewport.anchorMin = new Vector2(0.5f, 0f);
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, 0f);
-            viewport.anchoredPosition = Vector2.zero;
+            float errorHeight = string.IsNullOrEmpty(resumeError) ? 0f : 64f;
+            viewport.sizeDelta = new Vector2(Width, -485f - errorHeight);
+            viewport.anchoredPosition = new Vector2(0f, -270f);
             viewport.gameObject.AddComponent<RectMask2D>();
 
             content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -186,6 +237,7 @@ namespace Gamesim.Presentation
             content.anchoredPosition = Vector2.zero;
 
             var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            viewport.gameObject.AddComponent<SetupScrollFocus>();
             scroll.content = content;
             scroll.viewport = viewport;
             scroll.horizontal = false;
@@ -193,14 +245,90 @@ namespace Gamesim.Presentation
             scroll.scrollSensitivity = 40f;
 
             cursor = 0f;
-            Header();
-            RosterTabs();
-            CategoryChips();
-            Grid();
-            HouseSize();
-            Footer();
-
+            if (castSlotsMode) CastSlots(); else if (libraryMode) LibraryCards(); else Grid();
             content.sizeDelta = new Vector2(0f, cursor + Pad);
+
+            content = new GameObject("Fixed season footer", typeof(RectTransform)).GetComponent<RectTransform>();
+            content.SetParent(scrim, false);
+            content.anchorMin = content.anchorMax = new Vector2(.5f, 0f);
+            content.pivot = new Vector2(.5f, 0f);
+            content.sizeDelta = new Vector2(Width, 205f + errorHeight);
+            cursor = 0f;
+            HouseSize(); Footer();
+        }
+
+        private void SetupNavigation()
+        {
+            if (onCustomise == null) return;
+            var row = Row(50f);
+            Chip(row, "Choose a houseguest", -448f, 216f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; Rebuild(); });
+            Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank()));
+            Chip(row, retainedDraft == null ? CharacterCreator.CustomiseCaption : "Resume setup", 0f, 216f, false, () =>
+            {
+                if (retainedDraft != null) { OpenCreator(retainedDraft.Copy()); return; }
+                var chosen = CastTemplates.Find(selectedId);
+                OpenCreator(chosen == null ? CharacterDraft.Blank() : CharacterDraft.FromAppearance(chosen));
+            });
+            Chip(row, "My Houseguests", 224f, 216f, libraryMode, () => { libraryMode = true; castSlotsMode = false; Rebuild(); });
+            Chip(row, "Cast slots", 448f, 216f, castSlotsMode, () => { castSlotsMode = true; libraryMode = false; Rebuild(); });
+        }
+
+        private void CastSlots()
+        {
+            Text("CUSTOM CAST — " + customHouseguests.Count + " OF " + (houseSize - 1) + " NPC SLOTS", 22f, UiTheme.Paper, 42f, TextAlignmentOptions.Left);
+            Text("Add saved houseguests. Remaining slots use the chosen roster. Repeated profiles become distinct contestants with independent season state.",
+                15f, UiTheme.Muted, 54f, TextAlignmentOptions.Left);
+            for (int i = 0; i < customHouseguests.Count; i++)
+            {
+                int slot = i;
+                Text("Slot " + (i + 1) + ": " + customHouseguests[i].name, 17f, UiTheme.Accent, 30f, TextAlignmentOptions.Left);
+                var row = Row(46f);
+                if (creator != null) Chip(row, "Edit slot " + (i + 1), -165f, 300f, false, () => EditCastSlot(slot));
+                Chip(row, "Remove slot " + (i + 1), 165f, 300f, false, () => { customHouseguests.RemoveAt(slot); Rebuild(); });
+            }
+            Text("SAVED HOUSEGUESTS", 18f, UiTheme.Paper, 40f, TextAlignmentOptions.Left);
+            var store = ProfileStore;
+            var profiles = store.List();
+            foreach (string error in store.ReadErrors) Text(error, 14f, UiTheme.Warning, 46f, TextAlignmentOptions.Left);
+            if (profiles.Count == 0) Text("Create and save a houseguest first. Their profile will be available here.",
+                16f, UiTheme.Muted, 56f, TextAlignmentOptions.Left);
+            var visibleProfiles = profileBrowser.Draw(Row(48f), profiles, Rebuild);
+            if (profiles.Count > 0 && visibleProfiles.Count == 0)
+                Text("No saved houseguests match this name. Clear search to see everyone.", 16f, UiTheme.Muted, 42f, TextAlignmentOptions.Left);
+            foreach (var profile in visibleProfiles)
+            {
+                var entry = profile;
+                var row = Row(56f);
+                CharacterProfileBrowser.Thumbnail(row, entry, -480f);
+                Chip(row, "Add " + entry.name + " to the cast", 0f, 800f, false, () =>
+                {
+                    if (customHouseguests.Count >= houseSize - 1) return;
+                    customHouseguests.Add(entry.Clone()); Rebuild();
+                }).interactable = customHouseguests.Count < houseSize - 1;
+            }
+        }
+
+        private void LibraryCards()
+        {
+            var store = ProfileStore;
+            var profiles = store.List();
+            foreach (string error in store.ReadErrors) Text(error, 14f, UiTheme.Warning, 44f, TextAlignmentOptions.Left);
+            if (profiles.Count == 0) Text("No saved houseguests yet. Create one, then save it in My Houseguests.",
+                18f, UiTheme.Muted, 60f, TextAlignmentOptions.Center);
+            var visibleProfiles = profileBrowser.Draw(Row(48f), profiles, Rebuild);
+            if (profiles.Count > 0 && visibleProfiles.Count == 0)
+                Text("No saved houseguests match this name. Clear search to see everyone.", 16f, UiTheme.Muted, 42f, TextAlignmentOptions.Left);
+            foreach (var profile in visibleProfiles)
+            {
+                var entry = profile;
+                var row = Row(58f);
+                CharacterProfileBrowser.Thumbnail(row, entry, -518f);
+                Chip(row, "Choose " + entry.name, -150f, 600f, false, () => OpenCreator(entry.ToDraft()));
+                Chip(row, "Remix " + entry.name, 350f, 300f, false, () =>
+                {
+                    var draft = entry.ToDraft(); draft.Name += " (copy)"; OpenCreator(draft);
+                });
+            }
         }
 
         private void Header()
@@ -321,6 +449,7 @@ namespace Gamesim.Presentation
             var pick = template.Id;
             button.onClick.AddListener(() =>
             {
+                retainedDraft = null;
                 selectedId = string.Equals(selectedId, pick, StringComparison.Ordinal) ? null : pick;
                 Rebuild();
             });
@@ -342,6 +471,14 @@ namespace Gamesim.Presentation
             face.pivot = new Vector2(0.5f, 0.5f);
             face.sizeDelta = new Vector2(82f, 82f);
             face.anchoredPosition = Vector2.zero;
+            var portraitObject = new GameObject("Model portrait", typeof(RectTransform), typeof(RawImage));
+            portraitObject.transform.SetParent(face, false);
+            var modelPortrait = portraitObject.GetComponent<RawImage>();
+            modelPortrait.raycastTarget = false;
+            modelPortrait.color = Color.clear;
+            Stretch(modelPortrait.rectTransform);
+            var cardCharacter = CastTemplates.ToContestant(template, false);
+            portraits.Add(new KeyValuePair<RawImage, ContestantState>(modelPortrait, cardCharacter));
 
             // The generated silhouette where the icon pass has been run, and the initials where it
             // has not. A silhouette is the honest answer to "who is this" before a body exists to
@@ -373,6 +510,7 @@ namespace Gamesim.Presentation
                 initials.rectTransform.offsetMin = Vector2.zero;
                 initials.rectTransform.offsetMax = Vector2.zero;
             }
+            portraitObject.transform.SetAsLastSibling();
 
             // The category's glyph in the card's upper-right, as every mockup card carries one. It
             // repeats the word along the bottom edge, so it never carries anything on its own.
@@ -497,7 +635,7 @@ namespace Gamesim.Presentation
 
             Chip(bar, "Fewer houseguests", -330f, 230f, false, () =>
             {
-                houseSize = SeasonBuilder.ClampHouseSize(roster, houseSize - 1);
+                houseSize = SeasonBuilder.ClampHouseSize(roster, Math.Max(customHouseguests.Count + 1, houseSize - 1));
                 Rebuild();
             });
             Chip(bar, "More houseguests", 330f, 230f, false, () =>
@@ -514,8 +652,11 @@ namespace Gamesim.Presentation
         private void Footer()
         {
             Space(10f);
+            if (!string.IsNullOrEmpty(resumeError))
+                Text(resumeError, 14f, UiTheme.Warning, 64f, TextAlignmentOptions.Center);
             var chosen = string.IsNullOrEmpty(selectedId) ? null : CastTemplates.Find(selectedId);
-            Text(chosen != null
+            Text(retainedDraft != null ? "You will play as " + retainedDraft.Name + ". Your setup edits are retained."
+                : chosen != null
                     ? "You will play as " + chosen.Name + ", " + chosen.Archetype.ToLowerInvariant() + "."
                     : "No card picked. You will play as an unaffiliated newcomer.",
                 14f, chosen != null ? UiTheme.Gold : UiTheme.Muted, 22f, TextAlignmentOptions.Center);
@@ -528,29 +669,21 @@ namespace Gamesim.Presentation
                     Roster = roster,
                     PlayerTemplateId = selectedId,
                     HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
+                    CustomHouseguests = customHouseguests.Select(profile => profile.Clone()).ToList(),
                 };
+                if (chosen != null)
+                {
+                    choice.Authored = CharacterDraft.FromAppearance(chosen);
+                    var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
+                    if (catalog != null) choice.Authored.Appearance = catalog.Materialize(choice.Authored.Appearance);
+                }
+                if (retainedDraft != null) choice.Authored = retainedDraft.Copy();
                 var start = onStart;
                 Hide();
                 start?.Invoke(choice);
             });
             Chip(bar, CancelCaption, 150f, 260f, false, Dismiss);
 
-            // The reference build's step one offers three ways out of this grid: play a card as it
-            // is, open it for editing, or start from nothing. The first is the control above; these
-            // are the other two, and "Customise" names the selected houseguest so it is never a
-            // question of which card it would open.
-            if (onCustomise != null)
-            {
-                var creator = Row(52f);
-                Chip(creator, CharacterCreator.CreateCaption, -170f, 320f, false,
-                    () => OpenCreator(CharacterDraft.Blank()));
-                Chip(creator, CharacterCreator.CustomiseCaption, 170f, 320f, false, () =>
-                    OpenCreator(chosen != null ? CharacterDraft.From(chosen) : CharacterDraft.Blank()));
-                Text(chosen != null
-                        ? "Customise opens " + chosen.Name + " for editing. Create your own starts from a blank card."
-                        : "No card picked, so both start from a blank card.",
-                    12f, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
-            }
             Space(Pad);
         }
 
@@ -563,21 +696,49 @@ namespace Gamesim.Presentation
         /// </summary>
         private void OpenCreator(CharacterDraft start)
         {
+            var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
+            if (catalog != null) start.Appearance = catalog.Materialize(start.Appearance);
             var choice = new SeasonBuilder.Choice
             {
                 Roster = roster,
                 PlayerTemplateId = selectedId,
                 HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
+                CustomHouseguests = customHouseguests.Select(profile => profile.Clone()).ToList(),
             };
             var customise = onCustomise;
             Hide();
             customise?.Invoke(choice, start);
         }
 
+        private void EditCastSlot(int slot)
+        {
+            if (creator == null || slot < 0 || slot >= customHouseguests.Count) return;
+            var profile = customHouseguests[slot];
+            var draft = profile.ToDraft();
+            var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
+            if (catalog != null) draft.Appearance = catalog.Materialize(draft.Appearance);
+            var choice = new SeasonBuilder.Choice
+            {
+                Roster = roster, PlayerTemplateId = selectedId, HouseSize = houseSize,
+                CustomHouseguests = customHouseguests.Select(value => value.Clone()).ToList(),
+            };
+            Hide();
+            creator.ShowForCastSlot(choice, draft, changed =>
+            {
+                // This changes the proposed cast instance only, not its library profile or the player's setup.
+                customHouseguests[slot] = CharacterProfile.FromDraft(profile.id, changed);
+                Resume();
+            }, Resume);
+        }
+
         /// <summary>Brings the screen back with the player's roster, filter and pick intact.</summary>
-        public void Resume()
+        public void Resume() => Resume(null);
+
+        /// <summary>Returns a failed season start to its unchanged setup with a visible reason.</summary>
+        public void Resume(string error)
         {
             if (onStart == null) return;
+            resumeError = error;
             Rebuild();
             group.alpha = 1f;
             group.blocksRaycasts = true;

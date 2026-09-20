@@ -37,8 +37,7 @@ namespace Gamesim.Episode
                 var actor = state.Find(id);
                 if (actor == null) return;
                 subjects.Add(new CeremonyTakeover.Subject(actor.name, badge,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+                    CharacterPortraits.Get(actor), actor));
             }
 
             switch (kind)
@@ -96,8 +95,7 @@ namespace Gamesim.Episode
                     : state.nominees != null && state.nominees.Contains(actor.id) ? "NOMINATED"
                     : null;
                 field.Add(new CeremonyTakeover.Subject(actor.name, badge,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+                    CharacterPortraits.Get(actor), actor));
             }
             return field;
         }
@@ -134,8 +132,7 @@ namespace Gamesim.Episode
         {
             var actor = state.Find(id);
             return new KeyCeremony.Person(actor.id, actor.name,
-                CharacterPortraits.Get(
-                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id))));
+                CharacterPortraits.Get(actor), actor);
         }
 
         /// <summary>The two people on the block, with their faces, for the eviction reveal.</summary>
@@ -148,8 +145,7 @@ namespace Gamesim.Episode
                 var actor = state.Find(id);
                 if (actor == null) continue;
                 block.Add(new VoteReveal.Nominee(actor.id, actor.name,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+                    CharacterPortraits.Get(actor), actor));
             }
             return block;
         }

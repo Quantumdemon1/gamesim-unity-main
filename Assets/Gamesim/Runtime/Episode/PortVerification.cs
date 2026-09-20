@@ -33,6 +33,8 @@ namespace Gamesim.Episode
         {
             if (Application.isEditor) return;
             var args = Environment.GetCommandLineArgs();
+            if (args.Contains("--gamesim-verify-creator") && !args.Contains("--gamesim-verify"))
+            { Debug.LogError("Creator verification requires --gamesim-verify and an isolated absolute save root."); Application.Quit(2); return; }
             if ((args.Contains("--gamesim-verify-study") || args.Contains("--gamesim-verify-blocs") || args.Contains("--gamesim-verify-autonomy"))
                 && (!args.Contains("--gamesim-verify") || !args.Contains("--gamesim-verify-season")))
             { Debug.LogError("Study/bloc/autonomy verification requires both --gamesim-verify and --gamesim-verify-season, plus an isolated absolute save root."); Application.Quit(2); return; }
@@ -49,6 +51,7 @@ namespace Gamesim.Episode
             runner.verifyStudy = args.Contains("--gamesim-verify-study");
             runner.verifyBlocs = args.Contains("--gamesim-verify-blocs");
             runner.verifyAutonomy = args.Contains("--gamesim-verify-autonomy");
+            runner.verifyCreator = args.Contains("--gamesim-verify-creator");
             runner.lookSheet = args.Contains("--gamesim-look-sheet");
             int duration = Array.IndexOf(args, "--gamesim-profile-seconds");
             if (duration >= 0 && duration + 1 < args.Length && double.TryParse(args[duration + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
@@ -69,6 +72,7 @@ namespace Gamesim.Episode
             { director = FindAnyObjectByType<EpisodeDirector>(); yield return null; }
             if (director == null || !director.IsReady)
             { errors.Add("The bootstrap did not reach a ready episode."); Finish(0, false); yield break; }
+            if (verifyCreator) { yield return RunCreatorVerification(director); yield break; }
             // The look sheet is its own mode: twelve captures and a report, no profile, no recorded walk.
             if (lookSheet) { yield return RunLookSheet(); FinishLookSheet(); yield break; }
             var player = FindAnyObjectByType<HousePlayerController>();

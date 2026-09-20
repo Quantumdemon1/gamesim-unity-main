@@ -30,7 +30,7 @@ namespace Gamesim.Episode
         private const float TopBarGap = 12f;
 
         /// <summary>The brand block's width, and the objective card's below it.</summary>
-        private const float BrandWidth = 300f;
+        private const float BrandWidth = 280f;
         private const float ObjectiveWidth = 330f;
         private const float ObjectiveHeight = 276f;
 
@@ -98,13 +98,23 @@ namespace Gamesim.Episode
         private void ObjectiveCard(RectTransform column, EpisodeState state, bool recovery)
         {
             var objective = Chrome("Objective", column, Ink);
-            Size(objective, ObjectiveWidth, ObjectiveHeight);
+            Size(objective, ObjectiveWidth, Compact ? 238f : ObjectiveHeight);
             CardHeading(objective, "CURRENT OBJECTIVE", "task", UiTheme.Gold);
 
             FixedText(objective, state.pendingDiary != null ? "Next stop: private diary room"
                 : EpisodeEngine.IsCompetition(state.phase) ? "Next stop: competition yard"
-                : "Next stop: living-room screen",
-                18, Paper, new Vector2(18f, -44f), new Vector2(294f, 54f));
+                : "Next stop: ceremony screen",
+                18, Paper, new Vector2(18f, -44f), new Vector2(294f, 48f));
+
+            if(Compact)
+            {
+                FixedText(objective,Mathf.Max(0,EpisodeEngine.SocialActionBudget(state)-EpisodeEngine.SocialActionsSpent(state))+" social actions remaining",
+                    14,Paper,new Vector2(18,-94),new Vector2(294,24));
+                FixedButton(objective,"Go to episode screen",new Vector2(18,-126),new Vector2(294,44),director.GoToStation);
+                FixedButton(objective,DiaryTravelCaption,new Vector2(18,-178),new Vector2(294,44),director.GoToDiary).interactable=
+                    director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status==ContestantStatus.Active;
+                return;
+            }
 
             // Broadcast bug: an accent rule leads the beat of the week, the way a running TV
             // graphic is built.
@@ -115,9 +125,10 @@ namespace Gamesim.Episode
             // was the same fact twice within 200 px - and the string that overran this box.
             FixedText(objective, EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),
                 14, UiTheme.Muted, new Vector2(30f, -106f), new Vector2(284f, 24f));
-
-            FixedButton(objective, "Go to episode screen", new Vector2(18f, -140f), new Vector2(294f, 54f), director.GoToStation);
-            FixedButton(objective, DiaryTravelCaption, new Vector2(18f, -202f), new Vector2(294f, 54f), director.GoToDiary).interactable =
+            FixedText(objective, Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state)) + " social actions remaining",
+                14, Paper, new Vector2(18f,-133f),new Vector2(294f,24f));
+            FixedButton(objective, "Go to episode screen", new Vector2(18f, -162f), new Vector2(294f, 44f), director.GoToStation);
+            FixedButton(objective, DiaryTravelCaption, new Vector2(18f, -214f), new Vector2(294f, 44f), director.GoToDiary).interactable =
                 director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
         }
 
@@ -192,7 +203,8 @@ namespace Gamesim.Episode
             var reading = HouseVibe.Of(state);
             var card = Chrome(HouseVibeCardName, column, Ink);
             Size(card, ObjectiveWidth, 46f + 4f * VibeRowHeight + 26f);
-            CardHeading(card, "HOUSE VIBE", "people");
+            var heading = CardHeading(card, "KNOWN HOUSE EVENTS", "people");
+            heading.characterSpacing = 2f;
 
             int index = 0;
             foreach (var row in reading.Rows())
@@ -201,9 +213,9 @@ namespace Gamesim.Episode
                 float textX = 16f;
                 if (HudPrimitives.Glyph("Vibe mark", card, row.Icon, row.Tint,
                         new Vector2(14f, y - 2f), 16f) != null) textX = 38f;
-                FixedText(card, row.Word, 13, Paper, new Vector2(textX, y), new Vector2(74f, 20f));
+                FixedText(card, row.Word, 13, Paper, new Vector2(textX, y), new Vector2(108f, 20f));
 
-                float trackX = textX + 78f;
+                float trackX = textX + 112f;
                 float trackWidth = ObjectiveWidth - trackX - 44f;
                 var track = Panel("Vibe track", card, UiTheme.Outline, 4);
                 Anchor(track, new Vector2(0, 1), new Vector2(0, 1),
@@ -238,6 +250,7 @@ namespace Gamesim.Episode
         private void RightColumn(EpisodeState state)
         {
             if (director.IsOverview) { OverviewColumn(canvas.transform, RightColumnTop); return; }
+            if(Compact)return;
             float top = RightColumnTop;
             if (director.LiveFeedTexture != null) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
             RecentEventsCard(canvas.transform, state, top);

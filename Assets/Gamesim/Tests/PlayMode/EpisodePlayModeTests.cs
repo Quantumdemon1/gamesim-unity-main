@@ -166,6 +166,29 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(result.competitionScores, Has.Count.EqualTo(6));
             Assert.That(result.competitionScores.All(score => !double.IsNaN(score.score) && !double.IsInfinity(score.score)), Is.True);
             Assert.That(result.hohId, Is.Not.Null.And.Not.Empty);
+
+            yield return ContinueCompetitionResults(byKeyboard: false);
+            ButtonWithCaption("Review competition results").onClick.Invoke();
+            yield return null;
+            var resultsCard = SceneComponents<CompetitionResult>().Single();
+            Assert.That(resultsCard.IsPlaying, Is.True, "Saved standings must be available to review.");
+            director.ClosePanels();
+            yield return null;
+            Assert.That(resultsCard.IsPlaying, Is.False, "Explicitly closing panels must retire the persistent results scrim.");
+            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(player.InputEnabled, Is.True);
+
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Review competition results").onClick.Invoke();
+            yield return null;
+            Assert.That(resultsCard.IsPlaying, Is.True);
+            director.LoadNow();
+            yield return null; yield return null;
+            Assert.That(resultsCard.IsPlaying, Is.False, "Loading must discard presentation belonging to the replaced session.");
+            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(player.InputEnabled, Is.True);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(result.revision));
+            Assert.That(director.Snapshot.competitionResolved, Is.True, "Dismissing or loading results never replays the competition.");
         }
 
         [UnityTest]
@@ -302,6 +325,7 @@ namespace Gamesim.Tests.PlayMode
             var count = 0;
             while (director.Snapshot.phase != EpisodePhase.Finished && count++ < 150)
             {
+                yield return ContinueCompetitionResults(byKeyboard: false);
                 var before = director.Snapshot;
                 seen.Add(before.phase);
                 var command = NextCommand(before);
@@ -334,6 +358,16 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator ReloadEpisode()
         {
+            // This exact informational startup line is expected on every successful load.
+            // Keep strict teardown checks sensitive to every unrelated log and warning.
+            LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex(
+                "^Gamesim episode ready: [0-9]+ contestants, validated simulation, local recovery and accessible HUD connected\\.$"));
+#if !GAMESIM_UMA
+            // The shipping scene retains its optional UMA-cast component. In the authored-only
+            // configuration Unity reports exactly this missing-script warning on scene load;
+            // account for it explicitly so strict teardown checks still catch every other log.
+            LogAssert.Expect(LogType.Warning, "The referenced script (Unknown) on this Behaviour is missing!");
+#endif
             yield return SceneManager.LoadSceneAsync(EpisodeScene, LoadSceneMode.Single);
             director = SceneComponents<EpisodeDirector>().Single();
             var deadline = Time.realtimeSinceStartup + 10f;
@@ -470,6 +504,7 @@ namespace Gamesim.Tests.PlayMode
             int count = 0, walkedRoutes = 0;
             while (director.Snapshot.phase != EpisodePhase.Finished && count++ < 150)
             {
+                yield return ContinueCompetitionResults(byKeyboard: false);
                 var before = director.Snapshot;
                 var next = NextCommand(before);
                 if (!director.IsPanelOpen)

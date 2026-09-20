@@ -80,6 +80,11 @@ namespace Gamesim.Presentation
         /// <summary>True when this player has already been through the tour, or skipped it.</summary>
         public static bool Seen => PlayerPrefs.GetInt(SeenKey, 0) != 0;
 
+        /// <summary>Isolated sessions keep tour completion in memory instead of the player's preferences.</summary>
+        public bool RememberCompletion { get; set; } = true;
+        private bool completedThisSession;
+        public bool HasSeen => completedThisSession || (RememberCompletion && Seen);
+
         public static HouseTutorial Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Tutorial",
@@ -130,8 +135,12 @@ namespace Gamesim.Presentation
         private void Finish()
         {
             step = -1;
-            PlayerPrefs.SetInt(SeenKey, 1);
-            PlayerPrefs.Save();
+            completedThisSession = true;
+            if (RememberCompletion)
+            {
+                PlayerPrefs.SetInt(SeenKey, 1);
+                PlayerPrefs.Save();
+            }
             if (canvas != null) canvas.gameObject.SetActive(false);
         }
 

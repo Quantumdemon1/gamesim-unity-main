@@ -24,20 +24,35 @@ namespace Gamesim.Episode
         private string lastCeremonyKind;
         private string liveFeedCaption = "";
         private float liveFeedNextAim;
+        private LiveFeed subscribedLiveFeed;
 
         /// <summary>The feed's picture, for the card; null before the feed exists.</summary>
         public Texture LiveFeedTexture => liveFeed != null ? liveFeed.Texture : null;
         public string LiveFeedCaption => liveFeedCaption;
+        public bool LiveFeedPaused => liveFeed != null && liveFeed.Paused;
 
         private void TickLiveFeed()
         {
             if (liveFeed == null || !IsReady) return;
+            if (subscribedLiveFeed != liveFeed)
+            {
+                if (subscribedLiveFeed != null) subscribedLiveFeed.FrameCaptured -= PublishLiveFeed;
+                subscribedLiveFeed = liveFeed;
+                liveFeed.FrameCaptured += PublishLiveFeed;
+            }
             liveFeed.Paused = IsPanelOpen;
+            if (hud != null) hud.SetLiveFeedPaused(liveFeed.Paused);
+            // Keep the subject, words and pixels together while another activity owns the view.
+            if (liveFeed.Paused) return;
             if (Time.unscaledTime < liveFeedNextAim) return;
             liveFeedNextAim = Time.unscaledTime + LiveFeedAimSeconds;
             if (!TryGetLiveFeedSubject(out var at, out var caption)) { liveFeed.Clear(); return; }
             // The reverse angle of the viewer's own camera: a second camera, not the same one smaller.
-            liveFeed.Aim(at, (cameraRig != null ? cameraRig.Yaw : 0f) + 180f);
+            liveFeed.Aim(at, (cameraRig != null ? cameraRig.Yaw : 0f) + 180f, caption);
+        }
+
+        private void PublishLiveFeed(string caption)
+        {
             if (caption == liveFeedCaption) return;
             liveFeedCaption = caption;
             if (hud != null) hud.SetLiveFeedCaption(caption);

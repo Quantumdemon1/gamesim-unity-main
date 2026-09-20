@@ -29,7 +29,10 @@ namespace Gamesim.Presentation
     public static class CastRail
     {
         public const string RootName = "Cast rail";
-        public const float Width = 92f;
+        // Two portrait columns keep a twelve-person cast visible without shrinking the player's
+        // preferred text below its requested size. The HUD reserves this gutter explicitly.
+        public const float Width = 184f;
+        private const float EntryWidth = Width / 2f;
 
         /// <summary>Names the chip's parts carry, so a test can find them without guessing.</summary>
         public const string ChipName = "Chip";
@@ -43,6 +46,9 @@ namespace Gamesim.Presentation
         private const float Portrait = 42f;
         private const float RingPadding = 3f;
         private const float EntryHeight = 96f;
+        // Keep the actual hit rectangles apart as well as their inset card graphics. Abutting
+        // fractional edges can overlap after the canvas transform, especially with larger text.
+        private const float EntryGap = 4f;
         private const int ChipRadius = 10;
 
         /// <summary>The rail's own margins: the gap at the top, and the band the lower third owns.</summary>
@@ -96,8 +102,9 @@ namespace Gamesim.Presentation
             root.anchoredPosition = new Vector2(14f, -TopMargin);
 
             var order = Order(state);
-            float scale = Fit(parent as RectTransform, order.Count, fontScale);
-            root.sizeDelta = new Vector2(Width, order.Count * EntryHeight * scale);
+            int rows = (order.Count + 1) / 2;
+            float scale = Fit(parent as RectTransform, rows, fontScale);
+            root.sizeDelta = new Vector2(Width, RailHeight(rows) * scale);
 
             for (int index = 0; index < order.Count; index++)
                 Entry(root, state, order[index], index, scale, font, portrait, onSelect);
@@ -122,8 +129,10 @@ namespace Gamesim.Presentation
             float available = canvas.rect.height - TopMargin - BottomReserve;
             if (available <= 0f) return fontScale;
             float floor = Mathf.Min(fontScale, MinimumFit);
-            return Mathf.Clamp(Mathf.Min(fontScale, available / (count * EntryHeight)), floor, fontScale);
+            return Mathf.Clamp(Mathf.Min(fontScale, available / RailHeight(count)), floor, fontScale);
         }
+
+        private static float RailHeight(int rows) => Mathf.Max(0f, rows * (EntryHeight + EntryGap) - EntryGap);
 
         /// <summary>
         /// The player first, then everyone still playing, then the evicted in the order they left.
@@ -216,8 +225,8 @@ namespace Gamesim.Presentation
             entry.anchorMin = new Vector2(0f, 1f);
             entry.anchorMax = new Vector2(0f, 1f);
             entry.pivot = new Vector2(0f, 1f);
-            entry.anchoredPosition = new Vector2(0f, -index * EntryHeight * scale);
-            entry.sizeDelta = new Vector2(Width, EntryHeight * scale);
+            entry.anchoredPosition = new Vector2((index % 2) * EntryWidth, -(index / 2) * (EntryHeight + EntryGap) * scale);
+            entry.sizeDelta = new Vector2(EntryWidth - EntryGap, EntryHeight * scale);
 
             // The mockups' card: the night ground at 85 %, a cyan hairline, corners at the theme's
             // radius. The player's chip is the one that also carries the glow, so "which of these
@@ -228,7 +237,7 @@ namespace Gamesim.Presentation
             chip.offsetMax = new Vector2(-ChipInsetX, -ChipTop * scale);
             if (isPlayer) UiTheme.Glass(chip, ChipRadius);
             else UiTheme.AddBorder(chip, ChipRadius,
-                new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, standing.Dim ? 0.28f : 0.55f));
+                new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, standing.Dim ? 0.22f : 0.32f));
 
             // The ring is the status: a coloured disc showing through as a rim around the face. Every
             // row below it is measured from the ring's own foot, so the chip stacks rather than

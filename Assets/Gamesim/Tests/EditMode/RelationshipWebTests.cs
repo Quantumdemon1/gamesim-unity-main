@@ -24,6 +24,23 @@ namespace Gamesim.Tests.EditMode
         [TearDown]
         public void Restore() => RelationshipWeb.ClearSelection();
 
+        [Test]
+        public void FiltersUseOnlyPlayerKnowledgeAndResetForAnotherSeason()
+        {
+            var state=House();
+            RelationshipWeb.SetFilter(state,RelationshipWeb.Filter.Allies);
+            Assert.That(RelationshipWeb.FilteredOthers(state).Select(actor=>actor.id),Is.EqualTo(new[]{"b"}));
+            RelationshipWeb.SetFilter(state,RelationshipWeb.Filter.Friends);
+            Assert.That(RelationshipWeb.FilteredOthers(state).Select(actor=>actor.id),Is.EqualTo(new[]{"a"}),
+                "A housemate's secret dislike cannot leak through a tension filter.");
+            RelationshipWeb.Select(state,"a");
+            RelationshipWeb.SetFilter(state,RelationshipWeb.Filter.Tension);
+            Assert.That(RelationshipWeb.FilteredOthers(state).Select(actor=>actor.id),Is.EqualTo(new[]{"c","d"}));
+            Assert.That(RelationshipWeb.SelectedFor(state).id,Is.EqualTo(You),"A hidden selection returns to the player.");
+            state.sessionId="a-new-season";
+            Assert.That(RelationshipWeb.FilteredOthers(state).Count,Is.EqualTo(RelationshipWeb.Others(state).Count));
+        }
+
         /// <summary>A house of five with the player's reading of each set by hand.</summary>
         private static EpisodeState House()
         {

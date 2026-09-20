@@ -234,7 +234,21 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var root = director.GetComponentsInChildren<RectTransform>(true)
                 .FirstOrDefault(rect => rect.name == rootName && rect.gameObject.activeInHierarchy);
-            Assert.That(root, Is.Not.Null, label + ": expected an active '" + rootName + "'.");
+            // When this fails it matters a great deal whether the director thinks a panel is open -
+            // a panel that never opened and a panel that opened and was torn down again are two
+            // different bugs, and the bare "expected not null" cannot tell them apart.
+            if (root == null)
+            {
+                var hud = director.GetComponentsInChildren<Canvas>(true)
+                    .FirstOrDefault(canvas => canvas.name == "Gamesim Episode HUD");
+                string children = hud == null ? "no HUD canvas"
+                    : string.Join(", ", hud.transform.Cast<Transform>().Where(child => child.gameObject.activeSelf).Select(child => child.name));
+                Assert.Fail(label + ": expected an active '" + rootName + "'. The director reports IsPanelOpen="
+                    + director.IsPanelOpen + ", selection=" + (EventSystem.current.currentSelectedGameObject != null
+                        ? EventSystem.current.currentSelectedGameObject.name : "none")
+                    + ", the last press went " + lastSubmit
+                    + ", and the HUD is carrying: " + children + ".");
+            }
 
             // Scrollbars are not controls: the panel scrolls to the selection, and the ScrollRect
             // auto-hides them, which is exactly how one ended up inactive inside the ring once.
@@ -280,17 +294,39 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>Selects the control by caption and raises Submit on it — what Enter does.</summary>
         private IEnumerator KeyboardSubmit(string caption)
         {
-            var buttons = director.GetComponentsInChildren<Button>(true).Where(button => button.IsActive() && button.IsInteractable()
-                && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption)).ToList();
-            Assert.That(buttons, Is.Not.Empty, "Expected a keyboard-reachable control: " + caption);
-            var target = buttons[0];
+            var target = ControlCarrying(caption);
+            Assert.That(target, Is.Not.Null, "Expected a keyboard-reachable control: " + caption);
             Assert.That(target.navigation.mode, Is.Not.EqualTo(Navigation.Mode.None), caption + " must be in the keyboard ring.");
             EventSystem.current.SetSelectedGameObject(target.gameObject);
             yield return null;
+            // Whatever carries the caption now. The HUD rebuilds itself when a houseguest's body
+            // finishes assembling, which destroys the control that was selected and leaves the
+            // selection pointing at it for a frame while it is already inactive - a submit sent
+            // there is delivered to nothing. A player pressing Enter presses the control that is on
+            // screen, so find it again and keep the keyboard on it.
+            target = ControlCarrying(caption);
+            Assert.That(target, Is.Not.Null, caption + " left the screen between selecting it and pressing it.");
+            EventSystem.current.SetSelectedGameObject(target.gameObject);
             Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(target.gameObject), "Selection must hold on " + caption);
-            ExecuteEvents.Execute(target.gameObject, new BaseEventData(EventSystem.current), ExecuteEvents.submitHandler);
-            yield return null; yield return null;
+            bool delivered = ExecuteEvents.Execute(target.gameObject, new BaseEventData(EventSystem.current), ExecuteEvents.submitHandler);
+            // What the press did, frame by frame. A panel that never opened and a panel that opened
+            // and was shut again by the next Update are different bugs, and by the time the ring is
+            // walked both look the same.
+            lastSubmit = caption + " on '" + target.name + "' (delivered " + delivered + ", active " + target.IsActive()
+                + ", interactable " + target.IsInteractable() + ", enabled " + target.enabled + ") -> open " + director.IsPanelOpen;
+            yield return null;
+            lastSubmit += ", then " + director.IsPanelOpen;
+            yield return null;
+            lastSubmit += ", then " + director.IsPanelOpen;
         }
+
+        /// <summary>What the last <see cref="KeyboardSubmit"/> did to the panels, for a failure message.</summary>
+        private string lastSubmit = "nothing pressed yet";
+
+        /// <summary>The live, pressable control showing this caption, or null.</summary>
+        private Button ControlCarrying(string caption) => director.GetComponentsInChildren<Button>(true)
+            .FirstOrDefault(button => button.IsActive() && button.IsInteractable()
+                && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
 
         private IEnumerator PressKey(Key key, bool shift = false)
         {

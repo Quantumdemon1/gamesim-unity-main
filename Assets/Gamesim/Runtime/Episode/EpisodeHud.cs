@@ -167,7 +167,11 @@ namespace Gamesim.Episode
         public void Begin(EpisodeState state, string message, bool recovery, bool open)
         {
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
-            preferredSelection = selected != null && modal != null && selected.transform.IsChildOf(modal)
+            // Whatever had the keyboard keeps it by name, chrome as well as panel. The HUD rebuilds
+            // itself for reasons that have nothing to do with the player - a houseguest's body
+            // finishing its assembly is one - and a rebuild that moved the focus off the control
+            // someone was about to press lost the press with it.
+            preferredSelection = selected != null && canvas != null && selected.transform.IsChildOf(canvas.transform)
                 ? selected.name : null;
             // A panel that is closing fades out for a few frames instead of vanishing. The old
             // modal goes to a ghost canvas that owns no controls (HudFade strips them), so the

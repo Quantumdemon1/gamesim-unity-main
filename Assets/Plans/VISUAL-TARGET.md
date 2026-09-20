@@ -313,17 +313,25 @@ V1 and V2 are the first fortnight and carry most of the distance. The decision i
 stylised-realistic ceiling is the target or a photoreal cast is a must — is the one thing to settle
 before V3 starts; everything before it is worth doing either way.
 
-## 7a. Status (2026-09-19, evening)
+## 7a. Status (2026-09-19, late evening)
 
 | Phase | State | Where |
 | --- | --- | --- |
-| V0 look sheet | written, not yet run on a graphical build | `PortVerification.LookSheet.cs`, `Tools/build-and-verify.sh --look-sheet` |
+| V0 look sheet | done: twelve captures and a report from a graphical build, each moment marked reached or nearest with the reason | `PortVerification.LookSheet.cs`, `Tools/build-and-verify.sh --look-sheet`, `ArtSource/reference/after/after-NN.png` |
 | V1 light the house | done: the pass, the bake, the sky, the grade, the probes; pinned by `Lighting_TheEpisodeSceneShipsItsBakedNight` | `HouseCinematicLighting.cs`, `ArtSource/reference/after/set-after-lighting.png` |
-| V2 chrome | foundations: tokens, `Glass()`, Inter as a theme weight, 42 glyphs; every chrome panel on glass; the screens themselves not yet rebuilt | `UiTheme.cs`, `HudPrimitives.cs`, `IconForge.cs` |
-| V3 cast | not started (needs the §2 decision and your logins for the animation half) | — |
-| V4 surfaces | seven hero pieces and the living-room rows (first half); then the scanned surfaces on seven floors and the shell's walls, the two plants, and the long table's sixteen chairs. Left: the glass (yard doors, pool fence, the water's scroll) and marble, which is a mesh material rather than a floor | `ArtSource/tools/bb_polyhaven.py`, `ArtSource/textures/bb_tex_polyhaven.py`, `HouseFloorDressing.cs`, `PolyHavenMaterials.cs` |
-| V5 camera, live feed | overview, two-shot, diary chair and the live feed card are in; the competition wide and the night clock remain | `HouseCameraRig.Shot`, `EpisodeDirector.Overview/LiveFeed` |
-| V6 motion | not started | — |
+| V2 chrome | done for the screens the mockups draw: the top bar and the right column, the conversation as a dial, the cast strip, the roster cards, the five ceremony overlays, the relationship web, the rooms. Left: the vote section's rows, which still use the old portrait row | `EpisodeHud.Chrome.cs`, `EpisodeHud.Radial.cs`, `CastRail.cs`, `CastSelect.cs`, `RelationshipWeb.cs`, the five ceremony screens |
+| V3 cast | the plumbing: a look for each of the roster's houseguests as data, expressions driven from mood × stress with a lip flap, and the portrait rig lit in three points. Left: the animation half, which needs your Mixamo login, and your eye on the twenty-four looks | `UmaCastLibrary.cs`, `UmaExpressions.cs`, `CharacterPortraits.cs` |
+| V4 surfaces | done but for two: seven hero pieces, scanned floors and walls, plants, and the long table's sixteen chairs. Left: the glass (yard doors, pool fence, the water's scroll) and marble, which is a mesh material rather than a floor | `ArtSource/tools/bb_polyhaven.py`, `ArtSource/textures/bb_tex_polyhaven.py`, `HouseFloorDressing.cs`, `PolyHavenMaterials.cs` |
+| V5 camera, live feed | done: the overview, the conversation's two-shot, the diary chair, the competition wide, and the live feed's second camera and card. The night clock is not done and is not costed here — see below | `HouseCameraRig.Shot`, `EpisodeDirector.Overview/LiveFeed`, `LiveFeed.cs` |
+| V6 motion | the half that needs no clips: heads turn to the subject of a ceremony, and every body idles on its own phase rather than one of five. Left: the Mixamo set, which is your login | `CharacterPresentation.LookAt`, `EpisodeDirector.Ceremony.cs` |
+
+**The night clock, honestly.** V5 assumed "the room tone's clock already knows the hour". It does
+not: the room tone follows the room under the camera, and the simulation carries a week and a phase
+and no hour at all. A day cycle would need either a saved field, which means a schema version and a
+migration, or a presentational clock that resets on every load — and either way it would fight the
+bake, because the house is lightmapped for night and a mixed light's indirect term is fixed at bake
+time. The night the mockups show is the night V1 delivered; houseguests asleep after midnight is a
+separate feature with a real cost, not a finishing touch, and it is not in this plan's ledger.
 
 ## 8. Definition of done
 

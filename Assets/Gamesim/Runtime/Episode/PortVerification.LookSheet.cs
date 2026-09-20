@@ -375,7 +375,12 @@ namespace Gamesim.Episode
                 if (HasSeasonButtonText("Hit")) { yield return TryClickSeasonButton("Hit"); inputs++; }
                 yield return null;
             }
-            shot.reason = "the lanes and the neon stage arrive with V4 and V5";
+            // The lanes, the gates, the stacking props and the lit backdrop landed on 2026-09-20.
+            // What the mockup still has and this does not is the crowd: the houseguests who are not
+            // competing are scattered around the house rather than seated along the yard watching,
+            // and a competition with no audience reads as a rehearsal.
+            shot.reason = "the yard has its course and its lit stage; the watching crowd does not sit "
+                + "in the yard yet";
         }
 
         private IEnumerator NominationDiscussion(LookShot shot)

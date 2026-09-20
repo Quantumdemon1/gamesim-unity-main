@@ -74,7 +74,13 @@ namespace Gamesim.Editor
         /// <summary>Every model id the plan names, for the catalogue audit.</summary>
         public static IEnumerable<string> PlanModels => Plan.Select(prop => prop.Model).Concat(SteppedModels);
         /// <summary>Models placed by a step rather than a plan row: the competition set.</summary>
-        private static readonly string[] SteppedModels = { "bb_set_podium", "bb_set_compring" };
+        private static readonly string[] SteppedModels =
+        {
+            "bb_set_podium", "bb_set_compring",
+            "bb_set_comp_lane", "bb_set_comp_gate", "bb_set_comp_stack", "bb_set_comp_crate",
+            "bb_set_comp_backdrop",
+            "bb_set_sign_hoh", "bb_set_sign_pillars", "bb_set_sign_samehouse",
+        };
 
         // Heights are in metres and chosen to read at a glance rather than to be exact: a stove
         // that is waist-high and a lamp that is head-high is the whole requirement. A *negative*
@@ -336,6 +342,7 @@ namespace Gamesim.Editor
             int greenery = Greenery(world.transform, root);
             int podiums = Podiums(world.transform, root);
             int rings = Rings(world.transform, root);
+            int course = Course(world.transform, root);
             int shell = Shell(world.transform, root);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -344,8 +351,8 @@ namespace Gamesim.Editor
             Debug.Log(string.Format(
                 "[Gamesim] set pieces · {0} props placed, {1} skipped, {2} floor tiles, {3} entrance parts, "
                 + "{4} plants swapped in, {5} podium parts, {6} ring segments dressed by the authored circle, "
-                + "{7} primitive walls dressed by the authored shell",
-                placed, missing, tiles, entrance, greenery, podiums, rings, shell));
+                + "{7} primitive walls dressed by the authored shell, {8} competition course pieces",
+                placed, missing, tiles, entrance, greenery, podiums, rings, shell, course));
         }
 
         /// <summary>
@@ -642,6 +649,127 @@ namespace Gamesim.Editor
         /// <para>The original box is measured and hidden rather than deleted, because it is what the
         /// yard's layout was authored against and what any later pass will look for.</para>
         /// </summary>
+        /// <summary>The yard's own floor, which every piece of the course is measured from.</summary>
+        private const string CompetitionFloor = "Competition yard floor";
+
+        /// <summary>
+        /// The competition course (VISUAL-TARGET.md V4/V5, mockup-05): three lit lanes across the
+        /// yard, a gate at the head of each, and the stacking prop with its crate of spares in
+        /// front of every podium.
+        ///
+        /// <para>The mockup's competition is a course, not a circle. Three lanes run away from the
+        /// camera in red, blue and green; a neon frame stands over each; and in front of every
+        /// houseguest is the thing they are actually doing - a peg with discs to stack. The last of
+        /// those is the one that matters most: a competition the viewer watches without knowing the
+        /// task is a crowd scene.</para>
+        ///
+        /// <para>The yard already had a competition set, the three gold rings on its floor. Both are
+        /// floor graphics in the same place and they read as clutter together, so dressing the
+        /// course turns the ring's renderer off rather than stacking the two. The ring itself is
+        /// untouched, and deleting this step's group brings it back.</para>
+        ///
+        /// <para>Measured rather than guessed: the floor is read for its extent and the podiums for
+        /// their spacing, so a yard that is resized moves the course with it. Nothing here carries a
+        /// collider - the NavMesh was baked without these pieces, and furniture in the walk path is
+        /// what cost seventeen PlayMode tests the last time it was tried.</para>
+        /// </summary>
+        private static int Course(Transform world, Transform root)
+        {
+            var floor = world.GetComponentsInChildren<Renderer>(true)
+                .FirstOrDefault(renderer => !renderer.transform.IsChildOf(root)
+                    && renderer.name == CompetitionFloor);
+            if (floor == null) return 0;
+
+            var blocks = world.GetComponentsInChildren<Transform>(true)
+                .Where(node => !node.IsChildOf(root))
+                .Where(node => Stem(node.name) == "Competition podium")
+                .Select(node => node.GetComponent<Renderer>())
+                .Where(renderer => renderer != null)
+                .OrderBy(renderer => renderer.bounds.center.x)
+                .ToArray();
+            if (blocks.Length == 0) return 0;
+
+            // Left to right, the mockup's own order.
+            var colours = new[] { "Neon Red", "Neon Blue", "Neon Green" };
+
+            var group = new GameObject("Competition course").transform;
+            group.SetParent(root, false);
+
+            var deck = floor.bounds;
+            float top = deck.max.y;
+            int placed = 0;
+
+            // The wall first, so the gates read against it. It keeps its own cool tubes rather
+            // than a lane's colour: it is one piece behind all three, and painting it red would
+            // make the left lane's backdrop the whole yard's.
+            placed += Stand("bb_set_comp_backdrop", group,
+                new Vector3(deck.center.x, top, deck.max.z - 0.1f), null);
+
+            // The lettering, hung on the wall's lit face. Signs are measured from the base of their
+            // own type, so the heights below are baselines, not centres. They keep the backdrop's
+            // cool tubes rather than a lane's colour, for the same reason the wall does.
+            float face = deck.max.z - 0.28f;
+            placed += Stand("bb_set_sign_pillars", group, new Vector3(deck.center.x - 7.5f, top + 1.20f, face), null);
+            placed += Stand("bb_set_sign_hoh", group, new Vector3(deck.center.x, top + 1.85f, face), null);
+            placed += Stand("bb_set_sign_samehouse", group, new Vector3(deck.center.x + 7.5f, top + 1.50f, face), null);
+
+            for (int lane = 0; lane < blocks.Length; lane++)
+            {
+                var neon = AssetDatabase.LoadAssetAtPath<Material>(
+                    ArtRoot + "Emissive/" + colours[Mathf.Min(lane, colours.Length - 1)] + ".mat");
+                float x = blocks[lane].bounds.center.x;
+                float podiumZ = blocks[lane].bounds.center.z;
+
+                // The lane, centred on the deck so it stops half a metre short at both ends.
+                placed += Stand("bb_set_comp_lane", group, new Vector3(x, top, deck.center.z), neon);
+                // The gate at the head of the lane, short of the back edge so it is not in the wall.
+                placed += Stand("bb_set_comp_gate", group, new Vector3(x, top, deck.max.z - 0.7f), neon);
+                // The task, in front of the podium where the camera sees it before the houseguest.
+                placed += Stand("bb_set_comp_stack", group, new Vector3(x, top, podiumZ - 1.5f), neon);
+                // The spares, beside it and inside the lane's own edge.
+                placed += Stand("bb_set_comp_crate", group, new Vector3(x + 1.7f, top, podiumZ - 1.1f), neon);
+            }
+
+            // One competition graphic on the floor at a time.
+            foreach (var ring in root.GetComponentsInChildren<Renderer>(true))
+                if (ring.name.StartsWith("bb_set_compring", StringComparison.Ordinal)) ring.enabled = false;
+
+            return placed;
+        }
+
+        /// <summary>
+        /// Places one course piece at a world position and gives its neon the lane's colour.
+        ///
+        /// <para>By the piece's own origin, not by its bounding box. Every authoring script states
+        /// where it put the origin and they are not all the centre - a lane's is at its near end,
+        /// so that a lane can be laid from a start line - and placing by a measured centre would
+        /// silently push it half its own length up the yard.</para>
+        ///
+        /// <para>The pieces are authored white and named <c>bb_mat_neon_*</c> for the glow, so one
+        /// mesh serves all three lanes instead of three near-identical exports. Only the neon slots
+        /// are repainted; the dark parts stay dark.</para>
+        /// </summary>
+        private static int Stand(string model, Transform parent, Vector3 at, Material neon)
+        {
+            var piece = Model(model, parent, 0f, 0f);
+            if (piece == null) return 0;
+
+            piece.transform.position = at;
+
+            if (neon != null)
+                foreach (var renderer in piece.GetComponentsInChildren<Renderer>(true))
+                {
+                    var slots = renderer.sharedMaterials;
+                    bool repainted = false;
+                    for (int i = 0; i < slots.Length; i++)
+                        if (slots[i] != null
+                            && slots[i].name.StartsWith("bb_mat_neon", StringComparison.Ordinal))
+                        { slots[i] = neon; repainted = true; }
+                    if (repainted) renderer.sharedMaterials = slots;
+                }
+            return 1;
+        }
+
         private static int Podiums(Transform world, Transform root)
         {
             var ink = AssetDatabase.LoadAssetAtPath<Material>(ArtRoot + "Ink.mat");

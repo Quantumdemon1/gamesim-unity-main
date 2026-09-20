@@ -321,7 +321,7 @@ before V3 starts; everything before it is worth doing either way.
 | V1 light the house | done: the pass, the bake, the sky, the grade, the probes; pinned by `Lighting_TheEpisodeSceneShipsItsBakedNight` | `HouseCinematicLighting.cs`, `ArtSource/reference/after/set-after-lighting.png` |
 | V2 chrome | done for the screens the mockups draw: the top bar and the right column, the conversation as a dial, the cast strip, the roster cards, the five ceremony overlays, the relationship web, the rooms. Left: the vote section's rows, which still use the old portrait row | `EpisodeHud.Chrome.cs`, `EpisodeHud.Radial.cs`, `CastRail.cs`, `CastSelect.cs`, `RelationshipWeb.cs`, the five ceremony screens |
 | V3 cast | done but for your eye: a look for each of the roster's houseguests as data, expressions driven from mood × stress with a lip flap, the portrait rig lit in three points, and the twelve mocap takes you downloaded wired into a Humanoid controller so a UMA body sits, talks, argues and celebrates instead of dropping every cue but `Speed`. Left: your eye on the twenty-four looks, three reaction beats no take covers, and a Listen state — see below | `UmaCastLibrary.cs`, `UmaExpressions.cs`, `CharacterPortraits.cs`, `HumanoidClipWiring.cs` |
-| V4 surfaces | done but for two: seven hero pieces, scanned floors and walls, plants, and the long table's sixteen chairs. Left: the glass (yard doors, pool fence, the water's scroll) and marble, which is a mesh material rather than a floor | `ArtSource/tools/bb_polyhaven.py`, `ArtSource/textures/bb_tex_polyhaven.py`, `HouseFloorDressing.cs`, `PolyHavenMaterials.cs` |
+| V4 surfaces | done but for two: seven hero pieces, scanned floors and walls, plants, the long table's sixteen chairs, and — 2026-09-20 — the competition stage mockup-05 asks for: three lit lanes, a gate over each, the stacking prop the houseguests are actually working at, a crate of spares, a 28 m panelled backdrop with eight tubes, and the lettering on it. Left: the glass (yard doors, pool fence, the water's scroll) and marble, which is a mesh material rather than a floor | `bb_set_comp_*.py`, `bb_set_sign.py`, `HouseSetPieces.Course`, `ArtSource/tools/bb_polyhaven.py`, `HouseFloorDressing.cs` |
 | V5 camera, live feed | done: the overview, the conversation's two-shot, the diary chair, the competition wide, and the live feed's second camera and card. The night clock is not done and is not costed here — see below | `HouseCameraRig.Shot`, `EpisodeDirector.Overview/LiveFeed`, `LiveFeed.cs` |
 | V6 motion | heads turn to the subject of every ceremony — the veto included, which was the one beat that never turned a head until 2026-09-20 — every body idles on its own phase rather than one of five, and the Mixamo set is in: twelve Humanoid takes, a standing idle and a walk borrowed from UMA at runtime so nothing outside this repository is serialised. Left: three reaction beats — see below | `CharacterPresentation.LookAt`, `EpisodeDirector.Ceremony.cs`, `HumanoidClipWiring.cs` |
 
@@ -332,6 +332,17 @@ migration, or a presentational clock that resets on every load — and either wa
 bake, because the house is lightmapped for night and a mixed light's indirect term is fixed at bake
 time. The night the mockups show is the night V1 delivered; houseguests asleep after midnight is a
 separate feature with a real cost, not a finishing touch, and it is not in this plan's ledger.
+
+**The set's lettering, and why it is geometry.** Seven walls in the mockups carry lit type and the
+house had none of it: a room with a lit sign reads as a built set, and the same room without one
+reads as a grey box with furniture in it. `ArtSource/setpieces/bb_set_sign.py` takes a string, a
+font, a cap height and whether it wants a dark backing, and extrudes the letters as real geometry
+rather than painting them on a quad — neon IS a tube with depth, and a flat alpha-mapped panel gives
+the trick away at exactly the angle the overview camera looks from. It also needs no texture
+pipeline: the letters carry the same `bb_mat_neon_*` name every other glowing thing here does, so
+the importer lights them without a new rule. Six signs are built so far; the living room's
+`GAMESIM` and `Good Company` are cut and waiting on a wall to hang them from, which needs the
+living-room wall measured the way the yard's was.
 
 **Three reaction beats, honestly.** The twelve takes cover a win and a cheer. They do not cover the
 three a houseguest takes badly — being nominated, being saved by the veto, being evicted — and the

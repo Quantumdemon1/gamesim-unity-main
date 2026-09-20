@@ -42,6 +42,25 @@ namespace Gamesim.Editor
             && path.StartsWith(Root + "Animation/Generic/", StringComparison.Ordinal);
 
         /// <summary>
+        /// Clips for the UMA cast, which is Humanoid: mocap takes retargeted onto whatever body UMA
+        /// builds. One take a file, and the file says which take it is - <c>bb_anim_SitTalk_loop.fbx</c>
+        /// carries <c>SitTalk_loop</c> - because a mocap library names every clip after the service
+        /// that made it and a controller cannot wire twelve clips all called the same thing.
+        /// </summary>
+        public static bool IsHumanoidAnimation(string path) => IsAuthored(path)
+            && path.StartsWith(Root + "Animation/Humanoid/", StringComparison.Ordinal);
+
+        /// <summary>The take a Humanoid clip file carries, from its name; empty for anything else.</summary>
+        public static string HumanoidTake(string path)
+        {
+            if (!IsHumanoidAnimation(path)) return "";
+            string file = System.IO.Path.GetFileNameWithoutExtension(path);
+            return file.StartsWith(AnimationPrefix, StringComparison.Ordinal) ? file.Substring(AnimationPrefix.Length) : file;
+        }
+
+        public const string AnimationPrefix = "bb_anim_";
+
+        /// <summary>
         /// A body authored on the shipped skeleton (<c>ArtSource/characters/bb_char_*.py</c>): the
         /// same Generic rig as the six bodies, so every clip in the controller plays on it by bone
         /// path, and readable, because <c>FaceExpression</c> builds its shapes from the mesh.
@@ -102,14 +121,20 @@ namespace Gamesim.Editor
             importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
             importer.materialSearch = ModelImporterMaterialSearch.Local;
             importer.materialLocation = ModelImporterMaterialLocation.External;
-            importer.animationType = IsGeneric(assetPath) ? ModelImporterAnimationType.Generic
+            // A Humanoid clip is retargeted onto whatever UMA builds, so it is imported against the
+            // rig it was captured on. The take is what is wanted; the actor who performed it is not,
+            // so nothing of their materials comes with it.
+            if (IsHumanoidAnimation(assetPath)) importer.materialImportMode = ModelImporterMaterialImportMode.None;
+            importer.animationType = IsHumanoidAnimation(assetPath) ? ModelImporterAnimationType.Human
+                : IsGeneric(assetPath) ? ModelImporterAnimationType.Generic
                 : IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
             importer.importAnimation = IsAnimation(assetPath);
             // A prop is lightmapped, and its box-projected UVs tile past 0..1, so the lightmapper
             // gets a second set of its own. A body is lit by probes and needs none.
             importer.generateSecondaryUV = !IsRigged(assetPath);
             // A Generic rig gets no avatar unless asked; the prefab and the six bodies carry one.
-            importer.avatarSetup = IsRigged(assetPath) ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar;
+            importer.avatarSetup = IsRigged(assetPath) || IsHumanoidAnimation(assetPath)
+                ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar;
         }
 
         /// <summary>
@@ -183,11 +208,15 @@ namespace Gamesim.Editor
             if (!IsAnimation(assetPath)) return;
             var importer = (ModelImporter)assetImporter;
             var clips = importer.clipAnimations.Length > 0 ? importer.clipAnimations : importer.defaultClipAnimations;
+            string humanoidTake = HumanoidTake(assetPath);
             foreach (var clip in clips)
             {
                 // A take exported from Blender is named "<armature>|<take>"; the clip is the take.
                 int bar = clip.name.LastIndexOf('|');
                 if (bar >= 0 && bar < clip.name.Length - 1) clip.name = clip.name.Substring(bar + 1);
+                // A mocap take is named after the service that made it, which says nothing. The file
+                // name is the take, so the clip takes the file's name instead.
+                if (humanoidTake.Length > 0) clip.name = humanoidTake;
                 bool loop = clip.name.EndsWith(LoopSuffix, StringComparison.Ordinal);
                 clip.loopTime = loop;
                 clip.loopPose = loop;

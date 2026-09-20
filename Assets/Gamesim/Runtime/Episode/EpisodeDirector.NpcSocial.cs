@@ -25,6 +25,8 @@ namespace Gamesim.Episode
         }
         private HouseMeetingCoordinator npcMeetings;
         private HouseConversationCaption npcCaption;
+        /// <summary>How far above the pair's feet the witnessed caption's bubble is anchored.</summary>
+        private const float CaptionHeadHeight = 1.95f;
         private HouseMeetingLease npcShownLease;
         private readonly Dictionary<long, HouseMeetingLease> npcPendingWorld = new Dictionary<long, HouseMeetingLease>();
         private readonly List<NpcApproach> npcApproaches = new List<NpcApproach>();
@@ -324,7 +326,13 @@ namespace Gamesim.Episode
                 facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
                 if (!witnessed && npcMeetings.CanWitness(player, lease))
                 {
-                    npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name, pending.topic, largeText ? 1.2f : 1);
+                    // Over the pair, not over the top of the screen: the caption is anchored at the
+                    // midpoint of the two slots the coordinator seated them in, at head height, so
+                    // the sentence and the people it is about arrive together. The slots are where
+                    // the bodies are standing by the time a conversation can be witnessed at all.
+                    var between = (lease.FirstSlot + lease.SecondSlot) * .5f + Vector3.up * CaptionHeadHeight;
+                    npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
+                        pending.topic, largeText ? 1.2f : 1, between);
                     npcShownLease = lease;
                     witnessed = true;
                 }

@@ -194,6 +194,66 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.ObservedNpcConversation, Is.Empty, "Hiding should clear the caption.");
         }
 
+        /// <summary>
+        /// Given somewhere to point, the caption becomes a bubble over the pair rather than a banner
+        /// at the top of the screen (VISUAL-TARGET.md V2, mockups 01, 06 and 09).
+        ///
+        /// <para>Two things are worth pinning and neither is the wording. It must grow a tail, which
+        /// is what makes it point at somebody rather than float. And it must still keep out of the
+        /// house pill: a caption that follows a pair across the room will walk under the week
+        /// counter unless it is clamped, and a line of prose over the week counter is worse than a
+        /// line of prose in the wrong place.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AmbientCaption_AnchoredOverAPairBecomesABubbleAndStaysOffTheChrome()
+        {
+            var caption = SceneComponents<Gamesim.Episode.HouseConversationCaption>().FirstOrDefault();
+            Assert.That(caption, Is.Not.Null, "The episode should stage the conversation caption.");
+            var camera = Camera.main;
+            Assert.That(camera, Is.Not.Null, "The house camera is what the bubble is projected through.");
+
+            var pill = director.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == "House pill" && rect.gameObject.activeInHierarchy);
+            Assert.That(pill, Is.Not.Null, "The HUD should carry the house pill.");
+            var pillRect = ScreenRect(pill);
+
+            // Walk the anchor up the FRAME, not up the world: the house camera looks steeply down,
+            // so world-up quickly puts a point behind it, and a point behind the camera is one the
+            // bubble hides rather than clamps. Along the camera's own up axis the anchor stays six
+            // metres in front at every step, and the last of them is well above the top of the
+            // screen - which is exactly where an unclamped bubble would land on the chrome.
+            // Measured in the same frame it is shown, with no yield between. The NPC runtime hides
+            // this caption on any frame where no conversation is actually being witnessed, and the
+            // test is staging one by hand - so yielding hands the director a frame in which to take
+            // it away again, which it duly does on the second pass.
+            foreach (var lift in new[] { 0f, 2f, 6f, 14f })
+            {
+                caption.Show("Maya Hassan", "Riley Johnson", "strategy", 1f,
+                    camera.transform.position + camera.transform.forward * 6f + camera.transform.up * lift);
+                Canvas.ForceUpdateCanvases();
+
+                var panel = caption.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == Gamesim.Episode.HouseConversationCaption.PanelName);
+                Assert.That(panel, Is.Not.Null, "The caption should have built its panel.");
+                var tail = caption.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == Gamesim.Episode.HouseConversationCaption.TailName);
+                Assert.That(tail, Is.Not.Null, "An anchored caption should have built its tail.");
+                Assert.That(tail.gameObject.activeInHierarchy, Is.True,
+                    "The tail is what makes the bubble point at somebody; a banner has none. Lift "
+                    + lift + ": tail self " + tail.gameObject.activeSelf
+                    + ", panel in hierarchy " + panel.gameObject.activeInHierarchy
+                    + ", canvas self " + panel.parent.gameObject.activeSelf + ".");
+
+                Assert.That(ScreenRect(panel).Overlaps(pillRect), Is.False,
+                    "Anchored " + lift + " m up, the bubble " + ScreenRect(panel)
+                    + " overlaps the house pill " + pillRect + ".");
+            }
+
+            caption.Hide();
+            yield return null;
+            Assert.That(director.ObservedNpcConversation, Is.Empty, "Hiding should clear the caption.");
+        }
+
         // The frames a season shows: the authored wall carries sixteen and switches the rest off.
         private static Transform[] Frames(MemoryWall wall) =>
             wall.transform.Cast<Transform>()

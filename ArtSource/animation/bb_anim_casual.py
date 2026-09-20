@@ -9,10 +9,12 @@ back where the controller expects the body to be.
     SitTalk_loop     2 s   seated, talking: nods and a hand that lifts
     Talk_loop        2 s   standing, talking: nods, a shoulder, the right forearm
     Listen_loop      3 s   standing, listening: a slower sway, the head slightly turned
+    Argue_loop       2.4 s standing, arguing: the torso forward, the arms working, the head shaking
     React_nominated  1.2 s the head drops and the shoulders come in, then most of it eases back
     React_saved      1.2 s the arms lift, the head comes up
     React_evicted    1.4 s the torso folds forward, the head with it
     React_won        1.5 s both arms up, the torso back
+    React_cheered    1.6 s both arms up to the crowd, a bounce under them, easing most of the way back
 
 Exported as one FBX of takes, armature only, to Art/Authored/Animation/Generic, where the
 importer takes it as Generic and loops the *_loop takes.
@@ -72,6 +74,12 @@ loop("Listen_loop", 3.0, standing, [
     (0.33, {"Torso": (1.2, 0.0, 1.0), "Head": (2.0, 6.0, 0.0)}),
     (0.66, {"Torso": (1.2, 0.0, -1.0), "Head": (-1.0, 4.0, 0.0), "Abdomen": (0.8, 0.0, 0.0)}),
 ])
+loop("Argue_loop", 2.4, standing, [
+    (0.15, {"Torso": (7.0, 0.0, 0.0), "Abdomen": (3.0, 0.0, 0.0), "Head": (4.0, -5.0, 0.0), "Shoulder.R": (0.0, 0.0, -4.0), "UpperArm.R": (0.0, 0.0, -30.0), "LowerArm.R": (-60.0, 0.0, 0.0), "UpperArm.L": (0.0, 0.0, 14.0), "LowerArm.L": (-25.0, 0.0, 0.0)}),
+    (0.35, {"Torso": (9.0, 0.0, 0.0), "Abdomen": (4.0, 0.0, 0.0), "Head": (5.0, 6.0, 0.0), "Shoulder.R": (0.0, 0.0, -2.0), "UpperArm.R": (0.0, 0.0, -18.0), "LowerArm.R": (-80.0, 0.0, 0.0), "UpperArm.L": (0.0, 0.0, 20.0), "LowerArm.L": (-35.0, 0.0, 0.0)}),
+    (0.55, {"Torso": (8.0, 0.0, 0.0), "Abdomen": (3.0, 0.0, 0.0), "Head": (3.0, -6.0, 0.0), "Shoulder.R": (0.0, 0.0, -5.0), "UpperArm.R": (0.0, 0.0, -38.0), "LowerArm.R": (-50.0, 0.0, 0.0), "UpperArm.L": (0.0, 0.0, 30.0), "LowerArm.L": (-45.0, 0.0, 0.0)}),
+    (0.8, {"Torso": (4.0, 0.0, 0.0), "Abdomen": (2.0, 0.0, 0.0), "Head": (2.0, 4.0, 0.0), "UpperArm.R": (0.0, 0.0, -14.0), "LowerArm.R": (-35.0, 0.0, 0.0), "UpperArm.L": (0.0, 0.0, 12.0), "LowerArm.L": (-20.0, 0.0, 0.0)}),
+])
 oneshot("React_nominated", 1.2, standing, [
     (0.35, {"Head": (16.0, 0.0, 0.0), "Torso": (6.0, 0.0, 0.0), "Shoulder.L": (0.0, 0.0, 6.0), "Shoulder.R": (0.0, 0.0, -6.0)}),
     (0.7, {"Head": (12.0, -6.0, 0.0), "Torso": (5.0, 0.0, 0.0), "Shoulder.L": (0.0, 0.0, 5.0), "Shoulder.R": (0.0, 0.0, -5.0)}),
@@ -89,6 +97,12 @@ oneshot("React_won", 1.5, standing, [
     (0.55, {"UpperArm.L": (0.0, 0.0, 85.0), "UpperArm.R": (0.0, 0.0, -85.0), "LowerArm.L": (-30.0, 0.0, 0.0), "LowerArm.R": (-30.0, 0.0, 0.0), "Head": (-12.0, 4.0, 0.0), "Torso": (-6.0, 0.0, 0.0)}),
     (0.8, {"UpperArm.L": (0.0, 0.0, 60.0), "UpperArm.R": (0.0, 0.0, -60.0), "Head": (-6.0, 0.0, 0.0), "Torso": (-3.0, 0.0, 0.0)}),
 ])
+oneshot("React_cheered", 1.6, standing, [
+    (0.2, {"UpperArm.L": (0.0, 0.0, 100.0), "UpperArm.R": (0.0, 0.0, -100.0), "LowerArm.L": (-15.0, 0.0, 0.0), "LowerArm.R": (-15.0, 0.0, 0.0), "Head": (-16.0, 0.0, 0.0), "Torso": (-7.0, 0.0, 0.0)}),
+    # The bounce: the arms and the spine dip a beat, then go back up - this rig's knees are left alone.
+    (0.45, {"UpperArm.L": (0.0, 0.0, 78.0), "UpperArm.R": (0.0, 0.0, -78.0), "LowerArm.L": (-30.0, 0.0, 0.0), "LowerArm.R": (-30.0, 0.0, 0.0), "Head": (-6.0, 0.0, 0.0), "Torso": (-1.0, 0.0, 0.0), "Abdomen": (3.0, 0.0, 0.0)}),
+    (0.7, {"UpperArm.L": (0.0, 0.0, 96.0), "UpperArm.R": (0.0, 0.0, -96.0), "LowerArm.L": (-18.0, 0.0, 0.0), "LowerArm.R": (-18.0, 0.0, 0.0), "Head": (-14.0, 4.0, 0.0), "Torso": (-6.0, 0.0, 0.0)}),
+], rest={"UpperArm.L": (0.0, 0.0, 28.0), "UpperArm.R": (0.0, 0.0, -28.0), "LowerArm.L": (-10.0, 0.0, 0.0), "LowerArm.R": (-10.0, 0.0, 0.0), "Head": (-4.0, 0.0, 0.0), "Torso": (-2.0, 0.0, 0.0)})
 
 path = A.output_path("bb_anim_casual.fbx")
 A.export(rig, takes, path)

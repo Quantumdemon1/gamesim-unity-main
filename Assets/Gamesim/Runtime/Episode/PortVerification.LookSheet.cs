@@ -155,6 +155,10 @@ namespace Gamesim.Episode
 
         private IEnumerator CaptureLook(LookShot shot)
         {
+            // No picture is taken over the title card. The opening plays itself whenever a season
+            // starts and the cast screen starts one, so the one place that can be sure of this is
+            // the one place that takes the pictures.
+            yield return SkipOpening();
             Canvas.ForceUpdateCanvases();
             for (int frame = 0; frame < 5; frame++) yield return null;
             string path = Path.Combine(outputDirectory, "after-" + shot.index.ToString("00") + ".png");
@@ -174,9 +178,6 @@ namespace Gamesim.Episode
         /// <summary>Back to a quiet house between moments: every panel closed, the cast free to move.</summary>
         private IEnumerator CloseEverything()
         {
-            // The opening plays itself again whenever a season starts, and the cast screen starts one.
-            // A capture taken over the title card is a picture of the title card.
-            yield return SkipOpening();
             var cast = FindAnyObjectByType<CastSelect>();
             if (cast != null && cast.IsShowing) yield return ClickAny(CastSelect.CancelCaption);
             var recap = FindAnyObjectByType<WeeklyRecapScreen>();
@@ -280,7 +281,7 @@ namespace Gamesim.Episode
             if (npc == null) throw new InvalidOperationException("No active houseguest to select.");
             seasonDirector.FollowHouseguest(npc.Id);
             yield return ApproachAndOpen(npc, shot);
-            shot.reason = "the radial and the mood chips arrive with V2";
+            shot.reason = "the speech bubble over the pair arrives with V6";
         }
 
         private IEnumerator Overview(LookShot shot)
@@ -322,8 +323,7 @@ namespace Gamesim.Episode
             yield return ApproachAndOpen(npc, shot);
             if (seasonDirector.Snapshot.phase == EpisodePhase.Social && HasSeasonButtonText(EpisodeHud.SmallTalkCaption))
                 yield return ClickSeasonButton(EpisodeHud.SmallTalkCaption);
-            if (NearestRoom(npc.transform.position) != "Kitchen") shot.reason = "the pair was not in the kitchen; the radial arrives with V2";
-            else shot.reason = "the radial arrives with V2";
+            if (NearestRoom(npc.transform.position) != "Kitchen") shot.reason = "the pair was not in the kitchen";
         }
 
         private IEnumerator NightConversation(LookShot shot)
@@ -414,8 +414,11 @@ namespace Gamesim.Episode
 
         private IEnumerator EvictionBallot(LookShot shot)
         {
+            // A ballot is a week away from the nomination the shot before it leaves behind: the veto
+            // players, the veto, its meeting, the campaign and the speeches all come first, and each
+            // is a step. Twenty was the count before those beats had commands of their own.
             yield return AdvanceToPhase(state => state.phase == EpisodePhase.Eviction
-                && state.evictionStage == EvictionStage.Voting && EpisodeEngine.Voters(state).Any(v => v.id == state.playerId), 20);
+                && state.evictionStage == EvictionStage.Voting && EpisodeEngine.Voters(state).Any(v => v.id == state.playerId), 60);
             var state = seasonDirector.Snapshot;
             if (state.phase != EpisodePhase.Eviction) throw new InvalidOperationException("The eviction vote was not reached.");
             if (!seasonPlayer.TryMoveTo(seasonDirector.DiaryPosition)) throw new InvalidOperationException("The walk to the diary room was refused.");
@@ -451,7 +454,16 @@ namespace Gamesim.Episode
                 id = Guid.NewGuid().ToString("N"), actorId = state.playerId,
                 expectedPhase = state.phase, expectedRevision = state.revision, kind = EpisodeCommandKind.Advance,
             };
-            if (EpisodeEngine.IsCompetition(state.phase) && !state.competitionResolved)
+            if (state.pendingDiary != null && state.pendingDiary.week == state.week
+                && (state.phase == EpisodePhase.Social || (state.phase == EpisodePhase.Eviction && state.evictionResolved)))
+            {
+                // A week does not begin its competition while a reflection is still waiting in the
+                // diary room. The walk skips it rather than answering it: the sheet is photographing
+                // rooms, not making the player's decisions for them.
+                command.kind = EpisodeCommandKind.SkipDiary;
+                command.targetId = state.pendingDiary.id;
+            }
+            else if (EpisodeEngine.IsCompetition(state.phase) && !state.competitionResolved)
             {
                 command.kind = EpisodeCommandKind.Compete; command.performance = .5;
             }

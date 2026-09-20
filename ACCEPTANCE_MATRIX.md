@@ -317,7 +317,11 @@ are the suites. None of these are V7 gates, and section E is unchanged by them.
 | G6 | The live feed — a second, untagged, hand-rendered camera; a caption of the room and the count unless witnessed; a card in the fixed chrome | `LiveFeed_WatchesTheHouseFromASecondCameraAndNamesTheRoom`; the overlap suite includes 'Live feed' |
 | G7 | The room turns to look — the crowd's heads turn to the nominee, the nominees' do not | `Reactions_TheNomineesAndTheEvictedAreAskedToActTheBeatOut` |
 
-G1's latest run: _(filled in when the look sheet lands)_.
+G1's latest run (2026-09-19, 1920x1080, a twelve-person house): twelve captures, twelve moments
+reached, the player exiting clean. Five carry a note about what the mockup still has and the build
+does not - the speech bubble over a pair, the roofless cutaway, the night's sleeping houseguests,
+the conflict meter and the vibe bars, the competition's lanes and neon stage, and the nomination
+discussion's threat bars. Those are the remainder of V2, V4 and V6, not failures of the walk.
 
 ## Out of scope for this matrix
 

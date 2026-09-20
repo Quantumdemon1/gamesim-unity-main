@@ -313,6 +313,18 @@ V1 and V2 are the first fortnight and carry most of the distance. The decision i
 stylised-realistic ceiling is the target or a photoreal cast is a must — is the one thing to settle
 before V3 starts; everything before it is worth doing either way.
 
+## 7a. Status (2026-09-19, evening)
+
+| Phase | State | Where |
+| --- | --- | --- |
+| V0 look sheet | written, not yet run on a graphical build | `PortVerification.LookSheet.cs`, `Tools/build-and-verify.sh --look-sheet` |
+| V1 light the house | done: the pass, the bake, the sky, the grade, the probes; pinned by `Lighting_TheEpisodeSceneShipsItsBakedNight` | `HouseCinematicLighting.cs`, `ArtSource/reference/after/set-after-lighting.png` |
+| V2 chrome | foundations: tokens, `Glass()`, Inter as a theme weight, 42 glyphs; every chrome panel on glass; the screens themselves not yet rebuilt | `UiTheme.cs`, `HudPrimitives.cs`, `IconForge.cs` |
+| V3 cast | not started (needs the §2 decision and your logins for the animation half) | — |
+| V4 surfaces | first half: `bb_polyhaven.py`, seven hero pieces, the living-room rows swapped; surfaces, glass, plants and the dining set's swap remain | `ArtSource/tools/bb_polyhaven.py`, `PolyHavenMaterials.cs` |
+| V5 camera, live feed | overview, two-shot, diary chair and the live feed card are in; the competition wide and the night clock remain | `HouseCameraRig.Shot`, `EpisodeDirector.Overview/LiveFeed` |
+| V6 motion | not started | — |
+
 ## 8. Definition of done
 
 Twelve side-by-sides in `ArtSource/reference/` that a stranger would call the same screens; the

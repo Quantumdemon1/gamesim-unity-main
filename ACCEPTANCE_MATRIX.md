@@ -301,6 +301,24 @@ Two things this pass changed that affect other sections:
 - **The first-run tour changes what E2 measures.** It is the intervention that criterion exists to
   detect the absence of. Run E2 with it off, or record that it was on.
 
+## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
+
+The mockups are the game's own screens drawn photoreal; the plan measures progress toward them in
+pictures and pins each phase's plumbing with a suite. The look sheet is the picture; the rows below
+are the suites. None of these are V7 gates, and section E is unchanged by them.
+
+| # | What | Verified by |
+|---|---|---|
+| G1 | Look sheet — twelve captures of the mockups' moments from a graphical build, with a reason beside any moment the walk could not reach | `Tools/build-and-verify.sh --look-sheet` writes `ArtSource/reference/after/after-NN.png` and `look-sheet.json`; exit 4 under twelve captures |
+| G2 | The house lit for the night — lightmaps, probes, a reflection probe per room, the sky, the moon, mixed practicals, SMAA, the grade, the close-up volume at rest | `Lighting_TheEpisodeSceneShipsItsBakedNight` |
+| G3 | The chrome's tokens — the five action colours, the glow and the accent read on the glass ground | `UiThemeContrastTests.TheMockupsTokens_ClearTheirMinimumsOnGlass` |
+| G4 | Poly Haven pieces — four maps with the right import settings, a URP material matched by name, the budget, the floor, a script naming the source | `PolyHavenPieceTests` |
+| G5 | The camera's shots — the overview frames all eight rooms through an orthographic lens and puts the lens back; the two-shot lands and weights depth of field in and out; the diary chair holds the middle from over the shoulder | `Shots_TheOverviewFramesEveryRoomAndKeepsTheCastMoving`, `Shots_AConversationTakesATwoShotAndBlendsDepthOfFieldInAndOut`, `Shots_TheDiaryRoomFramesTheChairOverTheShoulder` |
+| G6 | The live feed — a second, untagged, hand-rendered camera; a caption of the room and the count unless witnessed; a card in the fixed chrome | `LiveFeed_WatchesTheHouseFromASecondCameraAndNamesTheRoom`; the overlap suite includes 'Live feed' |
+| G7 | The room turns to look — the crowd's heads turn to the nominee, the nominees' do not | `Reactions_TheNomineesAndTheEvictedAreAskedToActTheBeatOut` |
+
+G1's latest run: _(filled in when the look sheet lands)_.
+
 ## Out of scope for this matrix
 
 Recorded so absence is not mistaken for failure. These are not V7 gates:

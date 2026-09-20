@@ -333,6 +333,25 @@ bake, because the house is lightmapped for night and a mixed light's indirect te
 time. The night the mockups show is the night V1 delivered; houseguests asleep after midnight is a
 separate feature with a real cost, not a finishing touch, and it is not in this plan's ledger.
 
+**The panel is docked, and what that did not fix.** The episode panel was a 790x680 block in the
+middle of a 1600x900 canvas: nine of the twelve captures were mostly one opaque rectangle, while
+twelve of the twelve mockups are mostly the house with the decision drawn as a wide, short card low
+in the frame. It now sits on the floor of the frame at 900 x 300, clear of the status band and the
+interaction prompt, and the house fills the top half. It grows to its old footprint for one screen
+only: the conversation dial is a ring of seven cards 538 units tall and clipping it mid-petal is
+worse than a taller panel, so seating a dial restores the height and the top edge the dial was
+tuned against. Even there the panel is narrower than it was, so the live feed and the recent-events
+card are no longer behind it.
+
+Two things this deliberately did not do. The mockups float the dial **in the world** around the
+houseguest, with one-word petals; ours stays in the panel because the keyboard ring walks the
+controls inside the panel and a dial outside it is focus the ring cannot reach, which
+`Chrome_MorePetalHandsTheKeyboardBeneathTheDial` pins on purpose. And the ceremony scrims stay at
+0.975: the code records that 0.93 was tried and rejected because the house behind it competed with
+the card for attention, and the mockups do not solve that with a lighter overlay but by staging the
+ceremony on a lit screen **in the room**, with the cast seated watching it. That screen is the next
+piece of geometry worth building, not a number worth lowering.
+
 **The set's lettering, and why it is geometry.** Seven walls in the mockups carry lit type and the
 house had none of it: a room with a lit sign reads as a built set, and the same room without one
 reads as a grey box with furniture in it. `ArtSource/setpieces/bb_set_sign.py` takes a string, a

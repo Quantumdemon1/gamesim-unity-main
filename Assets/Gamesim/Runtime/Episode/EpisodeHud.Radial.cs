@@ -48,6 +48,14 @@ namespace Gamesim.Episode
 
             dial = HudPrimitives.Radial(DialName, content, Portrait(contestantId), seats, FontScale);
             dialRoot = dial.Root;
+            // The panel is short by default so the set stays visible over it. A dial does not fit
+            // in short, so seating one restores the taller footprint the dial was tuned against -
+            // the same height and the same top edge it had when the panel was centred.
+            if (modal != null)
+            {
+                modal.sizeDelta = new Vector2(modal.sizeDelta.x, ModalDialHeight);
+                modal.anchoredPosition = new Vector2(modal.anchoredPosition.x, ModalDialLift);
+            }
             var element = dialRoot.gameObject.AddComponent<LayoutElement>();
             element.minHeight = dialRoot.sizeDelta.y;
             element.preferredHeight = dialRoot.sizeDelta.y;

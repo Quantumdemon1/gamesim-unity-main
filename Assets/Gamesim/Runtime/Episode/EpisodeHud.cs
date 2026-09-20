@@ -251,7 +251,18 @@ namespace Gamesim.Episode
             promptRoot.gameObject.SetActive(false);
             content = null;
             if (!open && !recovery) { modalWasOpen = false; return; }
-            modal = Chrome("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(95,-10),new Vector2(790,680));
+            // Low and wide, not centred (VISUAL-TARGET.md V2, mockup-04). The panel used to be a
+            // 790x680 block in the middle of the screen, which covered 63% of the frame's height
+            // and put the house - the thing every one of these decisions is about - behind it. The
+            // mockups never do that: the set fills the frame and the decision is a wide, short card
+            // low in it, above the cast strip. Docking it here costs nothing but a reflow and is
+            // the single change that most affects how every screen reads.
+            //
+            // Every number here is in the canvas's own 1600x900 reference, not in pixels. A lift of
+            // 170 clears the bottom chrome: the status band owns y 20..84 and the interaction prompt
+            // y 107..159. 900 wide centres on x 350..1250, which stops short of the exploration
+            // controls at x 1291 and is narrower on the right than the old centred panel was.
+            modal = Chrome("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,ModalLift),new Vector2(ModalWidth,ModalHeight));
             // Only on closed -> open. Re-renders of an already-open panel must not re-animate.
             if (!modalWasOpen) HudReveal.Play(modal,ReducedMotion);
             modalWasOpen = true;
@@ -260,7 +271,9 @@ namespace Gamesim.Episode
             // "which part of the week is this" is the question every panel is answered against.
             // Built before the Close button so it sits behind it in the hierarchy.
             var band = PhaseBand(modal, state);
-            FixedButton(modal,"Close  [Esc]",new Vector2(598,-15),new Vector2(174,45),director.ClosePanels);
+            // Measured off the panel's own width: the button is anchored to the panel's top-LEFT,
+            // so a wider panel leaves it stranded in the middle unless it is moved with it.
+            FixedButton(modal,"Close  [Esc]",new Vector2(ModalWidth - 192f,-15),new Vector2(174,45),director.ClosePanels);
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.
             FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
@@ -283,6 +296,42 @@ namespace Gamesim.Episode
             scroll.verticalScrollbar = scrollbar; scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
             modalScroll = scroll;
         }
+
+        /// <summary>
+        /// The docked panel's shape. Wide and short, sitting above the bottom chrome, so the set
+        /// stays visible over it - the mockups draw every decision this way and the panel is the
+        /// one piece of chrome big enough to hide the house on its own.
+        /// </summary>
+        private const float ModalWidth = 900f;
+        private const float ModalHeight = 300f;
+        /// <summary>
+        /// The height the panel grows to when a conversation dial is seated in it.
+        ///
+        /// <para>Every other panel is a column of rows and reads fine at 300, which leaves the top
+        /// half of the frame to the house and is the whole point of docking it. The dial cannot: it
+        /// is a ring of seven cards 538 units tall on a 900-unit canvas, and clipping it mid-petal
+        /// is worse than a taller panel. So this one screen keeps a panel that covers three
+        /// quarters of the frame, and it is the dial's own size that does it, not the panel's. It
+        /// grows upward rather than downward - the panel is pivoted on its foot - so the Close
+        /// button and the phase band ride up with the top edge and the bottom chrome stays clear
+        /// either way.</para>
+        ///
+        /// <para>The mockups do not put the dial in a panel at all; it floats in the world around
+        /// the houseguest. That is the better answer and it is not this change: the keyboard ring
+        /// walks the controls inside the panel, and a dial outside it is focus the ring cannot
+        /// reach, which <c>Chrome_...</c> pins deliberately.</para>
+        /// </summary>
+        private const float ModalDialHeight = 680f;
+        /// <summary>
+        /// The dial panel's foot, lower than the rest so it keeps the vertical room the dial was
+        /// tuned against. At 170 the dial clipped two petals that used to be whole, and a docking
+        /// that improves eleven screens by spoiling the twelfth is not an improvement. 100 puts the
+        /// panel where its top edge was before, so this screen is exactly as it was and the others
+        /// are not.
+        /// </summary>
+        private const float ModalDialLift = 100f;
+        /// <summary>How far the panel's foot sits above the canvas floor, clear of the status band.</summary>
+        private const float ModalLift = 170f;
 
         public void PanelTitle(string title, string subtitle) { Heading(title); Paragraph(subtitle); }
         /// <summary>The caption a spectating player sees above everything else.</summary>

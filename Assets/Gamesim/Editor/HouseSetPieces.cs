@@ -105,23 +105,29 @@ namespace Gamesim.Editor
             // A dining table the whole cast can sit at — the room this format eats and argues in.
             // The long table where the house argues: sixteen seats, seven a side and one at each
             // end, at authored size (a zero height). It replaces the round table for four.
+            //
+            // The chairs are the scanned ones (V4), scaled to 0.95 m so that a chair 0.67 m wide as
+            // scanned fits the 0.65 m pitch the seven a side are placed at. The *table* is still the
+            // authored plank: Poly Haven's dining table is 2.26 m long, half what sixteen seats
+            // need, and no scaling stretches a table lengthways. Its Poly Haven twin is exported
+            // and waiting for a room that wants a table for four.
             new Prop("Kitchen floor", "bb_set_diningtable",     0.060f, -0.300f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     -0.079f, -0.222f, 180f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     -0.033f, -0.222f, 180f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.014f, -0.222f, 180f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.060f, -0.222f, 180f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.106f, -0.222f, 180f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.153f, -0.222f, 180f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.199f, -0.222f, 180f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     -0.079f, -0.378f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     -0.033f, -0.378f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.014f, -0.378f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.060f, -0.378f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.106f, -0.378f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.153f, -0.378f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.199f, -0.378f,   0f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",    -0.133f, -0.300f,  90f, 0f),
-            new Prop("Kitchen floor", "bb_set_diningchair",     0.253f, -0.300f, 270f, 0f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  -0.079f, -0.222f, 180f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  -0.033f, -0.222f, 180f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.014f, -0.222f, 180f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.060f, -0.222f, 180f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.106f, -0.222f, 180f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.153f, -0.222f, 180f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.199f, -0.222f, 180f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  -0.079f, -0.378f,   0f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  -0.033f, -0.378f,   0f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.014f, -0.378f,   0f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.060f, -0.378f,   0f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.106f, -0.378f,   0f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.153f, -0.378f,   0f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.199f, -0.378f,   0f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair", -0.133f, -0.300f,  90f, 0.95f),
+            new Prop("Kitchen floor", "bb_set_ph_diningchair",  0.253f, -0.300f, 270f, 0.95f),
             new Prop("Kitchen floor", "trashcan",               0.44f, -0.38f,   0f, 0.60f),
             new Prop("Kitchen floor", "plantSmall1",           -0.44f, -0.40f,   0f, 0.55f),
             new Prop("Kitchen floor", "pottedPlant",            0.44f,  0.40f,   0f, 0.95f),

@@ -14,7 +14,7 @@ back where the controller expects the body to be.
     React_saved      1.2 s the arms lift, the head comes up
     React_evicted    1.4 s the torso folds forward, the head with it
     React_won        1.5 s both arms up, the torso back
-    React_cheered    1.6 s both arms up to the crowd, a bounce under them, easing most of the way back
+    React_cheered    1.5 s both arms up to the crowd, a bounce under them, easing most of the way back
 
 Exported as one FBX of takes, armature only, to Art/Authored/Animation/Generic, where the
 importer takes it as Generic and loops the *_loop takes.
@@ -97,7 +97,7 @@ oneshot("React_won", 1.5, standing, [
     (0.55, {"UpperArm.L": (0.0, 0.0, 85.0), "UpperArm.R": (0.0, 0.0, -85.0), "LowerArm.L": (-30.0, 0.0, 0.0), "LowerArm.R": (-30.0, 0.0, 0.0), "Head": (-12.0, 4.0, 0.0), "Torso": (-6.0, 0.0, 0.0)}),
     (0.8, {"UpperArm.L": (0.0, 0.0, 60.0), "UpperArm.R": (0.0, 0.0, -60.0), "Head": (-6.0, 0.0, 0.0), "Torso": (-3.0, 0.0, 0.0)}),
 ])
-oneshot("React_cheered", 1.6, standing, [
+oneshot("React_cheered", 1.5, standing, [
     (0.2, {"UpperArm.L": (0.0, 0.0, 100.0), "UpperArm.R": (0.0, 0.0, -100.0), "LowerArm.L": (-15.0, 0.0, 0.0), "LowerArm.R": (-15.0, 0.0, 0.0), "Head": (-16.0, 0.0, 0.0), "Torso": (-7.0, 0.0, 0.0)}),
     # The bounce: the arms and the spine dip a beat, then go back up - this rig's knees are left alone.
     (0.45, {"UpperArm.L": (0.0, 0.0, 78.0), "UpperArm.R": (0.0, 0.0, -78.0), "LowerArm.L": (-30.0, 0.0, 0.0), "LowerArm.R": (-30.0, 0.0, 0.0), "Head": (-6.0, 0.0, 0.0), "Torso": (-1.0, 0.0, 0.0), "Abdomen": (3.0, 0.0, 0.0)}),

@@ -65,6 +65,12 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Follow_BracketsCycleTheHouseOutsideAPanelAndLeaveTheCameraAloneInsideOne()
         {
             if (testKeyboard == null) testKeyboard = InputSystem.AddDevice<Keyboard>();
+            // Tab only reaches the camera while no HUD control is focused, and every HUD rebuild
+            // re-selects one. Autonomy is one thing that rebuilds it, so the houseguests stop acting
+            // on their own here - suspending keeps every body in the scene (it drops the meeting
+            // world, not the housemates), so the cycle this test walks is the same cycle. It is not
+            // the whole story on its own - see the wait below for the render that actually did it.
+            director.SuspendNpcAutonomyForDiagnostics();
             director.ClosePanels();
             yield return null; yield return null;
             var active = director.Snapshot.contestants.Where(c => c.status == ContestantStatus.Active).Select(c => c.id).ToList();
@@ -80,9 +86,26 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(cameraRig.FocusedSubject, Is.SameAs(first), "[ goes back.");
 
             // Tab is the same cycle for a mouse player who clicked the house and so has no control
-            // focused. The HUD keeps a control focused whenever it can, so this only holds when it
-            // did not take the focus back in the meantime.
+            // focused, and the HUD keeps a control focused whenever it can.
+            //
+            // What made this flake, and it is not what it looks like. A full HUD render destroys every
+            // control and re-selects one by name, and the director orders a render whenever another
+            // houseguest's body finishes assembling - `CharacterPresentation.BodiesCompleted`, which
+            // UMA advances on its own schedule. Land one of those inside the two frames of the key
+            // press and the HUD holds the focus again, so Tab goes to the keyboard ring instead of
+            // the house and the camera never moves. The assertion was right; the moment was not.
+            //
+            // So wait for the cast to actually finish, and ask each body rather than watch the clock:
+            // a batchmode frame is well under a millisecond, so "quiet for a few frames" would mean
+            // quiet for no time at all, and a second of waiting would only be a longer guess. A body
+            // holding a stand-in has a render still coming; none holding one means none is coming.
             cameraRig.ClearSubject();
+            float bodyDeadline = Time.realtimeSinceStartup + 30f;
+            while (SceneComponents<CharacterPresentation>().Any(body => body.IsBodyAssembling)
+                && Time.realtimeSinceStartup < bodyDeadline) yield return null;
+            Assert.That(SceneComponents<CharacterPresentation>().Where(body => body.IsBodyAssembling).Select(body => body.name),
+                Is.Empty, "The cast never finished assembling, so every frame here still has a render coming.");
+            yield return null;
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
             yield return null;
             if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == null)

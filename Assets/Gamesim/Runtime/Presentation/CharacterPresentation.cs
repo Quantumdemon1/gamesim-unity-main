@@ -103,6 +103,13 @@ namespace Gamesim.Presentation
         /// their own last-seen value.
         /// </summary>
         public static int BodiesCompleted { get; private set; }
+
+        /// <summary>
+        /// True while this body is still a stand-in waiting for its real one. Read-only proof for
+        /// tests that must not be interrupted by the render a finished body triggers; never a
+        /// source of game knowledge and never a command.
+        /// </summary>
+        public bool IsBodyAssembling => standIn != null;
         private static int deferredCloneBuilds;
 
         /// <summary>

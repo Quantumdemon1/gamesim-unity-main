@@ -313,7 +313,7 @@ V1 and V2 are the first fortnight and carry most of the distance. The decision i
 stylised-realistic ceiling is the target or a photoreal cast is a must — is the one thing to settle
 before V3 starts; everything before it is worth doing either way.
 
-## 7a. Status (2026-09-19, late evening)
+## 7a. Status (2026-09-20)
 
 | Phase | State | Where |
 | --- | --- | --- |
@@ -407,6 +407,43 @@ So it is two more downloads, not three: a dejected or defeated standing take for
 the eviction, and a relief take with an upward beat for the save. Each drops in as
 `Assets/Gamesim/Art/Authored/Animation/Humanoid/bb_anim_React_<beat>.fbx`, plus the state name in
 `HumanoidClipWiring.Reactions` and one run of **Gamesim > U07 > Wire the Humanoid takes**.
+
+**Why the suite kept lying, and what it cost to stop it.** Two PlayMode tests failed
+intermittently - the season walk 9 times in 137 runs, the bracket-cycle test 5 in 26 - and the
+shared shape is that a full HUD render lands between a test's setup and its assertion. A render
+destroys every control on the canvas and re-selects one by name, and a committed command advances
+the revision. Neither test was wrong about what it wanted; both were wrong about when they asked.
+
+The season walk asserted that one button press advanced the revision by one, but it read its
+baseline above a twelve-second walk to the station, so a houseguest's own conversation committing
+during the walk was counted against the click. It now reads the revision immediately before the
+click: the window it measures is the click and the two frames the commit needs.
+
+The bracket test needed nothing focused, because the camera only takes Tab when the HUD has not,
+and it took two wrong guesses to find out why the focus came back. The first was NPC autonomy, whose
+commits do render the HUD; suspending it left the test failing 2 runs in 3. The second was the
+test's own `ClearSubject`. The actual trigger is named in a comment the director already carried:
+it orders a render whenever `CharacterPresentation.BodiesCompleted` changes - whenever a UMA body
+finishes assembling, on UMA's schedule rather than the test's. Land one inside the two frames of the
+key press and the HUD holds the focus again.
+
+So the test now waits for the cast to finish, and asks each body through a new read-only
+`CharacterPresentation.IsBodyAssembling` rather than counting frames: a batchmode frame is well under
+a millisecond, so "quiet for a few frames" would have been quiet for no time at all. The autonomy
+suspension stayed - it is still one fewer thing rendering the HUD, and this test is about the camera
+rather than the houseguests - but it is documented as a tidy-up, not as the fix.
+
+Neither assertion was widened and neither was deleted. **Measured after: 20 runs of both tests, 40
+cases, 0 failures.** The lesson worth keeping is the cheap one: two plausible mechanisms were wrong,
+and only running the thing twenty times said so.
+
+**A gate that found something.** The metadata invariant - every tracked asset under `Assets/` has a
+tracked `.meta`, no `.meta` is an orphan, no GUID collides - now has 997 metas passing it, and it
+caught a real omission on its first run: `AppearanceCharacterSlotTests.cs` had been committed
+without one, which a fresh clone would have papered over with a new GUID. Worth knowing that the
+obvious one-line version of this check is wrong: `git ls-files | xargs` splits the project's
+space-bearing paths (`Assets/TextMesh Pro/...`) and silently skips them, so it must be
+null-delimited.
 
 **One cue the UMA cast still drops.** `Listening` is declared on the Humanoid controller and
 answered by nothing: there is no Listen state, so a UMA body that is being talked at falls out of

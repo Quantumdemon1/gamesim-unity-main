@@ -568,9 +568,18 @@ namespace Gamesim.Tests.PlayMode
                         .Where(item => item.IsActive())
                         .SelectMany(item => item.GetComponentsInChildren<TMPro.TMP_Text>(true))
                         .Select(text => text.text).Distinct().Take(20)));
+                // Measured across the CLICK, not across the whole iteration. `before` was read
+                // above a twelve-second navigation wait, and the houseguests act on their own
+                // while the player walks - so an autonomous conversation committed during the walk
+                // made this read two commits where it wanted one, about six runs in a hundred. The
+                // guarantee is unchanged and sharper: this button, once. The two frames that remain
+                // are the frames the commit itself needs.
+                int beforeClick = director.Snapshot.revision;
                 button.onClick.Invoke();
                 yield return null; yield return null;
-                Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1), before.phase + ": " + director.StatusMessage);
+                Assert.That(director.Snapshot.revision, Is.EqualTo(beforeClick + 1),
+                    before.phase + ": " + director.StatusMessage
+                    + "  ·  one button press must commit exactly one command");
             }
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
             Assert.That(walkedRoutes, Is.GreaterThanOrEqualTo(3));

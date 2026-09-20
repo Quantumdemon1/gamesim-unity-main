@@ -78,6 +78,15 @@ The interactive editor holds the live project, so the suites run against a mirro
 `sync-and-run.sh` keeps it current. It shares nothing with the live project, so the open editor and
 its save slots are untouched.
 
+## Before a commit
+
+`Tools/check-asset-metadata.sh` asserts the three metadata invariants: every tracked asset under
+`Assets/` has a tracked `.meta`, no `.meta` is an orphan, and no GUID is used twice. A `.cs` written
+from the CLI has no `.meta` until the editor imports it, and Unity writes one on the acceptance copy
+during the sync - so a file committed without its `.meta` passes every suite here and breaks only in
+a fresh clone, where Unity invents a new GUID and every reference to the asset resolves to nothing.
+It found exactly that on its first run.
+
 ## Traps, each learned the hard way
 
 - **Always pass `-assemblyNames`.** Unfiltered, EditMode also runs UMA's own bundled tests —

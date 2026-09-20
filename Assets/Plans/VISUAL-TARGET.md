@@ -340,9 +340,16 @@ font, a cap height and whether it wants a dark backing, and extrudes the letters
 rather than painting them on a quad — neon IS a tube with depth, and a flat alpha-mapped panel gives
 the trick away at exactly the angle the overview camera looks from. It also needs no texture
 pipeline: the letters carry the same `bb_mat_neon_*` name every other glowing thing here does, so
-the importer lights them without a new rule. Six signs are built so far; the living room's
-`GAMESIM` and `Good Company` are cut and waiting on a wall to hang them from, which needs the
-living-room wall measured the way the yard's was.
+the importer lights them without a new rule. Six signs are built; three hang on the
+competition backdrop. The living room's `GAMESIM` and `Good Company` are cut and not hung, and the
+reason is worth writing down rather than rediscovering: **this house has no wall to hang them on.**
+Its walls are cutaways 1.1 m tall - `South cutaway wall` is 28.3 m long and stands from 0.05 m to
+1.15 m - because the overview camera looks down into the rooms and a full-height wall would close
+them. The mockups' living room is rendered with real walls, so its neon sits above a sofa at about
+2 m. Hanging ours needs a decision, not a placement: either a feature wall behind the sofa that is
+tall on one side only, or the sign standing on the wall top like a light box. The competition
+backdrop did not have this problem because the yard's stage wall is a piece of set dressing rather
+than architecture.
 
 **Three reaction beats, honestly.** The twelve takes cover a win and a cheer. They do not cover the
 three a houseguest takes badly — being nominated, being saved by the veto, being evicted — and the

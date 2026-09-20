@@ -321,7 +321,7 @@ before V3 starts; everything before it is worth doing either way.
 | V1 light the house | done: the pass, the bake, the sky, the grade, the probes; pinned by `Lighting_TheEpisodeSceneShipsItsBakedNight` | `HouseCinematicLighting.cs`, `ArtSource/reference/after/set-after-lighting.png` |
 | V2 chrome | foundations: tokens, `Glass()`, Inter as a theme weight, 42 glyphs; every chrome panel on glass; the screens themselves not yet rebuilt | `UiTheme.cs`, `HudPrimitives.cs`, `IconForge.cs` |
 | V3 cast | not started (needs the §2 decision and your logins for the animation half) | — |
-| V4 surfaces | first half: `bb_polyhaven.py`, seven hero pieces, the living-room rows swapped; surfaces, glass, plants and the dining set's swap remain | `ArtSource/tools/bb_polyhaven.py`, `PolyHavenMaterials.cs` |
+| V4 surfaces | seven hero pieces and the living-room rows (first half); then the scanned surfaces on seven floors and the shell's walls, the two plants, and the long table's sixteen chairs. Left: the glass (yard doors, pool fence, the water's scroll) and marble, which is a mesh material rather than a floor | `ArtSource/tools/bb_polyhaven.py`, `ArtSource/textures/bb_tex_polyhaven.py`, `HouseFloorDressing.cs`, `PolyHavenMaterials.cs` |
 | V5 camera, live feed | overview, two-shot, diary chair and the live feed card are in; the competition wide and the night clock remain | `HouseCameraRig.Shot`, `EpisodeDirector.Overview/LiveFeed` |
 | V6 motion | not started | — |
 

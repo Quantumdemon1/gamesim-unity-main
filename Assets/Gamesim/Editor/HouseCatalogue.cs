@@ -52,16 +52,20 @@ namespace Gamesim.Editor
             { "rugRectangle", "bb_set_rug" },
             { "rugRound", "bb_set_rug_round" },
             // Plants, beds, the screen, the desk, the nomination table and its chairs.
-            { "pottedPlant", "bb_set_plant" },
-            { "plantSmall1", "bb_set_plantsmall" },
-            { "plantSmall2", "bb_set_plantsmall" },
-            { "plantSmall3", "bb_set_plantsmall" },
+            // The plants are scans too now (V4): a broad-leaved plant in a glazed pot and a
+            // succulent in a small one, each at a tenth of the scan's triangles. The fanned-box
+            // twins stay exported - bb_set_plant and bb_set_plantsmall - for a clone that has to
+            // rebuild without the fetch.
+            { "pottedPlant", "bb_set_ph_plant" },
+            { "plantSmall1", "bb_set_ph_plantsmall" },
+            { "plantSmall2", "bb_set_ph_plantsmall" },
+            { "plantSmall3", "bb_set_ph_plantsmall" },
             { "bedSingle", "bb_set_bed" },
             { "bedBunk", "bb_set_bunk" },
             { "cabinetTelevision", "bb_set_tvconsole" },
             { "desk", "bb_set_desk" },
             { "tableRound", "bb_set_roundtable" },
-            { "chairModernCushion", "bb_set_diningchair" },
+            { "chairModernCushion", "bb_set_ph_diningchair" },
             // The HoH ensuite, and the game room's bar.
             { "bathtub", "bb_set_bathtub" },
             { "showerRound", "bb_set_shower" },

@@ -22,11 +22,15 @@ namespace Gamesim.Tests.EditMode
             var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
             try
             {
+                // A placed prop is named for the id its plan row names, so the chairs answer to the
+                // Poly Haven piece the row now asks for (V4); the authored twin's name is kept here
+                // because a clone that rebuilds the house without the fetch places that one.
+                var chairs = new[] { "bb_set_ph_diningchair", "bb_set_diningchair" };
                 var seats = scene.GetRootGameObjects()
                     .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
-                    .Where(t => t.name == "bb_set_diningchair" || t.name == "bb_set_lounger")
+                    .Where(t => chairs.Contains(t.name) || t.name == "bb_set_lounger")
                     .ToArray();
-                Assert.That(seats.Count(t => t.name == "bb_set_diningchair"), Is.EqualTo(16), "Sixteen chairs at the long table.");
+                Assert.That(seats.Count(t => chairs.Contains(t.name)), Is.EqualTo(16), "Sixteen chairs at the long table.");
                 Assert.That(seats.Count(t => t.name == "bb_set_lounger"), Is.EqualTo(3), "Three loungers by the pool.");
 
                 var slots = HouseMeetingCoordinator.SeatedSlots.ToArray();

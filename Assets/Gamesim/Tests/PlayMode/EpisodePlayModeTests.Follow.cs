@@ -38,6 +38,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ring, Is.Not.Null, "A ring marks who is followed.");
             Assert.That(Vector3.Distance(new Vector3(ring.transform.position.x, 0, ring.transform.position.z),
                 new Vector3(maya.transform.position.x, 0, maya.transform.position.z)), Is.LessThan(0.05f), "under their feet");
+            // The mockups mark the followed houseguest over the head as well as under the feet,
+            // because a floor ring is a small ellipse behind the furniture at the overview camera's
+            // height and a diamond at head height clears the sofa backs.
+            var diamond = GameObject.Find(FollowRing.DiamondName);
+            Assert.That(diamond, Is.Not.Null, "A diamond marks who is followed, over their head.");
+            Assert.That(diamond.transform.position.y - maya.transform.position.y, Is.GreaterThan(1.8f),
+                "and it floats clear of a houseguest's head rather than through it");
+            Assert.That(Vector3.Distance(new Vector3(diamond.transform.position.x, 0, diamond.transform.position.z),
+                new Vector3(maya.transform.position.x, 0, maya.transform.position.z)), Is.LessThan(0.05f),
+                "and rides directly over them");
+
             var chip = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(t => t.name == EpisodeHud.FollowChipName);
             Assert.That(chip, Is.Not.Null, "and a chip names them");
             Assert.That(chip.GetComponentInChildren<TMP_Text>().text, Does.Contain(maya.DisplayName.ToUpperInvariant()));
@@ -46,6 +57,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(cameraRig.FocusedSubject, Is.Null, "The same portrait again lets go.");
             Assert.That(GameObject.Find(FollowRing.RingName), Is.Null, "and the ring goes with it");
+            Assert.That(GameObject.Find(FollowRing.DiamondName), Is.Null, "and so does the diamond");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(t => t.name == EpisodeHud.FollowChipName), Is.False, "and so does the chip");
         }
 

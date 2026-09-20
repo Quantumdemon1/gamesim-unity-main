@@ -135,6 +135,18 @@ namespace Gamesim.Presentation
         /// <summary>The face on this body, or null while there is none.</summary>
         public FaceExpression Face => face;
 
+        /// <summary>
+        /// The two words the face is wearing, and whether it is allowed to move.
+        ///
+        /// <para>The hook a body that grows its own face needs. <see cref="FaceExpression"/> is
+        /// pushed to because it is a component this one attaches; a UMA body's expression player is
+        /// not — it belongs to the body, is built by UMA, and lives in an assembly this one knows
+        /// nothing about — so it reads the same three values instead. Nothing here is new state.</para>
+        /// </summary>
+        public string Mood => mood;
+        public string Stress => stress;
+        public bool ReducedMotion => reducedMotion;
+
         private void PushMood()
         {
             if (face == null && providedBody.Exists && standIn == null

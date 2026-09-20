@@ -212,6 +212,7 @@ namespace Gamesim.Episode
             FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);
             FixedButton(controls,"Settings",new Vector2(292,-9),new Vector2(162,46),director.OpenSettings);
             ObjectiveCard(leftColumn, state, recovery);
+            HouseVibeCard(leftColumn, state);
             HousePill(state);
 
             // The section rail. Four views that currently share one long scroll, and the overview,

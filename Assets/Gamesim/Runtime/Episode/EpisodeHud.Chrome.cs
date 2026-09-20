@@ -167,6 +167,67 @@ namespace Gamesim.Episode
             return label;
         }
 
+
+        /// <summary>The vibe card's name, so a test can find it without guessing.</summary>
+        public const string HouseVibeCardName = "House vibe";
+        private const float VibeRowHeight = 30f;
+
+        /// <summary>
+        /// The house-vibe bars (VISUAL-TARGET.md V2, mockup-04): how much fun, trust, drama and
+        /// harmony this week has had in it, as four sums over the week's events.
+        ///
+        /// <para>Under the objective card rather than in the right column, which is already three
+        /// cards deep and runs into the exploration controls. The mockup puts it low on the left
+        /// beside the cast for the same reason: it is a glance, not a read, and it wants to be near
+        /// the faces it is about.</para>
+        ///
+        /// <para>Every row carries the count as well as the bar. A length is not something a screen
+        /// reader can announce, and the bars are drawn against the largest of the four rather than
+        /// against a fixed ceiling - so a quiet week reads as a quiet week rather than as four
+        /// empty troughs.</para>
+        /// </summary>
+        private void HouseVibeCard(RectTransform column, EpisodeState state)
+        {
+            if (state == null) return;
+            var reading = HouseVibe.Of(state);
+            var card = Chrome(HouseVibeCardName, column, Ink);
+            Size(card, ObjectiveWidth, 46f + 4f * VibeRowHeight + 26f);
+            CardHeading(card, "HOUSE VIBE", "people");
+
+            int index = 0;
+            foreach (var row in reading.Rows())
+            {
+                float y = -(44f + index * VibeRowHeight);
+                float textX = 16f;
+                if (HudPrimitives.Glyph("Vibe mark", card, row.Icon, row.Tint,
+                        new Vector2(14f, y - 2f), 16f) != null) textX = 38f;
+                FixedText(card, row.Word, 13, Paper, new Vector2(textX, y), new Vector2(74f, 20f));
+
+                float trackX = textX + 78f;
+                float trackWidth = ObjectiveWidth - trackX - 44f;
+                var track = Panel("Vibe track", card, UiTheme.Outline, 4);
+                Anchor(track, new Vector2(0, 1), new Vector2(0, 1),
+                    new Vector2(trackX, y - 5f), new Vector2(trackWidth, 9f));
+                track.GetComponent<Image>().raycastTarget = false;
+
+                float fraction = reading.Fraction(row.Count);
+                if (fraction > 0f)
+                {
+                    var bar = Panel("Vibe fill", card, row.Tint, 4);
+                    Anchor(bar, new Vector2(0, 1), new Vector2(0, 1),
+                        new Vector2(trackX, y - 5f), new Vector2(trackWidth * fraction, 9f));
+                    bar.GetComponent<Image>().raycastTarget = false;
+                }
+
+                FixedText(card, row.Count.ToString(), 13, UiTheme.Muted,
+                    new Vector2(ObjectiveWidth - 38f, y), new Vector2(26f, 20f));
+                index++;
+            }
+
+            FixedText(card, HouseVibe.Tension(reading), 12, UiTheme.Muted,
+                new Vector2(16f, -(48f + 4f * VibeRowHeight)), new Vector2(ObjectiveWidth - 32f, 20f));
+        }
+
         /// <summary>
         /// The right column (mockup-01, mockup-04): the live feed's picture over a timeline of what
         /// the house has just done.

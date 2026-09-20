@@ -446,13 +446,17 @@ namespace Gamesim.Episode
         private IEnumerator ClickSeasonButton(string caption,bool allowFirstEquivalent = false)
         {
             CheckSeasonDeadline();
-            var buttons = seasonDirector.GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.IsInteractable()
-                && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
+            var buttons = SeasonButtonsCarrying(caption);
             RequireSeason(buttons.Length > 0 && (allowFirstEquivalent || buttons.Length == 1),"Expected a reachable actual button: " + caption + " (found " + buttons.Length + ").");
             // Selection exercises the modal's keyboard-focus/scroll adapter before activation;
             // do not invoke an off-screen content button without bringing it into view first.
             buttons[0].Select(); yield return null; yield return null;
-            RequireSeason(buttons[0] != null && buttons[0].IsActive() && buttons[0].IsInteractable(),"The selected button became unavailable: " + caption);
+            // Then find the caption again. The HUD rebuilds itself for reasons that have nothing to
+            // do with the press - a houseguest's body finishing its assembly is one - and the
+            // control that was selected is destroyed by that rebuild. A player presses whatever is
+            // on screen when they press, so this does too.
+            buttons = SeasonButtonsCarrying(caption);
+            RequireSeason(buttons.Length > 0 && (allowFirstEquivalent || buttons.Length == 1),"The selected button became unavailable: " + caption + " (found " + buttons.Length + ").");
             var before = seasonDirector.Snapshot;
             buttons[0].onClick.Invoke();
             yield return null; yield return null;
@@ -460,6 +464,11 @@ namespace Gamesim.Episode
             seasonReport.buttons.Add(new SeasonButton { caption = caption, phase = before.phase.ToString(), revisionBefore = before.revision,
                 revisionAfter = after.revision, elapsedSeconds = Time.realtimeSinceStartupAsDouble - seasonStarted });
         }
+
+        /// <summary>Every live, pressable control showing this caption.</summary>
+        private Button[] SeasonButtonsCarrying(string caption) => seasonDirector.GetComponentsInChildren<Button>()
+            .Where(button => button.IsActive() && button.IsInteractable()
+                && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
 
         private IEnumerator CaptureSeason(string label,bool graphical)
         {

@@ -174,6 +174,9 @@ namespace Gamesim.Episode
         /// <summary>Back to a quiet house between moments: every panel closed, the cast free to move.</summary>
         private IEnumerator CloseEverything()
         {
+            // The opening plays itself again whenever a season starts, and the cast screen starts one.
+            // A capture taken over the title card is a picture of the title card.
+            yield return SkipOpening();
             var cast = FindAnyObjectByType<CastSelect>();
             if (cast != null && cast.IsShowing) yield return ClickAny(CastSelect.CancelCaption);
             var recap = FindAnyObjectByType<WeeklyRecapScreen>();
@@ -460,6 +463,19 @@ namespace Gamesim.Episode
             else if (state.phase == EpisodePhase.VetoMeeting && state.vetoHolderId == state.playerId && !state.vetoResolved)
             {
                 command.kind = EpisodeCommandKind.ResolveVeto; command.useVeto = false;
+            }
+            else if (state.phase == EpisodePhase.VetoMeeting && !state.vetoResolved && state.hohId == state.playerId
+                     && EpisodeEngine.NpcVetoSave(state) != null)
+            {
+                // Somebody else holds the veto and is going to use it, and the player is the Head of
+                // Household: the engine will not advance past a meeting whose replacement nobody has
+                // named. The walk names the one the house likes least, which is what an HoH with no
+                // plan does and what Advance would have done on its own.
+                command.kind = EpisodeCommandKind.ResolveVeto;
+                command.useVeto = true;
+                command.targetId = EpisodeEngine.NpcVetoSave(state);
+                command.secondTargetId = EpisodeEngine.ReplacementCandidates(state)
+                    .OrderBy(candidate => state.Score(state.hohId, candidate.id)).First().id;
             }
             else if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Voting
                      && EpisodeEngine.Voters(state).Any(v => v.id == state.playerId) && !state.votes.Any(v => v.voterId == state.playerId))

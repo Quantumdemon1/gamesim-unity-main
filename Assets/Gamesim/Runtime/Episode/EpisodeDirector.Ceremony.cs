@@ -192,8 +192,18 @@ namespace Gamesim.Episode
                 case CeremonySting.VetoKind:
                     foreach (var id in wasNominated)
                         if (state.nominees == null || !state.nominees.Contains(id)) React(id, CharacterPresentation.Reaction.Saved);
+                    string replacement = null;
                     foreach (var id in state.nominees ?? new List<string>())
-                        if (!wasNominated.Contains(id)) React(id, CharacterPresentation.Reaction.Nominated);
+                        if (!wasNominated.Contains(id))
+                        {
+                            React(id, CharacterPresentation.Reaction.Nominated);
+                            if (replacement == null) replacement = id;
+                        }
+                    // The room turns to whoever just went up, or to the block itself when the veto
+                    // went unused. This case was the only ceremony that never turned a head, which
+                    // left the beat the veto exists for - somebody replacing somebody - unmarked.
+                    TurnHeads(state, replacement ?? (state.nominees ?? new List<string>()).FirstOrDefault(),
+                        state.nominees);
                     break;
                 case CeremonySting.EvictionKind:
                     foreach (var actor in state.contestants)

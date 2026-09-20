@@ -22,11 +22,24 @@ namespace Gamesim.Uma.Tests
         private const int BuildTimeoutFrames = 900;
         private const int SettleFrames = 90;
 
+        /// <summary>
+        /// The frame time these tests count in. The face eases in seconds, not frames - an
+        /// exponential ease of <c>7</c> a second and a lip flap of <c>11</c> radians a second, both
+        /// against <c>Time.deltaTime</c> - while a batchmode frame takes about half a millisecond.
+        /// Ninety frames is therefore forty milliseconds of game time rather than the second and a
+        /// half the counts below were written to mean, and the face was being read a quarter of the
+        /// way through its first ease. Pinning the clock does not slow the run: the engine still
+        /// renders frames as fast as it can and simply reports an honest delta, so the counts mean
+        /// what they say on any machine, however fast.
+        /// </summary>
+        private const float FrameTime = 1f / 60f;
+
         private GameObject cast, actor;
 
         [SetUp]
         public void CreateCast()
         {
+            Time.captureDeltaTime = FrameTime;
             cast = new GameObject("Gamesim UMA cast", typeof(GamesimUmaCast));
             actor = new GameObject("UMA houseguest");
         }
@@ -34,6 +47,7 @@ namespace Gamesim.Uma.Tests
         [UnityTearDown]
         public IEnumerator DestroyCast()
         {
+            Time.captureDeltaTime = 0f;
             if (actor != null) Object.Destroy(actor);
             if (cast != null) Object.Destroy(cast);
             yield return null;

@@ -29,7 +29,14 @@ namespace Gamesim.Uma
         public bool TryCreate(string appearanceId, Transform parent, Color wardrobe, out CharacterBody body)
         {
             body = default;
-            if (parent == null || !UmaCastLibrary.TryGet(appearanceId, out var look)) return false;
+            if (parent == null) return false;
+
+            // Their own id first, the appearance second. The library holds a look per template, and
+            // the appearance is only ever one of the handful of primitive-rig recipes — asking it
+            // alone would put five faces on twenty-four people.
+            var presentation = parent.GetComponentInParent<CharacterPresentation>();
+            if (!UmaCastLibrary.Resolve(presentation == null ? null : presentation.CharacterId,
+                    appearanceId, out var look)) return false;
 
             var indexer = UMAAssetIndexer.Instance;
             if (indexer == null || indexer.GetRace(look.Race) == null)
@@ -90,6 +97,11 @@ namespace Gamesim.Uma
             var proportions = new Dictionary<string, float>(UmaCastLibrary.HouseProportions);
             foreach (var entry in look.Dna) proportions[entry.Key] = entry.Value;
             root.AddComponent<UmaBodyTint>().Bind(avatar, wardrobe, proportions);
+
+            // The face. Added here rather than after the build because UMA hands the expression
+            // player the race's pose set during the avatar's own Start, and only to a player that
+            // is already on the object.
+            root.AddComponent<UmaExpressions>();
 
             body = new CharacterBody(root, animator, deferred: true);
             return true;

@@ -944,8 +944,14 @@ namespace Gamesim.Episode
         public void ShowFollowing(string name)
         {
             if (canvas == null) return;
-            var old = canvas.transform.Find(FollowChipName);
-            if (old != null) { old.gameObject.SetActive(false); Destroy(old.gameObject); }
+            // Every chip, not the first one found. Destroy is deferred to the end of the frame, so a
+            // rebuild in the same frame leaves an old chip still parented and still named: taking one
+            // of the two away left the other on screen naming a houseguest nobody was following.
+            foreach (var child in canvas.transform.Cast<Transform>().Where(t => t.name == FollowChipName).ToArray())
+            {
+                child.gameObject.SetActive(false);
+                Destroy(child.gameObject);
+            }
             FollowChip(name);
         }
 

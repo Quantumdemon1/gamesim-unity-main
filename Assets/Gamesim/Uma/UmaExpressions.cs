@@ -136,13 +136,35 @@ namespace Gamesim.Uma
             // the race's expression set: SetExpressionSet only fills in a player that already
             // exists unless it is asked to add one, and by the time the character is built it is
             // too late to be found.
+            //
+            // Added asleep, though. The player's own Start subscribes to the avatar's character
+            // events, and on a body whose avatar has not run its Start yet those events do not
+            // exist - which threw a null reference out of UMA's own Initialize on every cast screen
+            // that built a season. It is woken below, once the avatar has its data.
             player = avatar.gameObject.GetComponent<UMAExpressionPlayer>();
-            if (player == null) player = avatar.gameObject.AddComponent<UMAExpressionPlayer>();
+            if (player == null)
+            {
+                player = avatar.gameObject.AddComponent<UMAExpressionPlayer>();
+                player.enabled = false;
+            }
+        }
+
+        /// <summary>
+        /// Whether the player has been woken. UMA's own initialisation reads the avatar's events and
+        /// its data, so it waits for a body that exists rather than one that has been asked for.
+        /// </summary>
+        private bool Ready()
+        {
+            if (player == null) return false;
+            if (player.enabled) return true;
+            if (avatar == null || avatar.umaData == null) return false;
+            player.enabled = true;
+            return false;
         }
 
         private void LateUpdate()
         {
-            if (player == null) return;
+            if (!Ready()) return;
 
             if (presentation != null && presentation.ReducedMotion)
             {

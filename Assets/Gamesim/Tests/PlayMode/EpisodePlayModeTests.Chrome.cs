@@ -121,6 +121,12 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Chrome_TopBarSharesOneBandAndTheRightColumnStacksItsCards()
         {
             director.ClosePanels();
+            // Twice, with a frame between. The brand sits inside a layout group with a size fitter
+            // and the chip is anchored to the canvas: measured in the frame the HUD was rebuilt, the
+            // first has not been laid out yet and the second has, and they read eight pixels apart
+            // for one frame while agreeing perfectly on every frame after it.
+            Canvas.ForceUpdateCanvases();
+            yield return null;
             Canvas.ForceUpdateCanvases();
             yield return null;
 

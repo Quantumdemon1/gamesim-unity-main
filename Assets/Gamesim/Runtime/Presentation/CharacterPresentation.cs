@@ -20,12 +20,18 @@ namespace Gamesim.Presentation
         private static readonly int SeatedParam = Animator.StringToHash("Seated");
         private static readonly int TalkingParam = Animator.StringToHash("Talking");
         private static readonly int ListeningParam = Animator.StringToHash("Listening");
-        /// <summary>The ceremony beats a body can act out: one-shot clips the controller may declare as triggers.</summary>
-        public enum Reaction { Nominated, Saved, Evicted, Won }
+        private static readonly int ArguingParam = Animator.StringToHash("Arguing");
+        /// <summary>
+        /// The ceremony beats a body can act out: one-shot clips the controller may declare as
+        /// triggers. Appended to, never reordered: <c>AuthoredClipWiring.Reactions</c> and
+        /// <see cref="ReactionParams"/> are both indexed by this order.
+        /// </summary>
+        public enum Reaction { Nominated, Saved, Evicted, Won, Cheered }
         private static readonly int[] ReactionParams =
         {
             Animator.StringToHash("ReactNominated"), Animator.StringToHash("ReactSaved"),
             Animator.StringToHash("ReactEvicted"), Animator.StringToHash("ReactWon"),
+            Animator.StringToHash("ReactCheered"),
         };
         private int reactionParams;
         /// <summary>The last beat this body was asked to act out, whether or not it had a clip for it.</summary>
@@ -75,7 +81,7 @@ namespace Gamesim.Presentation
         private Transform visual, chest, head, leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee;
         private Vector3 previousPosition;
         private float walkPhase, movementBlend, phaseOffset, heightScale = 1f;
-        private bool reducedMotion, talking, speaking = true, seated, built;
+        private bool reducedMotion, talking, speaking = true, seated, arguing, built;
         private float facingYaw = float.NaN;
 
         // Model-backed presentation. When animator is null the primitive rig above is in use.
@@ -85,7 +91,7 @@ namespace Gamesim.Presentation
         private CharacterBody providedBody;
         private Transform standIn;
         private RuntimeAnimatorController inspectedController;
-        private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam;
+        private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam, hasArguingParam;
         public string CharacterId { get; private set; }
 
         /// <summary>
@@ -172,6 +178,18 @@ namespace Gamesim.Presentation
         public void SetSpeaking(bool value) => speaking = value;
         public bool IsSpeaking => talking && speaking;
         public void SetSeated(bool value) => seated = value;
+        /// <summary>
+        /// Whether this body is in a tense conversation rather than an ordinary one. The director
+        /// sets it for the pairs whose topic the caption calls a tense conversation; the controller
+        /// answers with the emphatic standing loop where it declares the parameter.
+        /// </summary>
+        public void SetArguing(bool value) => arguing = value;
+        /// <summary>
+        /// What the body is actually doing, which is what the animator is told: an argument the
+        /// director set, unless motion is reduced, which switches it off exactly as it does the
+        /// talk loops. Arm-waving is the same kind of motion at a larger size.
+        /// </summary>
+        public bool IsArguing => arguing && !reducedMotion;
         /// <summary>
         /// The heading (yaw, degrees) to settle on once stopped, or NaN to leave the heading to
         /// whoever moves the body. A conversation sets it: into the chair, or toward the other speaker.
@@ -335,7 +353,7 @@ namespace Gamesim.Presentation
             if (controller == null)
             {
                 inspectedController = null;
-                hasSpeedParam = hasSeatedParam = hasTalkingParam = false;
+                hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
                 return;
             }
 
@@ -345,7 +363,7 @@ namespace Gamesim.Presentation
             if (animator.parameterCount == 0) return;
 
             inspectedController = controller;
-            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = false;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             reactionParams = 0;
             foreach (var parameter in animator.parameters)
             {
@@ -357,6 +375,8 @@ namespace Gamesim.Presentation
                     hasTalkingParam = true;
                 else if (parameter.nameHash == ListeningParam && parameter.type == AnimatorControllerParameterType.Bool)
                     hasListeningParam = true;
+                else if (parameter.nameHash == ArguingParam && parameter.type == AnimatorControllerParameterType.Bool)
+                    hasArguingParam = true;
                 else if (parameter.type == AnimatorControllerParameterType.Trigger)
                     for (int i = 0; i < ReactionParams.Length; i++)
                         if (parameter.nameHash == ReactionParams[i]) reactionParams |= 1 << i;
@@ -568,6 +588,8 @@ namespace Gamesim.Presentation
             // gated on it, and a gesturing body is the same kind of motion at a larger size.
             if (hasTalkingParam) animator.SetBool(TalkingParam, talking && speaking && !reducedMotion);
             if (hasListeningParam) animator.SetBool(ListeningParam, talking && !speaking && !reducedMotion);
+            // The tense loop is the talk loop with the arms working, so it follows the same rule.
+            if (hasArguingParam) animator.SetBool(ArguingParam, IsArguing);
 
             // A provided body streams its rig in over a few frames. Retry on a slow cadence so the
             // hierarchy walk behind ResolveModelHead cannot become a per-frame cost on a body that
@@ -733,9 +755,9 @@ namespace Gamesim.Presentation
             providedBody = default;
             standIn = null; // destroyed with the visual root above
             inspectedController = null;
-            hasSpeedParam = hasSeatedParam = hasTalkingParam = false;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             built = false;
-            talking = seated = false; facingYaw = float.NaN; lookTarget = null; lookBlend = 0f;
+            talking = seated = arguing = false; facingYaw = float.NaN; lookTarget = null; lookBlend = 0f;
             movementBlend = walkPhase = 0f;
             CharacterId = null;
         }

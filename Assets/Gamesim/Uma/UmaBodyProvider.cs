@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Gamesim.Presentation;
 using UMA;
@@ -13,10 +14,37 @@ namespace Gamesim.Uma
     /// meshes — so every body handed back is marked deferred and the presentation layer waits for
     /// the skeleton rather than assuming one. Nothing here reaches back into the presentation; the
     /// only contract is <see cref="ICharacterBodyProvider"/>.
+    ///
+    /// <para>The body is handed the houseguest controller rather than UMA's <c>Locomotion</c>, so
+    /// it sits, talks, argues and reacts on the same parameter names the Generic cast uses. See
+    /// <see cref="ResolveController"/> for the one thing that controller cannot carry itself.</para>
     /// </summary>
     public sealed class UmaBodyProvider : ICharacterBodyProvider
     {
         private const string LocomotionController = "Locomotion";
+
+        /// <summary>
+        /// The houseguest controller, reached through Resources because it lives in Art/Characters
+        /// beside the Generic cast's and nothing in a build would otherwise pull it in. The asset
+        /// there is an override controller with no overrides, whose only job is to carry the real
+        /// one; <c>HumanoidClipWiring</c> in Gamesim.Editor builds and maintains both.
+        /// </summary>
+        private const string CastController = "Animation/GamesimHumanoid";
+
+        /// <summary>
+        /// The two takes the Humanoid controller has no clip for. The twelve mocap takes have no
+        /// standing idle and no walk, and UMA's own are not referenceable: UMA is not in Git, so a
+        /// committed controller that named one by GUID would break every clone without it. They are
+        /// wired to two takes no cue reaches and swapped here, at runtime, for the idle and run that
+        /// UMA's Locomotion controller — resolved by name, like everything else UMA — already holds.
+        /// Kept in step with <c>HumanoidClipWiring.IdleStandIn</c> and <c>WalkStandIn</c>.
+        /// </summary>
+        private const string IdleStandIn = "Sleep_loop";
+        private const string WalkStandIn = "SleepLying_loop";
+
+        // Built once and shared: every body wants the same graph over the same two borrowed clips.
+        private RuntimeAnimatorController cast;
+        private bool castResolved;
 
         // Shared-colour names on the human base recipes.
         private const string SkinColor = "Skin";
@@ -55,9 +83,8 @@ namespace Gamesim.Uma
             // return valid from this frame rather than from whenever UMA gets to the build.
             var animator = root.AddComponent<Animator>();
             animator.applyRootMotion = false;
-            var controller = indexer.GetAsset<RuntimeAnimatorController>(LocomotionController);
+            var controller = ResolveController(indexer);
             if (controller != null) animator.runtimeAnimatorController = controller;
-            else ReportOnce(LocomotionController, "animator controller '" + LocomotionController + "' was not found; UMA bodies will not walk");
 
             var avatar = root.AddComponent<DynamicCharacterAvatar>();
             avatar.activeRace.name = look.Race;
@@ -112,6 +139,83 @@ namespace Gamesim.Uma
             if (!body.Exists) return;
             var tint = body.Root.GetComponent<UmaBodyTint>();
             if (tint != null) tint.SetFabric(wardrobe);
+        }
+
+        /// <summary>
+        /// The controller a UMA body is handed: ours, with UMA's idle and run dropped into the two
+        /// states the mocap takes could not fill.
+        ///
+        /// <para>Every step down from that keeps the bodies walking, because walking is the most
+        /// visible thing they do and losing it to gain sitting would be a bad trade. If the
+        /// houseguest controller is not in Resources, or UMA's Locomotion has no idle and run to
+        /// lend, the body gets Locomotion itself — which is where it was before the mocap takes
+        /// arrived: it walks, and every other cue falls on the floor.</para>
+        /// </summary>
+        private RuntimeAnimatorController ResolveController(UMAAssetIndexer indexer)
+        {
+            if (castResolved) return cast;
+            castResolved = true;
+
+            var locomotion = indexer.GetAsset<RuntimeAnimatorController>(LocomotionController);
+            if (locomotion == null)
+                ReportOnce(LocomotionController, "animator controller '" + LocomotionController +
+                    "' was not found; UMA bodies will not walk");
+
+            // The handle carries the controller; unwrap it rather than layering an override on an
+            // override, which is a shape Unity has never been happy about.
+            var handle = Resources.Load<AnimatorOverrideController>(CastController);
+            var houseguest = handle == null ? null : handle.runtimeAnimatorController;
+            if (houseguest == null)
+            {
+                ReportOnce(CastController, "the houseguest controller was not found at Resources/" +
+                    CastController + "; run Gamesim > U07 > Wire the Humanoid takes. Until then UMA " +
+                    "bodies walk and nothing else.");
+                return cast = locomotion;
+            }
+
+            var standing = Borrow(locomotion, "Idle");
+            var walking = Borrow(locomotion, "Walk", "Run");
+            if (standing == null || walking == null || standing == walking)
+            {
+                ReportOnce("locomotion-clips", "UMA's '" + LocomotionController + "' controller has no " +
+                    "standing idle and walk to lend; UMA bodies walk and nothing else.");
+                return cast = locomotion;
+            }
+            if (!Holds(houseguest, IdleStandIn) || !Holds(houseguest, WalkStandIn))
+            {
+                ReportOnce("stand-ins", "the houseguest controller has no " + IdleStandIn + " and " +
+                    WalkStandIn + " to stand in for its idle and walk; re-run Gamesim > U07 > Wire the " +
+                    "Humanoid takes. Until then UMA bodies walk and nothing else.");
+                return cast = locomotion;
+            }
+
+            var overrides = new AnimatorOverrideController(houseguest) { name = "GamesimHumanoid (UMA locomotion)" };
+            overrides[IdleStandIn] = standing;
+            overrides[WalkStandIn] = walking;
+            return cast = overrides;
+        }
+
+        /// <summary>A clip off another controller, by name: exactly first, then by prefix.</summary>
+        private static AnimationClip Borrow(RuntimeAnimatorController from, params string[] names)
+        {
+            if (from == null) return null;
+            var clips = from.animationClips;
+            foreach (var name in names)
+                foreach (var clip in clips)
+                    if (clip != null && string.Equals(clip.name, name, StringComparison.OrdinalIgnoreCase))
+                        return clip;
+            foreach (var name in names)
+                foreach (var clip in clips)
+                    if (clip != null && clip.name.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+                        return clip;
+            return null;
+        }
+
+        private static bool Holds(RuntimeAnimatorController controller, string clipName)
+        {
+            foreach (var clip in controller.animationClips)
+                if (clip != null && clip.name == clipName) return true;
+            return false;
         }
 
         private void ReportOnce(string key, string message)

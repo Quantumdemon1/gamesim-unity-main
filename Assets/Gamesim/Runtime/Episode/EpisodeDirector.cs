@@ -746,23 +746,38 @@ namespace Gamesim.Episode
                 // into the label broke every test that finds a control by the words on it — and the
                 // web build draws it as a separate pill anyway, so the caption was the wrong place.
                 bool allied = state.Allied(state.playerId, npc.id);
-                hud.Tag(hud.Action("Spend time together", () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
-                    Category(EpisodeCommandKind.Talk));
-                // Five ways of having a conversation where there was one. Each says what it is for,
-                // because the difference between them is the whole point: small talk is safe and
-                // slight, a secret is the biggest swing either way in the game.
-                hud.Tag(hud.Action(EpisodeHud.SmallTalkCaption, () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
-                    Category(EpisodeCommandKind.SmallTalk));
-                hud.Tag(hud.Action(EpisodeHud.PersonalChatCaption, () => Commit(state, EpisodeCommandKind.PersonalChat, npc.id)),
-                    Category(EpisodeCommandKind.PersonalChat));
-                hud.Tag(hud.Action(EpisodeHud.RelationshipBuildingCaption, () => Commit(state, EpisodeCommandKind.RelationshipBuilding, npc.id)),
-                    Category(EpisodeCommandKind.RelationshipBuilding));
-                hud.Tag(hud.Action(EpisodeHud.StrategicDiscussionCaption, () => Commit(state, EpisodeCommandKind.StrategicDiscussion, npc.id)),
-                    Category(EpisodeCommandKind.StrategicDiscussion));
+                // The dial (mockup-06, mockup-12): the speaker's face at the hub, and seven petals
+                // around it in the mockups' order and colours - chat, strategize, flirt, more,
+                // reassure, gossip, joke, clockwise from the top. The captions on them are the
+                // build's own, unshortened, because that is what a test and a screen reader identify
+                // a control by; the mockup's single words survive as the glyph and the tint.
+                //
+                // The petals are the six openings a conversation actually has here. Everything else
+                // - the promises, the alliance, the rumours, the deals - is a row beneath the dial,
+                // in the order it always had, and the seventh petal moves the keyboard to the first
+                // of them.
+                hud.ConversationRadial(npc.id, 7);
+                hud.Tag(hud.Petal(EpisodeHud.SmallTalkCaption, "chat", UiTheme.Accent,
+                        () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
+                    Category(EpisodeCommandKind.SmallTalk), EpisodeHud.TagSeat.CardFoot);
+                hud.Tag(hud.Petal(EpisodeHud.StrategicDiscussionCaption, "bulb", UiTheme.Strategic,
+                        () => Commit(state, EpisodeCommandKind.StrategicDiscussion, npc.id)),
+                    Category(EpisodeCommandKind.StrategicDiscussion), EpisodeHud.TagSeat.CardFoot);
+                hud.Tag(hud.Petal(EpisodeHud.PersonalChatCaption, "heart", UiTheme.Flirt,
+                        () => Commit(state, EpisodeCommandKind.PersonalChat, npc.id)),
+                    Category(EpisodeCommandKind.PersonalChat), EpisodeHud.TagSeat.CardFoot);
+                hud.Petal(EpisodeHud.MorePetalCaption, "journal", UiTheme.Muted, hud.RevealBeyondRadial);
+                hud.Tag(hud.Petal(EpisodeHud.RelationshipBuildingCaption, "handshake", UiTheme.Allied,
+                        () => Commit(state, EpisodeCommandKind.RelationshipBuilding, npc.id)),
+                    Category(EpisodeCommandKind.RelationshipBuilding), EpisodeHud.TagSeat.CardFoot);
+                hud.Tag(hud.Petal(EpisodeHud.ShareSecretCaption, "gossip", UiTheme.Strategic,
+                        () => Commit(state, EpisodeCommandKind.ShareSecret, npc.id)),
+                    Category(EpisodeCommandKind.ShareSecret), EpisodeHud.TagSeat.CardFoot);
+                hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
+                        () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
+                    Category(EpisodeCommandKind.Talk), EpisodeHud.TagSeat.CardFoot);
                 hud.Tag(hud.Action(EpisodeHud.DiscussGameCaption, () => Commit(state, EpisodeCommandKind.DiscussGame, npc.id)),
                     Category(EpisodeCommandKind.DiscussGame));
-                hud.Tag(hud.Action(EpisodeHud.ShareSecretCaption, () => Commit(state, EpisodeCommandKind.ShareSecret, npc.id)),
-                    Category(EpisodeCommandKind.ShareSecret));
                 hud.Tag(hud.Action("Promise safety", () => Commit(state, EpisodeCommandKind.PromiseSafety, npc.id)),
                     Category(EpisodeCommandKind.PromiseSafety));
                 hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),

@@ -59,3 +59,6 @@ __pycache__/
 
 # Poly Haven downloads are a cache; the asset id in each bb_set_ph_*.py is the source of record.
 ArtSource/polyhaven/
+
+# Claude Code session state, including the agents worktrees.
+.claude/

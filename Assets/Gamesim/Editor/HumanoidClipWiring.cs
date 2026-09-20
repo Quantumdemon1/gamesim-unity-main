@@ -17,9 +17,27 @@ namespace Gamesim.Editor
     /// <c>Speed</c> and nothing else — so every other cue <c>CharacterPresentation</c> sends
     /// (<c>Seated</c>, <c>Talking</c>, <c>Listening</c>, <c>Arguing</c>, the five reaction
     /// triggers) was dropped on the floor and the bodies never sat, talked, argued or reacted.
-    /// This builds a controller that declares all ten, on the same parameter names and the same
-    /// shape as <see cref="AuthoredClipWiring"/> gives the Generic cast, so one presentation
-    /// drives both skeletons.</para>
+    /// This builds a controller that declares the seven of them the mocap takes can honestly act
+    /// out, on the same parameter names and the same shape as <see cref="AuthoredClipWiring"/>
+    /// gives the Generic cast, so one presentation drives both skeletons.</para>
+    ///
+    /// <para>Three beats stay undeclared: a nomination, a veto save and an eviction. Each is felt
+    /// by the houseguest it happens to, and no take here is that feeling - the nearest the library
+    /// has is a shrug, which would have a houseguest shrug off their own eviction and would act a
+    /// nomination and an eviction identically besides. <c>CharacterPresentation</c> sends a trigger
+    /// only to a controller that declares it, so leaving them out costs the body its idle for a
+    /// beat and nothing else - which is what a UMA body did before any of this, and is a smaller
+    /// lie than the wrong emotion. The Generic cast acts all five out from authored takes.</para>
+    ///
+    /// <para><b>The save and the nomination must land together.</b> A veto ceremony fires both in
+    /// the same instant - <c>Saved</c> at whoever came off the block and <c>Nominated</c> at
+    /// whoever replaced them (<c>EpisodeDirector.Ceremony.ReactToCeremony</c>) - and one implies
+    /// the other, because the block keeps its size. Acting only the save would leave the person
+    /// just put up, who is what the scene is about, the one body in the room not moving. That is
+    /// not half the scene; it is the scene inverted. So neither is wired until both have a take,
+    /// and the take for the save has to change the silhouette: a ceremony is framed room-wide at
+    /// <c>CeremonyFraming.CeremonyDistance</c>, where a breath and a shoulder drop read as
+    /// nothing.</para>
     ///
     /// <para><b>No UMA asset may be referenced by GUID.</b> A clone without UMA must still open
     /// this project cleanly, so the committed controller points only at the twelve takes in this
@@ -83,24 +101,26 @@ namespace Gamesim.Editor
             ("TalkB", "TalkB_loop", 760, 180),
             ("TalkC", "TalkC_loop", 1000, 180),
             ("Argue", "Argue_loop", 520, 330),
-            ("ReactNominated", "React_shrug", 1000, 420),
-            ("ReactSaved", "Clap_loop", 1000, 490),
-            ("ReactEvicted", "React_shrug", 1000, 560),
-            ("ReactWon", "React_won", 1000, 630),
-            ("ReactCheered", "Cheer_loop", 1000, 700),
+            ("ReactWon", "React_won", 1000, 420),
+            ("ReactCheered", "Cheer_loop", 1000, 490),
         };
 
         /// <summary>
-        /// The reaction triggers and the states they fire, in <c>CharacterPresentation.Reaction</c>
-        /// order. Twelve takes cover five beats only if two share one: a nomination and an eviction
-        /// are both taken standing, and the shrug reads for either.
+        /// One row per beat of <c>CharacterPresentation.Reaction</c>, in its order, because the
+        /// presentation indexes this by the enum. A row with no state is a beat this cast has no
+        /// take for: the trigger is not declared, the state is not built, and the body holds its
+        /// idle rather than acting out a feeling it was not captured doing. Filling one in is a
+        /// take named <c>bb_anim_React_&lt;beat&gt;.fbx</c> and the state name here.
         /// </summary>
         public static readonly (string trigger, string state)[] Reactions =
         {
-            ("ReactNominated", "ReactNominated"), ("ReactSaved", "ReactSaved"),
-            ("ReactEvicted", "ReactEvicted"), ("ReactWon", "ReactWon"),
-            ("ReactCheered", "ReactCheered"),
+            ("ReactNominated", null), ("ReactSaved", null), ("ReactEvicted", null),
+            ("ReactWon", "ReactWon"), ("ReactCheered", "ReactCheered"),
         };
+
+        /// <summary>The beats this cast can act out - the rest are left to the body's idle.</summary>
+        public static IEnumerable<(string trigger, string state)> WiredReactions =>
+            Reactions.Where(r => r.state != null);
 
         /// <summary>The three standing talk takes, played in a ring so a long conversation varies.</summary>
         public static readonly string[] TalkRing = { "Talk", "TalkB", "TalkC" };
@@ -131,22 +151,35 @@ namespace Gamesim.Editor
             Parameter(controller, TalkingParameter, AnimatorControllerParameterType.Bool);
             Parameter(controller, ListeningParameter, AnimatorControllerParameterType.Bool);
             Parameter(controller, ArguingParameter, AnimatorControllerParameterType.Bool);
-            foreach (var (trigger, _) in Reactions)
-                Parameter(controller, trigger, AnimatorControllerParameterType.Trigger);
+            foreach (var (trigger, state) in Reactions)
+            {
+                if (state != null) { Parameter(controller, trigger, AnimatorControllerParameterType.Trigger); continue; }
+                // A beat whose take was taken away: undeclare it, so the presentation stops sending it.
+                var stale = controller.parameters.FirstOrDefault(p => p.name == trigger);
+                if (stale != null) controller.RemoveParameter(stale);
+            }
 
             var machine = controller.layers[0].stateMachine;
             var states = new Dictionary<string, AnimatorState>();
             foreach (var (name, take, x, y) in States)
                 states[name] = Ensure(machine, name, clips[take], new Vector3(x, y, 0));
+            foreach (var orphan in machine.states.Select(s => s.state)
+                         .Where(s => States.All(row => row.state != s.name)).ToArray())
+            {
+                foreach (var reaching in machine.anyStateTransitions
+                             .Where(t => t.destinationState == orphan).ToArray())
+                    machine.RemoveAnyStateTransition(reaching);
+                machine.RemoveState(orphan);
+            }
             machine.defaultState = states["Idle"];
 
             // A fixed order, rebuilt from nothing every run: the first transition whose conditions
             // hold is the one taken, so sitting and walking are listed before anything a
             // conversation asks for, and the talk ring - which only fires on exit time - is last.
             foreach (var state in states.Values) Clear(state);
-            foreach (var trigger in Reactions.Select(r => r.trigger))
+            foreach (var stateName in Reactions.Select(r => r.state))
                 foreach (var existing in machine.anyStateTransitions
-                             .Where(t => t.destinationState != null && t.destinationState.name == trigger).ToArray())
+                             .Where(t => t.destinationState != null && t.destinationState.name == stateName).ToArray())
                     machine.RemoveAnyStateTransition(existing);
 
             Go(states["Idle"], states["SitIdle"], SeatedFade, Seated(true));
@@ -183,7 +216,7 @@ namespace Gamesim.Editor
             Go(states["Argue"], states["Idle"], 0.15f, Bool(ArguingParameter, false), Bool(TalkingParameter, false));
 
             // Reactions: one-shots from Any State on their trigger, only while standing, back to Idle.
-            foreach (var (trigger, stateName) in Reactions)
+            foreach (var (trigger, stateName) in WiredReactions)
             {
                 var state = states[stateName];
                 var back = Go(state, states["Idle"], 0.2f);
@@ -204,7 +237,8 @@ namespace Gamesim.Editor
             WireHandle(controller);
             AssetDatabase.SaveAssets();
             Debug.Log("[Gamesim] humanoid · " + Takes.Length + " mocap takes wired into " + Controller
-                + ": " + States.Length + " states, " + Reactions.Length + " reactions; Idle and Walk stand in on "
+                + ": " + States.Length + " states, " + WiredReactions.Count() + " of " + Reactions.Length
+                + " reaction beats acted (the rest hold the idle); Idle and Walk stand in on "
                 + IdleStandIn + " and " + WalkStandIn + " until UmaBodyProvider overrides them.");
         }
 

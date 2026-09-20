@@ -79,17 +79,36 @@ namespace Gamesim.Tests.EditMode
             Declares(HumanoidClipWiring.ArguingParameter, AnimatorControllerParameterType.Bool);
 
             // The reaction triggers are indexed by CharacterPresentation.Reaction, and both casts
-            // answer to the same five names, so a beat added there is a beat both rigs can act out.
+            // answer to the same five names, so a beat added there is a beat both rigs are asked
+            // for. This cast has takes for two of them; the other three rows carry no state, and
+            // the controller must NOT declare those, because an undeclared trigger is how the
+            // presentation knows to leave the body in its idle instead of playing a wrong take.
             var beats = Enum.GetNames(typeof(CharacterPresentation.Reaction));
             Assert.That(HumanoidClipWiring.Reactions.Length, Is.EqualTo(beats.Length),
-                "one reaction state per ceremony beat");
+                "one row per ceremony beat, whether or not a take exists for it");
             for (int i = 0; i < beats.Length; i++)
             {
                 Assert.That(HumanoidClipWiring.Reactions[i].trigger, Is.EqualTo("React" + beats[i]));
                 Assert.That(HumanoidClipWiring.Reactions[i].trigger,
                     Is.EqualTo(AuthoredClipWiring.Reactions[i].trigger), "both casts answer to the same trigger");
-                Declares(HumanoidClipWiring.Reactions[i].trigger, AnimatorControllerParameterType.Trigger);
+                if (HumanoidClipWiring.Reactions[i].state != null)
+                    Declares(HumanoidClipWiring.Reactions[i].trigger, AnimatorControllerParameterType.Trigger);
+                else
+                    Assert.That(controller.parameters.Any(p => p.name == HumanoidClipWiring.Reactions[i].trigger),
+                        Is.False, HumanoidClipWiring.Reactions[i].trigger + " has no take on this rig, so the "
+                        + "controller must not claim it: CharacterPresentation skips a cue the controller "
+                        + "does not declare, and that is what keeps the body still rather than wrong");
             }
+            Assert.That(HumanoidClipWiring.WiredReactions.Select(r => r.trigger).ToArray(),
+                Is.EqualTo(new[] { "ReactWon", "ReactCheered" }),
+                "a win and a cheer are the beats these mocap takes cover honestly");
+            // The save is not an oversight and must not be wired on its own: a veto ceremony fires
+            // Saved and Nominated in the same instant, so acting one and not the other leaves the
+            // houseguest just put on the block the only body in the room standing still.
+            Assert.That(HumanoidClipWiring.Reactions.Single(r => r.trigger == "ReactSaved").state,
+                Is.Null, "the save waits for the nomination's take, and lands with it");
+            Assert.That(HumanoidClipWiring.Reactions.Single(r => r.trigger == "ReactNominated").state,
+                Is.Null, "and the nomination waits for a take that is dejection, not a shrug");
         }
 
         [Test]
@@ -159,7 +178,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Leads(argue, idle, HumanoidClipWiring.ArguingParameter), Is.True, "and calms down");
             Assert.That(Leads(argue, walk, HumanoidClipWiring.SpeedParameter), Is.True, "or walks away");
 
-            foreach (var (trigger, stateName) in HumanoidClipWiring.Reactions)
+            foreach (var (trigger, stateName) in HumanoidClipWiring.WiredReactions)
             {
                 var state = State(controller, stateName);
                 var any = machine.anyStateTransitions.FirstOrDefault(t => t.destinationState == state);

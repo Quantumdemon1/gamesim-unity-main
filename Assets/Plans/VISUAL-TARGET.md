@@ -289,7 +289,7 @@ ceremony turning to look at the nominees (the reactions already fire; the heads 
 | Poly Haven models, textures, HDRIs | the Blender MCP (enabled 2026-09-19) or `api.polyhaven.com` | CC0 | me |
 | Inter (and Manrope as a fallback candidate) | Google Fonts on GitHub | OFL 1.1 | me |
 | UMA 3 | Asset Store, already in `Assets/UMA` | MIT-style UMA licence | installed |
-| Mixamo clips (sit, talk, argue, cheer, celebrate, sleep) | mixamo.com | Adobe general terms, game use allowed | **you** (login) |
+| Mixamo clips (sit, talk, argue, cheer, celebrate, sleep) | mixamo.com | Adobe general terms, game use allowed | **you** (delivered 2026-09-20: twelve takes) |
 | Extra hair and wardrobe for UMA | Asset Store packs | per pack | **you** (decision, purchase) |
 | Cinemachine | UPM | Unity | not needed |
 | SSAO, depth of field, lens flare, MSAA, lightmapper | URP 17.6 / Unity 6 | in the project | in |
@@ -320,10 +320,10 @@ before V3 starts; everything before it is worth doing either way.
 | V0 look sheet | done: twelve captures and a report from a graphical build, each moment marked reached or nearest with the reason | `PortVerification.LookSheet.cs`, `Tools/build-and-verify.sh --look-sheet`, `ArtSource/reference/after/after-NN.png` |
 | V1 light the house | done: the pass, the bake, the sky, the grade, the probes; pinned by `Lighting_TheEpisodeSceneShipsItsBakedNight` | `HouseCinematicLighting.cs`, `ArtSource/reference/after/set-after-lighting.png` |
 | V2 chrome | done for the screens the mockups draw: the top bar and the right column, the conversation as a dial, the cast strip, the roster cards, the five ceremony overlays, the relationship web, the rooms. Left: the vote section's rows, which still use the old portrait row | `EpisodeHud.Chrome.cs`, `EpisodeHud.Radial.cs`, `CastRail.cs`, `CastSelect.cs`, `RelationshipWeb.cs`, the five ceremony screens |
-| V3 cast | the plumbing: a look for each of the roster's houseguests as data, expressions driven from mood × stress with a lip flap, and the portrait rig lit in three points. Left: the animation half, which needs your Mixamo login, and your eye on the twenty-four looks | `UmaCastLibrary.cs`, `UmaExpressions.cs`, `CharacterPortraits.cs` |
+| V3 cast | done but for your eye: a look for each of the roster's houseguests as data, expressions driven from mood × stress with a lip flap, the portrait rig lit in three points, and the twelve mocap takes you downloaded wired into a Humanoid controller so a UMA body sits, talks, argues and celebrates instead of dropping every cue but `Speed`. Left: your eye on the twenty-four looks, three reaction beats no take covers, and a Listen state — see below | `UmaCastLibrary.cs`, `UmaExpressions.cs`, `CharacterPortraits.cs`, `HumanoidClipWiring.cs` |
 | V4 surfaces | done but for two: seven hero pieces, scanned floors and walls, plants, and the long table's sixteen chairs. Left: the glass (yard doors, pool fence, the water's scroll) and marble, which is a mesh material rather than a floor | `ArtSource/tools/bb_polyhaven.py`, `ArtSource/textures/bb_tex_polyhaven.py`, `HouseFloorDressing.cs`, `PolyHavenMaterials.cs` |
 | V5 camera, live feed | done: the overview, the conversation's two-shot, the diary chair, the competition wide, and the live feed's second camera and card. The night clock is not done and is not costed here — see below | `HouseCameraRig.Shot`, `EpisodeDirector.Overview/LiveFeed`, `LiveFeed.cs` |
-| V6 motion | the half that needs no clips: heads turn to the subject of a ceremony, and every body idles on its own phase rather than one of five. Left: the Mixamo set, which is your login | `CharacterPresentation.LookAt`, `EpisodeDirector.Ceremony.cs` |
+| V6 motion | heads turn to the subject of every ceremony — the veto included, which was the one beat that never turned a head until 2026-09-20 — every body idles on its own phase rather than one of five, and the Mixamo set is in: twelve Humanoid takes, a standing idle and a walk borrowed from UMA at runtime so nothing outside this repository is serialised. Left: three reaction beats — see below | `CharacterPresentation.LookAt`, `EpisodeDirector.Ceremony.cs`, `HumanoidClipWiring.cs` |
 
 **The night clock, honestly.** V5 assumed "the room tone's clock already knows the hour". It does
 not: the room tone follows the room under the camera, and the simulation carries a week and a phase
@@ -332,6 +332,38 @@ migration, or a presentational clock that resets on every load — and either wa
 bake, because the house is lightmapped for night and a mixed light's indirect term is fixed at bake
 time. The night the mockups show is the night V1 delivered; houseguests asleep after midnight is a
 separate feature with a real cost, not a finishing touch, and it is not in this plan's ledger.
+
+**Three reaction beats, honestly.** The twelve takes cover a win and a cheer. They do not cover the
+three a houseguest takes badly — being nominated, being saved by the veto, being evicted — and the
+nearest takes in the set are a shrug and a round of applause, which would have a houseguest shrug
+off their own eviction and applaud their own rescue. Those three triggers are therefore left
+undeclared on the Humanoid controller: `CharacterPresentation` sends a cue only to a controller that
+declares it, so the body holds its idle for the beat, which is what a UMA body did before any of
+this. The low-poly cast still acts all five out from its authored takes, so nothing regressed.
+
+Two rules for whoever fills them, both learned the hard way on 2026-09-20:
+
+- **The save and the nomination land together or not at all.** A veto ceremony fires both in the
+  same instant, `Saved` at whoever came off the block and `Nominated` at whoever replaced them, and
+  one implies the other because the block keeps its size. Wiring only the save was tried and backed
+  out: it leaves the houseguest just put up — what the scene is about — the one body in the room
+  not moving, which is not half the scene but the scene inverted.
+- **The take has to change the silhouette.** A ceremony is framed room-wide at eleven metres
+  (`CeremonyFraming.CeremonyDistance`), where faces are still readable and nothing smaller is. The
+  authored Generic take for the save is "the arms lift, the head comes up"; a Mixamo "Relieved Sigh"
+  was downloaded, imported and removed again because it has no arm movement at all — at that
+  distance it reads as nothing. Ask for a relief take that opens the arms.
+
+So it is two more downloads, not three: a dejected or defeated standing take for the nomination and
+the eviction, and a relief take with an upward beat for the save. Each drops in as
+`Assets/Gamesim/Art/Authored/Animation/Humanoid/bb_anim_React_<beat>.fbx`, plus the state name in
+`HumanoidClipWiring.Reactions` and one run of **Gamesim > U07 > Wire the Humanoid takes**.
+
+**One cue the UMA cast still drops.** `Listening` is declared on the Humanoid controller and
+answered by nothing: there is no Listen state, so a UMA body that is being talked at falls out of
+the talk ring into its idle, and the only sign it is in a conversation is the procedural head nod.
+The Generic cast plays a whole `Listen_loop` for the same cue. That is a third download — an
+attentive standing take, not a cheerful one — and a state beside `Talk` in `HumanoidClipWiring`.
 
 ## 8. Definition of done
 

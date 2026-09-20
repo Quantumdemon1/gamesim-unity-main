@@ -69,6 +69,9 @@ namespace Gamesim.Presentation
         /// <summary>Matches the HUD's accessibility preference so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
 
+        /// <summary>Whether the card is still on its own timer, as every sibling card reports.</summary>
+        public bool IsPlaying => playing;
+
         /// <summary>
         /// Creates the sting in <paramref name="owner"/>'s scene, as a root object so it unloads with
         /// that scene without being a child of anything the tests enumerate.
@@ -121,6 +124,14 @@ namespace Gamesim.Presentation
         public void Cancel()
         {
             playing = false;
+            // The canvas goes with it. The fade-out ends by calling this on the first frame past
+            // its end rather than by drawing a last frame at zero, so without this line the card
+            // is stranded at whatever alpha it drew before - a thousandth at a steady frame rate,
+            // three-quarters of full if one long frame crossed the fade in a single step. Nothing
+            // renders either way, because the card itself is deactivated; but the group keeps the
+            // number, and anything that asks the screen whether a card is still fading believes it
+            // forever. Every sibling card zeroes its group here; this one used not to.
+            if (group != null) group.alpha = 0f;
             if (card != null) card.gameObject.SetActive(false);
         }
 

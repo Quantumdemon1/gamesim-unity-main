@@ -153,6 +153,7 @@ namespace Gamesim.Presentation
             const float width = 760f;
             float rowHeight = 34f * scale;
             float y = 0f;
+            CardGlass(column, scale);
 
             var eyebrow = HudPrimitives.Label("Week", column, 15f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
@@ -284,6 +285,24 @@ namespace Gamesim.Presentation
             var score = HudPrimitives.Label("Score", row, 15f * scale, colour, TextAlignmentOptions.Right);
             score.text = entry.Score.ToString("0.0");
             Anchor(score.rectTransform, new Vector2(width - 66f * scale, 0f), new Vector2(56f * scale, height - 12f * scale));
+        }
+
+        /// <summary>
+        /// The mockups' glass ground behind the card's column (VISUAL-TARGET.md §4, mockup-08 and
+        /// -10): the night background at 85 %, a cyan hairline on the edge and a soft glow outside
+        /// it. Built as the column's first child so every standing draws over it, and stretched to
+        /// the column, whose height is only known once the board has been laid out.
+        /// </summary>
+        private static RectTransform CardGlass(RectTransform column, float scale)
+        {
+            var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
+            glass.SetAsFirstSibling();
+            glass.anchorMin = Vector2.zero;
+            glass.anchorMax = Vector2.one;
+            glass.offsetMin = new Vector2(-34f * scale, -26f * scale);
+            glass.offsetMax = new Vector2(34f * scale, 26f * scale);
+            UiTheme.Glass(glass, UiTheme.GlassRadius);
+            return glass;
         }
 
         /// <summary>Left-anchored, vertically centred inside a row.</summary>

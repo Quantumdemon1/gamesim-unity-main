@@ -213,6 +213,7 @@ namespace Gamesim.Presentation
             float scale = Mathf.Max(0.5f, FontScale);
             const float width = 900f;
             column.sizeDelta = new Vector2(width * scale, 520f * scale);
+            CardGlass(column, scale);
 
             eyebrow = HudPrimitives.Label("Week", column, 15f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.characterSpacing = 14f;
@@ -331,6 +332,25 @@ namespace Gamesim.Presentation
                 chipText.rectTransform.offsetMin = Vector2.zero;
                 chipText.rectTransform.offsetMax = Vector2.zero;
             }
+        }
+
+        /// <summary>
+        /// The mockups' glass ground behind the card's column (VISUAL-TARGET.md §4, mockup-08 and
+        /// -10): the night background at 85 %, a cyan hairline on the edge and a soft glow outside
+        /// it. Built as the column's first child so every piece of the ceremony draws over it, and
+        /// stretched to the column so it grows with the large-text preference. Its name deliberately
+        /// does not begin with "Key ": that prefix is how the suite counts the ceremony's key slots.
+        /// </summary>
+        private static RectTransform CardGlass(RectTransform column, float scale)
+        {
+            var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
+            glass.SetAsFirstSibling();
+            glass.anchorMin = Vector2.zero;
+            glass.anchorMax = Vector2.one;
+            glass.offsetMin = new Vector2(-34f * scale, -26f * scale);
+            glass.offsetMax = new Vector2(34f * scale, 26f * scale);
+            UiTheme.Glass(glass, UiTheme.GlassRadius);
+            return glass;
         }
 
         private static void Place(RectTransform rect, float width, float height, float y, float x = 0f)

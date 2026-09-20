@@ -162,12 +162,15 @@ namespace Gamesim.Presentation
         {
             if (card != null) return;
 
-            card = NewPanel("Card", (RectTransform)transform, UiTheme.Ink, UiTheme.PanelRadius);
+            card = NewPanel("Card", (RectTransform)transform, UiTheme.GlassFill, UiTheme.GlassRadius);
             // Stretched across the top, inset past the chrome on both sides.
             card.anchorMin = new Vector2(0f, 1f);
             card.anchorMax = new Vector2(1f, 1f);
             card.pivot = new Vector2(0.5f, 1f);
-            UiTheme.AddBorder(card, UiTheme.PanelRadius, UiTheme.Outline);
+            // The mockups' running bug is a glass strip: the night ground at 85 %, a cyan hairline
+            // on the edge and a soft glow outside it (mockup-08, -10). The glow is a child that
+            // reaches past the rect, and every geometry check in the suite reads the rect.
+            UiTheme.Glass(card, UiTheme.GlassRadius);
 
             rule = NewPanel("Sting rule", card, UiTheme.Accent, 2).GetComponent<Image>();
             ruleRect = (RectTransform)rule.transform;

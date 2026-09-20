@@ -51,7 +51,7 @@ namespace Gamesim.Presentation
         /// <summary>What the card says it is waiting for, matching the web build's wording.</summary>
         public const string DismissCaption = "Click anywhere to continue";
 
-        private RectTransform rule;
+        private RectTransform rule, glassGround;
         private TMP_Text dismiss;
         private CanvasGroup group;
         private RectTransform column, scrim, faces;
@@ -267,6 +267,15 @@ namespace Gamesim.Presentation
             column.anchorMax = new Vector2(.5f, .5f);
             column.pivot = new Vector2(.5f, .5f);
 
+            // The mockups' glass ground behind the whole composition (VISUAL-TARGET.md §4,
+            // mockup-08 and -10): the night background at 85 %, a cyan hairline, a soft glow. First
+            // child, so every piece of the card draws over it; stretched, so it follows the column
+            // as the large-text preference grows it.
+            glassGround = NewPanel("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
+            glassGround.anchorMin = Vector2.zero;
+            glassGround.anchorMax = Vector2.one;
+            UiTheme.Glass(glassGround, UiTheme.GlassRadius);
+
             eyebrow = NewText("Takeover week", column, 15f, UiTheme.Muted);
             eyebrow.alignment = TextAlignmentOptions.Center;
             eyebrow.characterSpacing = 14f;
@@ -326,6 +335,11 @@ namespace Gamesim.Presentation
                 + (facesH > 0f ? gap + facesH : 0f)
                 + gap * 1.6f + ruleH + gap + dismissH;
             column.sizeDelta = new Vector2(width * scale, total);
+            if (glassGround != null)
+            {
+                glassGround.offsetMin = new Vector2(-36f * scale, -28f * scale);
+                glassGround.offsetMax = new Vector2(36f * scale, 28f * scale);
+            }
 
             float y = 0f;
             Place(eyebrow.rectTransform, width * scale, eyebrowH, ref y);

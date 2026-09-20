@@ -19,7 +19,8 @@ namespace Gamesim.Presentation
     /// </summary>
     public static class CharacterPortraits
     {
-        public const int Size = 192;
+        /// <summary>Portrait pixels a side (VISUAL-TARGET.md V3): the mockups' headshots, not a thumbnail.</summary>
+        public const int Size = 384;
         private const string ModelResourceRoot = "GamesimCharacters/";
         private static readonly Vector3 RigOrigin = new Vector3(0f, -5000f, 0f);
 
@@ -115,7 +116,8 @@ namespace Gamesim.Presentation
             cameraObject.transform.SetParent(rig.transform, false);
             rigCamera = cameraObject.AddComponent<Camera>();
             rigCamera.clearFlags = CameraClearFlags.SolidColor;
-            rigCamera.backgroundColor = UiTheme.SurfaceRaised;
+            // The mockups' headshots sit on the night ground, not on a panel colour.
+            rigCamera.backgroundColor = UiTheme.Background;
             rigCamera.fieldOfView = 24f;
             rigCamera.nearClipPlane = 0.05f;
             // A short far plane is what keeps the house out of frame without reserving a layer.
@@ -183,14 +185,34 @@ namespace Gamesim.Presentation
             // Directional rather than a point light. A point light close enough to reach a face this
             // small arrives at an intensity that blows the whole portrait to white, and the distance
             // that fixes that is past the far plane. A directional light does not fall off.
+            // Three points (VISUAL-TARGET.md V3): a soft warm key from high on one side, a low fill
+            // from the other so the shadow side keeps its shape, and a cool rim from behind that
+            // separates hair and shoulders from the dark ground. All directional, for the reason
+            // above; none shadowing, because the far plane is inches behind the head.
             var lamp = new GameObject("Portrait Light") { hideFlags = HideFlags.DontSave };
             lamp.transform.SetParent(rigCamera.transform, false);
-            lamp.transform.localRotation = Quaternion.Euler(18f, -24f, 0f);
+            lamp.transform.localRotation = Quaternion.Euler(24f, -32f, 0f);
             var light = lamp.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.15f;
+            light.intensity = 1.05f;
             light.shadows = LightShadows.None;
-            light.color = Color.white;
+            light.color = new Color(1f, 0.95f, 0.88f);
+            var fillLamp = new GameObject("Portrait Fill") { hideFlags = HideFlags.DontSave };
+            fillLamp.transform.SetParent(rigCamera.transform, false);
+            fillLamp.transform.localRotation = Quaternion.Euler(8f, 40f, 0f);
+            var fill = fillLamp.AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.intensity = 0.35f;
+            fill.shadows = LightShadows.None;
+            fill.color = new Color(0.85f, 0.9f, 1f);
+            var rimLamp = new GameObject("Portrait Rim") { hideFlags = HideFlags.DontSave };
+            rimLamp.transform.SetParent(rigCamera.transform, false);
+            rimLamp.transform.localRotation = Quaternion.Euler(-20f, 150f, 0f);
+            var rim = rimLamp.AddComponent<Light>();
+            rim.type = LightType.Directional;
+            rim.intensity = 0.9f;
+            rim.shadows = LightShadows.None;
+            rim.color = UiTheme.Glow;
 
             var texture = new RenderTexture(Size, Size, 24, RenderTextureFormat.ARGB32)
             {
@@ -206,6 +228,10 @@ namespace Gamesim.Presentation
             rigCamera.targetTexture = null;
 
             Destroy(lamp);
+
+            Destroy(fillLamp);
+
+            Destroy(rimLamp);
             rigCamera.farClipPlane = previousFar;
             rigCamera.transform.SetParent(previousParent, false);
             rigCamera.transform.localPosition = Vector3.zero;

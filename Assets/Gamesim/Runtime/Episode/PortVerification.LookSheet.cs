@@ -281,7 +281,11 @@ namespace Gamesim.Episode
             if (npc == null) throw new InvalidOperationException("No active houseguest to select.");
             seasonDirector.FollowHouseguest(npc.Id);
             yield return ApproachAndOpen(npc, shot);
-            shot.reason = "the speech bubble over the pair arrives with V6";
+            // The bubble landed 2026-09-20. What mockup-01 still has and this does not is its
+            // right column - a Relationships card of faces, moods and hearts, and a Social Goals
+            // card - and its navigation rail, which would want the cast strip moved to the bottom.
+            shot.reason = "the relationships and social-goals cards, and the navigation rail, are "
+                + "what mockup-01 still has that this does not";
         }
 
         private IEnumerator Overview(LookShot shot)
@@ -337,7 +341,7 @@ namespace Gamesim.Episode
             seasonPlayer.TryMoveTo(approach);
             yield return WaitSeasonWalk("look conversation", approach, false);
             yield return WaitUntil(() => !string.IsNullOrEmpty(seasonDirector.ObservedNpcConversation), 55);
-            shot.reason = "night light and sleeping houseguests arrive with V1 and V5; the bubbles with V2";
+            shot.reason = "the bubbles and the night light are in; houseguests do not sleep yet";
         }
 
         private IEnumerator HouseEventChoice(LookShot shot)
@@ -357,7 +361,8 @@ namespace Gamesim.Episode
             }
             if (HouseEvents.Pending(seasonDirector.Snapshot) == null) throw new InvalidOperationException("No house event was offered; the conflict meter and vibe bars arrive with V2.");
             yield return OpenSeasonStation();
-            shot.reason = "the conflict meter and the vibe bars arrive with V2";
+            shot.reason = "the vibe bars are in; the conflict meter - two portraits either side of "
+                + "a tension bar - is not";
         }
 
         private IEnumerator CompetitionMidPlay(LookShot shot)
@@ -390,13 +395,13 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.Nomination && state.hohId == state.playerId)
             {
                 yield return OpenSeasonStation();
-                shot.reason = "bubbles, the private chat, threat bars and the insight arrive with V2";
+                shot.reason = "the private chat, the threat bars and the insight arrive with V2";
                 yield break;
             }
             var npc = ActiveNpcs().FirstOrDefault();
             if (npc == null) throw new InvalidOperationException("Nobody to discuss nominations with.");
             yield return ApproachAndOpen(npc, shot);
-            shot.reason = "not the HoH this week; bubbles, the private chat, threat bars and the insight arrive with V2";
+            shot.reason = "not the HoH this week; the private chat, the threat bars and the insight arrive with V2";
         }
 
         private IEnumerator KeyCeremonyShot(LookShot shot)

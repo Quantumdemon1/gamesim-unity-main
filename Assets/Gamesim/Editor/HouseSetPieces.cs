@@ -156,6 +156,15 @@ namespace Gamesim.Editor
             new Prop("Living room floor", "sideTableDrawers",   0.30f,  0.40f,   0f, 0.62f),
             new Prop("Living room floor", "bb_set_photoframe",  0.30f,  0.40f, 200f, 0f, 0.62f),
             new Prop("Living room floor", "lampSquareTable",    0.30f,  0.40f,   0f, 0.45f, 0.62f),
+
+            // The ceremony screen (mockup-10): the lit board the house turns to face, on its own
+            // low stage against the nomination room's far side. Here rather than in the living
+            // room because this is where the ceremony camera goes - the key ceremony frames the
+            // nomination room, and a screen the beat never looks at is furniture. Free-standing
+            // because this house's walls are 1.1 m cutaways and there is nothing to hang a 1.5 m
+            // board on, which is the same reason the yard's backdrop stands on the deck. Yaw 180
+            // turns its face into the room; authored, it looks at -z.
+            new Prop("Nomination floor", "bb_set_ceremonyscreen", 0f, -0.39f, 180f, 0f),
             new Prop("Living room floor", "rugSquare",         -0.18f, -0.30f,   0f, -3.2f),
             new Prop("Living room floor", "trashcan",          -0.20f,  0.42f,   0f, 0.55f),
             new Prop("Living room floor", "plantSmall2",       -0.36f, -0.42f,   0f, 0.50f),

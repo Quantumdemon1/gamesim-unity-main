@@ -57,7 +57,11 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void GoldIsNotNearlyTheColourOfAnythingThatIsNotPower()
         {
-            foreach (var other in new[] { UiTheme.Joke, UiTheme.Warning, UiTheme.Accent, UiTheme.Muted })
+            // Brass joins the list because it is the nearest thing to gold that is NOT power: it
+            // rings twelve portraits at once on the cast screen, which is exactly the spend gold
+            // cannot afford. If it ever drifts toward Gold the rings start reading as crowns.
+            foreach (var other in new[] { UiTheme.Joke, UiTheme.Warning, UiTheme.Accent, UiTheme.Muted,
+                UiTheme.Brass })
             {
                 float distance = Mathf.Max(Mathf.Abs(other.r - UiTheme.Gold.r),
                     Mathf.Max(Mathf.Abs(other.g - UiTheme.Gold.g), Mathf.Abs(other.b - UiTheme.Gold.b)));
@@ -118,6 +122,42 @@ namespace Gamesim.Tests.EditMode
             AssertContrast(UiTheme.Glow, UiTheme.GlassFill, LargeMinimum, "glow headings on glass");
             double edge = Contrast(UiTheme.Hairline, UiTheme.GlassFill);
             Assert.That(edge, Is.GreaterThan(1.2), "The hairline is nearly the glass's own luminance (" + edge.ToString("F2") + ":1).");
+
+            // The card ground is a second panel colour and needs its own guarantees, or the copy on
+            // every roster card has none: this suite pins these tokens against GlassFill and nothing
+            // else, so a card painted a different ground would go on being measured against a colour
+            // it no longer wears, and go on passing.
+            AssertContrast(UiTheme.Paper, UiTheme.CardFill, BodyMinimum, "a houseguest's name on a card");
+            AssertContrast(UiTheme.Muted, UiTheme.CardFill, LargeMinimum, "the age and occupation line on a card");
+            AssertContrast(UiTheme.Glow, UiTheme.CardFill, LargeMinimum, "PLAYING AS on the picked card");
+            AssertContrast(UiTheme.Brass, UiTheme.CardFill, 3.0, "the brass ring around a portrait");
+            double lift = Contrast(UiTheme.CardFill, UiTheme.Background);
+            Assert.That(lift, Is.GreaterThan(1.12),
+                "A card has to be visible as a card against the ground behind it, and this one is "
+                + lift.ToString("F3") + ":1 from it.");
+        }
+
+        /// <summary>
+        /// Every filled pill the cast screen can draw is readable.
+        ///
+        /// <para>A filled pill puts a word ON a saturated tint rather than beside it, which is the
+        /// opposite of what the rest of this palette was checked for. White is not the answer: on
+        /// these five tints white runs from 1.59:1 to 3.13:1. UiTheme.OnColor picks the foreground,
+        /// so what has to hold is that ITS pick clears the bar for every tint the roster can hand
+        /// it - and the archetype pill's word is twelve pixels, which is body text.</para>
+        /// </summary>
+        [Test]
+        public void AFilledPillsWordIsReadableOnEveryTintTheRosterCanGiveIt()
+        {
+            foreach (var tint in new[] { UiTheme.Strategic, UiTheme.Joke, UiTheme.Flirt,
+                UiTheme.Conflict, UiTheme.Allied, UiTheme.Accent, UiTheme.Glow })
+            {
+                var word = UiTheme.OnColor(tint);
+                double ratio = Contrast(word, tint);
+                Assert.That(ratio, Is.GreaterThanOrEqualTo(BodyMinimum),
+                    "OnColor picked a foreground that reads at only " + ratio.ToString("F2")
+                    + ":1 on " + UnityEngine.ColorUtility.ToHtmlStringRGB(tint) + ".");
+            }
         }
 
         [Test]

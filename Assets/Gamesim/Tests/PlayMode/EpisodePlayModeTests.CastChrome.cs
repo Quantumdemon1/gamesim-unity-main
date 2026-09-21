@@ -175,8 +175,10 @@ namespace Gamesim.Tests.PlayMode
             var card = CastScreen().GetComponentsInChildren<RectTransform>(true)
                 .Single(rect => rect.name == chosen.Name);
 
-            Assert.That(SameColour(card.GetComponent<Image>().color, UiTheme.GlassFill), Is.True,
-                "A resting card is the mockups' glass ground.");
+            Assert.That(SameColour(card.GetComponent<Image>().color, UiTheme.CardFill), Is.True,
+                "A resting card sits on the card ground, which is a LIFT above the screen behind it. "
+                + "It used to be GlassFill on a scrim of Background at 0.97 - the same hex, under one "
+                + "percent apart - so twelve cards were twelve hairlines around nothing.");
             Assert.That(Child(card, "Border"), Is.Not.Null, "Every card carries the hairline.");
             Assert.That(Child(card, CastSelect.CardGlowName), Is.Null,
                 "A card nobody picked does not glow.");
@@ -198,6 +200,24 @@ namespace Gamesim.Tests.PlayMode
                 "The picked card gains the mockups' glow.");
             Assert.That(Copy(card), Does.Contain("PLAYING AS"),
                 "and still states the pick in words, which is what a screen reader reads.");
+
+            // Copy() walks INACTIVE labels too, so the assertion above is satisfied by a label that
+            // is switched off, collapsed to nothing or truncated away - none of which a player or a
+            // screen reader would get anything from. The word has to actually be on the screen.
+            var spoken = card.GetComponentsInChildren<TMP_Text>(true)
+                .FirstOrDefault(label => label.text == "PLAYING AS");
+            Assert.That(spoken, Is.Not.Null);
+            Assert.That(spoken.gameObject.activeInHierarchy, Is.True,
+                "The word that carries the pick is switched off, so only the glow says it.");
+            spoken.ForceMeshUpdate();
+            Assert.That(spoken.isTextOverflowing, Is.False,
+                "The word that carries the pick is clipped out of its box.");
+
+            // And the chosen card keeps its ground. UiTheme.Glass repaints whatever it is given to
+            // GlassFill, and it runs on this card and no other - so the one card the player picked
+            // is the one card that can silently lose the fill every other card has.
+            Assert.That(SameColour(card.GetComponent<Image>().color, UiTheme.CardFill), Is.True,
+                "The picked card has a different ground from the eleven it sits beside.");
         }
 
         private static Transform Child(Transform parent, string name)

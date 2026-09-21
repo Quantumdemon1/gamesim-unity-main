@@ -30,12 +30,61 @@ namespace Gamesim.Presentation
     [DisallowMultipleComponent]
     public sealed class CastSelect : MonoBehaviour
     {
-        private const float Width = 1180f;
+        /// <summary>
+        /// The widest the screen draws, and how it decides to draw narrower.
+        ///
+        /// <para>This was a fixed 1180 in a canvas whose reference is 1920x1080, so the roster sat
+        /// in 61 % of the frame with a sixth of it empty down each side. It cannot simply become
+        /// 1560, because the scaler matches width and height equally and the canvas width in
+        /// reference units is <c>sqrt(aspect) * 1200</c> at the larger text size - 1600 at 16:9 but
+        /// 1518 on 16:10, 1470 on 3:2 and 1386 on 4:3. A constant wide enough for the first runs off
+        /// both edges of the last, and nothing in the suite can see it happen. So it is measured
+        /// from the canvas at every rebuild instead.</para>
+        /// </summary>
+        private const float MaxWidth = 1560f;
+        private const float MinWidth = 900f;
+        private const float FrameMargin = 96f;
         private const float Pad = 28f;
         private const int Columns = 4;
-        private const float Gutter = 14f;
-        private const float CardWidth = (Width - Pad * 2f - Gutter * (Columns - 1)) / Columns;
-        private const float CardHeight = 216f;
+        private const float Gutter = 16f;
+
+        /// <summary>
+        /// A card is wide and short now rather than nearly square.
+        ///
+        /// <para>216 never fitted: three rows of 216 plus gutters is 676 against a viewport of
+        /// 595 at 16:9, so the bottom row of the roster was below the fold and had to be scrolled
+        /// to - on the one screen whose whole job is to show you the cast. At 168 the three rows
+        /// come to 536 and the whole house is on screen at the standard text size. At the larger
+        /// size the viewport is 470 and it still scrolls, by about a card's worth; that is the
+        /// honest cost of bigger type rather than something to hide.</para>
+        /// </summary>
+        private const float CardHeight = 168f;
+        /// <summary>The face's diameter. The ring is three pixels of brass outside it.</summary>
+        private const float PortraitSize = 104f;
+        /// <summary>
+        /// How much of the portrait render is thrown away by the mask to fill the circle, and how
+        /// far the kept part is lifted.
+        ///
+        /// <para>Tuned against a captured frame, not reasoned about. 1.42 with a lift of 0.32 filled
+        /// the circle and cut the chin off at the bottom edge; this keeps the whole head with the
+        /// crop biting into the shoulders instead, which is where the reference's portraits end.</para>
+        /// </summary>
+        private const float PortraitOverscan = 1.30f;
+        private const float PortraitLift = 0.14f;
+
+        /// <summary>
+        /// What the two fixed bars reserve, and therefore what the roster gets.
+        ///
+        /// <para>These were 270, 485 and 270 written separately at three call sites, so the
+        /// viewport's height and the header's height were free to disagree - and did. They are one
+        /// number each now and the viewport is derived from both.</para>
+        /// </summary>
+        private const float HeaderHeight = 268f;
+        private const float FooterHeight = 196f;
+
+        private float width = 1180f;
+        private float Width => width;
+        private float CardWidth => (width - Pad * 2f - Gutter * (Columns - 1)) / Columns;
 
         /// <summary>The caption the start control carries. Tests and the tour find it by this text.</summary>
         public const string StartCaption = "Start this season";
@@ -205,10 +254,16 @@ namespace Gamesim.Presentation
                 Destroy(child.gameObject);
             }
 
-            // The mockups' night ground rather than a neutral black: the cards are glass over it,
-            // and glass over black reads as flat panels on a void.
-            var scrim = HudPrimitives.Fill("Scrim", transform,
-                new Color(UiTheme.Background.r, UiTheme.Background.g, UiTheme.Background.b, 0.97f), 1);
+            // Measured, not assumed: see MaxWidth. The component lives on the canvas root, so this
+            // rect is the canvas in its own reference units at whatever aspect the player has.
+            float frame = ((RectTransform)transform).rect.width;
+            width = Mathf.Clamp((frame > 1f ? frame : 1920f) - FrameMargin, MinWidth, MaxWidth);
+
+            // Opaque. It was 0.97, which sounds like nothing and is not: three percent of the
+            // episode HUD's white-on-navy chrome is legible, so the Notebook row, the objective
+            // card, the live feed, the lower third and the cast strip all ghosted through the
+            // roster. A chooser this consequential should not have the game showing through it.
+            var scrim = HudPrimitives.Fill("Scrim", transform, UiTheme.Background, 1);
             // A modal's scrim has to catch the mouse; Fill leaves its art non-interactive.
             scrim.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
             Stretch(scrim);
@@ -217,7 +272,7 @@ namespace Gamesim.Presentation
             content.SetParent(scrim, false);
             content.anchorMin = content.anchorMax = new Vector2(.5f, 1f);
             content.pivot = new Vector2(.5f, 1f);
-            content.sizeDelta = new Vector2(Width, 270f);
+            content.sizeDelta = new Vector2(Width, HeaderHeight);
             cursor = 0f;
             Header(); SetupNavigation();
             if (!libraryMode && !castSlotsMode) { RosterTabs(); CategoryChips(); }
@@ -227,8 +282,8 @@ namespace Gamesim.Presentation
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
             float errorHeight = string.IsNullOrEmpty(resumeError) ? 0f : 64f;
-            viewport.sizeDelta = new Vector2(Width, -485f - errorHeight);
-            viewport.anchoredPosition = new Vector2(0f, -270f);
+            viewport.sizeDelta = new Vector2(Width, -(HeaderHeight + FooterHeight + 10f) - errorHeight);
+            viewport.anchoredPosition = new Vector2(0f, -HeaderHeight);
             viewport.gameObject.AddComponent<RectMask2D>();
 
             content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -254,7 +309,7 @@ namespace Gamesim.Presentation
             content.SetParent(scrim, false);
             content.anchorMin = content.anchorMax = new Vector2(.5f, 0f);
             content.pivot = new Vector2(.5f, 0f);
-            content.sizeDelta = new Vector2(Width, 205f + errorHeight);
+            content.sizeDelta = new Vector2(Width, FooterHeight + errorHeight);
             cursor = 0f;
             HouseSize(); Footer();
         }
@@ -262,7 +317,7 @@ namespace Gamesim.Presentation
         private void SetupNavigation()
         {
             if (onCustomise == null) return;
-            var row = Row(50f);
+            var row = Row(44f);
             Chip(row, "Choose a houseguest", -448f, 216f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; Rebuild(); });
             Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank()));
             Chip(row, retainedDraft == null ? CharacterCreator.CustomiseCaption : "Resume setup", 0f, 216f, false, () =>
@@ -338,11 +393,31 @@ namespace Gamesim.Presentation
             Space(Pad);
             // The mockup sets the title in white with the strap in a muted blue-grey under it. The
             // words are the build's own, unchanged; only the weight and the colour move.
-            var title = HudPrimitives.Heading("Text", content, 30f, UiTheme.Paper, TextAlignmentOptions.Center);
-            title.text = Localisation.Text("CHOOSE YOUR HOUSEGUEST");
-            title.characterSpacing = 8f;
-            Place(title.rectTransform, Width - Pad * 2f, 42f, -cursor);
-            cursor += 42f;
+            var title = HudPrimitives.Heading("Text", content, 34f, UiTheme.Paper, TextAlignmentOptions.Center);
+            // ONE localisation key, looked up once. The reference draws the last word in the accent,
+            // and the tempting way to get that - two adjacent labels - would split
+            // "CHOOSE YOUR HOUSEGUEST" into two keys, neither of which matches the entry and one of
+            // which ("CHOOSE YOUR ") is untranslatable on its own. So the lookup stays whole and the
+            // RESULT is marked up. Rich text is off by default in HudPrimitives.Label, for the good
+            // reason that engine and player strings can contain angle brackets; this label's content
+            // is a fixed literal that has already been through Localisation, so it is safe here and
+            // nowhere else. A string with no space, or a table that returns one, simply gets one
+            // colour - the split is English word order and is allowed to degrade.
+            string headline = Localisation.Text("CHOOSE YOUR HOUSEGUEST");
+            int lastSpace = headline.LastIndexOf(' ');
+            if (lastSpace > 0 && lastSpace < headline.Length - 1)
+            {
+                title.richText = true;
+                title.text = headline.Substring(0, lastSpace + 1)
+                    + "<color=#" + ColorUtility.ToHtmlStringRGB(UiTheme.Glow) + ">"
+                    + headline.Substring(lastSpace + 1) + "</color>";
+            }
+            else title.text = headline;
+            // Was 8, which at 30px spread the title across most of the frame and read as a banner
+            // rather than as a heading. The reference tracks its display type barely at all.
+            title.characterSpacing = 2f;
+            Place(title.rectTransform, Width - Pad * 2f, 46f, -cursor);
+            cursor += 46f;
             Text("Pick who you play as, then set the size of the house. Everyone else is cast from the same roster.",
                 15f, UiTheme.Muted, 24f, TextAlignmentOptions.Center);
             Space(8f);
@@ -350,7 +425,7 @@ namespace Gamesim.Presentation
 
         private void RosterTabs()
         {
-            var bar = Row(46f);
+            var bar = Row(42f);
             var options = Enum.GetValues(typeof(CastTemplates.Roster)).Cast<CastTemplates.Roster>().ToList();
             const float span = 260f;
             float x = -(options.Count - 1) * span / 2f;
@@ -369,7 +444,7 @@ namespace Gamesim.Presentation
                 });
                 x += span;
             }
-            Space(6f);
+            Space(2f);
         }
 
         private void CategoryChips()
@@ -377,17 +452,17 @@ namespace Gamesim.Presentation
             var chips = new List<string> { CastTemplates.AllCategories };
             chips.AddRange(CastTemplates.Categories);
 
-            var bar = Row(40f);
-            float span = 168f;
+            var bar = Row(38f);
+            float span = Mathf.Min(196f, (Width - Pad * 2f) / chips.Count);
             float x = -(chips.Count - 1) * span / 2f;
             foreach (var name in chips)
             {
                 var pick = name;
-                Chip(bar, pick, x, span - 10f, string.Equals(category, pick, StringComparison.OrdinalIgnoreCase),
+                Chip(bar, pick, x, span - 12f, string.Equals(category, pick, StringComparison.OrdinalIgnoreCase),
                     () => { category = pick; Rebuild(); });
                 x += span;
             }
-            Space(10f);
+            Space(6f);
         }
 
         private void Grid()
@@ -399,6 +474,19 @@ namespace Gamesim.Presentation
                     TextAlignmentOptions.Center);
                 return;
             }
+
+            // The reference holds the whole roster in one bordered panel rather than letting the
+            // cards float on the ground. Built before the cards so it sits behind them.
+            int rows = (shown.Count + Columns - 1) / Columns;
+            float gridHeight = rows * (CardHeight + Gutter) - Gutter;
+            var frame = HudPrimitives.Fill("Roster", content, UiTheme.CardFill, UiTheme.GlassRadius);
+            frame.anchorMin = new Vector2(0.5f, 1f);
+            frame.anchorMax = new Vector2(0.5f, 1f);
+            frame.pivot = new Vector2(0.5f, 1f);
+            frame.sizeDelta = new Vector2(Width - Pad * 2f + 24f, gridHeight + 24f);
+            frame.anchoredPosition = new Vector2(0f, -(cursor - 12f));
+            UiTheme.AddBorder(frame, UiTheme.GlassRadius,
+                new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, 0.30f));
 
             for (int index = 0; index < shown.Count; index++)
             {
@@ -423,7 +511,7 @@ namespace Gamesim.Presentation
         {
             bool chosen = string.Equals(selectedId, template.Id, StringComparison.Ordinal);
 
-            var card = HudPrimitives.Fill(template.Name, content, UiTheme.GlassFill, UiTheme.GlassRadius);
+            var card = HudPrimitives.Fill(template.Name, content, UiTheme.CardFill, UiTheme.GlassRadius);
             card.anchorMin = new Vector2(0.5f, 1f);
             card.anchorMax = new Vector2(0.5f, 1f);
             card.pivot = new Vector2(0f, 1f);
@@ -437,6 +525,11 @@ namespace Gamesim.Presentation
             {
                 UiTheme.Glass(card, UiTheme.GlassRadius);
                 UiTheme.AddBorder(card, UiTheme.GlassRadius, UiTheme.Glow);
+                // Glass paints GlassFill over whatever the card was given, so the ground has to be
+                // written back afterwards or the one card the player picked is the one card that
+                // loses it. It was GlassFill on a scrim of Background - the same hex, under one
+                // percent apart - so every card was a hairline around nothing.
+                UiTheme.Style(card.GetComponent<Image>(), UiTheme.CardFill, UiTheme.GlassRadius);
             }
             else
             {
@@ -460,25 +553,49 @@ namespace Gamesim.Presentation
             // wardrobe colour and their initials — the same colour they will be wearing in the
             // house, which is what makes the grid something you can read at a glance.
             var wardrobe = CastPalette.For(template.Id);
-            var rim = HudPrimitives.Disc("Ring", card, chosen ? UiTheme.Glow : UiTheme.Outline);
+            // Brass at rest, cyan when picked. Outline is #3A5068 at 69 % on a near-black card - a
+            // three-pixel ring nobody could see - and the reference rings every face in bronze,
+            // which is most of what makes them read as portraits instead of avatars. Not Gold: gold
+            // is power in this build and gilding twelve rings at once would spend it on nothing.
+            var rim = HudPrimitives.Disc("Ring", card, chosen ? UiTheme.Glow : UiTheme.Brass);
             rim.anchorMin = new Vector2(0f, 1f);
             rim.anchorMax = new Vector2(0f, 1f);
             rim.pivot = new Vector2(0.5f, 1f);
-            rim.sizeDelta = new Vector2(88f, 88f);
-            rim.anchoredPosition = new Vector2(52f, -14f);
+            rim.sizeDelta = new Vector2(PortraitSize + 6f, PortraitSize + 6f);
+            rim.anchoredPosition = new Vector2(20f + (PortraitSize + 6f) * 0.5f, -(CardHeight - PortraitSize - 6f) * 0.5f);
 
             var face = HudPrimitives.Disc("Face", rim, wardrobe);
             face.anchorMin = new Vector2(0.5f, 0.5f);
             face.anchorMax = new Vector2(0.5f, 0.5f);
             face.pivot = new Vector2(0.5f, 0.5f);
-            face.sizeDelta = new Vector2(82f, 82f);
+            face.sizeDelta = new Vector2(PortraitSize, PortraitSize);
             face.anchoredPosition = Vector2.zero;
+            // THE defect this card had. The rendered portrait is a square crop with an opaque navy
+            // ground (CharacterPortraits clears to UiTheme.Background), and it was stretched over
+            // the round Face disc with nothing clipping it - so the corners overhung the ring by
+            // fourteen pixels and every houseguest was a black rectangle sitting on top of the
+            // circle and the ring that were supposed to frame them. CastRail has always masked its
+            // portraits this way; this screen never did. The Disc already carries UiTheme.Circle,
+            // which is the alpha the stencil needs.
+            var mask = face.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = true;
             var portraitObject = new GameObject("Model portrait", typeof(RectTransform), typeof(RawImage));
             portraitObject.transform.SetParent(face, false);
             var modelPortrait = portraitObject.GetComponent<RawImage>();
             modelPortrait.raycastTarget = false;
             modelPortrait.color = Color.clear;
-            Stretch(modelPortrait.rectTransform);
+            // Bigger than the circle that clips it, and lifted. The render is a head-and-shoulders
+            // crop on an opaque ground, so fitting it exactly inside the disc leaves a ring of dead
+            // navy around a small head - the circle is filled but the FACE is not. Overscanning it
+            // and letting the mask take the corners is the whole point of having a mask: the head
+            // fills the frame the way the reference's portraits do. The lift is because the crop
+            // centres on the chest, not the face.
+            var portraitRect = modelPortrait.rectTransform;
+            portraitRect.anchorMin = new Vector2(0.5f, 0.5f);
+            portraitRect.anchorMax = new Vector2(0.5f, 0.5f);
+            portraitRect.pivot = new Vector2(0.5f, 0.5f);
+            portraitRect.sizeDelta = new Vector2(PortraitSize * PortraitOverscan, PortraitSize * PortraitOverscan);
+            portraitRect.anchoredPosition = new Vector2(0f, -PortraitSize * (PortraitOverscan - 1f) * PortraitLift);
             var cardCharacter = CastTemplates.ToContestant(template, false);
             portraits.Add(new KeyValuePair<RawImage, ContestantState>(modelPortrait, cardCharacter));
 
@@ -494,7 +611,7 @@ namespace Gamesim.Presentation
                 art.anchorMin = new Vector2(0.5f, 0f);
                 art.anchorMax = new Vector2(0.5f, 0f);
                 art.pivot = new Vector2(0.5f, 0f);
-                art.sizeDelta = new Vector2(66f, 66f);
+                art.sizeDelta = new Vector2(PortraitSize * 0.8f, PortraitSize * 0.8f);
                 art.anchoredPosition = new Vector2(0f, 5f);
                 var portrait = art.GetComponent<Image>();
                 portrait.sprite = silhouette;
@@ -524,8 +641,8 @@ namespace Gamesim.Presentation
                 badge.anchorMin = new Vector2(1f, 1f);
                 badge.anchorMax = new Vector2(1f, 1f);
                 badge.pivot = new Vector2(1f, 1f);
-                badge.sizeDelta = new Vector2(24f, 24f);
-                badge.anchoredPosition = new Vector2(-14f, -14f);
+                badge.sizeDelta = new Vector2(22f, 22f);
+                badge.anchoredPosition = new Vector2(-12f, -12f);
                 var art = badge.GetComponent<Image>();
                 art.sprite = mark;
                 art.color = chosen ? UiTheme.Glow : UiTheme.Accent;
@@ -533,33 +650,49 @@ namespace Gamesim.Presentation
                 art.raycastTarget = false;
             }
 
-            // The right-hand column beside the face: who they are, then what they are called.
-            const float textX = 104f;
-            float textWidth = CardWidth - textX - 14f;
-            Line(card, template.Name, 15f, UiTheme.Paper, -32f, 22f, textX, textWidth, TextAlignmentOptions.Left);
-            Line(card, template.Archetype, 13f, UiTheme.Accent, -56f, 20f, textX, textWidth, TextAlignmentOptions.Left);
+            // Everything else stacks in the column beside the face rather than in bands across the
+            // whole card. The card was nearly square and five bands deep with a small avatar beside
+            // a paragraph; the reference is wide and short, and its second element after the face is
+            // the archetype. So the order is what the player is choosing BY: the name, the
+            // archetype, then the two traits, then the facts.
+            float textX = 34f + PortraitSize;
+            float textWidth = CardWidth - textX - 16f;
+            Line(card, template.Name, 17f, UiTheme.Paper, -22f, 24f, textX, textWidth, TextAlignmentOptions.Left);
 
-            // Full width under both, where the line has room for the longest occupation on the
-            // roster without wrapping into a box that would clip it.
-            Line(card, Subtitle(template), 12f, UiTheme.Muted, -112f, 18f, 14f, CardWidth - 28f,
-                TextAlignmentOptions.Center);
+            // The archetype as the reference draws it: a filled pill in the category's own colour,
+            // not a line of accent text that reads as chrome. The word is unchanged.
+            var archetype = Localisation.Text(template.Archetype);
+            var pill = HudPrimitives.Chip("Archetype", card, archetype, CategoryTint(template.Category),
+                Mathf.Min(textWidth, Mathf.Max(96f, archetype.Length * 7.4f + 22f)), 24f, true);
+            pill.anchorMin = new Vector2(0f, 1f);
+            pill.anchorMax = new Vector2(0f, 1f);
+            pill.pivot = new Vector2(0f, 1f);
+            pill.anchoredPosition = new Vector2(textX, -50f);
 
-            Traits(card, template);
+            Traits(card, template, textX, -84f);
+
+            Line(card, Subtitle(template), 12f, UiTheme.Muted, -114f, 18f, textX, textWidth,
+                TextAlignmentOptions.Left);
 
             // The selection is stated, not only drawn. A glowing border is invisible to a screen
-            // reader and to anyone who cannot separate it from the resting hairline.
+            // reader and to anyone who cannot separate it from the resting hairline - and the
+            // category word has to survive alongside it, because the glyph in the corner repeats
+            // this word and must never be the only thing carrying it.
             Line(card, chosen ? "PLAYING AS" : template.Category.ToUpperInvariant(), 11f,
-                chosen ? UiTheme.Glow : UiTheme.Muted, -184f, 18f, 14f, CardWidth - 28f,
-                TextAlignmentOptions.Center);
+                chosen ? UiTheme.Glow : UiTheme.Muted, -136f, 16f, textX, textWidth,
+                TextAlignmentOptions.Left);
+            if (chosen)
+                Line(card, template.Category.ToUpperInvariant(), 11f, UiTheme.Muted, -136f, 16f,
+                    textX, textWidth, TextAlignmentOptions.Right);
         }
 
         /// <summary>The traits as the mockup draws them: one pill each, tinted by what they mean.</summary>
-        private static void Traits(RectTransform card, CastTemplates.Template template)
+        private static void Traits(RectTransform card, CastTemplates.Template template, float left, float y)
         {
             var words = template.Traits;
             if (words == null || words.Length == 0) return;
 
-            const float height = 20f;
+            const float height = 22f;
             var widths = new float[words.Length];
             float total = 0f;
             for (int i = 0; i < words.Length; i++)
@@ -570,16 +703,46 @@ namespace Gamesim.Presentation
             }
             total += 8f * (words.Length - 1);
 
-            float x = -total * 0.5f;
+            float x = left;
             for (int i = 0; i < words.Length; i++)
             {
                 var pill = HudPrimitives.Chip(TraitChipName, card, Localisation.Text(words[i]),
                     TraitTint(words[i]), widths[i], height);
-                pill.anchorMin = new Vector2(0.5f, 1f);
-                pill.anchorMax = new Vector2(0.5f, 1f);
+                pill.anchorMin = new Vector2(0f, 1f);
+                pill.anchorMax = new Vector2(0f, 1f);
                 pill.pivot = new Vector2(0f, 1f);
-                pill.anchoredPosition = new Vector2(x, -140f);
+                pill.anchoredPosition = new Vector2(x, y);
                 x += widths[i] + 8f;
+            }
+        }
+
+        /// <summary>
+        /// The colour an archetype's pill wears, keyed off the CATEGORY rather than the archetype.
+        ///
+        /// <para>Five categories against twenty-four archetypes across the two rosters: a colour per
+        /// archetype would be twenty-four hues nobody can tell apart, where five is a legend a
+        /// player can actually learn - and it is the same five the filter row above already sorts
+        /// by, so the pill's colour and the chip they pressed agree. The word on the pill is routed
+        /// through OnColor rather than set white: white on these tints runs 1.43:1 to 3.89:1.</para>
+        ///
+        /// <para>These are the five MEANING colours, used here as a categorical palette, and that is
+        /// deliberate rather than lazy: not one of the five meanings occurs on this screen. Nobody is
+        /// nominated, allied, flirting or joking while a season is being set up, so the hues are free
+        /// and they are the five the palette already guarantees are distinguishable from each other.
+        /// Two tokens were considered and rejected - Award, which UiTheme reserves for the
+        /// competition banner, and AccentDeep, whose best foreground is 4.36:1 and so cannot carry a
+        /// twelve-pixel word.</para>
+        /// </summary>
+        private static Color CategoryTint(string category)
+        {
+            switch ((category ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "strategist": return UiTheme.Strategic;
+                case "competitor": return UiTheme.Joke;
+                case "socialite": return UiTheme.Flirt;
+                case "wildcard": return UiTheme.Conflict;
+                case "underdog": return UiTheme.Allied;
+                default: return UiTheme.Accent;
             }
         }
 
@@ -755,7 +918,10 @@ namespace Gamesim.Presentation
         /// </summary>
         private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)
         {
-            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.AccentDeep : UiTheme.GlassFill, 18);
+            // Glow, not AccentDeep. Paper on AccentDeep is 3.89:1 - under the 4.5 a 14px label
+            // needs - and it was the colour of every active pill on the screen: the navigation row,
+            // the roster row, the filter row. Glow takes Ink at 9.84:1 through OnColor below.
+            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.Glow : UiTheme.GlassFill, 18);
             pill.anchorMin = new Vector2(0.5f, 0.5f);
             pill.anchorMax = new Vector2(0.5f, 0.5f);
             pill.pivot = new Vector2(0.5f, 0.5f);
@@ -767,8 +933,15 @@ namespace Gamesim.Presentation
             if (active)
             {
                 UiTheme.Glass(pill, 18);
-                UiTheme.Style(pill.GetComponent<Image>(), UiTheme.AccentDeep, 18);
-                UiTheme.AddBorder(pill, 18, UiTheme.Glow);
+                // Glass repaints the image to GlassFill, so the fill has to be written back AFTER
+                // it rather than before - the line above used to do this with AccentDeep, which made
+                // the constructor argument dead code for exactly the pills this is about.
+                UiTheme.Style(pill.GetComponent<Image>(), UiTheme.Glow, 18);
+                // Not Glow on Glow, which is an edge that cannot be seen, and deliberately not
+                // UiTheme.Edge(Emphasis.Active): Chrome_TheRightColumnIsAStack asserts that no live
+                // Image named "Border" under the director wears the active edge, and Hide() leaves
+                // this hierarchy alive. A saturated fill is already the signal.
+                UiTheme.AddBorder(pill, 18, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, 0.35f));
             }
             else
             {
@@ -778,8 +951,8 @@ namespace Gamesim.Presentation
             var image = pill.GetComponent<Image>();
             image.raycastTarget = true;
 
-            var label = HudPrimitives.Label("Label", pill, 14f, active ? UiTheme.Paper : UiTheme.Muted,
-                TextAlignmentOptions.Center);
+            var label = HudPrimitives.Label("Label", pill, 14f,
+                active ? UiTheme.OnColor(UiTheme.Glow) : UiTheme.Muted, TextAlignmentOptions.Center);
             label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;

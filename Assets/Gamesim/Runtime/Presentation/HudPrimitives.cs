@@ -200,12 +200,35 @@ namespace Gamesim.Presentation
 
         /// <summary>A pill chip: a tinted ground at 18 %, a hairline in the tint, the word in the tint.</summary>
         public static RectTransform Chip(string name, Transform parent, string text, Color tint, float width, float height)
+            => Chip(name, parent, text, tint, width, height, false);
+
+        /// <summary>
+        /// The same chip, or its filled form: the tint as the ground and the word in whatever
+        /// reads on it.
+        ///
+        /// <para>The outlined form is a label that happens to be enclosed; the filled form is a
+        /// badge. A roster card wants the second - an archetype in an 18 % wash is chrome, and the
+        /// reference makes it the second most prominent thing on the card after the face. The word
+        /// goes through <see cref="UiTheme.OnColor"/> rather than being hard-coded white, because
+        /// white on this palette's saturated tints runs from 1.43:1 to 3.89:1 and none of those
+        /// are readable; against Ink the same tints run 4.36:1 to 9.95:1.</para>
+        /// </summary>
+        public static RectTransform Chip(string name, Transform parent, string text, Color tint,
+            float width, float height, bool filled)
         {
-            int radius = Mathf.Clamp(Mathf.RoundToInt(height * 0.5f), 4, 16);
-            var rect = Fill(name, parent, new Color(tint.r, tint.g, tint.b, 0.18f), radius);
+            // One short of half the height. UiTheme.Build gives a generated rounded rect a nine-slice
+            // border of radius+1 per side, so a radius of exactly half the height produces borders two
+            // pixels wider than the rect it is slicing and the pill bulges. This is the widest radius
+            // that still leaves a stretchable centre, which is what makes a true capsule.
+            int radius = Mathf.Clamp(Mathf.RoundToInt(Mathf.Min(height, width) * 0.5f) - 1, 4, 31);
+            var ground = filled ? tint : new Color(tint.r, tint.g, tint.b, 0.18f);
+            var rect = Fill(name, parent, ground, radius);
             rect.sizeDelta = new Vector2(width, height);
-            UiTheme.AddBorder(rect, radius, new Color(tint.r, tint.g, tint.b, 0.8f));
-            var label = Label("Word", rect, Mathf.Max(10f, height * 0.5f), tint, TextAlignmentOptions.Center);
+            UiTheme.AddBorder(rect, radius, filled
+                ? new Color(tint.r, tint.g, tint.b, 0f)
+                : new Color(tint.r, tint.g, tint.b, 0.8f));
+            var word = filled ? UiTheme.OnColor(tint) : tint;
+            var label = Label("Word", rect, Mathf.Max(10f, height * 0.5f), word, TextAlignmentOptions.Center);
             label.text = text;
             var font = UiTheme.Font(UiTheme.Weight.Medium);
             if (font != null) label.font = font;

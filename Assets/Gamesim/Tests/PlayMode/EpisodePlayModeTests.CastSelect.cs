@@ -32,6 +32,46 @@ namespace Gamesim.Tests.PlayMode
                     && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(label => label.text == caption))
                 .ToArray();
 
+        /// <summary>
+        /// Photographs the cast screen so its quality can be judged from a frame.
+        ///
+        /// <para>Every other check on this screen asks whether a control exists and does the right
+        /// thing when pressed, which is why a screen can pass all of them and still be reported as
+        /// low quality. None of them can see a ring that is the wrong colour, a card carrying five
+        /// lines where the reference carries two, or a 1180-wide column of content adrift in a
+        /// 1920-wide frame.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_CapturesTheScreenForReview()
+        {
+            if (!Application.isBatchMode) yield break;
+            yield return OpenCastScreen();
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+            Assert.That(CastScreen(), Is.Not.Null);
+            Assert.That(CastScreen().IsShowing, Is.True, "There is nothing to photograph if it never opened.");
+
+            // Wait for the faces. The cards carry a RawImage that CastSelect.Update fills from
+            // CharacterPortraits as each render lands, so a frame taken on open photographs twelve
+            // empty discs and reads as proof the screen has no portraits - which is exactly the
+            // wrong conclusion to draw about the thing being judged.
+            RawImage[] Faces() => CastScreen().GetComponentsInChildren<RawImage>(true)
+                .Where(image => image.name == "Model portrait").ToArray();
+            int wanted = Faces().Length;
+            float deadline = Time.realtimeSinceStartup + 25f;
+            while (Time.realtimeSinceStartup < deadline
+                   && Faces().Count(image => image.texture != null) < wanted)
+                yield return null;
+            int landed = Faces().Count(image => image.texture != null);
+            Debug.Log("[Gamesim] Cast screen - " + landed + " of " + wanted + " portraits rendered before capture.");
+
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+            yield return CaptureFraming("cast-select");
+            CastScreen().Dismiss();
+            yield return null;
+        }
+
         private IEnumerator OpenCastScreen()
         {
             director.OpenSettings();

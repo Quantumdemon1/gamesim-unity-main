@@ -43,6 +43,31 @@ namespace Gamesim.Presentation
         // and its glow are the cyan every panel edge carries; the rest are colours by meaning.
         public static readonly Color Background = Hex("0B1220");
         public static readonly Color GlassFill = Hex("0B1220D9");
+        /// <summary>
+        /// The ground a card in a grid sits on, a lift above the night rather than the night again.
+        ///
+        /// <para>A cast card was <see cref="GlassFill"/> on a scrim of <see cref="Background"/> at
+        /// 0.97 - the same hex, under one percent apart - so twelve cards were twelve hairlines
+        /// around nothing. The reference draws the ground at #00101F and the cards at #07182B,
+        /// a lift of about eight parts on every channel.</para>
+        ///
+        /// <para>This goes further than the reference does. Its own card-to-ground lift is 1.074:1,
+        /// and a first attempt at matching it came out at 1.080:1 - which the contrast guard
+        /// rejected, correctly: the reference can afford a lift that small because every card also
+        /// carries a visible border inside a lighter container, and at 1.08 on this palette the card
+        /// is still doing none of the work. 1.21:1 is a card you can see is a card.</para>
+        /// </summary>
+        public static readonly Color CardFill = Hex("1A2438F2");
+        /// <summary>
+        /// The ring a portrait wears in a roster.
+        ///
+        /// <para>Warm, because the reference rings every face in bronze and that is most of what
+        /// makes them read as portraits rather than as avatars. Deliberately NOT <see cref="Gold"/>:
+        /// gold is power here - the crown, the veto, the win - and gilding twelve rings at once
+        /// would spend it on nothing. It clears Gold by 55/255 and Joke by 55/255, and
+        /// <c>GoldIsNotNearlyTheColourOfAnythingThatIsNotPower</c> guards that.</para>
+        /// </summary>
+        public static readonly Color Brass = Hex("C89B54");
         public static readonly Color Hairline = Hex("3AA0FFC0");
         public static readonly Color Glow = Hex("5CC8FF");
         public static readonly Color Flirt = Hex("FF4FA3");     // flirt, playful

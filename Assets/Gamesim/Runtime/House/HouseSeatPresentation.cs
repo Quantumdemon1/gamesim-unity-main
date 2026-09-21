@@ -18,6 +18,9 @@ namespace Gamesim.House
         private static readonly RaycastHit[] pickHits = new RaycastHit[32];
         private Vector3 origin,anchorPosition,anchorContact,appliedOffset,lastWritten,baseLocalPosition;
         private Quaternion baseLocalRotation,startRotation;
+
+        /// <summary>The half-turn the authored seated clips need to face the way the anchor says.</summary>
+        private const float SeatedClipHalfTurn = 180f;
         private float began,nextScan,anchorFacing;
         private bool wasSeated;
         private bool exiting;
@@ -96,7 +99,23 @@ namespace Gamesim.House
                         if(bone.name=="Head" || bone.name=="Head pivot"){head=bone;break;}
             }
             float blend=character.ReducedMotion ? 1f : Mathf.SmoothStep(0,1,(Time.unscaledTime-began)/.75f);
-            body.rotation=Quaternion.Slerp(startRotation,Quaternion.Euler(0,anchor.Facing,0),blend);
+            // Half a turn, because the seated clips are authored facing the other way.
+            //
+            // Everything that could be measured about this shot was already correct - the root faced
+            // the camera to within 0.1 degrees, the body sat 0.05 m from the seat on the cushion,
+            // the animator was genuinely in a 4.30 s SitIdle - and the diary confessional still
+            // framed the back of the player's head for the whole visit. Five explanations were
+            // checked and killed before the frame was simply rendered and looked at: the chair mesh
+            // (correct, by its own export docstring), the anchor convention (the same rule every
+            // other seat uses), the camera side (in front), the Seated parameter (declared), the
+            // sit clips (present, playing). What is left is inside the clip, where no transform can
+            // see it, so it is corrected where seated facing is applied.
+            //
+            // Through baseLocalRotation rather than over it, as well: this line used to set the
+            // WORLD rotation and discard the base for the whole time somebody was sitting - the
+            // value captured two methods up and carefully restored on the way out.
+            body.rotation=Quaternion.Slerp(startRotation,
+                Quaternion.Euler(0,anchor.Facing+SeatedClipHalfTurn,0)*baseLocalRotation,blend);
             Vector3 offset=anchor.Position-transform.position;
             if(hips!=null && Time.unscaledTime-began>.45f)
             {

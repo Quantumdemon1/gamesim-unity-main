@@ -83,6 +83,65 @@ namespace Gamesim.Tests.PlayMode
                     "The cast's controller has no Seated parameter, so no chair in the house can pose a body.");
                 Assert.That(animator.GetBool("Seated"), Is.True,
                     "The body is in the chair and the animator does not know it, so it is playing a standing pose.");
+
+                // The POSE's rotation, not the transform's. This is the assertion that had to exist:
+                // the root faced the camera to within 0.1 degrees while the rendered body faced the
+                // chair back, because the half-turn lives inside the seated clip where no transform
+                // can see it. Animator.bodyRotation is the avatar's own orientation and does see it.
+                if (animator.isHuman)
+                {
+                    var posed = animator.bodyRotation * Vector3.forward; posed.y = 0f;
+                    float poseAway = Vector3.Angle(posed, toCamera);
+                    Debug.Log("[Gamesim] Diary pose facing - " + poseAway.ToString("0.0")
+                        + " degrees off the camera (root reads " + away.ToString("0.0") + ").");
+                    Assert.That(poseAway, Is.LessThan(90f),
+                        "The posed body is " + poseAway.ToString("0") + " degrees off the diary camera while "
+                        + "its transform reads " + away.ToString("0") + ". That gap is the whole bug: the shot "
+                        + "frames the back of the sitter's head and every transform-level number says it is fine.");
+                }
+            }
+            // Every number above says this shot is correct, and it was reported as visibly wrong.
+            // Two measurements in this area have already measured the wrong object - the controller
+            // instead of the rendered body, and the root instead of the mesh - so this photographs
+            // the actual frame rather than describing it.
+            // Wait for the diary shot to actually land. Settling the SEAT is not the same thing as
+            // the camera arriving, and without this the capture came back as the dollhouse overview
+            // - which is why every number above looked clean: they described a frame that was not
+            // the diary.
+            float shotDeadline = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < shotDeadline
+                   && !(cameraRig.HasShot && cameraRig.HasArrived(.1f) && !cameraRig.IsTravelling))
+                yield return null;
+            Assert.That(cameraRig.HasShot, Is.True, "The diary is open and the camera never took its shot.");
+            yield return null;
+
+            var shot = cameraRig != null ? cameraRig.ViewCamera : null;
+            if (shot != null)
+            {
+                const int w = 1280, h = 720;
+                var target = new RenderTexture(w, h, 24);
+                var readback = new Texture2D(w, h, TextureFormat.RGB24, false);
+                var previousTarget = shot.targetTexture;
+                var previousActive = RenderTexture.active;
+                try
+                {
+                    shot.targetTexture = target;
+                    shot.Render();
+                    RenderTexture.active = target;
+                    readback.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+                    readback.Apply();
+                    var path = System.IO.Path.GetFullPath(
+                        System.IO.Path.Combine(Application.dataPath, "..", "diary-seat.png"));
+                    System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
+                    Debug.Log("[Gamesim] Diary shot captured -> " + path);
+                }
+                finally
+                {
+                    RenderTexture.active = previousActive;
+                    shot.targetTexture = previousTarget;
+                    Object.DestroyImmediate(readback);
+                    Object.DestroyImmediate(target);
+                }
             }
             yield return null;
         }

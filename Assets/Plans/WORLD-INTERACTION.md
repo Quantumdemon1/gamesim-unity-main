@@ -254,10 +254,30 @@ committed today by a captioned button, and those captions are what the tests and
 hold. A game that needs a mouse to nominate somebody is a worse game than one that takes both.
 
 ### Stage 5 — sitting, cheapest correct first (M, then L)
-1. **Author the real cushion heights.** They are known from the Blender sources and currently
-   ignored. This is arithmetic, not animation.
-2. **Make `seatHeight` survive prop scaling** — the anchor is metric by design while the prop is
-   scaled to a target height, and nothing reconciles them.
+1. **Author the real cushion heights — measured, and one of the three numbers in this plan was
+   wrong.** They are now read off the placed meshes rather than derived from the source files, by
+   histogramming each prop's vertices by height above its own anchor.
+
+   | prop | anchor says | measured cushion | verdict |
+   |---|---|---|---|
+   | `bb_set_ph_diningchair` | 0.46 | **0.45** — 0.44–0.46 holds 21 of the 31 verts under the sitter | right to within a centimetre; leave it |
+   | `bb_set_diarychair` | 0.46 | **0.42** — 36 verts in one flat band, 0.68 is the arm ledge | 4 cm too high, exactly as recorded |
+   | `bb_set_lounger` | 0.36 | bands at **0.33 / 0.36 / 0.39 / 0.44** | a slope, not a height |
+
+   Section 1 of this plan says the dining cushion lands at 0.413 m against an anchor insisting on
+   0.460. That was arithmetic from the source model's native height; measured on the placed chair it
+   is 0.45, and the anchor is very nearly right. The diary chair is the real error and the plan had
+   it exactly: the sitter is told to float 4 cm above the velvet. The lounger is not a cushion height
+   at all — it is an inclined surface, so one number can only ever mean where the pelvis rests, and
+   0.36 is a defensible choice rather than a wrong one.
+
+   **None of this changes anything on screen yet**, which is the reason to do it first: step 3 is
+   what makes `seatHeight` load-bearing, and it should land on numbers that are already true rather
+   than drag a correction along with it.
+2. **`seatHeight` already survives prop scaling; this item can be struck.**
+   `HouseInteractionAnchor.Create` sets the anchor's local scale to the inverse of the prop's
+   `lossyScale`, so `SeatContact` is metres above the anchor in world units whatever the prop was
+   scaled to. Checked against the placed chairs: each anchor reports exactly the height it is given.
 3. **Resolve the pelvis without a Humanoid avatar.** The Quaternius rig exposes named bones, so a
    name-based lookup makes the existing fit work on the pipeline that actually ships, with the
    `isHuman` path preferred where available. This turns `SeatContact` from dead code into the thing

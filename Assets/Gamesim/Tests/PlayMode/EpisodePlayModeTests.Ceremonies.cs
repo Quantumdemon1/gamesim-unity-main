@@ -67,6 +67,14 @@ namespace Gamesim.Tests.PlayMode
                 // problem. Wait on the alpha itself.
                 for (int frame = 0; frame < 25; frame++) yield return null;
                 yield return SettleCeremonyCards();
+                // A settle that gave up settled nothing, and every assertion below it is then about
+                // a card that may already have come and gone. Say so here rather than let it
+                // surface as a card that "should be playing" a few lines later.
+                Assert.That(settleExit, Is.EqualTo("settled"),
+                    "The ceremony cards never stopped fading: the settle " + settleExit + " after "
+                    + settleFrames + " frames and " + settleSeconds.ToString("F1") + " s, still held "
+                    + "by [" + settleHolders + "]. Whatever is named there is parked mid-fade, and "
+                    + "the " + committed.kind + " beat below was read after the fact.");
 
                 if (committed.kind == CeremonySting.NominationKind)
                 {
@@ -113,9 +121,11 @@ namespace Gamesim.Tests.PlayMode
                     // it happened to — but for this one beat the thing a player sees is the reveal.
                     var reveal = SceneComponents<VoteReveal>().FirstOrDefault();
                     Assert.That(reveal, Is.Not.Null, "The episode should stage a vote reveal at startup.");
-                    Assert.That(reveal.IsPlaying, Is.True, "The eviction beat should play the vote reveal.");
+                    Assert.That(reveal.IsPlaying, Is.True,
+                        "The eviction beat should play the vote reveal." + CeremonyDiagnosis(after, known, reveal));
                     Assert.That(reveal.ShowingResult, Is.True,
-                        "The reveal should have reached its result by the time the cards have settled.");
+                        "The reveal should have reached its result by the time the cards have settled."
+                        + CeremonyDiagnosis(after, known, reveal));
 
                     var evicted = after.contestants.FirstOrDefault(actor =>
                         actor.status != ContestantStatus.Active
@@ -152,20 +162,50 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Waits until every ceremony card that is playing has finished fading in.
+        /// How the last <see cref="SettleCeremonyCards"/> ended, so an assertion that fails after it
+        /// can say whether the cards it was about had settled at all. A settle that gave up and an
+        /// assertion that then fails three lines later are the same defect reported at the wrong
+        /// place, and that is how a stranded canvas alpha spent months being blamed on the vote
+        /// reveal.
+        /// </summary>
+        private static string settleExit = "not run";
+        private static int settleFrames;
+        private static float settleSeconds;
+        private static string settleHolders = "";
+
+        /// <summary>
+        /// Waits until every ceremony card that is still playing has finished fading.
         ///
-        /// <para>Bounded, and it gives up rather than failing: a card that is already past its hold
-        /// is a real thing to photograph, and blocking forever on one would turn a timing quirk into
-        /// a hung suite.</para>
+        /// <para>Two rules, both learned from a failure. Only a card that is still running its own
+        /// timer can hold this: a card that has retired may leave a residual alpha on its canvas,
+        /// and a finished card's leftovers must never be mistaken for a fade in progress. And the
+        /// budget is in SECONDS, not frames - the cards fade on unscaled time while a batchmode
+        /// frame is a fraction of a millisecond, so a frame budget is a stopwatch that runs at a
+        /// different speed on every machine: six thousand frames was twelve seconds on one run here
+        /// and under three on another, and the vote reveal alone needs five.</para>
+        ///
+        /// <para>It still gives up rather than failing - a card past its hold is a real thing to
+        /// photograph, and blocking forever would turn a timing quirk into a hung suite - but the
+        /// caller now checks that it did not have to.</para>
         /// </summary>
         private static IEnumerator SettleCeremonyCards()
         {
-            // Generous, because the vote reveal is narrated over several seconds of unscaled time
-            // and a batchmode frame is a couple of milliseconds. Bounded all the same: a card stuck
-            // half-open should photograph badly, not hang the suite.
-            const int limit = 6000;
-            for (int frame = 0; frame < limit; frame++)
+            const float limitSeconds = 20f;
+            const int frameCap = 200000;      // a backstop in case the clock itself stalls
+            float until = Time.unscaledTime + limitSeconds;
+            float startedAt = Time.unscaledTime;
+
+            settleExit = "gave up";
+            settleFrames = 0;
+            settleSeconds = 0f;
+            settleHolders = "";
+            var holding = new List<string>();
+
+            for (int frame = 0; frame < frameCap; frame++)
             {
+                settleFrames = frame;
+                settleSeconds = Time.unscaledTime - startedAt;
+                holding.Clear();
                 bool waiting = false;
                 foreach (var group in Object.FindObjectsByType<CanvasGroup>(
                              FindObjectsInactive.Exclude, FindObjectsSortMode.None))
@@ -173,20 +213,66 @@ namespace Gamesim.Tests.PlayMode
                     // The reveal is worth photographing at its payoff, not mid-tally: a frame of
                     // "Revealing vote 2 of 5" says less about the screen than the result does.
                     var reveal = group.GetComponent<VoteReveal>();
-                    if (reveal != null && reveal.IsPlaying && !reveal.ShowingResult) { waiting = true; continue; }
+                    if (reveal != null && reveal.IsPlaying && !reveal.ShowingResult)
+                    {
+                        waiting = true;
+                        holding.Add("the vote reveal, mid-tally");
+                        continue;
+                    }
 
                     var keys = group.GetComponent<KeyCeremony>();
-                    if (keys != null && keys.IsPlaying && !keys.ShowingBlock) { waiting = true; continue; }
+                    if (keys != null && keys.IsPlaying && !keys.ShowingBlock)
+                    {
+                        waiting = true;
+                        holding.Add("the key ceremony, before the block");
+                        continue;
+                    }
 
-                    if (reveal == null && keys == null
-                        && group.GetComponent<CeremonySting>() == null
-                        && group.GetComponent<CompetitionResult>() == null
-                        && group.GetComponent<CeremonyTakeover>() == null) continue;
-                    if (group.alpha > 0.02f && group.alpha < 0.99f) waiting = true;
+                    var card = group.GetComponent<CeremonySting>();
+                    var competition = group.GetComponent<CompetitionResult>();
+                    var takeover = group.GetComponent<CeremonyTakeover>();
+                    if (reveal == null && keys == null && card == null
+                        && competition == null && takeover == null) continue;
+
+                    // Retired cards do not count, whatever they left on their canvas.
+                    bool stillPlaying = reveal != null && reveal.IsPlaying
+                        || keys != null && keys.IsPlaying
+                        || card != null && card.IsPlaying
+                        || competition != null && competition.IsPlaying
+                        || takeover != null && takeover.IsPlaying;
+                    if (!stillPlaying) continue;
+
+                    if (group.alpha > 0.02f && group.alpha < 0.99f)
+                    {
+                        waiting = true;
+                        holding.Add(group.gameObject.name + " at alpha " + group.alpha.ToString("F2"));
+                    }
                 }
-                if (!waiting) yield break;
+                if (!waiting) { settleExit = "settled"; yield break; }
+                settleHolders = string.Join(" + ", holding);
+                if (Time.unscaledTime >= until) yield break;
                 yield return null;
             }
+        }
+
+        /// <summary>
+        /// Why a ceremony beat may not have had its card on screen when it was asked for: what the
+        /// commit contained, what the reveal made of it, and whether the cards settled at all.
+        /// </summary>
+        private string CeremonyDiagnosis(EpisodeState after, int known, VoteReveal reveal)
+        {
+            var kinds = string.Join(", ", after.events.Skip(known).Select(e => e.kind));
+            var group = reveal == null ? null : reveal.GetComponent<CanvasGroup>();
+            return " · the commit carried [" + kinds + "]"
+                + " · block " + (after.nominees == null ? 0 : after.nominees.Count)
+                + ", ballots " + (after.votes == null ? 0 : after.votes.Count)
+                + " · the reveal is playing " + (reveal != null && reveal.IsPlaying)
+                + ", showing its result " + (reveal != null && reveal.ShowingResult)
+                + ", at alpha " + (group == null ? "none" : group.alpha.ToString("F3"))
+                + " · the settle " + settleExit + " after " + settleFrames + " frames and "
+                + settleSeconds.ToString("F1") + " s, still held by [" + settleHolders + "]"
+                + " · a reveal that never played means VoteReveal.Play declined the shape: it needs "
+                + "a block of exactly two and at least one ballot.";
         }
 
         /// <summary>

@@ -31,19 +31,27 @@ namespace Gamesim.Simulation
             Require(players.Any(contestant => contestant.isPlayer), "Only an eligible player can choose this simulation mode.");
             // Source weighted arithmetic and raw fast-forward caller bonus. The category cycle and
             // persisted RNG are the existing native scenario adapter, not original full-run replay.
-            string category = s.week % 3 == 1 ? "Skill" : s.week % 3 == 2 ? "Mental" : "Endurance";
-            double playerBonus = WebStudyHouse.FastForwardCompetitionBonus(s.phaseEventCompBonus, s.playerStudyBonus);
+            string category = CompetitionCategory(s);
+            double playerBonus = s.competitionRulesVersion >= 3 ? CommonCompetitionBonus(s)
+                : WebStudyHouse.FastForwardCompetitionBonus(s.phaseEventCompBonus, s.playerStudyBonus);
             s.competitionScores.Clear();
+            string numericExplanation = null;
             foreach (var contestant in players)
             {
+                double roll = Roll(s);
                 double score = WebRules.WeightedCompetitionScore(contestant.stats, category,
-                    s.nominees.Contains(contestant.id), contestant.isPlayer ? playerBonus : 0, Roll(s), 0);
+                    s.nominees.Contains(contestant.id), contestant.isPlayer ? playerBonus : 0, roll, 0);
                 s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
+                if (s.competitionRulesVersion >= 3 && contestant.isPlayer)
+                    numericExplanation = WeightedCompetitionExplanation(s, contestant, category, 0, true, roll, score);
             }
             string winner = s.competitionScores.OrderByDescending(item => item.score).First().contestantId;
             if (s.phase == EpisodePhase.HoH) { s.hohId = winner; s.Find(winner).hohWins++; }
             else { s.vetoHolderId = winner; s.Find(winner).vetoWins++; }
             s.competitionResolved = true;
+            LogCompetitionDefinition(s);
+            LogCompetitionStandings(s);
+            LogCompetitionInput(s, 0, true, numericExplanation);
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + " (simulated).");
         }
     }

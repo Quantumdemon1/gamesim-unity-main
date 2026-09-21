@@ -73,7 +73,8 @@ namespace Gamesim.Episode
                     EnterRecoveryLock();
                     failure = "SAVE NEEDS ATTENTION: the primary is unreadable or differs from both the current session and prepared decision. Existing files were retained; reload or recover before continuing.";
                 }
-                else failure = "SAVE NEEDS ATTENTION: " + error.Message + " The decision was not committed. Your current session is unchanged; retry Save or reload.";
+                else failure = "SAVE NEEDS ATTENTION: " + SaveJson.Explain(error) + " The decision was not committed."
+                    + " Your current session is unchanged; retry Save or reload.";
                 return false;
             }
             finally { durableCommitInProgress = false; }

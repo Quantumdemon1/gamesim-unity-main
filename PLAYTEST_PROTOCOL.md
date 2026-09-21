@@ -4,7 +4,9 @@ Section E is the only part of the acceptance matrix that cannot be automated. Th
 vague. These five criteria are judgements, but they are judgements about specific things, and a
 session run to this protocol produces evidence a later session can be compared against.
 
-Everything else in `ACCEPTANCE_MATRIX.md` passes. This is what remains.
+The schema-13 review candidate is undergoing fresh automated, rendered and performance
+verification. Historical passes in `ACCEPTANCE_MATRIX.md` do not certify it. Run this protocol only
+against the new candidate identified by its executable hash, build report and source manifest.
 
 ## The camera default is 24, and now actually is
 

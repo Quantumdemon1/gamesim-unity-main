@@ -31,8 +31,8 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void AFreshSeasonIsWrittenAtTheCurrentSchema()
         {
-            Assert.That(ContentCatalog.Create(11u).schemaVersion, Is.EqualTo(12));
-            Assert.That(SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u).schemaVersion, Is.EqualTo(12));
+            Assert.That(ContentCatalog.Create(11u).schemaVersion, Is.EqualTo(13));
+            Assert.That(SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u).schemaVersion, Is.EqualTo(13));
         }
 
         [Test]
@@ -176,8 +176,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 7").And.Contain("schema 12 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(12), "A load runs the whole chain, not one step.");
+            Assert.That(message, Does.Contain("Schema 7").And.Contain("schema 13 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(13), "A load runs the whole chain, not one step.");
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
                 "Loading must not rewrite the file.");
 
@@ -185,7 +185,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(originalBytes),
                 "The pre-migration bytes are kept as the backup.");
             Assert.That(files.Store.TryLoad(out var again, out message), Is.True, message);
-            Assert.That(again.schemaVersion, Is.EqualTo(12));
+            Assert.That(again.schemaVersion, Is.EqualTo(13));
             Assert.That(JToken.DeepEquals(Capture(loaded), Capture(again)), Is.True);
         }
 

@@ -26,7 +26,7 @@ namespace Gamesim.Episode
         /// </summary>
         public void OfferTutorial()
         {
-            if (tutorial == null || Application.isBatchMode || HouseTutorial.Seen) return;
+            if (tutorial == null || Application.isBatchMode || tutorial.HasSeen) return;
             tutorial.Show(FindChrome);
         }
 

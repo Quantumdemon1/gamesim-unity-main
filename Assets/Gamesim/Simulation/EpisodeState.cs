@@ -47,6 +47,8 @@ namespace Gamesim.Simulation
         // a season built before the creator existed has neither, and every surface omits the line
         // rather than printing a blank one.
         public string hometown, bio;
+        public string sourceTemplateId;
+        public CharacterAppearance appearance;
         public int age;
         public string mood = "Neutral", stressLevel = "Normal";
         public bool isPlayer;
@@ -60,6 +62,7 @@ namespace Gamesim.Simulation
             var copy = (ContestantState)MemberwiseClone();
             copy.stats = stats.Clone(); copy.traits = new List<string>(traits);
             copy.nominationWeeks = new List<int>(nominationWeeks);
+            copy.appearance = appearance?.Clone();
             return copy;
         }
     }
@@ -191,7 +194,8 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 12;
+        public int schemaVersion = 13;
+        public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;

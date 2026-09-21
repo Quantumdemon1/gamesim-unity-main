@@ -10,7 +10,7 @@ namespace Gamesim.Persistence
         public static void Validate(EpisodeState state)
         {
             if (!EpisodeValidation.TryValidate(state, out var reason)) throw new InvalidDataException(reason);
-            Require(state.schemaVersion == 12, "Unsupported simulation schema version.");
+            Require(state.schemaVersion == 13, "Unsupported simulation schema version.");
             Require(state.sessionId != null && state.sessionId.Length <= 256, "Session identifier is too long.");
             Require(state.week <= 10000 && state.promises.Count <= 10000 && state.alliances.Count <= 1000
                 && state.memories.Count <= 100000 && state.events.Count <= 100000

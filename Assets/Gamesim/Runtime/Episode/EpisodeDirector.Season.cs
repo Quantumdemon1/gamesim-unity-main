@@ -48,7 +48,10 @@ namespace Gamesim.Episode
         private void Settings(EpisodeState state)
         {
             hud.PanelTitle(blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", "Offline play is available. No credentials or online connection are required.");
-            hud.Paragraph("Slot: " + saves.SavePath);
+            // The slot's name, not its path: this panel used to print the full file path,
+            // which on Windows contains the player's user name, and which they can do
+            // nothing with. The name is the part that tells one slot from another.
+            hud.Paragraph("Slot: " + Path.GetFileNameWithoutExtension(saves.SavePath));
             hud.Paragraph(message);
             hud.Action("Save now  [F5]", SaveNow);
             hud.Action("Reload current slot", LoadNow);
@@ -62,8 +65,9 @@ namespace Gamesim.Episode
             hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
-            hud.Action(largeText ? "Use standard text" : "Use larger text", () => { largeText = !largeText; ApplyPreferences(); Render(); });
+            hud.Action(largeText ? "Use standard text" : "Use larger text", () => SetLargeText(!largeText));
             DisplaySettings();
+            CareerSettings();
             hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
             hud.Heading("Import a supported web save");
             hud.Paragraph("Supports receipt-free, six-active-cast social snapshots. Complex in-progress web saves are rejected and archived unchanged, never silently simplified.");
@@ -122,7 +126,7 @@ namespace Gamesim.Episode
             if (cameraRig != null) cameraRig.ControlsEnabled = false;
             bool canContinue = saves != null && (File.Exists(saves.SavePath) || File.Exists(saves.BackupPath));
             mainMenu.Show(canContinue, blockedRecovery ? message : null,
-                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame);
+                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame, CareerLine());
             Render();
         }
 
@@ -175,7 +179,11 @@ namespace Gamesim.Episode
             if (fromMenu) mainMenu.Hide();
             Action back = fromMenu ? (Action)OpenMainMenu : Render;
             castSelect.Show(StartSeason, back, characterCreator == null ? (Action<SeasonBuilder.Choice, CharacterDraft>)null
-                : (choice, draft) => characterCreator.Show(choice, draft, StartSeason, castSelect.Resume));
+                : (choice, draft) => characterCreator.Show(choice, draft, StartSeason, () =>
+                {
+                    castSelect.SetDraft(characterCreator.Draft);
+                    castSelect.Resume();
+                }));
         }
 
         /// <summary>
@@ -191,6 +199,8 @@ namespace Gamesim.Episode
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
                 var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
+                fresh.competitionRulesVersion = 3;
+                CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.
                 saves = nextStore; Install(fresh);
@@ -198,7 +208,12 @@ namespace Gamesim.Episode
                 message = SeasonMessage(fresh, choice);
             }
             catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
-            { message = "New season could not be saved. Your current session and slot were preserved. " + error.Message; }
+            {
+                message = "New season could not be saved. Your current session and slot were preserved. "
+                    + SaveJson.Explain(error);
+                if (choice?.Authored != null && characterCreator != null) characterCreator.Resume(message);
+                else if (choice != null && castSelect != null) castSelect.Resume(message);
+            }
             Render();
         }
 
@@ -230,7 +245,8 @@ namespace Gamesim.Episode
                 }
                 message = result;
             }
-            catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException) { message = "Import did not change your current slot: " + error.Message; }
+            catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
+            { message = "Import did not change your current slot. " + SaveJson.Explain(error); }
             Render();
         }
 
@@ -238,6 +254,8 @@ namespace Gamesim.Episode
         {
             ResetNpcSocialForLoad();
             ClosePanels(); engine = new EpisodeEngine(state); blockedRecovery = false;
+            // A finished season arriving by load, recovery or import is still a finished season.
+            RecordCareer(state);
             // Before the placement loop below, which indexes the anchor arrays by body: the season
             // being installed can hold a different house from the one on screen, and until seasons
             // could differ in size this loop was indexing an array that always happened to match.
@@ -249,6 +267,15 @@ namespace Gamesim.Episode
                     if (housemates[i] != null) housemates[i].transform.SetPositionAndRotation(initialNpcPositions[i], initialNpcRotations[i]);
             if (player.Agent.isOnNavMesh) { player.Agent.Warp(initialPlayerPosition); player.Agent.ResetPath(); }
             Project();
+        }
+
+        public bool LargeText => largeText;
+
+        public void SetLargeText(bool enabled)
+        {
+            largeText = enabled;
+            ApplyPreferences();
+            Render();
         }
 
         private void ApplyPreferences()

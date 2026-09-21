@@ -9,9 +9,10 @@ namespace Gamesim.Editor
     ///
     /// <para>The exporter on the Blender side (<c>ArtSource/tools/bb_export.py</c>) writes metres
     /// with the axis conversion baked in, so the importer takes the file's scale as it is and bakes
-    /// nothing twice. Colliders are never generated: furniture is collider-free by design, and the
-    /// shell and set pieces carry their own <c>_col</c> meshes. Materials are extracted beside the
-    /// model and matched by name, which is what lets a re-export keep the material a scene already
+    /// nothing twice. Colliders are never generated <em>here</em>: the shell and set pieces carry
+    /// their own <c>_col</c> meshes, and everything else is boxed in the scene by
+    /// <c>HouseFurnitureCollision</c> rather than at import. Existing materials beside the
+    /// model are matched by name, which is what lets a re-export keep the material a scene already
     /// references.</para>
     ///
     /// <para>Anything under <c>Characters/</c>, <c>Wardrobe/</c> or <c>Animation/</c> imports as a
@@ -23,6 +24,9 @@ namespace Gamesim.Editor
         public const string Root = "Assets/Gamesim/Art/Authored/";
         private const string LoopSuffix = "_loop";
         public const string ColliderSuffix = "_col";
+
+        // Reimport authored models after replacing Unity's obsolete External material mode.
+        public override uint GetVersion() => 2;
 
         public static bool IsAuthored(string path) => path != null && path.StartsWith(Root, StringComparison.Ordinal);
 
@@ -41,13 +45,48 @@ namespace Gamesim.Editor
         public static bool IsGenericAnimation(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Animation/Generic/", StringComparison.Ordinal);
 
+        /// <summary>
+        /// Clips for the UMA cast, which is Humanoid: mocap takes retargeted onto whatever body UMA
+        /// builds. One take a file, and the file says which take it is - <c>bb_anim_SitTalk_loop.fbx</c>
+        /// carries <c>SitTalk_loop</c> - because a mocap library names every clip after the service
+        /// that made it and a controller cannot wire twelve clips all called the same thing.
+        /// </summary>
+        public static bool IsHumanoidAnimation(string path) => IsAuthored(path)
+            && path.StartsWith(Root + "Animation/Humanoid/", StringComparison.Ordinal);
+
+        /// <summary>The take a Humanoid clip file carries, from its name; empty for anything else.</summary>
+        public static string HumanoidTake(string path)
+        {
+            if (!IsHumanoidAnimation(path)) return "";
+            string file = System.IO.Path.GetFileNameWithoutExtension(path);
+            return file.StartsWith(AnimationPrefix, StringComparison.Ordinal) ? file.Substring(AnimationPrefix.Length) : file;
+        }
+
+        public const string AnimationPrefix = "bb_anim_";
+
+        /// <summary>
+        /// A body authored on the shipped skeleton (<c>ArtSource/characters/bb_char_*.py</c>): the
+        /// same Generic rig as the six bodies, so every clip in the controller plays on it by bone
+        /// path, and readable, because <c>FaceExpression</c> builds its shapes from the mesh.
+        /// </summary>
+        public static bool IsGenericCharacter(string path) => IsAuthored(path)
+            && path.StartsWith(Root + "Characters/Generic/", StringComparison.Ordinal);
+
+        /// <summary>Anything imported as a Generic rig rather than Humanoid: the clips and the bodies on that rig.</summary>
+        public static bool IsGeneric(string path) => IsGenericAnimation(path) || IsGenericCharacter(path);
+
         public static bool IsTexture(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Textures/", StringComparison.Ordinal);
+        /// <summary>A map that is numbers, not colour: metallic/smoothness or occlusion.</summary>
+        public static bool IsDataMap(string path) => path.EndsWith("_metallic.png", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("_occlusion.png", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// A baked texture (bb_bake.py) is one of a pair: <c>*_albedo.png</c> is colour and imports
         /// as sRGB, <c>*_normal.png</c> is a tangent normal and imports as a normal map, never as
         /// colour. Both repeat, because they are floor and wall tiles, and both keep their mips.
+        /// A Poly Haven piece (bb_polyhaven.py) adds <c>*_metallic.png</c> (smoothness in alpha) and
+        /// <c>*_occlusion.png</c>, which are data too and import linear.
         /// </summary>
         private void OnPreprocessTexture()
         {
@@ -55,7 +94,12 @@ namespace Gamesim.Editor
             var importer = (TextureImporter)assetImporter;
             bool normal = assetPath.EndsWith("_normal.png", StringComparison.OrdinalIgnoreCase);
             importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
-            importer.sRGBTexture = !normal;
+            // A flat map, always. A hand-written .meta copied from another asset can carry a cube
+            // shape, and a texture twice as tall as it is wide then imports as a Cubemap: the file
+            // is fine, the importer is there, and every LoadAssetAtPath<Texture2D> for it returns
+            // null, which is a confusing way to lose a plant's leaves.
+            importer.textureShape = TextureImporterShape.Texture2D;
+            importer.sRGBTexture = !normal && !IsDataMap(assetPath);
             importer.wrapMode = UnityEngine.TextureWrapMode.Repeat;
             importer.mipmapEnabled = true;
             importer.maxTextureSize = 2048;
@@ -71,7 +115,7 @@ namespace Gamesim.Editor
             importer.useFileScale = true;
             importer.useFileUnits = true;
             importer.bakeAxisConversion = true;
-            importer.isReadable = false;
+            importer.isReadable = IsGenericCharacter(assetPath);   // a body's face is built from its mesh
             importer.addCollider = false;
             importer.importBlendShapes = true;
             importer.importVisibility = false;
@@ -80,10 +124,37 @@ namespace Gamesim.Editor
             importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
             importer.materialName = ModelImporterMaterialName.BasedOnMaterialName;
             importer.materialSearch = ModelImporterMaterialSearch.Local;
-            importer.materialLocation = ModelImporterMaterialLocation.External;
-            importer.animationType = IsGenericAnimation(assetPath) ? ModelImporterAnimationType.Generic
+            importer.materialLocation = ModelImporterMaterialLocation.InPrefab;
+            // A Humanoid clip is retargeted onto whatever UMA builds, so it is imported against the
+            // rig it was captured on. The take is what is wanted; the actor who performed it is not,
+            // so nothing of their materials comes with it.
+            if (IsHumanoidAnimation(assetPath)) importer.materialImportMode = ModelImporterMaterialImportMode.None;
+            importer.animationType = IsHumanoidAnimation(assetPath) ? ModelImporterAnimationType.Human
+                : IsGeneric(assetPath) ? ModelImporterAnimationType.Generic
                 : IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
             importer.importAnimation = IsAnimation(assetPath);
+            // A prop is lightmapped, and its box-projected UVs tile past 0..1, so the lightmapper
+            // gets a second set of its own. A body is lit by probes and needs none.
+            importer.generateSecondaryUV = !IsRigged(assetPath);
+            // A Generic rig gets no avatar unless asked; the prefab and the six bodies carry one.
+            importer.avatarSetup = IsRigged(assetPath) || IsHumanoidAnimation(assetPath)
+                ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar;
+        }
+
+        /// <summary>
+        /// Keep the shipped material assets (including their textures and hand-tuned water/neon
+        /// settings) instead of creating replacement sub-assets. An explicit importer remap wins;
+        /// otherwise use the same local Materials/name.mat convention as the former External mode.
+        /// A new, unmatched material can safely remain a model sub-asset until an artist extracts it.
+        /// </summary>
+        private UnityEngine.Material OnAssignMaterialModel(UnityEngine.Material material, UnityEngine.Renderer renderer)
+        {
+            if (!IsAuthored(assetPath) || material == null) return null;
+            var identifier = new AssetImporter.SourceAssetIdentifier(typeof(UnityEngine.Material), material.name);
+            if (assetImporter.GetExternalObjectMap().TryGetValue(identifier, out var mapped)
+                && mapped is UnityEngine.Material explicitMaterial) return explicitMaterial;
+            string directory = System.IO.Path.GetDirectoryName(assetPath).Replace('\\', '/');
+            return AssetDatabase.LoadAssetAtPath<UnityEngine.Material>(directory + "/Materials/" + material.name + ".mat");
         }
 
         /// <summary>
@@ -157,11 +228,15 @@ namespace Gamesim.Editor
             if (!IsAnimation(assetPath)) return;
             var importer = (ModelImporter)assetImporter;
             var clips = importer.clipAnimations.Length > 0 ? importer.clipAnimations : importer.defaultClipAnimations;
+            string humanoidTake = HumanoidTake(assetPath);
             foreach (var clip in clips)
             {
                 // A take exported from Blender is named "<armature>|<take>"; the clip is the take.
                 int bar = clip.name.LastIndexOf('|');
                 if (bar >= 0 && bar < clip.name.Length - 1) clip.name = clip.name.Substring(bar + 1);
+                // A mocap take is named after the service that made it, which says nothing. The file
+                // name is the take, so the clip takes the file's name instead.
+                if (humanoidTake.Length > 0) clip.name = humanoidTake;
                 bool loop = clip.name.EndsWith(LoopSuffix, StringComparison.Ordinal);
                 clip.loopTime = loop;
                 clip.loopPose = loop;

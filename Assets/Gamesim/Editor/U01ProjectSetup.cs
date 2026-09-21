@@ -108,6 +108,13 @@ namespace Gamesim.Editor
 
         [MenuItem("Gamesim/Port/Build Windows Desktop")]
         public static void BuildPortDesktop()
+            => BuildConfiguredPort("Builds/Port-Windows-V7/Gamesim.exe", "Logs/Port-v7-build-report.json");
+
+        /// <summary>Review candidate output is separate from the historically pinned V7 build.</summary>
+        public static void BuildReviewCandidate()
+            => BuildConfiguredPort("Builds/Port-Windows-Review13/Gamesim.exe", "Logs/review13-build-report.json");
+
+        private static void BuildConfiguredPort(string outputPath, string reportPath)
         {
             if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode)
                 throw new BuildPlayerWindow.BuildMethodException("Wait for an idle Editor before building the port.");
@@ -126,7 +133,7 @@ namespace Gamesim.Editor
             if (input != null && !preloaded.Contains(input)) { preloaded.Add(input); PlayerSettings.SetPreloadedAssets(preloaded.ToArray()); }
             AssetDatabase.SaveAssets();
             // Keep accepted V6 intact while developing the next activity increment.
-            BuildDesktop("Builds/Port-Windows-V7/Gamesim.exe", "Logs/Port-v7-build-report.json");
+            BuildDesktop(outputPath, reportPath);
         }
 
         [Serializable]

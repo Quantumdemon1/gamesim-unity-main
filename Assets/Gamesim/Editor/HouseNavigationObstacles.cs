@@ -146,8 +146,11 @@ namespace Gamesim.Editor
             if (!TryFindSurface(out var surface)) return;
 
             var existing = surface.navMeshData;
-            // What the house can currently do, so the new bake can be compared against it.
-            int before = HouseNavigationAudit.ReachablePairs();
+            // What the house can currently do, so the new bake can be compared against it. Measured
+            // against the committed asset by name rather than against whatever is registered: a bake
+            // leaves registration in a state that depends on what the caller did first, and reading
+            // it loosely once made this guard refuse a mesh that reached every room.
+            int before = HouseNavigationAudit.ReachablePairs(surface, existing);
 
             surface.BuildNavMesh();
             if (surface.navMeshData == null)
@@ -156,12 +159,20 @@ namespace Gamesim.Editor
                 return;
             }
 
-            // A bake that disconnects rooms is worse than a stale one, and this house can produce
-            // exactly that: the committed NavMesh joins the yard to the rest of the house and a
-            // fresh bake of the current geometry does not. Whatever is missing, discovering it by
-            // shipping a house nobody can cross is the wrong way round, so a bake that loses ground
-            // is refused rather than written.
-            int after = HouseNavigationAudit.ReachablePairs();
+            // A bake that disconnects rooms is worse than a stale one, so a bake that loses ground is
+            // refused rather than written. The guard stays because it is the right guard, not
+            // because the house currently fails it.
+            //
+            // This comment used to say that a fresh bake of the current geometry does NOT join the
+            // yard to the rest of the house. That was true when it was written, on 2026-09-18, and
+            // it stopped being true ninety-eight minutes later: 145244e pulled two dividers out of
+            // the doorways they were standing in, and recorded 28 of 28 room pairs from a bake
+            // rather than from the committed asset. The comment was never updated, and a stale
+            // warning that says "do not bake" is expensive - it is why the furniture that ought to
+            // be carved has stayed walkable. Re-checked 2026-09-21: the committed mesh reaches 28 of
+            // 28, and a trial bake of today geometry reaches the same 28. Bake when the geometry
+            // warrants it; this guard is here to catch the day it stops being safe, not to forbid it.
+            int after = HouseNavigationAudit.ReachablePairs(surface, surface.navMeshData);
             if (after < before)
             {
                 surface.navMeshData = existing;

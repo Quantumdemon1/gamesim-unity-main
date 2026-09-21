@@ -6,11 +6,12 @@
 #
 # Overrides: GAMESIM_ACCEPTANCE (the batchmode copy, default D:\GamesimAcceptance) and
 # GAMESIM_UNITY_EDITOR (the editor folder, default derived from ProjectSettings/ProjectVersion.txt).
+param([switch]$WithoutUma)
 $ErrorActionPreference = 'Stop'
 
 $Project    = Split-Path -Parent $PSScriptRoot
 $Acceptance = if ($env:GAMESIM_ACCEPTANCE) { $env:GAMESIM_ACCEPTANCE } else { 'D:\GamesimAcceptance' }
-$Out        = Join-Path $env:LOCALAPPDATA 'Gamesim\offline-compile'
+$Out        = Join-Path $env:LOCALAPPDATA ('Gamesim\offline-compile\' + [Guid]::NewGuid().ToString('N'))
 
 # The acceptance copy's dag is preferred because it has response files for every assembly, including
 # ones created after the last compile on the live project. Sources still come from $Project, so this
@@ -18,12 +19,11 @@ $Out        = Join-Path $env:LOCALAPPDATA 'Gamesim\offline-compile'
 function Find-EditorDag([string] $root) {
     $artifacts = Join-Path $root 'Library\Bee\artifacts'
     if (-not (Test-Path -LiteralPath $artifacts)) { return $null }
-    $dag = Get-ChildItem -LiteralPath $artifacts -Directory -Filter '*E.dag' | Select-Object -First 1
+    $dag = Get-ChildItem -LiteralPath $artifacts -Directory -Filter '*E.dag' | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
     if ($dag) { return $dag.FullName } else { return $null }
 }
 $Dag = Find-EditorDag $Acceptance
-if (-not $Dag) { $Dag = Find-EditorDag $Project }
-if (-not $Dag) { throw "No Bee editor dag under $Acceptance or $Project - open the project in Unity once." }
+if (-not $Dag) { throw "No Bee editor dag under $Acceptance - generate the matching acceptance editor cache first." }
 
 $Version = (Get-Content -LiteralPath (Join-Path $Project 'ProjectSettings\ProjectVersion.txt') |
             Select-String '^m_EditorVersion:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
@@ -50,6 +50,14 @@ $Targets = @(
   @{ Name = 'Gamesim.EditModeTests';     Root = 'Assets\Gamesim\Tests\EditMode'; Recurse = $true  },
   @{ Name = 'Gamesim.Uma.PlayModeTests'; Root = 'Assets\Gamesim\Uma\Tests';      Recurse = $true  }
 )
+if ($WithoutUma) { $Targets = @($Targets | Where-Object { $_.Name -notlike 'Gamesim.Uma*' }) }
+foreach ($target in $Targets) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Dag ($target.Name + '.rsp')))) { throw "Missing required response file: $($target.Name). This is not a complete smoke check." }
+}
+$runtimeResponse = Get-Content -LiteralPath (Join-Path $Dag 'Gamesim.Runtime.rsp')
+if ((@($runtimeResponse | Where-Object { $_ -eq '-define:GAMESIM_UMA' }).Count -gt 0) -eq [bool]$WithoutUma) { throw 'Cached editor response files do not match the requested UMA configuration.' }
+if (@($runtimeResponse | Where-Object { $_ -eq '-define:UNITY_EDITOR' }).Count -eq 0) { throw 'Expected editor response files.' }
+$compiled = @{}
 
 Set-Location -LiteralPath $Project
 Write-Output "dag: $Dag"
@@ -58,21 +66,22 @@ $failed = 0
 foreach ($t in $Targets) {
     $name = $t.Name
     $rsp  = Join-Path $Dag "$name.rsp"
-    if (-not (Test-Path -LiteralPath $rsp)) { Write-Output "SKIP $name (no response file)"; continue }
 
     $lines = [System.Collections.Generic.List[string]](Get-Content -LiteralPath $rsp)
 
     # Redirect output; drop the reference-assembly emit we do not need.
     $kept = [System.Collections.Generic.List[string]]::new()
     foreach ($line in $lines) {
+        if ($line -match '^".+\.cs"$') { continue } # Rebuild the source list, including removals.
         if ($line -like '-refout:*') { continue }
         if ($line -like '-out:*') { $kept.Add('-out:"' + (Join-Path $Out "$name.dll") + '"'); continue }
         # Prefer freshly built dependencies over the stale ones in the Bee artifacts folder.
         if ($line -match '^-r:"Library/Bee/artifacts/[^/]+/(Gamesim\.[A-Za-z.]+)\.ref\.dll"') {
-            $dep = Join-Path $Out ($Matches[1] + '.dll')
-            if (Test-Path -LiteralPath $dep) { $kept.Add('-r:"' + $dep + '"'); continue }
+            $dependency = $Matches[1]
+            if (-not $compiled.ContainsKey($dependency)) { throw "Dependency $dependency was not successfully compiled in this invocation." }
+            $kept.Add('-r:"' + $compiled[$dependency] + '"'); continue
         }
-        $kept.Add($line)
+        $kept.Add($line.Replace('"Library/', '"' + $Acceptance.Replace('\','/') + '/Library/'))
     }
 
     # Add sources created after the response file was written.
@@ -81,9 +90,11 @@ foreach ($t in $Targets) {
         if ($line -match '^"(.+\.cs)"$') { $listed[$Matches[1].Replace('/', '\').ToLowerInvariant()] = $true }
     }
     $root = Join-Path $Project $t.Root
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw "Missing source root for $name." }
     if (Test-Path -LiteralPath $root) {
         $found = if ($t.Recurse) { Get-ChildItem -LiteralPath $root -Recurse -Filter *.cs -File }
                  else { Get-ChildItem -LiteralPath $root -Filter *.cs -File }
+        if (@($found).Count -eq 0) { throw "No current sources for $name." }
         foreach ($f in $found) {
             $rel = $f.FullName.Substring($Project.Length + 1)
             # Gamesim.Uma owns only its top level; Editor/ is a separate assembly.
@@ -99,15 +110,21 @@ foreach ($t in $Targets) {
 
     Write-Output "=== $name ==="
     $result = & $Dotnet exec $Csc /nostdlib /noconfig "@$tmp" 2>&1
-    $errors = $result | Where-Object { $_ -match ': error ' }
+    $compilerExit = $LASTEXITCODE
+    $errors = $result | Where-Object { $_ -match '\berror\s+[A-Z]+[0-9]+:' }
+    if ($compilerExit -ne 0 -and -not $errors) { $errors = @("Compiler exit $compilerExit") + @($result) }
     if ($errors) {
         $failed++
         $errors | Select-Object -First 25 | ForEach-Object { Write-Output "  $_" }
+        throw "Compilation failed for $name; no later assembly may use a stale output."
     } else {
+        $compiled[$name] = Join-Path $Out "$name.dll"
         Write-Output "  OK"
     }
 }
 
 Write-Output ""
 Write-Output "assemblies with errors: $failed"
+Write-Output "Fresh assemblies checked: $($compiled.Count) of $($Targets.Count); output: $Out"
+if ($compiled.Count -ne $Targets.Count -or $compiled.Count -eq 0) { throw 'Incomplete smoke compilation.' }
 if ($failed -gt 0) { exit 1 }

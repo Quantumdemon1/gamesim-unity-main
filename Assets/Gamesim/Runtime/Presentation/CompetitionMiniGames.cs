@@ -3,25 +3,79 @@ using System;
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// The rules behind each competition's minigame.
-    ///
-    /// <para>Every competition in this port plays the same thing: a timing bar, three attempts. The
-    /// simulation has told competitions apart since it was written — <c>WebRules</c> weights a
-    /// houseguest's stats differently for an endurance competition than for a mental one — and the
-    /// player has experienced all of them identically. The reference build routes a different
-    /// minigame per type, which is what makes a mental competition feel mental.</para>
-    ///
-    /// <para>Ported from <c>src/components/mini-games/</c>. Scores are kept on the reference's own
-    /// 0–10 scale so its numbers stay legible against its source, and <see cref="Performance"/>
-    /// converts to the 0–1 the <c>Compete</c> command takes.</para>
-    ///
-    /// <para><b>Nothing here changes the simulation.</b> A minigame produces the same
-    /// <c>performance</c> number the timing bar already produced, and the engine weighs it the same
-    /// way — so this cannot alter a seeded season, and a save written before it loads unchanged.
-    /// </para>
+    /// Versioned minigame rules on a 0-10 score scale, adapted to Compete's 0-1 performance.
+    /// The original overloads preserve web parity for existing seasons. New seasons explicitly
+    /// select version 3; version 2 introduced effort/recovery and monotonic memory scoring,
+    /// while version 3 gives reaction targets a fixed schedule and equal pointer error rules.
+    /// All cosmetic randomness belongs to the attempt and never advances the season generator.
     /// </summary>
     public static class CompetitionMiniGames
     {
+        public const int LegacyRules = 1;
+        public const int ImprovedRules = 2;
+        public const int CurrentRules = 3;
+
+        /// <summary>A ranked attempt is identical after cancel/reload and never spends season RNG.</summary>
+        public static uint AttemptSeed(uint seasonSeed, int week, int phase, int rulesVersion, bool practice)
+        {
+            unchecked
+            {
+                uint hash = 2166136261u;
+                foreach (uint value in new[] { seasonSeed, (uint)week, (uint)phase, (uint)rulesVersion, practice ? 0x70726163u : 0x72616e6bu })
+                    hash = (hash ^ value) * 16777619u;
+                return hash == 0 ? 1u : hash;
+            }
+        }
+
+        public static double EnduranceScore(double heldSeconds, double limitSeconds, int rulesVersion) =>
+            EnduranceScore(heldSeconds, rulesVersion >= ImprovedRules ? limitSeconds * .65 : limitSeconds);
+
+        /// <summary>Version 2: effort consumes grip; recovery restores it but earns no effort time.</summary>
+        public static double MeterAfter(double meter, double elapsedSeconds, double limitSeconds,
+            double deltaSeconds, bool holding, int rulesVersion)
+        {
+            if (rulesVersion < ImprovedRules) return MeterAfter(meter, elapsedSeconds, limitSeconds, deltaSeconds, holding);
+            if (limitSeconds <= 0 || deltaSeconds <= 0) return meter;
+            double progress = Math.Max(0, Math.Min(1, elapsedSeconds / limitSeconds));
+            return Math.Max(MeterEmpty, Math.Min(MeterFull,
+                meter + deltaSeconds * (holding ? -(12 + 8 * progress) : 28)));
+        }
+
+        public static double ReactionScore(int hits, int spawned, int falseStarts, int rulesVersion) =>
+            ReactionScore(hits, spawned + (rulesVersion >= ImprovedRules ? Math.Max(0, falseStarts) : 0));
+
+        public static double MemoryScore(int matched, int pairs, int wrongFlips,
+            double secondsLeft, double limitSeconds, int rulesVersion)
+        {
+            if (rulesVersion < ImprovedRules) return MemoryScore(matched, pairs, wrongFlips, secondsLeft, limitSeconds);
+            if (pairs <= 0) return 0;
+            matched = Math.Max(0, Math.Min(pairs, matched));
+            double progress = 9.0 * matched / pairs;
+            double bonus = matched == pairs && limitSeconds > 0 ? Math.Max(0, Math.Min(1, secondsLeft / limitSeconds)) : 0;
+            return Round(Math.Max(0, progress + bonus - Math.Min(Math.Max(0, wrongFlips) * .15, 5)));
+        }
+
+        public static string Brief(Kind kind, int rulesVersion)
+        {
+            if (rulesVersion < ImprovedRules) return Brief(kind);
+            switch (kind)
+            {
+                case Kind.Endurance:
+                    return "Balance effort and recovery. Hold to earn effort time and spend grip; release to recover. "
+                        + "An empty grip ends your attempt. Hold for 65% of the clock for full marks. Space/right trigger holds; the on-screen button toggles.";
+                case Kind.Reaction:
+                    if (rulesVersion >= CurrentRules)
+                        return "Click the visible target or press its named direction (arrow / D-pad). Each press counts once. "
+                            + "Wrong directions and clicks outside the target miss; early presses or clicks reduce accuracy. "
+                            + "Every target gets its full named response window. Tab / shoulders: controls; P / Start: pause.";
+                    return "Hit the visible target or press its named direction (arrow key or D-pad). "
+                        + "Wrong directions and expired targets miss. Pressing before a target appears reduces accuracy. Space does not aim for you.";
+                case Kind.Memory:
+                    return "Match eight pairs on the 4 by 4 board. Arrows or D-pad move; Enter/A flips. "
+                        + "Each pair earns progress, mistakes cost 0.15, and finishing quickly adds up to one point. Completing another pair never lowers your score.";
+                default: return Brief(kind);
+            }
+        }
         /// <summary>
         /// Which minigame a competition plays.
         ///
@@ -135,8 +189,8 @@ namespace Gamesim.Presentation
         ///
         /// <para>Two different formulas, both the reference's. An unfinished board scores the
         /// fraction matched out of ten and cannot fall below one. A <b>finished</b> board starts at
-        /// eight and adds up to two for the time left — so clearing it slowly still beats matching
-        /// most of it quickly, and clearing it fast is the only route to ten.</para>
+        /// eight and adds up to two for the time left — so clearing it slowly can score below matching
+        /// seven pairs. This historical crossover is retained only for version 1.</para>
         ///
         /// <para>A wrong flip costs 0.15 either way, capped at five, so guessing is punished without
         /// ever being fatal.</para>
@@ -171,9 +225,8 @@ namespace Gamesim.Presentation
                     return "HOUSE SIGNALS: hit every target before it goes. A target you let expire counts "
                         + "against you exactly as much as one you miss. Score is the share you hit.";
                 case Kind.Memory:
-                    return "HOUSE SIGNALS: match all " + MemoryPairs + " pairs. Clearing the board is worth "
-                        + "more than matching most of it, and clearing it quickly is the only way to full "
-                        + "marks. A wrong flip costs a little.";
+                    return "HOUSE SIGNALS · LEGACY RULES: match all " + MemoryPairs + " pairs. Unfinished boards score matched pairs out of ten; "
+                        + "completion scores 8 plus up to 2 for remaining time. A late completion can score less than seven pairs. A wrong flip costs 0.15.";
                 default:
                     return "HOUSE SIGNALS: stop the marker near the center three times.";
             }

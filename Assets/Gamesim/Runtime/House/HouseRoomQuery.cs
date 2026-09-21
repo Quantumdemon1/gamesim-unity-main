@@ -175,12 +175,28 @@ namespace Gamesim.House
                 || !Finite(torsoHeight) || torsoHeight <= 0 || torsoHeight > 2.5f)
                 return Fail("Sight requires two distinct active local actors and a valid torso height.");
             var origin = from.position + Vector3.up * torsoHeight;
-            var offset = to.position + Vector3.up * torsoHeight - origin;
+            return ClearSightBetween(from,to,origin,to.position+Vector3.up*torsoHeight);
+        }
+
+        /// <summary>Presentation-only endpoints; default root sight remains the arrival proof.</summary>
+        public bool HasClearSight(Transform from,Transform to,Vector3 origin,Vector3 target)
+        {
+            Physics.SyncTransforms();
+            if(!TryValidateScene(out _) || !LocalActor(from) || !LocalActor(to) || from==to
+                || !Finite(origin) || !Finite(target)
+                || (origin-from.position).sqrMagnitude>3.5f*3.5f || (target-to.position).sqrMagnitude>3.5f*3.5f)
+                return Fail("Visible sight requires finite, bounded endpoints for two active local actors.");
+            return ClearSightBetween(from,to,origin,target);
+        }
+
+        private bool ClearSightBetween(Transform from,Transform to,Vector3 origin,Vector3 target)
+        {
+            var offset = target-origin;
             float distance = offset.magnitude;
             if (!Finite(origin) || !Finite(offset) || distance < .01f)
                 return Fail("Sight endpoints are invalid or coincident.");
             int count = scene.GetPhysicsScene().Raycast(origin, offset / distance, sightHits, distance,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == sightHits.Length) return Fail("The sight query overflowed; visibility is unknown.");
             for (int i = 0; i < count; i++)
             {
@@ -204,7 +220,7 @@ namespace Gamesim.House
                 return Fail("Capsule clearance needs a valid local actor, floor and body dimensions.");
             int count = scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * radius,
                 feet + Vector3.up * (height - radius), radius, overlapHits,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == overlapHits.Length) return Fail("The clearance query overflowed; occupancy is unknown.");
             for (int i = 0; i < count; i++)
             {

@@ -31,7 +31,7 @@ namespace Gamesim.Tests.EditMode
         {
             foreach (var state in new[] { ContentCatalog.Create(11u), SeasonBuilder.Create(new SeasonBuilder.Choice(), 11u) })
             {
-                Assert.That(state.schemaVersion, Is.EqualTo(12));
+                Assert.That(state.schemaVersion, Is.EqualTo(13));
                 Assert.That(state.socialBudgetRulesStartWeek, Is.EqualTo(1),
                     "New play gets the ported budget immediately; only migrated history gets a grace week.");
                 Assert.That(EpisodeEngine.SocialActionBudget(state),
@@ -139,8 +139,8 @@ namespace Gamesim.Tests.EditMode
             var originalBytes = File.ReadAllBytes(files.Store.SavePath);
 
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 8").And.Contain("schema 12 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(12), "A load runs the whole chain, not one step.");
+            Assert.That(message, Does.Contain("Schema 8").And.Contain("schema 13 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(13), "A load runs the whole chain, not one step.");
             Assert.That(loaded.socialBudgetRulesStartWeek, Is.EqualTo(loaded.week + 1));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(originalBytes),
                 "Loading must not rewrite the file.");

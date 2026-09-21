@@ -29,9 +29,56 @@ namespace Gamesim.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator DestroyFixture()
         {
+            Time.captureDeltaTime = 0f;
             if (sting != null) Object.Destroy(sting.gameObject);
             if (owner != null) Object.Destroy(owner);
             yield return null;
+        }
+
+        /// <summary>
+        /// A card that has retired leaves its canvas fully transparent, even if the frame it
+        /// retired on was a long one.
+        ///
+        /// <para>The fade-out ends by calling <c>Cancel</c> on the first frame past its end rather
+        /// than by drawing a last frame at zero, so whatever alpha the card drew on the frame
+        /// before is the alpha it leaves behind. At a steady frame rate that residue is a
+        /// thousandth and nothing notices. Cross most of the 0.38 s fade in a single frame - a
+        /// hitch, a stalled batchmode frame, a garbage collection - and the card is stranded most
+        /// of the way opaque, for the rest of the session, because nothing ever draws it again.</para>
+        ///
+        /// <para>The card is invisible either way: <c>Cancel</c> deactivates it. The residue only
+        /// matters to something that asks the canvas whether a card is still fading, which is
+        /// exactly what the ceremony suite does before it photographs a beat - and a canvas parked
+        /// at three-quarters alpha means that wait never ends. That was worth about one failed run
+        /// in a hundred, a long way from here, blamed on the vote reveal.</para>
+        ///
+        /// <para>The hitch is made rather than waited for: <c>Time.captureDeltaTime</c> drives
+        /// <c>Time.deltaTime</c> but not <c>unscaledDeltaTime</c>, which is the clock these cards
+        /// fade on, so the only honest way to produce a long unscaled frame is to spend one.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Card_LeavesItsCanvasTransparentAfterALongFrame()
+        {
+            var group = sting.GetComponent<CanvasGroup>();
+            sting.Play(CeremonySting.EvictionKind, "Jamie Roberts has been evicted.", false);
+
+            // The entrance and the hold are 2.22 s; 2.40 s is about halfway down the fade-out.
+            yield return new WaitForSecondsRealtime(2.40f);
+            Assert.That(sting.IsPlaying, Is.True, "The card should still be fading out at 2.40 s.");
+            Assert.That(group.alpha, Is.GreaterThan(0.02f).And.LessThan(0.99f),
+                "The card should be mid-fade here; that is the state this test strands it from.");
+
+            // One long frame, which carries the rest of the fade-out past its end in a single step.
+            System.Threading.Thread.Sleep(400);
+            yield return null;
+            yield return null;
+
+            Assert.That(sting.IsPlaying, Is.False, "The card should have retired itself by now.");
+            Assert.That(group.alpha, Is.EqualTo(0f).Within(0.0001f),
+                "A retired card must leave its canvas fully transparent. Its four siblings - the "
+                + "takeover, the competition result, the key ceremony and the vote reveal - all zero "
+                + "their group in Cancel. This one did not, and what it left behind was invisible on "
+                + "screen and permanent to anything asking whether a card is still fading.");
         }
 
         [UnityTest]

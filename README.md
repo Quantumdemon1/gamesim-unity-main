@@ -53,7 +53,10 @@ is what you want for a playtest — it leaves the normal slot untouched.
 
 ## Tests
 
-Three suites. Expect **678 / 113 / 8**, all green.
+Run all three suites separately. Counts change as coverage grows; report total, passed, failed and
+skipped from the XML for the exact candidate. Historical results in the acceptance matrix do not
+certify the current working tree. The September 20 schema-13/creator/UI candidate is still under
+integrated verification.
 
 ```bash
 UNITY="C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe"
@@ -135,7 +138,8 @@ Two notes:
 | [`UNITY_PORT_IMPLEMENTATION.md`](UNITY_PORT_IMPLEMENTATION.md) | Implementation record. |
 | [`Assets/Plans/MASTER-PLAN.md`](Assets/Plans/MASTER-PLAN.md) | The one development plan: verified status of every area, the constraints, the workstreams, and the Blender asset pipeline. It replaced the eight per-area plans. |
 
-**The acceptance matrix has one open section.** E1–E5 are human playtests — pacing, whether
+**Acceptance must be rerun against the current candidate.** Earlier performance exceeded the
+matrix's proposed limits; current creator/UI changes also need rendered verification. E1–E5 are human playtests — pacing, whether
 first-time players reach the eviction unaided, whether a decision felt consequential, whether losing
 reads as an ending, and whether the house and cast read as one production. They need people, and
 they are recorded as not run rather than quietly assumed.

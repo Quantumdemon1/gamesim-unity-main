@@ -60,10 +60,12 @@ namespace Gamesim.Editor
             // Nothing added after schema 5 existed in v5 either, and the stored shape is checked
             // field for field: a capture that still carries any of it is not a v5 payload.
             foreach (var field in new[] { "evictionStage", "evictionSpeeches", "backdoorTargetId",
-                         "outOfPhaseSocialActions", "openingBeatsSeen", "socialBudgetRulesStartWeek" })
+                         "outOfPhaseSocialActions", "openingBeatsSeen", "socialBudgetRulesStartWeek",
+                         "deals", "dealRulesStartWeek", "boughtActionPoints", "houseEvents", "eventRulesStartWeek",
+                         "storylines", "activeModifiers", "storyRulesStartWeek", "competitionRulesVersion" })
                 payload.Remove(field);
             foreach (var value in (JArray)payload["contestants"])
-                foreach (var field in new[] { "occupation", "archetype", "age", "hometown", "bio" })
+                foreach (var field in new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" })
                     ((JObject)value).Remove(field);
             payload["schemaVersion"] = 5;
             return payload;

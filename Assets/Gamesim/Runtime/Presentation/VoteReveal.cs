@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -50,10 +51,11 @@ namespace Gamesim.Presentation
             public readonly string Id;
             public readonly string Name;
             public readonly Texture Portrait;
+            public readonly ContestantState Character;
 
-            public Nominee(string id, string name, Texture portrait)
+            public Nominee(string id, string name, Texture portrait, ContestantState character = null)
             {
-                Id = id; Name = name; Portrait = portrait;
+                Id = id; Name = name; Portrait = portrait; Character = character?.Clone();
             }
         }
 
@@ -237,6 +239,7 @@ namespace Gamesim.Presentation
 
             float scale = Mathf.Max(0.5f, FontScale);
             column.sizeDelta = new Vector2(880f * scale, 470f * scale);
+            CardGlass(column, scale);
 
             eyebrow = HudPrimitives.Label("Week", column, 15f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.characterSpacing = 14f;
@@ -253,7 +256,7 @@ namespace Gamesim.Presentation
             {
                 float x = (i == 0 ? -1f : 1f) * slot * 0.5f;
 
-                var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, 4f * scale, false);
+                var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, 4f * scale, false, nominees[i].Character);
 
                 // Both faces here are on the block, so both carry the target the web build uses.
                 HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, portrait);
@@ -318,6 +321,24 @@ namespace Gamesim.Presentation
             bannerText.rectTransform.offsetMin = Vector2.zero;
             bannerText.rectTransform.offsetMax = Vector2.zero;
             banner.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// The mockups' glass ground behind the card's column (VISUAL-TARGET.md §4, mockup-08 and
+        /// -10): the night background at 85 %, a cyan hairline on the edge and a soft glow outside
+        /// it. Built as the column's first child so every piece of the ceremony draws over it, and
+        /// stretched to the column so it grows with the large-text preference.
+        /// </summary>
+        private static RectTransform CardGlass(RectTransform column, float scale)
+        {
+            var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
+            glass.SetAsFirstSibling();
+            glass.anchorMin = Vector2.zero;
+            glass.anchorMax = Vector2.one;
+            glass.offsetMin = new Vector2(-34f * scale, -26f * scale);
+            glass.offsetMax = new Vector2(34f * scale, 26f * scale);
+            UiTheme.Glass(glass, UiTheme.GlassRadius);
+            return glass;
         }
 
         private static void Place(RectTransform rect, float width, float height, float y, float x = 0f)

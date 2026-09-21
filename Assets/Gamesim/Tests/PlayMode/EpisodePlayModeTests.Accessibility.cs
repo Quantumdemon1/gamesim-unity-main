@@ -53,34 +53,65 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Accessibility_FixedChromeNeverOverlapsAtEitherTextSize()
         {
-            // The always-on chrome. The modal and the interaction prompt deliberately sit over the
-            // scene, so they are not part of this check.
-            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status", "House pill" };
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return ApplyTextSize(larger);
+                director.ClosePanels();
+                yield return null;
+                AssertFixedChromeDoesNotOverlap(larger);
+            }
+        }
 
+        [UnityTest]
+        public IEnumerator Accessibility_FixedChromeLayoutTracksBodyCompletionRedraw()
+        {
+            var seenBodies = typeof(EpisodeDirector).GetField("seenBodiesCompleted",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(seenBodies, Is.Not.Null);
             foreach (bool larger in new[] { false, true })
             {
                 yield return ApplyTextSize(larger);
                 director.ClosePanels();
                 Canvas.ForceUpdateCanvases();
+                var before = ActiveChromePanel("Brand");
+                Assert.That(before, Is.Not.Null);
+
+                // Exercise the real Update -> Render branch deterministically, including in the
+                // authored-body configuration. Only the director's observed counter is stale;
+                // the global completion counter and cast remain untouched.
+                seenBodies.SetValue(director, CharacterPresentation.BodiesCompleted - 1);
                 yield return null;
+                Assert.That(ActiveChromePanel("Brand"), Is.Not.SameAs(before),
+                    "A newly observed body completion must rebuild the chrome after the earlier layout pass.");
+                AssertFixedChromeDoesNotOverlap(larger);
+            }
+        }
 
-                var panels = names
-                    .Select(name => director.GetComponentsInChildren<RectTransform>(true)
-                        .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy))
-                    .Where(rect => rect != null)
-                    .ToArray();
-                Assert.That(panels, Has.Length.EqualTo(names.Length),
-                    "Expected every fixed panel to be present; found " + panels.Length + " of " + names.Length + ".");
+        private RectTransform ActiveChromePanel(string name) =>
+            director.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy);
 
-                for (int a = 0; a < panels.Length; a++)
-                for (int b = a + 1; b < panels.Length; b++)
-                {
-                    var first = ScreenRect(panels[a]);
-                    var second = ScreenRect(panels[b]);
-                    Assert.That(first.Overlaps(second), Is.False,
-                        "At " + (larger ? "larger" : "standard") + " text, '" + panels[a].name +
-                        "' " + first + " overlaps '" + panels[b].name + "' " + second + ".");
-                }
+        private void AssertFixedChromeDoesNotOverlap(bool larger)
+        {
+            // Flush the hierarchy that will be measured. A yield after this pass would allow
+            // UMA completion to replace it in Update, before LateUpdate / willRenderCanvases
+            // has positioned the new layout-group children for the frame actually rendered.
+            Canvas.ForceUpdateCanvases();
+            // The modal and interaction prompt deliberately sit over the scene, unlike chrome.
+            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status",
+                "House pill", "Live feed", EpisodeHud.HouseVibeCardName, EpisodeHud.RecentEventsCardName,
+                CastRail.RootName, IconRail.RootName };
+            var panels = names.Select(ActiveChromePanel).Where(rect => rect != null).ToArray();
+            Assert.That(panels, Has.Length.EqualTo(names.Length),
+                "Expected every fixed panel to be present; found " + panels.Length + " of " + names.Length + ".");
+            for (int a = 0; a < panels.Length; a++)
+            for (int b = a + 1; b < panels.Length; b++)
+            {
+                var first = ScreenRect(panels[a]);
+                var second = ScreenRect(panels[b]);
+                Assert.That(first.Overlaps(second), Is.False,
+                    "At " + (larger ? "larger" : "standard") + " text, '" + panels[a].name +
+                    "' " + first + " overlaps '" + panels[b].name + "' " + second + ".");
             }
         }
 

@@ -11,12 +11,14 @@ namespace Gamesim.Editor
     /// <c>GamesimCharacter.controller</c>, which has had <c>Idle</c>, <c>Walk</c>, <c>SitDown</c> and
     /// <c>StandUp</c> since the Quaternius bodies arrived and nothing to play while seated or talking.
     ///
-    /// <para>Adds a <c>Talking</c> bool beside <c>Speed</c> and <c>Seated</c>, and four states:
-    /// <c>SitIdle</c> after <c>SitDown</c> finishes (the seated idle the plan asked for), <c>SitTalk</c>
-    /// while seated and talking, <c>Talk</c> while standing and talking, and <c>Listen</c> is left for
-    /// the presentation to blend later. Re-runnable: states and transitions are found by name and
-    /// rebuilt, never duplicated. The presentation drives <c>Talking</c> only when the controller
-    /// declares it, the same rule <c>Seated</c> follows.</para>
+    /// <para>Adds a <c>Talking</c>, a <c>Listening</c> and an <c>Arguing</c> bool beside <c>Speed</c>
+    /// and <c>Seated</c>, and five states: <c>SitIdle</c> after <c>SitDown</c> finishes (the seated idle
+    /// the plan asked for), <c>SitTalk</c> while seated and talking, <c>Talk</c> while standing and
+    /// talking, <c>Listen</c> for the other half of that conversation, and <c>Argue</c> (V6) while a row
+    /// is going on and the body is standing and still. Five reactions play as one-shots from Any State
+    /// on their own triggers - the ceremony beats and the cheer a competition win earns. Re-runnable:
+    /// states and transitions are found by name and rebuilt, never duplicated. The presentation drives
+    /// <c>Talking</c> only when the controller declares it, the same rule <c>Seated</c> follows.</para>
     /// </summary>
     public static class AuthoredClipWiring
     {
@@ -24,6 +26,7 @@ namespace Gamesim.Editor
         public const string Clips = AuthoredAssetImporter.Root + "Animation/Generic/bb_anim_casual.fbx";
         public const string TalkingParameter = "Talking";
         public const string ListeningParameter = "Listening";
+        public const string ArguingParameter = "Arguing";
 
         [MenuItem("Gamesim/U07/Wire the authored clips")]
         public static void Apply()
@@ -39,6 +42,8 @@ namespace Gamesim.Editor
                 controller.AddParameter(TalkingParameter, AnimatorControllerParameterType.Bool);
             if (controller.parameters.All(p => p.name != ListeningParameter))
                 controller.AddParameter(ListeningParameter, AnimatorControllerParameterType.Bool);
+            if (controller.parameters.All(p => p.name != ArguingParameter))
+                controller.AddParameter(ArguingParameter, AnimatorControllerParameterType.Bool);
 
             var machine = controller.layers[0].stateMachine;
             var idle = State(machine, "Idle");
@@ -51,6 +56,7 @@ namespace Gamesim.Editor
             var sitTalk = Ensure(machine, "SitTalk", clips["SitTalk_loop"], new Vector3(550, 50, 0));
             var talk = Ensure(machine, "Talk", clips["Talk_loop"], new Vector3(300, 250, 0));
             var listen = Ensure(machine, "Listen", clips["Listen_loop"], new Vector3(550, 250, 0));
+            var argue = Ensure(machine, "Argue", clips["Argue_loop"], new Vector3(300, 450, 0));
 
             // Sitting down ends in the seated idle; standing up leaves from either seated state.
             Rebuild(sitDown, sitIdle, t => { t.hasExitTime = true; t.exitTime = 0.95f; t.duration = 0.15f; });
@@ -71,6 +77,17 @@ namespace Gamesim.Editor
             Rebuild(talk, listen, t => Condition(t, AnimatorConditionMode.If, ListeningParameter));
             Rebuild(listen, sitDown, t => Condition(t, AnimatorConditionMode.If, "Seated"));
             if (walk != null) Rebuild(listen, walk, t => t.AddCondition(AnimatorConditionMode.Greater, 0.1f, "Speed"));
+            // Arguing: a row is a standing conversation with the arms in it, entered from any of the three
+            // standing conversation states and leaving back to whichever the bools still ask for; as with
+            // talking, walking or sitting wins over it.
+            Rebuild(idle, argue, t => { Condition(t, AnimatorConditionMode.If, ArguingParameter); t.AddCondition(AnimatorConditionMode.Less, 0.1f, "Speed"); });
+            Rebuild(talk, argue, t => Condition(t, AnimatorConditionMode.If, ArguingParameter));
+            Rebuild(listen, argue, t => Condition(t, AnimatorConditionMode.If, ArguingParameter));
+            Rebuild(argue, talk, t => { Condition(t, AnimatorConditionMode.IfNot, ArguingParameter); Condition(t, AnimatorConditionMode.If, TalkingParameter); });
+            Rebuild(argue, listen, t => { Condition(t, AnimatorConditionMode.IfNot, ArguingParameter); Condition(t, AnimatorConditionMode.If, ListeningParameter); });
+            Rebuild(argue, idle, t => { Condition(t, AnimatorConditionMode.IfNot, ArguingParameter); Condition(t, AnimatorConditionMode.IfNot, TalkingParameter); Condition(t, AnimatorConditionMode.IfNot, ListeningParameter); });
+            Rebuild(argue, sitDown, t => Condition(t, AnimatorConditionMode.If, "Seated"));
+            if (walk != null) Rebuild(argue, walk, t => t.AddCondition(AnimatorConditionMode.Greater, 0.1f, "Speed"));
 
             // Reactions: one-shots from Any State on a trigger, only while standing, back to Idle.
             for (int i = 0; i < Reactions.Length; i++)
@@ -92,7 +109,7 @@ namespace Gamesim.Editor
 
             EditorUtility.SetDirty(controller);
             AssetDatabase.SaveAssets();
-            Debug.Log("[Gamesim] clips · " + clips.Count + " authored takes wired: SitIdle, SitTalk, Talk, Listen, four reactions; parameters " + TalkingParameter + ", " + ListeningParameter);
+            Debug.Log("[Gamesim] clips · " + clips.Count + " authored takes wired: SitIdle, SitTalk, Talk, Listen, Argue, " + Reactions.Length + " reactions; parameters " + TalkingParameter + ", " + ListeningParameter + ", " + ArguingParameter);
         }
 
         /// <summary>The reaction triggers and the clips they play, in CharacterPresentation.Reaction order.</summary>
@@ -100,6 +117,7 @@ namespace Gamesim.Editor
         {
             ("ReactNominated", "React_nominated"), ("ReactSaved", "React_saved"),
             ("ReactEvicted", "React_evicted"), ("ReactWon", "React_won"),
+            ("ReactCheered", "React_cheered"),
         };
 
         private static AnimatorState State(AnimatorStateMachine machine, string name) =>

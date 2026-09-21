@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 
 namespace Gamesim.House
 {
@@ -28,12 +29,19 @@ namespace Gamesim.House
         public float SecondFacing { get; }
         public HouseMeetingStatus Status { get; internal set; }
         public string FailureReason { get; internal set; }
+        internal Vector3 FirstAnchorPosition { get; }
+        internal Vector3 SecondAnchorPosition { get; }
+        internal Vector3 FirstAnchorApproach { get; }
+        internal Vector3 SecondAnchorApproach { get; }
         internal HouseMeetingLease(string token, string generation, string first, string second,
-            string venue, string room, Vector3 a, Vector3 b, bool seated, float firstFacing, float secondFacing)
+            string venue, string room, Vector3 a, Vector3 b, bool seated, float firstFacing, float secondFacing,
+            Vector3 anchorA, Vector3 anchorB,Vector3 approachA,Vector3 approachB)
         {
             Token = token; Generation = generation; FirstId = first; SecondId = second;
             VenueId = venue; RoomId = room; FirstSlot = a; SecondSlot = b;
             Seated = seated; FirstFacing = firstFacing; SecondFacing = secondFacing;
+            FirstAnchorPosition=anchorA; SecondAnchorPosition=anchorB;
+            FirstAnchorApproach=approachA;SecondAnchorApproach=approachB;
             Status = HouseMeetingStatus.Travelling;
         }
     }
@@ -42,7 +50,7 @@ namespace Gamesim.House
     /// Explicit paired world rendezvous only. Caller owns eligibility, logical clock,
     /// timeout, source rules, persistence and observed text. Tick never starts a new pair.
     /// </summary>
-    public sealed class HouseMeetingCoordinator : IDisposable
+    public sealed partial class HouseMeetingCoordinator : IDisposable
     {
         private sealed class Actor
         {
@@ -53,30 +61,22 @@ namespace Gamesim.House
         }
         private sealed class Venue
         {
-            public string id, room;
-            public Vector3 first, second;
-            public bool seated;
-            public float firstYaw, secondYaw;
-            public Venue(string key, string roomId, Vector3 a, Vector3 b, bool seats = false, float yawA = float.NaN, float yawB = float.NaN)
-            { id = key; room = roomId; first = a; second = b; seated = seats; firstYaw = yawA; secondYaw = yawB; }
+            public readonly string id, room;
+            public readonly bool seated;
+            public readonly HouseInteractionAnchor a,b;
+            public Vector3 first => a.Position;
+            public Vector3 second => b.Position;
+            public Vector3 firstApproach => a.Approach;
+            public Vector3 secondApproach => b.Approach;
+            public float firstYaw => a.Facing;
+            public float secondYaw => b.Facing;
+            public Venue(HouseInteractionAnchor first,HouseInteractionAnchor second)
+            { a=first; b=second; id=a.VenueId; room=a.RoomId; seated=a.Seated; }
+            public bool Valid(Scene scene) => a!=null && b!=null && a.isActiveAndEnabled && b.isActiveAndEnabled
+                && a.gameObject.scene==scene && b.gameObject.scene==scene && a.VenueId==id && b.VenueId==id
+                && a.RoomId==room && b.RoomId==room && a.Seated==seated && b.Seated==seated;
         }
-        private static readonly Venue[] Venues =
-        {
-            new Venue("living-east-chat", "Living", new Vector3(-6.2f,0,-4), new Vector3(-4.8f,0,-4)),
-            new Venue("kitchen-west-chat", "Kitchen", new Vector3(2.3f,0,-3), new Vector3(3.7f,0,-3)),
-            // Clear both Riley's saved-scene spawn and the preserved U02 room
-            // destination at (-7,0,2), including its 1.25 m keep-clear radius.
-            new Venue("bedroom-south-chat", "Bedroom", new Vector3(-8.7f,0,3.5f), new Vector3(-7.3f,0,3.5f)),
-            new Venue("yard-south-chat", "Yard", new Vector3(3.3f,0,13.5f), new Vector3(4.7f,0,13.5f)),
-            // Seated venues. The slots are the floor positions of two authored seats - a pair of
-            // chairs facing each other across the kitchen's long table, and two loungers at the
-            // yard's east end - and the facing is the seat's own yaw, so a houseguest who arrives
-            // sits in the chair rather than beside it. HouseSeatedVenueTests pins each slot to the
-            // placed prop; the simulation's IsKnownRendezvous lists both ids. Appended, so the
-            // authored order the tie rule relies on is unchanged for the four above.
-            new Venue("kitchen-table-chat", "Kitchen", new Vector3(7.2f,0,-7.22f), new Vector3(7.2f,0,-8.78f), true, 180f, 0f),
-            new Venue("yard-lounger-chat", "Yard", new Vector3(9.4f,0,11f), new Vector3(10.8f,0,11f), true, 0f, 0f)
-        };
+        private readonly List<Venue> venues = new List<Venue>();
 
         /// <summary>One slot of a seated venue, for audits and tests.</summary>
         public readonly struct VenueSlot
@@ -92,18 +92,18 @@ namespace Gamesim.House
         {
             get
             {
-                foreach (var venue in Venues)
+                foreach (var venue in HouseInteractionAnchors.Meetings)
                 {
-                    if (!venue.seated) continue;
-                    yield return new VenueSlot(venue.id, venue.first, venue.firstYaw);
-                    yield return new VenueSlot(venue.id, venue.second, venue.secondYaw);
+                    if (!venue.Seated) continue;
+                    yield return new VenueSlot(venue.Id, venue.First, venue.FirstYaw);
+                    yield return new VenueSlot(venue.Id, venue.Second, venue.SecondYaw);
                 }
             }
         }
 
         public static bool IsSeatedVenue(string venueId)
         {
-            foreach (var venue in Venues) if (venue.id == venueId) return venue.seated;
+            foreach (var venue in HouseInteractionAnchors.Meetings) if (venue.Id == venueId) return venue.Seated;
             return false;
         }
         private readonly HouseRoomQuery rooms;
@@ -147,7 +147,21 @@ namespace Gamesim.House
                 || NavMesh.GetSettingsByID(navFilter.agentTypeID).agentTypeID == -1)
             { reason = "A world coordinator requires Play Mode and a compatible bound house query/filter."; return false; }
             if (!query.TryValidateScene(out reason)) return false;
+            HouseInteractionAnchors.EnsureDefaults(query.Scene);
             var candidate = new HouseMeetingCoordinator(query, navFilter);
+            foreach (var definition in HouseInteractionAnchors.Meetings)
+            {
+                if (!HouseInteractionAnchors.TryFind(query.Scene,definition.Id,0,out var a)
+                    || !HouseInteractionAnchors.TryFind(query.Scene,definition.Id,1,out var b)
+                    || a.RoomId!=definition.Room || b.RoomId!=definition.Room || a.Seated!=definition.Seated || b.Seated!=definition.Seated)
+                {
+                    // Unfurnished fixtures or a deliberately removed seat do not disable every
+                    // standing venue. A saved meeting naming the missing seat remains pending.
+                    if(definition.Seated)continue;
+                    reason="Each standing venue requires two unique compatible scene-local interaction anchors."; return false;
+                }
+                candidate.venues.Add(new Venue(a,b));
+            }
             foreach (var root in query.Scene.GetRootGameObjects())
                 candidate.keepClear.AddRange(root.GetComponentsInChildren<HouseRoomMarker>(true));
             var roomNames = new HashSet<string>(StringComparer.Ordinal);
@@ -207,6 +221,7 @@ namespace Gamesim.House
                 }
             }
             eligible.Clear(); eligible.UnionWith(nextEligible);
+            RetireInvalidActivities();
             // Release invalid pairs before changing any participant's collision owner.
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer)
@@ -276,14 +291,15 @@ namespace Gamesim.House
                     return Fail(out reason, "The token already identifies a different pair or venue.");
                 lease = existing; return true;
             }
+            YieldActivity(firstId);YieldActivity(secondId);
             var first = actors[firstId]; var second = actors[secondId];
             if (leases.Count >= 2 || first.motion.LeaseId != null || second.motion.LeaseId != null)
                 return Fail(out reason, "An actor is already reserved or both pair slots are occupied.");
             Venue best = null; float bestLength = float.PositiveInfinity;
             Vector3 bestFirst = default, bestSecond = default;
-            foreach (var venue in Venues)
+            foreach (var venue in venues)
             {
-                if (requiredVenue != null && venue.id != requiredVenue || VenueInUse(venue.id)) continue;
+                if (!venue.Valid(rooms.Scene) || requiredVenue != null && venue.id != requiredVenue || VenueInUse(venue.id)) continue;
                 if (!MeasureVenue(venue, first, second, out var a, out var b, out var length)) continue;
                 if (length >= bestLength - .0001f) continue; // Stable authored order on ties.
                 best = venue; bestFirst = a; bestSecond = b; bestLength = length;
@@ -302,7 +318,8 @@ namespace Gamesim.House
             // than the preliminary pair query. Expose their accepted endpoints.
             var firstAt = first.motion.ReservedDestination; var secondAt = second.motion.ReservedDestination;
             lease = new HouseMeetingLease(token, Generation, firstId, secondId, best.id, best.room, firstAt, secondAt, best.seated,
-                best.seated ? best.firstYaw : YawToward(firstAt, secondAt), best.seated ? best.secondYaw : YawToward(secondAt, firstAt));
+                best.seated ? best.firstYaw : YawToward(firstAt, secondAt), best.seated ? best.secondYaw : YawToward(secondAt, firstAt),
+                best.first,best.second,best.firstApproach,best.secondApproach);
             leases.Add(token, lease); LastFailure = null;
             return true;
         }
@@ -312,8 +329,8 @@ namespace Gamesim.House
             a = default; b = default; length = 0;
             var firstBody = first.npc.GetComponent<CapsuleCollider>(); var secondBody = second.npc.GetComponent<CapsuleCollider>();
             if (firstBody == null || secondBody == null
-                || !rooms.TrySampleFloor(venue.first, firstBody.radius, filter, .25f, out a, out var firstRoom)
-                || !rooms.TrySampleFloor(venue.second, secondBody.radius, filter, .25f, out b, out var secondRoom)
+                || !rooms.TrySampleFloor(venue.firstApproach, firstBody.radius, filter, .25f, out a, out var firstRoom)
+                || !rooms.TrySampleFloor(venue.secondApproach, secondBody.radius, filter, .25f, out b, out var secondRoom)
                 || firstRoom != venue.room || secondRoom != venue.room || !ClearsDestinations(a) || !ClearsDestinations(b)
                 || HorizontalSquared(a,b) < Mathf.Pow(firstBody.radius + secondBody.radius + .20f,2)
                 || HorizontalSquared(a,b) >= 16
@@ -345,6 +362,7 @@ namespace Gamesim.House
             reason = null;
             if (disposed || paused || !Current(lease) || !ValidActors(lease, out var first, out var second))
                 return Fail(out reason, "The pair is stale, paused, inactive or no longer owns both actors.");
+            if (!VenueUnchanged(lease)) return Fail(out reason,"The reserved interaction anchors moved or became unavailable.");
             if (!first.motion.HasArrivedAt(lease.Token) || !second.motion.HasArrivedAt(lease.Token))
                 return Fail(out reason, "Both actors have not physically arrived at their reserved slots.");
             var a = first.npc.transform; var b = second.npc.transform;
@@ -361,23 +379,42 @@ namespace Gamesim.House
         }
 
         public bool CanWitness(HousePlayerController player, HouseMeetingLease lease)
+            => CanWitness(player,lease,out _);
+
+        public bool CanWitness(HousePlayerController player,HouseMeetingLease lease,out Vector3 visibleMidpoint)
         {
+            visibleMidpoint=default;
             if (player == null || !player.gameObject.activeInHierarchy || player.gameObject.scene != rooms.Scene
                 || player.Agent == null || !ValidateArrivedPair(lease,out _)) return false;
             var a = actors[lease.FirstId].npc.transform; var b = actors[lease.SecondId].npc.transform;
-            var midpoint = (a.position + b.position) * .5f;
-            if (HorizontalSquared(player.transform.position,midpoint) >= 36
+            if(!WitnessPoint(a,lease.Seated,out var first) || !WitnessPoint(b,lease.Seated,out var second)
+                || !WitnessPoint(player.transform,false,out var observer))return false;
+            var midpoint = (first+second)*.5f;
+            if (HorizontalSquared(observer,midpoint) >= 36
                 || !rooms.TryLocate(player.transform.position,player.Agent.radius,out var room) || room != lease.RoomId) return false;
-            return rooms.HasClearSight(player.transform,a) && rooms.HasClearSight(player.transform,b);
+            if(!rooms.HasClearSight(player.transform,a,observer,first) || !rooms.HasClearSight(player.transform,b,observer,second))return false;
+            visibleMidpoint=midpoint;return true;
+        }
+
+        private static bool WitnessPoint(Transform actor,bool seatedRequired,out Vector3 point)
+        {
+            point=default;
+            var seat=actor.GetComponent<HouseSeatPresentation>();
+            if(seatedRequired || seat!=null && seat.Active)
+                return seat!=null && seat.TryGetWitnessPoint(out point);
+            point=actor.position+Vector3.up*1.15f;
+            return HouseRoomQuery.Finite(point);
         }
 
         public void Tick()
         {
             if (disposed) return;
+            RetireInvalidActivities();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values); leaseBuffer.Sort(leaseComparison);
             foreach (var lease in leaseBuffer)
             {
                 if (!ValidActors(lease,out _,out _)) { Retire(lease,HouseMeetingStatus.Invalid,"An actor or binding became invalid."); continue; }
+                if (!VenueUnchanged(lease)) { Retire(lease,HouseMeetingStatus.Invalid,"The reserved interaction anchors moved or became unavailable."); continue; }
                 lease.Status = paused ? HouseMeetingStatus.Paused
                     : ValidateArrivedPair(lease,out _) ? HouseMeetingStatus.Arrived : HouseMeetingStatus.Travelling;
             }
@@ -393,6 +430,8 @@ namespace Gamesim.House
         public bool Release(HouseMeetingLease lease) => Current(lease) && Retire(lease,HouseMeetingStatus.Released,null);
         public void ReleaseAll()
         {
+            ReleaseActivities();
+            EndCompetitionStage();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer) Retire(lease,HouseMeetingStatus.Released,null);
         }
@@ -419,6 +458,8 @@ namespace Gamesim.House
             && actor.motion.BoundNpcId == actor.id && actor.motion.LeaseId == token;
         private bool OwnsMotionLease(HouseNpcMotion motion)
         {
+            if (ActivityOwnsMotion(motion)) return true;
+            if (CompetitionOwnsMotion(motion)) return true;
             if (motion.LeaseId == null || !leases.TryGetValue(motion.LeaseId, out var lease)) return false;
             return actors.TryGetValue(lease.FirstId, out var first) && first.motion == motion
                 || actors.TryGetValue(lease.SecondId, out var second) && second.motion == motion;
@@ -426,12 +467,40 @@ namespace Gamesim.House
         private bool Retire(HouseMeetingLease lease, HouseMeetingStatus status, string reason)
         {
             if (!Current(lease)) return false;
-            if (actors.TryGetValue(lease.FirstId,out var first) && first.motion != null) first.motion.Release(lease.Token);
-            if (actors.TryGetValue(lease.SecondId,out var second) && second.motion != null) second.motion.Release(lease.Token);
+            if (actors.TryGetValue(lease.FirstId,out var first) && first.motion != null)
+            {first.motion.GetComponent<HouseSeatPresentation>()?.End();first.motion.Release(lease.Token);}
+            if (actors.TryGetValue(lease.SecondId,out var second) && second.motion != null)
+            {second.motion.GetComponent<HouseSeatPresentation>()?.End();second.motion.Release(lease.Token);}
             leases.Remove(lease.Token); lease.Status = status; lease.FailureReason = reason;
             return true;
         }
-        private bool VenueInUse(string venue) { foreach (var lease in leases.Values) if (lease.VenueId == venue) return true; return false; }
+        private bool VenueInUse(string venue)
+        {
+            foreach(var lease in leases.Values)if(lease.VenueId==venue)return true;
+            foreach(var entry in activities)if(entry.lease.Anchor!=null && entry.lease.Anchor.VenueId==venue)return true;
+            return false;
+        }
+        private bool VenueUnchanged(HouseMeetingLease lease)
+        {
+            foreach (var venue in venues)
+                if (venue.id==lease.VenueId)
+                    return venue.Valid(rooms.Scene) && Vector3.Distance(venue.first,lease.FirstAnchorPosition)<.05f
+                        && Vector3.Distance(venue.second,lease.SecondAnchorPosition)<.05f
+                        && Vector3.Distance(venue.firstApproach,lease.FirstAnchorApproach)<.05f
+                        && Vector3.Distance(venue.secondApproach,lease.SecondAnchorApproach)<.05f
+                        && (!lease.Seated || Mathf.Abs(Mathf.DeltaAngle(venue.firstYaw,lease.FirstFacing))<1f
+                            && Mathf.Abs(Mathf.DeltaAngle(venue.secondYaw,lease.SecondFacing))<1f);
+            return false;
+        }
+        public bool TryGetSeat(string actorId,out HouseInteractionAnchor seat)
+        {
+            foreach(var lease in leases.Values)
+                if(lease.Seated && (lease.FirstId==actorId || lease.SecondId==actorId))
+                    foreach(var venue in venues)
+                        if(venue.id==lease.VenueId && venue.Valid(rooms.Scene))
+                        {seat=lease.FirstId==actorId ? venue.a : venue.b;return true;}
+            seat=null;return false;
+        }
         private bool ClearsDestinations(Vector3 point)
         {
             foreach (var marker in keepClear)

@@ -14,8 +14,8 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class AuthoredAnimationTests
     {
-        private static readonly string[] Loops = { "SitIdle_loop", "SitTalk_loop", "Talk_loop", "Listen_loop" };
-        private static readonly string[] Reactions = { "React_nominated", "React_saved", "React_evicted", "React_won" };
+        private static readonly string[] Loops = { "SitIdle_loop", "SitTalk_loop", "Talk_loop", "Listen_loop", "Argue_loop" };
+        private static readonly string[] Reactions = { "React_nominated", "React_saved", "React_evicted", "React_won", "React_cheered" };
 
         [Test]
         public void TheCasualTakesImportAsGenericClipsAndTheLoopsLoop()

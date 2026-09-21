@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Gamesim.Presentation;
 using UMA;
 using UMA.CharacterSystem;
 using UnityEngine;
@@ -31,12 +32,18 @@ namespace Gamesim.Uma
         private bool hasApplied;
         private IReadOnlyDictionary<string, float> proportions;
         private bool proportionsApplied;
+        private bool preserveFabric;
+        private CharacterBodyBuildState buildState;
+        private int readyAfterFrame = -1;
 
-        internal void Bind(DynamicCharacterAvatar target, Color wardrobe, IReadOnlyDictionary<string, float> dna)
+        internal void Bind(DynamicCharacterAvatar target, Color wardrobe, IReadOnlyDictionary<string, float> dna,
+            bool preserveFabric = false, CharacterBodyBuildState buildState = null)
         {
             avatar = target;
             fabric = wardrobe;
             proportions = dna;
+            this.preserveFabric = preserveFabric;
+            this.buildState = buildState;
             if (avatar != null) avatar.OnCharacterUpdated += OnCharacterUpdated;
         }
 
@@ -50,9 +57,9 @@ namespace Gamesim.Uma
         /// actually works for these races. The guard matters because that rebuild raises
         /// CharacterUpdated again.
         /// </summary>
-        private void ApplyProportions()
+        private bool ApplyProportions()
         {
-            if (proportionsApplied || avatar == null || proportions == null || proportions.Count == 0) return;
+            if (proportionsApplied || avatar == null || proportions == null || proportions.Count == 0) return false;
             proportionsApplied = true;
 
             var dna = avatar.GetDNA();
@@ -66,6 +73,7 @@ namespace Gamesim.Uma
             }
 
             if (changed && avatar.umaData != null) avatar.umaData.Dirty(true, false, true);
+            return changed;
         }
 
         /// <summary>Re-tints a body whose houseguest changed palette. Safe before the build finishes.</summary>
@@ -77,13 +85,21 @@ namespace Gamesim.Uma
 
         private void OnCharacterUpdated(UMAData data)
         {
-            ApplyProportions();
+            bool rebuilding = ApplyProportions();
             UmaStylizer.Apply(gameObject);
             Apply();
+            if (!rebuilding) readyAfterFrame = Time.frameCount + 2;
+        }
+
+        private void LateUpdate()
+        {
+            if (readyAfterFrame >= 0 && Time.frameCount >= readyAfterFrame && buildState != null)
+                buildState.Ready = true;
         }
 
         private void Apply()
         {
+            if (preserveFabric) return;
             if (avatar == null || avatar.characterColors == null) return;
             if (hasApplied && appliedFabric == fabric) return;
 

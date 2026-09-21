@@ -148,10 +148,11 @@ namespace Gamesim.Tests.PlayMode
             yield return SettlePanels();
             yield return Shoot("walkthrough-04-notebook");
 
-            // 04b — the same panel scrolled to the room map. The notebook is taller than its
-            // viewport, so the top frame photographs the graph and nothing below it. Scrolled to a
-            // fixed fraction this would silently drift the moment the panel grows a paragraph, so
-            // it scrolls to the element by name and photographs wherever that turns out to be.
+            // 04b — the room map, which is its own page now rather than something further down the
+            // same scroll. The rail's four buttons used to be four scroll positions in one document;
+            // they are four pages, so this asks for the page instead of hunting down the panel.
+            director.ShowNotebookSection(Gamesim.Episode.EpisodeDirector.NotebookSection.Rooms);
+            yield return SettlePanels();
             var scroll = director.GetComponentsInChildren<UnityEngine.UI.ScrollRect>(true)
                 .FirstOrDefault(rect => rect.gameObject.activeInHierarchy);
             var map = director.GetComponentsInChildren<RectTransform>(true)

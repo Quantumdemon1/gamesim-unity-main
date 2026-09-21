@@ -105,18 +105,22 @@ namespace Gamesim.Episode
         /// </summary>
         private IEnumerator PlaySeasonMiniGame(EpisodeState state, bool graphical)
         {
-            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state.phase, state.week));
+            var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             yield return ClickSeasonButton(CompetitionMiniGames.EnterCaption(kind));
             RequireSeason(seasonDirector.IsChallengeActive && seasonDirector.Snapshot.revision == state.revision,
                 "Entering a challenge must open it without committing.");
             yield return CaptureSeason("minigame-" + kind.ToString().ToLowerInvariant(), graphical);
 
-            double deadline = Time.realtimeSinceStartupAsDouble + CompetitionMiniGames.TimeLimit(kind) + 15;
+            double deadline = Time.realtimeSinceStartupAsDouble + CompetitionMiniGames.TimeLimit(kind) + 55;
             int inputs = 0;
             var faces = new Dictionary<string, List<int>>();
             while (seasonDirector.IsChallengeActive && Time.realtimeSinceStartupAsDouble < deadline)
             {
                 CheckSeasonDeadline();
+                // A capture or expensive frame can pause the surface. Resume through its visible
+                // control, just as a player does; never tick a paused attempt behind the screen.
+                if (CompetitionSurface() != null && CompetitionSurface().Paused)
+                { yield return TryClickCompetitionControl(CompetitionSurface().IsAssembling ? "Pause assembly" : "Pause competition"); continue; }
                 switch (kind)
                 {
                     case CompetitionMiniGames.Kind.Precision:
@@ -125,14 +129,19 @@ namespace Gamesim.Episode
                         if (lastClickLanded) inputs++;
                         break;
                     case CompetitionMiniGames.Kind.Endurance:
-                        // Take the grip once and hold it to the clock.
-                        if (HasSeasonButtonText(EpisodeHud.HoldGripCaption))
-                        { yield return TryClickSeasonButton(EpisodeHud.HoldGripCaption); if (lastClickLanded) inputs++; }
+                        // Read only the visible grip and operate the same toggle a player uses.
+                        var surface = CompetitionSurface();
+                        var meter = surface != null ? surface.GetComponentsInChildren<TMPro.TMP_Text>().FirstOrDefault(t=>t.name=="Grip value") : null;
+                        string gripText = meter != null ? meter.text.Split('%')[0].Replace("Grip ","") : "";
+                        if (float.TryParse(gripText,out float grip)
+                            && (HasSeasonButtonText("Hold to earn effort") && grip > 75
+                                || state.competitionRulesVersion >= 2 && HasSeasonButtonText("Release to recover") && grip < 25))
+                        { yield return TryClickCompetitionControl("Toggle grip"); if(lastClickLanded)inputs++; }
                         else yield return null;
                         break;
                     case CompetitionMiniGames.Kind.Reaction:
-                        if (inputs < 60 && HasSeasonButtonText(EpisodeHud.TapTargetCaption))
-                        { yield return TryClickSeasonButton(EpisodeHud.TapTargetCaption); if (lastClickLanded) inputs++; }
+                        if (VisibleSeasonButtons().Any(b=>b.name=="Reaction target"))
+                        { yield return TryClickCompetitionControl("Reaction target"); if (lastClickLanded) inputs++; }
                         else yield return null;
                         break;
                     default:
@@ -160,12 +169,13 @@ namespace Gamesim.Episode
         {
             var cards = new Dictionary<int, string>();
             var interactable = new HashSet<int>();
-            foreach (var button in seasonDirector.GetComponentsInChildren<Button>())
+            foreach (var button in VisibleSeasonButtons())
             {
                 if (!button.IsActive()) continue;
                 string text = button.GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text)
                     .FirstOrDefault(t => t != null && t.StartsWith("Card ", StringComparison.Ordinal));
                 if (text == null) continue;
+                if (text.Contains("MATCHED")) continue;
                 string body = text.Substring(5);
                 int colon = body.IndexOf(':');
                 if (!int.TryParse(colon < 0 ? body : body.Substring(0, colon), out int number)) continue;
@@ -302,7 +312,7 @@ namespace Gamesim.Episode
 
         // ---------------------------------------------------------------- helpers
 
-        private bool HasSeasonButtonText(string caption) => seasonDirector.GetComponentsInChildren<Button>()
+        private bool HasSeasonButtonText(string caption) => VisibleSeasonButtons()
             .Any(button => button.IsActive() && button.IsInteractable()
                 && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption));
 
@@ -314,7 +324,7 @@ namespace Gamesim.Episode
         private IEnumerator TryClickSeasonButton(string caption)
         {
             lastClickLanded = false;
-            var button = seasonDirector.GetComponentsInChildren<Button>().FirstOrDefault(b => b.IsActive() && b.IsInteractable()
+            var button = VisibleSeasonButtons().FirstOrDefault(b => b.IsActive() && b.IsInteractable()
                 && b.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption));
             if (button == null) { yield return null; yield break; }
             button.Select();
@@ -323,6 +333,17 @@ namespace Gamesim.Episode
             button.onClick.Invoke();
             lastClickLanded = true;
             yield return null; yield return null;
+        }
+
+        private CompetitionGameScreen CompetitionSurface() => seasonDirector.gameObject.scene.GetRootGameObjects()
+            .SelectMany(root=>root.GetComponentsInChildren<CompetitionGameScreen>()).FirstOrDefault(s=>s.IsShowing);
+
+        private IEnumerator TryClickCompetitionControl(string name)
+        {
+            lastClickLanded=false;
+            var button=VisibleSeasonButtons().FirstOrDefault(b=>b.name==name);
+            if(button==null){yield return null;yield break;}
+            button.onClick.Invoke();lastClickLanded=true;yield return null;yield return null;
         }
     }
 }

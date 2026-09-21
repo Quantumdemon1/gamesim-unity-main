@@ -305,7 +305,7 @@ namespace Gamesim.Episode
             else yield return ClickSeasonButton(EpisodeHud.DiaryTravelCaption);
             yield return WaitSeasonWalk("diary",seasonDirector.DiaryPosition);
             RequireSeason(seasonDirector.TryOpenDiary(),"The physically reached diary room must open.");
-            yield return null; yield return null;
+            yield return WaitSeasonDiarySeating();
             if (seasonReport.diaryReflections == 0) yield return CaptureSeason("diary-choices",graphical);
             var choice = EpisodeEngine.CurrentDiary(state).choices.First();
             yield return ClickSeasonButton(choice.persona + " · " + choice.text);
@@ -379,7 +379,7 @@ namespace Gamesim.Episode
                     || !seasonPlayer.Agent.CalculatePath(hit.position,path) || path.status != NavMeshPathStatus.PathComplete) continue;
                 var origin = hit.position + Vector3.up * 1.15f;
                 var offset = npc.transform.position + Vector3.up * 1.15f - origin;
-                int count = Physics.RaycastNonAlloc(origin,offset.normalized,seasonSightHits,offset.magnitude,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore);
+                int count = Physics.RaycastNonAlloc(origin,offset.normalized,seasonSightHits,offset.magnitude,HouseLayers.Sight,QueryTriggerInteraction.Ignore);
                 if (count == seasonSightHits.Length) continue;
                 bool blocked = false;
                 for (int index = 0; index < count; index++)
@@ -434,31 +434,75 @@ namespace Gamesim.Episode
             seasonReport.saveReloadChecks++; seasonReport.reloadCheckpoints.Add(checkpoint);
         }
 
-        private IEnumerator CloseSeasonPanel()
+        private IEnumerator WaitSeasonDiarySeating()
         {
-            if (seasonDirector.IsWeeklyRecapOpen) yield return ClickSeasonButton(WeeklyRecapScreen.ContinueCaption);
-            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
+            float deadline=Time.realtimeSinceStartup+20f;
+            while(seasonDirector.IsDiaryOpen && !seasonDirector.IsDiarySettled && Time.realtimeSinceStartup<deadline)yield return null;
+            RequireSeason(seasonDirector.IsDiarySettled,"The diary must complete its route, alignment and seated presentation before choices appear.");
+            yield return null;
         }
 
-        private bool HasSeasonButton(string caption) => seasonDirector.GetComponentsInChildren<Button>()
+        private IEnumerator CloseSeasonPanel()
+        {
+            yield return DismissSeasonCompetitionResult();
+            if (seasonDirector.IsWeeklyRecapOpen) yield return ClickSeasonButton(WeeklyRecapScreen.ContinueCaption);
+            else if (seasonDirector.IsPanelOpen) yield return ClickSeasonButton("Close  [Esc]");
+            var seat=seasonPlayer.GetComponent<Gamesim.House.DiarySeatPose>();
+            float deadline=Time.realtimeSinceStartup+3f;
+            while(seat!=null && seat.Active && Time.realtimeSinceStartup<deadline)yield return null;
+            RequireSeason(seat==null || !seat.Active,"Leaving the diary must release its movement owner.");
+        }
+
+        private bool HasSeasonButton(string caption) => VisibleSeasonButtons()
             .Any(button => button.IsActive() && button.IsInteractable() && button.name == caption);
 
         private IEnumerator ClickSeasonButton(string caption,bool allowFirstEquivalent = false)
         {
             CheckSeasonDeadline();
-            var buttons = seasonDirector.GetComponentsInChildren<Button>().Where(button => button.IsActive() && button.IsInteractable()
-                && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
+            if(caption!="Continue")yield return DismissSeasonCompetitionResult();
+            var buttons = SeasonButtonsCarrying(caption);
             RequireSeason(buttons.Length > 0 && (allowFirstEquivalent || buttons.Length == 1),"Expected a reachable actual button: " + caption + " (found " + buttons.Length + ").");
             // Selection exercises the modal's keyboard-focus/scroll adapter before activation;
             // do not invoke an off-screen content button without bringing it into view first.
             buttons[0].Select(); yield return null; yield return null;
-            RequireSeason(buttons[0] != null && buttons[0].IsActive() && buttons[0].IsInteractable(),"The selected button became unavailable: " + caption);
+            // Then find the caption again. The HUD rebuilds itself for reasons that have nothing to
+            // do with the press - a houseguest's body finishing its assembly is one - and the
+            // control that was selected is destroyed by that rebuild. A player presses whatever is
+            // on screen when they press, so this does too.
+            buttons = SeasonButtonsCarrying(caption);
+            RequireSeason(buttons.Length > 0 && (allowFirstEquivalent || buttons.Length == 1),"The selected button became unavailable: " + caption + " (found " + buttons.Length + ").");
             var before = seasonDirector.Snapshot;
             buttons[0].onClick.Invoke();
             yield return null; yield return null;
             var after = seasonDirector.Snapshot;
             seasonReport.buttons.Add(new SeasonButton { caption = caption, phase = before.phase.ToString(), revisionBefore = before.revision,
                 revisionAfter = after.revision, elapsedSeconds = Time.realtimeSinceStartupAsDouble - seasonStarted });
+        }
+
+        /// <summary>Every live, pressable control showing this caption.</summary>
+        private Button[] SeasonButtonsCarrying(string caption) => VisibleSeasonButtons()
+            .Where(button => button.IsActive() && button.IsInteractable()
+                && button.GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text == caption)).ToArray();
+
+        private Button[] VisibleSeasonButtons()
+        {
+            var buttons=seasonDirector.gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<Button>())
+                .Where(b=>b.IsActive()&&b.IsInteractable()).ToArray();
+            int order=buttons.Select(b=>b.GetComponentInParent<Canvas>()?.sortingOrder??0).DefaultIfEmpty(0).Max();
+            return buttons.Where(b=>(b.GetComponentInParent<Canvas>()?.sortingOrder??0)==order).ToArray();
+        }
+
+        private IEnumerator DismissSeasonCompetitionResult()
+        {
+            var result=seasonDirector.gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<CompetitionResult>())
+                .FirstOrDefault(r=>r.IsPlaying);
+            if(result==null)yield break;
+            // This is an explicit Continue gesture, not an assumption that readable results time out.
+            yield return new WaitForSecondsRealtime(.3f);
+            var button=result.GetComponentsInChildren<Button>().FirstOrDefault(b=>b.name=="Continue from competition results");
+            RequireSeason(button!=null,"Competition results must offer Continue.");button.onClick.Invoke();
+            yield return null;yield return null;
+            RequireSeason(!result.IsPlaying,"Continue must dismiss the result without advancing the episode.");
         }
 
         private IEnumerator CaptureSeason(string label,bool graphical)

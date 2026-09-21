@@ -75,7 +75,7 @@ jobs:
           fi
           echo "all GUIDs unique"
 
-  # The suites this repository actually cares about are EditMode (931) and PlayMode (148), and they
+  # The suites this repository actually cares about are EditMode (1388) and PlayMode (289), and they
   # need a licensed editor. To turn them on:
   #
   #   1. Add UNITY_EMAIL, UNITY_PASSWORD and UNITY_LICENSE as repository secrets.

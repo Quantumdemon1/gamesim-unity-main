@@ -20,16 +20,57 @@ namespace Gamesim.Presentation
         private static readonly int SeatedParam = Animator.StringToHash("Seated");
         private static readonly int TalkingParam = Animator.StringToHash("Talking");
         private static readonly int ListeningParam = Animator.StringToHash("Listening");
-        /// <summary>The ceremony beats a body can act out: one-shot clips the controller may declare as triggers.</summary>
-        public enum Reaction { Nominated, Saved, Evicted, Won }
+        private static readonly int ArguingParam = Animator.StringToHash("Arguing");
+        /// <summary>
+        /// The ceremony beats a body can act out: one-shot clips the controller may declare as
+        /// triggers. Appended to, never reordered: <c>AuthoredClipWiring.Reactions</c> and
+        /// <see cref="ReactionParams"/> are both indexed by this order.
+        /// </summary>
+        public enum Reaction { Nominated, Saved, Evicted, Won, Cheered }
         private static readonly int[] ReactionParams =
         {
             Animator.StringToHash("ReactNominated"), Animator.StringToHash("ReactSaved"),
             Animator.StringToHash("ReactEvicted"), Animator.StringToHash("ReactWon"),
+            Animator.StringToHash("ReactCheered"),
         };
         private int reactionParams;
         /// <summary>The last beat this body was asked to act out, whether or not it had a clip for it.</summary>
         public Reaction? LastReaction { get; private set; }
+
+        // V6 (VISUAL-TARGET.md): a head that turns to look. The crowd at a ceremony turns to the
+        // nominee, the evicted, the winner; a conversation partner is already faced by the whole
+        // body, so the head adds nothing there. Applied as a world-space turn about the vertical and
+        // the body's right axis on top of whatever the clip posed, so it works on any rig's head bone
+        // whatever that bone's local axes are, and on the primitive head the same way.
+        private Transform lookTarget;
+        private float lookUntil, lookBlend;
+        public const float LookYawLimit = 60f;
+        public const float LookPitchLimit = 20f;
+        /// <summary>What the head is turned toward, or null; for the tests and the director.</summary>
+        public Transform LookTarget => lookTarget != null && Time.time < lookUntil ? lookTarget : null;
+
+        /// <summary>Turns the head toward a target for a while. Null, or the time passing, lets it go.</summary>
+        public void LookAt(Transform target, float seconds)
+        {
+            lookTarget = target;
+            lookUntil = target != null ? Time.time + Mathf.Max(0f, seconds) : 0f;
+        }
+
+        private void ApplyLook(Transform headBone)
+        {
+            if (headBone == null) return;
+            bool looking = lookTarget != null && Time.time < lookUntil && !reducedMotion;
+            lookBlend = Mathf.Lerp(lookBlend, looking ? 1f : 0f, 1f - Mathf.Exp(-5f * Time.deltaTime));
+            if (lookBlend < 0.002f) { lookBlend = 0f; return; }
+            if (lookTarget == null) return;
+            var to = lookTarget.position + Vector3.up * 1.5f - headBone.position;
+            var flat = new Vector3(to.x, 0f, to.z);
+            if (flat.sqrMagnitude < 0.0001f) return;
+            float yaw = Mathf.Clamp(Vector3.SignedAngle(transform.forward, flat, Vector3.up), -LookYawLimit, LookYawLimit);
+            float pitch = Mathf.Clamp(Mathf.Atan2(to.y, flat.magnitude) * Mathf.Rad2Deg, -LookPitchLimit, LookPitchLimit);
+            headBone.rotation = Quaternion.AngleAxis(yaw * lookBlend, Vector3.up)
+                * Quaternion.AngleAxis(-pitch * lookBlend, transform.right) * headBone.rotation;
+        }
 
         [SerializeField] private ContestantState definition;
         [SerializeField] private Color wardrobeColor = new Color(0.26f, 0.76f, 0.65f);
@@ -40,7 +81,7 @@ namespace Gamesim.Presentation
         private Transform visual, chest, head, leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee;
         private Vector3 previousPosition;
         private float walkPhase, movementBlend, phaseOffset, heightScale = 1f;
-        private bool reducedMotion, talking, speaking = true, seated, built;
+        private bool reducedMotion, talking, speaking = true, seated, arguing, built;
         private float facingYaw = float.NaN;
 
         // Model-backed presentation. When animator is null the primitive rig above is in use.
@@ -50,8 +91,12 @@ namespace Gamesim.Presentation
         private CharacterBody providedBody;
         private Transform standIn;
         private RuntimeAnimatorController inspectedController;
-        private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam;
+        private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam, hasArguingParam;
         public string CharacterId { get; private set; }
+        public string AppearanceKey { get; private set; }
+        public CharacterAppearance AppearanceSnapshot => definition?.appearance?.Clone();
+        /// <summary>The visual hierarchy may fit furniture while navigation continues to own the actor root.</summary>
+        public Transform VisualRoot => visual;
 
         /// <summary>
         /// How many deferred bodies have finished assembling this session. Monotonic; readers keep
@@ -59,12 +104,69 @@ namespace Gamesim.Presentation
         /// </summary>
         public static int BodiesCompleted { get; private set; }
 
+        /// <summary>
+        /// True while this body is still a stand-in waiting for its real one. Read-only proof for
+        /// tests that must not be interrupted by the render a finished body triggers; never a
+        /// source of game knowledge and never a command.
+        /// </summary>
+        public bool IsBodyAssembling => standIn != null;
+        private static int deferredCloneBuilds;
+
+        /// <summary>
+        /// Copies an authored actor's collision/label hierarchy without copying a generated body
+        /// or starting a build for the old identity. Attach supplies the new identity afterward.
+        /// The source's presentation is detached only during the synchronous Instantiate call;
+        /// restoring it in finally preserves its transform and its provider's resource ownership.
+        /// </summary>
+        public static GameObject CloneUnbound(GameObject template, Transform parent)
+        {
+            var source = template.GetComponent<CharacterPresentation>();
+            if (source == null) return Instantiate(template, parent);
+            var detached = new List<(Transform child, Vector3 position, Quaternion rotation, Vector3 scale, int sibling)>();
+            for (int i = 0; i < template.transform.childCount; i++)
+            {
+                var child = template.transform.GetChild(i);
+                if (child != source.visual && child.name != "Gamesim Character Visual" && child.name != "Retired Gamesim Character Visual") continue;
+                detached.Add((child,child.localPosition,child.localRotation,child.localScale,child.GetSiblingIndex()));
+            }
+            GameObject inactiveHolder = null;
+            if (!template.activeInHierarchy)
+            {
+                inactiveHolder = new GameObject("Inactive character clone staging");
+                inactiveHolder.SetActive(false);
+            }
+            deferredCloneBuilds++;
+            try
+            {
+                foreach (var item in detached) item.child.SetParent(inactiveHolder != null ? inactiveHolder.transform : null,true);
+                var clone = Instantiate(template,parent);
+                // Inline Unity serialization can materialize null custom classes. Defer Awake
+                // explicitly, then clear the copied identity before an inactive clone is enabled.
+                clone.GetComponent<CharacterPresentation>().definition = null;
+                return clone;
+            }
+            finally
+            {
+                deferredCloneBuilds--;
+                foreach (var item in detached)
+                {
+                    if (item.child == null) continue;
+                    item.child.SetParent(template.transform,false);
+                    item.child.SetLocalPositionAndRotation(item.position,item.rotation);
+                    item.child.localScale = item.scale;
+                    item.child.SetSiblingIndex(item.sibling);
+                }
+                if (inactiveHolder != null) Destroy(inactiveHolder);
+            }
+        }
+
         public static CharacterPresentation Attach(GameObject root, ContestantState character, Color palette)
         {
             if (root == null || character == null) return null;
             var component = root.GetComponent<CharacterPresentation>();
             if (component == null) component = root.AddComponent<CharacterPresentation>();
-            if (component.built && component.CharacterId != ContentCatalog.CanonicalId(character.id))
+            if (component.built && (component.CharacterId != ContentCatalog.CanonicalId(character.id)
+                || component.AppearanceKey != AppearanceKeyFor(character)))
                 component.ReleasePresentation();
             if (!component.built)
             {
@@ -100,6 +202,18 @@ namespace Gamesim.Presentation
         /// <summary>The face on this body, or null while there is none.</summary>
         public FaceExpression Face => face;
 
+        /// <summary>
+        /// The two words the face is wearing, and whether it is allowed to move.
+        ///
+        /// <para>The hook a body that grows its own face needs. <see cref="FaceExpression"/> is
+        /// pushed to because it is a component this one attaches; a UMA body's expression player is
+        /// not — it belongs to the body, is built by UMA, and lives in an assembly this one knows
+        /// nothing about — so it reads the same three values instead. Nothing here is new state.</para>
+        /// </summary>
+        public string Mood => mood;
+        public string Stress => stress;
+        public bool ReducedMotion => reducedMotion;
+
         private void PushMood()
         {
             if (face == null && providedBody.Exists && standIn == null
@@ -112,7 +226,7 @@ namespace Gamesim.Presentation
 
         private void Awake()
         {
-            if (!built && definition != null) Build(definition, wardrobeColor);
+            if (!built && definition != null && deferredCloneBuilds == 0) Build(definition, wardrobeColor);
         }
 
         public void SetReducedMotion(bool value) { reducedMotion = value; if (face != null) face.ReducedMotion = value; }
@@ -125,6 +239,18 @@ namespace Gamesim.Presentation
         public void SetSpeaking(bool value) => speaking = value;
         public bool IsSpeaking => talking && speaking;
         public void SetSeated(bool value) => seated = value;
+        /// <summary>
+        /// Whether this body is in a tense conversation rather than an ordinary one. The director
+        /// sets it for the pairs whose topic the caption calls a tense conversation; the controller
+        /// answers with the emphatic standing loop where it declares the parameter.
+        /// </summary>
+        public void SetArguing(bool value) => arguing = value;
+        /// <summary>
+        /// What the body is actually doing, which is what the animator is told: an argument the
+        /// director set, unless motion is reduced, which switches it off exactly as it does the
+        /// talk loops. Arm-waving is the same kind of motion at a larger size.
+        /// </summary>
+        public bool IsArguing => arguing && !reducedMotion;
         /// <summary>
         /// The heading (yaw, degrees) to settle on once stopped, or NaN to leave the heading to
         /// whoever moves the body. A conversation sets it: into the chair, or toward the other speaker.
@@ -150,6 +276,7 @@ namespace Gamesim.Presentation
         private void Build(ContestantState character, Color palette)
         {
             CharacterId = ContentCatalog.CanonicalId(character.id);
+            AppearanceKey = AppearanceKeyFor(character);
             var appearanceId = AppearanceId(character, CharacterId);
             bool diplomat = appearanceId == "maya-hassan";
             bool athlete = appearanceId == "taylor-kim";
@@ -157,7 +284,11 @@ namespace Gamesim.Presentation
             bool wildcard = appearanceId == "casey-wilson";
             bool analyst = appearanceId == "riley-johnson";
             heightScale = analyst ? 1.05f : athlete ? 1.03f : diplomat ? 1.01f : wildcard ? 0.96f : 1f;
+            if (character.appearance != null) heightScale = 1f;
             phaseOffset = diplomat ? 0.4f : athlete ? 1.5f : caregiver ? 2.7f : wildcard ? 3.9f : analyst ? 5.1f : 0f;
+            // V6: sixteen people are not five. Each body idles, nods and sways on its own phase, from
+            // its id, so a room of houseguests never breathes in unison.
+            phaseOffset += (Mathf.Abs(CharacterId.GetHashCode()) % 628) / 100f;
 
             // Tests and markers key off this exact name, whichever body is built underneath it.
             visual = Joint("Gamesim Character Visual", transform, Vector3.zero);
@@ -207,6 +338,7 @@ namespace Gamesim.Presentation
             if (modelHead != null) modelHeadRest = modelHead.localRotation;
 
             ApplyWardrobe(palette);
+            face = FaceExpression.Attach(instance);
             return true;
         }
 
@@ -219,7 +351,8 @@ namespace Gamesim.Presentation
         {
             var provider = CharacterBodySource.Provider;
             if (provider == null || !Application.isPlaying) return false;
-            if (!provider.TryCreate(appearanceId, visual, palette, out var created) || !created.Exists)
+            if (!CharacterBodySource.TryCreate(new CharacterBodyRequest(CharacterId, appearanceId,
+                    definition?.appearance), visual, palette, out var created) || !created.Exists)
                 return false;
 
             providedBody = created;
@@ -262,6 +395,8 @@ namespace Gamesim.Presentation
         {
             if (standIn == null) return;
             if (!providedBody.Exists) return;
+            var state = providedBody.Root.GetComponent<CharacterBodyBuildState>();
+            if (state != null && !state.Ready) return;
             if (providedBody.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) return;
 
             if (Application.isPlaying) Destroy(standIn.gameObject); else DestroyImmediate(standIn.gameObject);
@@ -285,7 +420,7 @@ namespace Gamesim.Presentation
             if (controller == null)
             {
                 inspectedController = null;
-                hasSpeedParam = hasSeatedParam = hasTalkingParam = false;
+                hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
                 return;
             }
 
@@ -295,7 +430,7 @@ namespace Gamesim.Presentation
             if (animator.parameterCount == 0) return;
 
             inspectedController = controller;
-            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = false;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             reactionParams = 0;
             foreach (var parameter in animator.parameters)
             {
@@ -307,6 +442,8 @@ namespace Gamesim.Presentation
                     hasTalkingParam = true;
                 else if (parameter.nameHash == ListeningParam && parameter.type == AnimatorControllerParameterType.Bool)
                     hasListeningParam = true;
+                else if (parameter.nameHash == ArguingParam && parameter.type == AnimatorControllerParameterType.Bool)
+                    hasArguingParam = true;
                 else if (parameter.type == AnimatorControllerParameterType.Trigger)
                     for (int i = 0; i < ReactionParams.Length; i++)
                         if (parameter.nameHash == ReactionParams[i]) reactionParams |= 1 << i;
@@ -348,7 +485,7 @@ namespace Gamesim.Presentation
         {
             if (providedBody.Exists)
             {
-                CharacterBodySource.Provider?.SetWardrobeColor(providedBody, palette);
+                (providedBody.Owner ?? CharacterBodySource.Provider)?.SetWardrobeColor(providedBody, palette);
                 return;
             }
 
@@ -518,6 +655,8 @@ namespace Gamesim.Presentation
             // gated on it, and a gesturing body is the same kind of motion at a larger size.
             if (hasTalkingParam) animator.SetBool(TalkingParam, talking && speaking && !reducedMotion);
             if (hasListeningParam) animator.SetBool(ListeningParam, talking && !speaking && !reducedMotion);
+            // The tense loop is the talk loop with the arms working, so it follows the same rule.
+            if (hasArguingParam) animator.SetBool(ArguingParam, IsArguing);
 
             // A provided body streams its rig in over a few frames. Retry on a slow cadence so the
             // hierarchy walk behind ResolveModelHead cannot become a per-frame cost on a body that
@@ -533,6 +672,7 @@ namespace Gamesim.Presentation
                 float time = Time.time + phaseOffset;
                 modelHead.localRotation = modelHeadRest * Quaternion.Euler(Mathf.Sin(time * 3f) * 4f, Mathf.Sin(time * 1.7f) * 3f, 0f);
             }
+            ApplyLook(modelHead);
         }
 
         /// <summary>
@@ -557,6 +697,7 @@ namespace Gamesim.Presentation
             visual.localPosition = new Vector3(0, seated ? -0.32f : idle, 0);
             chest.localRotation = Quaternion.Euler(0, 0, reducedMotion || seated ? 0f : Mathf.Sin(time * 0.9f) * 0.65f);
             head.localRotation = Quaternion.Euler(talking && !reducedMotion ? Mathf.Sin(time * 3f) * 2f : 0f, 0f, 0f);
+            ApplyLook(head);
             leftArm.localRotation = Quaternion.Euler(-swing + gesture, 0f, seated ? 0f : 7f);
             rightArm.localRotation = Quaternion.Euler(swing + gesture * 0.35f, 0f, seated ? 0f : -7f);
             leftLeg.localRotation = Quaternion.Euler(seated ? -82f : swing, 0f, 0f);
@@ -632,11 +773,29 @@ namespace Gamesim.Presentation
         /// </summary>
         public static string AppearanceId(ContestantState character, string canonicalId)
         {
+            string templateId = character.appearance?.presetId ?? character.sourceTemplateId;
+            if (!string.IsNullOrEmpty(templateId) && templateId != ContentCatalog.PlayerId)
+            {
+                var template = CastTemplates.Find(templateId);
+                if (template != null)
+                {
+                    var source = CastTemplates.ToContestant(template, false);
+                    return LegacyAppearanceId(source, template.Id);
+                }
+            }
+            if (!string.IsNullOrEmpty(character.appearance?.fallbackId)) return character.appearance.fallbackId;
+            return LegacyAppearanceId(character, canonicalId);
+        }
+
+        private static string LegacyAppearanceId(ContestantState character, string canonicalId)
+        {
             if (character.isPlayer) return ContentCatalog.PlayerId;
             switch (canonicalId)
             {
                 case "maya-hassan": case "taylor-kim": case "jamie-roberts":
-                case "casey-wilson": case "riley-johnson": return canonicalId;
+                case "casey-wilson": case "riley-johnson":
+                // The All-Stars roster's authored body (ArtSource/characters/bb_char_dan_gheesling.py).
+                case "dan-gheesling": return canonicalId;
             }
             // Imported identities retain their real IDs. Select a native visual recipe from traits,
             // with a deterministic ID-only variation; do not infer identity from a displayed name.
@@ -647,6 +806,9 @@ namespace Gamesim.Presentation
             foreach (char value in canonicalId ?? string.Empty) hash = (hash ^ value) * 16777619;
             return (hash & 1) == 0 ? "maya-hassan" : "casey-wilson";
         }
+
+        public static string AppearanceKeyFor(ContestantState character) => character?.appearance?.ContentKey()
+            ?? "legacy:" + (character?.sourceTemplateId ?? character?.id ?? ContentCatalog.PlayerId);
 
         private void OnDestroy()
         {
@@ -679,9 +841,9 @@ namespace Gamesim.Presentation
             providedBody = default;
             standIn = null; // destroyed with the visual root above
             inspectedController = null;
-            hasSpeedParam = hasSeatedParam = hasTalkingParam = false;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             built = false;
-            talking = seated = false; facingYaw = float.NaN;
+            talking = seated = arguing = false; facingYaw = float.NaN; lookTarget = null; lookBlend = 0f;
             movementBlend = walkPhase = 0f;
             CharacterId = null;
         }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -41,17 +42,19 @@ namespace Gamesim.Presentation
             public readonly string Name;
             public readonly string Badge;
             public readonly Texture Portrait;
+            public readonly ContestantState Character;
 
-            public Subject(string name, string badge, Texture portrait)
+            public Subject(string name, string badge, Texture portrait, ContestantState character = null)
             {
                 Name = name; Badge = badge; Portrait = portrait;
+                Character = character?.Clone();
             }
         }
 
         /// <summary>What the card says it is waiting for, matching the web build's wording.</summary>
         public const string DismissCaption = "Click anywhere to continue";
 
-        private RectTransform rule;
+        private RectTransform rule, glassGround;
         private TMP_Text dismiss;
         private CanvasGroup group;
         private RectTransform column, scrim, faces;
@@ -209,6 +212,7 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if (!playing) return;
+            CeremonyOverlays.Showing();
             elapsed += Time.unscaledDeltaTime;
 
             // Read the device directly rather than through the event system. The card carries no
@@ -266,6 +270,15 @@ namespace Gamesim.Presentation
             column.anchorMin = new Vector2(.5f, .5f);
             column.anchorMax = new Vector2(.5f, .5f);
             column.pivot = new Vector2(.5f, .5f);
+
+            // The mockups' glass ground behind the whole composition (VISUAL-TARGET.md §4,
+            // mockup-08 and -10): the night background at 85 %, a cyan hairline, a soft glow. First
+            // child, so every piece of the card draws over it; stretched, so it follows the column
+            // as the large-text preference grows it.
+            glassGround = NewPanel("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
+            glassGround.anchorMin = Vector2.zero;
+            glassGround.anchorMax = Vector2.one;
+            UiTheme.Glass(glassGround, UiTheme.GlassRadius);
 
             eyebrow = NewText("Takeover week", column, 15f, UiTheme.Muted);
             eyebrow.alignment = TextAlignmentOptions.Center;
@@ -326,6 +339,11 @@ namespace Gamesim.Presentation
                 + (facesH > 0f ? gap + facesH : 0f)
                 + gap * 1.6f + ruleH + gap + dismissH;
             column.sizeDelta = new Vector2(width * scale, total);
+            if (glassGround != null)
+            {
+                glassGround.offsetMin = new Vector2(-36f * scale, -28f * scale);
+                glassGround.offsetMax = new Vector2(36f * scale, 28f * scale);
+            }
 
             float y = 0f;
             Place(eyebrow.rectTransform, width * scale, eyebrowH, ref y);
@@ -406,7 +424,7 @@ namespace Gamesim.Presentation
                 frame.sizeDelta = new Vector2(portrait, portrait);
                 frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
 
-                if (subject.Portrait != null)
+                if (subject.Portrait != null || subject.Character != null)
                 {
                     var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage))
                         .GetComponent<RawImage>();
@@ -416,6 +434,7 @@ namespace Gamesim.Presentation
                     raw.rectTransform.offsetMin = Vector2.zero;
                     raw.rectTransform.offsetMax = Vector2.zero;
                     raw.texture = subject.Portrait;
+                    if (subject.Character != null) CharacterPortraits.Bind(raw, subject.Character);
                     raw.raycastTarget = false;
                 }
                 else

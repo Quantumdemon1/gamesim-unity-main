@@ -35,11 +35,9 @@ waitfree () {
 
 waitfree || { echo "project never freed; nothing was synced or run"; exit 1; }
 
-powershell -NoProfile -Command "robocopy '$SRC\\Assets' '$DST\\Assets' /MIR /NJH /NJS /NP /NDL /NFL /XD '$DST\\Assets\\Resources' '$DST\\Assets\\UMAProjectData' | Out-Null; robocopy '$SRC\\ProjectSettings' '$DST\\ProjectSettings' /MIR /NJH /NJS /NP /NDL /NFL | Out-Null; robocopy '$SRC\\ArtSource' '$DST\\ArtSource' /MIR /NJH /NJS /NP /NDL /NFL | Out-Null; if (\$LASTEXITCODE -lt 8) { 'sync ok' } else { exit 1 }" || { echo "SYNC FAILED"; exit 1; }
-
-# Test-copy-only: the PC render pipeline asset's GPU Resident Drawer crashes PlayMode runs
-# intermittently. The repository still ships it enabled; this never travels back.
-sed -i 's/m_GPUResidentDrawerMode: 1/m_GPUResidentDrawerMode: 0/' "$DSTP/Assets/Settings/PC_RPAsset.asset"
+# All mirrors validate their absolute destination and every robocopy result in one native shell.
+# Only tests disable GPU Resident Drawer; review player builds retain the shipping settings.
+powershell -NoProfile -File "$SRC_POSIX/Tools/sync-acceptance.ps1" -DisableGpuResidentDrawer || { echo "SYNC FAILED"; exit 1; }
 
 mkdir -p "$DSTP/Logs"
 for pair in "$@"; do

@@ -1,0 +1,1362 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f90b2db5bfdf4b97874f64fa7533bb14, type: 3}
+  m_Name: House wardrobe
+  m_EditorClassIdentifier: Gamesim.Uma::Gamesim.Uma.UmaWardrobeCatalog
+  version: 1
+  entries:
+  - id: uma-8900db45718eb61469e720617c9deeb7
+    recipeName: 'HDEyeBrows_Thin_Wardrobe'
+    aliases:
+    - 'HDEyeBrows_Thin_Wardrobe'
+    label: 'Hdeye Brows Thin'
+    styleGroup: brows.thin
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b01db6a57e89dad439d004967dd4be4b
+    recipeName: 'HDEyeBrows_Wardrobe'
+    aliases:
+    - 'HDEyeBrows_Wardrobe'
+    label: 'Hdeye Brows'
+    styleGroup: brows
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d4e7dd39e030ab34d89ea36afbec66b1
+    recipeName: 'HDEyeBrows2_Wardrobe'
+    aliases:
+    - 'HDEyeBrows2_Wardrobe'
+    label: 'Hdeye Brows2'
+    styleGroup: brows
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-ddfee11be4901ee4491ae04984c94025
+    recipeName: 'HDEyeBrowsArched_Wardrobe'
+    aliases:
+    - 'HDEyeBrowsArched_Wardrobe'
+    label: 'Hdeye Brows Arched'
+    styleGroup: brows.arch
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-ec43efbaab6ee6342ad64c668874c4c7
+    recipeName: 'Eyebrows_Arched_Average'
+    aliases:
+    - 'Eyebrows_Arched_Average'
+    label: 'Eyebrows Arched Average'
+    styleGroup: brows.arch
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-cdc364b6089619049a3dec0eb0406687
+    recipeName: 'Eyebrows_Arched_Bushy'
+    aliases:
+    - 'Eyebrows_Arched_Bushy'
+    label: 'Eyebrows Arched Bushy'
+    styleGroup: brows.arch
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-8863e8885a6b77f4389d5f513b13715f
+    recipeName: 'Eyebrows_Average_Average'
+    aliases:
+    - 'Eyebrows_Average_Average'
+    label: 'Eyebrows Average Average'
+    styleGroup: brows
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-075bd537b74a2d8439dc3cae07db9fa8
+    recipeName: 'Eyebrows_Average_Bushy'
+    aliases:
+    - 'Eyebrows_Average_Bushy'
+    label: 'Eyebrows Average Bushy'
+    styleGroup: brows.thick
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-73d0c1e2a76066c4ba3020ea424e87a0
+    recipeName: 'Eyebrows_Bushy_Average'
+    aliases:
+    - 'Eyebrows_Bushy_Average'
+    label: 'Eyebrows Bushy Average'
+    styleGroup: brows.thick
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-f3b7b720912d3f84abc6d9657c9c42ed
+    recipeName: 'Eyebrows_Bushy_Bushy'
+    aliases:
+    - 'Eyebrows_Bushy_Bushy'
+    label: 'Eyebrows Bushy Bushy'
+    styleGroup: brows.thick
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-3474db4c8aca18a4fbd38c1ee584db7f
+    recipeName: 'Eyebrows_EndArch_Average'
+    aliases:
+    - 'Eyebrows_EndArch_Average'
+    label: 'Eyebrows End Arch Average'
+    styleGroup: brows.arch
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-469425923fa85954494df0b9898aabf6
+    recipeName: 'Eyebrows_EndArch_Bushy'
+    aliases:
+    - 'Eyebrows_EndArch_Bushy'
+    label: 'Eyebrows End Arch Bushy'
+    styleGroup: brows.arch
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-847521e630faed24aabc69e112e5e765
+    recipeName: 'Eyebrows_Thin_Average'
+    aliases:
+    - 'Eyebrows_Thin_Average'
+    label: 'Eyebrows Thin Average'
+    styleGroup: brows.thin
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-54a7833b3ca20b5488f4ad40c46a91fe
+    recipeName: 'Eyebrows_Thin_Bushy'
+    aliases:
+    - 'Eyebrows_Thin_Bushy'
+    label: 'Eyebrows Thin Bushy'
+    styleGroup: brows.thin
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d909b37dd7a09d042ba41fd3a33112e9
+    recipeName: 'Eyebrows_Unibrow_Average'
+    aliases:
+    - 'Eyebrows_Unibrow_Average'
+    label: 'Eyebrows Unibrow Average'
+    styleGroup: brows
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-c4cb498384734114f8896ed9798464ed
+    recipeName: 'Eyebrows_Unibrow_Bushy'
+    aliases:
+    - 'Eyebrows_Unibrow_Bushy'
+    label: 'Eyebrows Unibrow Bushy'
+    styleGroup: brows.thick
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-717095fcc2333524e8f64bb25f471251
+    recipeName: 'Beard_Drifter'
+    aliases:
+    - 'Beard_Drifter'
+    label: 'Beard Drifter'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-09a6bf10961ba6743a6508f078a47416
+    recipeName: 'Beard_Goatee_Recipe'
+    aliases:
+    - 'Beard_Goatee_Recipe'
+    label: 'Beard Goatee'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-69345b32ae382a3478c4922a57598e96
+    recipeName: 'Beard_Neckbeard_Recipe'
+    aliases:
+    - 'Beard_Neckbeard_Recipe'
+    label: 'Beard Neckbeard'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-c764f53a93fa08b40b169a61827a31b4
+    recipeName: 'Beard_Trimmed_Recipe'
+    aliases:
+    - 'Beard_Trimmed_Recipe'
+    label: 'Beard Trimmed'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-6a1dc5a4ba9a82a4db6fc728d4b6eda8
+    recipeName: 'Hair_Bob_Recipe'
+    aliases:
+    - 'Hair_Bob_Recipe'
+    label: 'Hair Bob'
+    styleGroup: hair.long
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-032c9c79cfa8da14ba017201748ff0ca
+    recipeName: 'Hair_Bun_Recipe'
+    aliases:
+    - 'Hair_Bun_Recipe'
+    label: 'Hair Bun'
+    styleGroup: hair.tied
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-c056e63f5e59a2e4b85e160707cb276e
+    recipeName: 'Hair_CurveUnder_Recipe'
+    aliases:
+    - 'Hair_CurveUnder_Recipe'
+    label: 'Hair Curve Under'
+    styleGroup: hair.long
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-2467b9f23683edf47929c985261c0f29
+    recipeName: 'Hair_LeftPart_Recipe'
+    aliases:
+    - 'Hair_LeftPart_Recipe'
+    label: 'Hair Left Part'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-dcd1d9d8406b777488de52f7dc306c84
+    recipeName: 'Hair_LongSwept_Recipe'
+    aliases:
+    - 'Hair_LongSwept_Recipe'
+    label: 'Hair Long Swept'
+    styleGroup: hair.long
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-047de1958ad5cfe4ea70df1f1b57762d
+    recipeName: 'Hair_MessyPomp_Recipe'
+    aliases:
+    - 'Hair_MessyPomp_Recipe'
+    label: 'Hair Messy Pomp'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-03fb4cc282e649744aa9712e47554170
+    recipeName: 'Hair_MessyRightPart_Recipe'
+    aliases:
+    - 'Hair_MessyRightPart_Recipe'
+    label: 'Hair Messy Right Part'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-2743f153868179a42afbb280ff3320bd
+    recipeName: 'Hair_Pointy_Recipe'
+    aliases:
+    - 'Hair_Pointy_Recipe'
+    label: 'Hair Pointy'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-511aa62754b82734e8a3ef2c7730b4d1
+    recipeName: 'Hair_Poofy'
+    aliases:
+    - 'Hair_Poofy'
+    label: 'Hair Poofy'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-3d768ea7d0b8f5140baaa09f0d79e3ac
+    recipeName: 'Hair_PulledBack_Recipe'
+    aliases:
+    - 'Hair_PulledBack_Recipe'
+    label: 'Hair Pulled Back'
+    styleGroup: hair.tied
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-7635ff0685fcb874f8e7fc84d6fc53fb
+    recipeName: 'Hair_Straight_Recipe'
+    aliases:
+    - 'Hair_Straight_Recipe'
+    label: 'Hair Straight'
+    styleGroup: hair.long
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-01b5f69539002bf468525b38dfca84ac
+    recipeName: 'Hair_StraigntPulledBack_Recipe'
+    aliases:
+    - 'Hair_StraigntPulledBack_Recipe'
+    label: 'Hair Straignt Pulled Back'
+    styleGroup: hair.tied
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-298f42deb7ecf594eaf5d429c89bf2cf
+    recipeName: 'Hair_UpwardBun_Recipe'
+    aliases:
+    - 'Hair_UpwardBun_Recipe'
+    label: 'Hair Upward Bun'
+    styleGroup: hair.tied
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-3d46d540d956e9b459a32446fcd0c554
+    recipeName: 'HairAnimeMessy_Recipe'
+    aliases:
+    - 'HairAnimeMessy_Recipe'
+    label: 'Hair Anime Messy'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-286d70e1fdf265448a7887434ebbca64
+    recipeName: 'HairMessyUp_Recipe'
+    aliases:
+    - 'HairMessyUp_Recipe'
+    label: 'Hair Messy Up'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-9bcb3571c94695441b3dfb8d14c4f7d6
+    recipeName: 'HairPigtails_Recipe'
+    aliases:
+    - 'HairPigtails_Recipe'
+    label: 'Hair Pigtails'
+    styleGroup: hair.tied
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-dc06686994618814d8a535837035651f
+    recipeName: 'HairPonytail_Recipe'
+    aliases:
+    - 'HairPonytail_Recipe'
+    label: 'Hair Ponytail'
+    styleGroup: hair.tied
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-dbe096ebc435b8849a5183fd34134907
+    recipeName: 'HairTornado_Recipe'
+    aliases:
+    - 'HairTornado_Recipe'
+    label: 'Hair Tornado'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-4b929b1035f24c74c8de2669a5e62d2a
+    recipeName: 'Beard_Beatnik_Bushy'
+    aliases:
+    - 'Beard_Beatnik_Bushy'
+    label: 'Beard Beatnik Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-f8da5fe984dfb7640bac9380aace8123
+    recipeName: 'Beard_Beatnik'
+    aliases:
+    - 'Beard_Beatnik'
+    label: 'Beard Beatnik'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-ec15a52bd5f329e47ba8ae7ce7134290
+    recipeName: 'Beard_Circle_Bushy'
+    aliases:
+    - 'Beard_Circle_Bushy'
+    label: 'Beard Circle Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-e7d0cd8ca245ede4da7d5d25f0408fba
+    recipeName: 'Beard_Circle'
+    aliases:
+    - 'Beard_Circle'
+    label: 'Beard Circle'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-fa1bce88f182d2b499d732c30bb89e9b
+    recipeName: 'Beard_Curtain_Bushy'
+    aliases:
+    - 'Beard_Curtain_Bushy'
+    label: 'Beard Curtain Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-462aff48250137b4189caf1096ce5577
+    recipeName: 'Beard_Curtain'
+    aliases:
+    - 'Beard_Curtain'
+    label: 'Beard Curtain'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-7a8f2349f85886949a601b66a7ecd730
+    recipeName: 'Beard_Goatee_Bushy'
+    aliases:
+    - 'Beard_Goatee_Bushy'
+    label: 'Beard Goatee Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-0c1b86d5bb348274cba75bbdf7ae09cd
+    recipeName: 'Beard_Goatee'
+    aliases:
+    - 'Beard_Goatee'
+    label: 'Beard Goatee'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-2ea3a67a76999c54a8a18b655822c216
+    recipeName: 'Beard_Gunslinger_Bushy'
+    aliases:
+    - 'Beard_Gunslinger_Bushy'
+    label: 'Beard Gunslinger Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-6a3d1ce9d14244e4cb70603d48e31ae3
+    recipeName: 'Beard_Gunslinger'
+    aliases:
+    - 'Beard_Gunslinger'
+    label: 'Beard Gunslinger'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b5b772ea68efdff4dbf83a0d1fdec816
+    recipeName: 'Beard_Neckbeard_Bushy'
+    aliases:
+    - 'Beard_Neckbeard_Bushy'
+    label: 'Beard Neckbeard Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-a1e55c76a344c7b4bafff68f907a0123
+    recipeName: 'Beard_Neckbeard'
+    aliases:
+    - 'Beard_Neckbeard'
+    label: 'Beard Neckbeard'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-1c360cfdabf34cb49b35f408bc61b29e
+    recipeName: 'Beard_SoulPatch_Bushy'
+    aliases:
+    - 'Beard_SoulPatch_Bushy'
+    label: 'Beard Soul Patch Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-162a0e546953f504fa1fd346eeee4c6f
+    recipeName: 'Beard_SoulPatch'
+    aliases:
+    - 'Beard_SoulPatch'
+    label: 'Beard Soul Patch'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-f3f3d2d6df852ae438aa86b7558e3187
+    recipeName: 'Beard_Trimmed_Bushy'
+    aliases:
+    - 'Beard_Trimmed_Bushy'
+    label: 'Beard Trimmed Bushy'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-f8fe366049072804991888edda22c14d
+    recipeName: 'Beard_Trimmed'
+    aliases:
+    - 'Beard_Trimmed'
+    label: 'Beard Trimmed'
+    styleGroup: face.beard
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-f85b387080cbe254b91dbf895e69cc7d
+    recipeName: 'Mustache_Chevron_Bushy'
+    aliases:
+    - 'Mustache_Chevron_Bushy'
+    label: 'Mustache Chevron Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-0cb58c92842c05d4e82ac64dbde63aa3
+    recipeName: 'Mustache_Chevron'
+    aliases:
+    - 'Mustache_Chevron'
+    label: 'Mustache Chevron'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-22ee617d4df78404f8067730b4d55146
+    recipeName: 'Mustache_Full_Bushy'
+    aliases:
+    - 'Mustache_Full_Bushy'
+    label: 'Mustache Full Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-1385464eece30d8498101079bd959865
+    recipeName: 'Mustache_Full'
+    aliases:
+    - 'Mustache_Full'
+    label: 'Mustache Full'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b5d179e4e667a554bba0019699fb473d
+    recipeName: 'Mustache_Horseshoe_Bushy'
+    aliases:
+    - 'Mustache_Horseshoe_Bushy'
+    label: 'Mustache Horseshoe Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-8870c941a13fbd94ba45ec7fcad4c6a5
+    recipeName: 'Mustache_Horseshoe'
+    aliases:
+    - 'Mustache_Horseshoe'
+    label: 'Mustache Horseshoe'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b9f09e6cfedb61649a0dc04a4858eb9d
+    recipeName: 'Mustache_Painter_Bushy'
+    aliases:
+    - 'Mustache_Painter_Bushy'
+    label: 'Mustache Painter Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-8f01ef6e4cef4d840ac4843f2ef0596d
+    recipeName: 'Mustache_Painter'
+    aliases:
+    - 'Mustache_Painter'
+    label: 'Mustache Painter'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-0ee7b37542dac1b4e944152ed8b93aa0
+    recipeName: 'Mustache_Shaped_Bushy'
+    aliases:
+    - 'Mustache_Shaped_Bushy'
+    label: 'Mustache Shaped Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-fa98a7599a056084e9b9872aa2a49a75
+    recipeName: 'Mustache_Shaped'
+    aliases:
+    - 'Mustache_Shaped'
+    label: 'Mustache Shaped'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-8ffdd4d7b28ba4c4db1f04b4c17e402a
+    recipeName: 'Mustache_ShortHorseshoe_Bushy'
+    aliases:
+    - 'Mustache_ShortHorseshoe_Bushy'
+    label: 'Mustache Short Horseshoe Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-1246e185009316846bad5e536d547e1b
+    recipeName: 'Mustache_ShortHorseshoe'
+    aliases:
+    - 'Mustache_ShortHorseshoe'
+    label: 'Mustache Short Horseshoe'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b69d6269886059140bb37e1a34effbd0
+    recipeName: 'Mustache_SideStache_Bushy'
+    aliases:
+    - 'Mustache_SideStache_Bushy'
+    label: 'Mustache Side Stache Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-29aa95302b4991e40a20ca2e8aef79f6
+    recipeName: 'Mustache_SideStache'
+    aliases:
+    - 'Mustache_SideStache'
+    label: 'Mustache Side Stache'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-a1e16a198836f754aa8ad6b5e9ef8202
+    recipeName: 'Mustache_Small_Bushy'
+    aliases:
+    - 'Mustache_Small_Bushy'
+    label: 'Mustache Small Bushy'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-729f0566362ff0446831676c6eb01b67
+    recipeName: 'Mustache_Small'
+    aliases:
+    - 'Mustache_Small'
+    label: 'Mustache Small'
+    styleGroup: face.mustache
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-91fd3128fe03cf447bbb2e6def209c56
+    recipeName: 'F_ChallengerBoots_Recipe'
+    aliases:
+    - 'F_ChallengerBoots_Recipe'
+    label: 'Challenger Boots'
+    styleGroup: shoes.boots
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d82c4657b6f93d4409ae3638024edcb0
+    recipeName: 'F_ChallengerTorsoArmor_Recipe'
+    aliases:
+    - 'F_ChallengerTorsoArmor_Recipe'
+    label: 'Challenger Torso Armor'
+    styleGroup: chest
+    tags: []
+    fallbackPriority: 100
+    available: 0
+  - id: uma-2df70a62d6f2e3a41aa042f31974fec8
+    recipeName: 'F_Freebie Robeset Robe_Recipe'
+    aliases:
+    - 'F_Freebie Robeset Robe_Recipe'
+    label: 'Freebie Robeset Robe'
+    styleGroup: chest
+    tags: []
+    fallbackPriority: 100
+    available: 0
+  - id: uma-41829bc954186f84184857790d03fa31
+    recipeName: 'F_Wrapped Pants_Recipe'
+    aliases:
+    - 'F_Wrapped Pants_Recipe'
+    label: 'Wrapped Pants'
+    styleGroup: bottom.sportpants
+    tags: []
+    fallbackPriority: 100
+    available: 0
+  - id: uma-fe75e420f58ccec4daa0a152d00fb281
+    recipeName: 'M_ChallengerBoots_Recipe'
+    aliases:
+    - 'M_ChallengerBoots_Recipe'
+    label: 'Challenger Boots'
+    styleGroup: shoes.boots
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-524d8ea55401c7041a78ef73f306fd1f
+    recipeName: 'M_ChallengerTorsoArmor_Recipe'
+    aliases:
+    - 'M_ChallengerTorsoArmor_Recipe'
+    label: 'Challenger Torso Armor'
+    styleGroup: chest
+    tags: []
+    fallbackPriority: 100
+    available: 0
+  - id: uma-95159e5a53ba13b428c9bd633c2a2ebf
+    recipeName: 'M_F_Freebie Robeset Boots_Recipe'
+    aliases:
+    - 'M_F_Freebie Robeset Boots_Recipe'
+    label: 'Freebie Robeset Boots'
+    styleGroup: shoes.boots
+    tags: []
+    fallbackPriority: 100
+    available: 0
+  - id: uma-4cc11cc94c193094baa7a9fe6838ffe5
+    recipeName: 'M_Freebie Robeset Robe_Recipe'
+    aliases:
+    - 'M_Freebie Robeset Robe_Recipe'
+    label: 'Freebie Robeset Robe'
+    styleGroup: chest
+    tags: []
+    fallbackPriority: 100
+    available: 0
+  - id: uma-5ba9a553dc49b514db1370562c7d8a2a
+    recipeName: 'M_Wrapped Pants_Recipe'
+    aliases:
+    - 'M_Wrapped Pants_Recipe'
+    label: 'Wrapped Pants'
+    styleGroup: bottom.sportpants
+    tags: []
+    fallbackPriority: 100
+    available: 0
+  - id: uma-7841bcb29c7dc4d40bc367e79964a666
+    recipeName: 'bb_female_hair_Recipe'
+    aliases:
+    - 'bb_female_hair_Recipe'
+    label: 'Female Hair'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b018c36bd6589214785340abbdafa563
+    recipeName: 'bb_male_haircut_Recipe'
+    aliases:
+    - 'bb_male_haircut_Recipe'
+    label: 'Male Haircut'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-0e9919e9aa10fa04e9ad86d565261678
+    recipeName: 'bb_Male_Military_Hair_Recipe'
+    aliases:
+    - 'bb_Male_Military_Hair_Recipe'
+    label: 'Male Military Hair'
+    styleGroup: hair.short
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-6cd9a3d40755ca34d8a273ad9fa98d51
+    recipeName: 'colors_top_bottom_Recipe'
+    aliases:
+    - 'colors_top_bottom_Recipe'
+    label: 'Colors Top Bottom'
+    styleGroup: bottom.sportpants
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-67133629d0c41014cbbf4ec53a436687
+    recipeName: 'colors_top_Recipe'
+    aliases:
+    - 'colors_top_Recipe'
+    label: 'Colors Top'
+    styleGroup: chest
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d6383a0e8cef35c49aee12da15171d04
+    recipeName: 'dress_tennis_granit_Recipe'
+    aliases:
+    - 'dress_tennis_granit_Recipe'
+    label: 'Dress Tennis Granit'
+    styleGroup: top.dress
+    tags:
+    - granit
+    fallbackPriority: 100
+    available: 1
+  - id: uma-4c2cbc40e28967d42af9d2a6beaa1857
+    recipeName: 'green_tights_Recipe'
+    aliases:
+    - 'green_tights_Recipe'
+    label: 'Green Tights'
+    styleGroup: bottom.tights
+    tags:
+    - green
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d0fbecde0d56e7f48af40b0615fffe3b
+    recipeName: 'Hoodie_turquoise_Recipe'
+    aliases:
+    - 'Hoodie_turquoise_Recipe'
+    label: 'Hoodie Turquoise'
+    styleGroup: top.sweatshirt
+    tags:
+    - turquoise
+    fallbackPriority: 100
+    available: 1
+  - id: uma-807cfcd005a81894988384eeaceb2e21
+    recipeName: 'jacket_hive.001_Recipe'
+    aliases:
+    - 'jacket_hive.001_Recipe'
+    label: 'Jacket Hive'
+    styleGroup: top.jacket
+    tags:
+    - hive
+    fallbackPriority: 100
+    available: 1
+  - id: uma-a47ff067f68537f4d844d4c007deb8fb
+    recipeName: 'male_hoodie_blue_Recipe'
+    aliases:
+    - 'male_hoodie_blue_Recipe'
+    label: 'Hoodie Blue'
+    styleGroup: top.sweatshirt
+    tags:
+    - blue
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d16e0d0766f418d40abd43de14596005
+    recipeName: 'male_hoodie_blueWhite_Recipe'
+    aliases:
+    - 'male_hoodie_blueWhite_Recipe'
+    label: 'Hoodie Blue White'
+    styleGroup: top.sweatshirt
+    tags:
+    - white
+    - blue
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b96d745dbf37c664ab3490d93c510c16
+    recipeName: 'male_hoodie_grey_Recipe'
+    aliases:
+    - 'male_hoodie_grey_Recipe'
+    label: 'Hoodie Grey'
+    styleGroup: top.sweatshirt
+    tags:
+    - grey
+    fallbackPriority: 100
+    available: 1
+  - id: uma-aa168d22c3ad84245829828a98467d0c
+    recipeName: 'male_jacket_hive_Recipe'
+    aliases:
+    - 'male_jacket_hive_Recipe'
+    label: 'Jacket Hive'
+    styleGroup: top.jacket
+    tags:
+    - hive
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b55cee5facaaacb49adbf21556a91930
+    recipeName: 'male_shoe_low_white.001_Recipe'
+    aliases:
+    - 'male_shoe_low_white.001_Recipe'
+    label: 'Shoe Low White'
+    styleGroup: shoes.trainer.low
+    tags:
+    - white
+    fallbackPriority: 10
+    available: 1
+  - id: uma-9962c28dfacdf1d41b3b420c64a157c7
+    recipeName: 'male_shoes_tall_Recipe'
+    aliases:
+    - 'male_shoes_tall_Recipe'
+    label: 'Shoes Tall'
+    styleGroup: shoes.trainer.high
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-8a44198d09a1d134597a9c5a53d14350
+    recipeName: 'male_shoes_tall_turquoise_Recipe'
+    aliases:
+    - 'male_shoes_tall_turquoise_Recipe'
+    label: 'Shoes Tall Turquoise'
+    styleGroup: shoes.trainer.high
+    tags:
+    - turquoise
+    fallbackPriority: 100
+    available: 1
+  - id: uma-b245b79130682d04dba398b75febd4fa
+    recipeName: 'male_shorts_black_cotton_Recipe'
+    aliases:
+    - 'male_shorts_black_cotton_Recipe'
+    label: 'Shorts Black Cotton'
+    styleGroup: bottom.shorts
+    tags:
+    - black
+    fallbackPriority: 100
+    available: 1
+  - id: uma-6cc82868ba535ad4a94cdfcd3ae1dead
+    recipeName: 'male_shorts_hive_Recipe'
+    aliases:
+    - 'male_shorts_hive_Recipe'
+    label: 'Shorts Hive'
+    styleGroup: bottom.shorts
+    tags:
+    - hive
+    fallbackPriority: 100
+    available: 1
+  - id: uma-2591715f0e0f0ed4ab0f11ebd7b9d063
+    recipeName: 'male_shorts_white_Recipe'
+    aliases:
+    - 'male_shorts_white_Recipe'
+    label: 'Shorts White'
+    styleGroup: bottom.shorts
+    tags:
+    - white
+    fallbackPriority: 100
+    available: 1
+  - id: uma-86f6dbab2e17ea143adb297336a735ff
+    recipeName: 'male_sportpants_alt_black_Recipe'
+    aliases:
+    - 'male_sportpants_alt_black_Recipe'
+    label: 'Sportpants Alt Black'
+    styleGroup: bottom.sportpants
+    tags:
+    - black
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d928cabcf2854e6428490a8eb733f9a0
+    recipeName: 'male_sportpants_blueWhite_Recipe'
+    aliases:
+    - 'male_sportpants_blueWhite_Recipe'
+    label: 'Sportpants Blue White'
+    styleGroup: bottom.sportpants
+    tags:
+    - white
+    - blue
+    fallbackPriority: 100
+    available: 1
+  - id: uma-9d9f5b51a78e0f44a87f7fb7dd80795d
+    recipeName: 'male_sportpants_grey_Recipe'
+    aliases:
+    - 'male_sportpants_grey_Recipe'
+    label: 'Sportpants Grey'
+    styleGroup: bottom.sportpants
+    tags:
+    - grey
+    fallbackPriority: 100
+    available: 1
+  - id: uma-0ed25761b684b7048a76eafe523486da
+    recipeName: 'male_sweatpants_black_Recipe'
+    aliases:
+    - 'male_sweatpants_black_Recipe'
+    label: 'Sweatpants Black'
+    styleGroup: bottom.sportpants
+    tags:
+    - black
+    fallbackPriority: 100
+    available: 1
+  - id: uma-93452db9c165561418e4f66922923c67
+    recipeName: 'male_swimwear_granit_Recipe'
+    aliases:
+    - 'male_swimwear_granit_Recipe'
+    label: 'Swimwear Granit'
+    styleGroup: bottom.shorts
+    tags:
+    - granit
+    fallbackPriority: 100
+    available: 1
+  - id: uma-a48ff9401ee730b498a6eb44691dd2e5
+    recipeName: 'male_tanktop_yellow_Recipe'
+    aliases:
+    - 'male_tanktop_yellow_Recipe'
+    label: 'Tanktop Yellow'
+    styleGroup: top.sleeveless
+    tags:
+    - yellow
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d4988d64f350ece41b019a475abfb2d0
+    recipeName: 'male_tights_black_Recipe'
+    aliases:
+    - 'male_tights_black_Recipe'
+    label: 'Tights Black'
+    styleGroup: bottom.tights
+    tags:
+    - black
+    fallbackPriority: 100
+    available: 1
+  - id: uma-593109482f9572141b1a7782cc47cad5
+    recipeName: 'male_tights_prints_Recipe'
+    aliases:
+    - 'male_tights_prints_Recipe'
+    label: 'Tights Prints'
+    styleGroup: bottom.tights
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-3a1b3f708e1d5654c96e86b08bdfd8bf
+    recipeName: 'male_tshirt_white_Recipe'
+    aliases:
+    - 'male_tshirt_white_Recipe'
+    label: 'Tshirt White'
+    styleGroup: top.tshirt
+    tags:
+    - white
+    fallbackPriority: 10
+    available: 1
+  - id: uma-42bf1905064bcb144888292b673bbe78
+    recipeName: 'male_underpants_blue_Recipe'
+    aliases:
+    - 'male_underpants_blue_Recipe'
+    label: 'Underpants Blue'
+    styleGroup: underlayer.bottom
+    tags:
+    - blue
+    fallbackPriority: 100
+    available: 1
+  - id: uma-02f05439f9d8410468b15771af635042
+    recipeName: 'male_underpants_granit_Recipe'
+    aliases:
+    - 'male_underpants_granit_Recipe'
+    label: 'Underpants Granit'
+    styleGroup: underlayer.bottom
+    tags:
+    - granit
+    fallbackPriority: 100
+    available: 1
+  - id: uma-d45299602ca4dcb47ba62111a9e816a5
+    recipeName: 'male_underwear_fishes_Recipe'
+    aliases:
+    - 'male_underwear_fishes_Recipe'
+    label: 'Underwear Fishes'
+    styleGroup: underlayer.bottom
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-604f01e8584dc224db89cd6aece15aad
+    recipeName: 'male_underwear_hive_Recipe'
+    aliases:
+    - 'male_underwear_hive_Recipe'
+    label: 'Underwear Hive'
+    styleGroup: underlayer.bottom
+    tags:
+    - hive
+    fallbackPriority: 100
+    available: 1
+  - id: uma-172d750a4828df1469001a8e8ed15fee
+    recipeName: 'male_underwear_tighty_Recipe'
+    aliases:
+    - 'male_underwear_tighty_Recipe'
+    label: 'Underwear Tighty'
+    styleGroup: underlayer.bottom
+    tags: []
+    fallbackPriority: 10
+    available: 1
+  - id: uma-aedd2f3f964b4c0499131e38c6a5422c
+    recipeName: 'male_underwear_whiteBlue_Recipe'
+    aliases:
+    - 'male_underwear_whiteBlue_Recipe'
+    label: 'Underwear White Blue'
+    styleGroup: underlayer.bottom
+    tags:
+    - white
+    - blue
+    fallbackPriority: 10
+    available: 1
+  - id: uma-6c6a4d38cb8219542a36651aa79e38cd
+    recipeName: 'shoe_low_white_Recipe'
+    aliases:
+    - 'shoe_low_white_Recipe'
+    label: 'Shoe Low White'
+    styleGroup: shoes.trainer.low
+    tags:
+    - white
+    fallbackPriority: 10
+    available: 1
+  - id: uma-ff51aacf30657794c844081d448cbbe2
+    recipeName: 'shoes_tall_turquoise.001_Recipe'
+    aliases:
+    - 'shoes_tall_turquoise.001_Recipe'
+    label: 'Shoes Tall Turquoise'
+    styleGroup: shoes.trainer.high
+    tags:
+    - turquoise
+    fallbackPriority: 100
+    available: 1
+  - id: uma-4b579de8cf2e7384e9d53efdfb680c3f
+    recipeName: 'shoes_tall_white_Recipe'
+    aliases:
+    - 'shoes_tall_white_Recipe'
+    label: 'Shoes Tall White'
+    styleGroup: shoes.trainer.high
+    tags:
+    - white
+    fallbackPriority: 100
+    available: 1
+  - id: uma-6a5d5cffdb7a32a40b564136a829eedf
+    recipeName: 'shorts_turquoise_Recipe'
+    aliases:
+    - 'shorts_turquoise_Recipe'
+    label: 'Shorts Turquoise'
+    styleGroup: bottom.shorts
+    tags:
+    - turquoise
+    fallbackPriority: 100
+    available: 1
+  - id: uma-a68398444af487a4898d67ce763422f5
+    recipeName: 'skirt_turquoise_Recipe'
+    aliases:
+    - 'skirt_turquoise_Recipe'
+    label: 'Skirt Turquoise'
+    styleGroup: bottom.skirt
+    tags:
+    - turquoise
+    fallbackPriority: 100
+    available: 1
+  - id: uma-4328f897daf63b7418667580f939558a
+    recipeName: 'sports_underwear_bottoms_Recipe'
+    aliases:
+    - 'sports_underwear_bottoms_Recipe'
+    label: 'Sports Underwear Bottoms'
+    styleGroup: underlayer.bottom
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-eb5716d692323e1428f16773a964c77f
+    recipeName: 'sportswear_sweater_granit_Recipe'
+    aliases:
+    - 'sportswear_sweater_granit_Recipe'
+    label: 'Sportswear Sweater Granit'
+    styleGroup: top.sweatshirt
+    tags:
+    - granit
+    fallbackPriority: 100
+    available: 1
+  - id: uma-1c3dad5d6be6d564eba7c334b3209d41
+    recipeName: 'sportswear_top_granit_Recipe'
+    aliases:
+    - 'sportswear_top_granit_Recipe'
+    label: 'Sportswear Top Granit'
+    styleGroup: top.sleeveless
+    tags:
+    - granit
+    fallbackPriority: 100
+    available: 1
+  - id: uma-7b04e811cab36da4ea4ec6b4ed49ecc3
+    recipeName: 'sportswear_top_Recipe'
+    aliases:
+    - 'sportswear_top_Recipe'
+    label: 'Sportswear Top'
+    styleGroup: top.sleeveless
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-56e68bc42b0b4ca47a8cb5b19e2cfe1a
+    recipeName: 'sportwear_pants_granit_Recipe'
+    aliases:
+    - 'sportwear_pants_granit_Recipe'
+    label: 'Sportwear Pants Granit'
+    styleGroup: bottom.sportpants
+    tags:
+    - granit
+    fallbackPriority: 100
+    available: 1
+  - id: uma-6bf1e7d4f0f7f014c97e78ceb7e21901
+    recipeName: 'swimwear_black_bottom_Recipe'
+    aliases:
+    - 'swimwear_black_bottom_Recipe'
+    label: 'Swimwear Black Bottom'
+    styleGroup: bottom.shorts
+    tags:
+    - black
+    fallbackPriority: 100
+    available: 1
+  - id: uma-f3ac0ca2b2909754fbdb795e47e96b80
+    recipeName: 'swimwear_black_top_Recipe'
+    aliases:
+    - 'swimwear_black_top_Recipe'
+    label: 'Swimwear Black Top'
+    styleGroup: top.swim
+    tags:
+    - black
+    fallbackPriority: 100
+    available: 1
+  - id: uma-9230843a0a9f95e419b074b1d3c3b5bb
+    recipeName: 'tanktop_whiteBlackStraps_Recipe'
+    aliases:
+    - 'tanktop_whiteBlackStraps_Recipe'
+    label: 'Tanktop White Black Straps'
+    styleGroup: top.sleeveless
+    tags:
+    - white
+    - black
+    fallbackPriority: 100
+    available: 1
+  - id: uma-52676ceb565336a4f9508148418161ab
+    recipeName: 'tanktop_yellow_Recipe'
+    aliases:
+    - 'tanktop_yellow_Recipe'
+    label: 'Tanktop Yellow'
+    styleGroup: top.sleeveless
+    tags:
+    - yellow
+    fallbackPriority: 100
+    available: 1
+  - id: uma-40e240746c801294ab09d372fd9eee8a
+    recipeName: 'tanktop_zebra_Recipe'
+    aliases:
+    - 'tanktop_zebra_Recipe'
+    label: 'Tanktop Zebra'
+    styleGroup: top.sleeveless
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-f0cf7145ad4ca614a950a661dcb5428e
+    recipeName: 'tights_gray_Recipe'
+    aliases:
+    - 'tights_gray_Recipe'
+    label: 'Tights Gray'
+    styleGroup: bottom.tights
+    tags:
+    - gray
+    fallbackPriority: 100
+    available: 1
+  - id: uma-aaba542ed573de04bb1bb9f3b38a71af
+    recipeName: 'tights_purple_Recipe'
+    aliases:
+    - 'tights_purple_Recipe'
+    label: 'Tights Purple'
+    styleGroup: bottom.tights
+    tags:
+    - purple
+    fallbackPriority: 100
+    available: 1
+  - id: uma-c224b1aded5c95b4793942be32cfbb36
+    recipeName: 'tights_stripe_Recipe'
+    aliases:
+    - 'tights_stripe_Recipe'
+    label: 'Tights Stripe'
+    styleGroup: bottom.tights
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-2f3acfc4dd93b3c4faa2410e4255b666
+    recipeName: 'tshirt_turquoise_Recipe'
+    aliases:
+    - 'tshirt_turquoise_Recipe'
+    label: 'Tshirt Turquoise'
+    styleGroup: top.tshirt
+    tags:
+    - turquoise
+    fallbackPriority: 10
+    available: 1
+  - id: uma-9caa9352c4ef20b4eab11b890ebe20b0
+    recipeName: 'underwear_bra_green_Recipe'
+    aliases:
+    - 'underwear_bra_green_Recipe'
+    label: 'Underwear Bra Green'
+    styleGroup: underlayer.top
+    tags:
+    - green
+    fallbackPriority: 100
+    available: 1
+  - id: uma-3938c97edad00df4fb2fc62aff4e2e03
+    recipeName: 'underwear_bra_purple_Recipe'
+    aliases:
+    - 'underwear_bra_purple_Recipe'
+    label: 'Underwear Bra Purple'
+    styleGroup: underlayer.top
+    tags:
+    - purple
+    fallbackPriority: 100
+    available: 1
+  - id: uma-59ee9577aa18d894d924e02326837f55
+    recipeName: 'underwear_Bra_white_granit_top_Recipe'
+    aliases:
+    - 'underwear_Bra_white_granit_top_Recipe'
+    label: 'Underwear Bra White Granit Top'
+    styleGroup: underlayer.top
+    tags:
+    - white
+    - granit
+    fallbackPriority: 10
+    available: 1
+  - id: uma-2391614db8c7ea04d947e6026453e322
+    recipeName: 'underwear_bra_white_Recipe'
+    aliases:
+    - 'underwear_bra_white_Recipe'
+    label: 'Underwear Bra White'
+    styleGroup: underlayer.top
+    tags:
+    - white
+    fallbackPriority: 10
+    available: 1
+  - id: uma-a728611e4a687624cb4f00f585c7c5bb
+    recipeName: 'underwear_bra_yellow_Recipe'
+    aliases:
+    - 'underwear_bra_yellow_Recipe'
+    label: 'Underwear Bra Yellow'
+    styleGroup: underlayer.top
+    tags:
+    - yellow
+    fallbackPriority: 100
+    available: 1
+  - id: uma-e535e3b0d3914b443918a8591e9f9d6c
+    recipeName: 'underwear_greenPalettes_Recipe'
+    aliases:
+    - 'underwear_greenPalettes_Recipe'
+    label: 'Underwear Green Palettes'
+    styleGroup: underlayer.bottom
+    tags:
+    - green
+    fallbackPriority: 100
+    available: 1
+  - id: uma-61e91a3977e6cdb4e86718eda1ec9e16
+    recipeName: 'underwear_purple_Recipe'
+    aliases:
+    - 'underwear_purple_Recipe'
+    label: 'Underwear Purple'
+    styleGroup: underlayer.bottom
+    tags:
+    - purple
+    fallbackPriority: 100
+    available: 1
+  - id: uma-e4c92bff99b7d9d4d97499b89f1fdb02
+    recipeName: 'underwear_white_granit_bottom_Recipe'
+    aliases:
+    - 'underwear_white_granit_bottom_Recipe'
+    label: 'Underwear White Granit Bottom'
+    styleGroup: underlayer.bottom
+    tags:
+    - white
+    - granit
+    fallbackPriority: 10
+    available: 1
+  - id: uma-81b213c0b621f924d907420270944144
+    recipeName: 'underwear_white_granit_top_Recipe'
+    aliases:
+    - 'underwear_white_granit_top_Recipe'
+    label: 'Underwear White Granit Top'
+    styleGroup: underlayer.top
+    tags:
+    - white
+    - granit
+    fallbackPriority: 10
+    available: 1
+  - id: uma-71ed2c72109da884c964c254e7ba6c5b
+    recipeName: 'underwear_whiteLace_Recipe'
+    aliases:
+    - 'underwear_whiteLace_Recipe'
+    label: 'Underwear White Lace'
+    styleGroup: underlayer.bottom
+    tags:
+    - white
+    fallbackPriority: 10
+    available: 1
+  - id: uma-51eec00127aacb647a967dd442ce5b68
+    recipeName: 'underwear_whiteStriped_Recipe'
+    aliases:
+    - 'underwear_whiteStriped_Recipe'
+    label: 'Underwear White Striped'
+    styleGroup: underlayer.bottom
+    tags:
+    - white
+    - striped
+    fallbackPriority: 10
+    available: 1

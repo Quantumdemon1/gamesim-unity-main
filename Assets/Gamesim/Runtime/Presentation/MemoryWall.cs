@@ -68,10 +68,10 @@ namespace Gamesim.Presentation
                     var material = Instance(portrait);
                     if (material != null)
                     {
-                        var face = actor == null ? null : CharacterPortraits.Get(
-                            CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)));
+                        var face = actor == null ? null : CharacterPortraits.Get(actor);
                         SetTexture(material, face);
                         SetColour(material, active ? Lit : Dimmed);
+                        if (actor != null) CharacterPortraits.Bind(portrait.GetComponent<Renderer>(), actor);
                     }
                 }
 

@@ -12,7 +12,13 @@ using UnityEngine.UI;
 namespace Gamesim.Episode
 {
     /// <summary>Native screen-space UI with scrollable content and keyboard-selectable controls.</summary>
-    public sealed class EpisodeHud : MonoBehaviour
+    /// <remarks>
+    /// The fixed chrome the mockups call a top bar and a right column lives in
+    /// <c>EpisodeHud.Chrome.cs</c>, and the conversation dial in <c>EpisodeHud.Radial.cs</c>; both
+    /// are partials of this class because they need its private drawing helpers and its localisation
+    /// sink, not a second set of them.
+    /// </remarks>
+    public sealed partial class EpisodeHud : MonoBehaviour
     {
         public const string JuryContinueCaption = "Continue jury questioning";
         public const string JurySkipCaption = "Skip remaining questions";
@@ -161,7 +167,11 @@ namespace Gamesim.Episode
         public void Begin(EpisodeState state, string message, bool recovery, bool open)
         {
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
-            preferredSelection = selected != null && modal != null && selected.transform.IsChildOf(modal)
+            // Whatever had the keyboard keeps it by name, chrome as well as panel. The HUD rebuilds
+            // itself for reasons that have nothing to do with the player - a houseguest's body
+            // finishing its assembly is one - and a rebuild that moved the focus off the control
+            // someone was about to press lost the press with it.
+            preferredSelection = selected != null && canvas != null && selected.transform.IsChildOf(canvas.transform)
                 ? selected.name : null;
             // A panel that is closing fades out for a few frames instead of vanishing. The old
             // modal goes to a ghost canvas that owns no controls (HudFade strips them), so the
@@ -173,80 +183,63 @@ namespace Gamesim.Episode
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
+            activityLayout = ActivityLayout.Standard; relationshipRoot = null;
+            // The dial belongs to the panel that was just thrown away; a stale one would seat the
+            // next screen's petals on a destroyed rectangle.
+            dialRoot = null; topicSeats = topicTaken = 0;
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
             // The cast rail owns the far-left gutter, so the panel column starts to the right of it.
             // Six faces on screen at all times is what makes the rest of the HUD able to say "the
             // replacement nominee" and have that mean a person rather than a name.
-            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest);
+            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest,
+                director.FollowedId);
             FollowChip(director.FollowedName);
 
             var leftColumn = new GameObject("Left column",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>();
             leftColumn.SetParent(canvas.transform,false);
             leftColumn.anchorMin = new Vector2(0,1); leftColumn.anchorMax = new Vector2(0,1); leftColumn.pivot = new Vector2(0,1);
-            leftColumn.anchoredPosition = new Vector2(LeftColumnX,-24);
+            leftColumn.anchoredPosition = new Vector2(LeftColumnX,-TopBarTop);
             var columnLayout = leftColumn.GetComponent<VerticalLayoutGroup>();
-            columnLayout.spacing = 16; columnLayout.childControlWidth = true; columnLayout.childControlHeight = true;
+            columnLayout.spacing = TopBarGap; columnLayout.childControlWidth = true; columnLayout.childControlHeight = true;
             columnLayout.childForceExpandWidth = false; columnLayout.childForceExpandHeight = false;
             var columnFitter = leftColumn.GetComponent<ContentSizeFitter>();
             columnFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             columnFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var brand = Chrome("Brand", leftColumn, Ink); Size(brand,330,103);
-            FixedText(brand,"GAMESIM",32,Accent,new Vector2(18,-12),new Vector2(300,42));
-            FixedText(brand,"THE HOUSE  /  " + (state == null ? "A SEASON" : state.contestants.Count + "-PERSON SEASON"),14,Paper,new Vector2(19,-62),new Vector2(300,24));
-            var controls = Chrome("Navigation",canvas.transform,Ink); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-24),new Vector2(465,64));
+            BrandCard(leftColumn, state);
+            var controls = Chrome("Navigation",canvas.transform); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-TopBarTop),new Vector2(465,TopBarHeight));
             FixedButton(controls,"Notebook [J]",new Vector2(10,-9),new Vector2(142,46),director.OpenJournal);
             FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);
             FixedButton(controls,"Settings",new Vector2(292,-9),new Vector2(162,46),director.OpenSettings);
-            var objective = Chrome("Objective",leftColumn,Ink); Size(objective,330,285);
-            // Broadcast bug: the week reads as the headline and the phase as its strap, tied
-            // together by an accent rule, the way a running TV graphic is built.
-            var bug = Panel("Phase bug",objective,Accent,2); Anchor(bug,new Vector2(0,1),new Vector2(0,1),new Vector2(18,-14),new Vector2(4,52));
-            bug.GetComponent<Image>().raycastTarget = false;
-            FixedText(objective,"WEEK " + state.week,26,Accent,new Vector2(32,-12),new Vector2(160,30));
-            FixedText(objective,EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),15,Paper,new Vector2(32,-42),new Vector2(262,22));
-            FixedText(objective,state.pendingDiary != null ? "Next stop: private diary room" : EpisodeEngine.IsCompetition(state.phase)
-                ? "Next stop: competition yard" : "Next stop: living-room screen",19,Paper,new Vector2(18,-83),new Vector2(294,47));
-            FixedButton(objective,"Go to episode screen",new Vector2(18,-144),new Vector2(294,54),director.GoToStation);
-            FixedButton(objective,DiaryTravelCaption,new Vector2(18,-210),new Vector2(294,54),director.GoToDiary).interactable =
-                director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
-            // The broadcast pill: how many are left, and who holds the house this week. Centred
-            // between the panel column and the navigation, both of which are anchored to their own
-            // edges, so the gap it sits in exists at every aspect ratio.
-            var pill = Chrome("House pill",canvas.transform,Ink);
-            Anchor(pill,new Vector2(.5f,1),new Vector2(.5f,1),new Vector2(0,-24),new Vector2(360,46));
-            var holder = state.Find(state.hohId);
-            FixedText(pill,state.Active.Count() + " ACTIVE",15,Accent,new Vector2(16,-13),new Vector2(96,22));
-            var pillRule = Panel("Pill rule",pill,UiTheme.Outline,2);
-            Anchor(pillRule,new Vector2(0,1),new Vector2(0,1),new Vector2(120,-13),new Vector2(2,22));
-            pillRule.GetComponent<Image>().raycastTarget = false;
-            // "AWAITING HOH" rather than a spelled-out sentence: chrome text does not auto-shrink
-            // here, so the longest string this field can ever hold has to fit at full size. The
-            // clipping test found the first attempt immediately, which is what it is for.
-            FixedText(pill,holder == null ? "AWAITING HOH" : "HOH · " + holder.name.ToUpperInvariant(),
-                15,holder == null ? UiTheme.Muted : UiTheme.Gold,new Vector2(134,-13),new Vector2(210,22));
+            ObjectiveCard(leftColumn, state, recovery);
+            // House vibe is a right-column card now; RightColumn already returns early when the
+            // HUD is compact, so the preference keeps working without a second guard here.
+            HousePill(state);
 
-            // The section rail. Four views that currently share one long scroll.
+            // The section rail. Four views that currently share one long scroll, and the overview,
+            // which is a camera mode rather than a page: the director routes its section name.
             IconRail.Build(canvas.transform, new[]
             {
-                new IconRail.Entry(IconRail.Mark.Network, EpisodeDirector.NotebookSection.Network, "Relationships"),
-                new IconRail.Entry(IconRail.Mark.Rooms,   EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
-                new IconRail.Entry(IconRail.Mark.Votes,   EpisodeDirector.NotebookSection.Votes,   "The vote"),
-                new IconRail.Entry(IconRail.Mark.Story,   EpisodeDirector.NotebookSection.Story,   "The story so far"),
+                new IconRail.Entry(IconRail.Mark.Network,  EpisodeDirector.NotebookSection.Network, "Relationships"),
+                new IconRail.Entry(IconRail.Mark.Rooms,    EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
+                new IconRail.Entry(IconRail.Mark.Votes,    EpisodeDirector.NotebookSection.Votes,   "The vote"),
+                new IconRail.Entry(IconRail.Mark.Story,    EpisodeDirector.NotebookSection.Story,   "The story so far"),
+                new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection,         "Overview"),
             }, FontScale, director.ShowNotebookSection);
+            RightColumn(state);
 
             // Five lines, not four, because click-to-follow had to be added without lengthening a
             // line: this box is a fixed 258 wide and the accessibility suite fails any copy that
             // clips at either text size. Thirty-five characters is the proven ceiling — a forty
             // character line is what broke it — so the panel grew downward instead. It stays in the
             // lower right, well clear of the ceremony banner that must not overlap the chrome.
-            var help = Chrome("Exploration controls",canvas.transform,Ink); Anchor(help,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,140));
-            FixedText(help,"Click a houseguest: follow\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close",17,Paper,new Vector2(14,-12),new Vector2(258,122));
+            if (open || Compact) helpExpanded = false;
+            BuildExplorationHelp();
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
-            var status = Chrome("Status",canvas.transform,Ink);
+            var status = Chrome("Status",canvas.transform);
             status.anchorMin = new Vector2(0,0); status.anchorMax = new Vector2(1,0); status.pivot = new Vector2(.5f,0);
             status.offsetMin = new Vector2(24,20); status.offsetMax = new Vector2(-24,84);
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
@@ -257,12 +250,23 @@ namespace Gamesim.Episode
             rule.GetComponent<Image>().raycastTarget = false;
             var caption = FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
             Stretch(caption.rectTransform,32,9,24,7);
-            var promptRoot = Chrome("Interaction prompt",canvas.transform,Ink); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
+            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);
             content = null;
             if (!open && !recovery) { modalWasOpen = false; return; }
-            modal = Chrome("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(95,-10),new Vector2(790,680));
+            // Low and wide, not centred (VISUAL-TARGET.md V2, mockup-04). The panel used to be a
+            // 790x680 block in the middle of the screen, which covered 63% of the frame's height
+            // and put the house - the thing every one of these decisions is about - behind it. The
+            // mockups never do that: the set fills the frame and the decision is a wide, short card
+            // low in it, above the cast strip. Docking it here costs nothing but a reflow and is
+            // the single change that most affects how every screen reads.
+            //
+            // Every number here is in the canvas's own 1600x900 reference, not in pixels. A lift of
+            // 170 clears the bottom chrome: the status band owns y 20..84 and the interaction prompt
+            // y 107..159. 900 wide centres on x 350..1250, which stops short of the exploration
+            // controls at x 1291 and is narrower on the right than the old centred panel was.
+            modal = Chrome("Episode panel",canvas.transform); Anchor(modal,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,ModalLift),new Vector2(ModalWidth,ModalHeight));
             // Only on closed -> open. Re-renders of an already-open panel must not re-animate.
             if (!modalWasOpen) HudReveal.Play(modal,ReducedMotion);
             modalWasOpen = true;
@@ -271,10 +275,14 @@ namespace Gamesim.Episode
             // "which part of the week is this" is the question every panel is answered against.
             // Built before the Close button so it sits behind it in the hierarchy.
             var band = PhaseBand(modal, state);
-            FixedButton(modal,"Close  [Esc]",new Vector2(598,-15),new Vector2(174,45),director.ClosePanels);
+            // Measured off the panel's own width: the button is anchored to the panel's top-LEFT,
+            // so a wider panel leaves it stranded in the middle unless it is moved with it.
+            var close = FixedButton(modal,"Close  [Esc]",new Vector2(ModalWidth - 192f,-15),new Vector2(174,45),director.ClosePanels);
+            Anchor((RectTransform)close.transform,new Vector2(1,1),new Vector2(1,1),new Vector2(-18,-15),new Vector2(174,45));
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.
-            FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
+            var controlHint = FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
+            controlHint.name = "Panel control hint";
             var scrollRoot = new GameObject("Episode scroll",typeof(RectTransform),typeof(ScrollRect)); scrollRoot.transform.SetParent(modal,false);
             var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,104,20,22);
             var viewport = Panel("Viewport",scrollRect,new Color(0,0,0,0)); Stretch(viewport,0,0,18,0); viewport.gameObject.AddComponent<RectMask2D>();
@@ -294,6 +302,16 @@ namespace Gamesim.Episode
             scroll.verticalScrollbar = scrollbar; scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
             modalScroll = scroll;
         }
+
+        /// <summary>
+        /// The docked panel's shape. Wide and short, sitting above the bottom chrome, so the set
+        /// stays visible over it - the mockups draw every decision this way and the panel is the
+        /// one piece of chrome big enough to hide the house on its own.
+        /// </summary>
+        private const float ModalWidth = 900f;
+        private const float ModalHeight = 300f;
+        /// <summary>How far the panel's foot sits above the canvas floor, clear of the status band.</summary>
+        private const float ModalLift = 170f;
 
         public void PanelTitle(string title, string subtitle) { Heading(title); Paragraph(subtitle); }
         /// <summary>The caption a spectating player sees above everything else.</summary>
@@ -336,6 +354,7 @@ namespace Gamesim.Episode
         /// </summary>
         public void SpeakerTitle(string contestantId, string title, string subtitle)
         {
+            SetActivityLayout(ActivityLayout.Conversation);
             var portrait = Portrait(contestantId);
             if (portrait == null) { PanelTitle(title, subtitle); return; }
 
@@ -395,7 +414,9 @@ namespace Gamesim.Episode
             row.SetParent(content,false);
             row.gameObject.AddComponent<LayoutElement>().minHeight = 30f * FontScale;
 
-            var tint = rounded > 0 ? UiTheme.Accent : UiTheme.Danger;
+            // The outcome of a social action is a relationship moving, so it takes the relationship
+            // colours rather than navigation blue.
+            var tint = rounded > 0 ? UiTheme.Allied : UiTheme.Conflict;
             var chip = Panel("Trust chip",row,new Color(tint.r,tint.g,tint.b,.18f));
             Anchor(chip,new Vector2(0,1),new Vector2(0,1),new Vector2(4f,-1f),new Vector2(214f * FontScale,28f * FontScale));
             chip.GetComponent<Image>().raycastTarget = false;
@@ -415,7 +436,13 @@ namespace Gamesim.Episode
         public void SocialGraphPanel(EpisodeState state)
         {
             if (content == null || state == null) return;
-            SocialGraph.Build(content, state, FontScale, font, Portrait);
+            SetActivityLayout(ActivityLayout.Relationships);
+            Canvas.ForceUpdateCanvases();
+            relationshipRoot = RelationshipWeb.Build(content, state, FontScale, font, Portrait,
+                id => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network), modalScroll.viewport.rect.height);
+            // The graph is the notebook's entry view. Its explanatory heading belongs after the
+            // complete graph instead of consuming the top of its only visible viewport.
+            relationshipRoot.SetAsFirstSibling();
         }
 
         /// <summary>Adds the room-occupancy cards to the current panel.</summary>
@@ -435,7 +462,7 @@ namespace Gamesim.Episode
         public void PortraitRow(string contestantId, string heading, string body)
         {
             var portrait = Portrait(contestantId);
-            var rect = Panel("Voter", content, Surface);
+            var rect = Chrome("Voter", content);
             rect.GetComponent<Image>().raycastTarget = false;
             float height = (portrait != null ? 66f : 52f) * FontScale;
             rect.gameObject.AddComponent<LayoutElement>().minHeight = height;
@@ -469,10 +496,79 @@ namespace Gamesim.Episode
         private string pendingScroll;
 
         /// <summary>
+        /// The live feed's card (V5): the second camera's picture and its caption, lower right
+        /// above the exploration help, where the modal never reaches. Rebuilt with the rest of the
+        /// chrome; the texture it shows is the director's and outlives every rebuild.
+        /// </summary>
+        private TMP_Text liveFeedCaption;
+        private TMP_Text liveFeedHeading;
+        private Image liveFeedDot;
+
+        private float LiveFeedCard(Transform parent, float top)
+        {
+            const float height = 226f;
+            var card = Chrome(EpisodeDirector.LiveFeedCardName, parent);
+            Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(RightColumnWidth, height));
+            liveFeedHeading = CardHeading(card, "LIVE FEED", "camera");
+            var dot = HudPrimitives.Disc("Live dot", card, UiTheme.Conflict);
+            Anchor(dot, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-16, -14), new Vector2(10, 10));
+            liveFeedDot = dot.GetComponent<Image>();
+            var picture = new GameObject("Picture", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+            picture.transform.SetParent(card, false);
+            picture.texture = director.LiveFeedTexture;
+            picture.raycastTarget = false;
+            Anchor(picture.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12, -36), new Vector2(RightColumnWidth - 24f, 145));
+            UiTheme.AddBorder(picture.rectTransform, 6, UiTheme.Edge(UiTheme.Emphasis.Resting));
+            liveFeedCaption = FixedText(card, director.LiveFeedCaption, 13, Paper, new Vector2(16, -188), new Vector2(RightColumnWidth - 32f, 30));
+            SetLiveFeedPaused(director.IsPanelOpen);
+            return height;
+        }
+
+        /// <summary>The feed's caption changes with the house; the card is not rebuilt for it.</summary>
+        public void SetLiveFeedCaption(string text)
+        {
+            if (liveFeedCaption != null) liveFeedCaption.text = text ?? "";
+        }
+
+        public void SetLiveFeedPaused(bool paused)
+        {
+            if (liveFeedHeading != null) liveFeedHeading.text = paused ? "FEED PAUSED" : "LIVE FEED";
+            if (liveFeedDot != null) liveFeedDot.color = paused ? UiTheme.Muted : UiTheme.Conflict;
+        }
+
+        /// <summary>The overview's side column (V5): who is where, one row a room, beside the labelled house.</summary>
+        public const string OverviewColumnName = "Overview column";
+
+        private void OverviewColumn(Transform parent, float top)
+        {
+            var rooms = director.WhoIsWhere();
+            const float RowHeight = 44f;
+            var column = Chrome(OverviewColumnName, parent);
+            Anchor(column, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
+                new Vector2(RightColumnWidth, 40 + rooms.Count * RowHeight));
+            CardHeading(column, "WHO IS WHERE", "house");
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                var room = rooms[i];
+                float y = -(36 + i * RowHeight);
+                FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(16, y), new Vector2(200, 20));
+                var count = FixedText(column, room.Occupants.Count.ToString(), 15, Accent, new Vector2(218, y), new Vector2(52, 20));
+                count.alignment = TextAlignmentOptions.Right;
+                // Trimmed: a room holding the whole house is a line of eight names, and this row is
+                // 254 px wide at a size that has nowhere left to shrink to.
+                string who = room.Occupants.Count == 0 ? "empty"
+                    : Excerpt(string.Join(", ", room.Occupants.Select(o => o.Name.Split(' ')[0])), 36);
+                FixedText(column, who, 13, UiTheme.Muted, new Vector2(16, y - 19), new Vector2(RightColumnWidth - 32f, 18));
+            }
+        }
+
+        /// <summary>
         /// Names the most recent thing added to the panel, so the icon rail can scroll back to it.
         /// </summary>
         public void Mark(string sectionName)
         {
+            if (sectionName == EpisodeDirector.NotebookSection.Network && relationshipRoot != null)
+            { relationshipRoot.name = sectionName; return; }
             if (content == null || content.childCount == 0) return;
             content.GetChild(content.childCount - 1).gameObject.name = sectionName;
         }
@@ -501,8 +597,13 @@ namespace Gamesim.Episode
 
             float travel = content.rect.height - modalScroll.viewport.rect.height;
             if (travel <= 1f) { modalScroll.verticalNormalizedPosition = 1f; return; }
+            // Layout children do not all use a top pivot. Their anchored position may name the
+            // centre of a tall graph, so measure the actual top in content coordinates instead.
+            var sectionTop = content.InverseTransformPoint(section.TransformPoint(
+                new Vector3(section.rect.center.x, section.rect.yMax, 0f)));
+            float offset = content.rect.yMax - sectionTop.y;
             modalScroll.verticalNormalizedPosition =
-                Mathf.Clamp01(1f - (-section.anchoredPosition.y) / travel);
+                Mathf.Clamp01(1f - offset / travel);
         }
 
         public void JuryQuestioning(EpisodeState state)
@@ -636,53 +737,83 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Pins a small category pill to the right-hand end of a control, the way the web build
-        /// tags its action list.
+        /// Where a category pill sits: at the end of a row, or along the foot of a card. A petal on
+        /// the conversation dial is a card, and a pill hung off its right-hand edge would sit over
+        /// the caption rather than beside it.
+        /// </summary>
+        public enum TagSeat { RowEnd, CardFoot }
+
+        /// <summary>
+        /// Pins a small category pill to a control, the way the web build tags its action list.
         ///
         /// <para>It is drawn as a separate graphic rather than folded into the caption, because the
         /// caption is how tests and a screen reader identify the control — appending to it renamed
         /// every button and broke six tests that look one up by the words on it.</para>
         /// </summary>
-        public void Tag(Button target,string text)
+        public void Tag(Button target,string text) => Tag(target,text,TagSeat.RowEnd);
+
+        /// <inheritdoc cref="Tag(Button,string)"/>
+        public void Tag(Button target,string text,TagSeat seat)
         {
             if (target == null || string.IsNullOrEmpty(text)) return;
             var chip = Panel("Tag",target.transform,new Color(Accent.r,Accent.g,Accent.b,.16f));
-            Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-12f,0f),
-                new Vector2(104f * FontScale,22f * FontScale));
+            var size = seat == TagSeat.CardFoot
+                ? new Vector2(130f * FontScale,20f * FontScale)
+                : new Vector2(104f * FontScale,22f * FontScale);
+            if (seat == TagSeat.CardFoot)
+                Anchor(chip,new Vector2(0,0),new Vector2(0,0),new Vector2(10f * FontScale,6f * FontScale),size);
+            else
+                Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-12f,0f),size);
             chip.GetComponent<Image>().raycastTarget = false;
-            var label = FixedText(chip,text,12,Accent,Vector2.zero,new Vector2(104f * FontScale,22f * FontScale));
+            var label = FixedText(chip,text,12,Accent,Vector2.zero,size);
             label.alignment = TextAlignmentOptions.Center;
             label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = Vector2.zero; label.rectTransform.offsetMax = Vector2.zero;
         }
 
+        /// <summary>
+        /// One of the modal's option cards (mockup-04, mockup-11): the glass ground, the cyan
+        /// hairline, and a chevron at the end saying the row leads somewhere.
+        ///
+        /// <para>The chevron costs the caption 26 px of width, which is why it is only on the rows
+        /// that have the width to give: a row fronted by a portrait already spends its right-hand
+        /// end on the trust reading.</para>
+        /// </summary>
         public Button Action(string caption,Action action)
         {
-            var rect = Panel(caption,content,Surface); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
-            return FinishButton(rect,caption,action);
-        }
-
-        /// <summary>An action row fronted by a houseguest's portrait. Falls back to a plain row.</summary>
-        public Button Action(string caption,Texture portrait,Action action)
-        {
-            if (portrait == null) return Action(caption,action);
-            var rect = Panel(caption,content,Surface);
-            rect.gameObject.AddComponent<LayoutElement>().minHeight = 68 * FontScale;
-            var button = FinishButton(rect,caption,action,68f * FontScale);
-
-            var frame = new GameObject("Portrait",typeof(RectTransform),typeof(RawImage));
-            var frameRect = (RectTransform)frame.transform;
-            frameRect.SetParent(rect,false);
-            frameRect.anchorMin = new Vector2(0,.5f); frameRect.anchorMax = new Vector2(0,.5f); frameRect.pivot = new Vector2(0,.5f);
-            float side = 52f * FontScale;
-            frameRect.sizeDelta = new Vector2(side,side);
-            frameRect.anchoredPosition = new Vector2(8f,0f);
-            var raw = frame.GetComponent<RawImage>();
-            raw.texture = portrait; raw.raycastTarget = false;
+            var rect = Chrome(caption,content,UiTheme.Emphasis.Interactive); HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+            var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
+            float mark = 18f * FontScale;
+            var button = FinishButton(rect,caption,action,16f,16f + mark + 10f);
+            HudPrimitives.Chevron(rect,UiTheme.Hairline,mark).anchoredPosition = new Vector2(-16f,0f);
             return button;
         }
 
-        public void ChoosePair(Option[] options,Action<string,string> commit,string commitCaption = "Commit nominations")
+        /// <summary>
+        /// An action row fronted by a houseguest's portrait, as the nominee cards and the ballot
+        /// draw one (mockup-08, mockup-10): the face in a ring, with the role badge the house has
+        /// given them. Falls back to a plain row when the persona has no art.
+        /// </summary>
+        public Button Action(string caption,Texture portrait,Action action)
+        {
+            if (portrait == null) return Action(caption,action);
+            var rect = Chrome(caption,content,UiTheme.Emphasis.Interactive);
+            HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+            rect.gameObject.AddComponent<LayoutElement>().minHeight = 68 * FontScale;
+            var button = FinishButton(rect,caption,action,68f * FontScale);
+
+            float side = 52f * FontScale;
+            var rim = HudPrimitives.Portrait(rect,portrait,UiTheme.Outline,side,3f * FontScale,false);
+            // Kept under the old name: this is the child every screen and test knows as the row's
+            // face, and the change here is the frame around it, not what it is.
+            rim.gameObject.name = "Portrait";
+            rim.anchorMin = new Vector2(0,.5f); rim.anchorMax = new Vector2(0,.5f); rim.pivot = new Vector2(0,.5f);
+            rim.anchoredPosition = new Vector2(8f,0f);
+            return button;
+        }
+
+        public void ChoosePair(Option[] options,Action<string,string> commit,string commitCaption = "Commit nominations",
+            Action<string,string> selectionChanged = null)
         {
             string first = null, second = null;
             // Same framing the notebook uses, so a trust number is never mistaken for fact.
@@ -699,6 +830,7 @@ namespace Gamesim.Episode
                     else second = captured.Id;
                     string Label(string id) => Array.Find(options,o=>o.Id==id).Label ?? "—";
                     selection.text = "Selected: " + Label(first) + " and " + Label(second);
+                    selectionChanged?.Invoke(first,second);
                 });
                 Annotate(row, captured.Id);
             }
@@ -736,6 +868,23 @@ namespace Gamesim.Episode
             var rect = (RectTransform)button.transform;
             float reserved = allied ? 150f : 96f;
 
+            // The card's face carries what the house has done to this person: the ring reads the
+            // player's own standing with them, the badge reads the role the week has given them.
+            // Both are decoration over facts the row already states in words - the trust chip below,
+            // and the nomination or the veto in the panel's own copy.
+            var rim = rect.Find("Portrait") as RectTransform;
+            if (rim != null)
+            {
+                var ring = rim.GetComponent<Image>();
+                if (ring != null)
+                    // One fact, one set. This row states the player's standing with a houseguest
+                    // three times - ring, ALLY tag, trust number - and the three used to disagree:
+                    // the ring went cyan for trust while the number went blue and the tag went gold.
+                    ring.color = allied || trust > 5 ? UiTheme.Allied
+                        : trust < -5 ? UiTheme.Conflict : UiTheme.Muted;
+                HudPrimitives.AddRoleMark(rim, RoleOf(state, contestantId), rim.sizeDelta.x * .82f);
+            }
+
             // Keep a long caption from running underneath the chips.
             var caption = button.GetComponentInChildren<TMP_Text>();
             if (caption != null)
@@ -743,15 +892,29 @@ namespace Gamesim.Episode
 
             if (allied)
             {
-                var tag = NewText(rect,"ALLY",14,UiTheme.Gold);
+                var tag = NewText(rect,"ALLY",14,UiTheme.Allied);
                 Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-96f,0f),new Vector2(48,22));
                 tag.alignment = TextAlignmentOptions.Right;
             }
 
             var reading = NewText(rect,"Trust " + trust.ToString("0"),15,
-                trust > 5 ? UiTheme.Accent : trust < -5 ? UiTheme.Danger : UiTheme.Muted);
+                // The same set as the portrait ring and the ALLY tag above.
+                trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
             Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-16f,0f),new Vector2(74,22));
             reading.alignment = TextAlignmentOptions.Right;
+        }
+
+        /// <summary>
+        /// The badge a houseguest's face carries this week: the block, the crown, or the veto.
+        /// Read from committed state, never from a projection.
+        /// </summary>
+        private static HudPrimitives.RoleMark RoleOf(EpisodeState state, string contestantId)
+        {
+            if (state == null || string.IsNullOrEmpty(contestantId)) return HudPrimitives.RoleMark.None;
+            if (contestantId == state.hohId) return HudPrimitives.RoleMark.HeadOfHousehold;
+            if (contestantId == state.vetoHolderId) return HudPrimitives.RoleMark.VetoHolder;
+            if (state.nominees != null && state.nominees.Contains(contestantId)) return HudPrimitives.RoleMark.Nominee;
+            return HudPrimitives.RoleMark.None;
         }
 
         /// <summary>
@@ -764,18 +927,7 @@ namespace Gamesim.Episode
             var contestant = state != null ? state.Find(contestantId) : null;
             if (contestant == null) return null;
 
-            // A generated body has no prefab to photograph, so the HUD showed authored faces while
-            // the world showed generated ones. Prefer the body actually standing in the house; fall
-            // back to the prefab for the authored cast, which has no live body worth preferring.
-            var live = director.LiveBody(contestant.id);
-            if (live != null)
-            {
-                var portrait = CharacterPortraits.GetLive(contestant.id, live);
-                if (portrait != null) return portrait;
-            }
-
-            return CharacterPortraits.Get(
-                CharacterPresentation.AppearanceId(contestant, ContentCatalog.CanonicalId(contestant.id)));
+            return CharacterPortraits.Get(contestant);
         }
 
         public void PathInput(string placeholder,Action<string> submit)
@@ -847,17 +999,23 @@ namespace Gamesim.Episode
         public void ShowFollowing(string name)
         {
             if (canvas == null) return;
-            var old = canvas.transform.Find(FollowChipName);
-            if (old != null) { old.gameObject.SetActive(false); Destroy(old.gameObject); }
+            // Every chip, not the first one found. Destroy is deferred to the end of the frame, so a
+            // rebuild in the same frame leaves an old chip still parented and still named: taking one
+            // of the two away left the other on screen naming a houseguest nobody was following.
+            foreach (var child in canvas.transform.Cast<Transform>().Where(t => t.name == FollowChipName).ToArray())
+            {
+                child.gameObject.SetActive(false);
+                Destroy(child.gameObject);
+            }
             FollowChip(name);
         }
 
         private void FollowChip(string name)
         {
             if (string.IsNullOrEmpty(name)) return;
-            var chip = Chrome(FollowChipName, canvas.transform, Ink);
+            var chip = Chrome(FollowChipName, canvas.transform);
             Anchor(chip, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -78), new Vector2(360, 34));
-            var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Gold,
+            var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Accent,
                 new Vector2(12, -8), new Vector2(336, 20));
             text.alignment = TextAlignmentOptions.Center;
         }
@@ -938,8 +1096,12 @@ namespace Gamesim.Episode
                     .Concat(overlay != null ? overlay.GetComponentsInChildren<Selectable>() : Enumerable.Empty<Selectable>())
                     .Where(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar)).ToArray();
                 var eligible = scope == null ? all : all.Where(item => item.transform.IsChildOf(scope)).ToArray();
+                bool spatialOverlay = overlay != null && overlay.GetComponent<CompetitionGameScreen>() != null;
                 foreach (var item in all)
                 {
+                    // A memory board supplies genuine two-dimensional navigation. Keep it, while
+                    // still taking every control behind the competition out of the input scope.
+                    if (spatialOverlay && item.transform.IsChildOf(scope)) continue;
                     var navigation = item.navigation;
                     navigation.mode = scope != null && !item.transform.IsChildOf(scope) ? Navigation.Mode.None : Navigation.Mode.Explicit;
                     navigation.selectOnLeft = null; navigation.selectOnRight = null;
@@ -948,11 +1110,14 @@ namespace Gamesim.Episode
                 }
                 for (var index = 0; index < eligible.Length; index++)
                 {
+                    if (spatialOverlay) break;
                     var navigation = eligible[index].navigation;
                     navigation.selectOnUp = eligible[(index + eligible.Length - 1) % eligible.Length];
                     navigation.selectOnDown = eligible[(index + 1) % eligible.Length];
                     eligible[index].navigation = navigation;
                 }
+                tabOrder = eligible;
+                if (!spatialOverlay) WireConversationGrid();
                 // Whatever is already selected and still eligible keeps the focus: a rewire is not a
                 // reason to move the keyboard. The HUD's own rebuilds destroy the old selection, so
                 // for them this is null and the named restore below takes over as before.
@@ -968,11 +1133,14 @@ namespace Gamesim.Episode
 
             var selected = events.currentSelectedGameObject;
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame && selected != null)
+            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame && selected != null
+                && (overlay == null || overlay.GetComponent<CompetitionGameScreen>() == null))
             {
                 var current = selected.GetComponent<Selectable>();
-                var next = current == null ? null : keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed
-                    ? current.navigation.selectOnUp : current.navigation.selectOnDown;
+                int index = System.Array.IndexOf(tabOrder, current);
+                bool reverse = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
+                var next = index < 0 || tabOrder.Length == 0 ? null
+                    : tabOrder[(index + (reverse ? tabOrder.Length - 1 : 1)) % tabOrder.Length];
                 if (next != null && next.IsActive() && next.IsInteractable())
                 {
                     selected.GetComponent<TMP_InputField>()?.DeactivateInputField();
@@ -1017,14 +1185,11 @@ namespace Gamesim.Episode
             AutoSize(label, 18);
             return button;
         }
-        private Button FinishButton(RectTransform rect,string caption,Action action,float leftInset = 16f)
+        private Button FinishButton(RectTransform rect,string caption,Action action,float leftInset = 16f,float rightInset = 16f)
         {
-            var button=rect.gameObject.AddComponent<Button>(); var colors=button.colors;
-            colors.highlightedColor=new Color(1.2f,1.6f,1.45f); colors.selectedColor=colors.highlightedColor; colors.pressedColor=new Color(.65f,1.1f,.9f); button.colors=colors;
-            var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,leftInset,5,16,5); text.alignment=TextAlignmentOptions.Left;
-            var press = rect.gameObject.AddComponent<HudPress>(); press.ReducedMotion = ReducedMotion;
-press.Hovered = () => Foley(HouseAudio.Cue.Hover);
-            button.onClick.AddListener(()=>action()); return button;
+            var button = Pressable(rect,action);
+            var text=NewText(rect,caption,20,Paper); Stretch(text.rectTransform,leftInset,5,rightInset,5); text.alignment=TextAlignmentOptions.Left;
+            return button;
         }
         private TMP_Text FixedText(RectTransform parent,string value,int size,Color color,Vector2 position,Vector2 dimensions)
         {
@@ -1121,10 +1286,28 @@ press.Hovered = () => Foley(HouseAudio.Cue.Hover);
         /// Major chrome: a larger corner radius plus a hairline border, so panel edges stay legible
         /// against the set's bloom instead of dissolving into it. The border never takes raycasts.
         /// </summary>
-        private static RectTransform Chrome(string name,Transform parent,Color color)
+        /// <summary>
+        /// A quiet, readable card. The edge says how much this panel is asking for: leave it out
+        /// and it rests, pass <see cref="UiTheme.EdgeActive"/> for the one panel the player is
+        /// meant to act on, or pass a semantic colour where the panel IS that thing - the
+        /// conversation petals pass their action's own tint.
+        ///
+        /// <para>This used to take a Color it never read. Every one of the seventeen call sites
+        /// passed Ink into the void and every panel came out wearing the same cyan hairline, so a
+        /// resting frame carried eighteen identical lit rectangles and nothing could be emphasised
+        /// by colour at all. The mockups do the opposite: in mockup-01 no persistent panel has a
+        /// lit edge, and in mockup-04 exactly one element in the frame does.</para>
+        ///
+        /// <para>Containers rest. A container does not become important because the thing inside
+        /// it is: the semantic colours belong on the badge, the crown, the glyph or the word, not
+        /// on the frame around them.</para>
+        /// </summary>
+        private static RectTransform Chrome(string name,Transform parent,
+            UiTheme.Emphasis emphasis=UiTheme.Emphasis.Resting)
         {
-            var rect=Panel(name,parent,color,UiTheme.PanelRadius);
-            UiTheme.AddBorder(rect,UiTheme.PanelRadius,UiTheme.Outline);
+            var fill = UiTheme.GlassFill; fill.a = .94f;
+            var rect=Panel(name,parent,fill,UiTheme.GlassRadius);
+            UiTheme.AddBorder(rect,UiTheme.GlassRadius,UiTheme.Edge(emphasis));
             return rect;
         }
         /// <summary>

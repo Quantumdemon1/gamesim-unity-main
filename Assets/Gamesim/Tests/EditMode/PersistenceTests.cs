@@ -31,6 +31,42 @@ namespace Gamesim.Tests.EditMode
             if (Directory.Exists(resolved)) Directory.Delete(resolved, true);
         }
 
+        /// <summary>
+        /// A save that will not load has to say why, and the two kinds of "why" are not the same.
+        /// A filesystem failure knows only the name of a file the player cannot act on - and on
+        /// Windows that path contains their user name - so it reports its kind and nothing else.
+        /// A failure about the CONTENT is described in words this project wrote, and those are the
+        /// words the player needs; the migration suites assert on them, and so does the second half
+        /// of this test. Suppressing both is the mistake this pins shut.
+        /// </summary>
+        [Test]
+        public void AFilesystemFailureNamesItsKindWhileAContentFailureKeepsItsExplanation()
+        {
+            // The file has to EXIST but be unreadable, or the store answers "no save here" and
+            // never reaches the filesystem branch at all. An exclusive lock does it: the first
+            // version of this test read a directory instead, and passed through the wrong path.
+            File.WriteAllText(store.SavePath, "{}");
+            string ioMessage;
+            using (File.Open(store.SavePath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                Assert.That(store.TryLoad(out _, out ioMessage), Is.False);
+            }
+            Assert.That(ioMessage, Does.Not.Contain(directory),
+                "A save failure must never print the file's path back at the player.");
+            Assert.That(ioMessage, Does.Contain("IOException").Or.Contain("UnauthorizedAccessException"),
+                "but it must still say what kind of failure it was.");
+
+            // The other branch: a payload this project rejects for its content, not its location.
+            File.WriteAllText(store.SavePath, "{\"format\":\"gamesim-unity-save\",\"payload\":{},\"checksum\":\"wrong\"}");
+            Assert.That(store.TryLoad(out _, out var dataMessage), Is.False);
+            Assert.That(dataMessage, Does.Not.Contain(directory),
+                "and a content failure must not leak the path either.");
+            Assert.That(dataMessage, Does.Not.Contain("Exception"),
+                "a content failure is described in this project's own words, not by a type name.");
+            Assert.That(dataMessage.Length, Is.GreaterThan("Local save could not be loaded: ".Length + 8),
+                "but it must keep the explanation, which is what tells the player what is wrong.");
+        }
+
         [Test]
         public void LocalRoundTrip_PreservesZeroRandomStateAndDetachedHistory()
         {

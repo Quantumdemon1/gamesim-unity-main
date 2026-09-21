@@ -213,7 +213,15 @@ namespace Gamesim.House
                     return;
                 }
                 if (Time.frameCount - bindingFrame >= 60 || Time.unscaledTime >= bindingDeadline)
-                    Fail("NPC carving did not clear to a safe floor binding within the bounded wait.");
+                {
+                    // Say who, where, and which half of the check refused. This message has been
+                    // the whole of the evidence twice now - once when obstacle carving took
+                    // seventeen tests down, once when the furniture got collision - and both times
+                    // it named the symptom and nothing else, so the search started from scratch.
+                    Fail("NPC carving did not clear to a safe floor binding within the bounded wait."
+                         + " " + (npc != null ? npc.Id : "?") + " at " + bindOrigin.ToString("0.00")
+                         + " · " + (rooms.LastFailure ?? "the floor sampled but the body did not fit"));
+                }
                 return;
             }
             if (!IsBound) { Fail("The owned NPC agent lost its NavMesh binding."); return; }
@@ -286,6 +294,10 @@ namespace Gamesim.House
                 else if (component is Collider)
                 { reason = "An additional root collider requires explicit body-ownership review."; return false; }
                 else if (component is MonoBehaviour behaviour && behaviour != character && behaviour != owner
+                    // Reviewed visual-only seating offsets CharacterPresentation.VisualRoot, never
+                    // this navigation root, its agent, capsule or obstacle.
+                    && !(behaviour is HouseSeatPresentation)
+                    && !(behaviour is HouseFurniturePose)
                     && behaviour.GetType().FullName != "Gamesim.Presentation.CharacterPresentation")
                 { reason = "An unrecognized root behaviour requires explicit movement-ownership review."; return false; }
             }

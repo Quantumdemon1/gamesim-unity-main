@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Gamesim.Simulation;
 using UnityEngine;
 
 namespace Gamesim.Presentation
@@ -11,6 +13,7 @@ namespace Gamesim.Presentation
     {
         public readonly GameObject Root;
         public readonly Animator Animator;
+        public readonly ICharacterBodyProvider Owner;
 
         /// <summary>
         /// True when the mesh and skeleton arrive over later frames instead of at creation.
@@ -19,11 +22,12 @@ namespace Gamesim.Presentation
         /// </summary>
         public readonly bool Deferred;
 
-        public CharacterBody(GameObject root, Animator animator, bool deferred)
+        public CharacterBody(GameObject root, Animator animator, bool deferred, ICharacterBodyProvider owner = null)
         {
             Root = root;
             Animator = animator;
             Deferred = deferred;
+            Owner = owner;
         }
 
         public bool Exists => Root != null;
@@ -43,6 +47,29 @@ namespace Gamesim.Presentation
         void SetWardrobeColor(in CharacterBody body, Color wardrobe);
     }
 
+    public enum CharacterBuildPurpose { Gameplay, Studio, Portrait }
+
+    /// <summary>An explicit request: preview bodies do not need a fake contestant hierarchy.</summary>
+    public readonly struct CharacterBodyRequest
+    {
+        public readonly string ContestantId, FallbackId;
+        public readonly CharacterAppearance Appearance;
+        public readonly CharacterBuildPurpose Purpose;
+        public readonly int Revision;
+        public CharacterBodyRequest(string contestantId, string fallbackId, CharacterAppearance appearance,
+            CharacterBuildPurpose purpose = CharacterBuildPurpose.Gameplay, int revision = 0)
+        {
+            ContestantId = contestantId; FallbackId = fallbackId; Appearance = appearance?.Clone();
+            Purpose = purpose; Revision = revision;
+        }
+    }
+
+    public interface IModularCharacterBodyProvider : ICharacterBodyProvider
+    {
+        ICharacterAppearanceCatalog Catalog { get; }
+        bool TryCreate(in CharacterBodyRequest request, Transform parent, Color badgeColor, out CharacterBody body);
+    }
+
     /// <summary>
     /// The single registration point for a body provider.
     ///
@@ -52,13 +79,34 @@ namespace Gamesim.Presentation
     /// </summary>
     public static class CharacterBodySource
     {
-        public static ICharacterBodyProvider Provider { get; private set; }
+        private static readonly List<ICharacterBodyProvider> Providers = new List<ICharacterBodyProvider>();
+        public static ICharacterBodyProvider Provider => Providers.Count == 0 ? null : Providers[Providers.Count - 1];
 
-        public static void Register(ICharacterBodyProvider provider) => Provider = provider;
+        public static void Register(ICharacterBodyProvider provider)
+        {
+            if (provider != null && !Providers.Contains(provider)) Providers.Add(provider);
+        }
 
         public static void Unregister(ICharacterBodyProvider provider)
         {
-            if (ReferenceEquals(Provider, provider)) Provider = null;
+            Providers.Remove(provider);
+        }
+
+        public static bool TryCreate(in CharacterBodyRequest request, Transform parent, Color badgeColor,
+            out CharacterBody body)
+        {
+            body = default;
+            for (int i = Providers.Count - 1; i >= 0; i--)
+            {
+                var provider = Providers[i];
+                bool created = provider is IModularCharacterBodyProvider modular
+                    ? modular.TryCreate(request, parent, badgeColor, out body)
+                    : provider.TryCreate(request.FallbackId, parent, badgeColor, out body);
+                if (!created || !body.Exists) continue;
+                body = new CharacterBody(body.Root, body.Animator, body.Deferred, provider);
+                return true;
+            }
+            return false;
         }
     }
 }

@@ -30,7 +30,7 @@ namespace Gamesim.Presentation
         private const float Gap = 8f;
 
         /// <summary>What a mark stands for. Each is buildable from the two primitive shapes.</summary>
-        public enum Mark { Network, Rooms, Votes, Story }
+        public enum Mark { Network, Rooms, Votes, Story, Overview }
 
         /// <summary>One entry: its mark, the section it jumps to, and its accessible name.</summary>
         public readonly struct Entry
@@ -122,6 +122,15 @@ namespace Gamesim.Presentation
                     Bar(cell, ink, new Vector2(-6f, 0f), new Vector2(10f, 15f), 0f, scale);
                     Bar(cell, ink, new Vector2(6f, 0f), new Vector2(10f, 15f), 0f, scale);
                     Bar(cell, UiTheme.Ink, new Vector2(0f, 0f), new Vector2(2f, 17f), 0f, scale);
+                    break;
+
+                case Mark.Overview:
+                    // A viewfinder: a frame with the house at its centre.
+                    Bar(cell, ink, new Vector2(0f, 9f), new Vector2(22f, 2f), 0f, scale);
+                    Bar(cell, ink, new Vector2(0f, -9f), new Vector2(22f, 2f), 0f, scale);
+                    Bar(cell, ink, new Vector2(-10f, 0f), new Vector2(2f, 16f), 0f, scale);
+                    Bar(cell, ink, new Vector2(10f, 0f), new Vector2(2f, 16f), 0f, scale);
+                    Square(cell, ink, new Vector2(0f, 0f), 6f, scale);
                     break;
             }
         }

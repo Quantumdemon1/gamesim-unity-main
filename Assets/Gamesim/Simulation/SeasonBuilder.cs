@@ -50,11 +50,14 @@ namespace Gamesim.Simulation
             /// is. Creating from a blank slate leaves the id empty and every card in the house.</para>
             /// </summary>
             public CharacterDraft Authored;
+            /// <summary>Explicit NPC slots. Repeated profiles are allowed and receive separate season identities.</summary>
+            public List<CharacterProfile> CustomHouseguests = new List<CharacterProfile>();
 
             public Choice Copy()
             {
                 var copy = (Choice)MemberwiseClone();
                 copy.Authored = Authored?.Copy();
+                copy.CustomHouseguests = CustomHouseguests?.Select(profile => profile?.Clone()).ToList();
                 return copy;
             }
         }
@@ -74,16 +77,23 @@ namespace Gamesim.Simulation
         public static EpisodeState Create(Choice choice, uint seed)
         {
             if (choice == null) throw new ArgumentNullException(nameof(choice));
+            if (!Enum.IsDefined(typeof(CastTemplates.Roster), choice.Roster)) throw new ArgumentException("Choose a supported roster.");
 
-            var persona = string.IsNullOrEmpty(choice.PlayerTemplateId)
+            var templateId = choice.Authored != null ? choice.Authored.SourceTemplateId : choice.PlayerTemplateId;
+            var persona = string.IsNullOrEmpty(templateId)
                 ? null
-                : CastTemplates.Find(choice.PlayerTemplateId);
+                : CastTemplates.Find(templateId);
             int size = ClampHouseSize(choice.Roster, choice.HouseSize);
+            if (choice.CustomHouseguests == null || choice.CustomHouseguests.Count > size - 1)
+                throw new ArgumentException("Custom houseguests must fit the selected house size.");
+            foreach (var profile in choice.CustomHouseguests)
+                if (profile == null || !profile.TryValidate(out _)) throw new ArgumentException("A selected custom houseguest is invalid.");
 
             var state = new EpisodeState
             {
                 sessionId = "gamesim-" + seed.ToString("x8"),
                 seed = seed,
+                competitionRulesVersion = 3,
                 npcSocial = NpcSocialState.Create(seed),
                 randomState = seed == 0 ? 0x6D2B79F5u : seed,
                 playerId = ContentCatalog.PlayerId,
@@ -93,12 +103,22 @@ namespace Gamesim.Simulation
             };
 
             state.contestants.Add(Player(persona, choice.Authored));
+            var reservedTemplates = new HashSet<string>(StringComparer.Ordinal);
+            if (persona != null) reservedTemplates.Add(persona.Id);
+            for (int i = 0; i < choice.CustomHouseguests.Count; i++)
+            {
+                var person = choice.CustomHouseguests[i].ToDraft().ToContestant();
+                person.id = "custom-" + (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                person.isPlayer = false;
+                state.contestants.Add(person);
+                if (!string.IsNullOrEmpty(person.sourceTemplateId)) reservedTemplates.Add(person.sourceTemplateId);
+            }
 
             // In table order, skipping whoever the player is playing as. Order is the roster's, not
             // a shuffle, for the determinism reason in the class note above.
             foreach (var template in CastTemplates.In(choice.Roster)
-                         .Where(t => persona == null || t.Id != persona.Id)
-                         .Take(size - 1))
+                         .Where(t => !reservedTemplates.Contains(t.Id))
+                         .Take(size - state.contestants.Count))
                 state.contestants.Add(CastTemplates.ToContestant(template, false));
 
             foreach (var from in state.contestants)
@@ -139,6 +159,7 @@ namespace Gamesim.Simulation
                 return new ContestantState
                 {
                     id = ContentCatalog.PlayerId,
+                    appearance = CharacterAppearance.Preset(ContentCatalog.PlayerId),
                     name = "You",
                     pronouns = "they/them",
                     isPlayer = true,

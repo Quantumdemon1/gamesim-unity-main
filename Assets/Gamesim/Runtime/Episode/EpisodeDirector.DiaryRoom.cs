@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
 
@@ -15,6 +16,8 @@ namespace Gamesim.Episode
         private HouseRoomMarker diaryRoom;
         private bool diaryOpen;
         private DiaryDecisionDraft diaryDraft;
+        private HouseInteractionAnchor diaryAnchor;
+        private DiarySeatPose diarySeat;
 
         private sealed class DiaryDecisionDraft
         {
@@ -25,9 +28,11 @@ namespace Gamesim.Episode
         }
 
         public bool HasDiaryRoom => diaryRoom != null && diaryRoom.gameObject.activeInHierarchy
-            && diaryRoom.gameObject.scene == gameObject.scene;
-        public Vector3 DiaryPosition => HasDiaryRoom ? diaryRoom.transform.position : Vector3.positiveInfinity;
+            && diaryRoom.gameObject.scene == gameObject.scene && diaryAnchor!=null && diaryAnchor.isActiveAndEnabled
+            && diaryAnchor.Seated && diaryAnchor.RoomId=="Private" && diaryAnchor.gameObject.scene==gameObject.scene;
+        public Vector3 DiaryPosition => HasDiaryRoom ? diaryAnchor.Approach : Vector3.positiveInfinity;
         public bool IsDiaryOpen => diaryOpen;
+        public bool IsDiarySettled => diaryOpen && diarySeat!=null && diarySeat.IsSettled;
         public bool HasDiaryDecisionDraft => diaryDraft != null;
         public bool CanUseDiary => IsReady && !blockedRecovery && !challengeActive && playerIsActive
             && player != null && HasDiaryRoom && HasDiarySight();
@@ -39,6 +44,8 @@ namespace Gamesim.Episode
                 .SelectMany(root => root.GetComponentsInChildren<HouseRoomMarker>(true))
                 .Where(room => room.RoomName == "Private").ToArray();
             diaryRoom = rooms.Length == 1 ? rooms[0] : null;
+            HouseInteractionAnchors.EnsureDefaults(gameObject.scene);
+            HouseInteractionAnchors.TryFind(gameObject.scene,HouseInteractionAnchors.DiaryVenue,0,out diaryAnchor);
             if (diaryRoom == null)
                 Debug.LogWarning("Gamesim diary room needs exactly one Private room marker in this episode scene. Diary interaction is disabled.", this);
         }
@@ -46,16 +53,18 @@ namespace Gamesim.Episode
         private bool HasDiarySight()
         {
             var origin = player.transform.position + Vector3.up * 1.15f;
-            var offset = diaryRoom.transform.position + Vector3.up * 1.15f - origin;
+            var offset = DiaryPosition + Vector3.up * 1.15f - origin;
             float distance = offset.magnitude;
             if (distance > 2.8f) return false;
             if (distance < .01f) return true;
             int count = Physics.RaycastNonAlloc(origin, offset / distance, sightHits, distance,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == sightHits.Length) return false;
             for (int index = 0; index < count; index++)
             {
                 var hit = sightHits[index].transform;
+                if(diarySeat!=null && diarySeat.IsOccupying && diaryAnchor!=null
+                    && hit.IsChildOf(diaryAnchor.transform.parent))continue;
                 if (!hit.IsChildOf(player.transform) && !hit.IsChildOf(diaryRoom.transform)) return false;
             }
             return true;
@@ -64,7 +73,9 @@ namespace Gamesim.Episode
         public void GoToDiary()
         {
             if (!IsReady || blockedRecovery || !playerIsActive || !HasDiaryRoom) return;
+            headingToStation = false;
             ClosePanels();
+            EndDiaryVisit(true);CloseHouseActivities(true);
             message = player.TryMoveTo(DiaryPosition)
                 ? "Walk to the private room, then press E to open your diary. No choice is committed by entering."
                 : "The diary room is not reachable from here. Your current episode is unchanged.";
@@ -74,12 +85,74 @@ namespace Gamesim.Episode
         public bool TryOpenDiary()
         {
             if (!CanUseDiary) return false;
+            if(diaryOpen)return true;
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
-            ClosePanels(); diaryOpen = true;
+            ClosePanels();EndDiaryVisit(true);CloseHouseActivities(true);diaryOpen = true;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
-            // A solitary room does not borrow an NPC's conversation framing or invent a camera subject.
+            // Physical arrival authorizes the visit. Seating is temporary presentation, restored
+            // before movement resumes; the shot frames this player's face against the diary set.
+            if(!FrameDiaryChair())
+            {
+                ClosePanels();
+                message="The diary chair is unavailable. Your current episode is unchanged.";
+                Render();return false;
+            }
             Render(); return true;
+        }
+
+        /// <summary>The chair the diary's shot looks at, as the set names it.</summary>
+        public const string DiaryChairName = HouseInteractionAnchors.DiaryProp;
+        /// <summary>
+        /// Legacy camera constants remain for downstream integrations. New framing reads the
+        /// chair's camera anchor and follows the actual seated head through DiarySeatPose.
+        /// </summary>
+        public const float DiaryShotBehind = 1.0f;
+        public const float DiaryShotAside = 0.5f;
+        public const float DiaryShotEyeHeight = 1.9f;
+        public const float DiaryShotLookHeight = 0.7f;
+        public const float DiaryShotFieldOfView = 40f;
+        public const float DiaryShotSeconds = 0.8f;
+        public const float DiaryShotDepthOfField = 0.7f;
+
+        /// <summary>
+        /// Stages a seated confessional after arrival and frames the player's face. Navigation stays
+        /// reserved at the approach. Reduced motion uses the same framing with an immediate cut.
+        /// </summary>
+        private bool FrameDiaryChair()
+        {
+            if (cameraRig == null || diaryAnchor==null || !diaryAnchor.isActiveAndEnabled) return false;
+            diarySeat=player.GetComponent<DiarySeatPose>() ?? player.gameObject.AddComponent<DiarySeatPose>();
+            if(!diarySeat.Begin(diaryAnchor,cameraRig,()=>this!=null && diaryOpen,()=>
+            {
+                if(this==null || !diaryOpen)return;
+                ClosePanels();
+                message="The diary visit ended because its chair became unavailable. Unconfirmed choices were discarded.";
+                Render();
+            },()=>{StartDiaryShot();Render();}))return false;
+            return true;
+        }
+
+        private void StartDiaryShot()
+        {
+            if(!diaryOpen || diarySeat==null || !diarySeat.IsSettled || cameraRig==null)return;
+            var eye=diaryAnchor.CameraPosition;
+            var look=diarySeat.FacePosition-Vector3.up*.1f;
+            var line = look - eye;
+            float distance = line.magnitude;
+            cameraRig.MoveTo(new HouseCameraRig.Shot
+            {
+                Focus = look, Distance = distance,
+                Pitch = Mathf.Asin(Mathf.Clamp(-line.y / distance, -1f, 1f)) * Mathf.Rad2Deg,
+                Yaw = Mathf.Atan2(line.x, line.z) * Mathf.Rad2Deg,
+                FieldOfView = DiaryShotFieldOfView, Seconds = DiaryShotSeconds, DepthOfFieldWeight = DiaryShotDepthOfField,
+            });
+        }
+
+        private void EndDiaryVisit(bool immediately=false)
+        {
+            if(diarySeat==null)return;
+            if(immediately)diarySeat.End();else diarySeat.RequestExit();
         }
 
         public void CancelDiaryDecision()
@@ -104,6 +177,7 @@ namespace Gamesim.Episode
             // A detached callback from an older panel cannot confirm a newer draft.
             if (!diaryOpen || expected == null || !ReferenceEquals(diaryDraft, expected)) return;
             if (!CanUseDiary) { ClosePanels(); return; }
+            if(!IsDiarySettled)return;
             var decision = diaryDraft;
             diaryDraft = null; // Clear before Submit renders; a double click cannot submit a second command.
             if (!IsCurrentDiaryRevision(decision.origin))
@@ -120,7 +194,7 @@ namespace Gamesim.Episode
 
         private void ReviewStudyHouse(EpisodeState state, string choiceId)
         {
-            if (!diaryOpen || diaryDraft != null || !CanUseDiary || !IsCurrentDiaryRevision(state) || state.phase != EpisodePhase.Social
+            if (!diaryOpen || !IsDiarySettled || diaryDraft != null || !CanUseDiary || !IsCurrentDiaryRevision(state) || state.phase != EpisodePhase.Social
                 || state.pendingDiary != null
                 || EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state)) return;
             if (choiceId != "memorize-layout" && choiceId != "sneak-peek") return;
@@ -145,14 +219,14 @@ namespace Gamesim.Episode
         public void ReflectDiary(string choiceId)
         {
             if ((!diaryOpen && !phaseOpen) || projected?.pendingDiary == null) return;
-            if (diaryOpen && !CanUseDiary) return;
+            if (diaryOpen && (!CanUseDiary || !IsDiarySettled)) return;
             Commit(projected, EpisodeCommandKind.ReflectDiary, projected.pendingDiary.id, choiceId);
         }
 
         public void SkipDiary()
         {
             if ((!diaryOpen && !phaseOpen) || projected?.pendingDiary == null) return;
-            if (diaryOpen && !CanUseDiary) return;
+            if (diaryOpen && (!CanUseDiary || !IsDiarySettled)) return;
             Commit(projected, EpisodeCommandKind.SkipDiary, projected.pendingDiary.id);
         }
 
@@ -160,7 +234,7 @@ namespace Gamesim.Episode
             string summary, string target = null, string second = null, bool useVeto = false)
         {
             if (!privateRoom) { Commit(state, kind, target, second, useVeto); return; }
-            if (!diaryOpen || !CanUseDiary) return;
+            if (!diaryOpen || !IsDiarySettled || !CanUseDiary) return;
             // This is a presentation allow-list, not a parallel rules engine. Submit checks authority,
             // candidate validity, duplicate IDs, phase, and revision again against the current state.
             if (kind != EpisodeCommandKind.Nominate && kind != EpisodeCommandKind.ResolveVeto
@@ -172,7 +246,13 @@ namespace Gamesim.Episode
 
         private void RenderDiary(EpisodeState state)
         {
-            hud.PanelTitle("PRIVATE DIARY ROOM", "Only your character's own memories and assigned decisions appear here.");
+            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Diary);
+            hud.PanelTitle("PRIVATE DIARY ROOM", "Your own memories, and the decisions that are yours to make.");
+            if(!IsDiarySettled)
+            {
+                hud.Paragraph("Walk to the chair, turn and sit. Your diary choices appear when you are seated.");
+                return;
+            }
             if (diaryDraft != null)
             {
                 var reviewed = diaryDraft;
@@ -187,7 +267,7 @@ namespace Gamesim.Episode
                     () => CancelDiaryDecision(reviewed));
                 return;
             }
-            hud.Paragraph("A quiet place to reflect. Reading here does not change your mood, traits, relationships, or jury standing.");
+            hud.Paragraph("A quiet place to reflect. Looking back costs you nothing.");
             RenderDiaryRecord(state);
             RenderDiaryReflection(state);
             RenderStudyHouse(state);
@@ -204,7 +284,6 @@ namespace Gamesim.Episode
             var memories = state.memories.Where(memory => memory.ownerId == state.playerId).Reverse().Take(20).ToArray();
             if (memories.Length == 0) hud.Paragraph("You have no recorded personal memories yet. Explore and talk to the housemates.");
             foreach (var memory in memories) hud.Paragraph("Week " + memory.week + ": " + memory.text);
-            hud.Paragraph("These are your recorded experiences, not access to another housemate's private thoughts.");
         }
 
         private void RenderDiaryRecord(EpisodeState state)
@@ -212,9 +291,8 @@ namespace Gamesim.Episode
             hud.Heading("YOUR DIARY RECORD");
             hud.Paragraph("Study preparation: " + state.playerStudyBonus + "/5. Saved between weeks; used only by the weekly simulated HoH/Veto option, not precision play or final HoH.");
             hud.Paragraph("Current diary persona: " + state.playerPersona.current + ". Recorded reflections: " + state.playerPersona.history.Count + ".");
-            hud.Paragraph("Recorded jury-impression ledger: " + state.jurySentiment.overallSentiment.ToString("0")
-                + " across " + state.jurySentiment.jurors.Count + " jurors. This is a gameplay record, not access to private thoughts or a forecast of votes.");
-            hud.Paragraph("The impression ledger does not directly set jury ballots. No social or competition reward is applied to normal play by this display.");
+            hud.Paragraph("How the jury has read you so far: " + state.jurySentiment.overallSentiment.ToString("0")
+                + " across " + state.jurySentiment.jurors.Count + " jurors. An impression, not a promise.");
         }
 
         private void RenderStudyHouse(EpisodeState state)
@@ -258,7 +336,7 @@ namespace Gamesim.Episode
 
         private void ReviewDiaryReflection(EpisodeState state, string choiceId)
         {
-            if (!diaryOpen || !CanUseDiary || state.pendingDiary == null) return;
+            if (!diaryOpen || !IsDiarySettled || !CanUseDiary || state.pendingDiary == null) return;
             var choice = EpisodeEngine.CurrentDiary(state)?.choices.FirstOrDefault(option => option.id == choiceId);
             if (choice == null) return;
             int delta = choice.effects.juryDelta.GetValueOrDefault();
@@ -386,7 +464,7 @@ namespace Gamesim.Episode
                 else hud.Paragraph("This week is aimed at " + state.Find(state.backdoorTargetId).name
                     + ". Nominate two others and use the veto to put them up.");
                 var candidates = EpisodeEngine.NominationCandidates(state).Select(c => new EpisodeHud.Option(c.id, c.name)).ToArray();
-                hud.ChoosePair(candidates, (first, second) =>
+                hud.ChooseNominationPair(state, candidates, (first, second) =>
                 {
                     if (privateRoom && (first == second || !candidates.Any(option => option.Id == first)
                         || !candidates.Any(option => option.Id == second)))

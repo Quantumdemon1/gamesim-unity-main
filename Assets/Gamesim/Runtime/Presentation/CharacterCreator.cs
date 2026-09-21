@@ -29,7 +29,7 @@ namespace Gamesim.Presentation
     /// border.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class CharacterCreator : MonoBehaviour
+    public sealed partial class CharacterCreator : MonoBehaviour
     {
         private const float Width = 1180f;
         private const float Pad = 28f;
@@ -37,10 +37,12 @@ namespace Gamesim.Presentation
         /// <summary>Captions tests and the tour find these controls by.</summary>
         public const string StartCaption = "Start with this houseguest";
         public const string BackCaption = "Back to the cast";
+        public const string ApplySlotCaption = "Apply to cast slot";
+        public const string CancelSlotCaption = "Cancel slot edit";
 
         /// <summary>How the cast screen offers this one.</summary>
         public const string CreateCaption = "Create your own houseguest";
-        public const string CustomiseCaption = "Customise this houseguest";
+        public const string CustomiseCaption = "Edit appearance";
 
         public static string RaiseCaption(string stat) => "Raise " + stat;
         public static string LowerCaption(string stat) => "Lower " + stat;
@@ -54,6 +56,8 @@ namespace Gamesim.Presentation
         private SeasonBuilder.Choice pending;
         private Action<SeasonBuilder.Choice> onStart;
         private Action onBack;
+        private bool editingCastSlot;
+        private string resumeError;
 
         /// <summary>See <see cref="CastSelect.FontScale"/> — a fixed layout is magnified, not retyped.</summary>
         public float FontScale
@@ -70,6 +74,7 @@ namespace Gamesim.Presentation
 
         /// <summary>The draft as it currently stands, for tests and for the tour.</summary>
         public CharacterDraft Draft => draft;
+        public CharacterStudioPreview StudioPreview => studioPreview;
 
         /// <summary>
         /// Above the cast screen, because it is opened from it and returns to it. Raycasts, like the
@@ -103,6 +108,7 @@ namespace Gamesim.Presentation
             group.alpha = 0f;
             group.blocksRaycasts = false;
             group.interactable = false;
+            if (studioPreview != null) { Destroy(studioPreview.gameObject); studioPreview = null; }
         }
 
         /// <summary>
@@ -117,13 +123,28 @@ namespace Gamesim.Presentation
             Action<SeasonBuilder.Choice> commit, Action back)
         {
             pending = choice?.Copy() ?? new SeasonBuilder.Choice();
-            draft = start ?? CharacterDraft.Blank();
+            editingCastSlot = false;
+            draft = (start ?? CharacterDraft.Blank()).Copy();
+            appearanceUndo.Clear(); appearanceRedo.Clear();
+            initialAppearance = draft.Appearance?.Clone();
+            studioPage = "Appearance";
+            profileId = null;
+            comparingOriginal = false;
+            resumeError = null;
             onStart = commit;
             onBack = back;
             Rebuild();
             group.alpha = 1f;
             group.blocksRaycasts = true;
             group.interactable = true;
+        }
+
+        /// <summary>Edits one proposed NPC snapshot. Applying returns to cast setup and never starts a season.</summary>
+        public void ShowForCastSlot(SeasonBuilder.Choice choice, CharacterDraft start, Action<CharacterDraft> apply, Action cancel)
+        {
+            Show(choice, start, result => apply?.Invoke(result.Authored.Copy()), cancel);
+            editingCastSlot = true;
+            Rebuild();
         }
 
         /// <summary>Closes without building. Escape routes here.</summary>
@@ -133,6 +154,15 @@ namespace Gamesim.Presentation
             var back = onBack;
             Hide();
             back?.Invoke();
+        }
+
+        /// <summary>Restores the same setup after a failed save; no edits or allocations are reset.</summary>
+        public void Resume(string error = null)
+        {
+            if (onStart == null) return;
+            resumeError = error;
+            Rebuild();
+            group.alpha = 1f; group.blocksRaycasts = true; group.interactable = true;
         }
 
         // ---------------------------------------------------------------- build
@@ -155,6 +185,8 @@ namespace Gamesim.Presentation
             string keep = selected != null && selected.transform.IsChildOf(transform) ? selected.name : null;
             try
             {
+                if (studioControls != null)
+                    studioScrollY = lastStudioCategory == appearanceCategory ? studioControls.anchoredPosition.y : 0f;
                 RebuildForm();
             }
             finally
@@ -169,51 +201,48 @@ namespace Gamesim.Presentation
 
         private void RebuildForm()
         {
-            // Deactivated before the deferred Destroy, for the reason CastSelect.Rebuild explains:
-            // this screen rebuilds on every click and a control would otherwise match twice for a
-            // frame.
             foreach (Transform child in transform)
             {
                 child.gameObject.SetActive(false);
                 Destroy(child.gameObject);
             }
-
-            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(0.02f, 0.04f, 0.06f, 0.97f), 1);
+            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(.02f, .04f, .06f, .98f), 1);
             Stretch(scrim);
-
-            var viewport = HudPrimitives.Fill("Viewport", scrim, new Color(0f, 0f, 0f, 0f), 1);
-            viewport.anchorMin = new Vector2(0.5f, 0f);
-            viewport.anchorMax = new Vector2(0.5f, 1f);
-            viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, 0f);
-            viewport.anchoredPosition = Vector2.zero;
-            viewport.gameObject.AddComponent<RectMask2D>();
-
-            content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
-            content.SetParent(viewport, false);
-            content.anchorMin = new Vector2(0f, 1f);
-            content.anchorMax = new Vector2(1f, 1f);
-            content.pivot = new Vector2(0.5f, 1f);
-            content.anchoredPosition = Vector2.zero;
-
-            var scroll = viewport.gameObject.AddComponent<ScrollRect>();
-            scroll.content = content;
-            scroll.viewport = viewport;
-            scroll.horizontal = false;
-            scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = 40f;
-
-            cursor = 0f;
-            Header();
-            Preview();
-            Details();
-            TraitChips();
-            Stats();
+            BuildNavigation(scrim);
+            if (studioPage == "Appearance") BuildAppearanceStudio(scrim);
+            else
+            {
+                if (studioPreview != null) studioPreview.gameObject.SetActive(false);
+                var viewport = HudPrimitives.Fill("Viewport", scrim, Color.clear, 1);
+                viewport.anchorMin = new Vector2(.5f, 0f);
+                viewport.anchorMax = new Vector2(.5f, 1f);
+                viewport.sizeDelta = new Vector2(Width, -290f);
+                viewport.anchoredPosition = new Vector2(0f, -5f);
+                viewport.gameObject.AddComponent<RectMask2D>();
+                content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
+                content.SetParent(viewport, false);
+                content.anchorMin = new Vector2(0f, 1f);
+                content.anchorMax = new Vector2(1f, 1f);
+                content.pivot = new Vector2(.5f, 1f);
+                var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+                viewport.gameObject.AddComponent<SetupScrollFocus>();
+                scroll.content = content; scroll.viewport = viewport; scroll.horizontal = false;
+                scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 40f;
+                cursor = 0f;
+                if (studioPage == "Identity") Details();
+                else if (studioPage == "Personality") { TraitChips(); Stats(); }
+                else if (studioPage == "My Houseguests") BuildLibrary();
+                else BuildReview();
+                content.sizeDelta = new Vector2(0f, cursor + Pad);
+            }
+            var footer = new GameObject("Fixed footer", typeof(RectTransform)).GetComponent<RectTransform>();
+            footer.SetParent(scrim, false);
+            footer.anchorMin = footer.anchorMax = new Vector2(.5f, 0f);
+            footer.pivot = new Vector2(.5f, 0f);
+            footer.sizeDelta = new Vector2(Width, 135f);
+            content = footer; cursor = 0f;
             Footer();
-
-            content.sizeDelta = new Vector2(0f, cursor + Pad);
         }
-
         private void Header()
         {
             Space(Pad);
@@ -341,6 +370,17 @@ namespace Gamesim.Presentation
         /// </summary>
         private void TraitChips()
         {
+            if (draft.PreserveStats)
+            {
+                Text("Existing gameplay build preserved: " + string.Join(" · ", draft.Traits),
+                    17f, UiTheme.Paper, 44f, TextAlignmentOptions.Left);
+                Text("Appearance and identity edits keep these stats and traits. Rebuild explicitly to allocate a fresh gameplay build.",
+                    14f, UiTheme.Muted, 44f, TextAlignmentOptions.Left);
+                var rebuild = Row(48f);
+                Chip(rebuild, "Rebuild personality and stats", 0f, 440f, false,
+                    () => { draft = draft.RebuildGameplay(); Rebuild(); });
+                return;
+            }
             Space(10f);
             Text("PERSONALITY — TWO AT MOST", 15f, UiTheme.Accent, 26f, TextAlignmentOptions.Left);
             Text("Each trait raises two stats: two points on the first, one on the second. Removing it takes the boost back.",
@@ -353,18 +393,25 @@ namespace Gamesim.Presentation
 
             for (int index = 0; index < names.Count; index += columns)
             {
-                var bar = Row(42f);
+                var bar = Row(70f);
                 for (int column = 0; column < columns && index + column < names.Count; column++)
                 {
                     var name = names[index + column];
                     bool held = draft.HasTrait(name);
                     float x = -Width / 2f + Pad + chipWidth / 2f + column * (chipWidth + gutter);
-                    Chip(bar, name, x, chipWidth, held, () =>
+                    var chip = Chip(bar, name, x, chipWidth, held, () =>
                     {
                         if (held) draft.RemoveTrait(name);
                         else draft.AddTrait(name);
                         Rebuild();
                     });
+                    chip.GetComponent<RectTransform>().anchoredPosition += new Vector2(0f, 12f);
+                    var boost = WebTraits.Boosts[name];
+                    var effect = HudPrimitives.Label("Trait effect", bar, 11f, UiTheme.Muted, TextAlignmentOptions.Center);
+                    effect.text = "+2 " + boost.Primary + " · +1 " + boost.Secondary;
+                    effect.rectTransform.anchorMin = effect.rectTransform.anchorMax = new Vector2(.5f, .5f);
+                    effect.rectTransform.sizeDelta = new Vector2(chipWidth, 24f);
+                    effect.rectTransform.anchoredPosition = new Vector2(x, -19f);
                 }
             }
 
@@ -380,9 +427,10 @@ namespace Gamesim.Presentation
         private void Stats()
         {
             Space(10f);
-            Text("STATS — " + draft.Remaining + " OF " + CharacterDraft.SparePoints + " SPARE POINTS LEFT",
+            Text(draft.PreserveStats ? "PRESERVED STATS" : "STATS — " + draft.Remaining + " OF " + CharacterDraft.SparePoints + " SPARE POINTS LEFT",
                 15f, draft.Remaining > 0 ? UiTheme.Gold : UiTheme.Accent, 26f, TextAlignmentOptions.Left);
-            Text("Everyone starts at five. Traits move these too, and nothing goes below one or above ten.",
+            Text(draft.PreserveStats ? "These are this houseguest's saved gameplay values. Cosmetic edits leave them unchanged."
+                : "Everyone starts at five. Traits move these too, and nothing goes below one or above ten.",
                 12f, UiTheme.Muted, 20f, TextAlignmentOptions.Left);
 
             foreach (var stat in WebTraits.StatNames)
@@ -424,8 +472,11 @@ namespace Gamesim.Presentation
                 number.rectTransform.sizeDelta = new Vector2(60f, 24f);
                 number.rectTransform.anchoredPosition = new Vector2(630f, 0f);
 
-                Chip(row, LowerCaption(name), 330f, 170f, false, () => { draft.Lower(name); Rebuild(); });
-                Chip(row, RaiseCaption(name), 505f, 170f, false, () => { draft.Raise(name); Rebuild(); });
+                if (!draft.PreserveStats)
+                {
+                    Chip(row, LowerCaption(name), 330f, 170f, false, () => { draft.Lower(name); Rebuild(); }).interactable = draft.CanLower(name);
+                    Chip(row, RaiseCaption(name), 505f, 170f, false, () => { draft.Raise(name); Rebuild(); }).interactable = draft.CanRaise(name);
+                }
             }
         }
 
@@ -433,24 +484,25 @@ namespace Gamesim.Presentation
         {
             Space(10f);
             bool ready = draft.TryValidate(out var error);
-            Text(ready
+            Text(!string.IsNullOrEmpty(resumeError) ? resumeError : ready
                     ? draft.Remaining > 0
                         ? "Ready. " + draft.Remaining + " spare point" + (draft.Remaining == 1 ? "" : "s")
                           + " left unspent, which is allowed."
                         : "Ready."
                     : error,
-                14f, ready ? UiTheme.Positive : UiTheme.Warning, 24f, TextAlignmentOptions.Center);
+                14f, ready && string.IsNullOrEmpty(resumeError) ? UiTheme.Positive : UiTheme.Warning, 32f, TextAlignmentOptions.Center);
 
             var bar = Row(56f);
-            Chip(bar, StartCaption, -150f, 300f, ready, () =>
+            Chip(bar, editingCastSlot ? ApplySlotCaption : StartCaption, -150f, 300f, ready, () =>
             {
                 if (!draft.TryValidate(out _)) { Rebuild(); return; }
+                resumeError = null;
                 pending.Authored = draft.Copy();
                 var start = onStart;
                 Hide();
                 start?.Invoke(pending);
             });
-            Chip(bar, BackCaption, 180f, 230f, false, Dismiss);
+            Chip(bar, editingCastSlot ? CancelSlotCaption : BackCaption, 180f, 230f, false, Dismiss);
             Space(Pad);
         }
 

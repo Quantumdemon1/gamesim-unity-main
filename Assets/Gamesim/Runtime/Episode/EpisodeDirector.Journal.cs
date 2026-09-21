@@ -95,9 +95,8 @@ namespace Gamesim.Episode
                 if (nearest == null) continue;
 
                 occupants[nearest.RoomName].Add(new HouseMap.Occupant(actor.id, actor.name,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id))),
-                    actor.id == state.playerId));
+                    CharacterPortraits.Get(actor),
+                    actor.id == state.playerId, actor));
             }
 
             foreach (var marker in markers) rooms.Add(new HouseMap.Room(marker.RoomName, occupants[marker.RoomName]));
@@ -148,6 +147,9 @@ namespace Gamesim.Episode
         /// <summary>Opens the notebook, if needed, and scrolls to a section.</summary>
         public void ShowNotebookSection(string section)
         {
+            // The rail's last entry is not a page: it is the house itself, from above.
+            if (section == OverviewSection) { ToggleOverview(); return; }
+            journalSection = section;
             journalOpen = true;
             phaseOpen = false; settingsOpen = false; diaryOpen = false;
             hud.RequestScrollTo(section);
@@ -286,9 +288,8 @@ namespace Gamesim.Episode
             seasonReport.Show(committed, id =>
             {
                 var actor = committed.Find(id);
-                return actor == null ? null : CharacterPortraits.Get(
-                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)));
-            }, OpenJournal);
+                return actor == null ? null : CharacterPortraits.Get(actor);
+            }, OpenJournal, CareerNow());
         }
     }
 }

@@ -1,44 +1,179 @@
 using System.Collections.Generic;
+using Gamesim.Simulation;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// Renders each houseguest's head to a texture the HUD can show, so a game about six people
-    /// actually shows their faces.
-    ///
-    /// Portraits are drawn <b>unlit</b>, from each material's own base colour. That is a deliberate
-    /// choice rather than a shortcut: the cast is flat-shaded low-poly, so flat portraits match the
-    /// art, and — measured, not assumed — an offscreen camera here does not lit-shade the subject
-    /// at all. With every light disabled and pure black ambient the skin still rendered white,
-    /// which a lit surface cannot do. Unlit makes the output exact and independent of how the set
-    /// happens to be lit, which is what a portrait wants anyway.
-    ///
-    /// The rig lives far below the house with a short far-clip, so it sees only its own subject and
-    /// no layer needs reserving. Each portrait is rendered once and cached; nothing renders per frame.
+    /// Shared appearance portraits. Modular looks are built one at a time in an isolated studio
+    /// and captured after their final DNA pass. Authored fallback models use the existing unlit
+    /// headshot path. A bounded content-keyed cache retains faces after their actors leave the house.
     /// </summary>
     public static class CharacterPortraits
     {
-        public const int Size = 192;
+        /// <summary>Portrait pixels a side (VISUAL-TARGET.md V3): the mockups' headshots, not a thumbnail.</summary>
+        public const int Size = 384;
         private const string ModelResourceRoot = "GamesimCharacters/";
         private static readonly Vector3 RigOrigin = new Vector3(0f, -5000f, 0f);
 
         private static readonly Dictionary<string, RenderTexture> Cache = new Dictionary<string, RenderTexture>();
+        private const int MaximumCachedPortraits = 96;
+        private static readonly LinkedList<string> CacheOrder = new LinkedList<string>();
+        private static readonly Dictionary<string, LinkedListNode<string>> OrderNodes = new Dictionary<string, LinkedListNode<string>>();
+        private sealed class TemporaryPortrait { public int Attempts; public double RetryAt; }
+        private static readonly Dictionary<string, TemporaryPortrait> Temporary = new Dictionary<string, TemporaryPortrait>();
         private static readonly Dictionary<Material, Material> UnlitCache = new Dictionary<Material, Material>();
         private static GameObject rig;
         private static Camera rigCamera;
+        private static CharacterPortraitQueue queue;
+
+        /// <summary>An owned, immutable appearance request. Bindings resolve and hash it once, then poll the cache.</summary>
+        public sealed class PortraitRequest
+        {
+            internal readonly CharacterAppearance Appearance;
+            internal readonly string FallbackId;
+            public string Key { get; }
+
+            internal PortraitRequest(CharacterAppearance ownedAppearance)
+            {
+                Appearance = ownedAppearance;
+                Key = "appearance:" + ownedAppearance.ContentKey();
+                var template = CastTemplates.Find(ownedAppearance.presetId);
+                FallbackId = template == null ? ownedAppearance.fallbackId
+                    : CharacterPresentation.AppearanceId(CastTemplates.ToContestant(template, false), template.Id);
+            }
+        }
+
+        /// <summary>A portrait is keyed by its entire saved look, independent of player/NPC identity.</summary>
+        public static Texture Get(ContestantState contestant) => Get(Prepare(contestant));
+
+        public static PortraitRequest Prepare(ContestantState contestant)
+        {
+            if (contestant == null) return null;
+            // Cast headshots keep the Everyday look while bodies dress for the current activity.
+            // The explicit GetAppearance path still previews the creator's selected outfit.
+            var appearance = CharacterOutfits.Resolve(contestant.appearance, CharacterOutfits.Everyday) ?? CharacterAppearance.Preset(
+                string.IsNullOrEmpty(contestant.sourceTemplateId) ? contestant.id : contestant.sourceTemplateId);
+            appearance.fallbackId = CharacterPresentation.AppearanceId(contestant, contestant.id);
+            return new PortraitRequest(appearance);
+        }
+
+        /// <summary>The explicit editor path preserves the selected outfit rather than choosing Everyday.</summary>
+        public static PortraitRequest PrepareAppearance(CharacterAppearance appearance) =>
+            appearance == null ? null : new PortraitRequest(appearance.Clone());
+
+        public static Texture GetAppearance(CharacterAppearance appearance) => Get(PrepareAppearance(appearance));
+
+        public static Texture Get(PortraitRequest request)
+        {
+            if (request == null) return null;
+            string key = request.Key;
+            if (TryCached(key, out var cached))
+            {
+                if (Temporary.TryGetValue(key, out var failed) && Time.realtimeSinceStartupAsDouble >= failed.RetryAt
+                    && Application.isPlaying && CharacterBodySource.Provider is IModularCharacterBodyProvider)
+                    Enqueue(key, request.Appearance);
+                return cached;
+            }
+            if (!Application.isPlaying || !(CharacterBodySource.Provider is IModularCharacterBodyProvider))
+            {
+                return Get(request.FallbackId);
+            }
+            Enqueue(key, request.Appearance);
+            return null;
+        }
+
+        private static void Enqueue(string key, CharacterAppearance appearance)
+        {
+            if (queue == null)
+            {
+                var root = new GameObject("Gamesim Portrait Queue") { hideFlags = HideFlags.DontSave };
+                queue = root.AddComponent<CharacterPortraitQueue>();
+            }
+            queue.Enqueue(key, appearance);
+        }
+
+        public static void Bind(RawImage image, ContestantState contestant)
+        {
+            if (image == null || contestant == null) return;
+            var binding = image.GetComponent<CharacterPortraitBinding>() ?? image.gameObject.AddComponent<CharacterPortraitBinding>();
+            binding.Set(contestant);
+        }
+
+        public static void Bind(Renderer renderer, ContestantState contestant)
+        {
+            if (renderer == null || contestant == null) return;
+            var binding = renderer.GetComponent<CharacterPortraitMaterialBinding>()
+                ?? renderer.gameObject.AddComponent<CharacterPortraitMaterialBinding>();
+            binding.Set(contestant);
+        }
+
+        internal static void StoreAppearance(string key, Texture source, bool temporary = false)
+        {
+            if (source == null) return;
+            bool hadTemporary = Temporary.TryGetValue(key, out var failed);
+            if (temporary)
+            {
+                if (failed == null) { failed = new TemporaryPortrait(); Temporary[key] = failed; }
+                failed.Attempts++;
+                // Demand-driven retries retain visible placeholders and back off to at most one attempt/minute.
+                failed.RetryAt = Time.realtimeSinceStartupAsDouble + Mathf.Min(60f, Mathf.Pow(2f, Mathf.Min(6, failed.Attempts - 1)));
+                if (Cache.ContainsKey(key)) return;
+            }
+            else
+            {
+                if (Cache.ContainsKey(key) && !hadTemporary) return;
+                Temporary.Remove(key);
+                if (Cache.TryGetValue(key, out var previous) && previous != null) { previous.Release(); Destroy(previous); }
+            }
+            var target = new RenderTexture(Size, Size, 0, RenderTextureFormat.ARGB32)
+            { name = key, hideFlags = HideFlags.DontSave, filterMode = FilterMode.Bilinear };
+            target.Create();
+            // The studio image is 4:5. Crop to a square rather than stretching the face.
+            Graphics.Blit(source, target, new Vector2(1f, .8f), new Vector2(0f, .1f));
+            CachePortrait(key, target);
+        }
+
+        private static bool TryCached(string key, out RenderTexture texture)
+        {
+            if (!Cache.TryGetValue(key, out texture) || texture == null) return false;
+            Touch(key);
+            return true;
+        }
+
+        private static void Touch(string key)
+        {
+            if (OrderNodes.TryGetValue(key, out var node))
+            { CacheOrder.Remove(node); CacheOrder.AddLast(node); }
+            else OrderNodes[key] = CacheOrder.AddLast(key);
+        }
+
+        private static void CachePortrait(string key, RenderTexture texture)
+        {
+            Cache[key] = texture; Touch(key);
+            while (Cache.Count > MaximumCachedPortraits && CacheOrder.First != null)
+            {
+                string oldest = CacheOrder.First.Value; CacheOrder.RemoveFirst();
+                OrderNodes.Remove(oldest);
+                if (!Cache.TryGetValue(oldest, out var retired)) continue;
+                Cache.Remove(oldest);
+                Temporary.Remove(oldest);
+                if (retired != null) { retired.Release(); Destroy(retired); }
+            }
+        }
 
         /// <summary>The portrait for a persona, or null when that persona has no authored model.</summary>
         public static Texture Get(string appearanceId)
         {
             if (string.IsNullOrEmpty(appearanceId)) return null;
-            if (Cache.TryGetValue(appearanceId, out var cached) && cached != null) return cached;
+            if (TryCached(appearanceId, out var cached)) return cached;
 
             var prefab = Resources.Load<GameObject>(ModelResourceRoot + appearanceId);
             if (prefab == null) return null;
 
             var texture = Render(prefab);
-            Cache[appearanceId] = texture;
+            CachePortrait(appearanceId, texture);
             return texture;
         }
 
@@ -65,13 +200,16 @@ namespace Gamesim.Presentation
         public static Texture GetLive(string contestantId, Transform body)
         {
             if (string.IsNullOrEmpty(contestantId) || body == null) return null;
+            var presentation = body.GetComponentInParent<CharacterPresentation>();
+            if (presentation != null && presentation.AppearanceSnapshot != null)
+                return GetAppearance(presentation.AppearanceSnapshot);
 
             // Namespaced, because the two paths share one cache and the ids collide: a houseguest's
             // contestant id and their appearance id are the same string for this cast, so an early
             // render that fell back to the prefab would poison the live key and the HUD would show
             // authored faces for the rest of the season no matter how many bodies finished.
-            string cacheKey = "live:" + contestantId;
-            if (Cache.TryGetValue(cacheKey, out var cached) && cached != null) return cached;
+            string cacheKey = "live:" + contestantId + ":" + (presentation?.AppearanceKey ?? body.GetEntityId().ToString());
+            if (TryCached(cacheKey, out var cached)) return cached;
 
             var skins = body.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             if (skins.Length == 0) return null;
@@ -81,13 +219,15 @@ namespace Gamesim.Presentation
             if (extent.size.y < 0.5f) return null; // still assembling
 
             var texture = RenderLive(body, extent, contestantId);
-            if (texture != null) Cache[cacheKey] = texture;
+            if (texture != null) CachePortrait(cacheKey, texture);
             return texture;
         }
 
         /// <summary>Drops every cached portrait and tears the rig down. Call on season teardown.</summary>
         public static void Release()
         {
+            if (queue != null) Destroy(queue.gameObject);
+            queue = null;
             foreach (var texture in Cache.Values)
             {
                 if (texture == null) continue;
@@ -95,6 +235,9 @@ namespace Gamesim.Presentation
                 Destroy(texture);
             }
             Cache.Clear();
+            CacheOrder.Clear();
+            OrderNodes.Clear();
+            Temporary.Clear();
 
             foreach (var material in UnlitCache.Values) Destroy(material);
             UnlitCache.Clear();
@@ -115,7 +258,8 @@ namespace Gamesim.Presentation
             cameraObject.transform.SetParent(rig.transform, false);
             rigCamera = cameraObject.AddComponent<Camera>();
             rigCamera.clearFlags = CameraClearFlags.SolidColor;
-            rigCamera.backgroundColor = UiTheme.SurfaceRaised;
+            // The mockups' headshots sit on the night ground, not on a panel colour.
+            rigCamera.backgroundColor = UiTheme.Background;
             rigCamera.fieldOfView = 24f;
             rigCamera.nearClipPlane = 0.05f;
             // A short far plane is what keeps the house out of frame without reserving a layer.
@@ -183,14 +327,34 @@ namespace Gamesim.Presentation
             // Directional rather than a point light. A point light close enough to reach a face this
             // small arrives at an intensity that blows the whole portrait to white, and the distance
             // that fixes that is past the far plane. A directional light does not fall off.
+            // Three points (VISUAL-TARGET.md V3): a soft warm key from high on one side, a low fill
+            // from the other so the shadow side keeps its shape, and a cool rim from behind that
+            // separates hair and shoulders from the dark ground. All directional, for the reason
+            // above; none shadowing, because the far plane is inches behind the head.
             var lamp = new GameObject("Portrait Light") { hideFlags = HideFlags.DontSave };
             lamp.transform.SetParent(rigCamera.transform, false);
-            lamp.transform.localRotation = Quaternion.Euler(18f, -24f, 0f);
+            lamp.transform.localRotation = Quaternion.Euler(24f, -32f, 0f);
             var light = lamp.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.15f;
+            light.intensity = 1.05f;
             light.shadows = LightShadows.None;
-            light.color = Color.white;
+            light.color = new Color(1f, 0.95f, 0.88f);
+            var fillLamp = new GameObject("Portrait Fill") { hideFlags = HideFlags.DontSave };
+            fillLamp.transform.SetParent(rigCamera.transform, false);
+            fillLamp.transform.localRotation = Quaternion.Euler(8f, 40f, 0f);
+            var fill = fillLamp.AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.intensity = 0.35f;
+            fill.shadows = LightShadows.None;
+            fill.color = new Color(0.85f, 0.9f, 1f);
+            var rimLamp = new GameObject("Portrait Rim") { hideFlags = HideFlags.DontSave };
+            rimLamp.transform.SetParent(rigCamera.transform, false);
+            rimLamp.transform.localRotation = Quaternion.Euler(-20f, 150f, 0f);
+            var rim = rimLamp.AddComponent<Light>();
+            rim.type = LightType.Directional;
+            rim.intensity = 0.9f;
+            rim.shadows = LightShadows.None;
+            rim.color = UiTheme.Glow;
 
             var texture = new RenderTexture(Size, Size, 24, RenderTextureFormat.ARGB32)
             {
@@ -206,6 +370,10 @@ namespace Gamesim.Presentation
             rigCamera.targetTexture = null;
 
             Destroy(lamp);
+
+            Destroy(fillLamp);
+
+            Destroy(rimLamp);
             rigCamera.farClipPlane = previousFar;
             rigCamera.transform.SetParent(previousParent, false);
             rigCamera.transform.localPosition = Vector3.zero;

@@ -88,7 +88,7 @@ namespace Gamesim.Tests.EditMode
             var oldV3 = version < 3 ? EpisodeSaveMigrations.PrepareV3Payload(source, out _) : source;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(source, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(12));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(13));
             Assert.That((int)migrated["playerStudyBonus"], Is.Zero);
             Assert.That((uint)migrated["randomState"], Is.Zero);
             // Compared without schema 7's card copy, which the last step adds to every contestant.
@@ -113,15 +113,15 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(files.Store.SavePath, source);
             byte[] before = File.ReadAllBytes(files.Store.SavePath);
             Assert.That(files.Store.TryLoad(out var loaded, out string message), Is.True, message);
-            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 12 in memory"));
-            Assert.That(loaded.schemaVersion, Is.EqualTo(12));
+            Assert.That(message, Does.Contain("Schema 3").And.Contain("schema 13 in memory"));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(13));
             Assert.That(loaded.playerStudyBonus, Is.Zero);
             Assert.That(loaded.playerPersona.scores.Count, Is.EqualTo(5));
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
             Assert.That(Directory.GetFiles(files.DirectoryPath).Length, Is.EqualTo(1));
             files.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(files.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(12));
+            Assert.That((int)JObject.Parse(File.ReadAllText(files.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(13));
             Assert.That(files.Store.TryRecoverBackup(out loaded, out message), Is.True, message);
             Assert.That(loaded.playerStudyBonus, Is.Zero);
             Assert.That(File.ReadAllBytes(files.Store.SavePath), Is.EqualTo(before));
@@ -170,7 +170,7 @@ namespace Gamesim.Tests.EditMode
             var payload = V3Fixture();
             if (damage == "smuggled-study") payload["playerStudyBonus"] = 5;
             else if (damage == "truncated-v4") payload["schemaVersion"] = 4;
-            else if (damage == "future-schema") payload["schemaVersion"] = 13;  // Twelve is current.
+            else if (damage == "future-schema") payload["schemaVersion"] = 14;  // Thirteen is current.
             else if (damage != "checksum")
             {
                 payload = EpisodeSaveMigrations.UpgradeV3ToV4(payload);
@@ -197,8 +197,8 @@ namespace Gamesim.Tests.EditMode
                     "socialBudgetRulesStartWeek",
                     "deals", "dealRulesStartWeek",
                     "boughtActionPoints", "houseEvents", "eventRulesStartWeek",
-                    "storylines", "activeModifiers", "storyRulesStartWeek" }.Contains(field);
-                case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio" }.Contains(field);
+                    "storylines", "activeModifiers", "storyRulesStartWeek", "competitionRulesVersion" }.Contains(field);
+                case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 default: return false;
             }
         }

@@ -69,6 +69,9 @@ namespace Gamesim.Presentation
         /// <summary>Matches the HUD's accessibility preference so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
 
+        /// <summary>Whether the card is still on its own timer, as every sibling card reports.</summary>
+        public bool IsPlaying => playing;
+
         /// <summary>
         /// Creates the sting in <paramref name="owner"/>'s scene, as a root object so it unloads with
         /// that scene without being a child of anything the tests enumerate.
@@ -121,6 +124,14 @@ namespace Gamesim.Presentation
         public void Cancel()
         {
             playing = false;
+            // The canvas goes with it. The fade-out ends by calling this on the first frame past
+            // its end rather than by drawing a last frame at zero, so without this line the card
+            // is stranded at whatever alpha it drew before - a thousandth at a steady frame rate,
+            // three-quarters of full if one long frame crossed the fade in a single step. Nothing
+            // renders either way, because the card itself is deactivated; but the group keeps the
+            // number, and anything that asks the screen whether a card is still fading believes it
+            // forever. Every sibling card zeroes its group here; this one used not to.
+            if (group != null) group.alpha = 0f;
             if (card != null) card.gameObject.SetActive(false);
         }
 
@@ -140,7 +151,7 @@ namespace Gamesim.Presentation
         {
             switch (kind)
             {
-                case NominationKind: return UiTheme.Warning;
+                case NominationKind: return UiTheme.Danger;
                 case VetoKind: return UiTheme.Gold;
                 case EvictionKind: return UiTheme.Danger;
                 case WinnerKind: return UiTheme.Gold;
@@ -162,12 +173,15 @@ namespace Gamesim.Presentation
         {
             if (card != null) return;
 
-            card = NewPanel("Card", (RectTransform)transform, UiTheme.Ink, UiTheme.PanelRadius);
+            card = NewPanel("Card", (RectTransform)transform, UiTheme.GlassFill, UiTheme.GlassRadius);
             // Stretched across the top, inset past the chrome on both sides.
             card.anchorMin = new Vector2(0f, 1f);
             card.anchorMax = new Vector2(1f, 1f);
             card.pivot = new Vector2(0.5f, 1f);
-            UiTheme.AddBorder(card, UiTheme.PanelRadius, UiTheme.Outline);
+            // The mockups' running bug is a glass strip: the night ground at 85 %, a cyan hairline
+            // on the edge and a soft glow outside it (mockup-08, -10). The glow is a child that
+            // reaches past the rect, and every geometry check in the suite reads the rect.
+            UiTheme.Glass(card, UiTheme.GlassRadius);
 
             rule = NewPanel("Sting rule", card, UiTheme.Accent, 2).GetComponent<Image>();
             ruleRect = (RectTransform)rule.transform;

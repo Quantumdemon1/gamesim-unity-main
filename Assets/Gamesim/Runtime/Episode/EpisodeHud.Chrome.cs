@@ -97,7 +97,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void ObjectiveCard(RectTransform column, EpisodeState state, bool recovery)
         {
-            var objective = Chrome("Objective", column, UiTheme.EdgeActive);
+            var objective = Chrome("Objective", column);
             Size(objective, ObjectiveWidth, Compact ? 238f : ObjectiveHeight);
             // What to do next is navigation, not an achievement - and this heading is on screen
             // for the whole session, so it set the tone for what gold appeared to mean.

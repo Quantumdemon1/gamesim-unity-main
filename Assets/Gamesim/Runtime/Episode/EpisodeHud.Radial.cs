@@ -100,10 +100,11 @@ namespace Gamesim.Episode
         {
             if (dialRoot == null || topicTaken >= topicSeats) return Action(caption, action);
 
-            // The petal's own colour IS its edge - this is the whole of what the mockup's
-            // single-word labels carried. It used to be a second border painted over Chrome's
-            // cyan one, so every petal carried two, and the cyan underneath argued with the tint.
-            var rect = Chrome(caption, dialRoot, new Color(tint.r, tint.g, tint.b, .6f));
+            // The petal's frame is structure; its action colour lives on the glyph below, which is
+            // the object the colour is about. It used to be painted on the border instead - twice
+            // over, in fact, because Chrome was already drawing a cyan one underneath it.
+            var rect = Chrome(caption, dialRoot, UiTheme.Emphasis.Interactive);
+            HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             topicTaken++;
             var button = Pressable(rect, action);
 

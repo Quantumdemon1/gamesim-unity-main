@@ -2,6 +2,7 @@ using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -22,6 +23,46 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        /// <summary>
+        /// Chrome is structure, not emphasis. With no panel open and nothing hovered or focused,
+        /// the accent edge must appear nowhere: it is the colour that says "act here", and a frame
+        /// where eighteen panels say it is a frame where none of them does.
+        ///
+        /// <para>This is the invariant the build had quietly lost. Chrome() took a Color it never
+        /// read, so all seventeen call sites painted the same cyan hairline and the house could not
+        /// win its own frame. The mockups are the other way round: mockup-01 gives no persistent
+        /// panel a lit edge at all.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Chrome_WearsNoAccentEdgeWhileNothingIsAskingToBeActedOn()
+        {
+            director.ClosePanels();
+            if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+            yield return null; yield return null;
+
+            var accent = UiTheme.Edge(UiTheme.Emphasis.Active);
+            var lit = director.GetComponentsInChildren<Image>(true)
+                .Where(image => image.name == "Border" && image.gameObject.activeInHierarchy)
+                .Where(image => Same(image.color, accent))
+                .Select(image => image.transform.parent != null ? image.transform.parent.name : "(orphan)")
+                .ToArray();
+
+            Assert.That(lit, Is.Empty,
+                "Persistent chrome is wearing the act-here colour on: " + string.Join(", ", lit));
+
+            // And the resting level is actually on them, rather than nothing being drawn at all.
+            var resting = UiTheme.Edge(UiTheme.Emphasis.Resting);
+            var borders = director.GetComponentsInChildren<Image>(true)
+                .Where(image => image.name == "Border" && image.gameObject.activeInHierarchy).ToArray();
+            Assert.That(borders, Is.Not.Empty, "The HUD should still draw panel edges.");
+            Assert.That(borders.Any(image => Same(image.color, resting)), Is.True,
+                "No panel is carrying the resting edge, so the level is not reaching the panels.");
+        }
+
+        private static bool Same(Color a, Color b) =>
+            Mathf.Abs(a.r - b.r) < .004f && Mathf.Abs(a.g - b.g) < .004f
+            && Mathf.Abs(a.b - b.b) < .004f && Mathf.Abs(a.a - b.a) < .004f;
+
         /// <summary>The seven seats of the dial, in the order the director fills them.</summary>
         private static readonly string[] PetalCaptions =
         {

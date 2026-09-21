@@ -516,7 +516,7 @@ namespace Gamesim.Episode
             picture.texture = director.LiveFeedTexture;
             picture.raycastTarget = false;
             Anchor(picture.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12, -36), new Vector2(RightColumnWidth - 24f, 145));
-            UiTheme.AddBorder(picture.rectTransform, 6, UiTheme.EdgeActive);
+            UiTheme.AddBorder(picture.rectTransform, 6, UiTheme.Edge(UiTheme.Emphasis.Resting));
             liveFeedCaption = FixedText(card, director.LiveFeedCaption, 13, Paper, new Vector2(16, -188), new Vector2(RightColumnWidth - 32f, 30));
             SetLiveFeedPaused(director.IsPanelOpen);
             return height;
@@ -779,7 +779,8 @@ namespace Gamesim.Episode
         /// </summary>
         public Button Action(string caption,Action action)
         {
-            var rect = Chrome(caption,content); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
+            var rect = Chrome(caption,content,UiTheme.Emphasis.Interactive); HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+            var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
             float mark = 18f * FontScale;
             var button = FinishButton(rect,caption,action,16f,16f + mark + 10f);
             HudPrimitives.Chevron(rect,UiTheme.Hairline,mark).anchoredPosition = new Vector2(-16f,0f);
@@ -794,7 +795,8 @@ namespace Gamesim.Episode
         public Button Action(string caption,Texture portrait,Action action)
         {
             if (portrait == null) return Action(caption,action);
-            var rect = Chrome(caption,content);
+            var rect = Chrome(caption,content,UiTheme.Emphasis.Interactive);
+            HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             rect.gameObject.AddComponent<LayoutElement>().minHeight = 68 * FontScale;
             var button = FinishButton(rect,caption,action,68f * FontScale);
 
@@ -1294,14 +1296,16 @@ namespace Gamesim.Episode
         /// by colour at all. The mockups do the opposite: in mockup-01 no persistent panel has a
         /// lit edge, and in mockup-04 exactly one element in the frame does.</para>
         ///
-        /// <para>The default is null rather than default(Color), which is transparent black and
-        /// would silently erase every edge instead.</para>
+        /// <para>Containers rest. A container does not become important because the thing inside
+        /// it is: the semantic colours belong on the badge, the crown, the glyph or the word, not
+        /// on the frame around them.</para>
         /// </summary>
-        private static RectTransform Chrome(string name,Transform parent,Color? edge=null)
+        private static RectTransform Chrome(string name,Transform parent,
+            UiTheme.Emphasis emphasis=UiTheme.Emphasis.Resting)
         {
             var fill = UiTheme.GlassFill; fill.a = .94f;
             var rect=Panel(name,parent,fill,UiTheme.GlassRadius);
-            UiTheme.AddBorder(rect,UiTheme.GlassRadius,edge ?? UiTheme.EdgeResting);
+            UiTheme.AddBorder(rect,UiTheme.GlassRadius,UiTheme.Edge(emphasis));
             return rect;
         }
         /// <summary>

@@ -47,7 +47,10 @@ namespace Gamesim.Presentation
         public static readonly Color Glow = Hex("5CC8FF");
         public static readonly Color Flirt = Hex("FF4FA3");     // flirt, playful
         public static readonly Color Strategic = Hex("A56BFF"); // strategy, gossip, secrets
-        public static readonly Color Joke = Hex("FFC93C");      // joke, ambition
+        // Amber, not the old FFC93C: that was twenty-two parts in 255 from Gold, so a joke
+        // glyph and a Head of Household crown were the same colour to anyone glancing. This
+        // clears Gold by 31/255 and Warning by 48/255 and still reads 9.7:1 on glass.
+        public static readonly Color Joke = Hex("FFA82C");      // joke, ambition
         public static readonly Color Allied = Hex("4ADE80");    // reassure, chill, allied
         public static readonly Color Conflict = Hex("FF5A5A");  // conflict, nominated
 
@@ -56,17 +59,36 @@ namespace Gamesim.Presentation
         public const int GlowWidth = 10;
 
         /// <summary>
-        /// The two weights a panel edge may carry. Resting is the slate outline: it reads as a
-        /// seam rather than a light, so a frame full of panels lets the house through. Active is
-        /// the cyan hairline, and marks the one thing the player is meant to act on next.
-        ///
-        /// <para>The step between them is alpha as well as hue, deliberately. Outline at its own
-        /// .69 and Hairline at .32 composite over the .94 panel ground to almost exactly the same
-        /// luminance - about .045 against .048 - so a hue-only step would vanish under bloom and
-        /// would not exist at all for a colour-blind player.</para>
+        /// How much a panel is asking for. Chrome is structure, not emphasis: a resting edge is a
+        /// seam that keeps the panel from dissolving, an interactive edge says this can be acted
+        /// on, and the accent edge is reserved for whatever the player is meant to act on NOW -
+        /// which is usually nothing, so a resting frame usually carries no accent at all. That is
+        /// what the mockups do: mockup-01 gives no persistent panel a lit edge and mockup-04
+        /// gives exactly one element in the frame one.
         /// </summary>
-        public static readonly Color EdgeResting = Outline;
-        public static readonly Color EdgeActive = new Color(Hairline.r, Hairline.g, Hairline.b, .55f);
+        public enum Emphasis { Resting, Interactive, Active }
+
+        /// <summary>
+        /// The edge colour for a level. The steps are alpha as much as hue, and the numbers are
+        /// measured rather than chosen: composited over the .94 panel ground these read 1.23:1,
+        /// 1.68:1 and 9.05:1 against it, and in luminance alone - which is what a colour-blind
+        /// player and a bloom-crushed frame both see - they are greys 42, 62 and 179 of 255.
+        ///
+        /// <para>Resting sits just over the 1.2:1 floor that
+        /// <c>PanelEdges_AreDistinguishableFromTheirFill</c> holds panels to, which is as close to
+        /// the mockups' near-invisible seam as this ground allows. A lower alpha was tried first:
+        /// .16 measures 1.09:1, under that floor, and lands 1.09:1 from the interactive step, so
+        /// the two levels were one level.</para>
+        /// </summary>
+        public static Color Edge(Emphasis emphasis)
+        {
+            switch (emphasis)
+            {
+                case Emphasis.Active:      return new Color(Accent.r, Accent.g, Accent.b, .85f);
+                case Emphasis.Interactive: return Outline;   // its own authored .69
+                default:                   return new Color(Outline.r, Outline.g, Outline.b, .32f);
+            }
+        }
 
         /// <summary>
         /// Dresses <paramref name="panel"/> as one of the mockups' glass cards: the night ground at

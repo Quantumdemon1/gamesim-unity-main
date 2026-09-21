@@ -22,6 +22,57 @@ namespace Gamesim.Tests.EditMode
         private const double BodyMinimum = 4.5;
         private const double LargeMinimum = 3.0;
 
+        /// <summary>
+        /// The three chrome levels have to be three levels in LUMINANCE, not three hues. A frame
+        /// under bloom is luminance-crushed and a colour-blind player never had the hue, so a
+        /// hue-only step is not a step at all.
+        ///
+        /// <para>This encodes the measurement the alphas were picked from, so nobody can quietly
+        /// lower them again: a resting edge of Outline at .16 was tried, and it measures 1.09:1
+        /// against the panel ground - below the floor the test below holds panels to - and 1.09:1
+        /// away from the interactive level, which made the two one.</para>
+        /// </summary>
+        [Test]
+        public void ChromeEmphasis_IsThreeLevelsOfBrightnessRatherThanThreeHues()
+        {
+            var ground = Over(UiTheme.GlassFill, 0.94f, UiTheme.Background);
+            var resting = Over(UiTheme.Edge(UiTheme.Emphasis.Resting), ground);
+            var interactive = Over(UiTheme.Edge(UiTheme.Emphasis.Interactive), ground);
+            var active = Over(UiTheme.Edge(UiTheme.Emphasis.Active), ground);
+
+            Assert.That(Contrast(resting, ground), Is.GreaterThan(1.2),
+                "A resting edge still has to keep its panel from dissolving into a lit set.");
+            Assert.That(Contrast(interactive, resting), Is.GreaterThan(1.25),
+                "Interactive must be visibly brighter than resting, or it is not a level.");
+            Assert.That(Contrast(active, interactive), Is.GreaterThan(3.0),
+                "The accent edge is the one that says act here; it has to be unmistakable.");
+            Assert.That(Luminance(resting), Is.LessThan(Luminance(interactive)));
+            Assert.That(Luminance(interactive), Is.LessThan(Luminance(active)));
+        }
+
+        /// <summary>
+        /// Gold is power: the crown, the win, the thing that was fought for. It reads as power only
+        /// while nothing else wears it, and the mood palette once sat 22 parts in 255 away from it.
+        /// </summary>
+        [Test]
+        public void GoldIsNotNearlyTheColourOfAnythingThatIsNotPower()
+        {
+            foreach (var other in new[] { UiTheme.Joke, UiTheme.Warning, UiTheme.Accent, UiTheme.Muted })
+            {
+                float distance = Mathf.Max(Mathf.Abs(other.r - UiTheme.Gold.r),
+                    Mathf.Max(Mathf.Abs(other.g - UiTheme.Gold.g), Mathf.Abs(other.b - UiTheme.Gold.b)));
+                Assert.That(distance, Is.GreaterThan(0.12f),
+                    "A colour within 30/255 of Gold on every channel will be read as Gold.");
+            }
+        }
+
+        private static Color Over(Color top, Color under) => Over(top, top.a, under);
+
+        private static Color Over(Color top, float alpha, Color under) =>
+            new Color(alpha * top.r + (1 - alpha) * under.r,
+                alpha * top.g + (1 - alpha) * under.g,
+                alpha * top.b + (1 - alpha) * under.b, 1f);
+
         [Test]
         public void BodyText_ClearsTheReadableMinimumOnEveryPanel()
         {

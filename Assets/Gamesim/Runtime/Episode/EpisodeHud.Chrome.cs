@@ -114,8 +114,7 @@ namespace Gamesim.Episode
 
             if(Compact)
             {
-                FixedText(objective,Mathf.Max(0,EpisodeEngine.SocialActionBudget(state)-EpisodeEngine.SocialActionsSpent(state))+" social actions remaining",
-                    14,Paper,new Vector2(18,-94),new Vector2(294,24));
+                ActionChip(objective, state, -94f);
                 FixedButton(objective,"Go to episode screen",new Vector2(18,-126),new Vector2(294,44),director.GoToStation);
                 FixedButton(objective,DiaryTravelCaption,new Vector2(18,-178),new Vector2(294,44),director.GoToDiary).interactable=
                     director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status==ContestantStatus.Active;
@@ -131,8 +130,11 @@ namespace Gamesim.Episode
             // was the same fact twice within 200 px - and the string that overran this box.
             FixedText(objective, EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),
                 14, UiTheme.Muted, new Vector2(30f, -106f), new Vector2(284f, 24f));
-            FixedText(objective, Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state)) + " social actions remaining",
-                14, Paper, new Vector2(18f,-133f),new Vector2(294f,24f));
+            // A chip, not a sentence. "4 social actions remaining" is four words to carry one
+            // number, in a panel already holding a heading, a destination, a phase rule and two
+            // buttons. The top bar states week, headcount and HoH the same way and reads at a
+            // glance; this now matches it.
+            ActionChip(objective, state, -133f);
             FixedButton(objective, "Go to episode screen", new Vector2(18f, -162f), new Vector2(294f, 44f), director.GoToStation);
             FixedButton(objective, DiaryTravelCaption, new Vector2(18f, -214f), new Vector2(294f, 44f), director.GoToDiary).interactable =
                 director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
@@ -158,6 +160,23 @@ namespace Gamesim.Episode
         }
 
         /// <summary>One of the mockups' stat chips: a glyph, a value, and a small tracked caption.</summary>
+        /// <summary>
+        /// How many social actions are left, in the top bar's visual language: a glyph, the number
+        /// large, and the noun small and tracked underneath it.
+        /// </summary>
+        private void ActionChip(RectTransform objective, EpisodeState state, float y)
+        {
+            int left = Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
+            float text = 18f;
+            if (HudPrimitives.Glyph("Actions mark", objective, "people",
+                    left == 0 ? UiTheme.Muted : Accent, new Vector2(18f, y - 4f), 18f) != null) text = 44f;
+            FixedText(objective, left.ToString(), 20, left == 0 ? UiTheme.Muted : Paper,
+                new Vector2(text, y + 3f), new Vector2(34f, 26f));
+            var caption = FixedText(objective, "SOCIAL ACTIONS LEFT", 10, UiTheme.Muted,
+                new Vector2(text + 26f, y - 1f), new Vector2(240f, 16f));
+            caption.characterSpacing = 6f;
+        }
+
         private void StatCell(RectTransform pill, float x, string icon, Color tint, string value, string label)
         {
             float text = x + 4f;
@@ -315,9 +334,15 @@ namespace Gamesim.Episode
                 float text = 16f;
                 if (HudPrimitives.Glyph("Event mark", card, EventGlyph(entry.kind), Accent, new Vector2(14f, y - 2f), 18f) != null)
                     text = 40f;
-                FixedText(card, "WEEK " + entry.week, 10, UiTheme.Muted, new Vector2(text, y), new Vector2(90f, 16f));
+                // The week, only when it is not this one. Every row carried "WEEK 1" under the
+                // heading of a card showing this week's events, beside a top bar already saying
+                // WEEK 1 - the same fact three times over, and the only thing separating two
+                // entries that a player actually needs to tell apart is the sentence itself.
+                bool older = entry.week != state.week;
+                if (older)
+                    FixedText(card, "WEEK " + entry.week, 10, UiTheme.Muted, new Vector2(text, y), new Vector2(90f, 16f));
                 FixedText(card, Excerpt(entry.text, RecentEventLetters), 13, Paper,
-                    new Vector2(text, y - 15f), new Vector2(RightColumnWidth - text - 14f, 36f));
+                    new Vector2(text, y - (older ? 15f : 6f)), new Vector2(RightColumnWidth - text - 14f, 36f));
             }
             return height;
         }

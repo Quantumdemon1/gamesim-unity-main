@@ -48,7 +48,7 @@ namespace Gamesim.Tests.EditMode
             var reading = HouseVibe.Of(state);
             Assert.That(reading.Activity, Is.EqualTo(2));
             Assert.That(reading.Rows().Select(row => row.Word),
-                Is.EqualTo(new[] { "Conversations", "Deals & alliances", "Nominations & moves" }));
+                Is.EqualTo(new[] { "Conversations", "Deals & alliances", "Game moves" }));
             Assert.That(HouseVibe.Tension(reading), Is.EqualTo("Known events this week: 2"));
         }
 

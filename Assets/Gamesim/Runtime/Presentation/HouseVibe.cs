@@ -26,7 +26,9 @@ namespace Gamesim.Presentation
                 // colour; game stakes are nominations, evictions and backdoors, which is danger.
                 // Neither is navigation, and neither is an achievement.
                 yield return ("Deals & alliances", Commitments, "handshake", UiTheme.Allied);
-                yield return ("Nominations & moves", GameStakes, "task", UiTheme.Danger);
+                // "Nominations & moves" clipped to "Nominations & mo" in the card - the row is only
+                // as wide as the meter leaves it. Measured in a capture, not guessed at.
+                yield return ("Game moves", GameStakes, "task", UiTheme.Danger);
                 // No "Known total" row. Its bar is Total/Peak, which is 1 by construction - a meter
                 // that is always full - and the card's own footer already prints the number.
             }

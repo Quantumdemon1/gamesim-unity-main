@@ -468,7 +468,10 @@ namespace Gamesim.Episode
                 // behind is how "walk to the highlighted room" became a hunt for your own player.
                 headingToStation = true;
                 cameraRig?.FocusSubject(player.transform, false);
-                message = "Walk to the highlighted room, then press E to open the episode screen.";
+                // Shorter than it was, because it no longer has to narrate the camera. It used to
+                // read "Walk to the highlighted room, then press E to open the episode screen" - a
+                // full sentence of instructions for a walk you can now watch happen.
+                message = "Heading to the episode screen  ·  E to open";
             }
             Render();
         }

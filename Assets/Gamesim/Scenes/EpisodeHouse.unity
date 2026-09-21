@@ -12502,7 +12502,7 @@ MonoBehaviour:
   roomId: Yard
   slot: 1
   seated: 1
-  approachOffset: {x: 0, y: 0, z: -0.4}
+  approachOffset: {x: -0.95, y: 0, z: 0}
   cameraOffset: {x: 0, y: 1.45, z: 2.6}
   seatHeight: 0.36
 --- !u!1 &410720533
@@ -43808,7 +43808,7 @@ MonoBehaviour:
   roomId: Private
   slot: 0
   seated: 1
-  approachOffset: {x: 0, y: 0, z: 1}
+  approachOffset: {x: 0, y: 0, z: 1.15}
   cameraOffset: {x: 0, y: 1.45, z: 2.6}
   seatHeight: 0.46
 --- !u!1001 &1535789968
@@ -48860,7 +48860,7 @@ MonoBehaviour:
   roomId: Yard
   slot: 0
   seated: 1
-  approachOffset: {x: 0, y: 0, z: -0.4}
+  approachOffset: {x: -0.95, y: 0, z: 0}
   cameraOffset: {x: 0, y: 1.45, z: 2.6}
   seatHeight: 0.36
 --- !u!1001 &1709347012
@@ -49505,7 +49505,7 @@ MonoBehaviour:
   roomId: Kitchen
   slot: 1
   seated: 1
-  approachOffset: {x: 0, y: 0, z: -0.55}
+  approachOffset: {x: 0, y: 0, z: -0.9}
   cameraOffset: {x: 0, y: 1.45, z: 2.6}
   seatHeight: 0.46
 --- !u!1 &1730797589
@@ -52973,7 +52973,7 @@ MonoBehaviour:
   roomId: Kitchen
   slot: 0
   seated: 1
-  approachOffset: {x: 0, y: 0, z: -0.55}
+  approachOffset: {x: 0, y: 0, z: -0.9}
   cameraOffset: {x: 0, y: 1.45, z: 2.6}
   seatHeight: 0.46
 --- !u!1 &1836299767

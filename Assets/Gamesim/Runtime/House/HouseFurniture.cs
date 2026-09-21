@@ -37,10 +37,16 @@ namespace Gamesim.House
             foreach(var anchor in HouseInteractionAnchors.InScene(scene))
             {
                 if(anchor.VenueId!="yard-lounger-chat" || anchor.RoomId!="Yard" || !anchor.Seated)continue;
-                if((anchor.Approach-anchor.transform.TransformPoint(Vector3.back*.55f)).sqrMagnitude>.000001f)continue;
-                // The authored chairs are at z=11. The old z=10.45 approach touches the floor's
-                // strict .45m safe inset and overlaps the wall ending at z=10.125 for a .35m body.
-                anchor.Configure(anchor.VenueId,anchor.RoomId,anchor.Slot,true,Vector3.back*.40f);
+                // Two historical offsets to repair, not one: the original .55 back, and the .40 back
+                // that replaced it. Both point along the lounger's 1.90 m LENGTH, so both stand
+                // inside the prop - the .40 one measures 0.00 m of clearance from the lounger's own
+                // footprint. A bake erodes by the agent radius and would take the floor out from
+                // under whoever was walking to it.
+                if((anchor.Approach-anchor.transform.TransformPoint(Vector3.back*.55f)).sqrMagnitude>.000001f
+                    && (anchor.Approach-anchor.transform.TransformPoint(Vector3.back*.40f)).sqrMagnitude>.000001f)continue;
+                // Sideways: 0.95 m clears the 0.65 m width with room for the agent, where clearing
+                // the length would be a 1.60 m hike to sit down.
+                anchor.Configure(anchor.VenueId,anchor.RoomId,anchor.Slot,true,Vector3.left*.95f);
                 repaired++;
             }
             return repaired;

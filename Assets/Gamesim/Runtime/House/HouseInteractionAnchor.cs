@@ -113,8 +113,14 @@ namespace Gamesim.House
                         usedSeats.Add(seat);
                         prop=seat; at=seat.position; at.y=room.transform.position.y; yaw=seat.eulerAngles.y;
                     }
+                    // An approach has to stand clear of its own prop by more than the agent radius
+                    // (0.5), or a NavMesh bake erodes the floor out from under it. Measured against
+                    // the props these actually land on: a 0.60 dining chair needs 0.90 behind it,
+                    // and a lounger is 1.90 long, so along its length it would need 1.60 - but from
+                    // its SIDE only 0.95, which is also how a person gets onto a lounger.
                     var created=HouseInteractionAnchor.Create(prop,venue.Id,venue.Room,slot,at,yaw,venue.Seated,
-                        venue.Seated ? Vector3.back*(venue.Id=="yard-lounger-chat" ? .40f : .55f) : Vector3.zero);
+                        !venue.Seated ? Vector3.zero
+                        : venue.Id=="yard-lounger-chat" ? Vector3.left*.95f : Vector3.back*.90f);
                     if(venue.Room=="Yard" && venue.Seated)created.SetSeatHeight(.36f);
                 }
             }

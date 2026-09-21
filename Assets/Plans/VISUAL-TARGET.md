@@ -473,6 +473,14 @@ with a drift report naming the wrong culprit. And the allowed-drift record's rea
 the analytics symbol, because an audit record that under-describes what it forgave is worth less
 than no record at all.
 
+Confirmed end to end on 2026-09-21 (`defines03`): EditMode 1372/1372, PlayMode 286/286, UMA 30/30,
+then a full player build whose post-build audit reports two rows, both allowed - the shipping GPU
+Resident Drawer setting and `ProjectSettings.asset` as `configured-build-settings` - and zero
+blocking rows, where the same build previously reported one and was refused. One attempt in between
+was refused at the pre-sync check because this plan file was edited while the verification was
+running: everything under `Assets/` is a product input, this document included, so the tree has to
+stay still between the verification and the build.
+
 The same run turned up something the audit had been carrying all along: all 96 authored FBX metas
 still held the obsolete `materialLocation: 0`, and the importer rewrote them to `1` on every single
 run. Ninety-six entries of accounted drift is where an unaccounted one goes to hide. The importer's

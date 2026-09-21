@@ -314,7 +314,15 @@ namespace Gamesim.House
         /// clicked a houseguest asked for this shot, so suppressing it would withhold a result they
         /// requested; reduced motion removes the easing, not the outcome.</para>
         /// </summary>
-        public void FocusSubject(Transform target)
+        /// <param name="reframe">
+        /// Whether to take the shot as well as the subject. Clicking a houseguest means "show me
+        /// them", so it dollies in to <see cref="subjectDistance"/> and drops any authored shot.
+        /// Sending your own player somewhere means "keep them in view" and nothing more: reframing
+        /// there would yank the view from the dollhouse overview into an over-the-shoulder shot on
+        /// a click people make constantly, so that caller keeps the framing the viewer chose and
+        /// only asks the camera to track.
+        /// </param>
+        public void FocusSubject(Transform target, bool reframe = true)
         {
             Initialize();
             if (target == null)
@@ -325,6 +333,7 @@ namespace Gamesim.House
 
             subject = target;
             if (IsConversationFocused) return;
+            if (!reframe) { desiredFocus = SubjectFocus(); return; }
             DropShot(true);
             desiredFocus = SubjectFocus();
             desiredDistance = Mathf.Clamp(subjectDistance, minimumDistance, maximumDistance);

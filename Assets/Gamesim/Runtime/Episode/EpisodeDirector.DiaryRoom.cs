@@ -73,6 +73,7 @@ namespace Gamesim.Episode
         public void GoToDiary()
         {
             if (!IsReady || blockedRecovery || !playerIsActive || !HasDiaryRoom) return;
+            headingToStation = false;
             ClosePanels();
             EndDiaryVisit(true);CloseHouseActivities(true);
             message = player.TryMoveTo(DiaryPosition)

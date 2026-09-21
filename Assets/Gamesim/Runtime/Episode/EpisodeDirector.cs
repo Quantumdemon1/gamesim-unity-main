@@ -48,6 +48,8 @@ namespace Gamesim.Episode
         private double lastSocialDelta;
         private string saveRoot, message = "Welcome home. Meet the housemates, then visit the living-room screen.";
         private bool blockedRecovery, reducedMotion, muted, largeText, phaseOpen, settingsOpen, journalOpen;
+        /// <summary>Which page of the notebook is showing. The rail picks it; Render obeys it.</summary>
+        private string journalSection = NotebookSection.Network;
         private bool challengeActive;
         private int challengeHits;
         private double challengeTotal;
@@ -386,18 +388,31 @@ namespace Gamesim.Episode
                 if (shortcuts.Diary.WasPressedThisFrame() && !IsPanelOpen) GoToDiary();
                 if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen)
                 {
-                    if (!TryOpenDiary())
+                    switch (ChooseInteraction(out var target))
                     {
-                        var npc = NearestNpc();
-                        if (npc != null) TryOpenNpc(npc.Id); else TryOpenPhasePanel();
+                        case InteractTarget.Diary:
+                            if (TryOpenDiary()) break;
+                            if (target != null) TryOpenNpc(target.Id); else TryOpenPhasePanel();
+                            break;
+                        case InteractTarget.Station:
+                            if (!TryOpenPhasePanel() && target != null) TryOpenNpc(target.Id);
+                            break;
+                        case InteractTarget.Talk:
+                            TryOpenNpc(target.Id);
+                            break;
                     }
                 }
             }
             if (!IsPanelOpen)
             {
-                var npc = NearestNpc();
+                // One decision, read twice. The prompt and the key used to run the same priority
+                // chain in two places, which is two chances to disagree about what E does.
+                var choice = ChooseInteraction(out var npc);
                 if (npc != promptNpc) { promptNpc = npc; npcPrompt = npc != null ? "E  ·  Talk to " + npc.DisplayName : null; }
-                string prompt = CanUseDiary ? "E  ·  Enter private diary room" : npc != null ? npcPrompt : CanUseStation() ? "E  ·  Open episode screen" : "";
+                string prompt = "";
+                if (choice == InteractTarget.Diary) prompt = "E  ·  Enter private diary room";
+                else if (choice == InteractTarget.Station) prompt = "E  ·  Open episode screen";
+                else if (choice == InteractTarget.Talk) prompt = npcPrompt;
                 hud.SetPrompt(prompt);
             }
             else hud.SetPrompt("");
@@ -407,9 +422,35 @@ namespace Gamesim.Episode
         private bool CanUseStation() => !playerIsActive ||
             Vector3.Distance(player.transform.position, StationPosition) < 3;
 
+        /// <summary>
+        /// Whether the last thing you asked for was the episode screen.
+        ///
+        /// <para>The prompt used to be a fixed order - diary, then any houseguest, then the screen -
+        /// and the two ranges make that order absolute: <c>NearestNpc</c> reaches 2.8 m and the
+        /// screen needs you within 3 m, so standing close enough to use the screen almost guarantees
+        /// somebody is close enough to outrank it. A houseguest idling by the screen did not make it
+        /// awkward to reach, it made it unreachable, and there was no way to say "no, the screen".
+        /// Asking for it is that way: having walked there on purpose, you get it until you use it or
+        /// ask for something else.</para>
+        /// </summary>
+        private bool headingToStation;
+
+        private enum InteractTarget { None, Diary, Talk, Station }
+
+        /// <summary>What the E key would do right now, and the houseguest it would do it to.</summary>
+        private InteractTarget ChooseInteraction(out HouseNpc npc)
+        {
+            npc = NearestNpc();
+            if (CanUseDiary) return InteractTarget.Diary;
+            if (headingToStation && CanUseStation()) return InteractTarget.Station;
+            if (npc != null) return InteractTarget.Talk;
+            return CanUseStation() ? InteractTarget.Station : InteractTarget.None;
+        }
+
         public bool TryOpenPhasePanel()
         {
             if (!IsReady || !CanUseStation()) return false;
+            headingToStation = false;
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
             ClosePanels(); phaseOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); return true;
@@ -421,7 +462,14 @@ namespace Gamesim.Episode
             EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
             if (!player.TryMoveTo(StationPosition)) message = "The episode screen is not reachable from here.";
-            else message = "Walk to the highlighted room, then press E to open the episode screen.";
+            else
+            {
+                // Watch them walk. Telling somebody to go somewhere and then leaving the camera
+                // behind is how "walk to the highlighted room" became a hunt for your own player.
+                headingToStation = true;
+                cameraRig?.FocusSubject(player.transform, false);
+                message = "Walk to the highlighted room, then press E to open the episode screen.";
+            }
             Render();
         }
 
@@ -455,7 +503,7 @@ namespace Gamesim.Episode
         }
 
         public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
-        public void OpenJournal() { PauseNpcSocialForPanel(); ClosePanels(); journalOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
+        public void OpenJournal() { PauseNpcSocialForPanel(); ClosePanels(); journalSection = NotebookSection.Network; journalOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
 
         public CommandResult Submit(EpisodeCommand command)
         {
@@ -685,6 +733,69 @@ namespace Gamesim.Episode
             ReconcileNpcSocialWorld();
         }
 
+
+        /// <summary>How the house voted, with the reason each voter committed.</summary>
+        private void RenderNotebookVotes(EpisodeState state)
+        {
+            if (state.votes == null || state.votes.Count == 0)
+            {
+                // The mark still has to exist: it is what the rail scrolls to, and an
+                // absent one is the difference between an empty page and no page at all.
+                hud.Heading("HOW THE HOUSE VOTED");
+                hud.Mark(NotebookSection.Votes);
+                hud.Paragraph("Nobody has voted yet this season.");
+                return;
+            }
+            // How the house voted, with the reason each voter committed. The engine has written
+            // these to every ballot since the beginning and nothing has ever shown them — the
+            // event log carries the sentence, but only the last line of it reaches the status
+            // bar, so the "why" behind an eviction was effectively private.
+            hud.Heading("HOW THE HOUSE VOTED");
+            hud.Mark(NotebookSection.Votes);
+            foreach (var vote in state.votes)
+            {
+                var voter = state.Find(vote.voterId);
+                var target = state.Find(vote.targetId);
+                if (voter == null || target == null) continue;
+                hud.PortraitRow(voter.id,
+                    voter.name + " voted to evict " + (target.id == state.playerId ? "you" : target.name),
+                    vote.reason);
+            }
+        }
+
+        /// <summary>The season as it has been lived: weeks, mood, promises, oaths, memories.</summary>
+        private void RenderNotebookStory(EpisodeState state)
+        {
+            // Every week that has closed, reachable again. The recap opens itself once when a
+            // week ends and is then gone; the notebook is where the player already comes to
+            // check what happened, so it is where the record of a finished week belongs.
+            var played = WeeklyRecap.Season(state).Where(w => w.evicted != null).ToList();
+            if (played.Count > 0)
+            {
+                hud.Heading("WEEKS SO FAR");
+                foreach (var week in played)
+                {
+                    int number = week.week;
+                    hud.Paragraph(week.Headline);
+                    hud.Action(EpisodeHud.ReviewWeekCaption(number), () => ReviewWeek(number));
+                }
+            }
+            hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
+            // Aggregate source arcs have no participant/knowledge provenance.
+            // NPC-only conversations must not masquerade as the player's bonds.
+            foreach (var promise in state.promises.Where(p => p.fromId == state.playerId || p.toId == state.playerId))
+                hud.Paragraph(promise.kind + " · " + state.Find(promise.fromId).name + " → " + state.Find(promise.toId).name + " · " + promise.status);
+            foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId))) hud.Paragraph(alliance.name + (alliance.active ? " · active" : " · ended"));
+            hud.Heading("YOUR LOYALTY DECLARATIONS");
+            foreach (var oath in state.loyaltyOaths.Where(oath => oath.playerId == state.playerId || oath.targetId == state.playerId))
+                hud.Paragraph("Week " + oath.week + ": " + (oath.playerId == state.playerId
+                    ? "You declared loyalty to " + state.Find(oath.targetId).name
+                    : state.Find(oath.playerId).name + " declared loyalty to you") + ". A declaration is not a mutual guarantee.");
+            RenderDiaryRecord(state);
+            foreach (var memory in state.memories.Where(m => m.ownerId == state.playerId)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
+            RenderStorySoFar(state);
+        }
+
         private static Color Palette(int i)
         {
             var colors = new[] { new Color(.2f,.55f,.65f), new Color(.85f,.34f,.26f), new Color(.6f,.4f,.7f), new Color(.88f,.68f,.26f), new Color(.3f,.48f,.7f) };
@@ -717,69 +828,45 @@ namespace Gamesim.Episode
             if (journalOpen)
             {
                 hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
-                // The graph carries the caveat in its own legend, so repeating it here would be the
-                // same sentence twice within one screen.
-                hud.SocialGraphPanel(state);
-                hud.Mark(NotebookSection.Network);
-                hud.Heading("WHO IS WHERE");
-                hud.Mark(NotebookSection.Rooms);
-                hud.HouseMapPanel(HouseOccupancy(state));
+                // A command rather than a section, so it stays put whichever page you are on.
                 hud.Action("House activities",OpenHouseActivities);
-                // Name, then who they are outside the game, then where you stand — the order the
-                // reference build's houseguest list uses. The card line is omitted rather than left
-                // blank when a save predates those fields.
-                foreach (var c in state.contestants.Where(c => !c.isPlayer))
+                // ONE section at a time. The rail's four buttons were four scroll positions in a
+                // single document: every render emitted the relationship web, the house map, every
+                // houseguest, every vote, every finished week, mood, promises, alliances, oaths, the
+                // diary record, every memory and the whole story into one 900x300 panel whose
+                // viewport is about 174 units tall. Four buttons, one view, and the only difference
+                // between them a scroll nudge that silently does nothing when its section was not
+                // emitted - which is why they all looked identical.
+                if (journalSection == NotebookSection.Rooms)
                 {
-                    hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
-                    string card = CardLine(c);
-                    if (!string.IsNullOrEmpty(card)) hud.Paragraph(card);
+                    hud.Heading("WHO IS WHERE");
+                    hud.Mark(NotebookSection.Rooms);
+                    hud.HouseMapPanel(HouseOccupancy(state));
                 }
-                // How the house voted, with the reason each voter committed. The engine has written
-                // these to every ballot since the beginning and nothing has ever shown them — the
-                // event log carries the sentence, but only the last line of it reaches the status
-                // bar, so the "why" behind an eviction was effectively private.
-                if (state.votes != null && state.votes.Count > 0)
+                else if (journalSection == NotebookSection.Votes)
                 {
-                    hud.Heading("HOW THE HOUSE VOTED");
-                    hud.Mark(NotebookSection.Votes);
-                    foreach (var vote in state.votes)
+                    RenderNotebookVotes(state);
+                }
+                else if (journalSection == NotebookSection.Story)
+                {
+                    RenderNotebookStory(state);
+                }
+                else
+                {
+                    // The graph carries the caveat in its own legend, so repeating it here would be
+                    // the same sentence twice within one screen.
+                    hud.SocialGraphPanel(state);
+                    hud.Mark(NotebookSection.Network);
+                    // Name, then who they are outside the game, then where you stand — the order the
+                    // reference build's houseguest list uses. The card line is omitted rather than
+                    // left blank when a save predates those fields.
+                    foreach (var c in state.contestants.Where(c => !c.isPlayer))
                     {
-                        var voter = state.Find(vote.voterId);
-                        var target = state.Find(vote.targetId);
-                        if (voter == null || target == null) continue;
-                        hud.PortraitRow(voter.id,
-                            voter.name + " voted to evict " + (target.id == state.playerId ? "you" : target.name),
-                            vote.reason);
+                        hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
+                        string card = CardLine(c);
+                        if (!string.IsNullOrEmpty(card)) hud.Paragraph(card);
                     }
                 }
-                // Every week that has closed, reachable again. The recap opens itself once when a
-                // week ends and is then gone; the notebook is where the player already comes to
-                // check what happened, so it is where the record of a finished week belongs.
-                var played = WeeklyRecap.Season(state).Where(w => w.evicted != null).ToList();
-                if (played.Count > 0)
-                {
-                    hud.Heading("WEEKS SO FAR");
-                    foreach (var week in played)
-                    {
-                        int number = week.week;
-                        hud.Paragraph(week.Headline);
-                        hud.Action(EpisodeHud.ReviewWeekCaption(number), () => ReviewWeek(number));
-                    }
-                }
-                hud.Paragraph("Your mood: " + state.Find(state.playerId).mood + " · Stress: " + state.Find(state.playerId).stressLevel);
-                // Aggregate source arcs have no participant/knowledge provenance.
-                // NPC-only conversations must not masquerade as the player's bonds.
-                foreach (var promise in state.promises.Where(p => p.fromId == state.playerId || p.toId == state.playerId))
-                    hud.Paragraph(promise.kind + " · " + state.Find(promise.fromId).name + " → " + state.Find(promise.toId).name + " · " + promise.status);
-                foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId))) hud.Paragraph(alliance.name + (alliance.active ? " · active" : " · ended"));
-                hud.Heading("YOUR LOYALTY DECLARATIONS");
-                foreach (var oath in state.loyaltyOaths.Where(oath => oath.playerId == state.playerId || oath.targetId == state.playerId))
-                    hud.Paragraph("Week " + oath.week + ": " + (oath.playerId == state.playerId
-                        ? "You declared loyalty to " + state.Find(oath.targetId).name
-                        : state.Find(oath.playerId).name + " declared loyalty to you") + ". A declaration is not a mutual guarantee.");
-                RenderDiaryRecord(state);
-                foreach (var memory in state.memories.Where(m => m.ownerId == state.playerId)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
-                RenderStorySoFar(state);
                 hud.ApplyPendingScroll();
                 return;
             }

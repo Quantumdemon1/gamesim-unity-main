@@ -32,6 +32,7 @@ namespace Gamesim.Episode
             // replacement for one. Clicking the diary chair walks you there exactly as the Diary
             // shortcut does; it does not open the diary, because entering still means arriving.
             if(what==HousePropClick.Diary){GoToDiary();return;}
+            if(what==HousePropClick.Station){GoToStation();return;}
             OpenHouseActivities();
             if(houseActivitiesOpen){selectedFurniture=anchor;Render();}
         }

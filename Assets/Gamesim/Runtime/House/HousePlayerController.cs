@@ -184,8 +184,12 @@ namespace Gamesim.House
             if (isSelected && hit.collider.GetComponentInParent<HouseWalkable>() != null)
             {
                 // Sending the player somewhere means you want to watch them go, not keep staring at
-                // whoever you were following.
-                CameraRig?.ClearSubject();
+                // whoever you were following. This used to say that and then call ClearSubject(),
+                // which only does the second half - it stops following and, by its own summary,
+                // "leaves the camera exactly where it is". The player then walked out of a frozen
+                // frame and you had to chase them by hand. Follow them instead, without reframing:
+                // the shot you were looking at is the shot you keep.
+                CameraRig?.FocusSubject(transform, false);
                 TryMoveTo(hit.point);
             }
         }

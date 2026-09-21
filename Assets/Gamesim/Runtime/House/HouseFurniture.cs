@@ -8,7 +8,7 @@ namespace Gamesim.House
     public enum HouseFurnitureActivity { PrepareSnack, SitAtTable, Rest }
 
     /// <summary>Which command a click on a prop is a second route to.</summary>
-    public enum HousePropClick { None, Activity, Diary }
+    public enum HousePropClick { None, Activity, Diary, Station }
 
     /// <summary>Only authored, real props enter this catalog. No runtime placeholder furniture.</summary>
     public static class HouseFurniture
@@ -52,6 +52,14 @@ namespace Gamesim.House
             if(TryDescribe(anchor,out _,out caption)){what=HousePropClick.Activity;return true;}
             if(anchor.VenueId==HouseInteractionAnchors.DiaryVenue)
             {what=HousePropClick.Diary;caption="Go to the diary room";return true;}
+            // The episode screen was left out of this list once, on the grounds that it is a
+            // staging mark the director walks the cast to rather than a thing you operate. That was
+            // wrong in a way only playing shows: the proximity prompt ranks any nearby houseguest
+            // above the screen, so somebody idling beside it took the only other route as well and
+            // the screen could not be opened at all. The caption is the one the HUD button already
+            // uses, and it runs the same command.
+            if(anchor.VenueId==HouseInteractionAnchors.EpisodeDestination)
+            {what=HousePropClick.Station;caption="Go to episode screen";return true;}
             return false;
         }
 

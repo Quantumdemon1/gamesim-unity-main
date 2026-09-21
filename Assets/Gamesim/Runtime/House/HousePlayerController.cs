@@ -29,6 +29,58 @@ namespace Gamesim.House
             : cameraRig = viewCamera != null ? viewCamera.GetComponentInParent<HouseCameraRig>() : null;
 
         private bool requestedInputEnabled = true;
+
+        /// <summary>How long the last accepted route was, in metres along the path.</summary>
+        public float RouteMetres { get; private set; }
+
+        /// <summary>
+        /// Walking pace and running pace.
+        ///
+        /// <para>Walking matches the authored take and the houseguests' own 2.2 m/s. The scene's
+        /// authored agent speed was 4, which is a run, and it is why everybody covered the house at
+        /// a sprint whatever they were doing - the clip was a borrowed run and the speed agreed
+        /// with it.</para>
+        /// </summary>
+        private const float WalkSpeed = 2.2f;
+        private const float RunSpeed = 4f;
+
+        /// <summary>Far enough to be worth running: about the length of the house's long side.</summary>
+        private const float RunRouteMetres = 8f;
+
+        private const float DoubleClickSeconds = .35f;
+        private const float DoubleClickPixels = 24f;
+        private float lastFloorClickTime = float.NegativeInfinity;
+        private Vector2 lastFloorClickScreen;
+
+        /// <summary>
+        /// Whether this controller still owns the agent's speed.
+        ///
+        /// <para>Nine PlayMode fixtures raise the player to 20 or 25 m/s in setup so a whole season
+        /// finishes inside a deadline. Writing a gait over that would turn every one of those walks
+        /// into a timeout, so the first time the speed is found to be something this controller did
+        /// not write, it stops writing it. The animator still hears the gait; only the speed is
+        /// conceded.</para>
+        /// </summary>
+        private bool ownsSpeed = true;
+        private float appliedSpeed = float.NaN;
+
+        /// <summary>Whether the player is covering ground rather than crossing a room.</summary>
+        public bool IsRunning { get; private set; }
+
+        private void ApplyGait(bool run)
+        {
+            IsRunning = run;
+            var visual = GetComponent<Gamesim.Presentation.CharacterPresentation>();
+            if (visual != null) visual.SetRunning(run);
+
+            var currentAgent = Agent;
+            if (currentAgent == null) return;
+            if (ownsSpeed && !float.IsNaN(appliedSpeed)
+                && !Mathf.Approximately(currentAgent.speed, appliedSpeed)) ownsSpeed = false;
+            if (!ownsSpeed) return;
+            currentAgent.speed = run ? RunSpeed : WalkSpeed;
+            appliedSpeed = currentAgent.speed;
+        }
         public bool InputEnabled => requestedInputEnabled && activityOwner == null;
         public bool IsSelected => isSelected;
         public NavMeshAgent Agent => agent != null ? agent : agent = GetComponent<NavMeshAgent>();
@@ -72,6 +124,8 @@ namespace Gamesim.House
 
             transform.position = spawn.position;
             currentAgent.enabled = true;
+            // Walking is the default gait. The scene authored this agent at 4 m/s, which is a run.
+            ApplyGait(false);
             ApplyPauseState();
         }
 
@@ -127,6 +181,13 @@ namespace Gamesim.House
                 return false;
             }
 
+            // The route, not the crow's flight: a destination three metres away through two
+            // doorways is a long walk, and that is the distinction "far" has to make.
+            RouteMetres = 0f;
+            var corners = candidatePath.corners;
+            for (int i = 0; i + 1 < corners.Length; i++)
+                RouteMetres += Vector3.Distance(corners[i], corners[i + 1]);
+
             currentAgent.isStopped = false;
             return true;
         }
@@ -148,7 +209,8 @@ namespace Gamesim.House
                 return;
             }
 
-            var ray = viewCamera.ScreenPointToRay(mouse.position.ReadValue());
+            var screen = mouse.position.ReadValue();
+            var ray = viewCamera.ScreenPointToRay(screen);
             if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,out var seatedGuest))
             {
                 CameraRig?.FocusSubject(seatedGuest.transform);
@@ -189,8 +251,17 @@ namespace Gamesim.House
                 // "leaves the camera exactly where it is". The player then walked out of a frozen
                 // frame and you had to chase them by hand. Follow them instead, without reframing:
                 // the shot you were looking at is the shot you keep.
+                // Walk unless it is worth running: a second click on the same spot means hurry,
+                // and a route long enough to cross the house is a run whether or not you asked.
+                // The first click is acted on immediately either way - a double-click that waited
+                // to see whether a second was coming would put a delay on every move in the game.
+                bool again = Time.unscaledTime - lastFloorClickTime <= DoubleClickSeconds
+                    && (screen - lastFloorClickScreen).sqrMagnitude <= DoubleClickPixels * DoubleClickPixels;
+                lastFloorClickTime = Time.unscaledTime;
+                lastFloorClickScreen = screen;
+
                 CameraRig?.FocusSubject(transform, false);
-                TryMoveTo(hit.point);
+                if (TryMoveTo(hit.point)) ApplyGait(again || RouteMetres > RunRouteMetres);
             }
         }
 

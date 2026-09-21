@@ -39,7 +39,10 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheMocapTakesImportAsHumanoidAndTheLoopsLoop()
         {
-            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(12), "twelve takes arrived");
+            // Fourteen: the twelve mocap takes, plus the walk and its stop. The walk is the one
+            // that matters - without an authored take the Walk state was a key for UMA to fill, and
+            // UMA's Locomotion controller has no walk to fill it with, so it filled it with a run.
+            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(14), "fourteen takes arrived");
             foreach (var take in HumanoidClipWiring.Takes)
             {
                 var path = HumanoidClipWiring.Path(take);
@@ -77,6 +80,7 @@ namespace Gamesim.Tests.EditMode
             Declares(HumanoidClipWiring.TalkingParameter, AnimatorControllerParameterType.Bool);
             Declares(HumanoidClipWiring.ListeningParameter, AnimatorControllerParameterType.Bool);
             Declares(HumanoidClipWiring.ArguingParameter, AnimatorControllerParameterType.Bool);
+            Declares(HumanoidClipWiring.RunningParameter, AnimatorControllerParameterType.Bool);
 
             // The reaction triggers are indexed by CharacterPresentation.Reaction, and both casts
             // answer to the same five names, so a beat added there is a beat both rigs are asked
@@ -169,8 +173,20 @@ namespace Gamesim.Tests.EditMode
             var sitTalk = State(controller, "SitTalk");
             var argue = State(controller, "Argue");
 
+            var walkStop = State(controller, "WalkStop");
             Assert.That(Leads(idle, walk, HumanoidClipWiring.SpeedParameter), Is.True, "idle walks");
-            Assert.That(Leads(walk, idle, HumanoidClipWiring.SpeedParameter), Is.True, "and stops");
+            // Walking no longer snaps to idle. There is a stop take now, so a body that runs out of
+            // path plants its weight and settles instead of teleporting into a standing pose - which
+            // is what a walk cycle ending on whichever frame the agent happened to arrive on looked
+            // like. The route is two edges, and both have to exist for the walk to be able to end.
+            Assert.That(Leads(walk, walkStop, HumanoidClipWiring.SpeedParameter), Is.True, "and plants");
+            var settles = walkStop.transitions.FirstOrDefault(t => t.destinationState == idle);
+            Assert.That(settles, Is.Not.Null, "and settles into idle");
+            Assert.That(settles.hasExitTime, Is.True, "after the stop take has played, not on a parameter");
+            // Nothing waits three seconds to be told to move again: every reason to walk or run
+            // beats the settle, which is why the settle is the only unconditional edge out.
+            Assert.That(Leads(walkStop, walk, HumanoidClipWiring.SpeedParameter), Is.True,
+                "a body asked to move again during the stop goes, rather than finishing the take");
             // No sit-down or stand-up take on this rig, so seating is a cross-fade, not a transition clip.
             Assert.That(Leads(idle, sitIdle, HumanoidClipWiring.SeatedParameter), Is.True, "idle sits");
             Assert.That(Leads(sitIdle, idle, HumanoidClipWiring.SeatedParameter), Is.True, "and stands up");
@@ -239,12 +255,21 @@ namespace Gamesim.Tests.EditMode
 
             // The two states UMA fills in are wired to takes nothing else plays, so overriding them
             // at runtime cannot disturb a state that has a take of its own.
-            foreach (var standIn in new[] { HumanoidClipWiring.IdleStandIn, HumanoidClipWiring.WalkStandIn })
+            foreach (var standIn in new[] { HumanoidClipWiring.IdleStandIn, HumanoidClipWiring.RunStandIn })
             {
                 var users = HumanoidClipWiring.States.Where(s => s.take == standIn).Select(s => s.state).ToArray();
                 Assert.That(users.Length, Is.EqualTo(1), standIn + " stands in for one state only, or overriding it would move two");
             }
-            Assert.That(HumanoidClipWiring.IdleStandIn, Is.Not.EqualTo(HumanoidClipWiring.WalkStandIn));
+            Assert.That(HumanoidClipWiring.IdleStandIn, Is.Not.EqualTo(HumanoidClipWiring.RunStandIn));
+
+            // The walk is authored and must NOT be a stand-in. It was one, and because UMA's
+            // Locomotion controller carries Idle, Wave and Run - and no Walk at all - the clip
+            // borrowed to fill it was the run, so every houseguest ran everywhere it went.
+            var walk = HumanoidClipWiring.States.Single(s => s.state == "Walk");
+            Assert.That(walk.take, Is.EqualTo("Walk_loop"),
+                "the walk plays an authored take, not a key for UMA to fill");
+            Assert.That(walk.take, Is.Not.EqualTo(HumanoidClipWiring.RunStandIn)
+                .And.Not.EqualTo(HumanoidClipWiring.IdleStandIn));
         }
     }
 }

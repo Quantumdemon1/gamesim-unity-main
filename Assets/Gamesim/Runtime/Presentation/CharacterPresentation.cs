@@ -18,6 +18,7 @@ namespace Gamesim.Presentation
         private static readonly int LegacyColorId = Shader.PropertyToID("_Color");
         private static readonly int SpeedParam = Animator.StringToHash("Speed");
         private static readonly int SeatedParam = Animator.StringToHash("Seated");
+        private static readonly int RunningParam = Animator.StringToHash("Running");
         private static readonly int TalkingParam = Animator.StringToHash("Talking");
         private static readonly int ListeningParam = Animator.StringToHash("Listening");
         private static readonly int ArguingParam = Animator.StringToHash("Arguing");
@@ -92,6 +93,8 @@ namespace Gamesim.Presentation
         private Transform standIn;
         private RuntimeAnimatorController inspectedController;
         private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam, hasArguingParam;
+        private bool hasRunningParam;
+        private bool running;
         public string CharacterId { get; private set; }
         public string AppearanceKey { get; private set; }
         public CharacterAppearance AppearanceSnapshot => definition?.appearance?.Clone();
@@ -239,6 +242,17 @@ namespace Gamesim.Presentation
         public void SetSpeaking(bool value) => speaking = value;
         public bool IsSpeaking => talking && speaking;
         public void SetSeated(bool value) => seated = value;
+
+        /// <summary>
+        /// Whether this body is covering ground rather than crossing a room.
+        ///
+        /// <para>Set by whoever chose the route, not read off the speed. Speed cannot tell the two
+        /// apart: the movement blend saturates at <c>speed / 2.5</c>, so a houseguest at a walking
+        /// 2.2 m/s already reads 0.88 and the player's authored 4 reads a flat 1.0. A run is a
+        /// decision about distance - or a double-click - and it arrives as one.</para>
+        /// </summary>
+        public void SetRunning(bool value) => running = value;
+        public bool IsRunning => running;
         /// <summary>
         /// Whether this body is in a tense conversation rather than an ordinary one. The director
         /// sets it for the pairs whose topic the caption calls a tense conversation; the controller
@@ -421,6 +435,7 @@ namespace Gamesim.Presentation
             {
                 inspectedController = null;
                 hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
+                hasRunningParam = false;
                 return;
             }
 
@@ -431,6 +446,7 @@ namespace Gamesim.Presentation
 
             inspectedController = controller;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
+            hasRunningParam = false;
             reactionParams = 0;
             foreach (var parameter in animator.parameters)
             {
@@ -438,6 +454,8 @@ namespace Gamesim.Presentation
                     hasSpeedParam = true;
                 else if (parameter.nameHash == SeatedParam && parameter.type == AnimatorControllerParameterType.Bool)
                     hasSeatedParam = true;
+                else if (parameter.nameHash == RunningParam && parameter.type == AnimatorControllerParameterType.Bool)
+                    hasRunningParam = true;
                 else if (parameter.nameHash == TalkingParam && parameter.type == AnimatorControllerParameterType.Bool)
                     hasTalkingParam = true;
                 else if (parameter.nameHash == ListeningParam && parameter.type == AnimatorControllerParameterType.Bool)
@@ -651,6 +669,7 @@ namespace Gamesim.Presentation
             RefreshAnimatorParameters();
             if (hasSpeedParam) animator.SetFloat(SpeedParam, movementBlend);
             if (hasSeatedParam) animator.SetBool(SeatedParam, seated);
+            if (hasRunningParam) animator.SetBool(RunningParam, running && !seated);
             // Reduced motion keeps the authored talk loops off: the head-nod cue below is already
             // gated on it, and a gesturing body is the same kind of motion at a larger size.
             if (hasTalkingParam) animator.SetBool(TalkingParam, talking && speaking && !reducedMotion);
@@ -842,6 +861,7 @@ namespace Gamesim.Presentation
             standIn = null; // destroyed with the visual root above
             inspectedController = null;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
+            hasRunningParam = false;
             built = false;
             talking = seated = arguing = false; facingYaw = float.NaN; lookTarget = null; lookBlend = 0f;
             movementBlend = walkPhase = 0f;

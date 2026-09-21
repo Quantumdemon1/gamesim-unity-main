@@ -42,10 +42,10 @@ namespace Gamesim.Uma
         /// committed controller that named one by GUID would break every clone without it. They are
         /// wired to two takes no cue reaches and swapped here, at runtime, for the idle and run that
         /// UMA's Locomotion controller — resolved by name, like everything else UMA — already holds.
-        /// Kept in step with <c>HumanoidClipWiring.IdleStandIn</c> and <c>WalkStandIn</c>.
+        /// Kept in step with <c>HumanoidClipWiring.IdleStandIn</c> and <c>RunStandIn</c>.
         /// </summary>
         private const string IdleStandIn = "Sleep_loop";
-        private const string WalkStandIn = "SleepLying_loop";
+        private const string RunStandIn = "SleepLying_loop";
 
         // Built once and shared: every body wants the same graph over the same two borrowed clips.
         private RuntimeAnimatorController cast;
@@ -221,25 +221,30 @@ namespace Gamesim.Uma
                 return cast = locomotion;
             }
 
+            // Run first, and no "Walk" fallback. This used to ask for "Walk" and settle for "Run",
+            // which sounds like a safety net and was not: UMA's Locomotion controller holds Idle,
+            // Wave and Run, and no Walk at all, so the borrowed run was what every body played the
+            // moment it took a step. The walk is authored now and is nobody's to lend; this clip
+            // fills the RUN state, which is what it always was.
             var standing = Borrow(locomotion, "Idle");
-            var walking = Borrow(locomotion, "Walk", "Run");
-            if (standing == null || walking == null || standing == walking)
+            var running = Borrow(locomotion, "Run");
+            if (standing == null || running == null || standing == running)
             {
                 ReportOnce("locomotion-clips", "UMA's '" + LocomotionController + "' controller has no " +
-                    "standing idle and walk to lend; UMA bodies walk and nothing else.");
+                    "standing idle and run to lend; UMA bodies keep the authored walk and never run.");
                 return cast = locomotion;
             }
-            if (!Holds(houseguest, IdleStandIn) || !Holds(houseguest, WalkStandIn))
+            if (!Holds(houseguest, IdleStandIn) || !Holds(houseguest, RunStandIn))
             {
                 ReportOnce("stand-ins", "the houseguest controller has no " + IdleStandIn + " and " +
-                    WalkStandIn + " to stand in for its idle and walk; re-run Gamesim > U07 > Wire the " +
-                    "Humanoid takes. Until then UMA bodies walk and nothing else.");
+                    RunStandIn + " to stand in for its idle and run; re-run Gamesim > U07 > Wire the " +
+                    "Humanoid takes.");
                 return cast = locomotion;
             }
 
             var overrides = new AnimatorOverrideController(houseguest) { name = "GamesimHumanoid (UMA locomotion)" };
             overrides[IdleStandIn] = standing;
-            overrides[WalkStandIn] = walking;
+            overrides[RunStandIn] = running;
             return cast = overrides;
         }
 

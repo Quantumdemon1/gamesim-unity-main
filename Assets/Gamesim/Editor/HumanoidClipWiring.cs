@@ -28,9 +28,16 @@ namespace Gamesim.Editor
         /// <summary>
         /// The take standing in for a clip this rig has not been given. Never played: the provider
         /// overrides both, and falls back to UMA's Locomotion whole if it cannot.
+        ///
+        /// <para>The walk no longer needs one. It used to, and the cost was that every houseguest
+        /// RAN everywhere: the provider filled the walk by asking UMA's Locomotion controller for a
+        /// clip called "Walk" and then, failing that, one called "Run" - and that controller has
+        /// Idle, Wave and Run in it, and no Walk at all. So the fallback was not a fallback, it was
+        /// the only branch, and a borrowed run played whenever anyone moved a step. There is an
+        /// authored walk now, and UMA's run stands in for the RUN state, where it belongs.</para>
         /// </summary>
         public const string IdleStandIn = "Sleep_loop";
-        public const string WalkStandIn = "SleepLying_loop";
+        public const string RunStandIn = "SleepLying_loop";
 
         public const string SpeedParameter = "Speed";
         public const string SeatedParameter = "Seated";
@@ -38,18 +45,30 @@ namespace Gamesim.Editor
         public const string ListeningParameter = "Listening";
         public const string ArguingParameter = "Arguing";
 
+        /// <summary>
+        /// Whether this body is covering ground rather than crossing a room.
+        ///
+        /// <para>Set by whoever issued the move, not derived from speed: the agent runs at one speed
+        /// whatever the distance, so speed cannot tell a trip to the yard from a step to the fridge.
+        /// A houseguest runs when its destination is far; the player also runs on a double-click.</para>
+        /// </summary>
+        public const string RunningParameter = "Running";
+
         /// <summary>The twelve takes, one to a file, named by their file (bb_anim_&lt;take&gt;.fbx).</summary>
         public static readonly string[] Takes =
         {
             "SitIdle_loop", "SitTalk_loop", "Talk_loop", "TalkB_loop", "TalkC_loop", "Argue_loop",
             "Cheer_loop", "Clap_loop", "React_won", "React_shrug", "Sleep_loop", "SleepLying_loop",
+            "Walk_loop", "WalkStop",
         };
 
         /// <summary>The states the graph is built from, and the take each one plays.</summary>
         public static readonly (string state, string take, float x, float y)[] States =
         {
             ("Idle", IdleStandIn, 200, 0),
-            ("Walk", WalkStandIn, 200, 120),
+            ("Walk", "Walk_loop", 200, 120),
+            ("Run", RunStandIn, 200, 240),
+            ("WalkStop", "WalkStop", -60, 120),
             ("SitIdle", "SitIdle_loop", 520, 0),
             ("SitTalk", "SitTalk_loop", 760, 0),
             ("Talk", "Talk_loop", 520, 180),
@@ -110,6 +129,7 @@ namespace Gamesim.Editor
             Parameter(controller, TalkingParameter, AnimatorControllerParameterType.Bool);
             Parameter(controller, ListeningParameter, AnimatorControllerParameterType.Bool);
             Parameter(controller, ArguingParameter, AnimatorControllerParameterType.Bool);
+            Parameter(controller, RunningParameter, AnimatorControllerParameterType.Bool);
             foreach (var (trigger, state) in Reactions)
             {
                 if (state != null) { Parameter(controller, trigger, AnimatorControllerParameterType.Trigger); continue; }
@@ -142,12 +162,32 @@ namespace Gamesim.Editor
                     machine.RemoveAnyStateTransition(existing);
 
             Go(states["Idle"], states["SitIdle"], SeatedFade, Seated(true));
+            // Before the walk, because the first transition whose conditions hold is the one taken:
+            // setting off at a run should not spend a step walking first.
+            Go(states["Idle"], states["Run"], 0.15f, Moving(true), Bool(RunningParameter, true));
             Go(states["Idle"], states["Walk"], 0.15f, Moving(true));
             Go(states["Idle"], states["Argue"], 0.15f, Bool(ArguingParameter, true), Moving(false));
             Go(states["Idle"], states["Talk"], 0.15f, Bool(TalkingParameter, true), Moving(false));
 
+            // Walking stops through the stop take, so a body plants rather than snapping to idle.
+            // Running exits straight to idle: a run that has to decelerate through a three-second
+            // stop reads as a body that cannot be told what to do.
             Go(states["Walk"], states["SitIdle"], SeatedFade, Seated(true));
-            Go(states["Walk"], states["Idle"], 0.15f, Moving(false));
+            Go(states["Walk"], states["Run"], 0.18f, Bool(RunningParameter, true), Moving(true));
+            Go(states["Walk"], states["WalkStop"], 0.12f, Moving(false));
+
+            Go(states["Run"], states["SitIdle"], SeatedFade, Seated(true));
+            Go(states["Run"], states["Walk"], 0.20f, Bool(RunningParameter, false), Moving(true));
+            Go(states["Run"], states["Idle"], 0.15f, Moving(false));
+
+            // The stop take is three seconds of settling; nobody waits that long to be interrupted.
+            // Any reason to move again beats it, and otherwise it falls to idle on its own.
+            Go(states["WalkStop"], states["SitIdle"], SeatedFade, Seated(true));
+            Go(states["WalkStop"], states["Run"], 0.12f, Bool(RunningParameter, true), Moving(true));
+            Go(states["WalkStop"], states["Walk"], 0.12f, Moving(true));
+            var settled = Go(states["WalkStop"], states["Idle"], 0.25f);
+            settled.hasExitTime = true;
+            settled.exitTime = 0.55f;
 
             Go(states["SitIdle"], states["Idle"], SeatedFade, Seated(false));
             Go(states["SitIdle"], states["SitTalk"], 0.15f, Bool(TalkingParameter, true));
@@ -204,8 +244,8 @@ namespace Gamesim.Editor
             AssetDatabase.SaveAssets();
             Debug.Log("[Gamesim] humanoid · " + Takes.Length + " mocap takes wired into " + Controller
                 + ": " + States.Length + " states, " + WiredReactions.Count() + " of " + Reactions.Length
-                + " reaction beats acted; Idle and Walk use override keys "
-                + IdleStandIn + " and " + WalkStandIn + " until UmaBodyProvider overrides them.");
+                + " reaction beats acted; the walk is authored, and Idle and Run use override keys "
+                + IdleStandIn + " and " + RunStandIn + " until UmaBodyProvider overrides them.");
         }
 
         /// <summary>The twelve takes, by clip name. One clip a file, the file names the take.</summary>

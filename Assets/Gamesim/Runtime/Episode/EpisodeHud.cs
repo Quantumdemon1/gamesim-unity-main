@@ -193,7 +193,8 @@ namespace Gamesim.Episode
             // The cast rail owns the far-left gutter, so the panel column starts to the right of it.
             // Six faces on screen at all times is what makes the rest of the HUD able to say "the
             // replacement nominee" and have that mean a person rather than a name.
-            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest);
+            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest,
+                director.FollowedId);
             FollowChip(director.FollowedName);
 
             var leftColumn = new GameObject("Left column",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>();

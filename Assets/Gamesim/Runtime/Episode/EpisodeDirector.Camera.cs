@@ -17,6 +17,19 @@ namespace Gamesim.Episode
     /// <summary>The follow camera: who the rig rides and how the cast rail, the keys and the pad choose them.</summary>
     public sealed partial class EpisodeDirector
     {
+        /// <summary>The id of the houseguest the camera is following, or null.</summary>
+        public string FollowedId
+        {
+            get
+            {
+                var subject = cameraRig != null ? cameraRig.FocusedSubject : null;
+                if (subject == null || projected == null) return null;
+                var npc = subject.GetComponentInParent<HouseNpc>();
+                if (npc != null) return npc.Id;
+                return subject.GetComponentInParent<HousePlayerController>() != null ? projected.playerId : null;
+            }
+        }
+
         /// <summary>The name of the houseguest the camera is following, or null.</summary>
         public string FollowedName
         {

@@ -92,7 +92,8 @@ namespace Gamesim.Presentation
         /// </summary>
         public static RectTransform Build(
             Transform parent, EpisodeState state, float fontScale, TMP_FontAsset font,
-            System.Func<string, Texture> portrait, System.Action<string> onSelect = null)
+            System.Func<string, Texture> portrait, System.Action<string> onSelect = null,
+            string followedId = null)
         {
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
@@ -107,7 +108,7 @@ namespace Gamesim.Presentation
             root.sizeDelta = new Vector2(Width, RailHeight(rows) * scale);
 
             for (int index = 0; index < order.Count; index++)
-                Entry(root, state, order[index], index, scale, font, portrait, onSelect);
+                Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
             return root;
         }
 
@@ -214,7 +215,8 @@ namespace Gamesim.Presentation
 
         private static RectTransform Entry(
             RectTransform root, EpisodeState state, ContestantState actor, int index, float scale,
-            TMP_FontAsset font, System.Func<string, Texture> portrait, System.Action<string> onSelect)
+            TMP_FontAsset font, System.Func<string, Texture> portrait, System.Action<string> onSelect,
+            string followedId = null)
         {
             var standing = Read(state, actor);
             bool isPlayer = actor.isPlayer || actor.id == state.playerId;
@@ -235,9 +237,16 @@ namespace Gamesim.Presentation
             chip.anchorMin = Vector2.zero; chip.anchorMax = Vector2.one;
             chip.offsetMin = new Vector2(ChipInsetX, ChipBottom * scale);
             chip.offsetMax = new Vector2(-ChipInsetX, -ChipTop * scale);
-            if (isPlayer) UiTheme.Glass(chip, ChipRadius);
-            else UiTheme.AddBorder(chip, ChipRadius,
-                new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, standing.Dim ? 0.22f : 0.32f));
+            // Cyan says "the camera is on this one", and nothing else in the rail says it. It used
+            // to say "this one is you", permanently, on a chip whose standing word is already the
+            // word YOU - so the rail lit one houseguest in every frame of the game for a fact the
+            // rail was already stating, and had nothing left to mark the one being followed with.
+            // Every other chip is structure: a seam, dimmed further when the houseguest is out.
+            bool followed = !string.IsNullOrEmpty(followedId) && actor.id == followedId;
+            var seam = UiTheme.Edge(UiTheme.Emphasis.Resting);
+            UiTheme.AddBorder(chip, ChipRadius, followed
+                ? UiTheme.Edge(UiTheme.Emphasis.Active)
+                : new Color(seam.r, seam.g, seam.b, standing.Dim ? seam.a * .6f : seam.a));
 
             // The ring is the status: a coloured disc showing through as a rim around the face. Every
             // row below it is measured from the ring's own foot, so the chip stacks rather than

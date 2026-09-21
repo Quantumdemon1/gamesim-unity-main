@@ -146,8 +146,11 @@ namespace Gamesim.Editor
             if (!TryFindSurface(out var surface)) return;
 
             var existing = surface.navMeshData;
-            // What the house can currently do, so the new bake can be compared against it.
-            int before = HouseNavigationAudit.ReachablePairs();
+            // What the house can currently do, so the new bake can be compared against it. Measured
+            // against the committed asset by name rather than against whatever is registered: a bake
+            // leaves registration in a state that depends on what the caller did first, and reading
+            // it loosely once made this guard refuse a mesh that reached every room.
+            int before = HouseNavigationAudit.ReachablePairs(surface, existing);
 
             surface.BuildNavMesh();
             if (surface.navMeshData == null)
@@ -169,7 +172,7 @@ namespace Gamesim.Editor
             // be carved has stayed walkable. Re-checked 2026-09-21: the committed mesh reaches 28 of
             // 28, and a trial bake of today geometry reaches the same 28. Bake when the geometry
             // warrants it; this guard is here to catch the day it stops being safe, not to forbid it.
-            int after = HouseNavigationAudit.ReachablePairs();
+            int after = HouseNavigationAudit.ReachablePairs(surface, surface.navMeshData);
             if (after < before)
             {
                 surface.navMeshData = existing;

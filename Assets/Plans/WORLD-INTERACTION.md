@@ -128,15 +128,61 @@ own layer. The NavMeshSurface mask is `0xFFFFFFFF` so the bake still sees it, wh
 conversation sightlines, body clearance, seated-NPC picking and camera pull-in all skip it. This is
 what lets collision and picking stop fighting each other.
 
-### Stage 3 — give the authored props collision, and bake (M)
-The pipeline exists and is proven end to end: a Blender child named `*_col` becomes a convex
-`MeshCollider` and stops rendering. It is used on exactly two props in the set — `bb_set_pool_col`
-and `bb_set_hottub_col`. Extend it to the pieces that matter, bake, and then retire the U02
-grey-boxes whose only remaining job was to fake this.
+### Stage 3 — give the authored props collision, and bake (M) — **done**
+**126 of 262 walk-through became 42, and every room still reaches every other room.** The NavMesh
+asset went from 21 KB to 39 KB, which is the furniture arriving in it.
 
-`bb_shell_house` must be excluded from collision explicitly and permanently: a render-mesh bake —
-what "collide everything" looks like — comes back at 21 of 28 pairs, every missing pair
-something-to-Yard.
+Not by the `*_col` route in the end. That pipeline is real and still preferred where an export
+already has a collision child — the pool and the hot tub keep theirs, moved onto layer 8 — but it
+needs a Blender round trip per prop, and the answer for 119 props was a box fitted from their own
+renderers. `HouseFurnitureCollision` hangs that box on a child called `Collision` rather than on the
+prop root, because a layer is not only a physics fact: cameras cull by it and lights list it. The art
+stays where it was authored and the proxy carries the physics, and deleting every `Collision` puts
+the house back exactly as it was.
+
+**What the rule is.** Floor-standing, at least 0.30 m across its narrower horizontal side, at least
+0.40 m tall. That keeps the cot (0.52) and the coffee tables (0.42) and leaves the rugs (0.03), the
+cable run (0.04), the competition circle (0.05), the speaker poles (0.24) and every mug and candle
+on a worktop alone.
+
+**Three things this stage got wrong first, all worth keeping.**
+
+*The thresholds are metres; the box is not.* The box is measured in the prop's own space so it turns
+with the prop — a bookcase at 45 degrees stays 0.32 m deep instead of reading 0.79 m in both
+directions. But the first version judged the local numbers too, and in local space a unit cube
+squashed to 0.02 m still measures 1.0. Eighteen kitchen floor tiles and six stanchion poles grew
+waist-high collision. Scale first, then decide.
+
+*Furniture on a room marker is the collider version of the carving disaster.* The nomination room's
+marker sits **inside its own round table**, with four chairs 0.47 m away. Giving the table a body
+took the floor out from under the point every route into that room ends at. `HouseNavigationObstacles`
+already knew this and keeps 1.5 m clear; that radius is far too generous here, because it would spare
+the HoH bed at 1.16 m and the diary chair at 0.45 m — the two props this stage exists to make solid.
+Containment only: a prop may not stand *on* a destination.
+
+*A guard that can cry wolf is worse than no guard.* `Gamesim/Rebake` refused a mesh that reached all
+28 room pairs, reporting 21, because `ReachablePairs()` read whatever NavMesh data happened to be
+registered and a `BuildNavMesh` leaves that state depending on what the caller did first. Both
+readings now name the mesh they are measuring.
+
+**Doorways are resolved by measurement, not by a list.** A prop standing in an opening is not
+distinguishable by size or name from the same prop against a wall — the HoH door reads as a 3.16 m
+sideboard. `HouseDoorwayResolver` bakes, asks which rooms it just lost, walks the committed routes
+into them to find the boxes in the corridor, switches them off one at a time until the house joins
+up, and then gives each one back to find the smallest set that has to stay off. It found **4 of 119**:
+`bb_set_hohdoor`, one `bookcaseOpen` in the yard doorway, and two `chairModernCushion` at the
+nomination table. Each keeps its box, switched off, with the room it was costing written into its
+name — so the next person to wonder why that bookcase is walk-through finds the answer in the
+hierarchy. A re-fit switches them back on and makes them earn it again.
+
+`bb_shell_house` is excluded by name, permanently: a render-mesh bake — what "collide everything"
+looks like — comes back at 21 of 28 pairs, every missing pair something-to-Yard.
+
+**Still open from this stage.** The approach points have to be re-derived now that the furniture is
+in the mesh, which Stage 1 warned about and nothing has done yet. The U02 grey-boxes have not been
+retired. And the 42 survivors include the `Broadcast Dressing` decor — two foliage balls, a framed
+picture, a dining table's four legs and two stools — which this pass never walked, because it only
+knows the set-piece root.
 
 ### Stage 4 — make the click land (M)
 With props on their own layer and colliders on the visible geometry, `AtProp` can finally receive a

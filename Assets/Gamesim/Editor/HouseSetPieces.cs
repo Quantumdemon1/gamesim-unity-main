@@ -354,6 +354,12 @@ namespace Gamesim.Editor
             int course = Course(world.transform, root);
             int shell = Shell(world.transform, root);
 
+            // Placement and collision have to travel together. Set dressing was re-placed once
+            // without the lighting pass that follows it and the house lost its lightmaps for three
+            // days without anybody noticing; a separate "and now run the other menu item" step is
+            // exactly how that happens. Fitting here means a re-placed house is a solid house.
+            HouseFurnitureCollision.FitCollision();
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();

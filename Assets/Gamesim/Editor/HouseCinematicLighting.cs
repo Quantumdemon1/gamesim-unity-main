@@ -333,7 +333,15 @@ namespace Gamesim.Editor
             }
         }
 
-        /// <summary>The desktop renderer's ambient occlusion, a touch stronger and a little wider for the corners the bake leaves soft.</summary>
+        /// <summary>
+        /// The desktop renderer's ambient occlusion, and in this house it is doing more work than
+        /// its name suggests: it is the only thing in an interior frame that puts a dark line where
+        /// an object meets the floor. The eight room fills and the fourteen screen practicals cast
+        /// no shadows at all, the lightmap's own AO has aoExponentDirect 0 so it never touches the
+        /// dominant direct term, and the direct term is 100% realtime because the mixed lights bake
+        /// IndirectOnly. A 0.35 m radius is about the width of a chair leg in a 14x10 m room shot at
+        /// 35-50 mm, which is why contacts read as objects hovering.
+        /// </summary>
         private static void AmbientOcclusion()
         {
             var renderer = AssetDatabase.LoadAssetAtPath<ScriptableRendererData>("Assets/Settings/PC_Renderer.asset");
@@ -345,9 +353,13 @@ namespace Gamesim.Editor
                 var intensity = serialized.FindProperty("m_Settings.Intensity");
                 var radius = serialized.FindProperty("m_Settings.Radius");
                 var falloff = serialized.FindProperty("m_Settings.Falloff");
+                var direct = serialized.FindProperty("m_Settings.DirectLightingStrength");
                 if (intensity != null) intensity.floatValue = 0.6f;
-                if (radius != null) radius.floatValue = 0.35f;
+                if (radius != null) radius.floatValue = 0.8f;
                 if (falloff != null) falloff.floatValue = 100f;
+                // The direct term is the whole frame here, so occlusion that only touches ambient
+                // is occlusion nobody sees.
+                if (direct != null) direct.floatValue = 0.55f;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(feature);
                 EditorUtility.SetDirty(renderer);

@@ -1391,7 +1391,7 @@ GameObject:
   - component: {fileID: 51511396}
   - component: {fileID: 51511395}
   - component: {fileID: 51511394}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Kitchen island
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1810,7 +1810,7 @@ GameObject:
   - component: {fileID: 74591025}
   - component: {fileID: 74591024}
   - component: {fileID: 74591023}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Countertop
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6347,7 +6347,7 @@ GameObject:
   - component: {fileID: 209508813}
   - component: {fileID: 209508812}
   - component: {fileID: 209508811}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Competition podium 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -8509,7 +8509,7 @@ GameObject:
   - component: {fileID: 284381057}
   - component: {fileID: 284381056}
   - component: {fileID: 284381055}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Sofa seat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -11850,7 +11850,7 @@ GameObject:
   - component: {fileID: 392037344}
   - component: {fileID: 392037343}
   - component: {fileID: 392037342}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Duvet
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -13077,7 +13077,7 @@ GameObject:
   - component: {fileID: 440640675}
   - component: {fileID: 440640674}
   - component: {fileID: 440640673}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Bed frame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -13279,7 +13279,7 @@ GameObject:
   - component: {fileID: 449783453}
   - component: {fileID: 449783452}
   - component: {fileID: 449783451}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Confessional chair B
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -15731,7 +15731,7 @@ GameObject:
   - component: {fileID: 536511987}
   - component: {fileID: 536511986}
   - component: {fileID: 536511985}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Pillow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -16558,7 +16558,7 @@ GameObject:
   - component: {fileID: 564017560}
   - component: {fileID: 564017559}
   - component: {fileID: 564017558}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Confessional chair A
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -17388,7 +17388,7 @@ GameObject:
   - component: {fileID: 582905090}
   - component: {fileID: 582905089}
   - component: {fileID: 582905088}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Sofa back
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -18023,7 +18023,7 @@ GameObject:
   - component: {fileID: 612505435}
   - component: {fileID: 612505434}
   - component: {fileID: 612505433}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Television console
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -18135,7 +18135,7 @@ GameObject:
   - component: {fileID: 613085123}
   - component: {fileID: 613085122}
   - component: {fileID: 613085121}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Competition podium 3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -25267,7 +25267,7 @@ GameObject:
   - component: {fileID: 834436013}
   - component: {fileID: 834436012}
   - component: {fileID: 834436011}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Coffee table
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -26127,7 +26127,7 @@ GameObject:
   - component: {fileID: 875693039}
   - component: {fileID: 875693038}
   - component: {fileID: 875693037}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Bed frame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -30685,7 +30685,7 @@ GameObject:
   - component: {fileID: 1045090667}
   - component: {fileID: 1045090666}
   - component: {fileID: 1045090665}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Refrigerator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -33809,7 +33809,7 @@ GameObject:
   - component: {fileID: 1155524262}
   - component: {fileID: 1155524261}
   - component: {fileID: 1155524260}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Competition podium 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -38934,7 +38934,7 @@ GameObject:
   - component: {fileID: 1341676833}
   - component: {fileID: 1341676832}
   - component: {fileID: 1341676831}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Duvet
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -44598,7 +44598,7 @@ GameObject:
   - component: {fileID: 1556095066}
   - component: {fileID: 1556095065}
   - component: {fileID: 1556095064}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Pillow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -47587,7 +47587,7 @@ GameObject:
   - component: {fileID: 1674937452}
   - component: {fileID: 1674937451}
   - component: {fileID: 1674937450}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Kitchen counters
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -50814,7 +50814,7 @@ GameObject:
   - component: {fileID: 1774967564}
   - component: {fileID: 1774967563}
   - component: {fileID: 1774967562}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Private table
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -52168,7 +52168,7 @@ GameObject:
   - component: {fileID: 1807431824}
   - component: {fileID: 1807431823}
   - component: {fileID: 1807431822}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Television
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -59581,7 +59581,7 @@ GameObject:
   - component: {fileID: 2086833944}
   - component: {fileID: 2086833943}
   - component: {fileID: 2086833942}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Wardrobe
   m_TagString: Untagged
   m_Icon: {fileID: 0}

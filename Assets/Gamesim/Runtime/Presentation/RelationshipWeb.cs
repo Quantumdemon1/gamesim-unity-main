@@ -219,7 +219,10 @@ namespace Gamesim.Presentation
             {
                 case "happy":
                 case "content": return UiTheme.Allied;
-                case "neutral": return UiTheme.Joke;
+                // Muted, not Joke: Joke is #FFC93C and Gold is #FFC726, twenty-two parts apart, and
+                // neutral is the mood the engine leaves nearly everyone in nearly all the time - so
+                // the whole cast read as though the whole cast were Head of Household.
+                case "neutral": return UiTheme.Muted;
                 case "upset": return UiTheme.Warning;
                 case "angry": return UiTheme.Conflict;
                 default: return UiTheme.Muted;

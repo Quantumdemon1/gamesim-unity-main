@@ -56,6 +56,19 @@ namespace Gamesim.Presentation
         public const int GlowWidth = 10;
 
         /// <summary>
+        /// The two weights a panel edge may carry. Resting is the slate outline: it reads as a
+        /// seam rather than a light, so a frame full of panels lets the house through. Active is
+        /// the cyan hairline, and marks the one thing the player is meant to act on next.
+        ///
+        /// <para>The step between them is alpha as well as hue, deliberately. Outline at its own
+        /// .69 and Hairline at .32 composite over the .94 panel ground to almost exactly the same
+        /// luminance - about .045 against .048 - so a hue-only step would vanish under bloom and
+        /// would not exist at all for a colour-blind player.</para>
+        /// </summary>
+        public static readonly Color EdgeResting = Outline;
+        public static readonly Color EdgeActive = new Color(Hairline.r, Hairline.g, Hairline.b, .55f);
+
+        /// <summary>
         /// Dresses <paramref name="panel"/> as one of the mockups' glass cards: the night ground at
         /// 85 %, a cyan hairline on the edge and a soft glow of the same hue outside it. The glow is
         /// a child that reaches <see cref="GlowWidth"/> px past the rect; layout and overlap checks

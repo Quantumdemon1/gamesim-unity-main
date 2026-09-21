@@ -74,7 +74,9 @@ namespace Gamesim.Presentation
             disc.transform.SetParent(marker, false);
             disc.transform.localPosition = new Vector3(0f, 0.03f, 0f);
             disc.transform.localScale = new Vector3(Radius * 2f, 0.01f, Radius * 2f);
-            Paint(disc.GetComponent<Renderer>(), new Color(1f, 0.78f, 0.15f), 2.2f);
+            // Following someone is navigation, not power. The ring and the diamond also used to
+            // disagree with each other - gold underfoot, green overhead, one marker.
+            Paint(disc.GetComponent<Renderer>(), UiTheme.Accent, 2.2f);
             ring = disc.transform;
 
             var gem = new GameObject(DiamondName, typeof(MeshFilter), typeof(MeshRenderer));

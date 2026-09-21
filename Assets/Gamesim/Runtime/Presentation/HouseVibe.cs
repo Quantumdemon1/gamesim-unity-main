@@ -18,8 +18,11 @@ namespace Gamesim.Presentation
             public IEnumerable<(string Word, int Count, string Icon, Color Tint)> Rows()
             {
                 yield return ("Activity", Activity, "people", UiTheme.Paper);
-                yield return ("Commitments", Commitments, "handshake", UiTheme.Accent);
-                yield return ("Game stakes", GameStakes, "task", UiTheme.Gold);
+                // Commitments are alliances and promises kept, which is the positive-relationship
+                // colour; game stakes are nominations, evictions and backdoors, which is danger.
+                // Neither is navigation, and neither is an achievement.
+                yield return ("Commitments", Commitments, "handshake", UiTheme.Allied);
+                yield return ("Game stakes", GameStakes, "task", UiTheme.Danger);
                 yield return ("Known total", Total, "calendar", UiTheme.Muted);
             }
         }

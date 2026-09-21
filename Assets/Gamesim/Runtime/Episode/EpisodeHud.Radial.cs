@@ -100,11 +100,11 @@ namespace Gamesim.Episode
         {
             if (dialRoot == null || topicTaken >= topicSeats) return Action(caption, action);
 
-            var rect = Chrome(caption, dialRoot, Ink);
+            // The petal's own colour IS its edge - this is the whole of what the mockup's
+            // single-word labels carried. It used to be a second border painted over Chrome's
+            // cyan one, so every petal carried two, and the cyan underneath argued with the tint.
+            var rect = Chrome(caption, dialRoot, new Color(tint.r, tint.g, tint.b, .6f));
             topicTaken++;
-            // A second hairline over the glass one, in the petal's own colour: this is the whole of
-            // what the mockup's single-word labels carried, so it has to be visible at a glance.
-            UiTheme.AddBorder(rect, UiTheme.GlassRadius, new Color(tint.r, tint.g, tint.b, .6f));
             var button = Pressable(rect, action);
 
             var cell = dialRoot.GetComponent<GridLayoutGroup>().cellSize;
@@ -161,9 +161,13 @@ namespace Gamesim.Episode
         {
             var button = rect.gameObject.AddComponent<Button>();
             var colours = button.colors;
-            colours.highlightedColor = new Color(1.2f, 1.6f, 1.45f);
+            // A neutral ramp, because these multiply whatever the control already is. The old
+            // green-weighted values pulled every hovered petal towards green, so the dial's
+            // action colours - the one place the build already spoke the mockups' colour
+            // language - stopped meaning anything the moment the keyboard reached them.
+            colours.highlightedColor = new Color(1.35f, 1.35f, 1.35f);
             colours.selectedColor = colours.highlightedColor;
-            colours.pressedColor = new Color(.65f, 1.1f, .9f);
+            colours.pressedColor = new Color(.85f, .85f, .85f);
             button.colors = colours;
             var press = rect.gameObject.AddComponent<HudPress>();
             press.ReducedMotion = ReducedMotion;

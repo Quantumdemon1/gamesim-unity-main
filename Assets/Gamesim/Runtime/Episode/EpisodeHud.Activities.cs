@@ -95,7 +95,7 @@ namespace Gamesim.Episode
                 Destroy(explorationHelp.gameObject);
             }
             float height = helpExpanded ? 180f : 54f;
-            explorationHelp = Chrome("Exploration controls", canvas.transform, Ink);
+            explorationHelp = Chrome("Exploration controls", canvas.transform);
             Anchor(explorationHelp,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,height));
             FixedButton(explorationHelp, helpExpanded ? "Hide controls" : "Help · controls",
                 new Vector2(10,-8),new Vector2(265,38), () =>

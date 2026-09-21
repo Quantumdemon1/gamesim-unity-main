@@ -208,7 +208,7 @@ namespace Gamesim.Episode
             columnFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             BrandCard(leftColumn, state);
-            var controls = Chrome("Navigation",canvas.transform,Ink); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-TopBarTop),new Vector2(465,TopBarHeight));
+            var controls = Chrome("Navigation",canvas.transform); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-TopBarTop),new Vector2(465,TopBarHeight));
             FixedButton(controls,"Notebook [J]",new Vector2(10,-9),new Vector2(142,46),director.OpenJournal);
             FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);
             FixedButton(controls,"Settings",new Vector2(292,-9),new Vector2(162,46),director.OpenSettings);
@@ -237,7 +237,7 @@ namespace Gamesim.Episode
             BuildExplorationHelp();
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
-            var status = Chrome("Status",canvas.transform,Ink);
+            var status = Chrome("Status",canvas.transform);
             status.anchorMin = new Vector2(0,0); status.anchorMax = new Vector2(1,0); status.pivot = new Vector2(.5f,0);
             status.offsetMin = new Vector2(24,20); status.offsetMax = new Vector2(-24,84);
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
@@ -248,7 +248,7 @@ namespace Gamesim.Episode
             rule.GetComponent<Image>().raycastTarget = false;
             var caption = FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
             Stretch(caption.rectTransform,32,9,24,7);
-            var promptRoot = Chrome("Interaction prompt",canvas.transform,Ink); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
+            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);
             content = null;
@@ -264,7 +264,7 @@ namespace Gamesim.Episode
             // 170 clears the bottom chrome: the status band owns y 20..84 and the interaction prompt
             // y 107..159. 900 wide centres on x 350..1250, which stops short of the exploration
             // controls at x 1291 and is narrower on the right than the old centred panel was.
-            modal = Chrome("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,ModalLift),new Vector2(ModalWidth,ModalHeight));
+            modal = Chrome("Episode panel",canvas.transform); Anchor(modal,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,ModalLift),new Vector2(ModalWidth,ModalHeight));
             // Only on closed -> open. Re-renders of an already-open panel must not re-animate.
             if (!modalWasOpen) HudReveal.Play(modal,ReducedMotion);
             modalWasOpen = true;
@@ -412,7 +412,9 @@ namespace Gamesim.Episode
             row.SetParent(content,false);
             row.gameObject.AddComponent<LayoutElement>().minHeight = 30f * FontScale;
 
-            var tint = rounded > 0 ? UiTheme.Accent : UiTheme.Danger;
+            // The outcome of a social action is a relationship moving, so it takes the relationship
+            // colours rather than navigation blue.
+            var tint = rounded > 0 ? UiTheme.Allied : UiTheme.Conflict;
             var chip = Panel("Trust chip",row,new Color(tint.r,tint.g,tint.b,.18f));
             Anchor(chip,new Vector2(0,1),new Vector2(0,1),new Vector2(4f,-1f),new Vector2(214f * FontScale,28f * FontScale));
             chip.GetComponent<Image>().raycastTarget = false;
@@ -458,7 +460,7 @@ namespace Gamesim.Episode
         public void PortraitRow(string contestantId, string heading, string body)
         {
             var portrait = Portrait(contestantId);
-            var rect = Chrome("Voter", content, Ink);
+            var rect = Chrome("Voter", content);
             rect.GetComponent<Image>().raycastTarget = false;
             float height = (portrait != null ? 66f : 52f) * FontScale;
             rect.gameObject.AddComponent<LayoutElement>().minHeight = height;
@@ -503,7 +505,7 @@ namespace Gamesim.Episode
         private float LiveFeedCard(Transform parent, float top)
         {
             const float height = 226f;
-            var card = Chrome(EpisodeDirector.LiveFeedCardName, parent, Ink);
+            var card = Chrome(EpisodeDirector.LiveFeedCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(RightColumnWidth, height));
             liveFeedHeading = CardHeading(card, "LIVE FEED", "camera");
             var dot = HudPrimitives.Disc("Live dot", card, UiTheme.Conflict);
@@ -514,7 +516,7 @@ namespace Gamesim.Episode
             picture.texture = director.LiveFeedTexture;
             picture.raycastTarget = false;
             Anchor(picture.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12, -36), new Vector2(RightColumnWidth - 24f, 145));
-            UiTheme.AddBorder(picture.rectTransform, 6, UiTheme.Hairline);
+            UiTheme.AddBorder(picture.rectTransform, 6, UiTheme.EdgeActive);
             liveFeedCaption = FixedText(card, director.LiveFeedCaption, 13, Paper, new Vector2(16, -188), new Vector2(RightColumnWidth - 32f, 30));
             SetLiveFeedPaused(director.IsPanelOpen);
             return height;
@@ -539,7 +541,7 @@ namespace Gamesim.Episode
         {
             var rooms = director.WhoIsWhere();
             const float RowHeight = 44f;
-            var column = Chrome(OverviewColumnName, parent, Ink);
+            var column = Chrome(OverviewColumnName, parent);
             Anchor(column, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
                 new Vector2(RightColumnWidth, 40 + rooms.Count * RowHeight));
             CardHeading(column, "WHO IS WHERE", "house");
@@ -777,7 +779,7 @@ namespace Gamesim.Episode
         /// </summary>
         public Button Action(string caption,Action action)
         {
-            var rect = Chrome(caption,content,Ink); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
+            var rect = Chrome(caption,content); var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
             float mark = 18f * FontScale;
             var button = FinishButton(rect,caption,action,16f,16f + mark + 10f);
             HudPrimitives.Chevron(rect,UiTheme.Hairline,mark).anchoredPosition = new Vector2(-16f,0f);
@@ -792,7 +794,7 @@ namespace Gamesim.Episode
         public Button Action(string caption,Texture portrait,Action action)
         {
             if (portrait == null) return Action(caption,action);
-            var rect = Chrome(caption,content,Ink);
+            var rect = Chrome(caption,content);
             rect.gameObject.AddComponent<LayoutElement>().minHeight = 68 * FontScale;
             var button = FinishButton(rect,caption,action,68f * FontScale);
 
@@ -871,9 +873,11 @@ namespace Gamesim.Episode
             {
                 var ring = rim.GetComponent<Image>();
                 if (ring != null)
-                    ring.color = allied ? UiTheme.Allied
-                        : trust < -5 ? UiTheme.Conflict
-                        : trust > 5 ? UiTheme.Hairline : UiTheme.Outline;
+                    // One fact, one set. This row states the player's standing with a houseguest
+                    // three times - ring, ALLY tag, trust number - and the three used to disagree:
+                    // the ring went cyan for trust while the number went blue and the tag went gold.
+                    ring.color = allied || trust > 5 ? UiTheme.Allied
+                        : trust < -5 ? UiTheme.Conflict : UiTheme.Muted;
                 HudPrimitives.AddRoleMark(rim, RoleOf(state, contestantId), rim.sizeDelta.x * .82f);
             }
 
@@ -884,13 +888,14 @@ namespace Gamesim.Episode
 
             if (allied)
             {
-                var tag = NewText(rect,"ALLY",14,UiTheme.Gold);
+                var tag = NewText(rect,"ALLY",14,UiTheme.Allied);
                 Anchor(tag.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-96f,0f),new Vector2(48,22));
                 tag.alignment = TextAlignmentOptions.Right;
             }
 
             var reading = NewText(rect,"Trust " + trust.ToString("0"),15,
-                trust > 5 ? UiTheme.Accent : trust < -5 ? UiTheme.Danger : UiTheme.Muted);
+                // The same set as the portrait ring and the ALLY tag above.
+                trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
             Anchor(reading.rectTransform,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-16f,0f),new Vector2(74,22));
             reading.alignment = TextAlignmentOptions.Right;
         }
@@ -1004,9 +1009,9 @@ namespace Gamesim.Episode
         private void FollowChip(string name)
         {
             if (string.IsNullOrEmpty(name)) return;
-            var chip = Chrome(FollowChipName, canvas.transform, Ink);
+            var chip = Chrome(FollowChipName, canvas.transform);
             Anchor(chip, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -78), new Vector2(360, 34));
-            var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Gold,
+            var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Accent,
                 new Vector2(12, -8), new Vector2(336, 20));
             text.alignment = TextAlignmentOptions.Center;
         }
@@ -1278,14 +1283,25 @@ namespace Gamesim.Episode
         /// against the set's bloom instead of dissolving into it. The border never takes raycasts.
         /// </summary>
         /// <summary>
-        /// A quiet, readable card. Strong glow is reserved for selected portraits and ceremony
-        /// beats; persistent chrome uses an opaque surface and restrained border.
+        /// A quiet, readable card. The edge says how much this panel is asking for: leave it out
+        /// and it rests, pass <see cref="UiTheme.EdgeActive"/> for the one panel the player is
+        /// meant to act on, or pass a semantic colour where the panel IS that thing - the
+        /// conversation petals pass their action's own tint.
+        ///
+        /// <para>This used to take a Color it never read. Every one of the seventeen call sites
+        /// passed Ink into the void and every panel came out wearing the same cyan hairline, so a
+        /// resting frame carried eighteen identical lit rectangles and nothing could be emphasised
+        /// by colour at all. The mockups do the opposite: in mockup-01 no persistent panel has a
+        /// lit edge, and in mockup-04 exactly one element in the frame does.</para>
+        ///
+        /// <para>The default is null rather than default(Color), which is transparent black and
+        /// would silently erase every edge instead.</para>
         /// </summary>
-        private static RectTransform Chrome(string name,Transform parent,Color color)
+        private static RectTransform Chrome(string name,Transform parent,Color? edge=null)
         {
             var fill = UiTheme.GlassFill; fill.a = .94f;
             var rect=Panel(name,parent,fill,UiTheme.GlassRadius);
-            UiTheme.AddBorder(rect,UiTheme.GlassRadius,new Color(UiTheme.Hairline.r,UiTheme.Hairline.g,UiTheme.Hairline.b,.32f));
+            UiTheme.AddBorder(rect,UiTheme.GlassRadius,edge ?? UiTheme.EdgeResting);
             return rect;
         }
         /// <summary>

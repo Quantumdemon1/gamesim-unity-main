@@ -69,7 +69,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void BrandCard(RectTransform column, EpisodeState state)
         {
-            var brand = Chrome("Brand", column, Ink);
+            var brand = Chrome("Brand", column);
             Size(brand, BrandWidth, TopBarHeight);
 
             float left = 16f;
@@ -97,9 +97,11 @@ namespace Gamesim.Episode
         /// </summary>
         private void ObjectiveCard(RectTransform column, EpisodeState state, bool recovery)
         {
-            var objective = Chrome("Objective", column, Ink);
+            var objective = Chrome("Objective", column, UiTheme.EdgeActive);
             Size(objective, ObjectiveWidth, Compact ? 238f : ObjectiveHeight);
-            CardHeading(objective, "CURRENT OBJECTIVE", "task", UiTheme.Gold);
+            // What to do next is navigation, not an achievement - and this heading is on screen
+            // for the whole session, so it set the tone for what gold appeared to mean.
+            CardHeading(objective, "CURRENT OBJECTIVE", "task", UiTheme.Accent);
 
             FixedText(objective, state.pendingDiary != null ? "Next stop: private diary room"
                 : EpisodeEngine.IsCompetition(state.phase) ? "Next stop: competition yard"
@@ -138,7 +140,7 @@ namespace Gamesim.Episode
         /// </summary>
         private void HousePill(EpisodeState state)
         {
-            var pill = Chrome("House pill", canvas.transform, Ink);
+            var pill = Chrome("House pill", canvas.transform);
             Anchor(pill, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0f, -TopBarTop), new Vector2(PillWidth, TopBarHeight));
 
             var holder = state.Find(state.hohId);
@@ -204,7 +206,7 @@ namespace Gamesim.Episode
         {
             if (state == null) return;
             var reading = HouseVibe.Of(state);
-            var card = Chrome(HouseVibeCardName, column, Ink);
+            var card = Chrome(HouseVibeCardName, column);
             Size(card, ObjectiveWidth, 46f + 4f * VibeRowHeight + 26f);
             var heading = CardHeading(card, "KNOWN HOUSE EVENTS", "people");
             heading.characterSpacing = 2f;
@@ -278,7 +280,7 @@ namespace Gamesim.Episode
                 .ToList();
 
             const float RowHeight = 54f;
-            var card = Chrome(RecentEventsCardName, parent, Ink);
+            var card = Chrome(RecentEventsCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
                 new Vector2(RightColumnWidth, 46f + Mathf.Max(1, entries.Count) * RowHeight));
             CardHeading(card, "RECENT EVENTS", "journal");

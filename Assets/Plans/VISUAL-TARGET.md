@@ -437,6 +437,32 @@ Neither assertion was widened and neither was deleted. **Measured after: 20 runs
 cases, 0 failures.** The lesson worth keeping is the cheap one: two plausible mechanisms were wrong,
 and only running the thing twenty times said so.
 
+**What the build audit was for.** `Tools/build-review-candidate.ps1` hash-verifies every piece of
+test evidence before it will build, then audits whether the build changed any committed input. The
+build succeeded - a 1.02 GB player, no errors, from the verified tree - and the audit refused it,
+which is the audit working. Two files had been rewritten by the build itself; the pre-build audit
+was clean, so the build was the author.
+
+One was real. `UniversalRenderPipelineGlobalSettings.asset` held the definition block for
+`UniversalRenderPipelineFilmGrainResources` but nothing referenced it, leaving a hole in an
+otherwise contiguous run of rids, and Unity relinks it during a build. Taking Unity's regenerated
+version is one line.
+
+The other is cosmetic and is left for a decision: Unity reorders the scripting defines
+alphabetically during a build. Committing the normalised order would mean committing
+`ProjectSettings.asset`, which is the one file that must never carry the local `GAMESIM_UMA` define
+- see the rule above - so the clean fix is to make the `buildSettingsSha256` normalisation in
+`Tools/review-evidence.ps1` compare the define *set* rather than its spelling. That widens a safety
+gate, so it is somebody's call rather than a tidy-up.
+
+The same run turned up something the audit had been carrying all along: all 96 authored FBX metas
+still held the obsolete `materialLocation: 0`, and the importer rewrote them to `1` on every single
+run. Ninety-six entries of accounted drift is where an unaccounted one goes to hide. The importer's
+output is now committed, and the next run reports 0 changes rather than 96. Worth remembering that
+a rule in the project and the rule's output in the repository are two different things.
+
+Candidate gate, 2026-09-20: EditMode 1372/1372, PlayMode 286/286, UMA 30/30, drift 0.
+
 **A gate that found something.** The metadata invariant - every tracked asset under `Assets/` has a
 tracked `.meta`, no `.meta` is an orphan, no GUID collides - now has 997 metas passing it, and it
 caught a real omission on its first run: `AppearanceCharacterSlotTests.cs` had been committed

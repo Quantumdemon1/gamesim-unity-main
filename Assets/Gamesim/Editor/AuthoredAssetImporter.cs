@@ -9,8 +9,9 @@ namespace Gamesim.Editor
     ///
     /// <para>The exporter on the Blender side (<c>ArtSource/tools/bb_export.py</c>) writes metres
     /// with the axis conversion baked in, so the importer takes the file's scale as it is and bakes
-    /// nothing twice. Colliders are never generated: furniture is collider-free by design, and the
-    /// shell and set pieces carry their own <c>_col</c> meshes. Existing materials beside the
+    /// nothing twice. Colliders are never generated <em>here</em>: the shell and set pieces carry
+    /// their own <c>_col</c> meshes, and everything else is boxed in the scene by
+    /// <c>HouseFurnitureCollision</c> rather than at import. Existing materials beside the
     /// model are matched by name, which is what lets a re-export keep the material a scene already
     /// references.</para>
     ///

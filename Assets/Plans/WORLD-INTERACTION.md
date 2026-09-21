@@ -243,11 +243,16 @@ symptom to search for. No test caught it, because nothing in the suite drives th
 `HousePlayerController.Update`. It is pinned by two now.
 
 **Still open.** Hover highlight; feedback for a click that lands on nothing; and the other half of
-the guard — transparent chrome that swallows clicks while carrying no control. That last one needs
-measuring rather than guessing: `EpisodeHud.Panel` does set `raycastTarget = true` unconditionally,
-but most callers turn it off again straight away, so the offenders have to be found in Play Mode
-rather than named from the source. `competition-entry` and `episode-screen` are deliberately left
-out of `TryClick` — they are staging marks the director walks the cast to, not commands.
+the guard — transparent chrome that swallows clicks while carrying no control. This paragraph used
+to say that last one had to be found in Play Mode because the offenders could not be named from the
+source. They can: `EpisodeHud.Panel` sets `raycastTarget = true` unconditionally, `Chrome()` inherits
+it, and four `Chrome` panels carry no control at all — `FixedText` and the border both opt out, so a
+panel whose only children are those two is a transparent click sink. Name them and clear the flag.
+
+`competition-entry` is deliberately left out of `TryClick`: it is a staging mark the director walks
+the cast to, not a command. `episode-screen` **was** left out on the same reasoning and that was
+wrong — with the proximity prompt ranking any nearby houseguest above it, excluding it removed the
+last way in. It is clickable, and routes to `GoToStation`, the command its HUD button already runs.
 
 **The world click is a second route to the same commands, never a replacement.** Every ceremony is
 committed today by a captioned button, and those captions are what the tests and screen readers

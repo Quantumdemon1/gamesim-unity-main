@@ -58,7 +58,7 @@ finally {
     $passed = -not $failure -and $summaries.Count -eq $suites.Count -and
         @($summaries | Where-Object { $_.failed -ne 0 -or $_.skipped -ne 0 -or $_.passed -ne $_.total -or $_.exit -ne 0 }).Count -eq 0 -and
         @($changes | Where-Object { -not $_.allowed }).Count -eq 0
-    Write-ReviewJson ([ordered]@{schema=2;name=$Name;status=$(if ($passed) {'Passed'} else {'Failed'});umaEnabled=(-not $WithoutUma);
+    Write-ReviewJson ([ordered]@{schema=3;name=$Name;status=$(if ($passed) {'Passed'} else {'Failed'});umaEnabled=(-not $WithoutUma);
         sourceManifest=$manifestPath;sourceManifestSha256=(Get-ReviewHash $manifestPath);
         finalSourceManifest=$afterPath;finalSourceManifestSha256=(Get-ReviewHash $afterPath);
         driftReport=$driftPath;driftReportSha256=(Get-ReviewHash $driftPath);failure=$failure;suites=$summaries}) $summaryPath

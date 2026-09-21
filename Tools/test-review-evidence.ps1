@@ -90,6 +90,31 @@ try {
     Assert-Evidence ((ConvertTo-ReviewAcceptanceSettings $caseSensitiveSettings $true) -ceq "  scriptingDefineSymbols:`n    Standalone: sentis_analytics_enabled;gamesim_uma`n") 'C# scripting symbol names are case-sensitive; different-case tokens must stay intact.'
     $otherSettings = "  unrelatedSettings:`n    Standalone: SENTIS_ANALYTICS_ENABLED;GAMESIM_UMA`n" + $packageSettings
     Assert-Evidence ((ConvertTo-ReviewAcceptanceSettings $otherSettings $true) -ceq ("  unrelatedSettings:`n    Standalone: SENTIS_ANALYTICS_ENABLED;GAMESIM_UMA`n" + $noUmaSettings)) 'Only scriptingDefineSymbols may be transformed, not other platform settings.'
+    # The acceptance sync removes SENTIS_ANALYTICS_ENABLED; a player build puts it back. That is the
+    # package's symbol, not the product's, and the audit must not read it as the build having
+    # rewritten a committed input - while every other define stays significant.
+    $sentisFixture = "  defaultScreenWidth: 1600`n  defaultScreenHeight: 900`n  fullscreenMode: 3`n  resizableWindow: 1`n  preloadedAssets:`n  - {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}`n  scriptingDefineSymbols:`n    Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA`n"
+    Put-Fixture $source 'ProjectSettings/ProjectSettings.asset' $sentisFixture
+    $syncedBefore = Snapshot
+    Put-Fixture $source 'ProjectSettings/ProjectSettings.asset' ($sentisFixture.Replace(
+        'Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA', 'Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA;SENTIS_ANALYTICS_ENABLED'))
+    Assert-Evidence (@(Compare-ReviewInputs $syncedBefore (Snapshot) -AllowBuildSettings | Where-Object { -not $_.allowed }).Count -eq 0) 'A build may hand back the inference package analytics symbol the sync removed.'
+    Assert-Evidence (@(Compare-ReviewInputs $syncedBefore (Snapshot)).Count -eq 1) 'That symbol returning is still reported where build settings are not allowed.'
+    Put-Fixture $source 'ProjectSettings/ProjectSettings.asset' ($sentisFixture.Replace(
+        'Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA', 'Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA;GAMESIM_EXTRA'))
+    Assert-Evidence (@(Compare-ReviewInputs $syncedBefore (Snapshot) -AllowBuildSettings | Where-Object { -not $_.allowed }).Count -eq 1) 'Only that one symbol is forgiven; any other added define is still drift.'
+    Put-Fixture $source 'ProjectSettings/ProjectSettings.asset' ($sentisFixture.Replace(';GAMESIM_UMA', ''))
+    Assert-Evidence (@(Compare-ReviewInputs $syncedBefore (Snapshot) -AllowBuildSettings | Where-Object { -not $_.allowed }).Count -eq 1) 'A build that dropped GAMESIM_UMA is still drift.'
+    Put-Fixture $source 'ProjectSettings/ProjectSettings.asset' ($sentisFixture.Replace(
+        "    Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA`n", "    Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA`n    Android: SENTIS_ANALYTICS_ENABLED`n"))
+    Assert-Evidence (@(Compare-ReviewInputs $syncedBefore (Snapshot) -AllowBuildSettings | Where-Object { -not $_.allowed }).Count -eq 1) 'The symbol is forgiven on Standalone only, not on another platform.'
+    # Pinning a decision rather than a behaviour: define ORDER is deliberately still significant,
+    # because no build here has been observed to reorder them.
+    Put-Fixture $source 'ProjectSettings/ProjectSettings.asset' ($sentisFixture.Replace(
+        'Standalone: APP_UI_EDITOR_ONLY;GAMESIM_UMA', 'Standalone: GAMESIM_UMA;APP_UI_EDITOR_ONLY'))
+    Assert-Evidence (@(Compare-ReviewInputs $syncedBefore (Snapshot) -AllowBuildSettings | Where-Object { -not $_.allowed }).Count -eq 1) 'Reordering the defines is not forgiven; that tolerance was never needed here.'
+    Put-Fixture $source 'ProjectSettings/ProjectSettings.asset' $settings
+    Assert-Evidence ((ConvertTo-ReviewBuildSettings (ConvertTo-ReviewBuildSettings $sentisFixture)) -ceq (ConvertTo-ReviewBuildSettings $sentisFixture)) 'Build-settings normalization must stay idempotent with the symbol removal in it.'
     $emptyJson = Join-Path $fixture 'empty.json'
     Write-ReviewJson @() $emptyJson
     Assert-Evidence (([IO.File]::ReadAllText($emptyJson)).Trim() -match '^\[\s*\]$') 'An empty drift report must remain valid JSON.'

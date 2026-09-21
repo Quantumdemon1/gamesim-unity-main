@@ -26,7 +26,22 @@ function ConvertTo-ReviewAcceptanceSettings([string]$Text, [bool]$WithoutUma) {
     })
 }
 function ConvertTo-ReviewBuildSettings([string]$Text) {
-    # Only U01ProjectSetup.BuildConfiguredPort's explicit settings writes are normalized.
+    # Only U01ProjectSetup.BuildConfiguredPort's explicit settings writes are normalized, plus the
+    # inference package's own analytics symbol.
+    #
+    # sync-acceptance.ps1 strips SENTIS_ANALYTICS_ENABLED from the acceptance copy, and running the
+    # editor to produce a player build hands it straight back: the post-build file differed from the
+    # pre-build one by exactly ';SENTIS_ANALYTICS_ENABLED' and 25 bytes, which the audit could only
+    # read as a build that had rewritten a committed input. The token is the package's rather than
+    # the product's - the same judgement the sync already makes - and the committed project carries
+    # it, so a build putting it back moves the copy towards the committed state rather than away
+    # from it. Neutralizing it on both sides here is exactly that judgement and nothing wider:
+    # $false keeps GAMESIM_UMA significant, the strip is Standalone-only, and every other define
+    # still counts. It is idempotent, so the preview path having applied it already is harmless.
+    #
+    # Deliberately NOT normalized: the ORDER of the defines. No build here has ever reordered them,
+    # and a safety gate should not grow tolerances for things that have not happened.
+    $Text = ConvertTo-ReviewAcceptanceSettings $Text $false
     foreach ($setting in @(@('defaultScreenWidth','1600'), @('defaultScreenHeight','900'),
         @('fullscreenMode','3'), @('resizableWindow','1'))) {
         $Text = [regex]::Replace($Text, '(?m)^(  ' + $setting[0] + ': )[^\r\n]*', '${1}' + $setting[1])
@@ -106,7 +121,7 @@ function New-ReviewInputManifest {
             $records.Add([pscustomobject]$record)
         }
     }
-    [pscustomobject][ordered]@{schema=2; capturedUtc=[DateTime]::UtcNow.ToString('o'); projectRoot=$ProjectRoot;
+    [pscustomobject][ordered]@{schema=3; capturedUtc=[DateTime]::UtcNow.ToString('o'); projectRoot=$ProjectRoot;
         workflowRoot=$WorkflowRoot; umaEnabled=(-not $WithoutUma); previewSync=[bool]$PreviewSync;metadataArchive=$MetaArchive;
         coverage=@('Assets/**','ProjectSettings/**','Packages/**','ArtSource/**','Tools/** (live workflow)');
         files=@($records | Sort-Object path)}
@@ -131,7 +146,7 @@ function Compare-ReviewInputs {
             $allowed = $true; $kind = 'shipping-render-setting'; $reason = 'Only GPU Resident Drawer 0 (test harness) to 1 (shipping).'
         } elseif ($old -and $new -and $AllowBuildSettings -and $path -eq 'ProjectSettings/ProjectSettings.asset' -and
             $new.configuredBuildSettings -and $old.buildSettingsSha256 -eq $new.buildSettingsSha256) {
-            $allowed = $true; $kind = 'configured-build-settings'; $reason = 'Only U01 window settings/input-action preload; full before/after hashes retained.'
+            $allowed = $true; $kind = 'configured-build-settings'; $reason = 'Only U01 window settings/input-action preload and the inference package analytics symbol; full before/after hashes retained.'
         } elseif ($AllowImportMeta -and $old -and $new -and $path -match '^Assets/Gamesim/Art/Authored/.+\.fbx\.meta$' -and
             $old.materialLocation -eq 0 -and $new.materialLocation -eq 1 -and
             $old.supportedMaterialSha256 -and $old.supportedMaterialSha256 -eq $new.supportedMaterialSha256) {

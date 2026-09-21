@@ -448,12 +448,30 @@ One was real. `UniversalRenderPipelineGlobalSettings.asset` held the definition 
 otherwise contiguous run of rids, and Unity relinks it during a build. Taking Unity's regenerated
 version is one line.
 
-The other is cosmetic and is left for a decision: Unity reorders the scripting defines
-alphabetically during a build. Committing the normalised order would mean committing
-`ProjectSettings.asset`, which is the one file that must never carry the local `GAMESIM_UMA` define
-- see the rule above - so the clean fix is to make the `buildSettingsSha256` normalisation in
-`Tools/review-evidence.ps1` compare the define *set* rather than its spelling. That widens a safety
-gate, so it is somebody's call rather than a tidy-up.
+The other was recorded here as "Unity reorders the scripting defines alphabetically during a build",
+and that was wrong. It is worth leaving the correction visible, because the mistake is the cheapest
+kind to repeat. The diff that produced it compared the C: working tree against the D: acceptance
+copy - but `sync-acceptance.ps1` rewrites D:'s `ProjectSettings.asset` after every mirror, stripping
+`SENTIS_ANALYTICS_ENABLED` from the Standalone defines. So C: and D: never held the same line, and
+the pair the audit actually compares is D:-before against D:-after. Reconstructing the recorded
+sha256 from a candidate edit settles it where reading a diff did not: the post-build file is the
+pre-build file plus exactly `;SENTIS_ANALYTICS_ENABLED`, 25 bytes, on a line that was already
+sorted. A player build re-adds the analytics symbol the sync had removed. Nothing was reordered.
+
+The fix is therefore one line in `ConvertTo-ReviewBuildSettings`: neutralise that symbol on both
+sides by reusing `ConvertTo-ReviewAcceptanceSettings`, which the sync already relies on. That
+applies a judgement the project had already made - the symbol is the inference package's, not the
+product's, and the committed project carries it, so a build handing it back moves the copy towards
+the committed state rather than away from it. `GAMESIM_UMA` stays significant, the removal is
+Standalone-only, and every other define still counts. Define ORDER is deliberately NOT normalised,
+and a test pins that: no build here has ever reordered them, and a safety gate should not grow
+tolerances for things that have not happened.
+
+Two consequences. `buildSettingsSha256` changed meaning, so the manifest and summary schema went to
+3 and stale evidence is now refused with a message that says to re-run the verification, rather than
+with a drift report naming the wrong culprit. And the allowed-drift record's reason text now names
+the analytics symbol, because an audit record that under-describes what it forgave is worth less
+than no record at all.
 
 The same run turned up something the audit had been carrying all along: all 96 authored FBX metas
 still held the obsolete `materialLocation: 0`, and the importer rewrote them to `1` on every single

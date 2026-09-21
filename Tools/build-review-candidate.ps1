@@ -7,8 +7,12 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $acceptanceRoot = (Resolve-Path -LiteralPath $(if ($env:GAMESIM_ACCEPTANCE) { $env:GAMESIM_ACCEPTANCE } else { 'D:\GamesimAcceptance' })).Path
 $summaryPath = Join-Path $acceptanceRoot "Logs/$TestName-summary.json"
 $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
-if ($summary.schema -ne 2 -or $summary.status -ne 'Passed' -or $summary.umaEnabled -eq [bool]$WithoutUma) {
-    throw 'A fully passing schema2 summary for the same UMA configuration is required.'
+# Schema 3 changed what buildSettingsSha256 means, so evidence captured by an earlier version
+# is not comparable with a manifest captured now: the hashes would differ for a file that had
+# not changed, and the audit would refuse a sound build for the wrong reason. Rejecting the
+# stale summary outright says so, rather than leaving that to be read out of a drift report.
+if ($summary.schema -ne 3 -or $summary.status -ne 'Passed' -or $summary.umaEnabled -eq [bool]$WithoutUma) {
+    throw 'A fully passing schema3 summary for the same UMA configuration is required; re-run verify-review-candidate.ps1 with a fresh name if the evidence predates the current input accounting.'
 }
 foreach ($pair in @(@($summary.sourceManifest,$summary.sourceManifestSha256),
     @($summary.finalSourceManifest,$summary.finalSourceManifestSha256), @($summary.driftReport,$summary.driftReportSha256))) {
@@ -27,6 +31,9 @@ foreach ($suite in $summary.suites) {
 }
 $testedBefore = Get-Content -LiteralPath $summary.sourceManifest -Raw | ConvertFrom-Json
 $testedAfter = Get-Content -LiteralPath $summary.finalSourceManifest -Raw | ConvertFrom-Json
+if ($testedBefore.schema -ne 3 -or $testedAfter.schema -ne 3) {
+    throw 'The tested input manifests are not schema3; re-run verify-review-candidate.ps1 with a fresh name.'
+}
 $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
 $prefix = Join-Path $acceptanceRoot "Logs/review13-build-$stamp"
 $preview = New-ReviewInputManifest -ProjectRoot $projectRoot -WorkflowRoot $projectRoot -WithoutUma:$WithoutUma -PreviewSync -RetainedRoot $acceptanceRoot

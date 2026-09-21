@@ -98,7 +98,9 @@ namespace Gamesim.Tests.PlayMode
             // has positioned the new layout-group children for the frame actually rendered.
             Canvas.ForceUpdateCanvases();
             // The modal and interaction prompt deliberately sit over the scene, unlike chrome.
-            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status", "House pill", "Live feed" };
+            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status",
+                "House pill", "Live feed", EpisodeHud.HouseVibeCardName, EpisodeHud.RecentEventsCardName,
+                CastRail.RootName, IconRail.RootName };
             var panels = names.Select(ActiveChromePanel).Where(rect => rect != null).ToArray();
             Assert.That(panels, Has.Length.EqualTo(names.Length),
                 "Expected every fixed panel to be present; found " + panels.Length + " of " + names.Length + ".");

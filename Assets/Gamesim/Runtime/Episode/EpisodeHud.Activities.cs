@@ -25,20 +25,27 @@ namespace Gamesim.Episode
             {
                 if(canvas==null)return new Rect(24,100,1552,696);
                 var root=(RectTransform)canvas.transform;var size=root.rect.size;
-                float left=14f+CastRail.Width+12f,right=size.x-24f,bottom=100f;
+                // LeftColumnX says this once; this line used to say it again by hand.
+                float left=LeftColumnX,right=size.x-24f,bottom=100f,top=size.y-104f;
                 foreach(var item in root.GetComponentsInChildren<RectTransform>())
                 {
                     bool leftCard=item.name=="Objective" || item.name==HouseVibeCardName;
                     bool rightCard=item.name==EpisodeDirector.LiveFeedCardName || item.name==RecentEventsCardName
                         || item.name==OverviewColumnName || item.name=="Exploration controls";
-                    bool bottomCard=item.name=="Interaction prompt" || item.name==FollowChipName;
-                    if(!leftCard && !rightCard && !bottomCard)continue;
+                    bool bottomCard=item.name=="Interaction prompt";
+                    // The follow chip is anchored TOP-centre, under the house pill, and was being
+                    // counted as a bottom card: it pushed `bottom` to 834 while `top` was 796, so
+                    // MinMaxRect returned an inverted rect and every world bubble was pinned above
+                    // the top bar for as long as the player was following anybody.
+                    bool topCard=item.name==FollowChipName;
+                    if(!leftCard && !rightCard && !bottomCard && !topCard)continue;
                     var bounds=RectTransformUtility.CalculateRelativeRectTransformBounds(root,item);
                     if(leftCard)left=Mathf.Max(left,bounds.max.x+size.x*.5f+12f);
                     if(rightCard)right=Mathf.Min(right,bounds.min.x+size.x*.5f-12f);
                     if(bottomCard)bottom=Mathf.Max(bottom,bounds.max.y+size.y*.5f+12f);
+                    if(topCard)top=Mathf.Min(top,bounds.min.y+size.y*.5f-12f);
                 }
-                return Rect.MinMaxRect(left,bottom,Mathf.Max(left+1f,right),size.y-104f);
+                return Rect.MinMaxRect(left,bottom,Mathf.Max(left+1f,right),Mathf.Max(bottom+1f,top));
             }
         }
 

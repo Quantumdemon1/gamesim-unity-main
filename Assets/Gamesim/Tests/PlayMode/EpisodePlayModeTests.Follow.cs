@@ -61,6 +61,44 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(t => t.name == EpisodeHud.FollowChipName), Is.False, "and so does the chip");
         }
 
+        /// <summary>
+        /// Following somebody must not push the world's speech bubbles off the top of the screen.
+        ///
+        /// <para>The follow chip is anchored top-centre, under the house pill, and the safe-bounds
+        /// calculation counted it among the BOTTOM cards - so it raised the floor to 834 while the
+        /// ceiling was 796, and Rect.MinMaxRect handed back an inverted rect. Every ambient
+        /// conversation bubble was then clamped to a line above the top bar, for as long as the
+        /// player was following anyone. No test caught it because none of them followed anyone
+        /// first, which is the whole lesson.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Follow_DoesNotInvertTheBoundsTheWorldsSpeechBubblesLiveIn()
+        {
+            var hud = director.GetComponentInChildren<EpisodeHud>();
+            Assert.That(hud, Is.Not.Null);
+
+            var before = hud.WorldCaptionSafeBounds;
+            Assert.That(before.height, Is.GreaterThan(0f), "with nobody followed");
+
+            var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
+            director.FollowHouseguest(maya.Id);
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases();
+
+            Assert.That(director.FollowedId, Is.EqualTo(maya.Id), "the fixture must actually be following.");
+            var chip = director.GetComponentsInChildren<RectTransform>()
+                .FirstOrDefault(rect => rect.name == EpisodeHud.FollowChipName);
+            Assert.That(chip, Is.Not.Null, "and the chip must be on screen, or this proves nothing.");
+
+            var during = hud.WorldCaptionSafeBounds;
+            Assert.That(during.height, Is.GreaterThan(0f),
+                "Following somebody inverted the caption bounds: " + during);
+            Assert.That(during.yMax, Is.LessThanOrEqualTo(before.yMax + .001f),
+                "the chip may lower the ceiling, never raise it");
+            Assert.That(during.yMin, Is.EqualTo(before.yMin).Within(.001f),
+                "and a top-anchored chip must not move the floor at all");
+        }
+
         [UnityTest]
         public IEnumerator Follow_BracketsCycleTheHouseOutsideAPanelAndLeaveTheCameraAloneInsideOne()
         {

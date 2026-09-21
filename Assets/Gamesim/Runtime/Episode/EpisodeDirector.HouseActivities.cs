@@ -26,7 +26,12 @@ namespace Gamesim.Episode
 
         private void SelectHouseFurniture(HouseInteractionAnchor anchor)
         {
-            if(!HouseFurniture.TryDescribe(anchor,out _,out _) || anchor.gameObject.scene!=gameObject.scene)return;
+            if(anchor==null || anchor.gameObject.scene!=gameObject.scene)return;
+            if(!HouseFurniture.TryClick(anchor,out var what,out _))return;
+            // The world click is a second route to a command that already has a caption, never a
+            // replacement for one. Clicking the diary chair walks you there exactly as the Diary
+            // shortcut does; it does not open the diary, because entering still means arriving.
+            if(what==HousePropClick.Diary){GoToDiary();return;}
             OpenHouseActivities();
             if(houseActivitiesOpen){selectedFurniture=anchor;Render();}
         }

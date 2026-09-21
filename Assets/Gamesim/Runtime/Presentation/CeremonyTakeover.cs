@@ -212,6 +212,7 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if (!playing) return;
+            CeremonyOverlays.Showing();
             elapsed += Time.unscaledDeltaTime;
 
             // Read the device directly rather than through the event system. The card carries no

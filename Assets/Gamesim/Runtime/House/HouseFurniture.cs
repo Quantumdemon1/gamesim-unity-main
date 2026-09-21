@@ -7,6 +7,9 @@ namespace Gamesim.House
 {
     public enum HouseFurnitureActivity { PrepareSnack, SitAtTable, Rest }
 
+    /// <summary>Which command a click on a prop is a second route to.</summary>
+    public enum HousePropClick { None, Activity, Diary }
+
     /// <summary>Only authored, real props enter this catalog. No runtime placeholder furniture.</summary>
     public static class HouseFurniture
     {
@@ -27,8 +30,34 @@ namespace Gamesim.House
             }
         }
 
+        /// <summary>
+        /// What clicking this prop should do.
+        ///
+        /// <para>Deliberately a wider list than <see cref="TryDescribe"/>, and deliberately a
+        /// separate one. <see cref="TryDescribe"/> is the catalogue of places a houseguest can be
+        /// posed at, and it drives the ambient routine that walks cooling-down NPCs to the kitchen
+        /// counter and the loungers - widening <em>that</em> would quietly change where the cast
+        /// spends its idle time. Clicking is a different question, and the diary chair is the case
+        /// that proves it: nobody idles there, and it is the one prop in the house every player
+        /// tries to click.</para>
+        ///
+        /// <para>A click is always a second route to a command that already has a caption. Clicking
+        /// the diary chair does what the Diary shortcut does - walks you there and says so. It does
+        /// not open the diary, because entering still requires physically reaching the room.</para>
+        /// </summary>
+        public static bool TryClick(HouseInteractionAnchor anchor,out HousePropClick what,out string caption)
+        {
+            what=HousePropClick.None;caption=null;
+            if(anchor==null || !anchor.isActiveAndEnabled)return false;
+            if(TryDescribe(anchor,out _,out caption)){what=HousePropClick.Activity;return true;}
+            if(anchor.VenueId==HouseInteractionAnchors.DiaryVenue)
+            {what=HousePropClick.Diary;caption="Go to the diary room";return true;}
+            return false;
+        }
+
         public static HouseInteractionAnchor AtProp(Scene scene,Transform clicked)
-            => InScene(scene).FirstOrDefault(anchor=>anchor.transform.parent!=null && clicked.IsChildOf(anchor.transform.parent));
+            => HouseInteractionAnchors.InScene(scene).FirstOrDefault(anchor=>
+                TryClick(anchor,out _,out _) && anchor.transform.parent!=null && clicked.IsChildOf(anchor.transform.parent));
 
         /// <summary>Explicit authoring repair of the old default, preserving custom approach edits.</summary>
         public static int AuthorLoungerApproaches(Scene scene)

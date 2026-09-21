@@ -129,6 +129,7 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if (!playing) return;
+            CeremonyOverlays.Showing();
             elapsed += Time.unscaledDeltaTime;
 
             float keysStart = FadeIn + IntroHold;

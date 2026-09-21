@@ -129,8 +129,9 @@ conversation sightlines, body clearance, seated-NPC picking and camera pull-in a
 what lets collision and picking stop fighting each other.
 
 ### Stage 3 — give the authored props collision, and bake (M) — **done**
-**126 of 262 walk-through became 42, and every room still reaches every other room.** The NavMesh
-asset went from 21 KB to 39 KB, which is the furniture arriving in it.
+**126 of 262 walk-through became 41.** Every room still reaches every other room, and all sixteen
+interaction approach points are still somewhere a houseguest can stand. The NavMesh asset went from
+21 KB to 39 KB, which is the furniture arriving in it.
 
 Not by the `*_col` route in the end. That pipeline is real and still preferred where an export
 already has a collision child — the pool and the hot tub keep theirs, moved onto layer 8 — but it
@@ -165,33 +166,88 @@ Containment only: a prop may not stand *on* a destination.
 registered and a `BuildNavMesh` leaves that state depending on what the caller did first. Both
 readings now name the mesh they are measuring.
 
-**Doorways are resolved by measurement, not by a list.** A prop standing in an opening is not
-distinguishable by size or name from the same prop against a wall — the HoH door reads as a 3.16 m
-sideboard. `HouseDoorwayResolver` bakes, asks which rooms it just lost, walks the committed routes
-into them to find the boxes in the corridor, switches them off one at a time until the house joins
-up, and then gives each one back to find the smallest set that has to stay off. It found **4 of 119**:
-`bb_set_hohdoor`, one `bookcaseOpen` in the yard doorway, and two `chairModernCushion` at the
-nomination table. Each keeps its box, switched off, with the room it was costing written into its
-name — so the next person to wonder why that bookcase is walk-through finds the answer in the
-hierarchy. A re-fit switches them back on and makes them earn it again.
+**What is backed off is resolved by measurement, not by a list.** A prop standing in an opening is
+not distinguishable by size or name from the same prop against a wall — the HoH door reads as a
+3.16 m sideboard. `HouseDoorwayResolver` bakes with the collision off to learn what the house could
+do, bakes again with it on, and backs off the smallest set that gets the difference back.
+
+It measures three things, because a bake can take any of them away, and each was learned by losing
+it. **Rooms**: every marker routes to every other. **Approaches**: every anchor's approach point is on
+the mesh *and* routable from a room — a bay walled in by its own furniture samples fine and cannot be
+walked into. **Actor bindings**: every houseguest can bind where it stands, which `HouseNpcMotion`
+does by sampling the mesh within 0.25 m of its own feet.
+
+The third cost nineteen PlayMode tests before it existed. A single `bb_set_comp_stack` in the
+competition yard took the floor out from under Taylor Kim two metres away, and sixteen unrelated
+tests failed with `NPC carving did not clear to a safe floor binding` — the same message obstacle
+carving produced, meaning the same thing, naming neither the actor nor the reason. It does now.
+
+There is a measurement trap under that. Every houseguest owns a carving `NavMeshObstacle` and carving
+is live in **edit mode too**, so measuring actor binding from the editor sits each of them in a 0.90 m
+hole of their own making. All five read *exactly* 0.900 m from the mesh, which is the tell. The
+resolver suppresses the cast's carving while it measures, and restores it afterwards.
+
+It backed off **12 of 119**: `bb_set_hohdoor`, one `bookcaseOpen` in the yard doorway, one
+`lampRoundFloor`, two `chairModernCushion` at the nomination table, one `bb_set_lounger`, one
+`bb_set_comp_stack`, and **six of the sixteen dining chairs**. Each keeps its box, switched off,
+with the room, venue or actor it was costing written into its name — so the next person to wonder why that bookcase is walk-through
+finds the answer in the hierarchy. A re-fit switches them all back on and makes them earn it again.
+
+**The dining set is the interesting one, and it is the room rather than the fitting.** Sixteen chairs
+0.64 m apart around a 4.80 m table make a solid six-metre block with both of its own seats sealed
+inside. Measured along the line through the seats: the corridor north of the chairs is **1.04 m** and
+the one south of them is **0.78 m**, and a NavMesh agent of radius 0.5 needs more than a metre. No
+choice of box size fixes that — the south row is simply too close to the wall. Seven chairs came off
+and nine stayed, which is the most the room allows.
 
 `bb_shell_house` is excluded by name, permanently: a render-mesh bake — what "collide everything"
 looks like — comes back at 21 of 28 pairs, every missing pair something-to-Yard.
 
-**Still open from this stage.** The approach points have to be re-derived now that the furniture is
-in the mesh, which Stage 1 warned about and nothing has done yet. The U02 grey-boxes have not been
-retired. And the 42 survivors include the `Broadcast Dressing` decor — two foliage balls, a framed
-picture, a dining table's four legs and two stools — which this pass never walked, because it only
-knows the set-piece root.
+**Stage 1's warning, answered.** The approach points did have to be re-derived, and three of them
+were off the mesh once the furniture was in it: both dining slots and one lounger. They are not
+fixed by choosing a different offset — the resolver keeps them reachable by backing off the
+furniture that enclosed them. The better fix for the loungers is still open and belongs with seating:
+three loungers 1.40 m apart and 0.65 m wide leave 0.75 m between them, so only the outermost two can
+be approached from the side, and the venue currently seats slots 0 and 1 on the **west and middle**
+ones. Moving slot 1 to the east lounger would let all three keep their collision.
 
-### Stage 4 — make the click land (M)
-With props on their own layer and colliders on the visible geometry, `AtProp` can finally receive a
-real transform. Then: widen `TryDescribe` past three venues so the diary chair, the competition
-entry and the episode screen are reachable; give hover a highlight; and give a dead click feedback
-instead of silence.
+**Still open from this stage.** The U02 grey-boxes have not been retired. And the 41 survivors
+include the `Broadcast Dressing` decor — two foliage balls, a framed picture, a dining table's four
+legs and two stools — which this pass never walked, because it only knows the set-piece root.
 
-Fix the guard in both directions while here — stop transparent chrome swallowing clicks, and stop
-ceremony scrims letting them through to a house the player cannot see.
+### Stage 4 — make the click land (M) — **part done**
+
+**Done: the click reaches the props.** With collision on the visible geometry, `AtProp` receives a
+real transform at last — the ray hits the fitted `Collision` child and the lookup walks up to the
+prop that owns both it and the anchor.
+
+**Done: the diary chair is clickable, without moving the cast's idle time.** `TryDescribe` was *not*
+widened, and that was the point. It is the catalogue of places a houseguest is posed at between
+conversations, and the ambient routine walks cooling-down NPCs through it; adding venues there
+quietly changes where the cast spends its time. Clicking is a different question, so it has its own
+catalogue, `TryClick`. The diary chair proves the split: nobody idles there, and it is the first
+thing anybody tries to click. Clicking it does what the Diary shortcut does — walks you there and
+says so. It does not open the diary, because entering still means arriving.
+
+**Done: one click no longer does two things.** The plan recorded this as "ceremony scrims let clicks
+through", and the fix is not to make them block. The cards take no input *by design* — no
+`GraphicRaycaster`, every graphic non-raycasting, dismissal read straight off the mouse — and that
+rule is load-bearing: it is why nothing can be stranded behind a card, neither a player mid-walk nor
+an automated season driving fifty-six decisions in under a minute. The bug was that the click which
+dismissed a card was still unclaimed when it reached the house underneath. `CeremonyOverlays` is a
+frame stamp: a showing card says it was there, and the world leaves that frame's click alone.
+
+Seed that stamp with `int.MinValue` and the comparison — a subtraction against `Time.frameCount` —
+overflows on frame one, reads as "a card is on screen", and swallows every click in the game with no
+symptom to search for. No test caught it, because nothing in the suite drives the mouse through
+`HousePlayerController.Update`. It is pinned by two now.
+
+**Still open.** Hover highlight; feedback for a click that lands on nothing; and the other half of
+the guard — transparent chrome that swallows clicks while carrying no control. That last one needs
+measuring rather than guessing: `EpisodeHud.Panel` does set `raycastTarget = true` unconditionally,
+but most callers turn it off again straight away, so the offenders have to be found in Play Mode
+rather than named from the source. `competition-entry` and `episode-screen` are deliberately left
+out of `TryClick` — they are staging marks the director walks the cast to, not commands.
 
 **The world click is a second route to the same commands, never a replacement.** Every ceremony is
 committed today by a captioned button, and those captions are what the tests and screen readers

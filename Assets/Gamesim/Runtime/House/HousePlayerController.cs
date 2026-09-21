@@ -138,6 +138,11 @@ namespace Gamesim.House
             var mouse = Mouse.current;
             if (!InputEnabled || viewCamera == null || mouse == null
                 || !mouse.leftButton.wasPressedThisFrame
+                // A ceremony card is near-opaque and takes no input by design, so the click that
+                // dismisses one is still unclaimed when it arrives here - and the house is directly
+                // underneath. Clicking a card you cannot see through used to walk the player to
+                // whatever floor was behind it.
+                || Gamesim.Presentation.CeremonyOverlays.OnScreen
                 || (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
             {
                 return;

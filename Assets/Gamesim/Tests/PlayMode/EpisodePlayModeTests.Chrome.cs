@@ -188,6 +188,19 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ScreenRect(events).yMax, Is.LessThan(ScreenRect(brand).yMin),
                 "The right column starts below the top bar.");
 
+            // Three cards now, not two: house vibe moved out of the left column so that gutter
+            // can become a navigation rail. Overlap alone would not catch the column running off
+            // the bottom of the screen, and it fits by only 24 units - so measure the foot.
+            var vibe = ActiveRect(EpisodeHud.HouseVibeCardName);
+            Assert.That(vibe, Is.Not.Null, "The right column carries the house-vibe card.");
+            Assert.That(ScreenRect(vibe).yMax, Is.LessThanOrEqualTo(ScreenRect(events).yMin + 1f),
+                "House vibe stacks below recent events rather than beside or over it.");
+            var band = ActiveRect("Status");
+            Assert.That(band, Is.Not.Null);
+            Assert.That(ScreenRect(vibe).yMin, Is.GreaterThan(ScreenRect(band).yMax),
+                "The right column must clear the status band: vibe " + ScreenRect(vibe) +
+                " against status " + ScreenRect(band) + ".");
+
             // The column is a stack. Whatever else is in the gutter, nothing may sit on the card.
             foreach (var name in new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status",
                 "House pill", EpisodeDirector.LiveFeedCardName })

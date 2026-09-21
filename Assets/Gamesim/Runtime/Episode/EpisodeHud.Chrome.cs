@@ -202,12 +202,19 @@ namespace Gamesim.Episode
         /// against a fixed ceiling - so a quiet week reads as a quiet week rather than as four
         /// empty troughs.</para>
         /// </summary>
-        private void HouseVibeCard(RectTransform column, EpisodeState state)
+        /// <summary>
+        /// What the house has been doing this week, as counts rather than a mood. It lived in the
+        /// left column until the right one was measured and found to hold all three cards with
+        /// 24 units to spare - which is what lets the left gutter become a navigation rail.
+        /// </summary>
+        private float HouseVibeCard(Transform parent, float top, EpisodeState state)
         {
-            if (state == null) return;
+            if (state == null) return 0f;
             var reading = HouseVibe.Of(state);
-            var card = Chrome(HouseVibeCardName, column);
-            Size(card, ObjectiveWidth, 46f + 4f * VibeRowHeight + 26f);
+            float width = RightColumnWidth, height = 46f + 4f * VibeRowHeight + 26f;
+            var card = Chrome(HouseVibeCardName, parent);
+            Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
+                new Vector2(width, height));
             var heading = CardHeading(card, "KNOWN HOUSE EVENTS", "people");
             heading.characterSpacing = 2f;
 
@@ -221,7 +228,7 @@ namespace Gamesim.Episode
                 FixedText(card, row.Word, 13, Paper, new Vector2(textX, y), new Vector2(108f, 20f));
 
                 float trackX = textX + 112f;
-                float trackWidth = ObjectiveWidth - trackX - 44f;
+                float trackWidth = width - trackX - 44f;
                 var track = Panel("Vibe track", card, UiTheme.Outline, 4);
                 Anchor(track, new Vector2(0, 1), new Vector2(0, 1),
                     new Vector2(trackX, y - 5f), new Vector2(trackWidth, 9f));
@@ -237,12 +244,13 @@ namespace Gamesim.Episode
                 }
 
                 FixedText(card, row.Count.ToString(), 13, UiTheme.Muted,
-                    new Vector2(ObjectiveWidth - 38f, y), new Vector2(26f, 20f));
+                    new Vector2(width - 38f, y), new Vector2(26f, 20f));
                 index++;
             }
 
             FixedText(card, HouseVibe.Tension(reading), 12, UiTheme.Muted,
-                new Vector2(16f, -(48f + 4f * VibeRowHeight)), new Vector2(ObjectiveWidth - 32f, 20f));
+                new Vector2(16f, -(48f + 4f * VibeRowHeight)), new Vector2(width - 32f, 20f));
+            return height;
         }
 
         /// <summary>
@@ -258,7 +266,8 @@ namespace Gamesim.Episode
             if(Compact)return;
             float top = RightColumnTop;
             if (director.LiveFeedTexture != null) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
-            RecentEventsCard(canvas.transform, state, top);
+            top += RecentEventsCard(canvas.transform, state, top) + RightColumnGap;
+            HouseVibeCard(canvas.transform, top, state);
         }
 
         /// <summary>
@@ -270,9 +279,9 @@ namespace Gamesim.Episode
         /// column that quietly reported NPC-to-NPC secrets would be handing the player information
         /// their character does not have.</para>
         /// </summary>
-        private void RecentEventsCard(Transform parent, EpisodeState state, float top)
+        private float RecentEventsCard(Transform parent, EpisodeState state, float top)
         {
-            if (state == null) return;
+            if (state == null) return 0f;
             var entries = state.events
                 .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
                 .Reverse()
@@ -280,16 +289,17 @@ namespace Gamesim.Episode
                 .ToList();
 
             const float RowHeight = 54f;
+            float height = 46f + Mathf.Max(1, entries.Count) * RowHeight;
             var card = Chrome(RecentEventsCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
-                new Vector2(RightColumnWidth, 46f + Mathf.Max(1, entries.Count) * RowHeight));
+                new Vector2(RightColumnWidth, height));
             CardHeading(card, "RECENT EVENTS", "journal");
 
             if (entries.Count == 0)
             {
                 FixedText(card, "Nothing has happened yet.", 13, UiTheme.Muted, new Vector2(16f, -44f),
                     new Vector2(RightColumnWidth - 32f, 22f));
-                return;
+                return height;
             }
 
             for (int i = 0; i < entries.Count; i++)
@@ -303,6 +313,7 @@ namespace Gamesim.Episode
                 FixedText(card, Excerpt(entry.text, RecentEventLetters), 13, Paper,
                     new Vector2(text, y - 15f), new Vector2(RightColumnWidth - text - 14f, 36f));
             }
+            return height;
         }
 
         /// <summary>

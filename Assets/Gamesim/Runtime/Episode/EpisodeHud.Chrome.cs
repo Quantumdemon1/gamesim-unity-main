@@ -52,7 +52,9 @@ namespace Gamesim.Episode
         /// gutter, and started below the top bar.
         /// </summary>
         public const float RightColumnWidth = 286f;
-        private const float RightColumnInset = 88f;
+        // Was 88, which was 24 plus the icon rail's 52 plus a gap: the rail used to live in this
+        // gutter. It lives in the left one now, so the column has its own margin back.
+        private const float RightColumnInset = 24f;
         private const float RightColumnTop = 104f;
         private const float RightColumnGap = 12f;
 

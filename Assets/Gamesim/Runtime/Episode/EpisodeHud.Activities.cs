@@ -12,8 +12,14 @@ namespace Gamesim.Episode
 
         private ActivityLayout activityLayout;
         private RectTransform relationshipRoot;
-        private bool helpExpanded = true;
+        // Closed until asked for. It opened itself on the first frame of every session, which put
+        // a five-line reference card over the corner of the house that a player who has read it
+        // once never wants again - and it is the one box the right column has no room to grow past.
+        private bool helpExpanded = false;
         private RectTransform explorationHelp;
+
+        /// <summary>What an activity leaves above itself: the top bar and a gap.</summary>
+        private const float ActivityHeadroom = 96f;
 
         public ActivityLayout CurrentActivityLayout => activityLayout;
         public bool Compact { get; set; }
@@ -23,7 +29,7 @@ namespace Gamesim.Episode
         {
             get
             {
-                if(canvas==null)return new Rect(24,100,1552,696);
+                if(canvas==null)return new Rect(24,194,1552,602);
                 var root=(RectTransform)canvas.transform;var size=root.rect.size;
                 // LeftColumnX says this once; this line used to say it again by hand.
                 float left=LeftColumnX,right=size.x-24f,bottom=100f,top=size.y-104f;
@@ -32,7 +38,11 @@ namespace Gamesim.Episode
                     bool leftCard=item.name=="Objective" || item.name==HouseVibeCardName;
                     bool rightCard=item.name==EpisodeDirector.LiveFeedCardName || item.name==RecentEventsCardName
                         || item.name==OverviewColumnName || item.name=="Exploration controls";
-                    bool bottomCard=item.name=="Interaction prompt";
+                    // The floor grew a band. The strip and the caption above it are both fixed
+                    // chrome a world bubble must clear, and the caption used to be low enough that
+                    // the default floor covered it.
+                    bool bottomCard=item.name=="Interaction prompt" || item.name==CastRail.RootName
+                        || item.name=="Status";
                     // The follow chip is anchored TOP-centre, under the house pill, and was being
                     // counted as a bottom card: it pushed `bottom` to 834 while `top` was 796, so
                     // MinMaxRect returned an inverted rect and every world bubble was pinned above
@@ -63,10 +73,14 @@ namespace Gamesim.Episode
             float availableWidth = canvasWidth - left - right;
             float width = Mathf.Min(layout == ActivityLayout.Diary ? 600f : layout == ActivityLayout.Conversation ? 1040f : 1180f, availableWidth);
             if (layout == ActivityLayout.Relationships) width = availableWidth;
+            // An activity stands on the same floor the docked panel does. It used to stand at 100,
+            // which was above the lower third while the lower third was on the canvas floor; the
+            // caption sits a band higher now and Status is the one piece of chrome an activity does
+            // NOT hide, so standing at 100 would draw the panel straight over the message channel.
             float height = layout == ActivityLayout.Conversation
-                ? Mathf.Min(540f * FontScale, canvasHeight - 196f)
-                : canvasHeight - 196f;
-            Anchor(modal, new Vector2(1,0), new Vector2(1,0), new Vector2(-right,100f), new Vector2(width,height));
+                ? Mathf.Min(540f * FontScale, canvasHeight - ModalLift - ActivityHeadroom)
+                : canvasHeight - ModalLift - ActivityHeadroom;
+            Anchor(modal, new Vector2(1,0), new Vector2(1,0), new Vector2(-right,ModalLift), new Vector2(width,height));
 
             // Context cards return when the player returns to exploration. They remain available
             // through the notebook and the persistent top navigation while an activity uses this space.
@@ -78,6 +92,10 @@ namespace Gamesim.Episode
             SetChromeVisible("Exploration controls", false);
             SetChromeVisible(FollowChipName, false);
             SetChromeVisible("Interaction prompt", false);
+            // The strip goes with the rest of it. An activity claims the band from y 100 upward,
+            // which is the strip's band, and a panel drawn over half the cast is worse than a panel
+            // that has the screen to itself for as long as it is up.
+            SetChromeVisible(CastRail.RootName, false);
 
             var hint = modal.Find("Panel control hint");
             if (hint != null) hint.gameObject.SetActive(false);
@@ -103,11 +121,13 @@ namespace Gamesim.Episode
             }
             float height = helpExpanded ? 180f : 54f;
             explorationHelp = Chrome("Exploration controls", canvas.transform);
-            // Stays bottom right. Moving it to the empty bottom-left band looks right with nothing
-            // open and is wrong the moment anything is: the activity layout claims left=LeftColumnX
-            // bottom=100, which is that band exactly, so it would trade an overlap with the right
-            // column for an overlap with the modal. The column is what grew - see RecentEventRows.
-            Anchor(explorationHelp,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,height));
+            // Stays bottom right, and rises with the rest of the floor: the cast strip owns the band
+            // under it now. Moving it to the empty bottom-LEFT band looks right with nothing open and
+            // is wrong the moment anything is - the activity layout claims that band exactly, so it
+            // would trade an overlap with the right column for an overlap with the modal. It cannot
+            // rise any further either: the vibe card above it ends fifteen units from its expanded
+            // top on the canvas the tests measure. The column is what grew - see RecentEventRows.
+            Anchor(explorationHelp,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,HelpBottom),new Vector2(HelpWidth,height));
             FixedButton(explorationHelp, helpExpanded ? "Hide controls" : "Help · controls",
                 new Vector2(10,-8),new Vector2(265,38), () =>
                 {

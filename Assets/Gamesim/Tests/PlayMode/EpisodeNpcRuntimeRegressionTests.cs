@@ -320,18 +320,25 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(story, Does.Contain("YOUR NOTEBOOK"));
             Assert.That(story, Does.Contain(knownEvent), "The privacy check must inspect the real populated notebook.");
 
-            // The trust line is the relationships page. The notebook shows one section at a time, so
-            // a check that used to read the whole document has to name the page it means.
+            // The trust line is the houseguests page. It used to be printed under the relationship
+            // graph, which made the page the rail opens by default the longest one in the notebook;
+            // the roster is its own page now. The notebook shows one section at a time, so a check
+            // that used to read the whole document has to name the page it means.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.People);
+            yield return null;
+            yield return null;
+            string people = Visible();
+            Assert.That(people, Does.Contain(first.name + " · " + first.status + " · Your trust "
+                + fixture.Score(fixture.playerId, first.id).ToString("0")));
+
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
             yield return null;
             yield return null;
             string network = Visible();
-            Assert.That(network, Does.Contain(first.name + " · " + first.status + " · Your trust "
-                + fixture.Score(fixture.playerId, first.id).ToString("0")));
 
             // A leak may not appear on ANY page. Asking once of one page would be weaker than the
             // single question this used to ask of a notebook that rendered everything at once.
-            foreach (var page in new[] { story, network })
+            foreach (var page in new[] { story, network, people })
             {
                 Assert.That(page, Does.Not.Contain(forbiddenNarrative));
                 Assert.That(page, Does.Not.Contain(secretAlliance));

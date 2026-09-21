@@ -24,6 +24,13 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator CastRail_TwelveHouseguestsFitAtLargerTextWithoutOverlapping()
         {
+            // Put the HUD itself at the larger size first. The probe strip below is built at 1.2
+            // and is measured against the REAL lower third, and the band the lower third stands on
+            // is reserved off the strip's scaled height - so a 1.2 strip judged against a HUD still
+            // laid out at 1.0 is being compared to a floor nineteen units too low. That is a
+            // property of the test rather than of the strip, and while the strip was a column that
+            // grew downward from the top margin it never showed.
+            yield return ApplyTextSize(true);
             director.ClosePanels();
             yield return null;
             var canvas = director.GetComponentsInChildren<Canvas>()
@@ -37,12 +44,22 @@ namespace Gamesim.Tests.PlayMode
                 var entries = rail.Cast<Transform>().Select(item => (RectTransform)item).ToArray();
                 Assert.That(entries.Length, Is.EqualTo(12));
                 var status = ActiveRect("Status");
-                Assert.That(ScreenRect(rail).yMin, Is.GreaterThan(ScreenRect(status).yMax));
+                // The strip is the bottom-most band now, so it is BELOW the lower third rather than
+                // above it. What has to hold either way is that the two do not sit on each other.
+                Assert.That(ScreenRect(rail).Overlaps(ScreenRect(status)), Is.False,
+                    "The strip " + ScreenRect(rail) + " runs into the lower third " + ScreenRect(status) + ".");
+                float width = ((RectTransform)canvas.transform).rect.width * canvas.scaleFactor;
                 for (int a = 0; a < entries.Length; a++)
                 {
                     var rect = ScreenRect(entries[a]);
                     Assert.That(rect.xMin, Is.GreaterThanOrEqualTo(0));
-                    Assert.That(rect.yMin, Is.GreaterThan(ScreenRect(status).yMax));
+                    // A row runs out of screen sideways where a column ran out of it downward, and
+                    // the twelfth chip is the one that goes. Nothing checked this while the strip
+                    // was a column, because a column could not.
+                    Assert.That(rect.xMax, Is.LessThanOrEqualTo(width),
+                        entries[a].name + " at " + rect + " is off the right-hand edge of a "
+                        + width.ToString("0") + "px screen.");
+                    Assert.That(rect.Overlaps(ScreenRect(status)), Is.False);
                     var mood = entries[a].GetComponentsInChildren<TMP_Text>().Single(label => label.name == CastRail.MoodWordName);
                     Assert.That(mood.fontSize, Is.EqualTo(Mathf.RoundToInt(11 * 1.2f)), "Full cast must not cancel larger text.");
                     for (int b = a + 1; b < entries.Length; b++)
@@ -50,6 +67,8 @@ namespace Gamesim.Tests.PlayMode
                 }
             }
             finally { Object.Destroy(rail.gameObject); }
+            // Hand the HUD back the way it was found; the fixture is shared.
+            yield return ApplyTextSize(false);
         }
 
         [UnityTest]
@@ -116,12 +135,12 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// A chip is three lines deep, so the rail can no longer assume a full house fits at full
-        /// size. It scales the whole chip to the column it has rather than letting the last
-        /// houseguest slide under the lower third.
+        /// A chip is three lines deep, so the strip can no longer assume a full house fits at full
+        /// size. It scales the whole chip to the band it has rather than letting the last houseguest
+        /// walk off the edge of the frame.
         /// </summary>
         [UnityTest]
-        public IEnumerator CastRail_FitsAboveTheLowerThirdAtTheHouseItIsGiven()
+        public IEnumerator CastRail_ClearsTheLowerThirdAtTheHouseItIsGiven()
         {
             director.ClosePanels();
             Canvas.ForceUpdateCanvases();
@@ -136,8 +155,9 @@ namespace Gamesim.Tests.PlayMode
             var railRect = ScreenRect(rail);
             var statusRect = ScreenRect(status);
             Assert.That(railRect.Overlaps(statusRect), Is.False,
-                "The rail " + railRect + " runs into the lower third " + statusRect + ".");
-            Assert.That(railRect.height, Is.GreaterThan(0f), "The rail is not collapsed.");
+                "The strip " + railRect + " runs into the lower third " + statusRect + ".");
+            Assert.That(railRect.height, Is.GreaterThan(0f), "The strip is not collapsed.");
+            Assert.That(railRect.width, Is.GreaterThan(0f), "and it has a row to draw into.");
         }
 
         /// <summary>

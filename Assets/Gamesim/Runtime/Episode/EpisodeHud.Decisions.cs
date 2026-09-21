@@ -18,9 +18,13 @@ namespace Gamesim.Episode
         public void KnownHouseEventContext(EpisodeState state, HouseEventState item)
         {
             var root = DecisionColumn(HouseEventContextName, content, true);
-            DecisionText(root, "KNOWN HOUSE EVENTS", 17, Accent);
+            // "KNOWN HOUSE EVENTS" was reported, in those words, as a heading nobody could act
+            // on: it named the data structure behind the card rather than the question the card
+            // answers. What the card actually holds is a tally of what this character has been
+            // present for this week, which is the only evidence they are allowed to decide on.
+            DecisionText(root, "WHAT YOU HAVE SEEN THIS WEEK", 17, Accent);
             DecisionText(root, DecisionContext.KnownEventSummary(state), 16, UiTheme.Muted);
-            DecisionText(root, "Counts of events you know; not anyone's private feelings.", 15, UiTheme.Muted);
+            DecisionText(root, "Only what you witnessed. Not anyone's private feelings.", 15, UiTheme.Muted);
             var participants = DecisionContext.Participants(state, item);
             if (participants.Length == 0) return;
             var strip = DecisionColumns("Involved houseguests", root);

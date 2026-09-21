@@ -125,6 +125,7 @@ namespace Gamesim.Tests.PlayMode
         {
             var sections = new[]
             {
+                EpisodeDirector.NotebookSection.People,
                 EpisodeDirector.NotebookSection.Network,
                 EpisodeDirector.NotebookSection.Rooms,
                 EpisodeDirector.NotebookSection.Story,
@@ -140,7 +141,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(rail, Is.Not.Null, "The HUD should carry the section rail.");
 
                 var buttons = rail.GetComponentsInChildren<UnityEngine.UI.Button>(true);
-                Assert.That(buttons, Has.Length.EqualTo(5), "The rail should carry four sections and the overview.");
+                Assert.That(buttons, Has.Length.EqualTo(6), "The rail should carry five sections and the overview.");
 
                 director.ShowNotebookSection(section);
                 yield return null; yield return null;
@@ -150,6 +151,23 @@ namespace Gamesim.Tests.PlayMode
                 var found = director.GetComponentsInChildren<RectTransform>(true)
                     .FirstOrDefault(rect => rect.name == section);
                 Assert.That(found, Is.Not.Null, "The notebook should contain " + section + ".");
+
+                // And the rail says which one you are on. A rail of six identical buttons is the
+                // "they all open the same thing" complaint in miniature: the pages became separate
+                // and nothing on screen said which page you had landed on.
+                Assert.That(director.ActiveSection, Is.EqualTo(section),
+                    "The director should report " + section + " as the open one.");
+                // Re-find the rail: opening a section rebuilds the whole HUD, so the one captured
+                // before the jump is a destroyed object by now.
+                var lifted = director.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == IconRail.RootName && rect.gameObject.activeInHierarchy);
+                Assert.That(lifted, Is.Not.Null, "The rail survives opening a section.");
+                var lit = lifted.GetComponentsInChildren<RectTransform>(true)
+                    .Where(rect => rect.name == IconRail.ActiveMarkName)
+                    .Select(rect => rect.parent.name)
+                    .ToArray();
+                Assert.That(lit, Has.Length.EqualTo(1),
+                    "Exactly one rail item is marked open; " + lit.Length + " are.");
             }
 
             director.ClosePanels();

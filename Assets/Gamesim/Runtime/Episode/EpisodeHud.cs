@@ -159,10 +159,14 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Where the panel column starts: clear of the cast rail's gutter. The ceremony card insets
+        /// Where the panel column starts: clear of the left gutter. The ceremony card insets
         /// against this too, so it lives here rather than as a literal in two places.
+        ///
+        /// <para>The gutter used to hold twelve faces at 184 wide. It holds the six-item navigation
+        /// rail now, at 52, and the 132 the cast strip gave back is the room every card the mockups
+        /// still owe this screen was waiting on.</para>
         /// </summary>
-        public const float LeftColumnX = 14f + CastRail.Width + 12f;
+        public const float LeftColumnX = 14f + IconRail.Width + 12f;
 
         public void Begin(EpisodeState state, string message, bool recovery, bool open)
         {
@@ -190,9 +194,9 @@ namespace Gamesim.Episode
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
-            // The cast rail owns the far-left gutter, so the panel column starts to the right of it.
-            // Six faces on screen at all times is what makes the rest of the HUD able to say "the
-            // replacement nominee" and have that mean a person rather than a name.
+            // The cast strip runs along the bottom of the frame, above the lower third. Every face
+            // on screen at all times is what makes the rest of the HUD able to say "the replacement
+            // nominee" and have that mean a person rather than a name.
             CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest,
                 director.FollowedId);
             FollowChip(director.FollowedName);
@@ -218,16 +222,19 @@ namespace Gamesim.Episode
             // HUD is compact, so the preference keeps working without a second guard here.
             HousePill(state);
 
-            // The section rail. Four views that currently share one long scroll, and the overview,
-            // which is a camera mode rather than a page: the director routes its section name.
+            // The section rail: five pages and the overview, which is a camera mode rather than a
+            // page. The director routes the section name and says which one is open, so the rail can
+            // fill it - the mockups' rail always shows you where you are, and a row of six identical
+            // buttons is exactly the "they all default to the same view" complaint in miniature.
             IconRail.Build(canvas.transform, new[]
             {
+                new IconRail.Entry(IconRail.Mark.People,   EpisodeDirector.NotebookSection.People,  "Houseguests"),
                 new IconRail.Entry(IconRail.Mark.Network,  EpisodeDirector.NotebookSection.Network, "Relationships"),
                 new IconRail.Entry(IconRail.Mark.Rooms,    EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
                 new IconRail.Entry(IconRail.Mark.Votes,    EpisodeDirector.NotebookSection.Votes,   "The vote"),
                 new IconRail.Entry(IconRail.Mark.Story,    EpisodeDirector.NotebookSection.Story,   "The story so far"),
                 new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection,         "Overview"),
-            }, FontScale, director.ShowNotebookSection);
+            }, FontScale, director.ShowNotebookSection, director.ActiveSection);
             RightColumn(state);
 
             // Five lines, not four, because click-to-follow had to be added without lengthening a
@@ -239,9 +246,12 @@ namespace Gamesim.Episode
             BuildExplorationHelp();
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
+            // The lower third sits ABOVE the cast strip now rather than on the floor, and it no
+            // longer runs the full width: the controls box occupies the same band at the right-hand
+            // end, and fixed chrome may not overlap. It stops a gap short of it instead.
             var status = Chrome("Status",canvas.transform);
             status.anchorMin = new Vector2(0,0); status.anchorMax = new Vector2(1,0); status.pivot = new Vector2(.5f,0);
-            status.offsetMin = new Vector2(24,20); status.offsetMax = new Vector2(-24,84);
+            status.offsetMin = new Vector2(24,StatusBottom); status.offsetMax = new Vector2(-HelpGutter,StatusBottom+StatusHeight);
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.
@@ -250,7 +260,10 @@ namespace Gamesim.Episode
             rule.GetComponent<Image>().raycastTarget = false;
             var caption = FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
             Stretch(caption.rectTransform,32,9,24,7);
-            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,107),new Vector2(425,52));
+            // Above the cast strip, in the band the docked panel also uses. They never share the
+            // screen: the director clears the prompt outright while a panel is open, which is why
+            // one band can carry both.
+            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,PromptLift),new Vector2(425,52));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             promptRoot.gameObject.SetActive(false);
             content = null;
@@ -310,8 +323,33 @@ namespace Gamesim.Episode
         /// </summary>
         private const float ModalWidth = 900f;
         private const float ModalHeight = 300f;
-        /// <summary>How far the panel's foot sits above the canvas floor, clear of the status band.</summary>
-        private const float ModalLift = 170f;
+        /// <summary>
+        /// The floor of the frame, in bands, from the bottom up.
+        ///
+        /// <para>The cast strip owns y 14..110 and runs the full width. Above it, sharing one band,
+        /// are the status caption on the left and the controls box on the right. The panel and the
+        /// proximity prompt start above both - they never share the screen with each other, because
+        /// the director clears the prompt outright while a panel is open.</para>
+        ///
+        /// <para>It cost the panel twenty units of house. That is the price of having every face on
+        /// screen while a decision is being made, and every decision is about one of those faces.</para>
+        /// </summary>
+        /// <remarks>
+        /// Not a constant, because the strip is not a constant height: a chip scales with the
+        /// player's text preference, so at the larger size the strip is 115 deep rather than 96 and
+        /// a band reserved against the resting height is nineteen units short. That is exactly how
+        /// this was found - the overlap test reported 'Status' sitting on 'Cast rail' by 5.18
+        /// screen pixels, at larger text only.
+        /// </remarks>
+        private float StatusBottom => CastRail.Bottom + CastRail.Height * FontScale + 8f;
+        private const float StatusHeight = 64f;
+        /// <summary>The controls box shares the status band and owns the right-hand end of it.</summary>
+        public float HelpBottom => StatusBottom;
+        public const float HelpWidth = 285f;
+        private const float HelpGutter = 24f + HelpWidth + 12f;
+        private float ModalLift => StatusBottom + StatusHeight + 8f;
+        /// <summary>The proximity prompt shares the panel's band; see <see cref="ModalLift"/>.</summary>
+        private float PromptLift => ModalLift;
 
         public void PanelTitle(string title, string subtitle) { Heading(title); Paragraph(subtitle); }
         /// <summary>The caption a spectating player sees above everything else.</summary>

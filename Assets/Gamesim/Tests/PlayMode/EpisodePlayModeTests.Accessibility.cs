@@ -59,8 +59,23 @@ namespace Gamesim.Tests.PlayMode
                 director.ClosePanels();
                 yield return null;
                 AssertFixedChromeDoesNotOverlap(larger);
+
+                // And with the controls box open, which is where the floor is tightest. The cast
+                // strip moved to the bottom of the frame and pushed the caption and the controls box
+                // up a band; the box grows upward from there toward the vibe card, and the expanded
+                // state is 126 units taller than the resting one. Checking only the resting state
+                // would have left the whole of that clearance to an argument rather than a
+                // measurement - and an argument is what put 'Status' on top of 'Cast rail'.
+                ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
+                yield return null;
+                AssertFixedChromeDoesNotOverlap(larger);
+                ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
+                yield return null;
             }
         }
+
+        private const string ExpandControlsCaption = "Help \u00b7 controls";
+        private const string CollapseControlsCaption = "Hide controls";
 
         [UnityTest]
         public IEnumerator Accessibility_FixedChromeLayoutTracksBodyCompletionRedraw()

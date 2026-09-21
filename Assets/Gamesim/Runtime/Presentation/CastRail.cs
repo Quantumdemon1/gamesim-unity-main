@@ -7,8 +7,8 @@ using UnityEngine.UI;
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// The permanent cast strip down the left edge: every houseguest's face, name, mood and
-    /// standing, visible in every frame of the episode.
+    /// The permanent cast strip along the bottom of the frame: every houseguest's face, name, mood
+    /// and standing, visible in every frame of the episode.
     ///
     /// <para>Before this, the cast was legible only as 1.4%-of-frame silhouettes on the set, and the
     /// HUD named people in prose — so "Jamie Roberts is the replacement nominee" asked the player to
@@ -23,16 +23,30 @@ namespace Gamesim.Presentation
     /// glyph and the word say the same thing twice on purpose — a coloured face is not a state a
     /// screen reader can announce, so the word carries it and the glyph decorates it.</para>
     ///
+    /// <para>It was a two-wide column down the LEFT edge, and moving it to a row along the bottom
+    /// is the change the rest of the HUD was waiting on. The mockups spend the left gutter on a
+    /// navigation rail, not on twelve faces, and twelve faces in a 184-px column is also why the
+    /// chips had to shrink below the text size the player asked for. A row spends the one part of
+    /// the frame nothing else wants - the band above the lower third - and hands the gutter back.
+    /// The band is narrow, so the strip stops short of the right column rather than running under
+    /// it; see <see cref="Bottom"/>.</para>
+    ///
     /// <para>Rebuilt from committed state on each HUD render and never animated per frame: the rail
     /// shows what the simulation holds and holds no opinion of its own.</para>
     /// </summary>
     public static class CastRail
     {
         public const string RootName = "Cast rail";
-        // Two portrait columns keep a twelve-person cast visible without shrinking the player's
-        // preferred text below its requested size. The HUD reserves this gutter explicitly.
-        public const float Width = 184f;
-        private const float EntryWidth = Width / 2f;
+        /// <summary>
+        /// One chip's footprint.
+        ///
+        /// <para>Set by the tightest frame the strip has to survive: twelve chips at the larger text
+        /// size, on a 4:3 canvas, which the scaler reports as 1385 units wide rather than 1600. That
+        /// is 1357 between the margins and 1320 of chips, and it is the number that decides this
+        /// one - a wider chip cancels the player's text preference at a full house, which is the
+        /// accessibility guarantee the strip had as a column and has to keep as a row.</para>
+        /// </summary>
+        private const float EntryWidth = 88f;
 
         /// <summary>Names the chip's parts carry, so a test can find them without guessing.</summary>
         public const string ChipName = "Chip";
@@ -51,9 +65,22 @@ namespace Gamesim.Presentation
         private const float EntryGap = 4f;
         private const int ChipRadius = 10;
 
-        /// <summary>The rail's own margins: the gap at the top, and the band the lower third owns.</summary>
-        private const float TopMargin = 24f;
-        private const float BottomReserve = 100f;
+        /// <summary>
+        /// The strip's own band, in the canvas's reference units, measured off the canvas floor.
+        ///
+        /// <para>The strip is the bottom-most thing in the frame and it runs the whole width of it.
+        /// That is the only arrangement that fits: the controls box and the right column of cards
+        /// both hang down into this corner and neither can move up - the vibe card already ends
+        /// fifteen units above the expanded controls box on the canvas the tests measure - so a
+        /// strip that tried to share their band would have to stop a third of the frame short, and
+        /// twelve chips in the two thirds left over cannot honour the larger text size. Under them
+        /// it is full width, and everything that used to live on the floor moved up one band: the
+        /// status caption to 118, and the caption stops short of the controls box in x instead.</para>
+        /// </summary>
+        public const float Bottom = 14f;
+        public const float Height = EntryHeight;
+        /// <summary>The margin at both ends. The icon rail uses the same one down the left.</summary>
+        public const float SideMargin = 14f;
         /// <summary>
         /// How small the rail may draw itself to fit the column it has.
         ///
@@ -97,15 +124,14 @@ namespace Gamesim.Presentation
         {
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
-            root.anchorMin = new Vector2(0f, 1f);
-            root.anchorMax = new Vector2(0f, 1f);
-            root.pivot = new Vector2(0f, 1f);
-            root.anchoredPosition = new Vector2(14f, -TopMargin);
+            root.anchorMin = new Vector2(0f, 0f);
+            root.anchorMax = new Vector2(0f, 0f);
+            root.pivot = new Vector2(0f, 0f);
+            root.anchoredPosition = new Vector2(SideMargin, Bottom);
 
             var order = Order(state);
-            int rows = (order.Count + 1) / 2;
-            float scale = Fit(parent as RectTransform, rows, fontScale);
-            root.sizeDelta = new Vector2(Width, RailHeight(rows) * scale);
+            float scale = Fit(parent as RectTransform, order.Count, fontScale);
+            root.sizeDelta = new Vector2(RailWidth(order.Count) * scale, EntryHeight * scale);
 
             for (int index = 0; index < order.Count; index++)
                 Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
@@ -113,33 +139,36 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// The scale a house of <paramref name="count"/> chips fits the canvas at: never larger than
+        /// The scale a house of <paramref name="count"/> chips fits the band at: never larger than
         /// the player's text preference, and never below <see cref="MinimumFit"/>.
         ///
-        /// <para>The floor is absolute rather than a fraction of the preference, so asking for
-        /// larger text can shrink the rail back toward its resting size to keep the house on screen
-        /// but can never push it smaller than a player who asked for nothing would get.</para>
+        /// <para>The fit is against WIDTH now rather than height, which is the whole of what moving
+        /// the strip changed here. The floor is absolute rather than a fraction of the preference,
+        /// so asking for larger text can shrink the strip back toward its resting size to keep the
+        /// house on screen but can never push it smaller than a player who asked for nothing
+        /// would get.</para>
         ///
-        /// <para>A canvas whose rect is not laid out yet — before the first layout pass, or in a
-        /// fixture with no screen — reports zero height; that gives the preference back unchanged
-        /// rather than collapsing the rail to nothing.</para>
+        /// <para>A canvas whose rect is not laid out yet - before the first layout pass, or in a
+        /// fixture with no screen - reports zero width; that gives the preference back unchanged
+        /// rather than collapsing the strip to nothing.</para>
         /// </summary>
         private static float Fit(RectTransform canvas, int count, float fontScale)
         {
             if (canvas == null || count <= 0) return fontScale;
-            float available = canvas.rect.height - TopMargin - BottomReserve;
+            float available = canvas.rect.width - SideMargin * 2f;
             if (available <= 0f) return fontScale;
             float floor = Mathf.Min(fontScale, MinimumFit);
-            return Mathf.Clamp(Mathf.Min(fontScale, available / RailHeight(count)), floor, fontScale);
+            return Mathf.Clamp(Mathf.Min(fontScale, available / RailWidth(count)), floor, fontScale);
         }
 
-        private static float RailHeight(int rows) => Mathf.Max(0f, rows * (EntryHeight + EntryGap) - EntryGap);
+        private static float RailWidth(int count) => Mathf.Max(0f, count * (EntryWidth + EntryGap) - EntryGap);
 
         /// <summary>
         /// The player first, then everyone still playing, then the evicted in the order they left.
         ///
         /// <para>A rail that reshuffled every week would cost the player the spatial memory that
-        /// makes it worth having, so only an eviction moves anyone.</para>
+        /// makes it worth having, so only an eviction moves anyone. Left to right now rather than
+        /// top to bottom, which is the reading order of the row it became.</para>
         /// </summary>
         private static List<ContestantState> Order(EpisodeState state)
         {
@@ -206,7 +235,7 @@ namespace Gamesim.Presentation
             if (standing.Dim) return Localisation.Text("Evicted");
             string mood = actor.mood;
             if (string.IsNullOrEmpty(mood)) return Localisation.Text("Neutral");
-            // Defensive: a word is what fits in a 92px chip, so anything composed is cut at the
+            // Defensive: a word is what fits in a 100px chip, so anything composed is cut at the
             // first space rather than allowed to clip.
             int space = mood.IndexOf(' ');
             if (space > 0) mood = mood.Substring(0, space);
@@ -227,8 +256,11 @@ namespace Gamesim.Presentation
             entry.anchorMin = new Vector2(0f, 1f);
             entry.anchorMax = new Vector2(0f, 1f);
             entry.pivot = new Vector2(0f, 1f);
-            entry.anchoredPosition = new Vector2((index % 2) * EntryWidth, -(index / 2) * (EntryHeight + EntryGap) * scale);
-            entry.sizeDelta = new Vector2(EntryWidth - EntryGap, EntryHeight * scale);
+            entry.anchoredPosition = new Vector2(index * (EntryWidth + EntryGap) * scale, 0f);
+            // Both axes scale. While the strip was a column only the height did, because the column
+            // was a fixed 184 wide whatever the chips did; in a row a chip that keeps its width
+            // while its neighbour's position shrinks walks straight over it.
+            entry.sizeDelta = new Vector2((EntryWidth - EntryGap) * scale, EntryHeight * scale);
 
             // The mockups' card: the night ground at 85 %, a cyan hairline, corners at the theme's
             // radius. The player's chip is the one that also carries the glow, so "which of these

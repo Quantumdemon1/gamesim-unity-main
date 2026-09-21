@@ -42,7 +42,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(context.GetComponentsInChildren<CharacterPortraitBinding>(),Has.Length.EqualTo(2));
             string copy=string.Join("\n",context.GetComponentsInChildren<TMP_Text>().Select(label=>label.text));
             foreach(string id in ids)Assert.That(copy,Does.Contain(before.Find(id).name));
-            Assert.That(copy,Does.Contain("KNOWN HOUSE EVENTS").And.Contain("not anyone's private feelings"));
+            Assert.That(copy,Does.Contain("WHAT YOU HAVE SEEN THIS WEEK").And.Contain("Not anyone's private feelings"));
             Assert.That(copy,Does.Not.Contain("High tension").And.Not.Contain("Harmony"));
             AssertDecisionCopyFits(context);
             AssertEquivalent(before,director.Snapshot);

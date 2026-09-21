@@ -69,7 +69,7 @@ From the editor on 2026-09-19:
 | Materials | 997 URP/Lit, 110 with a base texture (floors, plaster); the rest flat colour; emissives: the neon signs, the screens, the candle |
 | Cast | six low-poly CC0 bodies in the repo; UMA 3 bodies in the working tree (940 assets, gitignored, 1 GB); Dan on the low-poly rig |
 | UI | `UiTheme`: navy surfaces, pale-neon-blue accent, gold, procedurally generated rounded panels (radius 10, 2 px border), generated icon set; **one font (LiberationSans)**; rectangles built in code |
-| Screens | every screen in §1's table exists; the cast strip is on the left, the mockups put it along the bottom |
+| Screens | every screen in §1's table exists; the cast strip was a column on the left where the mockups put a row along the bottom (moved 2026-09-21) |
 
 The "before" captures are in `ArtSource/reference/before/` (the graphical verification's house,
 settings and season-phase shots from this day's build, with the UMA cast the working tree runs).
@@ -319,7 +319,7 @@ before V3 starts; everything before it is worth doing either way.
 | --- | --- | --- |
 | V0 look sheet | done: twelve captures and a report from a graphical build, each moment marked reached or nearest with the reason | `PortVerification.LookSheet.cs`, `Tools/build-and-verify.sh --look-sheet`, `ArtSource/reference/after/after-NN.png` |
 | V1 light the house | done: the pass, the bake, the sky, the grade, the probes; pinned by `Lighting_TheEpisodeSceneShipsItsBakedNight` | `HouseCinematicLighting.cs`, `ArtSource/reference/after/set-after-lighting.png` |
-| V2 chrome | done for the screens the mockups draw: the top bar and the right column, the conversation as a dial, the cast strip, the roster cards, the five ceremony overlays, the relationship web, the rooms, and — 2026-09-20 — the episode panel docked low and wide so the house fills the top of the frame, the conversation caption as a bubble over the pair, and the house-vibe bars. Left: the vote section's rows; the relationships and social-goals cards; the conflict meter. **All three want screen room the HUD does not have** — see below | `EpisodeHud.cs`, `EpisodeHud.Chrome.cs`, `HouseConversationCaption.cs`, `HouseVibe.cs`, `CastRail.cs`, `RelationshipWeb.cs` |
+| V2 chrome | done for the screens the mockups draw: the top bar and the right column, the conversation as a dial, the roster cards, the five ceremony overlays, the relationship web, the rooms, the episode panel docked low and wide so the house fills the top of the frame, the conversation caption as a bubble over the pair, the house-vibe bars, and — 2026-09-21 — the relayout: the cast strip along the bottom, the six-item navigation rail in the gutter it freed with the open item filled, and the notebook's roster split off the relationship page onto one of its own. Left: the vote section's rows; the relationships and social-goals cards; the conflict meter — all three now have a gutter to be built in | `EpisodeHud.cs`, `EpisodeHud.Chrome.cs`, `HouseConversationCaption.cs`, `HouseVibe.cs`, `CastRail.cs`, `RelationshipWeb.cs` |
 | V3 cast | done but for your eye: a look for each of the roster's houseguests as data, expressions driven from mood × stress with a lip flap, the portrait rig lit in three points, and the twelve mocap takes you downloaded wired into a Humanoid controller so a UMA body sits, talks, argues and celebrates instead of dropping every cue but `Speed`. Left: your eye on the twenty-four looks, three reaction beats no take covers, and a Listen state — see below | `UmaCastLibrary.cs`, `UmaExpressions.cs`, `CharacterPortraits.cs`, `HumanoidClipWiring.cs` |
 | V4 surfaces | done but for two: seven hero pieces, scanned floors and walls, plants, the long table's sixteen chairs, and — 2026-09-20 — the competition stage mockup-05 asks for: three lit lanes, a gate over each, the stacking prop the houseguests are actually working at, a crate of spares, a 28 m panelled backdrop with eight tubes, and the lettering on it. Left: the glass (yard doors, pool fence, the water's scroll) and marble, which is a mesh material rather than a floor | `bb_set_comp_*.py`, `bb_set_sign.py`, `HouseSetPieces.Course`, `ArtSource/tools/bb_polyhaven.py`, `HouseFloorDressing.cs` |
 | V5 camera, live feed | done: the overview, the conversation's two-shot, the diary chair, the competition wide, and the live feed's second camera and card. The night clock is not done and is not costed here — see below | `HouseCameraRig.Shot`, `EpisodeDirector.Overview/LiveFeed`, `LiveFeed.cs` |
@@ -333,17 +333,27 @@ bake, because the house is lightmapped for night and a mixed light's indirect te
 time. The night the mockups show is the night V1 delivered; houseguests asleep after midnight is a
 separate feature with a real cost, not a finishing touch, and it is not in this plan's ledger.
 
-**The HUD is out of room, and that is now the blocker.** Three of the mockups' cards have nowhere
-to go: Relationships and Social Goals from mockup-01, and the conflict meter from mockup-04. The
-right column is already Live Feed plus Recent Events and runs into the exploration controls at
-y 660; the left column is Brand plus Objective plus House Vibe and runs into the interaction prompt
-at y 741. The mockups fit more because they spend the space differently: the cast strip is a row
-along the BOTTOM rather than a column down the LEFT, and the left gutter carries a six-item
-navigation rail instead of twelve faces. That one move frees a 92-px column the full height of the
-screen and is what every remaining card is waiting on. It is not a small change - `LeftColumnX` is
-derived from `CastRail.Width`, the ceremony overlays inset against it, and three panels already own
-the bottom band - but it is one change rather than three, and nothing else on the V2 list can land
-until it is made.
+**The HUD relayout is done, and here is what it actually bought.** The cast strip is a row along
+the BOTTOM now rather than a column down the LEFT, and the left gutter carries the navigation rail:
+six items, the open one filled and carrying an `Open` marker so the state is not a colour alone.
+`LeftColumnX` is `14 + IconRail.Width + 12` instead of `14 + CastRail.Width + 12`, which moves the
+left column 132 units left; `RightColumnInset` drops from 88 to 24 because the rail vacated the
+right gutter, which also cuts the docked panel's overlap of the vibe card from 131 units to 67.
+
+The bottom of the frame is three bands now, and the order is not the one the mockups draw. The
+strip is the lowest thing and runs full width; the status caption and the controls box share the
+band above it, side by side; the panel and the proximity prompt start above both. The mockups put
+the caption under the faces, and that arrangement does not survive contact with this HUD: the
+controls box and the right column of cards both hang into the corner the strip wants, the vibe card
+already ends fifteen units above the expanded controls box, and neither can rise. A strip that
+stopped short of them would have had two thirds of the frame to put twelve chips in, and twelve
+chips in two thirds cannot honour the larger-text preference - which the strip did honour as a
+column, and `CastRail_TwelveHouseguestsFitAtLargerTextWithoutOverlapping` pins.
+
+What it did NOT buy is vertical room, which is what Relationships, Social Goals and the conflict
+meter actually need. The left column was never short of height - Brand plus Objective ends at
+y 534 - it was short of width, and it has 132 more of it. Those three cards are still owed, and
+they now have a gutter to be built in rather than nowhere to go.
 
 **The panel is docked, and what that did not fix.** The episode panel was a 790x680 block in the
 middle of a 1600x900 canvas: nine of the twelve captures were mostly one opaque rectangle, while

@@ -677,11 +677,22 @@ namespace Gamesim.Episode
         /// <summary>The notebook's addressable sections, shared with the icon rail.</summary>
         public static class NotebookSection
         {
+            public const string People = "Section · people";
             public const string Network = "Section · network";
             public const string Rooms = "Section · rooms";
             public const string Votes = "Section · votes";
             public const string Story = "Section · story";
         }
+
+        /// <summary>
+        /// Which rail item the player is on, or null when they are on none of them.
+        ///
+        /// <para>The rail fills the active one, and it cannot know that on its own: the overview is
+        /// a camera mode the director owns and the sections are a field it owns. Exposing the answer
+        /// is cheaper than the rail keeping a second copy of the same two facts.</para>
+        /// </summary>
+        public string ActiveSection => IsOverview ? OverviewSection
+            : journalOpen ? journalSection : null;
 
         /// <summary>Whether the week's recap is on screen. Read by the HUD's own open-panel test.</summary>
         public bool IsWeeklyRecapOpen => weeklyRecap != null && weeklyRecap.IsOpen;
@@ -738,6 +749,27 @@ namespace Gamesim.Episode
 
 
         /// <summary>How the house voted, with the reason each voter committed.</summary>
+        /// <summary>
+        /// The house, as a list of the people in it: name, standing, where you stand with them, and
+        /// who they are outside the game.
+        ///
+        /// <para>Name, then who they are outside the game, then where you stand - the order the
+        /// reference build's houseguest list uses. The card line is omitted rather than left blank
+        /// when a save predates those fields.</para>
+        /// </summary>
+        private void RenderNotebookPeople(EpisodeState state)
+        {
+            hud.Heading("HOUSEGUESTS");
+            hud.Mark(NotebookSection.People);
+            foreach (var c in state.contestants.Where(c => !c.isPlayer))
+            {
+                string card = CardLine(c);
+                hud.PortraitRow(c.id,
+                    c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"),
+                    card);
+            }
+        }
+
         private void RenderNotebookVotes(EpisodeState state)
         {
             if (state.votes == null || state.votes.Count == 0)
@@ -854,21 +886,22 @@ namespace Gamesim.Episode
                 {
                     RenderNotebookStory(state);
                 }
+                else if (journalSection == NotebookSection.People)
+                {
+                    RenderNotebookPeople(state);
+                }
                 else
                 {
+                    // Just the graph. The roster used to be printed underneath it - every
+                    // houseguest, their status and a trust number, then a second line of biography
+                    // each - which made the one page the rail opens by default the longest page in
+                    // the notebook, in a viewport about 174 units tall. It is its own page now, and
+                    // this one answers the question its own icon asks.
+                    //
                     // The graph carries the caveat in its own legend, so repeating it here would be
                     // the same sentence twice within one screen.
                     hud.SocialGraphPanel(state);
                     hud.Mark(NotebookSection.Network);
-                    // Name, then who they are outside the game, then where you stand — the order the
-                    // reference build's houseguest list uses. The card line is omitted rather than
-                    // left blank when a save predates those fields.
-                    foreach (var c in state.contestants.Where(c => !c.isPlayer))
-                    {
-                        hud.Paragraph(c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"));
-                        string card = CardLine(c);
-                        if (!string.IsNullOrEmpty(card)) hud.Paragraph(card);
-                    }
                 }
                 hud.ApplyPendingScroll();
                 return;

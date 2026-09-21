@@ -21,14 +21,25 @@ namespace Gamesim.Editor
     /// to learn what the house could do, bakes again with it on, and backs off the smallest set of
     /// boxes that gets the difference back.</para>
     ///
-    /// <para>Two things are measured, because a bake can take either away. <b>Rooms</b>: every room
-    /// marker must still route to every other. <b>Approaches</b>: every interaction anchor's approach
-    /// point must still be on the mesh <em>and</em> routable from a room, which is the stricter half
-    /// and the one a player would notice. Furniture that seals a doorway is obvious once you look;
-    /// furniture that walls in the chair it belongs to is not, and the dining set does exactly that -
-    /// sixteen chairs 0.64 m apart around a table make a solid six-metre block with both its own
-    /// seats buried inside, in a room whose corridors measure 1.04 m to the north and 0.78 m to the
-    /// south of them when an agent of radius 0.5 needs more than one metre.</para>
+    /// <para>Three things are measured, because a bake can take any of them away, and each was
+    /// learned by losing it.</para>
+    ///
+    /// <para><b>Rooms</b>: every room marker must still route to every other. This one is obvious
+    /// once you look - the Head of Household door standing across its own opening.</para>
+    ///
+    /// <para><b>Approaches</b>: every interaction anchor's approach point must still be on the mesh
+    /// <em>and</em> routable from a room. A bay walled in by its own furniture samples perfectly well
+    /// and cannot be walked into, so "is it on the mesh" is not the question. The dining set is the
+    /// case: sixteen chairs 0.64 m apart around a table make a solid six-metre block with both of its
+    /// own seats sealed inside, in a room whose corridors measure 1.04 m to the north and 0.78 m to
+    /// the south of them when an agent of radius 0.5 needs more than a metre.</para>
+    ///
+    /// <para><b>Actor bindings</b>: every houseguest and the player must be able to bind where they
+    /// stand, which <c>HouseNpcMotion</c> does by sampling the mesh within 0.25 m of its own feet.
+    /// Nothing was watching this and it cost nineteen PlayMode tests: the competition yard's crates
+    /// took the floor out from under Taylor Kim, two metres away, and the only evidence was "NPC
+    /// carving did not clear to a safe floor binding" - the same message obstacle carving produced,
+    /// meaning the same thing, naming neither the actor nor the reason.</para>
     ///
     /// <para>This matters more than a hand-written exclusion list would, because a list goes stale
     /// silently. Move the bookcase out of the doorway next week and a list still exempts it forever;
@@ -56,6 +67,9 @@ namespace Gamesim.Editor
         /// <summary>The tolerance the meeting coordinator samples an approach point with.</summary>
         private const float ApproachTolerance = 0.25f;
 
+        /// <summary>The tolerance <c>HouseNpcMotion</c> binds a body to the mesh with.</summary>
+        private const float ActorTolerance = 0.25f;
+
         /// <summary>Stops, so a house that cannot be reconnected reports rather than grinds.</summary>
         private const int MaxOff = 56;
         private const int MaxRounds = 40;
@@ -75,6 +89,16 @@ namespace Gamesim.Editor
                 .OrderBy(a => a.VenueId, StringComparer.Ordinal).ThenBy(a => a.Slot).ToList();
             var proxies = UnityEngine.Object.FindObjectsByType<BoxCollider>(FindObjectsInactive.Include)
                 .Select(b => b.transform).Where(HouseFurnitureCollision.IsProxy).ToList();
+
+            // Every houseguest owns a carving NavMeshObstacle, and carving is live in edit mode as
+            // well as in play. Left alone it puts each of them in a 0.90 m hole of their own making,
+            // which is indistinguishable from furniture having taken their floor - it reported five
+            // of six actors unbindable before a single prop was solid. Suppressed for the duration
+            // and restored in the finally, so what is measured is the house rather than the cast.
+            var carvers = UnityEngine.Object.FindObjectsByType<NavMeshObstacle>(FindObjectsInactive.Include)
+                .Where(o => o.GetComponentInParent<HouseNpc>() != null).ToList();
+            var carving = carvers.Select(o => o.carving).ToList();
+            foreach (var carver in carvers) carver.carving = false;
 
             var sb = new StringBuilder();
             try
@@ -121,7 +145,8 @@ namespace Gamesim.Editor
                         reached = Bake(surface, markers, anchors, out lost);
                         // Any gain at all is progress: stop emptying this neighbourhood and go and
                         // look at what is still missing.
-                        if (reached.Rooms > before.Rooms || reached.Approaches > before.Approaches) break;
+                        if (reached.Rooms > before.Rooms || reached.Approaches > before.Approaches
+                            || reached.Actors > before.Actors) break;
                     }
                 }
 
@@ -179,18 +204,24 @@ namespace Gamesim.Editor
             }
             finally
             {
+                for (int i = 0; i < carvers.Count; i++) carvers[i].carving = carving[i];
                 surface.navMeshData = committed;
                 Register(surface, committed);
             }
         }
 
-        /// <summary>What the house can do: rooms that reach each other, approach points you can stand on.</summary>
+        /// <summary>
+        /// What the house can do: rooms that reach each other, approach points you can stand on, and
+        /// actors that can bind to the mesh where they stand.
+        /// </summary>
         private readonly struct Score
         {
-            public readonly int Rooms, Approaches;
-            public Score(int rooms, int approaches) { Rooms = rooms; Approaches = approaches; }
-            public bool AtLeast(Score other) => Rooms >= other.Rooms && Approaches >= other.Approaches;
-            public override string ToString() => Rooms + " room pairs and " + Approaches + " approaches";
+            public readonly int Rooms, Approaches, Actors;
+            public Score(int rooms, int approaches, int actors) { Rooms = rooms; Approaches = approaches; Actors = actors; }
+            public bool AtLeast(Score other) =>
+                Rooms >= other.Rooms && Approaches >= other.Approaches && Actors >= other.Actors;
+            public override string ToString() =>
+                Rooms + " room pairs, " + Approaches + " approaches and " + Actors + " actor bindings";
         }
 
         private static Score Bake(NavMeshSurface surface, List<HouseRoomMarker> markers,
@@ -211,6 +242,7 @@ namespace Gamesim.Editor
         private static Score Measure(List<HouseRoomMarker> markers, List<HouseInteractionAnchor> anchors,
             out List<string> lost)
         {
+            var actors = Actors();
             lost = new List<string>();
             var grounded = new List<KeyValuePair<string, Vector3>>();
             foreach (var marker in markers)
@@ -238,10 +270,36 @@ namespace Gamesim.Editor
                 if (ok) approaches++;
                 else lost.Add(Key(anchor));
             }
-            return new Score(rooms, approaches);
+
+            // Where the cast stands is a destination too, and the one nothing was watching. A
+            // houseguest binds by sampling the mesh within 0.25 m of its own feet; take that away
+            // and HouseNpcMotion gives up with "NPC carving did not clear to a safe floor binding",
+            // which is the same message obstacle carving produced and means the same thing. Taylor
+            // Kim stands in the competition yard 2 m from the crates, and the crates took the floor.
+            int bound = 0;
+            foreach (var actor in actors)
+            {
+                if (NavMesh.SamplePosition(actor.Value, out _, ActorTolerance, NavMesh.AllAreas)) bound++;
+                else lost.Add(Key(actor.Key));
+            }
+            return new Score(rooms, approaches, bound);
+        }
+
+        /// <summary>The authored standing position of every houseguest and the player.</summary>
+        private static List<KeyValuePair<string, Vector3>> Actors()
+        {
+            var found = new List<KeyValuePair<string, Vector3>>();
+            foreach (var npc in UnityEngine.Object.FindObjectsByType<HouseNpc>(FindObjectsInactive.Include)
+                         .OrderBy(n => n.name, StringComparer.Ordinal))
+                found.Add(new KeyValuePair<string, Vector3>(npc.name, npc.transform.position));
+            foreach (var player in UnityEngine.Object.FindObjectsByType<HousePlayerController>(FindObjectsInactive.Include)
+                         .OrderBy(p => p.name, StringComparer.Ordinal))
+                found.Add(new KeyValuePair<string, Vector3>(player.name, player.transform.position));
+            return found;
         }
 
         private static string Key(string a, string b) => a + " / " + b;
+        private static string Key(string actor) => "actor " + actor;
         private static string Key(HouseInteractionAnchor a) => a.VenueId + " slot " + a.Slot;
 
         /// <summary>Every room-to-room route, as the house walks them with no furniture collision at all.</summary>
@@ -273,6 +331,9 @@ namespace Gamesim.Editor
         {
             var anchor = anchors.FirstOrDefault(a => Key(a) == key);
             if (anchor != null) return Around(anchor.Approach, Reach, proxies);
+
+            foreach (var actor in Actors())
+                if (Key(actor.Key) == key) return Around(actor.Value, Reach, proxies);
 
             if (!routes.TryGetValue(key, out var corners)) return new List<Transform>();
             var found = new List<Transform>();

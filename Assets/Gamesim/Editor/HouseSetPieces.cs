@@ -354,11 +354,15 @@ namespace Gamesim.Editor
             int course = Course(world.transform, root);
             int shell = Shell(world.transform, root);
 
-            // Placement and collision have to travel together. Set dressing was re-placed once
-            // without the lighting pass that follows it and the house lost its lightmaps for three
-            // days without anybody noticing; a separate "and now run the other menu item" step is
-            // exactly how that happens. Fitting here means a re-placed house is a solid house.
+            // Placement, collision, the back-off and the bake travel together. Set dressing was
+            // re-placed once without the lighting pass that follows it and the house lost its
+            // lightmaps for three days without anybody noticing; a separate "and now run the other
+            // menu item" step is exactly how that happens. All three run here, in order, because a
+            // house with collision and no resolve has furniture in its doorways, and one with a
+            // resolve and no bake has a NavMesh that knows about none of it.
             HouseFurnitureCollision.FitCollision();
+            HouseDoorwayResolver.Resolve();
+            HouseNavigationObstacles.Rebake();
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -366,7 +370,10 @@ namespace Gamesim.Editor
             Debug.Log(string.Format(
                 "[Gamesim] set pieces · {0} props placed, {1} skipped, {2} floor tiles, {3} entrance parts, "
                 + "{4} plants swapped in, {5} podium parts, {6} ring segments dressed by the authored circle, "
-                + "{7} primitive walls dressed by the authored shell, {8} competition course pieces",
+                + "{7} primitive walls dressed by the authored shell, {8} competition course pieces"
+                + "\nCollision was fitted, resolved against the bake and baked. Check the two lines above"
+                + " this one for what had to be backed off, and re-run the lighting pass - placement"
+                + " still leaves the house outside its lightmaps.",
                 placed, missing, tiles, entrance, greenery, podiums, rings, shell, course));
         }
 

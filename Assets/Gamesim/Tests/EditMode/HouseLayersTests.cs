@@ -59,6 +59,9 @@ namespace Gamesim.Tests.EditMode
             sofa.name = "a sofa";
             sofa.layer = HouseLayers.Furniture;
             sofa.transform.position = new Vector3(0f, 0f, 500f);
+            // Edit mode does not run a physics step, so a collider created and moved in the same
+            // frame is still at the origin as far as any query is concerned.
+            Physics.SyncTransforms();
 
             var origin = new Vector3(0f, 0f, 495f);
             Assert.That(Physics.Raycast(origin, Vector3.forward, out var picked, 10f, HouseLayers.Pick,

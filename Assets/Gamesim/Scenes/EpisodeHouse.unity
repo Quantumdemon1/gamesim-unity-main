@@ -18136,12 +18136,12 @@ GameObject:
   - component: {fileID: 553642953}
   - component: {fileID: 553642954}
   m_Layer: 8
-  m_Name: 'Collision (off: kitchen-table-chat slot 0)'
+  m_Name: Collision
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &553642953
 Transform:
   m_ObjectHideFlags: 0
@@ -51267,12 +51267,12 @@ GameObject:
   - component: {fileID: 1623700875}
   - component: {fileID: 1623700876}
   m_Layer: 8
-  m_Name: Collision
+  m_Name: 'Collision (off: actor Taylor Kim)'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1623700875
 Transform:
   m_ObjectHideFlags: 0

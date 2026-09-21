@@ -149,6 +149,7 @@ namespace Gamesim.Episode
         {
             // The rail's last entry is not a page: it is the house itself, from above.
             if (section == OverviewSection) { ToggleOverview(); return; }
+            journalSection = section;
             journalOpen = true;
             phaseOpen = false; settingsOpen = false; diaryOpen = false;
             hud.RequestScrollTo(section);

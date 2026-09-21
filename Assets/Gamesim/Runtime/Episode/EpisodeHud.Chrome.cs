@@ -60,7 +60,11 @@ namespace Gamesim.Episode
         public const string RecentEventsCardName = "Recent events";
 
         /// <summary>How many events the column shows, and the longest line one of them may occupy.</summary>
-        private const int RecentEventRows = 4;
+        // Three, not four. The right column is 104 + 226 live feed + 12 + this card + 12 + the
+        // knowledge card, and at four rows that stack reached y 808 of a 900-high canvas while the
+        // controls box starts at 746 - a 62-pixel overlap that clipped the last row of whichever
+        // card was unlucky. Four events was never the point; not colliding is.
+        private const int RecentEventRows = 3;
         private const int RecentEventLetters = 54;
 
         /// <summary>
@@ -211,11 +215,13 @@ namespace Gamesim.Episode
         {
             if (state == null) return 0f;
             var reading = HouseVibe.Of(state);
-            float width = RightColumnWidth, height = 46f + 4f * VibeRowHeight + 26f;
+            float width = RightColumnWidth, height = 46f + 3f * VibeRowHeight + 26f;
             var card = Chrome(HouseVibeCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
                 new Vector2(width, height));
-            var heading = CardHeading(card, "KNOWN HOUSE EVENTS", "people");
+            // Says whose knowledge and over what span. "KNOWN HOUSE EVENTS" said neither, so the
+            // card read as a statistic about the house rather than a summary of your own week.
+            var heading = CardHeading(card, "WHAT YOU KNOW THIS WEEK", "people");
             heading.characterSpacing = 2f;
 
             int index = 0;
@@ -249,7 +255,7 @@ namespace Gamesim.Episode
             }
 
             FixedText(card, HouseVibe.Tension(reading), 12, UiTheme.Muted,
-                new Vector2(16f, -(48f + 4f * VibeRowHeight)), new Vector2(width - 32f, 20f));
+                new Vector2(16f, -(48f + 3f * VibeRowHeight)), new Vector2(width - 32f, 20f));
             return height;
         }
 

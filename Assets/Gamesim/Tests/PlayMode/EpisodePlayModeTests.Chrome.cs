@@ -202,13 +202,19 @@ namespace Gamesim.Tests.PlayMode
                 " against status " + ScreenRect(band) + ".");
 
             // The column is a stack. Whatever else is in the gutter, nothing may sit on the card.
+            // Both cards, not just the top one: this loop checked recent events and stopped, and the
+            // card that actually got sat on was the one BELOW it. The controls box grew a fifth line,
+            // could not grow wider, and took the bottom out of house vibe instead - visible in every
+            // screenshot, asserted by nothing, because the only card being guarded was the one the
+            // box was nowhere near.
+            foreach (var card in new[] { events, vibe })
             foreach (var name in new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status",
                 "House pill", EpisodeDirector.LiveFeedCardName })
             {
                 var panel = ActiveRect(name);
-                if (panel == null) continue;
-                Assert.That(ScreenRect(events).Overlaps(ScreenRect(panel)), Is.False,
-                    "'" + EpisodeHud.RecentEventsCardName + "' " + ScreenRect(events) +
+                if (panel == null || panel == card) continue;
+                Assert.That(ScreenRect(card).Overlaps(ScreenRect(panel)), Is.False,
+                    "'" + card.name + "' " + ScreenRect(card) +
                     " overlaps '" + name + "' " + ScreenRect(panel) + ".");
             }
         }

@@ -103,6 +103,10 @@ namespace Gamesim.Episode
             }
             float height = helpExpanded ? 180f : 54f;
             explorationHelp = Chrome("Exploration controls", canvas.transform);
+            // Stays bottom right. Moving it to the empty bottom-left band looks right with nothing
+            // open and is wrong the moment anything is: the activity layout claims left=LeftColumnX
+            // bottom=100, which is that band exactly, so it would trade an overlap with the right
+            // column for an overlap with the modal. The column is what grew - see RecentEventRows.
             Anchor(explorationHelp,new Vector2(1,0),new Vector2(1,0),new Vector2(-24,100),new Vector2(285,height));
             FixedButton(explorationHelp, helpExpanded ? "Hide controls" : "Help · controls",
                 new Vector2(10,-8),new Vector2(265,38), () =>

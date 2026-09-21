@@ -470,6 +470,9 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(after,director.Snapshot);
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
+            // The notebook shows one section at a time; declarations are part of the season's story.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
+            yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain("You declared loyalty to " + after.Find(id).name));
             Assert.That(ActiveDiaryText(), Does.Contain("A declaration is not a mutual guarantee."));
         }

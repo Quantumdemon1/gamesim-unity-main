@@ -17,13 +17,18 @@ namespace Gamesim.Presentation
             public float Fraction(int count) => Mathf.Clamp01(count / (float)Peak);
             public IEnumerable<(string Word, int Count, string Icon, Color Tint)> Rows()
             {
-                yield return ("Activity", Activity, "people", UiTheme.Paper);
+                // Each label names the things it counts. "Activity", "Commitments" and "Game
+                // stakes" were accurate and unreadable: they are category names from the event
+                // schema, and a player looking at three unexplained meters cannot tell what any of
+                // them is counting, let alone what to do about it.
+                yield return ("Conversations", Activity, "people", UiTheme.Paper);
                 // Commitments are alliances and promises kept, which is the positive-relationship
                 // colour; game stakes are nominations, evictions and backdoors, which is danger.
                 // Neither is navigation, and neither is an achievement.
-                yield return ("Commitments", Commitments, "handshake", UiTheme.Allied);
-                yield return ("Game stakes", GameStakes, "task", UiTheme.Danger);
-                yield return ("Known total", Total, "calendar", UiTheme.Muted);
+                yield return ("Deals & alliances", Commitments, "handshake", UiTheme.Allied);
+                yield return ("Nominations & moves", GameStakes, "task", UiTheme.Danger);
+                // No "Known total" row. Its bar is Total/Peak, which is 1 by construction - a meter
+                // that is always full - and the card's own footer already prints the number.
             }
         }
 

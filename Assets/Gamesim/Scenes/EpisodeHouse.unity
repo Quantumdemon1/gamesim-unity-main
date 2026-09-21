@@ -49505,7 +49505,7 @@ MonoBehaviour:
   roomId: Kitchen
   slot: 1
   seated: 1
-  approachOffset: {x: 0, y: 0, z: -0.9}
+  approachOffset: {x: 0, y: 0, z: -0.7}
   cameraOffset: {x: 0, y: 1.45, z: 2.6}
   seatHeight: 0.46
 --- !u!1 &1730797589
@@ -52973,7 +52973,7 @@ MonoBehaviour:
   roomId: Kitchen
   slot: 0
   seated: 1
-  approachOffset: {x: 0, y: 0, z: -0.9}
+  approachOffset: {x: 0, y: 0, z: -0.7}
   cameraOffset: {x: 0, y: 1.45, z: 2.6}
   seatHeight: 0.46
 --- !u!1 &1836299767

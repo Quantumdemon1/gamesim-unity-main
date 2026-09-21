@@ -107,6 +107,21 @@ lounger**; `kitchen-table-chat` 0.25 m; `private-diary` 0.45 m; `kitchen-counter
 `episode-screen` 1.40 m. Bake erosion at agent radius 0.5 eats the close ones, which is precisely
 how carving broke seating the first time. **This must land and be green before Stage 3.**
 
+**What Stage 1 found that Stage 3 has to answer.** Four of the five approaches reach a bake-safe
+0.60 m. The two anchored dining chairs cannot, and the reason is where they stand rather than what
+number is chosen: they face the table, their sides are the neighbouring chairs 0.64 m away, and the
+floor behind them runs out — 0.90 m puts one of the pair off the mesh entirely, at which point the
+meeting coordinator (`HouseMeetingCoordinator.cs:332`, a 0.25 m sample tolerance) cannot reserve the
+chairs and `NpcRuntime_ASavedTableMeetingReunitesSeatedAndFacingTheChairs` fails. They sit at 0.70,
+which is the best the room allows and still short of the agent radius.
+
+There is a trap in here worth naming, because it caught this survey. Measured against today's mesh a
+side approach looks fine at 0.03 m — but only because chairs have no colliders, so the NavMesh does
+not know they are there. The moment Stage 3 gives them collision, a side approach walks into the
+next chair. **Any approach point derived before the furniture is in the mesh is provisional**, and
+Stage 3 must re-derive all of them once it is. For the dining pair that likely means re-anchoring to
+chairs with room behind them, or moving the table, rather than choosing a different offset.
+
 ### Stage 2 — two layers, which the project has never used (S)
 `TagManager.asset` defines only the five builtins; layers 8–20 are empty. Give prop collision its
 own layer. The NavMeshSurface mask is `0xFFFFFFFF` so the bake still sees it, while clicking,

@@ -113,14 +113,23 @@ namespace Gamesim.House
                         usedSeats.Add(seat);
                         prop=seat; at=seat.position; at.y=room.transform.position.y; yaw=seat.eulerAngles.y;
                     }
-                    // An approach has to stand clear of its own prop by more than the agent radius
-                    // (0.5), or a NavMesh bake erodes the floor out from under it. Measured against
-                    // the props these actually land on: a 0.60 dining chair needs 0.90 behind it,
-                    // and a lounger is 1.90 long, so along its length it would need 1.60 - but from
-                    // its SIDE only 0.95, which is also how a person gets onto a lounger.
+                    // An approach has to stand clear of its own prop, or a NavMesh bake erodes the
+                    // floor out from under it at the 0.5 agent radius. A lounger is 1.90 long, so
+                    // along its length it would need 1.60 - but from its SIDE only 0.95, which is
+                    // also how a person gets onto a lounger.
+                    //
+                    // The dining chairs get 0.70 rather than the 0.90 that would clear them
+                    // properly, because 0.90 is not there to stand on: the anchored pair face the
+                    // table, their sides are the neighbouring chairs 0.64 away, and behind them the
+                    // room runs out - 0.90 puts one of the two off the floor entirely and the
+                    // meeting coordinator, which samples with a 0.25 m tolerance, then cannot
+                    // reserve the chairs at all. 0.70 is the best the room allows and it is still
+                    // short of the agent radius, so these two cannot survive a bake where they
+                    // stand. That is a Stage 3 problem, recorded in WORLD-INTERACTION.md, and it is
+                    // about where the chairs are rather than about the number.
                     var created=HouseInteractionAnchor.Create(prop,venue.Id,venue.Room,slot,at,yaw,venue.Seated,
                         !venue.Seated ? Vector3.zero
-                        : venue.Id=="yard-lounger-chat" ? Vector3.left*.95f : Vector3.back*.90f);
+                        : venue.Id=="yard-lounger-chat" ? Vector3.left*.95f : Vector3.back*.70f);
                     if(venue.Room=="Yard" && venue.Seated)created.SetSeatHeight(.36f);
                 }
             }

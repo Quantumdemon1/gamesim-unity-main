@@ -674,7 +674,7 @@ namespace Gamesim.House
             var back = transform.rotation * Vector3.back;
             float radius = activeShot.HasValue ? Mathf.Min(.18f,occlusionRadius) : occlusionRadius;
             int count = Physics.SphereCastNonAlloc(transform.position + back * skip, radius, back,
-                occlusionHits, wanted - skip, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                occlusionHits, wanted - skip, HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             float nearest = wanted;
             for (int i = 0; i < count; i++)
             {

@@ -35,7 +35,7 @@ namespace Gamesim.Episode
             var origin = player.transform.position + Vector3.up * 1.15f;
             var offset = npc.transform.position + Vector3.up * 1.15f - origin;
             if (offset.magnitude > 2.8f) return false;
-            int count = Physics.RaycastNonAlloc(origin, offset.normalized, sightHits, offset.magnitude, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            int count = Physics.RaycastNonAlloc(origin, offset.normalized, sightHits, offset.magnitude, HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == sightHits.Length) return false; // Fail closed if a crowded ray overflows the reusable buffer.
             for (int i = 0; i < count; i++)
                 if (!sightHits[i].transform.IsChildOf(player.transform) && !sightHits[i].transform.IsChildOf(npc.transform)) return false;

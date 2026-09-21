@@ -379,7 +379,7 @@ namespace Gamesim.Episode
                     || !seasonPlayer.Agent.CalculatePath(hit.position,path) || path.status != NavMeshPathStatus.PathComplete) continue;
                 var origin = hit.position + Vector3.up * 1.15f;
                 var offset = npc.transform.position + Vector3.up * 1.15f - origin;
-                int count = Physics.RaycastNonAlloc(origin,offset.normalized,seasonSightHits,offset.magnitude,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore);
+                int count = Physics.RaycastNonAlloc(origin,offset.normalized,seasonSightHits,offset.magnitude,HouseLayers.Sight,QueryTriggerInteraction.Ignore);
                 if (count == seasonSightHits.Length) continue;
                 bool blocked = false;
                 for (int index = 0; index < count; index++)

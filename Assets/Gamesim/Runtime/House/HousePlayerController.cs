@@ -149,7 +149,8 @@ namespace Gamesim.House
                 CameraRig?.FocusSubject(seatedGuest.transform);
                 return;
             }
-            if (!Physics.Raycast(ray, out var hit, 500f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            // Pick, not Sight: a click is meant to hit the thing under the cursor, furniture included.
+            if (!Physics.Raycast(ray, out var hit, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore))
             {
                 return;
             }

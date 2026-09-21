@@ -185,11 +185,11 @@ namespace Gamesim.House
             }
 
             int count = Physics.RaycastNonAlloc(origin, offset / distance, sightHits, distance,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             // A saturated buffer must not accidentally hide an occluding wall.
             RaycastHit[] hits = count == sightHits.Length
                 ? Physics.RaycastAll(origin, offset / distance, distance,
-                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                    HouseLayers.Sight, QueryTriggerInteraction.Ignore)
                 : sightHits;
             if (hits != sightHits)
             {

@@ -176,7 +176,10 @@ namespace Gamesim.House
                     if(renderer.enabled && renderer.gameObject.activeInHierarchy && renderer.bounds.IntersectRay(ray,out float hit)
                         && hit>=0 && hit<distance){distance=hit;hitBody=true;}
                 if(!hitBody)continue;
-                int count=Physics.RaycastNonAlloc(ray,pickHits,distance,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore);
+                // Sight, not Pick: this is the occlusion half of the pick, asking whether anything
+                // stands between the camera and the body. Furniture standing in front of a seated
+                // houseguest is exactly what you are looking THROUGH to click them.
+                int count=Physics.RaycastNonAlloc(ray,pickHits,distance,HouseLayers.Sight,QueryTriggerInteraction.Ignore);
                 if(count==pickHits.Length)continue;
                 bool blocked=false;
                 for(int index=0;index<count;index++)

@@ -58,7 +58,7 @@ namespace Gamesim.Episode
             if (distance > 2.8f) return false;
             if (distance < .01f) return true;
             int count = Physics.RaycastNonAlloc(origin, offset / distance, sightHits, distance,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == sightHits.Length) return false;
             for (int index = 0; index < count; index++)
             {

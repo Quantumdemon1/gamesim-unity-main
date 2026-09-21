@@ -196,7 +196,7 @@ namespace Gamesim.House
             if (!Finite(origin) || !Finite(offset) || distance < .01f)
                 return Fail("Sight endpoints are invalid or coincident.");
             int count = scene.GetPhysicsScene().Raycast(origin, offset / distance, sightHits, distance,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == sightHits.Length) return Fail("The sight query overflowed; visibility is unknown.");
             for (int i = 0; i < count; i++)
             {
@@ -220,7 +220,7 @@ namespace Gamesim.House
                 return Fail("Capsule clearance needs a valid local actor, floor and body dimensions.");
             int count = scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * radius,
                 feet + Vector3.up * (height - radius), radius, overlapHits,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             if (count == overlapHits.Length) return Fail("The clearance query overflowed; occupancy is unknown.");
             for (int i = 0; i < count; i++)
             {

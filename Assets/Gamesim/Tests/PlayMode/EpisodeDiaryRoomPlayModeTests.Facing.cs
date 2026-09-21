@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using Gamesim.House;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -48,16 +49,41 @@ namespace Gamesim.Tests.PlayMode
                 + anchor.CameraPosition.ToString("0.00") + ". Past ninety they are showing it the back "
                 + "of their head, which is the whole of the shot.");
 
-            // And they have to be IN the chair, not standing beside it. Facing and seating fail
-            // differently and look the same from a written description - "the model faces the back
-            // of the seat" fits a body turned around and a body standing upright through the
-            // cushion equally well - so measure both and let the failure say which.
-            float aside = Vector3.ProjectOnPlane(body.position - anchor.Position, Vector3.up).magnitude;
+            // And the body you can SEE has to be in the chair. Measure the visual root, not the
+            // controller: HouseSeatPresentation deliberately leaves the transform standing at the
+            // approach point and offsets the rendered body onto the cushion instead, so asking the
+            // controller where it is returns the approach - 1.17 m out, exactly the authored
+            // offset - and reads as a damning result about nothing at all.
+            var visual = player.GetComponent<Gamesim.Presentation.CharacterPresentation>()?.VisualRoot;
+            Assert.That(visual, Is.Not.Null, "A seated player still has a body to look at.");
+            float aside = Vector3.ProjectOnPlane(visual.position - anchor.Position, Vector3.up).magnitude;
             Debug.Log("[Gamesim] Diary seat - facing " + away.ToString("0.0") + " degrees off the camera, "
-                + aside.ToString("0.00") + " m from the seat, body y " + body.position.y.ToString("0.00")
-                + ", seat contact y " + anchor.SeatContact.y.ToString("0.00") + ".");
+                + "visual " + aside.ToString("0.00") + " m from the seat, visual y "
+                + visual.position.y.ToString("0.00") + ", controller "
+                + Vector3.ProjectOnPlane(body.position - anchor.Position, Vector3.up).magnitude.ToString("0.00")
+                + " m out, seat contact y " + anchor.SeatContact.y.ToString("0.00") + ".");
             Assert.That(aside, Is.LessThan(0.45f),
-                "The sitter is " + aside.ToString("0.00") + " m from the chair it is supposed to be in.");
+                "The body on screen is " + aside.ToString("0.00") + " m from the chair it is sitting in.");
+
+            // Where it stands and which way it looks are both right; the remaining way for a
+            // confessional to look ridiculous is the POSE. If the animator never learns it is
+            // seated, a correctly placed, correctly aimed body stands bolt upright through the
+            // cushion with the arms of the chair passing through its legs.
+            var animator = player.GetComponentInChildren<Animator>();
+            if (animator != null && animator.runtimeAnimatorController != null)
+            {
+                bool declares = animator.parameters.Any(p => p.name == "Seated"
+                    && p.type == AnimatorControllerParameterType.Bool);
+                var state = animator.GetCurrentAnimatorStateInfo(0);
+                Debug.Log("[Gamesim] Diary pose - controller " + animator.runtimeAnimatorController.name
+                    + ", declares Seated " + declares
+                    + ", Seated=" + (declares && animator.GetBool("Seated"))
+                    + ", state hash " + state.fullPathHash + ", length " + state.length.ToString("0.00") + ".");
+                Assert.That(declares, Is.True,
+                    "The cast's controller has no Seated parameter, so no chair in the house can pose a body.");
+                Assert.That(animator.GetBool("Seated"), Is.True,
+                    "The body is in the chair and the animator does not know it, so it is playing a standing pose.");
+            }
             yield return null;
         }
     }

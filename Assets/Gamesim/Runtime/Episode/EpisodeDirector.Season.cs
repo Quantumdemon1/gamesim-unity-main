@@ -48,7 +48,10 @@ namespace Gamesim.Episode
         private void Settings(EpisodeState state)
         {
             hud.PanelTitle(blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", "Offline play is available. No credentials or online connection are required.");
-            hud.Paragraph("Slot: " + saves.SavePath);
+            // The slot's name, not its path: this panel used to print the full file path,
+            // which on Windows contains the player's user name, and which they can do
+            // nothing with. The name is the part that tells one slot from another.
+            hud.Paragraph("Slot: " + Path.GetFileNameWithoutExtension(saves.SavePath));
             hud.Paragraph(message);
             hud.Action("Save now  [F5]", SaveNow);
             hud.Action("Reload current slot", LoadNow);
@@ -206,7 +209,8 @@ namespace Gamesim.Episode
             }
             catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
             {
-                message = "New season could not be saved. Your current session and slot were preserved. " + error.Message;
+                message = "New season could not be saved. Your current session and slot were preserved. "
+                    + SaveJson.Explain(error);
                 if (choice?.Authored != null && characterCreator != null) characterCreator.Resume(message);
                 else if (choice != null && castSelect != null) castSelect.Resume(message);
             }
@@ -241,7 +245,8 @@ namespace Gamesim.Episode
                 }
                 message = result;
             }
-            catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException) { message = "Import did not change your current slot: " + error.Message; }
+            catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
+            { message = "Import did not change your current slot. " + SaveJson.Explain(error); }
             Render();
         }
 

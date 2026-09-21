@@ -151,7 +151,7 @@ namespace Gamesim.Presentation
         {
             switch (kind)
             {
-                case NominationKind: return UiTheme.Warning;
+                case NominationKind: return UiTheme.Danger;
                 case VetoKind: return UiTheme.Gold;
                 case EvictionKind: return UiTheme.Danger;
                 case WinnerKind: return UiTheme.Gold;

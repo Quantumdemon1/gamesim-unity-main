@@ -39,7 +39,7 @@ namespace Gamesim.Episode
             }
             catch (Exception error) when (SaveJson.IsExpected(error))
             {
-                message += "  ·  The career record could not be updated: " + error.Message;
+                message += "  ·  The career record could not be updated. " + SaveJson.Explain(error);
             }
         }
 

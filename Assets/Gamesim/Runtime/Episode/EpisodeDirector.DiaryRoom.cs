@@ -246,7 +246,7 @@ namespace Gamesim.Episode
         private void RenderDiary(EpisodeState state)
         {
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Diary);
-            hud.PanelTitle("PRIVATE DIARY ROOM", "Only your character's own memories and assigned decisions appear here.");
+            hud.PanelTitle("PRIVATE DIARY ROOM", "Your own memories, and the decisions that are yours to make.");
             if(!IsDiarySettled)
             {
                 hud.Paragraph("Walk to the chair, turn and sit. Your diary choices appear when you are seated.");
@@ -266,7 +266,7 @@ namespace Gamesim.Episode
                     () => CancelDiaryDecision(reviewed));
                 return;
             }
-            hud.Paragraph("A quiet place to reflect. Reading here does not change your mood, traits, relationships, or jury standing.");
+            hud.Paragraph("A quiet place to reflect. Looking back costs you nothing.");
             RenderDiaryRecord(state);
             RenderDiaryReflection(state);
             RenderStudyHouse(state);
@@ -283,7 +283,6 @@ namespace Gamesim.Episode
             var memories = state.memories.Where(memory => memory.ownerId == state.playerId).Reverse().Take(20).ToArray();
             if (memories.Length == 0) hud.Paragraph("You have no recorded personal memories yet. Explore and talk to the housemates.");
             foreach (var memory in memories) hud.Paragraph("Week " + memory.week + ": " + memory.text);
-            hud.Paragraph("These are your recorded experiences, not access to another housemate's private thoughts.");
         }
 
         private void RenderDiaryRecord(EpisodeState state)
@@ -291,9 +290,8 @@ namespace Gamesim.Episode
             hud.Heading("YOUR DIARY RECORD");
             hud.Paragraph("Study preparation: " + state.playerStudyBonus + "/5. Saved between weeks; used only by the weekly simulated HoH/Veto option, not precision play or final HoH.");
             hud.Paragraph("Current diary persona: " + state.playerPersona.current + ". Recorded reflections: " + state.playerPersona.history.Count + ".");
-            hud.Paragraph("Recorded jury-impression ledger: " + state.jurySentiment.overallSentiment.ToString("0")
-                + " across " + state.jurySentiment.jurors.Count + " jurors. This is a gameplay record, not access to private thoughts or a forecast of votes.");
-            hud.Paragraph("The impression ledger does not directly set jury ballots. No social or competition reward is applied to normal play by this display.");
+            hud.Paragraph("How the jury has read you so far: " + state.jurySentiment.overallSentiment.ToString("0")
+                + " across " + state.jurySentiment.jurors.Count + " jurors. An impression, not a promise.");
         }
 
         private void RenderStudyHouse(EpisodeState state)

@@ -62,13 +62,16 @@ namespace Gamesim.Persistence
                     + "Voting-bloc rules begin in week " + candidate.blocRulesStartWeek + "; the current week is unchanged. "
                     + "NPC conversations begin in week " + candidate.npcSocial.rulesStartWeek + "; the current week is unchanged. "
                     + (report.Count == 0 ? "" : "Metadata retained in the original archive: " + string.Join(", ", report.OrderBy(value => value)) + ". ")
-                    + "Original preserved at " + archived;
+                    + "Original preserved in your saves folder.";
                 return true;
             }
             catch (Exception error) when (SaveJson.IsExpected(error))
             {
-                message = "Web save was not installed: " + error.Message
-                    + (archived != null && File.Exists(archived) ? " Original preserved at " + archived : " No game state was changed.");
+                // The exception type rather than its text: an IO failure's message embeds the
+                // full path of whatever it could not read.
+                message = "Web save was not installed: " + SaveJson.Explain(error)
+                    + (archived != null && File.Exists(archived)
+                        ? " Original preserved in your saves folder." : " No game state was changed.");
                 return false;
             }
         }

@@ -38,7 +38,7 @@ namespace Gamesim.Persistence
                 string[] files;
                 try { files = Directory.EnumerateFiles(directory, "*.json").OrderBy(x => x, StringComparer.Ordinal).Take(MaximumProfiles).ToArray(); }
                 catch (Exception exception) when (Expected(exception))
-                { ReadErrors.Add("The houseguest library could not be read: " + exception.Message); return profiles; }
+                { ReadErrors.Add("The houseguest library could not be read: " + SaveJson.Explain(exception)); return profiles; }
                 foreach (var file in files)
                 {
                     string id = Path.GetFileNameWithoutExtension(file);

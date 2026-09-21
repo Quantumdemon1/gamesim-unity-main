@@ -94,13 +94,15 @@ namespace Gamesim.Persistence
                     Install(backupBytes, rotateBackup: false);
                     if (!TryRead(path, out state, out var installedError)) throw new InvalidDataException(installedError);
                     message = "Backup restored and validated. The backup remains available."
-                        + (retained == null ? "" : " Previous primary preserved at " + retained)
+                        // Not the path: it carries the player's user name and they can do nothing
+                        // with it. That the previous file was kept is the entire message.
+                        + (retained == null ? "" : " Your previous save file was kept alongside it.")
                         + (string.IsNullOrEmpty(installedError) ? "" : " " + installedError);
                     return true;
                 }
                 catch (Exception error) when (SaveJson.IsExpected(error))
                 {
-                    message = "Backup recovery failed; existing backup was preserved. " + error.Message;
+                    message = "Backup recovery failed; existing backup was preserved. " + SaveJson.Explain(error);
                     return false;
                 }
             }
@@ -165,7 +167,7 @@ namespace Gamesim.Persistence
             }
             catch (Exception error) when (SaveJson.IsExpected(error))
             {
-                message = "Local save could not be loaded: " + error.Message;
+                message = "Local save could not be loaded: " + SaveJson.Explain(error);
                 return false;
             }
         }
@@ -276,6 +278,19 @@ namespace Gamesim.Persistence
         public static bool IsExpected(Exception error) => error is IOException || error is InvalidDataException || error is UnauthorizedAccessException
             || error is JsonException || error is ArgumentException || error is OverflowException || error is FormatException
             || error is InvalidCastException;
+
+        /// <summary>
+        /// What a failure may say to the player. A filesystem error names the file it could not
+        /// read, and on Windows that path carries the player's user name and tells them nothing
+        /// they can act on - so those report only their kind. Every other expected failure is
+        /// about the DATA and says so in words this project wrote ("checksum", "unsupported
+        /// schema", "historical 0..1000"); those are the words worth showing, and the migration
+        /// suites assert on them.
+        /// </summary>
+        public static string Explain(Exception error) =>
+            error is IOException || error is UnauthorizedAccessException
+                ? "(" + error.GetType().Name + ")"
+                : error.Message;
 
         private sealed class PublicFieldsResolver : DefaultContractResolver
         {

@@ -171,7 +171,10 @@ namespace Gamesim.Episode
             var colour = tint ?? Accent;
             float left = 16f;
             if (HudPrimitives.Glyph("Card mark", card, icon, colour, new Vector2(14f, -10f), 20f) != null) left = 40f;
-            var label = FixedText(card, words, 13, Accent, new Vector2(left, -9f), new Vector2(card.sizeDelta.x - left - 34f, 24f));
+            // The tint this heading was given, not Accent: the glyph above already uses it, and
+            // passing Accent here is what made every card heading in the product the same blue
+            // however it was tinted - so nothing could be emphasised by colour.
+            var label = FixedText(card, words, 13, colour, new Vector2(left, -9f), new Vector2(card.sizeDelta.x - left - 34f, 24f));
             var font = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (font != null) label.font = font;
             label.characterSpacing = 8f;

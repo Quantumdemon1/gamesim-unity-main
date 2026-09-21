@@ -111,6 +111,9 @@ namespace Gamesim.Presentation
             }
 
             var scrim = HudPrimitives.Fill("Scrim", transform, new Color(0.02f, 0.04f, 0.06f, 0.98f), 1);
+            // Fill makes non-interactive art, and a modal's scrim is the exception: without this
+            // the gameplay HUD underneath stays clickable straight through the menu.
+            scrim.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
             scrim.anchorMin = Vector2.zero;
             scrim.anchorMax = Vector2.one;
             scrim.sizeDelta = Vector2.zero;

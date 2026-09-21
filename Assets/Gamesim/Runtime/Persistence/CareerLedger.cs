@@ -175,8 +175,10 @@ namespace Gamesim.Persistence
                     var archived = Archive("damaged");
                     blocked = archived == null;
                     Notice = archived != null
-                        ? "The career record could not be read and was set aside as " + Path.GetFileName(archived) + ". " + error.Message
-                        : "The career record could not be read or set aside; it is left untouched. " + error.Message;
+                        ? "The career record could not be read and was set aside as " + Path.GetFileName(archived)
+                            + ". " + SaveJson.Explain(error)
+                        : "The career record could not be read or set aside; it is left untouched. "
+                            + SaveJson.Explain(error);
                     return new CareerRecord();
                 }
             }

@@ -209,6 +209,8 @@ namespace Gamesim.Presentation
             // and glass over black reads as flat panels on a void.
             var scrim = HudPrimitives.Fill("Scrim", transform,
                 new Color(UiTheme.Background.r, UiTheme.Background.g, UiTheme.Background.b, 0.97f), 1);
+            // A modal's scrim has to catch the mouse; Fill leaves its art non-interactive.
+            scrim.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
             Stretch(scrim);
 
             content = new GameObject("Fixed setup navigation", typeof(RectTransform)).GetComponent<RectTransform>();

@@ -1,4 +1,6 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Gamesim.Episode;
@@ -9,6 +11,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using Object = UnityEngine.Object;
 
 namespace Gamesim.Tests.PlayMode
 {
@@ -346,6 +349,11 @@ namespace Gamesim.Tests.PlayMode
                     Application.dataPath, "..", name + ".png"));
                 System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
                 Debug.Log("[Gamesim] framing capture -> " + path);
+                // A capture that asserts nothing is a file somebody has to remember to open. This
+                // one at least refuses to pass when the frame did not render: a solid PNG is what a
+                // dead camera, a culled canvas or a batchmode ScreenCapture produces, and all three
+                // have been mistaken for evidence on this project.
+                AssertNotBlank(readback, name);
             }
             finally
             {
@@ -356,6 +364,126 @@ namespace Gamesim.Tests.PlayMode
                 texture.Release();
                 Object.Destroy(texture);
             }
+        }
+
+        /// <summary>
+        /// Fails when a captured frame is one flat colour.
+        ///
+        /// <para>The weakest possible claim about a picture, and the one that catches the failures
+        /// that have actually happened here: a camera with no target, a canvas culled to alpha
+        /// zero, and ScreenCapture in batchmode, which returns identical black frames that were
+        /// very nearly treated as a look sheet.</para>
+        /// </summary>
+        private static void AssertNotBlank(Texture2D frame, string name)
+        {
+            var pixels = frame.GetPixels32();
+            var seen = new System.Collections.Generic.HashSet<int>();
+            for (int i = 0; i < pixels.Length; i += 53)
+            {
+                seen.Add((pixels[i].r << 16) | (pixels[i].g << 8) | pixels[i].b);
+                if (seen.Count > 8) return;
+            }
+            Assert.Fail("The capture '" + name + "' has only " + seen.Count
+                + " sampled colours, so nothing rendered into it.");
+        }
+
+        /// <summary>
+        /// Fails when one named region of a captured frame is a flat colour.
+        ///
+        /// <para>For the thing a whole-frame check cannot see: twelve cast portraits rendering as
+        /// identical black squares while the rest of the screen was full of content. Give it the
+        /// screen rect of the element that is supposed to contain a picture.</para>
+        /// </summary>
+        private static void AssertRegionHasContent(Texture2D frame, Rect region, string what)
+        {
+            int x0 = Mathf.Clamp(Mathf.RoundToInt(region.xMin), 0, frame.width - 1);
+            int x1 = Mathf.Clamp(Mathf.RoundToInt(region.xMax), 0, frame.width);
+            int y0 = Mathf.Clamp(Mathf.RoundToInt(region.yMin), 0, frame.height - 1);
+            int y1 = Mathf.Clamp(Mathf.RoundToInt(region.yMax), 0, frame.height);
+            Assert.That(x1 - x0, Is.GreaterThan(1), what + " has no width in the frame.");
+            Assert.That(y1 - y0, Is.GreaterThan(1), what + " has no height in the frame.");
+
+            var seen = new System.Collections.Generic.HashSet<int>();
+            for (int y = y0; y < y1; y += 2)
+            for (int x = x0; x < x1; x += 2)
+            {
+                var pixel = frame.GetPixel(x, y);
+                seen.Add((Mathf.RoundToInt(pixel.r * 255) << 16)
+                    | (Mathf.RoundToInt(pixel.g * 255) << 8) | Mathf.RoundToInt(pixel.b * 255));
+                if (seen.Count > 6) return;
+            }
+            Assert.Fail(what + " is " + seen.Count + " flat colour(s) in the captured frame, so "
+                + "whatever is supposed to be drawn there is not.");
+        }
+
+        /// <summary>
+        /// No copy is clipped on ANY panel the player can open, at either text size.
+        ///
+        /// <para>The sweep this project already had opens the notebook and stops. Every other
+        /// surface - the conversation, the settings, the house activities, the phase panel - has
+        /// been unguarded for its whole life, which is how a four-fact subtitle came to fit at one
+        /// text size and be cut off at the other, and how a stakes tag came to overlap itself.</para>
+        ///
+        /// <para>An opener that cannot run in this fixture is REPORTED, not skipped silently: a
+        /// sweep that quietly covers two of five panels reads exactly like one that covers five.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Accessibility_NoPanelClipsItsCopyAtEitherTextSize()
+        {
+            var openers = new (string Name, Func<bool> Open)[]
+            {
+                ("the notebook", () => { director.OpenJournal(); return director.IsPanelOpen; }),
+                ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }),
+                ("house activities", () => { director.OpenHouseActivities(); return director.IsHouseActivityOpen; }),
+                ("a conversation", () =>
+                {
+                    var npc = SceneComponents<HouseNpc>().FirstOrDefault(actor => actor.gameObject.activeInHierarchy);
+                    if (npc == null) return false;
+                    WarpPlayer(npc.transform.position
+                        + (player.transform.position - npc.transform.position).normalized * 1.4f);
+                    return director.TryOpenNpc(npc.Id);
+                }),
+            };
+
+            var unreached = new List<string>();
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return ApplyTextSize(larger);
+                foreach (var opener in openers)
+                {
+                    director.ClosePanels();
+                    yield return null;
+                    if (!opener.Open()) { unreached.Add(opener.Name + " at " + (larger ? "larger" : "standard") + " text"); continue; }
+
+                    // Let asynchronous content land before measuring. This is not politeness: a
+                    // panel whose picture has not arrived draws a DIFFERENT layout - SpeakerTitle
+                    // falls back to a wrapping PanelTitle when the portrait is null, and a wrapping
+                    // label cannot clip. Asserting immediately therefore exercises the one path that
+                    // is incapable of failing. A mutation that re-crammed the conversation subtitle
+                    // into one fixed-width line survived this sweep for exactly that reason.
+                    float settle = Time.realtimeSinceStartup + 2f;
+                    while (Time.realtimeSinceStartup < settle) yield return null;
+                    Canvas.ForceUpdateCanvases();
+                    yield return null;
+
+                    var clipped = director.GetComponentsInChildren<TMP_Text>(true)
+                        .Where(label => label.gameObject.activeInHierarchy && !string.IsNullOrEmpty(label.text))
+                        .Where(label => { label.ForceMeshUpdate(); return label.isTextOverflowing; })
+                        .Select(label => "'" + Excerpt(label.text) + "'")
+                        .ToArray();
+                    Assert.That(clipped, Is.Empty,
+                        "On " + opener.Name + " at " + (larger ? "larger" : "standard")
+                        + " text, this copy is cut off: " + string.Join(" | ", clipped));
+                    director.ClosePanels();
+                    yield return null;
+                }
+            }
+
+            Assert.That(unreached, Is.Empty,
+                "These panels never opened, so this sweep says nothing about them: "
+                + string.Join(", ", unreached) + ". A sweep that silently covers some of the "
+                + "surfaces reads exactly like one that covers all of them.");
+            yield return ApplyTextSize(false);
         }
 
         /// <summary>

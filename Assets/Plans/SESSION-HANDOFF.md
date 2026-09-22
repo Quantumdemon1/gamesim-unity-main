@@ -26,6 +26,7 @@ Twelve commits, newest last. The last five are the six-track programme's first m
 | `6379520` | **Track 4: `UiTheme.AddGlow`.** The cast screen stops taking the whole glass for a halo. |
 | `b0dffe3` | **Cast strip standing.** Allied / Friendly / Wary / Hostile on every chip. |
 | `cb9a4c5` | **A Talk says each thing once.** The standing is its own line, only when it moved. |
+| `543faac` | **The player's alliance no longer ends in silence** - or on the partner's private score. |
 
 ### d587aab — walking
 `UmaBodyProvider` filled the `Walk` state by asking UMA's `Locomotion.controller` for a clip called
@@ -154,6 +155,31 @@ line **only when the talk moved it** - compared against the same sentence read b
 Nothing hidden, no control added, no roll, no saved field. The question beat is still available as a
 design; it is an owner's call because of the trade above.
 
+### The player's alliance no longer ends in silence (`543faac`)
+`NpcAlliances.Dissolve` ended the player's alliance, in the weekly settle, when the PARTNER's private
+score toward the player fell under -20, or when the partner left the house - and logged nothing, so
+"Allied" vanished from the web, the header and the strip. Confirmed first by a characterisation test,
+then decided with the owner:
+- **Rule, matched to the web.** The player's alliance sours only on the player's own score toward
+  the partner. The web's `checkForDissolution` (`D:\gamesim-main\gamesim-main\src\systems\alliance-system.ts`)
+  reads each pair once, earlier member toward later, with the player first. Houseguests' own pacts
+  still read both directions.
+- **Notice, logged last.** The step that opens the social week captures the player's active
+  alliances before the settle and, after `NarrateHouse`, logs one `"alliance"` event per alliance that
+  ended, audience (player, partner): *"Your alliance with X has fallen apart."* or *"X has left the
+  house, and your alliance has ended."* No number, no direction, no roll, no saved field, no id
+  minted in the step moves; it is the status line. Nothing once the player is out of the house.
+- **Not done, deliberately:** no -15 penalty or grudge (Unity's "no ledger" choice stands), no
+  memory (a player memory is what `ShareInformation` passes on as gossip), no schema boundary (no
+  recorded walk ends a player alliance while the player is in the house).
+- 13 tests, 16 mutations killed. An adversarial review found four test gaps in correct code - an
+  earlier-ended alliance re-announced, a stray roll or memory, only the first of two told, the line
+  at exactly -20 - and each now has a test that kills its mutant.
+- **Found, not fixed:** a partner evicted at FinalEviction never has the alliance dissolved (no
+  settle follows), so the notebook keeps printing "active"; and because an evicted partner's
+  alliance ends through the `!intact` branch, the jury's AllianceLoyalty of 100 only ever applies
+  to the final-3 evictee.
+
 ## 3. What remains — the six-track programme
 
 From a six-agent brainstorm (four lenses, a fact-checking critic, a synthesis). Tracks 1 and 2 are
@@ -168,15 +194,7 @@ The project's signature failure: systems that exist and never reach a pixel.
 - `ThreatAssessment` — who considers you dangerous — six simulation callers, zero runtime.
 - Active deals now show in "Between you" (`b8daeea`), but **`RenderNotebookStory` still lists
   promises, alliances, oaths and memories and no deals.**
-- **The player's alliance can end without a word** *(in progress)*. `NpcAlliances.Dissolve` runs in
-  every weekly settle over every active alliance, the player's included, and ends it when any
-  member's score toward another is under -20 - which includes the partner's PRIVATE score toward the
-  player - or when fewer than two members are still in the house. No event, no memory. Confirmed by
-  `NpcAllianceTests.ThePlayersAllianceEndsSilentlyOnThePartnersPrivateScore` (a characterisation of
-  the defect, mutation-checked both ways). How the player should learn of it - a notice derived in
-  presentation, a logged event, or a memory - is the owner's decision: `Log` advances
-  `nextSequence`, from which NPC alliance, promise, deal and house-event ids are minted that same
-  week, and a player memory is what `ShareInformation` passes on as gossip.
+- ~~**The player's alliance could end without a word.**~~ Done - see §2, "The player's alliance".
 - ~~The cast strip returns the same grey chip for a five-week ally and a stranger.~~ Done (§2).
 - ~~`OutcomeChips` draws nothing when the delta rounds to zero.~~ Done (`b8daeea`).
 
@@ -301,6 +319,10 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
   default week allows three actions: 12, under the threshold of 15. The known-good route to a
   non-neutral standing is the recorded bloc walk (`ContentCatalog.Create(4)`,
   `socialBudgetRulesStartWeek = 2`, three Talks and an alliance).
+- **"The web build says nothing when an alliance dissolves."** It toasts and logs it. Two
+  investigators read only the design doc's code appendix, which holds three fragments of the
+  alliance system. **The full web source is at `D:\gamesim-main\gamesim-main`** - read that, not
+  the appendix, before claiming the web does or does not do something.
 - **"The Ask row needs no pill to read as free, because every committing row has one."** The oath
   declare/decline rows and the deal-decline row commit with no pill.
 
@@ -311,7 +333,7 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
 - **Never commit** `ProjectSettings/ProjectSettings.asset` while it carries `GAMESIM_UMA`.
 - The four **Inter SDF font atlases** churn ~700k lines; they have been left unstaged all session.
 - `Assets/_Recovery/` is a crash artefact still sitting untracked in the tree.
-- `Tools/baseline.txt` floors: EditMode **1395**, PlayMode **309**, SimulationTests **719**. Raise a floor in the same commit
+- `Tools/baseline.txt` floors: EditMode **1408**, PlayMode **309**, SimulationTests **732**. Raise a floor in the same commit
   that adds tests; never lower one to make a red run green.
 - A spawned task fixed the `DestinationChosen` raise **in this same working tree**, not a separate
   worktree. If you spin off tasks, expect concurrent edits to the files you are holding.

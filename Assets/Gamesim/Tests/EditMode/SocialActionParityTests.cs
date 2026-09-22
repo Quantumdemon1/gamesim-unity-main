@@ -83,6 +83,14 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(moved, Is.GreaterThan(0), "Seed " + seed + ": asking should build trust.");
                 Assert.That(after.memories.Any(m => m.ownerId == partner && m.isPrivate), Is.True,
                     "The housemate should privately remember being asked.");
+
+                // And the player has to come away with something. This is the whole transaction:
+                // one of six actions for the week is spent on a control captioned "Ask what they
+                // have heard", and for its entire life it wrote its only memory to the HOUSEGUEST -
+                // who duly remembered being asked - while the player learned nothing whatsoever.
+                Assert.That(after.memories.Any(m => m.ownerId == after.playerId
+                        && m.subjectId == partner && m.isPrivate), Is.True,
+                    "Seed " + seed + ": asking someone what they know must tell the PLAYER something.");
             }
         }
 

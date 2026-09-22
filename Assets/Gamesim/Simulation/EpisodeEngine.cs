@@ -798,18 +798,47 @@ namespace Gamesim.Simulation
         /// <summary>
         /// Asks a housemate what they know. Source: two to four points, and they remember being asked.
         ///
-        /// <para>What they say is not manufactured here. The player learns the conversation
-        /// happened; anything the housemate knows and chooses to share reaches the player through
-        /// the same private-memory channel every other disclosure in this game uses.</para>
+        /// <para>They answer. The doc comment here used to say that anything the housemate knew
+        /// "reaches the player through the same private-memory channel every other disclosure in
+        /// this game uses" - and nothing ever put anything into that channel. The memory this wrote
+        /// was owned by the TARGET, so the houseguest remembered being asked and the player, who
+        /// had spent one of six actions for the week, learned nothing at all. Eavesdrop two blocks
+        /// below writes its memory to <c>s.playerId</c>; this now does the same.</para>
+        ///
+        /// <para>What they hand over is their own read on somebody else, which is a fact they
+        /// genuinely hold rather than one invented here, and it is the same shape of disclosure
+        /// Eavesdrop makes. The subject is chosen from the roll ALREADY DRAWN for the trust
+        /// improvement: a second <see cref="Roll"/> would advance the stream and re-roll every
+        /// season from this point, which is never a local change in a seeded simulation.</para>
         /// </summary>
         private static void AskForIntel(EpisodeState s, ContestantState target)
         {
-            double improvement = 2 + Math.Floor(Roll(s) * 3);
+            double roll = Roll(s);
+            double improvement = 2 + Math.Floor(roll * 3);
             Change(s, s.playerId, target.id, improvement);
             Remember(s, target.id, s.playerId, "You asked me what I knew in week " + s.week
                 + ". It seems my read on this house is worth something to you.", true);
-            Log(s, "information", "You asked " + target.name + " what they had been hearing.",
-                s.playerId, target.id);
+
+            var about = s.Active
+                .Where(actor => actor.id != s.playerId && actor.id != target.id)
+                .OrderBy(actor => actor.id, StringComparer.Ordinal)
+                .ToList();
+            if (about.Count == 0)
+            {
+                Log(s, "information", "You asked " + target.name + " what they had been hearing.",
+                    s.playerId, target.id);
+                return;
+            }
+
+            var subject = about[Math.Min(about.Count - 1, (int)(roll * about.Count))];
+            double between = s.Score(target.id, subject.id);
+            string reading = between >= 25 ? "is solid with"
+                : between <= -25 ? "does not trust"
+                : "is still working out";
+            Remember(s, s.playerId, target.id, target.name + " told me in week " + s.week + " that they "
+                + reading + " " + subject.name + ".", true);
+            Log(s, "information", "You asked " + target.name + " what they had been hearing. They "
+                + reading + " " + subject.name + ".", s.playerId, target.id);
         }
 
         /// <summary>

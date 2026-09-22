@@ -460,21 +460,25 @@ namespace Gamesim.Episode
         public void OutcomeChips(double trustDelta)
         {
             int rounded = Mathf.RoundToInt((float)trustDelta);
-            if (rounded == 0) return;
 
             var row = new GameObject("Outcome",typeof(RectTransform)).GetComponent<RectTransform>();
             row.SetParent(content,false);
             row.gameObject.AddComponent<LayoutElement>().minHeight = 30f * FontScale;
 
             // The outcome of a social action is a relationship moving, so it takes the relationship
-            // colours rather than navigation blue.
-            var tint = rounded > 0 ? UiTheme.Allied : UiTheme.Conflict;
+            // colours rather than navigation blue - and a relationship NOT moving is still an outcome.
+            // This used to return early when the delta rounded to zero, so an action that shifted
+            // trust by under half a point, or not at all, drew nothing: the player spent one of six
+            // actions for the week and the panel said nothing about what it bought. "No change" is
+            // information; silence is not.
+            var tint = rounded > 0 ? UiTheme.Allied : rounded < 0 ? UiTheme.Conflict : UiTheme.Muted;
             var chip = Panel("Trust chip",row,new Color(tint.r,tint.g,tint.b,.18f));
             Anchor(chip,new Vector2(0,1),new Vector2(0,1),new Vector2(4f,-1f),new Vector2(214f * FontScale,28f * FontScale));
             chip.GetComponent<Image>().raycastTarget = false;
 
             FixedText(chip,
-                (rounded > 0 ? "+" : "") + rounded + (rounded > 0 ? " trust gained" : " trust lost"),
+                rounded == 0 ? "No change in trust"
+                    : (rounded > 0 ? "+" : "") + rounded + (rounded > 0 ? " trust gained" : " trust lost"),
                 15,tint,new Vector2(10f,-4f),new Vector2(194f * FontScale,20f * FontScale));
         }
 

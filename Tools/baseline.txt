@@ -10,4 +10,4 @@
 #
 #   <assembly> <minimum tests>
 Gamesim.EditModeTests 1390
-Gamesim.PlayModeTests 298
+Gamesim.PlayModeTests 300

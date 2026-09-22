@@ -183,6 +183,23 @@ namespace Gamesim.Presentation
             return state.Score(state.playerId, otherId) >= StrongThreshold ? "Close friend" : "Friendly";
         }
 
+        /// <summary>
+        /// What breaking a deal of this weight would cost, in words.
+        ///
+        /// <para>The same vocabulary the conversation panel tags a propose button with, so a
+        /// commitment reads the same where it is made and where it is remembered.</para>
+        /// </summary>
+        private static string DealStakes(string trust)
+        {
+            switch (trust)
+            {
+                case DealTrust.Critical: return "highest stakes";
+                case DealTrust.High: return "high stakes";
+                case DealTrust.Low: return "low stakes";
+                default: return "medium stakes";
+            }
+        }
+
         /// <summary>The one-line reason a houseguest is listed as a rival.</summary>
         public static string RivalWord(EpisodeState state, string otherId) =>
             state.Score(state.playerId, otherId) <= RivalThreshold ? "High tension" : "Distrust";
@@ -698,8 +715,23 @@ namespace Gamesim.Presentation
                                     ? Localisation.Text("You promised") + " " + PromiseWord(promise.kind)
                                     : GivenName(focus.name) + " " + Localisation.Text("promised you") + " " + PromiseWord(promise.kind))
                                 + " · " + promise.status);
+                // Deals, which this block has never listed. A player can stake their word on not
+                // nominating somebody, or on using the veto for them, and the only place that
+                // commitment appeared was the panel where it was made - so it was forgotten until
+                // DealResolution took up to forty-five points off for breaking it. Promises and
+                // alliances were both here from the start; the newer of the two systems was not.
+                foreach (var deal in state.deals.Where(item => DealStatus.Binds(item.status)
+                             && ((item.proposerId == state.playerId && item.recipientId == focus.id)
+                                 || (item.proposerId == focus.id && item.recipientId == state.playerId))))
+                {
+                    string subject = string.IsNullOrEmpty(deal.targetId) ? null
+                        : state.Find(deal.targetId)?.name;
+                    between.Add(DealKind.Title(deal.type)
+                        + (subject == null ? string.Empty : " \u00b7 " + subject)
+                        + " \u00b7 " + Localisation.Text(DealStakes(deal.trustImpact)));
+                }
                 SectionHeading(column, BetweenHeading, between.Count, scale, font);
-                if (between.Count == 0) Note(column, "No promises or alliances between you.", scale, font);
+                if (between.Count == 0) Note(column, "No deals, promises or alliances between you.", scale, font);
                 foreach (var line in between.Take(ListLimit))
                     TextRow(column, "handshake", UiTheme.AccentDeep, line, scale, font);
 

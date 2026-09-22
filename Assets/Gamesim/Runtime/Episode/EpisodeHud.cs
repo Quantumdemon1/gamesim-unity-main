@@ -435,10 +435,37 @@ namespace Gamesim.Episode
             FixedText(row,subtitle,21,Paper,new Vector2(text,-34f * FontScale),new Vector2(420f * FontScale,28f * FontScale));
         }
 
-        public void NpcDialogue(EpisodeState state, string npcId, EpisodeCommandKind? acceptedAction = null)
+        /// <summary>The houseguest's second line after a Talk, drawn only when it is news.</summary>
+        public const string FollowUpDialogueName = "NPC follow-up dialogue";
+
+        /// <summary>
+        /// What the houseguest says: a greeting, or their reply to what the player just did.
+        ///
+        /// <para>After time spent together the reply is two things, and they are said as two. The
+        /// acknowledgement always; then where the houseguest stands now, but only when
+        /// <paramref name="standingBefore"/> - the same sentence read from the state before the
+        /// command - differs from it. Joined, that second sentence was the one the greeting had
+        /// just ended on nearly every time, so the reply read as the greeting said twice; the one
+        /// time it was news - the talk moved them - it was buried at the end of a line the player
+        /// had learned to skim. Nothing here draws a roll or reads anything but committed state.</para>
+        /// </summary>
+        public void NpcDialogue(EpisodeState state, string npcId, EpisodeCommandKind? acceptedAction = null,
+            string standingBefore = null)
         {
             var npc = state.Find(npcId) ?? (npcId == "maya" ? state.Find(ContentCatalog.MayaId) : null);
             if (npc == null) return;
+            if (acceptedAction == EpisodeCommandKind.Talk && standingBefore != null)
+            {
+                string said = HouseDialogue.TalkAcknowledgement(state, npc.id);
+                if (said.Length > 0)
+                {
+                    FlowText("\"" + said + "\"",21,Paper).gameObject.name = "NPC spoken dialogue";
+                    string now = HouseDialogue.Response(state, npc.id);
+                    if (!string.IsNullOrEmpty(now) && now != standingBefore)
+                        FlowText("\"" + now + "\"",21,Paper).gameObject.name = FollowUpDialogueName;
+                    return;
+                }
+            }
             string line = acceptedAction.HasValue
                 ? HouseDialogue.Response(state, npc.id, acceptedAction.Value)
                 : HouseDialogue.Greeting(state, npc.id);

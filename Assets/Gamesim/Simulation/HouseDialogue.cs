@@ -129,6 +129,48 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// The houseguest's reply to time spent together, WITHOUT the sentence about where they
+        /// stand that the full reply to a Talk ends on.
+        ///
+        /// <para>Empty unless the speaker holds their own memory of talking with the player, which
+        /// the Talk command writes by rule - so it is only ever said after a Talk was accepted.
+        /// Keyed on the week like every line here, never on a roll.</para>
+        ///
+        /// <para>Split out so a conversation can say the two halves as two things: the reply,
+        /// and - only when the talk actually moved them - where they stand now. Joined, the second
+        /// half was the same sentence the greeting had just ended on nearly every time.</para>
+        /// </summary>
+        public static string TalkAcknowledgement(EpisodeState state, string npcId)
+        {
+            var npc = Speaker(state, npcId);
+            if (npc == null || !HasOwnMemory(state, npc.id, state.playerId, "We spent time talking in week "))
+                return string.Empty;
+            string id = ContentCatalog.CanonicalId(npc.id);
+            return Vary(state,
+                Pick(id,
+                    "I'm glad we took the time to talk.",
+                    "Good. A straight conversation beats circling each other all afternoon.",
+                    "Thank you for making time for me.",
+                    "Look at us, finishing a conversation without a dramatic announcement.",
+                    "Talking helped. I don't need every uncertainty settled at once.",
+                    "Thanks for taking the time to talk."),
+                Pick(id,
+                    "That was useful. Clear conversations are rarer in here than they should be.",
+                    "Good talk. Same time tomorrow, minus the cameras.",
+                    "That was nice. I needed a normal conversation.",
+                    "A whole conversation and nobody cried. Progress.",
+                    "Helpful. I have a better model of you now.",
+                    "Good talk."),
+                Pick(id,
+                    "I'm glad we did that. Say the same thing next week and I'll believe it more.",
+                    "Appreciated. It's easier to trust someone who shows up.",
+                    "Thank you. It's easier to breathe after talking to you.",
+                    "Well, that was almost pleasant. Don't tell anyone.",
+                    "Time well spent. Fewer unknowns than before.",
+                    "Thanks for talking."));
+        }
+
+        /// <summary>
         /// Call only after the named action was accepted, using its committed state. Rejected or
         /// duplicate commands should retain their own result text and must not replay this response.
         /// No response itself creates, fulfils or guarantees a promise, alliance, disclosure or vote.
@@ -276,29 +318,11 @@ namespace Gamesim.Simulation
                         "Gossip with strategic value. My favourite kind.",
                         "That's a claim, not a confirmation. Useful all the same.",
                         "Thanks. Good to know."));
-            if (acceptedAction == EpisodeCommandKind.Talk && HasOwnMemory(state, npc.id, state.playerId, "We spent time talking in week "))
-                return Vary(state,
-                    Pick(id,
-                        "I'm glad we took the time to talk.",
-                        "Good. A straight conversation beats circling each other all afternoon.",
-                        "Thank you for making time for me.",
-                        "Look at us, finishing a conversation without a dramatic announcement.",
-                        "Talking helped. I don't need every uncertainty settled at once.",
-                        "Thanks for taking the time to talk."),
-                    Pick(id,
-                        "That was useful. Clear conversations are rarer in here than they should be.",
-                        "Good talk. Same time tomorrow, minus the cameras.",
-                        "That was nice. I needed a normal conversation.",
-                        "A whole conversation and nobody cried. Progress.",
-                        "Helpful. I have a better model of you now.",
-                        "Good talk."),
-                    Pick(id,
-                        "I'm glad we did that. Say the same thing next week and I'll believe it more.",
-                        "Appreciated. It's easier to trust someone who shows up.",
-                        "Thank you. It's easier to breathe after talking to you.",
-                        "Well, that was almost pleasant. Don't tell anyone.",
-                        "Time well spent. Fewer unknowns than before.",
-                        "Thanks for talking.")) + " " + RelationshipLine(state, npc);
+            if (acceptedAction == EpisodeCommandKind.Talk)
+            {
+                string said = TalkAcknowledgement(state, npc.id);
+                if (said.Length > 0) return said + " " + RelationshipLine(state, npc);
+            }
             return RelationshipLine(state, npc);
         }
 

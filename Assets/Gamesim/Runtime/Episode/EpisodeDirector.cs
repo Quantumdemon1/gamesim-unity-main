@@ -72,6 +72,10 @@ namespace Gamesim.Episode
         private HouseNpc promptNpc;
         private string npcPrompt;
         private EpisodeCommandKind? lastSocialAction;
+        // Where the houseguest said they stood BEFORE the last accepted action, in their own words.
+        // The reply to a Talk says it again only when it changed. Presentation only: never saved,
+        // never rolled, and read only while lastSocialAction holds the action it belongs to.
+        private string standingLineBefore;
         public EpisodeState Snapshot => engine?.Snapshot;
         public bool IsReady { get; private set; }
         // The weekly recap counts: it is a full-screen scrim, and a player who can still walk
@@ -582,6 +586,7 @@ namespace Gamesim.Episode
             double trustBefore = focusedNpc != null
                 ? engine.Snapshot.Score(engine.Snapshot.playerId, focusedNpc.Id)
                 : 0d;
+            string lineBefore = focusedNpc != null ? HouseDialogue.Response(engine.Snapshot, focusedNpc.Id) : null;
             var wasActive = new HashSet<string>(engine.Snapshot.contestants
                 .Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id));
             // Who was on the block before this command: a veto ceremony is the difference.
@@ -615,6 +620,7 @@ namespace Gamesim.Episode
                 {
                     lastSocialAction = command.kind;
                     lastSocialDelta = result.state.Score(result.state.playerId, focusedNpc.Id) - trustBefore;
+                    standingLineBefore = lineBefore;
                 }
                 message += "  ·  Saved locally."; Project();
                 // A finale joins the career record the moment it is durable, and not before.
@@ -992,7 +998,7 @@ namespace Gamesim.Episode
                 // caught it on the first run. Who somebody is and where you stand with them are
                 // two different questions anyway.
                 hud.Paragraph(Standing(state, npc.id) + "  ·  " + ActionsLeft(state) + " left");
-                hud.NpcDialogue(state, npc.id, lastSocialAction);
+                hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
                 if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
                 { hud.Paragraph("The next ceremony is waiting. We can catch up during free time or campaigning."); return; }

@@ -73,7 +73,9 @@ namespace Gamesim.Episode
         public void GoToDiary()
         {
             if (!IsReady || blockedRecovery || !playerIsActive || !HasDiaryRoom) return;
-            headingToStation = false;
+            // Both errands, not just the station's: a pending click on a houseguest used to
+            // survive the R key and pull the player back out of the diary trip.
+            CancelTravel();
             ClosePanels();
             EndDiaryVisit(true);CloseHouseActivities(true);
             message = player.TryMoveTo(DiaryPosition)

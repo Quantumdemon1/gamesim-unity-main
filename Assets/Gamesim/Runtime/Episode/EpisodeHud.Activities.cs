@@ -138,7 +138,7 @@ namespace Gamesim.Episode
                 });
             if (helpExpanded)
                 FixedText(explorationHelp,
-                    "Click a houseguest: follow\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close",
+                    "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close",
                     16,Paper,new Vector2(14,-50),new Vector2(258,122));
         }
     }

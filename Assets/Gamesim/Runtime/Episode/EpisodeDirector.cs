@@ -76,6 +76,12 @@ namespace Gamesim.Episode
         public bool IsReady { get; private set; }
         // The weekly recap counts: it is a full-screen scrim, and a player who can still walk
         // the house behind it would be steering a character they cannot see.
+        /// <summary>Who the conversation panel is open on, or null. A read, for tests and the world.</summary>
+        public string TalkingToId => focusedNpc != null ? focusedNpc.Id : null;
+
+        /// <summary>Who the player clicked and is walking towards, or null. A read, as above.</summary>
+        public string WalkingToId => headingToNpcId;
+
         public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen
                                    || journalOpen || diaryOpen || houseActivitiesOpen || IsWeeklyRecapOpen || (competitionCard != null && competitionCard.IsPlaying);
         public bool IsChallengeActive => challengeActive;
@@ -418,6 +424,30 @@ namespace Gamesim.Episode
             else hud.SetPrompt("");
         }
 
+        /// <summary>
+        /// "Friendly +18" - where the player stands with somebody, as a word and a signed number.
+        ///
+        /// <para>The word is the one the relationship graph already uses, not a second vocabulary:
+        /// a houseguest the graph draws as Wary must not be described as anything else two panels
+        /// away. The number goes with it because the word is banded and the bands are wide - +16
+        /// and +39 are both "Friendly" - and the player is about to spend an action on the
+        /// difference.</para>
+        /// </summary>
+        private static string Standing(EpisodeState state, string otherId)
+        {
+            string word = Presentation.RelationshipWeb.StandingWord(
+                Presentation.RelationshipWeb.KindOf(state, otherId));
+            return word + " " + state.Score(state.playerId, otherId).ToString("+0;-0;0");
+        }
+
+        /// <summary>The social actions the week has left, in the words the objective card uses.</summary>
+        private static string ActionsLeft(EpisodeState state)
+        {
+            int left = Math.Max(0, EpisodeEngine.SocialActionBudget(state)
+                - EpisodeEngine.SocialActionsSpent(state));
+            return left + (left == 1 ? " action" : " actions");
+        }
+
         public Vector3 StationPosition => ResolveStationPosition();
         private bool CanUseStation() => !playerIsActive ||
             Vector3.Distance(player.transform.position, StationPosition) < 3;
@@ -442,8 +472,18 @@ namespace Gamesim.Episode
         {
             npc = NearestNpc();
             if (CanUseDiary) return InteractTarget.Diary;
+            // Whoever was clicked outranks whoever happens to be standing closest, exactly as the
+            // station does: two houseguests in one doorway are both inside the 2.8 m reach, and
+            // without this the walk would end in a conversation with the wrong one.
+            if (!string.IsNullOrEmpty(headingToNpcId))
+            {
+                var wanted = housemates.FirstOrDefault(actor => actor != null && actor.Id == headingToNpcId
+                    && actor.gameObject.activeInHierarchy && CanTalk(actor));
+                if (wanted != null) { npc = wanted; return InteractTarget.Talk; }
+            }
             if (headingToStation && CanUseStation()) return InteractTarget.Station;
             if (npc != null) return InteractTarget.Talk;
+
             return CanUseStation() ? InteractTarget.Station : InteractTarget.None;
         }
 
@@ -459,6 +499,10 @@ namespace Gamesim.Episode
         public void GoToStation()
         {
             ClosePanels();
+            // Whatever the player was walking to, this replaces it. Without this a click on a
+            // houseguest outlived the button press and either overwrote the path to the screen or
+            // opened a conversation on the way there, under a status line promising the screen.
+            CancelTravel();
             EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
             if (!player.TryMoveTo(StationPosition)) message = "The episode screen is not reachable from here.";
@@ -909,7 +953,21 @@ namespace Gamesim.Episode
             if (focusedNpc != null)
             {
                 var npc = state.Find(focusedNpc.Id);
-                hud.SpeakerTitle(npc.id, npc.name.ToUpperInvariant(), npc.pronouns + " · " + string.Join(" / ", npc.traits));
+                // Where you stand with them, and what you have left to spend on them, in the header
+                // of the panel that spends it.
+                //
+                // Neither number was reachable from here. RelationshipWeb has had a five-band
+                // vocabulary since it was written - Allied, Friendly, Neutral, Wary, Hostile, on
+                // published thresholds and locked by its own tests - and StandingWord had exactly
+                // one call site in the whole game, a stat tile on the notebook's network page. So
+                // the panel where the player decides how to treat somebody was the one place that
+                // never said how they were being treated. The remaining-actions chip sits in the
+                // objective card, which SetActivityLayout hides for a conversation: it was on
+                // screen right up until the moment it mattered.
+                hud.SpeakerTitle(npc.id, npc.name.ToUpperInvariant(),
+                    npc.pronouns + " · " + string.Join(" / ", npc.traits)
+                    + "  ·  " + Standing(state, npc.id)
+                    + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
                 if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)

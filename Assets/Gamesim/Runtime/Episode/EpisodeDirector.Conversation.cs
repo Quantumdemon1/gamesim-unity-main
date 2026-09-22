@@ -42,6 +42,180 @@ namespace Gamesim.Episode
             return true;
         }
 
+        /// <summary>
+        /// Who the player clicked on and is now walking towards, if anyone.
+        ///
+        /// <para>The same device as <c>headingToStation</c>, for the same reason: two houseguests
+        /// standing together are both inside the 2.8 m reach, so without a remembered target the
+        /// walk would end in a conversation with whichever of them happened to be nearer rather
+        /// than with the one that was pointed at.</para>
+        /// </summary>
+        private string headingToNpcId;
+        private Vector3 headingToNpcAt;
+        private float headingToNpcDeadline;
+
+        /// <summary>How close the walk aims, inside the 2.8 m a conversation needs.</summary>
+        private const float ApproachDistance = 1.6f;
+
+        /// <summary>
+        /// How far the target may move from where they were aimed at before the walk is re-aimed.
+        ///
+        /// <para>Has to be smaller than the slack the approach leaves, and is: aiming 1.6 m out of a
+        /// 2.8 m reach leaves 1.2 m, of which the agent's own 0.15 m stopping distance takes a
+        /// slice. At the 1.2 m this first shipped as, a target that drifted the full budget and then
+        /// stopped left a final gap of about 2.95 m - past talking range, under the re-aim
+        /// threshold, so the walk finished and nothing opened. The arrival branch below is the real
+        /// guard; this only decides how often a moving target is re-aimed at.</para>
+        /// </summary>
+        private const float ApproachDrift = 0.6f;
+
+        /// <summary>Long enough to cross the house at a run several times.</summary>
+        private const float WalkTimeout = 40f;
+
+        /// <summary>Forget any errand the player was sent on. Their own choices outrank it.</summary>
+        private void CancelTravel()
+        {
+            headingToNpcId = null;
+            headingToStation = false;
+        }
+
+        /// <summary>
+        /// Somewhere to stand that can actually see them.
+        ///
+        /// <para>Not a straight line from the player: a straight line knows nothing about walls, and
+        /// the shipped house has a 1.5 m divider between the living room and the kitchen that a
+        /// dollhouse camera looks straight over. Clicking somebody on the far side of it put the
+        /// approach point in the player's own room, where the walk finished and the sight line
+        /// stayed blocked forever.</para>
+        ///
+        /// <para>So the candidates are fanned around the target, nearest the player first, and each
+        /// is tested against the NavMesh rather than against geometry - <see cref="NavMesh.Raycast"/>
+        /// from the candidate to the target fails exactly where a wall or a gap stands between them,
+        /// because that is what a bake encodes. The first candidate that both samples onto the mesh
+        /// and has a clear line to the target wins.</para>
+        /// </summary>
+        private bool TryApproach(HouseNpc npc, out Vector3 approach)
+        {
+            approach = default;
+            var agent = player.Agent;
+            if (agent == null) return false;
+            var filter = new NavMeshQueryFilter { agentTypeID = agent.agentTypeID, areaMask = agent.areaMask };
+
+            var toPlayer = player.transform.position - npc.transform.position;
+            toPlayer.y = 0f;
+            var facing = toPlayer.sqrMagnitude > 0.01f ? toPlayer.normalized : Vector3.forward;
+
+            for (int step = 0; step < 8; step++)
+            {
+                // Out from the player's side first, then alternating around them, so the natural
+                // approach is preferred and the far side of the room is the last resort.
+                float degrees = (step + 1) / 2 * 45f * (step % 2 == 0 ? 1f : -1f);
+                var candidate = npc.transform.position
+                    + Quaternion.Euler(0f, degrees, 0f) * facing * ApproachDistance;
+                if (!NavMesh.SamplePosition(candidate, out var hit, 0.6f, filter)) continue;
+                if (NavMesh.Raycast(hit.position, npc.transform.position, out _, filter)) continue;
+                approach = hit.position;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// A click on a houseguest out in the house.
+        ///
+        /// <para>Near enough and it opens; too far and it runs you there and opens on arrival. That
+        /// second half is the point - the only route into a conversation in this build was to walk
+        /// yourself inside 2.8 m and press E, so the one gesture every player tries on a person did
+        /// nothing but move the camera.</para>
+        ///
+        /// <para>No command is submitted by any of this. Opening a conversation is a view change;
+        /// the season is not touched until a social action inside it is pressed, so a click costs
+        /// the seeded run nothing.</para>
+        /// </summary>
+        private void SelectHouseguest(HouseNpc npc)
+        {
+            if (npc == null || !IsReady || blockedRecovery || challengeActive || IsPanelOpen
+                || !playerIsActive) return;
+            if (CanTalk(npc) && TryOpenNpc(npc.Id)) { CancelTravel(); player.StopHere(); return; }
+
+            // The existing errand is not dropped until the new one is known to work: a click that
+            // cannot be walked to should leave the player doing what they were already doing.
+            if (!TryApproach(npc, out var approach) || !player.TryRunTo(approach))
+            {
+                message = "You cannot reach " + npc.DisplayName + " from here.";
+                Render();
+                return;
+            }
+            CancelTravel();
+            headingToNpcId = npc.Id;
+            headingToNpcAt = npc.transform.position;
+            headingToNpcDeadline = Time.unscaledTime + WalkTimeout;
+            // Watch them go, without reframing the shot they were already looking at.
+            cameraRig?.FocusSubject(player.transform, false);
+            message = "Heading over to " + npc.DisplayName;
+            Render();
+        }
+
+        /// <summary>
+        /// Carries the walk the player asked for, and ends it one way or the other.
+        ///
+        /// <para>Driven from the director's own tick rather than from a callback on the agent,
+        /// because "arrived" is a property of the path and the pause state rather than an event: a
+        /// walk interrupted by a panel, a ceremony or a second click must not open anything.</para>
+        ///
+        /// <para>Every exit says something. A version of this had four exits and three of them were
+        /// silent, so a walk that could not finish left the player standing in the middle of a room
+        /// under a "Heading over to Dana" banner that would never come true.</para>
+        /// </summary>
+        private void TickWalkToHouseguest()
+        {
+            if (string.IsNullOrEmpty(headingToNpcId)) return;
+            if (IsPanelOpen || challengeActive || !playerIsActive) { CancelTravel(); return; }
+
+            var npc = housemates.FirstOrDefault(actor => actor != null && actor.Id == headingToNpcId
+                && actor.gameObject.activeInHierarchy);
+            // Not found THIS frame is not the same as gone: a body is briefly inactive while it is
+            // seated, re-posed or rebuilt. The deadline is what ends a walk that cannot land.
+            if (npc == null)
+            {
+                if (Time.unscaledTime > headingToNpcDeadline) GiveUpOnWalk(null);
+                return;
+            }
+            if (Time.unscaledTime > headingToNpcDeadline) { GiveUpOnWalk(npc); return; }
+
+            // TryOpenNpc can still refuse - an eviction lands between the range check and the open -
+            // so the intent is only let go once a conversation actually exists.
+            if (CanTalk(npc) && TryOpenNpc(npc.Id)) { CancelTravel(); player.StopHere(); return; }
+
+            // Re-aim when they have moved far enough from where they were aimed at to matter, or
+            // when the walk has finished without getting close enough. Leaving the path alone
+            // otherwise matters: re-issuing it resets the agent's progress, and a version of this
+            // compared their position against the APPROACH POINT - 1.6 m from them by construction -
+            // so a houseguest standing perfectly still read as constant drift, the path was reissued
+            // every tick, and the player never arrived anywhere at all.
+            bool drifted = (npc.transform.position - headingToNpcAt).sqrMagnitude > ApproachDrift * ApproachDrift;
+            bool stopped = player.HasArrived;
+            if (!drifted && !stopped) return;
+
+            if (TryApproach(npc, out var approach) && player.TryRunTo(approach))
+            {
+                headingToNpcAt = npc.transform.position;
+                return;
+            }
+            // Only a walk that has actually stopped has failed; one still in motion can try again.
+            if (stopped) GiveUpOnWalk(npc);
+        }
+
+        private void GiveUpOnWalk(HouseNpc npc)
+        {
+            CancelTravel();
+            player.StopHere();
+            message = npc == null
+                ? "You lost track of who you were going to see."
+                : "You could not get to " + npc.DisplayName + ".";
+            Render();
+        }
+
         public bool TryOpenNpc(string id)
         {
             if (!IsReady || blockedRecovery || challengeActive || projected.Find(projected.playerId).status != ContestantStatus.Active || projected.Find(id)?.status != ContestantStatus.Active) return false;
@@ -212,13 +386,37 @@ namespace Gamesim.Episode
                         hud.Tag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
                                     DealKind.Title(kind).ToLowerInvariant() + " against " + subject.name),
                                 () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, about, text: kind)),
-                            Category(EpisodeCommandKind.ProposeDeal) + " · " + Chance(state, npc.id, kind, about));
+                            Stakes(kind) + " · " + Chance(state, npc.id, kind, about));
                     }
                     continue;
                 }
                 hud.Tag(hud.ActionFor(kind, EpisodeHud.DealProposeCaption(DealKind.Title(kind).ToLowerInvariant()),
                         () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, text: kind)),
-                    Category(EpisodeCommandKind.ProposeDeal) + " · " + Chance(state, npc.id, kind, null));
+                    Stakes(kind) + " · " + Chance(state, npc.id, kind, null));
+            }
+        }
+
+        /// <summary>
+        /// What breaking this kind of deal would cost, in words.
+        ///
+        /// <para>The number has been modelled since deals were written and has never reached a
+        /// pixel: <c>DealKind.DefaultTrust</c> bands every type, <c>DealTrust.Weight</c> turns the
+        /// band into a multiplier of 1, 1.5, 2 or 3, and <c>DealResolution.Impact</c> spends it - so
+        /// walking away from a veto commitment moves -45 and walking away from an information swap
+        /// moves -15. A player choosing between them was being asked to guess at a three-fold
+        /// difference the simulation already knew.</para>
+        ///
+        /// <para>A tag beside the control rather than words inside it, for the same reason the
+        /// chance is: the caption is how a test and a screen reader find a button.</para>
+        /// </summary>
+        private static string Stakes(string kind)
+        {
+            switch (DealKind.DefaultTrust(kind))
+            {
+                case DealTrust.Critical: return "highest stakes";
+                case DealTrust.High: return "high stakes";
+                case DealTrust.Low: return "low stakes";
+                default: return "medium stakes";
             }
         }
 

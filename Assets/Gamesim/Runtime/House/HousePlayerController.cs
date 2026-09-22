@@ -86,6 +86,17 @@ namespace Gamesim.House
         public NavMeshAgent Agent => agent != null ? agent : agent = GetComponent<NavMeshAgent>();
         public event System.Action<HouseInteractionAnchor> FurnitureSelected;
 
+        /// <summary>
+        /// A click on a houseguest.
+        ///
+        /// <para>Raised rather than acted on here, for the same reason the furniture click is: this
+        /// controller knows where the mouse landed and nothing about whether a conversation is
+        /// allowed, whose turn it is or what the season thinks. With nobody listening the click
+        /// falls back to following them, which is what it did for its whole life before there was
+        /// anywhere else for it to go.</para>
+        /// </summary>
+        public event System.Action<HouseNpc> HouseguestSelected;
+
         public bool HasArrived
         {
             get
@@ -145,6 +156,42 @@ namespace Gamesim.House
         /// </summary>
         public bool TryMoveTo(Vector3 position)
             => InputEnabled && TrySetReachablePath(position,destinationSampleRadius);
+
+        /// <summary>
+        /// Go there at a run, whatever the distance, and keep running.
+        ///
+        /// <para>Chasing is not the same problem as travelling, and deciding the gait from the
+        /// route length gets it exactly backwards. A houseguest walks at 2.2 m/s and so does the
+        /// player, so a chase at walking pace never converges at all; and a chase that picks its
+        /// gait from the REMAINING route drops back to a walk the moment that route falls under
+        /// <see cref="RunRouteMetres"/> - which is to say precisely when the gap still has eight
+        /// metres to close. The player then paces the target forever at eight metres and the walk
+        /// times out. So while the player is chasing somebody, they run.</para>
+        /// </summary>
+        public bool TryRunTo(Vector3 position)
+        {
+            if (!TryMoveTo(position)) return false;
+            ApplyGait(true);
+            return true;
+        }
+
+        /// <summary>
+        /// Stop here and stand still, at a walk.
+        ///
+        /// <para>Disabling input pauses an agent without forgetting where it was going, which is
+        /// what makes a paused walk resume when a panel closes. That is right for a panel the player
+        /// opened mid-walk and wrong for the walk that CAUSED the panel: arriving to talk to
+        /// somebody and then wandering two metres past them the moment the conversation ends is not
+        /// a resumption, it is the leftovers of an errand already run.</para>
+        /// </summary>
+        public void StopHere()
+        {
+            var currentAgent = Agent;
+            if (currentAgent != null && currentAgent.enabled && currentAgent.isOnNavMesh)
+                currentAgent.ResetPath();
+            RouteMetres = 0f;
+            ApplyGait(false);
+        }
 
         private bool TrySetReachablePath(Vector3 position,float sampleRadius)
         {
@@ -213,7 +260,7 @@ namespace Gamesim.House
             var ray = viewCamera.ScreenPointToRay(screen);
             if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,out var seatedGuest))
             {
-                CameraRig?.FocusSubject(seatedGuest.transform);
+                if (!Select(seatedGuest)) CameraRig?.FocusSubject(seatedGuest.transform);
                 return;
             }
             // Pick, not Sight: a click is meant to hit the thing under the cursor, furniture included.
@@ -229,13 +276,14 @@ namespace Gamesim.House
                 return;
             }
 
-            // Clicking a houseguest rides them. Previously this fell straight through to the walk
-            // check, failed it because a person is not a walkable surface, and did nothing at all —
-            // so the one gesture people try first had no effect and no feedback.
+            // Clicking a houseguest talks to them. It used to fall straight through to the walk
+            // check, fail it because a person is not a walkable surface, and do nothing at all; then
+            // it followed them with the camera, which was better but still not what anyone clicking
+            // on a person is asking for. Following is what the cast strip's own portraits do.
             var houseguest = hit.collider.GetComponentInParent<HouseNpc>();
             if (houseguest != null)
             {
-                CameraRig?.FocusSubject(houseguest.transform);
+                if (!Select(houseguest)) CameraRig?.FocusSubject(houseguest.transform);
                 return;
             }
 
@@ -263,6 +311,23 @@ namespace Gamesim.House
                 CameraRig?.FocusSubject(transform, false);
                 if (TryMoveTo(hit.point)) ApplyGait(again || RouteMetres > RunRouteMetres);
             }
+        }
+
+        /// <summary>
+        /// The player chose their own destination.
+        ///
+        /// <para>Raised so that whoever sent them on an errand can let go of it. Clicking the floor
+        /// is the plainest possible statement that the player wants to be somewhere else, and an
+        /// errand that outlives it drags them back.</para>
+        /// </summary>
+        public event System.Action DestinationChosen;
+
+        /// <summary>Hands a clicked houseguest to whoever is listening; false when nobody is.</summary>
+        private bool Select(HouseNpc npc)
+        {
+            if (npc == null || HouseguestSelected == null) return false;
+            HouseguestSelected(npc);
+            return true;
         }
 
         private void ApplyPauseState()

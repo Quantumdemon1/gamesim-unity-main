@@ -106,9 +106,23 @@ namespace Gamesim.Episode
         {
             if(furnitureInput!=player)
             {
-                if(furnitureInput!=null)furnitureInput.FurnitureSelected-=SelectHouseFurniture;
-                furnitureInput=player;if(furnitureInput!=null)furnitureInput.FurnitureSelected+=SelectHouseFurniture;
+                if(furnitureInput!=null)
+                {
+                    furnitureInput.FurnitureSelected-=SelectHouseFurniture;
+                    furnitureInput.HouseguestSelected-=SelectHouseguest;
+                    furnitureInput.DestinationChosen-=CancelTravel;
+                }
+                furnitureInput=player;
+                if(furnitureInput!=null)
+                {
+                    furnitureInput.FurnitureSelected+=SelectHouseFurniture;
+                    furnitureInput.HouseguestSelected+=SelectHouseguest;
+                    // Clicking the floor is the plainest statement that the player wants to be
+                    // somewhere else. An errand that outlived it dragged them back.
+                    furnitureInput.DestinationChosen+=CancelTravel;
+                }
             }
+            TickWalkToHouseguest();
             if(npcMeetings==null)return;
             if(!NpcSocialState.IsEligible(projected))
             {npcMeetings.ReleaseActivities();return;}
@@ -142,8 +156,13 @@ namespace Gamesim.Episode
         private void DisposeHouseActivities()
         {
             CloseHouseActivities(true);npcMeetings?.ReleaseActivities();
-            if(furnitureInput!=null)furnitureInput.FurnitureSelected-=SelectHouseFurniture;
-            furnitureInput=null;nextAmbientActivity=0;ambientActivityIndex=0;
+            if(furnitureInput!=null)
+            {
+                furnitureInput.FurnitureSelected-=SelectHouseFurniture;
+                furnitureInput.HouseguestSelected-=SelectHouseguest;
+                furnitureInput.DestinationChosen-=CancelTravel;
+            }
+            furnitureInput=null;nextAmbientActivity=0;ambientActivityIndex=0;headingToNpcId=null;
         }
     }
 }

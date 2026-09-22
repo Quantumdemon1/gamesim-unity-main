@@ -194,6 +194,7 @@ namespace Gamesim.Episode
         {
             if (durableCommitInProgress) return;
             SuspendNpcWorldWithoutSaving();
+            bool installed = false;
             try
             {
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
@@ -206,6 +207,7 @@ namespace Gamesim.Episode
                 saves = nextStore; Install(fresh);
                 if (SaveRootOverride == null) { PlayerPrefs.SetString("Gamesim.ActiveSave", Path.GetFileName(saves.SavePath)); PlayerPrefs.Save(); }
                 message = SeasonMessage(fresh, choice);
+                installed = true;
             }
             catch (Exception error) when (error is IOException || error is InvalidDataException || error is UnauthorizedAccessException || error is ArgumentException)
             {
@@ -215,6 +217,22 @@ namespace Gamesim.Episode
                 else if (choice != null && castSelect != null) castSelect.Resume(message);
             }
             Render();
+            // The opening sequence, on the only path that reaches it.
+            //
+            // It has five authored beats, it owns the tutorial, and it is where a season's first
+            // impressions are seeded - and it was unreachable for every player who cast their own
+            // season. PlayOpening had two call sites: one gated on SaveRootOverride, which is
+            // tests and the standalone verification, and one in CloseMainMenu, which NewSeason
+            // steps around by calling mainMenu.Hide() directly. On a first launch there is no save,
+            // so Continue is unavailable and New season is the only door - and it led straight past
+            // the introduction to a house where every relationship was exactly zero.
+            //
+            // AFTER the catch and gated on success, not at the end of the try: the catch hands the
+            // player back to the cast screen or the creator with the failure on it, and an opening
+            // sequence is a canvas at sorting order 140 that would cover the screen they were
+            // returned to. PlayOpening is a no-op in batchmode, so the headless suite - which calls
+            // StartSeason directly from nine fixtures - is untouched.
+            if (installed) PlayOpening();
         }
 
         private static string SeasonMessage(EpisodeState fresh, SeasonBuilder.Choice choice)

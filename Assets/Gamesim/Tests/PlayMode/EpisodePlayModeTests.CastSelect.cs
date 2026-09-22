@@ -51,10 +51,54 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastScreen(), Is.Not.Null);
             Assert.That(CastScreen().IsShowing, Is.True, "There is nothing to photograph if it never opened.");
 
-            // Wait for the faces. The cards carry a RawImage that CastSelect.Update fills from
-            // CharacterPortraits as each render lands, so a frame taken on open photographs twelve
-            // empty discs and reads as proof the screen has no portraits - which is exactly the
-            // wrong conclusion to draw about the thing being judged.
+            yield return WaitForCastFaces("cast-select");
+
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+            yield return CaptureFraming("cast-select");
+            CastScreen().Dismiss();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The same screen with a card picked - the state the frame above never shows, and the one
+        /// the glass on this screen exists for: the halo, a single ring and "PLAYING AS" on one card
+        /// among twelve. Review evidence, not proof; the proof is
+        /// <c>CastSelect_CardsAreGlassAndOnlyTheChosenOneGlows</c>.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_CapturesThePickedCardForReview()
+        {
+            if (!Application.isBatchMode) yield break;
+            yield return OpenCastScreen();
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.True, "There is nothing to photograph if it never opened.");
+            yield return WaitForCastFaces("cast-select-picked, before the pick");
+
+            var chosen = CastTemplates.In(CastTemplates.Roster.Regular).First();
+            CastButtons(chosen.Name)[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+            // Again. A pick rebuilds every card, and the new cards start with empty discs that
+            // Update refills as the renders come back.
+            yield return WaitForCastFaces("cast-select-picked");
+
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+            yield return CaptureFraming("cast-select-picked");
+            CastScreen().Dismiss();
+            yield return null;
+        }
+
+        /// <summary>
+        /// Waits for the faces. The cards carry a RawImage that CastSelect.Update fills from
+        /// CharacterPortraits as each render lands, so a frame taken on open photographs twelve
+        /// empty discs and reads as proof the screen has no portraits - which is exactly the wrong
+        /// conclusion to draw about the thing being judged.
+        /// </summary>
+        private IEnumerator WaitForCastFaces(string frame)
+        {
             RawImage[] Faces() => CastScreen().GetComponentsInChildren<RawImage>(true)
                 .Where(image => image.name == "Model portrait").ToArray();
             int wanted = Faces().Length;
@@ -63,13 +107,7 @@ namespace Gamesim.Tests.PlayMode
                    && Faces().Count(image => image.texture != null) < wanted)
                 yield return null;
             int landed = Faces().Count(image => image.texture != null);
-            Debug.Log("[Gamesim] Cast screen - " + landed + " of " + wanted + " portraits rendered before capture.");
-
-            Canvas.ForceUpdateCanvases();
-            yield return null;
-            yield return CaptureFraming("cast-select");
-            CastScreen().Dismiss();
-            yield return null;
+            Debug.Log("[Gamesim] Cast screen (" + frame + ") - " + landed + " of " + wanted + " portraits rendered before capture.");
         }
 
         private IEnumerator OpenCastScreen()

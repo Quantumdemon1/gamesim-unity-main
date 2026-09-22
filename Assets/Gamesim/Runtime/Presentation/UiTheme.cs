@@ -127,6 +127,26 @@ namespace Gamesim.Presentation
             var image = panel.GetComponent<Image>();
             if (image == null) image = panel.gameObject.AddComponent<Image>();
             Style(image, GlassFill, radius);
+            AddGlow(panel, radius);
+            AddBorder(panel, radius, Hairline);
+        }
+
+        /// <summary>
+        /// The glass card's halo and nothing else: a child reaching <see cref="GlowWidth"/> px past
+        /// the rect, behind every other child, that never touches the panel's own ground or edge.
+        ///
+        /// <para>The cast screen wanted a glow on grounds of its own - the card ground on the picked
+        /// card, a saturated fill on the active pills - and the only way to get one was
+        /// <see cref="Glass"/>. So it called Glass, which repainted the ground to GlassFill and
+        /// drew a hairline, then painted its own ground back over the top and drew a second edge
+        /// over the first. Two write-backs and a doubled ring, to get one child. Ask for the child.</para>
+        ///
+        /// <para>It is named "Glow", never "Border": <c>HudEmphasis.Promote</c> finds a panel's edge
+        /// by that name, and a halo is not an edge.</para>
+        /// </summary>
+        public static void AddGlow(RectTransform panel, int radius)
+        {
+            if (panel == null) return;
             var glow = new GameObject("Glow", typeof(RectTransform), typeof(Image));
             var rect = (RectTransform)glow.transform;
             rect.SetParent(panel, false);
@@ -139,7 +159,6 @@ namespace Gamesim.Presentation
             glowImage.pixelsPerUnitMultiplier = 1f;
             glowImage.color = new Color(Glow.r, Glow.g, Glow.b, 0.35f);
             glowImage.raycastTarget = false;
-            AddBorder(panel, radius, Hairline);
         }
 
         public enum Weight { Regular, Medium, SemiBold, Bold }

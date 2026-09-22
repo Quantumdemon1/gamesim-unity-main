@@ -179,7 +179,7 @@ namespace Gamesim.Tests.PlayMode
                 "A resting card sits on the card ground, which is a LIFT above the screen behind it. "
                 + "It used to be GlassFill on a scrim of Background at 0.97 - the same hex, under one "
                 + "percent apart - so twelve cards were twelve hairlines around nothing.");
-            Assert.That(Child(card, "Border"), Is.Not.Null, "Every card carries the hairline.");
+            Assert.That(Children(card, "Border"), Is.EqualTo(1), "Every card carries the hairline, once.");
             Assert.That(Child(card, CastSelect.CardGlowName), Is.Null,
                 "A card nobody picked does not glow.");
             Assert.That(card.GetComponentsInChildren<RectTransform>(true)
@@ -198,6 +198,15 @@ namespace Gamesim.Tests.PlayMode
                 .Single(rect => rect.name == chosen.Name);
             Assert.That(Child(card, CastSelect.CardGlowName), Is.Not.Null,
                 "The picked card gains the mockups' glow.");
+            Assert.That(Children(card, "Border"), Is.EqualTo(1),
+                "and ONE ring. It used to wear two stacked edges - Glass's hairline and a Glow ring "
+                + "drawn over it - because Glass was the only way to ask for the halo.");
+            Assert.That(CastScreen().GetComponentsInChildren<Image>(true)
+                    .Where(image => image.name == "Border")
+                    .Count(image => SameColour(image.color, UiTheme.Edge(UiTheme.Emphasis.Active))),
+                Is.EqualTo(0),
+                "The accent edge is for the one thing to act on now, and this screen always shows at "
+                + "least four active pills. The glow and the fill say which is picked.");
             Assert.That(Copy(card), Does.Contain("PLAYING AS"),
                 "and still states the pick in words, which is what a screen reader reads.");
 
@@ -218,6 +227,13 @@ namespace Gamesim.Tests.PlayMode
             // is the one card that can silently lose the fill every other card has.
             Assert.That(SameColour(card.GetComponent<Image>().color, UiTheme.CardFill), Is.True,
                 "The picked card has a different ground from the eleven it sits beside.");
+        }
+
+        private static int Children(Transform parent, string name)
+        {
+            int count = 0;
+            foreach (Transform child in parent) if (child.name == name) count++;
+            return count;
         }
 
         private static Transform Child(Transform parent, string name)

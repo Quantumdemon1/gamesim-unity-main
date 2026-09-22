@@ -521,15 +521,15 @@ namespace Gamesim.Presentation
 
             // The mockup's selected card is the one that glows; the rest carry the hairline alone.
             // The glow is decoration on top of a state the card also states in words below.
+            //
+            // The glow and ONE ring. This used to be Glass, which repainted the card to GlassFill
+            // and drew a hairline, then a second ring in Glow drawn over that hairline, then the
+            // card ground written back over GlassFill - because Glass was the only way to ask for
+            // the halo. The ground is the card ground from the line above and nothing repaints it.
             if (chosen)
             {
-                UiTheme.Glass(card, UiTheme.GlassRadius);
+                UiTheme.AddGlow(card, UiTheme.GlassRadius);
                 UiTheme.AddBorder(card, UiTheme.GlassRadius, UiTheme.Glow);
-                // Glass paints GlassFill over whatever the card was given, so the ground has to be
-                // written back afterwards or the one card the player picked is the one card that
-                // loses it. It was GlassFill on a scrim of Background - the same hex, under one
-                // percent apart - so every card was a hairline around nothing.
-                UiTheme.Style(card.GetComponent<Image>(), UiTheme.CardFill, UiTheme.GlassRadius);
             }
             else
             {
@@ -932,15 +932,14 @@ namespace Gamesim.Presentation
             // resting pills keep the cyan hairline every panel edge carries.
             if (active)
             {
-                UiTheme.Glass(pill, 18);
-                // Glass repaints the image to GlassFill, so the fill has to be written back AFTER
-                // it rather than before - the line above used to do this with AccentDeep, which made
-                // the constructor argument dead code for exactly the pills this is about.
-                UiTheme.Style(pill.GetComponent<Image>(), UiTheme.Glow, 18);
-                // Not Glow on Glow, which is an edge that cannot be seen, and deliberately not
-                // UiTheme.Edge(Emphasis.Active): Chrome_TheRightColumnIsAStack asserts that no live
-                // Image named "Border" under the director wears the active edge, and Hide() leaves
-                // this hierarchy alive. A saturated fill is already the signal.
+                // The glow alone. This was Glass, which repainted the pill to GlassFill so the Glow
+                // fill had to be written back after it, and drew a hairline under the edge below.
+                // The fill is the constructor's again, and there is one ring.
+                UiTheme.AddGlow(pill, 18);
+                // Not Glow on Glow, which is an edge that cannot be seen, and not
+                // UiTheme.Edge(Emphasis.Active): the accent edge is for the one thing the player is
+                // meant to act on now (UiTheme.Emphasis), and this screen always shows at least four
+                // active pills at once. A saturated fill is already the signal.
                 UiTheme.AddBorder(pill, 18, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, 0.35f));
             }
             else

@@ -9,7 +9,7 @@
 # Raise a floor in the same commit that adds tests; never lower one to make a red run green.
 #
 #   <assembly> <minimum tests>
-Gamesim.EditModeTests 1416
+Gamesim.EditModeTests 1421
 Gamesim.PlayModeTests 309
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).
 # Most of it is cases generated from the web fixtures - a fixture that stops loading drops

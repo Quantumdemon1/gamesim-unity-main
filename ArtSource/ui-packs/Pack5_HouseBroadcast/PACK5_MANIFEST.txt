@@ -1,0 +1,115 @@
+EnvironmentWallGraphics:
+  - bedroom_botanical.png
+  - bedroom_geometric.png
+  - competition_grid.png
+  - diary_room_halo.png
+  - game_room_pattern.png
+  - gamesim_eye_large.png
+  - gamesim_house_geometry.png
+  - hoh_crown_wall.png
+  - memory_wall_header.png
+  - same_house_different_stories.png
+  - social_strategy_survival.png
+  - strategy_people_power.png
+  - the_game_never_sleeps.png
+
+NeonMasks:
+  - neon_diary_room_mask.png
+  - neon_diary_room_reference.png
+  - neon_game_never_sleeps_mask.png
+  - neon_gamesim_mask.png
+  - neon_gamesim_reference.png
+  - neon_good_people_bigger_stories_mask.png
+  - neon_hoh_suite_mask.png
+  - neon_hoh_suite_reference.png
+  - neon_power_changes_everything_mask.png
+  - neon_same_house_different_stories_mask.png
+  - neon_strategy_lives_here_mask.png
+
+DigitalDisplays:
+  - display_diary_room.png
+  - display_endurance.png
+  - display_eviction.png
+  - display_final_three.png
+  - display_hoh_competition.png
+  - display_house_party.png
+  - display_idle_gamesim.png
+  - display_memory_wall.png
+  - display_nomination.png
+  - display_quiz.png
+  - display_veto_competition.png
+  - display_winner.png
+
+CompetitionKit:
+  - balance_beam_symbol.png
+  - buzzer_station_symbol.png
+  - checkpoint_marker.png
+  - eliminated_marker.png
+  - finish_marker.png
+  - hazard_stripe_decal.png
+  - hoh_crown_icon.png
+  - lane_blue_decal.png
+  - lane_green_decal.png
+  - lane_red_decal.png
+  - lane_yellow_decal.png
+  - podium_A_front.png
+  - podium_B_front.png
+  - podium_C_front.png
+  - podium_D_front.png
+  - puzzle_station_symbol.png
+  - round_complete_marker.png
+  - scoreboard_face_1920x1080.png
+  - start_marker.png
+  - veto_medallion_icon.png
+  - winner_burst.png
+
+RoomSignage:
+  - backyard_sign.png
+  - bathrooms_sign.png
+  - bedroom_sign.png
+  - competition_yard_sign.png
+  - diary_room_sign.png
+  - dining_area_sign.png
+  - game_room_sign.png
+  - gym_sign.png
+  - hoh_suite_sign.png
+  - kitchen_sign.png
+  - living_room_sign.png
+  - pool_sign.png
+
+Broadcast:
+  - camera_identifier_blank_9slice.png
+  - day_card.png
+  - episode_opening_card.png
+  - eviction_night_card.png
+  - finale_card.png
+  - later_tonight_card.png
+  - live_card.png
+  - lower_third_blank_9slice.png
+  - nomination_ceremony_card.png
+  - previously_card.png
+  - reaction_replay_card.png
+  - veto_meeting_card.png
+  - week_card.png
+
+SurfaceDecals:
+  - fabric_weave_mask.png
+  - frosted_glass_pattern.png
+  - geometric_wall_mask.png
+  - glass_smudge_mask.png
+  - stone_veins_mask.png
+  - surface_noise_fine.png
+  - surface_scratches.png
+  - tile_grid_mask.png
+
+VFXTextures:
+  - confetti_gold.png
+  - confetti_mixed.png
+  - cyan_glow_particle.png
+  - gold_glow_particle.png
+  - light_streak.png
+  - pink_heart_glow.png
+  - red_pulse_particle.png
+  - smoke_puff.png
+  - soft_particle.png
+  - star_sparkle.png

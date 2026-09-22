@@ -11,7 +11,12 @@ namespace Gamesim.Tests.EditMode
 {
     public sealed class WebLoyaltyOathParityTests
     {
-        public static string FixturePath => Path.Combine(UnityEngine.Application.dataPath, "Gamesim", "Tests", "EditMode", "Fixtures", "WebOathFixtures.json");
+        public static string FixturePath =>
+#if UNITY_EDITOR
+            Path.Combine(UnityEngine.Application.dataPath, "Gamesim", "Tests", "EditMode", "Fixtures", "WebOathFixtures.json");
+#else
+            Path.Combine(AppContext.BaseDirectory, "WebOathFixtures.json");
+#endif
         public static IEnumerable<TestCaseData> OathCases() => Read()["cases"].Select(item =>
             new TestCaseData(item).SetName("Web oath: " + (string)item["name"]));
         public static IEnumerable<TestCaseData> ProposalCases() => Read()["proposals"].Select((item,index) =>

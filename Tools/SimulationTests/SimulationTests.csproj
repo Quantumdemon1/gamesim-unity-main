@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The simulation's own tests, run WITHOUT Unity.
+
+    Gamesim.Simulation is noEngineReferences: pure C# with nothing but System underneath it. So
+    are the tests listed below. That makes them runnable on a stock CI runner with no editor and
+    no licence, which is the only way anything in this repository gets tested on a push until
+    somebody adds the Unity secrets (see the note at the bottom of .github/workflows/ci.yml).
+
+    This is a SUBSET of Gamesim.EditModeTests, not a replacement for it. The editor run is still
+    the suite. What this buys is that a change to the rules, the seeded stream or a web parity
+    fixture cannot reach main having never been executed by anything.
+
+    Two things are pinned to what Unity does, so a pass here means what a pass there means:
+      - LangVersion 9, Unity 6's compiler. Newer syntax would build here and break the editor.
+      - No implicit usings. A file that forgot `using System.Linq;` must fail here as it does there.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS0618;CS0649;CS0414;CS0169;NUnit2005;NUnit2007</NoWarn>
+    <RootDir>$(MSBuildThisFileDirectory)../../</RootDir>
+    <Simulation>$(RootDir)Assets/Gamesim/Simulation/</Simulation>
+    <EditMode>$(RootDir)Assets/Gamesim/Tests/EditMode/</EditMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The whole assembly, exactly as Unity compiles it. -->
+    <Compile Include="$(Simulation)**/*.cs" />
+
+    <!--
+      Tests that touch nothing but System, NUnit, Newtonsoft and Gamesim.Simulation. Nothing of
+      Unity's is stubbed: the web parity tests find their fixtures through Application.dataPath
+      only under UNITY_EDITOR, and beside the binary otherwise. Tests that parse through
+      JsonUtility or reach Gamesim.Persistence are deliberately NOT here - standing Newtonsoft in
+      for JsonUtility would change what is being tested.
+    -->
+    <Compile Include="$(EditMode)CastSizeTests.cs" />
+    <Compile Include="$(EditMode)CastTemplateTests.cs" />
+    <Compile Include="$(EditMode)CharacterDraftTests.cs" />
+    <Compile Include="$(EditMode)DealResolutionTests.cs" />
+    <Compile Include="$(EditMode)EpisodeBallotPrivacyTests.cs" />
+    <Compile Include="$(EditMode)EpisodeEngineTests.cs" />
+    <Compile Include="$(EditMode)EpisodeFinaleTests.cs" />
+    <Compile Include="$(EditMode)EpisodeNpcSocialTests.cs" />
+    <Compile Include="$(EditMode)EpisodeRecoveryBoundaryTests.cs" />
+    <Compile Include="$(EditMode)EpisodeSocialHistoryTests.cs" />
+    <Compile Include="$(EditMode)HouseDialogueTests.cs" />
+    <Compile Include="$(EditMode)HouseEventSourceTests.cs" />
+    <Compile Include="$(EditMode)HouseEventTests.cs" />
+    <Compile Include="$(EditMode)JuryVotingTests.cs" />
+    <Compile Include="$(EditMode)NpcAllianceTests.cs" />
+    <Compile Include="$(EditMode)NpcDealTests.cs" />
+    <Compile Include="$(EditMode)NpcPromiseTests.cs" />
+    <Compile Include="$(EditMode)NpcSocialActionTests.cs" />
+    <Compile Include="$(EditMode)OpeningBeatTests.cs" />
+    <Compile Include="$(EditMode)PlayerDealTests.cs" />
+    <Compile Include="$(EditMode)RelationshipLedgerTests.cs" />
+    <Compile Include="$(EditMode)SocialActionParityTests.cs" />
+    <Compile Include="$(EditMode)SocialVocabularyTests.cs" />
+    <Compile Include="$(EditMode)StorylineTests.cs" />
+    <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
+    <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
+    <Compile Include="$(EditMode)WebJurySentimentParityTests.cs" />
+    <Compile Include="$(EditMode)WebLoyaltyOathParityTests.cs" />
+    <Compile Include="$(EditMode)WebNpcActivityParityTests.cs" />
+    <Compile Include="$(EditMode)WebNpcConversationParityTests.cs" />
+    <Compile Include="$(EditMode)WebNpcMotiveParityTests.cs" />
+    <Compile Include="$(EditMode)WebRelationshipArcsParityTests.cs" />
+    <Compile Include="$(EditMode)WebStudyParityTests.cs" />
+    <Compile Include="$(EditMode)WebTraitsTests.cs" />
+    <Compile Include="$(EditMode)WebVotingBlocParityTests.cs" />
+    <Compile Include="$(EditMode)WeeklyRuleParityTests.cs" />
+    <Compile Include="$(EditMode)WritingPassTests.cs" />
+
+    <!--
+      Several parity tests already carry an #else branch for running outside the editor: without
+      UNITY_EDITOR they read their fixture from beside the test binary. Put them there.
+    -->
+    <None Include="$(EditMode)Fixtures/*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NUnit 3, as the Unity Test Framework ships. NUnit 4 moved the classic asserts. -->
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

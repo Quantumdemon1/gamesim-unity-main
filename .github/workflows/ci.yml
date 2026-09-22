@@ -6,9 +6,11 @@ name: CI
 # UNITY_PASSWORD and UNITY_LICENSE as repository secrets, plus game-ci/unity-test-runner. Nobody
 # has added those, so this workflow does not pretend to run them. See the note at the bottom.
 #
-# What it does instead is enforce the three rules this repository has been keeping in a person's
-# head. Every one of them has actually been broken or nearly broken during development, every one is
-# invisible until something downstream fails strangely, and none of them needs Unity to check.
+# What it does instead is two things that need no editor. It enforces the three rules this
+# repository has been keeping in a person's head - every one of them has actually been broken or
+# nearly broken during development, and every one is invisible until something downstream fails
+# strangely. And it runs the simulation's own tests: Gamesim.Simulation is pure C#, and so is the
+# part of the EditMode suite that tests it, so those run on a stock runner with no licence at all.
 
 on:
   pull_request:
@@ -75,13 +77,54 @@ jobs:
           fi
           echo "all GUIDs unique"
 
-  # The suites this repository actually cares about are EditMode (1388) and PlayMode (289), and they
-  # need a licensed editor. To turn them on:
+  # The rules, the seeded stream and the web parity fixtures, executed on every push.
+  #
+  # Tools/SimulationTests compiles Assets/Gamesim/Simulation exactly as Unity does - C# 9, no
+  # implicit usings - together with every EditMode test file that needs nothing of Unity's. It is a
+  # SUBSET of the EditMode suite, not a stand-in for it; what it buys is that a change to the
+  # simulation cannot reach main having never been run by anything.
+  #
+  # The floor matters as much as the pass. Most of these tests are cases generated from the web
+  # fixtures, so a fixture that stopped being copied beside the binary would drop a few hundred
+  # tests and still report green. The count is checked against Tools/baseline.txt for that reason.
+  simulation:
+    name: Simulation tests (no Unity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Run the simulation tests
+        run: |
+          dotnet test Tools/SimulationTests/SimulationTests.csproj --nologo \
+            --logger "trx;LogFileName=simulation.trx" --results-directory "$RUNNER_TEMP/results"
+
+      - name: The run was the suite
+        if: always()
+        run: |
+          trx="$RUNNER_TEMP/results/simulation.trx"
+          [ -f "$trx" ] || { echo "::error::no results file - the build failed or the run died. This is NOT a pass."; exit 1; }
+          ran=$(grep -o '<Counters [^>]*' "$trx" | grep -o ' total="[0-9]*"' | grep -o '[0-9]*')
+          floor=$(awk '$1=="Gamesim.SimulationTests" {print $2}' Tools/baseline.txt)
+          echo "ran ${ran:-0}, floor ${floor:-unset}"
+          [ -n "$floor" ] || { echo "::error file=Tools/baseline.txt::no Gamesim.SimulationTests floor"; exit 1; }
+          if [ "${ran:-0}" -lt "$floor" ]; then
+            echo "::error file=Tools/baseline.txt::ran ${ran:-0} simulation tests, the floor is $floor. This is not a pass."
+            exit 1
+          fi
+
+  # The whole of both suites needs a licensed editor. To turn them on:
   #
   #   1. Add UNITY_EMAIL, UNITY_PASSWORD and UNITY_LICENSE as repository secrets.
   #   2. Add a job using game-ci/unity-test-runner@v4 with testMode editmode, then playmode,
   #      unityVersion 6000.6.0f1.
   #   3. Give it 45+ minutes: a cold Library import dominates the run.
   #
-  # Until then the local path is scratchpad/sync-and-run.sh, which mirrors to the D: acceptance copy
-  # and runs both suites. Anyone reviewing a change to Assets/Gamesim should ask for its output.
+  # Until then the local path is Tools/sync-and-run.sh, which mirrors to the D: acceptance copy, runs
+  # both suites and checks them against the floors in Tools/baseline.txt. Anyone reviewing a change
+  # to Assets/Gamesim should ask for its output.

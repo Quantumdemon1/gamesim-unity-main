@@ -1,0 +1,13 @@
+# Suite floors: how many tests each assembly must actually RUN.
+#
+# The point is not the number, it is that a run which quietly executed far fewer tests than the
+# suite holds stops reading as a pass. Three separate times in one day a filtered run and a build
+# failure were read as full-suite results here, because the only thing distinguishing them was a
+# total the reader had to remember. A floor turns that into an exit code.
+#
+# A FILTERED run is never checked against these - it is not the suite and sync-and-run says so.
+# Raise a floor in the same commit that adds tests; never lower one to make a red run green.
+#
+#   <assembly> <minimum tests>
+Gamesim.EditModeTests 1390
+Gamesim.PlayModeTests 297

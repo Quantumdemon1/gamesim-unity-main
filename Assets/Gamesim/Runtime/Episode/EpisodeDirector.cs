@@ -448,6 +448,18 @@ namespace Gamesim.Episode
             return left + (left == 1 ? " action" : " actions");
         }
 
+        /// <summary>Where a promise stands, in a word the player was not asked to learn.</summary>
+        private static string PromiseStanding(PromiseStatus status)
+        {
+            switch (status)
+            {
+                case PromiseStatus.Fulfilled: return "kept";
+                case PromiseStatus.Broken: return "broken";
+                case PromiseStatus.Expired: return "expired";
+                default: return "still standing";
+            }
+        }
+
         public Vector3 StationPosition => ResolveStationPosition();
         private bool CanUseStation() => !playerIsActive ||
             Vector3.Distance(player.transform.position, StationPosition) < 3;
@@ -863,7 +875,15 @@ namespace Gamesim.Episode
             // Aggregate source arcs have no participant/knowledge provenance.
             // NPC-only conversations must not masquerade as the player's bonds.
             foreach (var promise in state.promises.Where(p => p.fromId == state.playerId || p.toId == state.playerId))
-                hud.Paragraph(promise.kind + " · " + state.Find(promise.fromId).name + " → " + state.Find(promise.toId).name + " · " + promise.status);
+            {
+                // Was the raw enum on both ends: "AllianceLoyalty - Dana -> You - Active". The
+                // vocabulary the player was given when they made the promise already exists.
+                bool mine = promise.fromId == state.playerId;
+                string who = mine ? state.Find(promise.toId).name : state.Find(promise.fromId).name;
+                hud.Paragraph((mine ? "You promised " + who : who + " promised you")
+                    + " " + Presentation.RelationshipWeb.PromiseWord(promise.kind)
+                    + "  ·  " + PromiseStanding(promise.status));
+            }
             foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId))) hud.Paragraph(alliance.name + (alliance.active ? " · active" : " · ended"));
             hud.Heading("YOUR LOYALTY DECLARATIONS");
             foreach (var oath in state.loyaltyOaths.Where(oath => oath.playerId == state.playerId || oath.targetId == state.playerId))
@@ -965,9 +985,13 @@ namespace Gamesim.Episode
                 // objective card, which SetActivityLayout hides for a conversation: it was on
                 // screen right up until the moment it mattered.
                 hud.SpeakerTitle(npc.id, npc.name.ToUpperInvariant(),
-                    npc.pronouns + " · " + string.Join(" / ", npc.traits)
-                    + "  ·  " + Standing(state, npc.id)
-                    + "  ·  " + ActionsLeft(state) + " left");
+                    npc.pronouns + " · " + string.Join(" / ", npc.traits));
+                // On its own line, not appended to the identity one. Four facts in a fixed-width
+                // subtitle fitted at the standard text size and was cut off at the larger one -
+                // which is the whole reason this panel now has a clipped-copy guard, and the guard
+                // caught it on the first run. Who somebody is and where you stand with them are
+                // two different questions anyway.
+                hud.Paragraph(Standing(state, npc.id) + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
                 if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)

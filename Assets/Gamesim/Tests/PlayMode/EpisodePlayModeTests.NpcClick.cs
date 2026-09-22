@@ -1,8 +1,10 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.House;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -229,6 +231,316 @@ namespace Gamesim.Tests.PlayMode
 
             director.ClosePanels();
             yield return null;
+        }
+
+        /// <summary>
+        /// Asking for the diary room cancels a walk to a houseguest.
+        ///
+        /// <para>The R key's own version of the contract above, and it has the same teeth:
+        /// <c>GoToDiary</c> sets its own destination and its own status line, so a click that
+        /// outlived it did not merely linger — it overwrote the walk to the diary room, or opened a
+        /// conversation on the way there under a lower third promising the diary.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NpcClick_AskingForTheDiaryRoomCancelsAWalkToAHouseguest()
+        {
+            director.ClosePanels();
+            yield return null;
+            Assert.That(director.HasDiaryRoom, Is.True,
+                "Without a diary room GoToDiary returns before it cancels anything, and this would pass on nothing.");
+
+            var wanted = SceneComponents<HouseNpc>()
+                .Where(actor => actor.gameObject.activeInHierarchy)
+                .OrderByDescending(actor => (actor.transform.position - player.transform.position).sqrMagnitude)
+                .First();
+            yield return FrameOn(wanted.transform);
+
+            var mouse = InputSystem.AddDevice<Mouse>();
+            try
+            {
+                yield return ClickAt(mouse, AimAt(wanted));
+                Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
+                    "The click should have started a walk to " + wanted.DisplayName + ".");
+            }
+            finally { InputSystem.RemoveDevice(mouse); }
+
+            director.GoToDiary();
+            yield return null;
+            Assert.That(director.WalkingToId, Is.Null,
+                "Asking for the diary room must let go of the walk to " + wanted.DisplayName
+                + ". A pending click on a houseguest used to survive the R key and pull the player "
+                + "straight back out of the diary trip.");
+
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// Is this screen point bare walkable floor, by every question the controller asks on the
+        /// way to its walk branch?
+        ///
+        /// <para>Each of those questions is a way for a synthetic click to be swallowed in silence,
+        /// which is what makes a floor-click test so easy to write wrongly: the HUD claims the
+        /// point, a seated body claims the ray, the ray reaches a prop whose interaction anchor
+        /// shares a parent with the floor beneath it, or it lands on the player's own collider. In
+        /// every one of those cases the click is consumed, nothing moves, and an assertion about
+        /// what the click cancelled would be about nothing at all.</para>
+        /// </summary>
+        private bool IsBareFloorAt(Vector2 screen, out RaycastHit floor)
+        {
+            floor = default;
+            var scene = player.gameObject.scene;
+            if (EventSystem.current != null)
+            {
+                var over = new List<RaycastResult>();
+                EventSystem.current.RaycastAll(
+                    new PointerEventData(EventSystem.current) { position = screen }, over);
+                if (over.Count > 0) return false;
+            }
+
+            var ray = cameraRig.ViewCamera.ScreenPointToRay(screen);
+            if (HouseSeatPresentation.TryPickNpc(scene, ray, out _)) return false;
+            if (!Physics.Raycast(ray, out floor, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore)) return false;
+            if (floor.collider.GetComponentInParent<HousePlayerController>() != null) return false;
+            if (floor.collider.GetComponentInParent<HouseNpc>() != null) return false;
+            if (HouseFurniture.AtProp(scene, floor.transform) != null) return false;
+            return floor.collider.GetComponentInParent<HouseWalkable>() != null;
+        }
+
+        /// <summary>
+        /// The clearest reachable patch of bare floor in the shot as it stands, with the longest
+        /// walk to it.
+        ///
+        /// <para>Chosen with a margin rather than a single point, because the camera is following a
+        /// running player: the world under a fixed screen point drifts between the frame this is
+        /// picked on and the frame the button goes down. A candidate whose eight neighbours are all
+        /// floor too survives that drift; one sitting on the edge of a rug does not.</para>
+        ///
+        /// <para>Reachability is checked here rather than asserted afterwards for the same reason
+        /// the other checks are: an unreachable point makes <c>TryMoveTo</c> fail, and a floor click
+        /// that sets no destination is a click the game deliberately ignores.</para>
+        /// </summary>
+        private Vector2 AimAtBareFloor(out Vector3 target)
+        {
+            Assert.That(Gamesim.Presentation.CeremonyOverlays.OnScreen, Is.False,
+                "A ceremony card is on screen, and every click under one is dropped by design.");
+            Assert.That(player.InputEnabled, Is.True, "The controller reads no clicks at all while input is off.");
+
+            var rect = cameraRig.ViewCamera.pixelRect;
+            var route = new NavMeshPath();
+            const float Margin = 12f;
+            Vector2 best = default;
+            target = default;
+            float furthest = -1f;
+
+            for (int ix = 1; ix < 16; ix++)
+            for (int iy = 1; iy < 16; iy++)
+            {
+                var screen = new Vector2(rect.xMin + rect.width * ix / 16f, rect.yMin + rect.height * iy / 16f);
+                if (!IsBareFloorAt(screen, out var hit)) continue;
+
+                bool clear = true;
+                for (int dx = -1; dx <= 1 && clear; dx++)
+                for (int dy = -1; dy <= 1 && clear; dy++)
+                    if (dx != 0 || dy != 0)
+                        clear = IsBareFloorAt(screen + new Vector2(dx * Margin, dy * Margin), out _);
+                if (!clear) continue;
+
+                if (!NavMesh.SamplePosition(hit.point, out var sample, .6f, player.Agent.areaMask)) continue;
+                if (!player.Agent.CalculatePath(sample.position, route)
+                    || route.status != NavMeshPathStatus.PathComplete) continue;
+
+                float distance = Vector3.Distance(player.transform.position, hit.point);
+                if (distance <= furthest) continue;
+                furthest = distance; best = screen; target = hit.point;
+            }
+
+            Assert.That(furthest, Is.GreaterThan(1f),
+                "No clear, reachable patch of bare floor anywhere in this shot, so there is no floor click to make.");
+            return best;
+        }
+
+        /// <summary>
+        /// Clicking the floor cancels a walk to a houseguest.
+        ///
+        /// <para>The plainest possible statement that the player wants to be somewhere else, and for
+        /// its whole life it changed nothing: the controller declared a <c>DestinationChosen</c>
+        /// event, the director subscribed <c>CancelTravel</c> to it, and no line anywhere ever
+        /// raised it. The walk branch moved the player and returned. So you clicked a houseguest,
+        /// changed your mind, clicked the floor, watched the player set off where you asked — and
+        /// then the errand nobody had let go of re-aimed the path on the very next tick and dragged
+        /// them back across the house.</para>
+        ///
+        /// <para>The wiring read as complete from either end, which is why nothing caught it: the
+        /// subscription is there in <c>TickHouseActivities</c>, the handler is there, and the event
+        /// is there. Only the raise was missing, and an event nobody raises is indistinguishable
+        /// from one nobody listens to until something presses the button.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NpcClick_ClickingTheFloorCancelsAWalkToAHouseguest()
+        {
+            director.ClosePanels();
+            yield return null;
+
+            var wanted = SceneComponents<HouseNpc>()
+                .Where(actor => actor.gameObject.activeInHierarchy)
+                .OrderByDescending(actor => (actor.transform.position - player.transform.position).sqrMagnitude)
+                .First();
+            yield return FrameOn(wanted.transform);
+
+            var mouse = InputSystem.AddDevice<Mouse>();
+            try
+            {
+                yield return ClickAt(mouse, AimAt(wanted));
+                Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
+                    "The click should have started a walk to " + wanted.DisplayName + ".");
+
+                // Hold the shot still before measuring anything. Starting a walk hands the rig a new
+                // subject - the player - and it eases off the houseguest it was framing onto them,
+                // so a screen point measured on one frame names a different patch of the house two
+                // frames later. That is what makes this click so easy to test wrongly: the press
+                // lands on a wall, the controller returns without a sound, and the only thing left
+                // to look at is an intent that was never cancelled. ClearSubject pins the desired
+                // focus to where the camera already is, so the ray measured here is the ray pressed
+                // on. The click under test re-acquires the player itself.
+                cameraRig.ClearSubject();
+                yield return null;
+
+                var screen = AimAtBareFloor(out var target);
+                Assert.That(Vector3.Distance(target, wanted.transform.position), Is.GreaterThan(3f),
+                    "That patch of floor is inside talking range of " + wanted.DisplayName
+                    + ", so the walk could end in a conversation on its own and cancel itself.");
+
+                // Move first, and give the UI module a frame to see the pointer where it now is.
+                // The controller asks EventSystem.IsPointerOverGameObject, which reads the module's
+                // OWN tracked pointer rather than the position carried on the event, so a press that
+                // arrives in the same frame as the move is judged against wherever the pointer was
+                // standing before it - and the HUD-free point just measured counts for nothing.
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = screen });
+                yield return null;
+                yield return null;
+                if (EventSystem.current != null)
+                    Assert.That(EventSystem.current.IsPointerOverGameObject(), Is.False,
+                        "The UI module still believes the pointer is over the HUD, so this click will be dropped.");
+
+                // The walk has to still be running, or there is nothing left for the click to cancel.
+                Assert.That(director.WalkingToId, Is.EqualTo(wanted.Id),
+                    "The walk to " + wanted.DisplayName + " ended before the floor was ever clicked.");
+
+                // And the point has to still be floor on the frame the button goes down. Measured
+                // again rather than trusted, because every way this click can be swallowed is
+                // silent, and a stale aim is the one that cost five attempts to find.
+                Assert.That(IsBareFloorAt(screen, out var aimed), Is.True,
+                    "The shot moved after the aim was taken: " + screen + " is no longer bare floor.");
+                Assert.That(Vector3.Distance(aimed.point, target), Is.LessThan(.2f),
+                    "The shot moved after the aim was taken: " + screen + " now names "
+                    + aimed.point.ToString("0.0") + " rather than " + target.ToString("0.0") + ".");
+                var before = player.Agent.destination;
+
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = screen }.WithButton(MouseButton.Left));
+                yield return null;
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = screen });
+                yield return null;
+
+                // That the click ARRIVED is asserted before what it cancelled. A click swallowed on
+                // the way to the walk branch cancels nothing and proves nothing, and a test that
+                // only looked at the intent would read that silence as a pass.
+                Assert.That(director.TalkingToId, Is.Null,
+                    "The floor click opened a conversation instead of moving anybody.");
+                Assert.That(Vector3.Distance(player.Agent.destination, target), Is.LessThan(.75f),
+                    "The floor click never reached the walk branch: the destination is still "
+                    + before.ToString("0.0") + ", not the " + target.ToString("0.0") + " that was clicked.");
+
+                Assert.That(director.WalkingToId, Is.Null,
+                    "Clicking the floor must let go of the walk to " + wanted.DisplayName
+                    + ". Nothing raised DestinationChosen, so the errand outlived the click, re-aimed "
+                    + "the path on the next tick and dragged the player back.");
+            }
+            finally { InputSystem.RemoveDevice(mouse); }
+
+            player.StopHere();
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// Photographs the conversation panel so what it says can be judged from a frame.
+        ///
+        /// <para>Everything this panel gained recently was verified by assertion and not by looking
+        /// at it - the standing word, the signed trust, the remaining actions, the stakes tag on
+        /// every deal row. An assertion that a string is present says nothing about whether it is
+        /// legible, whether it fits, or whether it collides with the thing beside it, and the last
+        /// time that shortcut was taken on this project it hid twelve portraits rendering as black
+        /// squares.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Conversation_CapturesThePanelForReview()
+        {
+            if (!Application.isBatchMode) yield break;
+            director.ClosePanels();
+            yield return null;
+
+            var npc = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
+            WarpPlayer(npc.transform.position
+                + (player.transform.position - npc.transform.position).normalized * 1.4f);
+            yield return null;
+            Assert.That(director.TryOpenNpc(npc.Id), Is.True, "There is nothing to photograph if it never opened.");
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+
+            // Report what the frame is expected to contain, so a reader of the capture knows what
+            // they are looking for rather than guessing at it.
+            var state = director.Snapshot;
+            Debug.Log("[Gamesim] Conversation panel - " + npc.DisplayName
+                + ", standing " + Gamesim.Presentation.RelationshipWeb.StandingWord(
+                    Gamesim.Presentation.RelationshipWeb.KindOf(state, npc.Id))
+                + " " + state.Score(state.playerId, npc.Id).ToString("+0;-0;0")
+                + ", deal rows " + director.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                    .Count(label => label.gameObject.activeInHierarchy && label.text.Contains("stakes")));
+
+            yield return CaptureFraming("conversation-panel");
+            AssertNothingInThePanelIsClipped("with the topics showing");
+
+            // And again at the foot of the scroll, because the deal rows are down there. The first
+            // frame showed a header that was verified and nine stakes tags that were not: they were
+            // all below the fold, which is itself worth knowing - everything this panel gained is
+            // behind a scroll the player has to find.
+            var scroll = director.GetComponentsInChildren<UnityEngine.UI.ScrollRect>(true)
+                .FirstOrDefault(rect => rect.gameObject.activeInHierarchy && rect.vertical);
+            if (scroll != null)
+            {
+                scroll.verticalNormalizedPosition = 0f;
+                Canvas.ForceUpdateCanvases();
+                yield return null;
+                yield return CaptureFraming("conversation-panel-deals");
+                AssertNothingInThePanelIsClipped("with the deals showing");
+            }
+
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// Nothing on the conversation panel is cut off.
+        ///
+        /// <para>The global sweep that checks for clipped copy - <c>Accessibility_NoCopyIsClipped
+        /// AtEitherTextSize</c> - opens the notebook and never reaches this panel, so every label on
+        /// it has been unguarded for its whole life. That is how a stakes tag came to overlap itself
+        /// and run off the edge truncated mid-word: the assertions all passed, because the string
+        /// was present and correct, and only a captured frame showed it.</para>
+        /// </summary>
+        private void AssertNothingInThePanelIsClipped(string moment)
+        {
+            Canvas.ForceUpdateCanvases();
+            var clipped = director.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                .Where(label => label.gameObject.activeInHierarchy && !string.IsNullOrEmpty(label.text))
+                .Where(label => { label.ForceMeshUpdate(); return label.isTextOverflowing; })
+                .Select(label => "'" + label.text + "'")
+                .ToArray();
+            Assert.That(clipped, Is.Empty,
+                "On the conversation panel " + moment + ", this copy is cut off: "
+                + string.Join(" | ", clipped));
         }
 
         /// <summary>

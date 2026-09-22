@@ -54,7 +54,21 @@ namespace Gamesim.Episode
         /// </summary>
         public const string DealAcceptCaption = "Accept this offer";
         public const string DealDeclineCaption = "Turn this offer down";
-        public static string DealProposeCaption(string title) => "Propose a " + title;
+        public static string DealProposeCaption(string title) => "Propose " + Article(title) + title;
+
+        /// <summary>
+        /// "a " or "an ", so a caption built from a deal's own title reads as English.
+        ///
+        /// <para>Two of the ten deal kinds begin with a vowel - Alliance Invitation and Information
+        /// Sharing - and both are offered in an ordinary unallied week, so "Propose a alliance
+        /// invitation" was on a real button. The rule lives in the helper rather than at the call
+        /// sites because every caller, the standalone verification and the deal test included,
+        /// derives the caption from this one method: fixing it here fixes what they all look for,
+        /// and fixing it anywhere else would have broken them.</para>
+        /// </summary>
+        private static string Article(string title) =>
+            !string.IsNullOrEmpty(title) && "aeiou".IndexOf(char.ToLowerInvariant(title[0])) >= 0
+                ? "an " : "a ";
         /// <summary>The words on a week-review control, one per week the notebook lists.</summary>
         public static string ReviewWeekCaption(int week) => "Read the week " + week + " recap";
         /// <summary>
@@ -779,7 +793,7 @@ namespace Gamesim.Episode
         /// the conversation dial is a card, and a pill hung off its right-hand edge would sit over
         /// the caption rather than beside it.
         /// </summary>
-        public enum TagSeat { RowEnd, CardFoot }
+        public enum TagSeat { RowEnd, CardFoot, PastReading }
 
         /// <summary>
         /// Pins a small category pill to a control, the way the web build tags its action list.
@@ -795,18 +809,32 @@ namespace Gamesim.Episode
         {
             if (target == null || string.IsNullOrEmpty(text)) return;
             var chip = Panel("Tag",target.transform,new Color(Accent.r,Accent.g,Accent.b,.16f));
+            // Wide enough for what is in it. A row-end tag was a fixed 104, which was right while it
+            // held one word and wrong the moment a deal row started carrying its stakes as well as
+            // its odds: "high stakes - about even" wants about 176 and got 104, so it overlapped
+            // itself and ran off the panel truncated mid-word. Nothing caught it - the accessibility
+            // sweep that looks for clipped copy never reaches this panel - and it is plainly visible
+            // in a captured frame. The ceiling stops a long tag eating the caption beside it.
             var size = seat == TagSeat.CardFoot
                 ? new Vector2(130f * FontScale,20f * FontScale)
-                : new Vector2(104f * FontScale,22f * FontScale);
+                : new Vector2(Mathf.Clamp(text.Length * 6.6f + 20f,104f,196f) * FontScale,22f * FontScale);
             if (seat == TagSeat.CardFoot)
                 Anchor(chip,new Vector2(0,0),new Vector2(0,0),new Vector2(10f * FontScale,6f * FontScale),size);
             else
-                Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),new Vector2(-12f,0f),size);
+                // Clear of whatever already owns the row's right-hand end, which is not the same for
+                // every row. A plain row spends it on the chevron Action() pins 18 wide at -16. A row
+                // fronted by a portrait spends it on the trust reading at -16 width 74 and, when the
+                // two are allied, an ALLY tag at -96 width 48 - which its own doc comment says out
+                // loud. A tag anchored at -12 sat on top of all of them: invisible while it held one
+                // short word, plainly wrong once it held stakes AND odds. isTextOverflowing cannot
+                // see any of this, because nothing is clipped - the labels are simply in one place.
+                Anchor(chip,new Vector2(1,.5f),new Vector2(1,.5f),
+                    new Vector2(seat == TagSeat.PastReading ? -(96f + 48f + 10f) : -(16f + 18f + 8f),0f),size);
             chip.GetComponent<Image>().raycastTarget = false;
             var label = FixedText(chip,text,12,Accent,Vector2.zero,size);
             label.alignment = TextAlignmentOptions.Center;
             label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = Vector2.zero; label.rectTransform.offsetMax = Vector2.zero;
+            label.rectTransform.offsetMin = new Vector2(6f,0f); label.rectTransform.offsetMax = new Vector2(-6f,0f);
         }
 
         /// <summary>

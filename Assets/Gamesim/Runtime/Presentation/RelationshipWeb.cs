@@ -737,7 +737,15 @@ namespace Gamesim.Presentation
             label.rectTransform.offsetMin=Vector2.zero;label.rectTransform.offsetMax=Vector2.zero;
         }
 
-        private static string PromiseWord(PromiseKind kind)
+        /// <summary>
+        /// What a promise was for, in the words the player was given when they made it.
+        ///
+        /// <para>Public because the notebook printed the raw C# enum instead - "AllianceLoyalty ·
+        /// Dana → You · Active" - and a third private copy of this switch is how the first two came
+        /// to disagree. This one is localised; DecisionContext has an unlocalised twin that should
+        /// come here too.</para>
+        /// </summary>
+        public static string PromiseWord(PromiseKind kind)
         {
             switch (kind)
             {

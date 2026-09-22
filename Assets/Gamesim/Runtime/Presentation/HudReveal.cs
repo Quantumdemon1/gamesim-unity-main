@@ -51,6 +51,23 @@ namespace Gamesim.Presentation
             Destroy(this);
         }
 
+        /// <summary>
+        /// Lands the reveal now, as though its 160 ms had already passed.
+        ///
+        /// <para>For a caller that needs the element settled rather than arriving - the same state
+        /// the reduced-motion path produces by never animating at all. A reveal begins at alpha 0,
+        /// and a canvas group at alpha 0 is culled, so anything inside it takes no raycasts and is
+        /// not merely invisible but genuinely unpressable until it lands.</para>
+        /// </summary>
+        public void Finish()
+        {
+            if (rect == null || group == null) return;
+            elapsed = Duration;
+            rect.anchoredPosition = restPosition;
+            group.alpha = 1f;
+            Destroy(this);
+        }
+
         private void Apply(float t)
         {
             // Ease out: fast to settle, so the panel feels responsive rather than animated at.

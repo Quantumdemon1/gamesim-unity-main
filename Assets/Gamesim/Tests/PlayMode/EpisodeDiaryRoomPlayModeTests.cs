@@ -352,7 +352,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallFinaleFixture(false);
             var before = director.Snapshot;
             var position = player.transform.position;
-            Assert.That(ButtonWithCaption(EpisodeHud.DiaryTravelCaption).interactable, Is.False);
+            Assert.That(FindButton(EpisodeHud.DiaryTravelCaption).interactable, Is.False);
             director.GoToDiary();
             Assert.That(player.transform.position, Is.EqualTo(position));
             WarpPlayer(director.DiaryPosition);

@@ -406,10 +406,156 @@ namespace Gamesim.Tests.PlayMode
             Physics.SyncTransforms();
         }
 
+        /// <summary>
+        /// The control carrying exactly these words, and a player could have pressed it.
+        ///
+        /// <para>This filtered on <c>IsActive()</c> alone for its whole life and then the callers
+        /// invoked the handler directly, which answers a much weaker question than the one the tests
+        /// are written to ask. A hundred and fifty assertions across twenty files said "the handler
+        /// runs" while reading as "the player can do this". A control that is disabled, or behind a
+        /// modal, or scrolled out of its own viewport, passed every one of them.</para>
+        ///
+        /// <para>That gap is not hypothetical here: a broken feature passed this suite 293/293 the
+        /// same week a commit shipped an event that was declared, subscribed and never raised.
+        /// Pressability is the cheapest property that would have caught a whole class of it.</para>
+        /// </summary>
         private Button ButtonWithCaption(string caption)
         {
-            return director.GetComponentsInChildren<Button>(true).Single(button => button.IsActive()
-                && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
+            var button = FindButton(caption);
+            ScrollIntoView(button);
+            AssertPressable(button, caption);
+            return button;
+        }
+
+        /// <summary>
+        /// The control carrying these words, without asking whether it can be pressed.
+        ///
+        /// <para>For the handful of tests whose subject IS that a control is unavailable - an
+        /// evicted player's travel buttons, a spent action - where insisting on pressability would
+        /// assert the opposite of the thing under test.</para>
+        /// </summary>
+        private Button FindButton(string caption) =>
+            director.GetComponentsInChildren<Button>(true).Single(item => item.IsActive()
+                && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
+
+        /// <summary>
+        /// Brings a control inside a scroll view into view, the way a player would.
+        ///
+        /// <para>Seventeen of the first thirty-six failures were this: a control sitting at a
+        /// negative screen y because its panel is taller than its viewport and the content is
+        /// anchored at the top. "A player could not press it" is too strong for those - a player
+        /// scrolls. Doing the scroll here makes the assertion honest AND exercises the scroll,
+        /// which nothing did before; a control that cannot be scrolled to still fails.</para>
+        /// </summary>
+        private static void ScrollIntoView(Button button)
+        {
+            var scroll = button.GetComponentInParent<ScrollRect>();
+            if (scroll == null || scroll.content == null || !scroll.vertical) return;
+            Canvas.ForceUpdateCanvases();
+            var viewport = scroll.viewport != null ? scroll.viewport : (RectTransform)scroll.transform;
+            var target = (RectTransform)button.transform;
+            float span = scroll.content.rect.height, window = viewport.rect.height;
+            float scrollable = span - window;
+            if (scrollable <= 1f) return;
+
+            // Centre it in the viewport by NORMALISED position, not by moving the content rect.
+            // Two earlier versions did the arithmetic directly and both got it wrong in ways that
+            // read as dozens of game defects: one compounded every call and drove controls to
+            // -2120, the next parked them just outside the viewport where the RectMask2D culls them
+            // and the click falls through to the panel behind. Normalised position is bounded by
+            // construction and does not care how deeply the control is nested.
+            var centre = scroll.content.InverseTransformPoint(target.TransformPoint(target.rect.center));
+            float fromTop = scroll.content.rect.yMax - centre.y;
+            scroll.verticalNormalizedPosition =
+                1f - Mathf.Clamp01((fromTop - window * 0.5f) / scrollable);
+            Canvas.ForceUpdateCanvases();
+        }
+
+        /// <summary>
+        /// Fails when the control is disabled or when something else is on top of it.
+        ///
+        /// <para>Reports what IS on top rather than only that something is, because the useful half
+        /// of this failure is which panel is covering the control - a name in that list is a defect
+        /// or a test asserting something it cannot see, and both are worth knowing.</para>
+        /// </summary>
+        private void AssertPressable(Button button, string caption)
+        {
+            Assert.That(button.IsInteractable(), Is.True,
+                "'" + caption + "' is on screen but not interactable, so a player could not press it.");
+            if (EventSystem.current == null) return;
+
+            // Land any reveal still in flight. A panel fades in over 160 ms from alpha 0, a group
+            // at alpha 0 is culled, and a culled graphic takes no raycasts - so a test pressing on
+            // the frame the panel is built finds its own control unreachable. That is the harness
+            // being faster than a person, not a defect: waiting is what a player does, and this is
+            // waiting without a yield. Deliberately only reveals IN FLIGHT - forcing every
+            // zero-alpha group to one would make a deliberately hidden screen look pressable.
+            foreach (var reveal in button.GetComponentsInParent<Gamesim.Presentation.HudReveal>(true))
+                reveal.Finish();
+            var rect = (RectTransform)button.transform;
+            Canvas.ForceUpdateCanvases();
+            var canvas = button.GetComponentInParent<Canvas>();
+            // An overlay canvas draws in screen coordinates, so its rects need a null camera; a
+            // camera-space one needs the camera that renders it.
+            var eye = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera : null;
+            var centre = RectTransformUtility.WorldToScreenPoint(eye, rect.TransformPoint(rect.rect.center));
+            if (centre.x < 0f || centre.y < 0f || centre.x > Screen.width || centre.y > Screen.height)
+                Assert.Fail("'" + caption + "' sits at " + centre.ToString("0") + ", off a "
+                    + Screen.width + "x" + Screen.height + " screen, so a player could not reach it.");
+
+            var hits = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = centre }, hits);
+            if (hits.Count == 0)
+            {
+                // Nothing registered as hittable AT ALL at this point - which also means nothing is
+                // covering the control. A graphic only enters the raycaster's list once the canvas
+                // has built its render batch and given it a depth, and that happens at render time;
+                // a test that presses on the frame the panel was built is simply ahead of the
+                // renderer. So fall back to asking the graphic itself, which is the question that
+                // actually matters: does this control occupy this point, unculled and visible. The
+                // covering check is unaffected, because a coverer would have put itself in the list.
+                var own = button.targetGraphic;
+                if (own != null && !own.canvasRenderer.cull
+                    && own.canvasRenderer.GetInheritedAlpha() > 0.01f
+                    && own.Raycast(centre, null))
+                    return;
+
+                // Report the state rather than the symptom. "Hits nothing" has several possible
+                // causes - no raycaster, a graphic that takes no raycasts, a canvas group that
+                // blocks none, a point outside every canvas - and guessing between them from the
+                // symptom alone has been wrong three times on this instrument already.
+                var graphic = button.targetGraphic;
+                var owner = button.GetComponentInParent<Canvas>();
+                var caster = owner != null ? owner.GetComponent<GraphicRaycaster>() : null;
+                var group = button.GetComponentInParent<CanvasGroup>();
+                Assert.Fail("'" + caption + "' is at " + centre.ToString("0") + " on a "
+                    + Screen.width + "x" + Screen.height + " screen and the pointer hits nothing."
+                    + "  graphic=" + (graphic == null ? "none" : graphic.GetType().Name
+                        + " raycastTarget=" + graphic.raycastTarget + " enabled=" + graphic.enabled)
+                    + "  canvas=" + (owner == null ? "none" : owner.name + " mode=" + owner.renderMode
+                        + " order=" + owner.sortingOrder + " active=" + owner.isActiveAndEnabled)
+                    + "  raycaster=" + (caster == null ? "none" : "enabled=" + caster.enabled)
+                    + "  group=" + (group == null ? "none" : group.name + " blocks=" + group.blocksRaycasts
+                        + " alpha=" + group.alpha.ToString("0.00"))
+                    + "  rect=" + ((RectTransform)button.transform).rect.size.ToString("0")
+                    + "  cull=" + (graphic == null ? "?" : graphic.canvasRenderer.cull.ToString())
+                    + "  inheritedAlpha=" + (graphic == null ? "?"
+                        : graphic.canvasRenderer.GetInheritedAlpha().ToString("0.00"))
+                    + "  selfRaycast=" + (graphic == null ? "?"
+                        : graphic.Raycast(centre, null).ToString())
+                    + "  raycasters=" + Object.FindObjectsByType<BaseRaycaster>(
+                        FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length
+                    + "  topCanvases=" + string.Join(",", Object.FindObjectsByType<Canvas>(
+                        FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                        .Where(c => c.isRootCanvas).OrderByDescending(c => c.sortingOrder)
+                        .Take(4).Select(c => c.name + ":" + c.sortingOrder)));
+            }
+            bool reachable = hits[0].gameObject == button.gameObject
+                || hits[0].gameObject.transform.IsChildOf(button.transform);
+            Assert.That(reachable, Is.True,
+                "'" + caption + "' is covered: a click at its centre lands on '"
+                + HierarchyPath(hits[0].gameObject.transform) + "' instead.");
         }
 
         private static T[] SceneComponents<T>() where T : Component

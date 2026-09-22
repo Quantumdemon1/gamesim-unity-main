@@ -386,7 +386,12 @@ namespace Gamesim.Episode
                         hud.Tag(hud.ActionFor(about, EpisodeHud.DealProposeCaption(
                                     DealKind.Title(kind).ToLowerInvariant() + " against " + subject.name),
                                 () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, about, text: kind)),
-                            Stakes(kind) + " · " + Chance(state, npc.id, kind, about));
+                            Stakes(kind) + " · " + Chance(state, npc.id, kind, about),
+                            // A target agreement names a third houseguest, so its row is fronted by
+                            // their portrait and already spends its right-hand end on a trust
+                            // reading. The tag has to sit left of that; the plain deal rows below
+                            // have no portrait and no reading, so they do not.
+                            EpisodeHud.TagSeat.PastReading);
                     }
                     continue;
                 }

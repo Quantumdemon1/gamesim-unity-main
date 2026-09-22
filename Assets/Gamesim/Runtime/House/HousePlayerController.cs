@@ -309,7 +309,16 @@ namespace Gamesim.House
                 lastFloorClickScreen = screen;
 
                 CameraRig?.FocusSubject(transform, false);
-                if (TryMoveTo(hit.point)) ApplyGait(again || RouteMetres > RunRouteMetres);
+                if (TryMoveTo(hit.point))
+                {
+                    ApplyGait(again || RouteMetres > RunRouteMetres);
+                    // Raised only once the move is actually taken. A click on a patch of floor with
+                    // no route to it changes nothing the player can see, and an errand let go of on
+                    // the strength of a move that never happened would leave them standing where
+                    // they already were with nothing to show for it - the errand cancelled and no
+                    // destination in its place. The houseguest click keeps the same rule.
+                    DestinationChosen?.Invoke();
+                }
             }
         }
 

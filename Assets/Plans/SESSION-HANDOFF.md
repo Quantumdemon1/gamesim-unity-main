@@ -27,6 +27,7 @@ Twelve commits, newest last. The last five are the six-track programme's first m
 | `b0dffe3` | **Cast strip standing.** Allied / Friendly / Wary / Hostile on every chip. |
 | `cb9a4c5` | **A Talk says each thing once.** The standing is its own line, only when it moved. |
 | `543faac` | **The player's alliance no longer ends in silence** - or on the partner's private score. |
+| `de0802d` | **The final eviction ends the evictee's alliances too**, and says so; the jury rule, investigated, stays. |
 
 ### d587aab — walking
 `UmaBodyProvider` filled the `Walk` state by asking UMA's `Locomotion.controller` for a clip called
@@ -175,10 +176,30 @@ then decided with the owner:
 - 13 tests, 16 mutations killed. An adversarial review found four test gaps in correct code - an
   earlier-ended alliance re-announced, a stray roll or memory, only the first of two told, the line
   at exactly -20 - and each now has a test that kills its mutant.
-- **Found, not fixed:** a partner evicted at FinalEviction never has the alliance dissolved (no
-  settle follows), so the notebook keeps printing "active"; and because an evicted partner's
-  alliance ends through the `!intact` branch, the jury's AllianceLoyalty of 100 only ever applies
-  to the final-3 evictee.
+- **Then fixed (below):** a partner evicted at the final eviction never had the alliance ended.
+
+### The final eviction ends the evictee's alliances (`de0802d`)
+`FinalEvict` goes straight to the jury, so the weekly settle that ends an evictee's alliances never
+followed it: the final three's evictee kept an active alliance with the finalist, printed "active" in
+the notebook, never told, and read by the jury as current - `WebJuryVoting.AllianceLoyalty` 100 for
+that one juror, 25 for every other former ally. Proven across 1,920 real seasons (every one of 289
+hundreds was the final-3 evictee). Now `NpcAlliances.EndBroken` - the half of `Dissolve` that needs
+no week, sharing its `Intact` rule - runs in `FinalEvict` behind the same autonomy boundary, and
+`TellThePlayerWhichAlliancesEnded` is the step's last statement: *"X has left the house, and your
+alliance has ended."* Souring is not judged at the finale. No roll (the finale's draws are already
+pinned by `FinalEvictionPersistsQuestionAndExactlyTwoSourceDraws`), no field, no recorded walk moved.
+Cost, accepted by the owner: an ally-heavy player in a house of 4-5 loses a win they have today in
+about 4 of 600 seasons; none in houses of 6-12. 8 tests, 13 mutations killed - four of them from an
+adversarial review that found the finale path untested for old endings and for a houseguest Head of
+Household evicting the player's ally.
+
+**The jury rule was investigated and kept.** Unity's 100 / 25 / 0 is its own design (`ac00ee6`), not
+the web's. The web function it follows, `calculateJuryScore`, is never called in live web play; its
+alliance term always returns 0 (it calls a method `AllianceSystem` does not have); the live web jury
+votes on relationship plus a random ten. Kept deliberately; the doc comment now says so.
+
+**Worth knowing:** when a houseguest holds the final Head of Household with the player in the final
+three, they evict the player in 164 of 167 sampled seasons. Not investigated.
 
 ## 3. What remains — the six-track programme
 
@@ -319,6 +340,9 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
   default week allows three actions: 12, under the threshold of 15. The known-good route to a
   non-neutral standing is the recorded bloc walk (`ContentCatalog.Create(4)`,
   `socialBudgetRulesStartWeek = 2`, three Talks and an alliance).
+- **"Unity's jury alliance term ports the web's stability-weighted one."** The web term reads
+  membership and size, never stability, always returns 0 as shipped, and sits in a jury score the
+  live web game never calls. Unity's 100/25/0 is original to this port.
 - **"The web build says nothing when an alliance dissolves."** It toasts and logs it. Two
   investigators read only the design doc's code appendix, which holds three fragments of the
   alliance system. **The full web source is at `D:\gamesim-main\gamesim-main`** - read that, not
@@ -333,7 +357,7 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
 - **Never commit** `ProjectSettings/ProjectSettings.asset` while it carries `GAMESIM_UMA`.
 - The four **Inter SDF font atlases** churn ~700k lines; they have been left unstaged all session.
 - `Assets/_Recovery/` is a crash artefact still sitting untracked in the tree.
-- `Tools/baseline.txt` floors: EditMode **1408**, PlayMode **309**, SimulationTests **732**. Raise a floor in the same commit
+- `Tools/baseline.txt` floors: EditMode **1416**, PlayMode **309**, SimulationTests **740**. Raise a floor in the same commit
   that adds tests; never lower one to make a red run green.
 - A spawned task fixed the `DestinationChosen` raise **in this same working tree**, not a separate
   worktree. If you spin off tasks, expect concurrent edits to the files you are holding.

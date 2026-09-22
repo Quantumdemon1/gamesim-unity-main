@@ -461,6 +461,190 @@ namespace Gamesim.Tests.EditMode
                 "A juror is not playing the social week; there is nobody in the house to tell.");
         }
 
+        // ---------------------------------------------------------------- the final eviction
+
+        /// <summary>
+        /// An ally evicted at the FINAL eviction ends the alliance, and the player is told.
+        ///
+        /// <para>This began as the test that confirmed the defect. Alliances end in
+        /// <see cref="NpcAlliances.Dissolve"/>, which runs only as a social week opens, and the final
+        /// eviction goes straight to the jury - so the final three's evictee kept an active alliance
+        /// with the finalist: printed as active in the notebook, never told, and read by the jury as
+        /// current, 100 where every other juror's former ally scored 25.</para>
+        ///
+        /// <para>The player is the final Head of Household here and takes someone else to the final
+        /// two. That is the usual way the player's ally leaves at the final eviction with the player
+        /// still in the house: in 164 of 167 sampled seasons where a houseguest held the final Head
+        /// of Household with the player in the final three, the houseguest evicted the player. The
+        /// other three are <see cref="AFinalistIsToldWhenTheHouseguestAtTheHeadEvictsTheirAlly"/>.</para>
+        /// </summary>
+        [Test]
+        public void AnAllyEvictedAtTheFinalEvictionEndsTheAllianceAndThePlayerIsTold()
+        {
+            var before = FinalEvictionPending(FinaleWithThePlayerAsHead, playerIsHead: true);
+            string you = before.playerId;
+            var ally = before.Active.First(c => !c.isPlayer);
+            var pact = Ally(before, you, ally.id);
+            OneWay(before, you, ally.id, 40);
+            OneWay(before, ally.id, you, 40);
+
+            var added = MakeTheFinalEviction(before, ally.id, out var after);
+
+            Assert.That(after.Find(ally.id).status, Is.EqualTo(ContestantStatus.Jury), "Precondition: the ally went to the jury.");
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False,
+                "An alliance with somebody on the jury is over, at the final eviction as at every other.");
+            var notices = added.Where(e => e.kind == "alliance").ToList();
+            Assert.That(notices.Select(e => e.text), Is.EqualTo(new[] { ally.name + " has left the house, and your alliance has ended." }));
+            Assert.That(notices[0].audienceIds, Is.EquivalentTo(new[] { you, ally.id }));
+            var seen = added.Where(e => Sees(after, e)).ToList();
+            Assert.That(seen.Count, Is.GreaterThan(1), "Precondition: the step logs other lines the player sees.");
+            Assert.That(seen.Last().sequence, Is.EqualTo(notices[0].sequence),
+                "The last line the player can see in the step, which is the status line.");
+            Assert.That(WebJuryVoting.AllianceLoyalty(after, ally.id, you), Is.EqualTo(25),
+                "The jury reads a former ally the way it reads every other juror's former ally.");
+        }
+
+        /// <summary>Two houseguests' pact broken at the finale ends too, and is not the player's news.</summary>
+        [Test]
+        public void AHouseguestsPactBrokenAtTheFinaleEndsWithoutAWord()
+        {
+            var before = FinalEvictionPending(FinaleWithThePlayerAsHead, playerIsHead: true);
+            var npcs = before.Active.Where(c => !c.isPlayer).ToArray();
+            var pact = Ally(before, npcs[0].id, npcs[1].id);
+
+            var added = MakeTheFinalEviction(before, npcs[0].id, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False);
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty);
+            Assert.That(WebJuryVoting.AllianceLoyalty(after, npcs[0].id, npcs[1].id), Is.EqualTo(25));
+        }
+
+        [Test]
+        public void NobodyIsToldWhenThePlayerIsTheFinalEvictee()
+        {
+            var before = FinalEvictionPending(FinaleWithAHouseguestAsHead, playerIsHead: false);
+            string you = before.playerId;
+            var finalist = before.Active.Single(c => !c.isPlayer && c.id != before.hohId);
+            var pact = Ally(before, you, finalist.id);
+
+            var added = EngineMakesTheFinalEviction(before, out var after);
+
+            Assert.That(after.Find(you).status, Is.EqualTo(ContestantStatus.Jury), "Precondition: the Head of Household evicted the player.");
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False, "The player's alliance ends with them.");
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty, "A juror is not told; the eviction said it.");
+        }
+
+        /// <summary>
+        /// Only an eviction ends an alliance at the finale. Souring stays a weekly judgement, made
+        /// as a social week opens - the finale is not a week.
+        /// </summary>
+        [Test]
+        public void SouringIsNotJudgedAtTheFinale()
+        {
+            var before = FinalEvictionPending(FinaleWithThePlayerAsHead, playerIsHead: true);
+            string you = before.playerId;
+            var npcs = before.Active.Where(c => !c.isPlayer).ToArray();
+            var kept = npcs[1];
+            var pact = Ally(before, you, kept.id);
+            OneWay(before, you, kept.id, NpcAlliances.SourLine - 5);
+
+            var added = MakeTheFinalEviction(before, npcs[0].id, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.True,
+                "Both are still in the house; the player's feeling is judged at a weekly settle, and none follows.");
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty);
+        }
+
+        /// <summary>
+        /// A save migrated from before autonomy has never had an alliance end at a settle, so it
+        /// can carry alliances with jurors evicted weeks ago. While autonomy has not begun, the
+        /// final eviction leaves them exactly as they were, as the weekly settle does. (A save
+        /// migrated in its final-four week reaches autonomy AT the finale week; there the final
+        /// eviction ends what is broken, as the settle it never had would have.)
+        /// </summary>
+        [Test]
+        public void ASaveFromBeforeAutonomyKeepsItsAlliancesAtTheFinale()
+        {
+            var before = FinalEvictionPending(FinaleWithThePlayerAsHead, playerIsHead: true);
+            before.npcSocial = NpcSocialState.Create(before.seed, before.week + 1);
+            Assert.That(NpcSocialState.AutonomyHasBegun(before), Is.False, "Precondition: autonomy has not begun.");
+            string you = before.playerId;
+            var ally = before.Active.First(c => !c.isPlayer);
+            var pact = Ally(before, you, ally.id);
+
+            var added = MakeTheFinalEviction(before, ally.id, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.True);
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty);
+        }
+
+        /// <summary>
+        /// The houseguest at the head can take the player to the final two and evict the player's
+        /// ally - rarely, but it happens. That path goes through the engine's own Advance rather
+        /// than the player's command, and the player is told the same way.
+        /// </summary>
+        [Test]
+        public void AFinalistIsToldWhenTheHouseguestAtTheHeadEvictsTheirAlly()
+        {
+            var before = FinalEvictionPending(FinaleWithAHouseguestAsHead, playerIsHead: false);
+            string you = before.playerId, head = before.hohId;
+            var ally = before.Active.Single(c => !c.isPlayer && c.id != head);
+            // The Head of Household adores the player and cannot stand the ally, so the ally goes.
+            OneWay(before, head, you, 100); OneWay(before, you, head, 100);
+            OneWay(before, head, ally.id, -100); OneWay(before, ally.id, head, -100);
+            var pact = Ally(before, you, ally.id);
+
+            var added = EngineMakesTheFinalEviction(before, out var after);
+
+            Assert.That(after.Find(ally.id).status, Is.EqualTo(ContestantStatus.Jury), "Precondition: the Head of Household took the ally.");
+            Assert.That(after.Find(you).status, Is.EqualTo(ContestantStatus.Active), "Precondition: the player is a finalist.");
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False);
+            var notices = added.Where(e => e.kind == "alliance").ToList();
+            Assert.That(notices.Select(e => e.text), Is.EqualTo(new[] { ally.name + " has left the house, and your alliance has ended." }));
+            Assert.That(notices[0].audienceIds, Is.EquivalentTo(new[] { you, ally.id }),
+                "It is the player's news and the ally's - not the Head of Household's.");
+        }
+
+        /// <summary>
+        /// Only an alliance the final eviction ends is news at the finale. One that ended earlier -
+        /// its partner evicted weeks ago, or the player walked away - stays in the save with the
+        /// player among its members, and must not be announced again.
+        /// </summary>
+        [Test]
+        public void AnAllianceThatEndedBeforeTheFinaleIsNotToldAgain()
+        {
+            var before = FinalEvictionPending(FinaleWithThePlayerAsHead, playerIsHead: true);
+            string you = before.playerId;
+            var juror = before.contestants.First(c => c.status == ContestantStatus.Jury);
+            var stillHere = before.Active.First(c => !c.isPlayer);
+            Ally(before, you, juror.id).active = false;       // partner evicted in an earlier week
+            Ally(before, you, stillHere.id).active = false;   // walked away from, earlier
+
+            var added = MakeTheFinalEviction(before, before.Active.Last(c => !c.isPlayer).id, out _);
+
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty,
+                "Alliances that were already over going into the final eviction are not news at it.");
+        }
+
+        [Test]
+        public void EndingAnAllianceAtTheFinaleSpendsNoRollAndNoMemory()
+        {
+            var quiet = FinalEvictionPending(FinaleWithThePlayerAsHead, playerIsHead: true);
+            var told = quiet.Clone();
+            string you = told.playerId;
+            var ally = told.Active.First(c => !c.isPlayer);
+            Ally(told, you, ally.id);
+
+            var saidNothing = MakeTheFinalEviction(quiet, ally.id, out var afterQuiet);
+            var saidIt = MakeTheFinalEviction(told, ally.id, out var afterTold);
+
+            Assert.That(saidIt.Count(e => e.kind == "alliance"), Is.EqualTo(1), "Precondition: one of them was told.");
+            Assert.That(saidNothing.Count(e => e.kind == "alliance"), Is.EqualTo(0));
+            Assert.That(afterTold.randomState, Is.EqualTo(afterQuiet.randomState), "Ending it drew from the season's generator.");
+            Assert.That(afterTold.memories.Count(m => m.ownerId == you), Is.EqualTo(afterQuiet.memories.Count(m => m.ownerId == you)));
+            Assert.That(afterTold.juryExchanges.Count, Is.EqualTo(afterQuiet.juryExchanges.Count));
+        }
+
         // ---------------------------------------------------------------- what it feeds
 
         /// <summary>
@@ -539,6 +723,56 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.Fail("Seed " + seed + " never reached a resolved eviction.");
             return null;
+        }
+
+        // Real seasons that reach the final eviction with the player in the final three: in the first
+        // the player is the final Head of Household and chooses who goes, in the second a houseguest
+        // is, and takes the player.
+        private const uint FinaleWithThePlayerAsHead = 3;
+        private const uint FinaleWithAHouseguestAsHead = 8;
+
+        /// <summary>A real season walked through the engine to the final eviction, not yet made.</summary>
+        private static EpisodeState FinalEvictionPending(uint seed, bool playerIsHead)
+        {
+            var engine = new EpisodeEngine(ContentCatalog.Create(seed));
+            for (int guard = 0; guard < 400; guard++)
+            {
+                var snapshot = engine.Snapshot;
+                if (snapshot.phase == EpisodePhase.FinalEviction)
+                {
+                    Assert.That(snapshot.Find(snapshot.playerId).status, Is.EqualTo(ContestantStatus.Active), "Precondition: the player is in the final three.");
+                    Assert.That(snapshot.hohId == snapshot.playerId, Is.EqualTo(playerIsHead), "Precondition: who makes the final eviction.");
+                    return snapshot;
+                }
+                var result = engine.Apply(EpisodeEngineTests.NextCommand(snapshot));
+                Assert.That(result.accepted, Is.True, result.reason);
+            }
+            Assert.Fail("Seed " + seed + " never reached the final eviction.");
+            return null;
+        }
+
+        /// <summary>The houseguest Head of Household's final eviction, through the engine; returns what it logged.</summary>
+        private static List<EpisodeEvent> EngineMakesTheFinalEviction(EpisodeState before, out EpisodeState after)
+        {
+            var engine = new EpisodeEngine(before);
+            var result = engine.Apply(EpisodeEngineTests.Command(before, EpisodeCommandKind.Advance));
+            Assert.That(result.accepted, Is.True, result.reason);
+            after = engine.Snapshot;
+            long from = before.nextSequence;
+            return after.events.Where(e => e.sequence >= from).ToList();
+        }
+
+        /// <summary>The player's final eviction of <paramref name="target"/>, through the engine; returns what it logged.</summary>
+        private static List<EpisodeEvent> MakeTheFinalEviction(EpisodeState before, string target, out EpisodeState after)
+        {
+            var engine = new EpisodeEngine(before);
+            var command = EpisodeEngineTests.Command(before, EpisodeCommandKind.FinalEvict);
+            command.targetId = target;
+            var result = engine.Apply(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            after = engine.Snapshot;
+            long from = before.nextSequence;
+            return after.events.Where(e => e.sequence >= from).ToList();
         }
 
         /// <summary>The Continue that opens the social week, through the engine; returns what it logged.</summary>

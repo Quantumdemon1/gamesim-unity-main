@@ -58,12 +58,20 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// What an alliance with this finalist is worth to this juror.
+        /// What an alliance with this finalist is worth to this juror: 100 for an alliance still
+        /// standing, 25 for one that ended, 0 for none.
         ///
-        /// <para>The source keeps a stability figure per alliance; this port does not, so an active
-        /// shared alliance is worth its full weight and a dissolved one is worth nothing. That is
-        /// the honest reading of what is recorded rather than a stability number invented to fill
-        /// the shape.</para>
+        /// <para>These tiers are this port's own. The reference function it follows,
+        /// <c>calculateAllianceLoyalty</c>, scores by membership and alliance size and never reads
+        /// stability - and as the reference ships it always returns 0 (it asks the alliance system
+        /// for a method that does not exist), inside a jury score the live reference game never
+        /// calls: its real jury votes on relationship and a random ten either way. Kept deliberately
+        /// on 2026-09-22 rather than zeroed to match a dead function.</para>
+        ///
+        /// <para>An alliance ends when a member is evicted - at the next weekly settle, or at the
+        /// final eviction itself - so every juror's former ally scores the same 25. Until the final
+        /// eviction ended alliances too, its evictee was the one juror whose former ally still read
+        /// as current and scored 100.</para>
         /// </summary>
         public static double AllianceLoyalty(EpisodeState state, string jurorId, string finalistId)
         {

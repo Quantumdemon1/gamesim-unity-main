@@ -663,6 +663,10 @@ namespace Gamesim.Simulation
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Selects, s.hohId, selectedId: selected));
             s.Find(target).status = ContestantStatus.Jury;
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
+            // No social week follows this eviction, so the settle that ends an evictee's alliances
+            // never comes; end them here. Behind the same boundary as that settle, so a save that
+            // predates autonomy keeps exactly the alliances it had.
+            var ended = NpcSocialState.AutonomyHasBegun(s) ? NpcAlliances.EndBroken(s) : new List<AllianceState>();
             s.oathOpportunities.Clear(); // No social oath decisions remain after final eviction.
             s.votes.Clear();
             Log(s, "final-eviction", Name(s, s.hohId) + Verb(s, s.hohId, " takes ", " take ")
@@ -671,6 +675,9 @@ namespace Gamesim.Simulation
             Phase(s, EpisodePhase.JuryQuestioning);
             s.juryExchanges.Clear(); s.juryQuestionIndex = 0;
             PrepareJuryQuestion(s);
+            // Last in the step, as at the weekly settle: nothing minted above moves, and it is the
+            // line the status bar shows.
+            TellThePlayerWhichAlliancesEnded(s, ended.Where(a => a.members.Contains(s.playerId)).ToList());
         }
 
         private static void ResolveJury(EpisodeState s)
@@ -1803,15 +1810,16 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// Tells the player which of their alliances the week's settle ended, and nothing more.
+        /// Tells the player which of their alliances just ended, and nothing more.
         ///
         /// <para><see cref="NpcAlliances.Dissolve"/> ends the player's alliance when the player has
         /// soured on their partner, or when the partner has left the house, and it used to do so
         /// without a word: "Allied" simply went from the web, the conversation header and the cast
-        /// strip. The reference build toasts the same moment.</para>
+        /// strip. The reference build toasts the same moment. The final eviction ends alliances too
+        /// (<see cref="NpcAlliances.EndBroken"/>) and tells them here the same way.</para>
         ///
-        /// <para>Logged LAST in the step that opens the social week, after the house has narrated
-        /// itself, for two reasons. Every id minted in the step - the pacts, promises, deals and
+        /// <para>Logged LAST in the step - the one that opens the social week, after the house has
+        /// narrated itself, or the final eviction, after the first jury question - for two reasons. Every id minted in the step - the pacts, promises, deals and
         /// house events the settle writes - is what it was before this existed. And the director's
         /// status line is the last event the player may see, so this is what they read. It draws
         /// no roll and saves no new field.</para>

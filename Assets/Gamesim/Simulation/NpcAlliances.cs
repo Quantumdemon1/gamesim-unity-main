@@ -205,10 +205,34 @@ namespace Gamesim.Simulation
                     ? alliance.members.Any(other => other != state.playerId && state.Score(state.playerId, other) < SourLine)
                     : alliance.members.Any(one =>
                         alliance.members.Any(other => one != other && state.Score(one, other) < SourLine));
-                bool intact = alliance.members.Count(id => state.Find(id)?.status == ContestantStatus.Active) >= 2;
-                if (soured || !intact) alliance.active = false;
+                if (soured || !Intact(state, alliance)) alliance.active = false;
             }
         }
+
+        /// <summary>
+        /// Ends every alliance that no longer has two members in the house - the half of
+        /// <see cref="Dissolve"/> that needs no week to pass.
+        ///
+        /// <para>Run at the final eviction. That eviction goes straight to the jury, so no social
+        /// week follows it and <see cref="Dissolve"/> never sees the final three's evictee: their
+        /// alliance used to outlive them into the jury, printed as active in the notebook and read
+        /// by <see cref="WebJuryVoting.AllianceLoyalty"/> as a current alliance - the one juror in a
+        /// season whose former ally scored 100 where every other juror's scored 25. The reference
+        /// build takes an evictee out of every alliance at the final eviction as at any other.</para>
+        ///
+        /// <para>Souring is not judged here. That stays a weekly judgement, made as the social week
+        /// opens; an eviction is the only thing that ends an alliance at the finale.</para>
+        /// </summary>
+        public static List<AllianceState> EndBroken(EpisodeState state)
+        {
+            var ended = state.alliances.Where(a => a.active && !Intact(state, a)).ToList();
+            foreach (var alliance in ended) alliance.active = false;
+            return ended;
+        }
+
+        /// <summary>Whether at least two of an alliance's members are still in the house.</summary>
+        private static bool Intact(EpisodeState state, AllianceState alliance) =>
+            alliance.members.Count(id => state.Find(id)?.status == ContestantStatus.Active) >= 2;
 
     }
 }

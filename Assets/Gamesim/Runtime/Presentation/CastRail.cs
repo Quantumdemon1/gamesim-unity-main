@@ -40,11 +40,12 @@ namespace Gamesim.Presentation
     ///
     /// <para>What the tag reads is the player's own record: their outbound score and the alliances
     /// they are in, through <see cref="RelationshipWeb.KindOf"/> - never a houseguest's private
-    /// view of the player, and never anything between two houseguests. Two known leaks sit under
-    /// that record and are not this strip's to fix: a weekly NPC settle can dissolve the player's
-    /// alliance on the NPC's private score without a word, and an act an NPC initiates moves the
-    /// player's outbound score by the reciprocal draw. Both already show in the web and the
-    /// conversation header; the strip makes them more visible, not new.</para>
+    /// view of the player, and never anything between two houseguests. One known leak sits under
+    /// that record and is not this strip's to fix: an act an NPC initiates moves the player's
+    /// outbound score by the reciprocal draw. It already shows in the web and the conversation
+    /// header; the strip makes it more visible, not new. (The other - a weekly settle dissolving the
+    /// player's alliance on the partner's private score, without a word - is gone: the player's
+    /// alliance now sours only on the player's own reading, and its ending is told.)</para>
     ///
     /// <para>Rebuilt from committed state on each HUD render and never animated per frame: the rail
     /// shows what the simulation holds and holds no opinion of its own.</para>

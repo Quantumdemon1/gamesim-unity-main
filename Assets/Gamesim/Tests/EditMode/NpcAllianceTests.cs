@@ -201,6 +201,266 @@ namespace Gamesim.Tests.EditMode
             Assert.That(pact.active, Is.False, "A pact of one is not a pact.");
         }
 
+        // ---------------------------------------------------------------- the player's alliances
+
+        /// <summary>
+        /// The player's alliance does not end on a number the player cannot know.
+        ///
+        /// <para>It used to. <see cref="NpcAlliances.Dissolve"/> read both directions of every pair,
+        /// so the partner's private feeling toward the player ended the player's alliance in the
+        /// weekly settle while the player's own reading was a warm +40 - and nothing the player
+        /// could see or remember said so. The reference build's weekly check reads the player's own
+        /// score toward the partner and nothing else. This began as the test that confirmed the
+        /// silent ending; it now holds the rule that replaced it.</para>
+        /// </summary>
+        [Test]
+        public void ThePartnersPrivateFeelingDoesNotEndThePlayersAlliance()
+        {
+            // Cool enough that no houseguest pairs up this week and muddies the picture.
+            var state = Warm(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 9u), 10);
+            string you = state.playerId;
+            var partner = state.contestants.First(c => !c.isPlayer && c.status == ContestantStatus.Active);
+            var pact = Ally(state, you, partner.id);
+            OneWay(state, you, partner.id, 40);                       // the player's own reading: warm
+            OneWay(state, partner.id, you, NpcAlliances.SourLine - 5); // the partner's, which is private
+
+            int events = state.events.Count;
+            int memories = state.memories.Count(m => m.ownerId == you);
+            NpcSocialActions.Settle(state);   // what EpisodeEngine runs as the social week opens
+
+            Assert.That(pact.active, Is.True,
+                "The partner's private feeling is theirs. It does not end the player's alliance.");
+            Assert.That(state.events.Skip(events).Where(e => e.kind == "alliance"), Is.Empty);
+            Assert.That(state.memories.Count(m => m.ownerId == you), Is.EqualTo(memories));
+        }
+
+        [Test]
+        public void ThePlayersOwnReadingEndsTheirAlliance()
+        {
+            var state = Warm(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 9u), 10);
+            string you = state.playerId;
+            var partner = state.contestants.First(c => !c.isPlayer && c.status == ContestantStatus.Active);
+            var pact = Ally(state, you, partner.id);
+            OneWay(state, you, partner.id, NpcAlliances.SourLine - 5);
+            OneWay(state, partner.id, you, 40);
+
+            NpcSocialActions.Settle(state);
+
+            Assert.That(pact.active, Is.False,
+                "A player who has come to dislike their partner is not in an alliance with them any more.");
+        }
+
+        /// <summary>
+        /// Houseguests' own pacts keep the rule they had: either of them souring ends it. Only the
+        /// player's alliance changed, because only there was one side's feeling a secret.
+        /// </summary>
+        [Test]
+        public void AHouseguestsPactStillSoursOnEitherSide()
+        {
+            var state = Warm(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 9u), 10);
+            var npcs = state.contestants.Where(c => !c.isPlayer && c.status == ContestantStatus.Active).ToArray();
+            var pact = Ally(state, npcs[0].id, npcs[1].id);
+            OneWay(state, npcs[0].id, npcs[1].id, 40);
+            OneWay(state, npcs[1].id, npcs[0].id, NpcAlliances.SourLine - 5);   // the second member's side
+
+            NpcSocialActions.Settle(state);
+
+            Assert.That(pact.active, Is.False, "Either houseguest souring ends their pact, as it always has.");
+        }
+
+        // ---------------------------------------------------------------- telling the player
+
+        /// <summary>
+        /// When the player sours on their partner, the week that ends the alliance says so - through
+        /// the real Continue that opens the social week, as the last line the player sees in it.
+        /// </summary>
+        [Test]
+        public void WhenThePlayerSoursOnTheirPartnerTheWeekSaysTheAllianceFellApart()
+        {
+            var before = EvictionResolved(PlayerSurvives);
+            string you = before.playerId;
+            var partner = before.Active.First(c => !c.isPlayer);
+            var pact = Ally(before, you, partner.id);
+            OneWay(before, you, partner.id, NpcAlliances.SourLine - 5);
+            OneWay(before, partner.id, you, 40);
+
+            var added = OpenTheSocialWeek(before, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False);
+            var notices = added.Where(e => e.kind == "alliance").ToList();
+            Assert.That(notices.Select(e => e.text), Is.EqualTo(new[] { "Your alliance with " + partner.name + " has fallen apart." }),
+                "One line, in words that say it ended and nothing about why or by how much.");
+            Assert.That(notices[0].text.Any(char.IsDigit), Is.False, "No number reaches the player.");
+            Assert.That(notices[0].audienceIds, Is.EquivalentTo(new[] { you, partner.id }),
+                "It is the two of them's business, as forming and leaving an alliance are.");
+
+            var seen = added.Where(e => Sees(after, e)).ToList();
+            Assert.That(seen.Count, Is.GreaterThan(1),
+                "Precondition: the step logs other lines the player sees, so being last means something.");
+            Assert.That(seen.Last().sequence, Is.EqualTo(notices[0].sequence),
+                "It is the last thing the player can see in the step, which is what the status line shows. "
+                + "Logged where the alliance ends, it was buried under the house's own lines.");
+        }
+
+        /// <summary>
+        /// A partner leaving the house ends the alliance too, and that is public - so it is said in
+        /// those words, whether or not the player had also soured on them.
+        /// </summary>
+        [TestCase(false, TestName = "WhenThePartnerLeavesTheHouseTheWeekSaysSo(warm)")]
+        [TestCase(true, TestName = "WhenThePartnerLeavesTheHouseTheWeekSaysSo(and soured)")]
+        public void WhenThePartnerLeavesTheHouseTheWeekSaysSo(bool alsoSoured)
+        {
+            var before = EvictionResolved(PlayerSurvives);
+            string you = before.playerId;
+            var gone = before.contestants.Single(c => !c.isPlayer && c.status != ContestantStatus.Active);
+            var pact = Ally(before, you, gone.id);
+            OneWay(before, you, gone.id, alsoSoured ? NpcAlliances.SourLine - 5 : 40);
+            OneWay(before, gone.id, you, 40);
+
+            var added = OpenTheSocialWeek(before, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False);
+            Assert.That(added.Where(e => e.kind == "alliance").Select(e => e.text),
+                Is.EqualTo(new[] { gone.name + " has left the house, and your alliance has ended." }),
+                "The public reason, and only the public reason.");
+        }
+
+        [Test]
+        public void ThePartnersPrivateFeelingEndsNothingAndSaysNothingWhenTheWeekOpens()
+        {
+            var before = EvictionResolved(PlayerSurvives);
+            string you = before.playerId;
+            var partner = before.Active.First(c => !c.isPlayer);
+            var pact = Ally(before, you, partner.id);
+            OneWay(before, you, partner.id, 40);
+            OneWay(before, partner.id, you, NpcAlliances.SourLine - 5);
+
+            var added = OpenTheSocialWeek(before, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.True);
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty);
+        }
+
+        /// <summary>
+        /// Two houseguests' pact ending is not the player's news - the recap lists every "alliance"
+        /// event with no audience filter, so a line here would announce a pact the player never saw.
+        /// </summary>
+        [Test]
+        public void AHouseguestsPactEndingIsNotThePlayersNews()
+        {
+            var before = EvictionResolved(PlayerSurvives);
+            var npcs = before.Active.Where(c => !c.isPlayer).ToArray();
+            var pact = Ally(before, npcs[0].id, npcs[1].id);
+            OneWay(before, npcs[0].id, npcs[1].id, NpcAlliances.SourLine - 5);
+
+            var added = OpenTheSocialWeek(before, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False, "Precondition: their pact ended.");
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty);
+        }
+
+        /// <summary>
+        /// Only an alliance that ends THIS week is news. One the player left, or that fell apart an
+        /// earlier week, stays in the save with the player among its members - and a notice that
+        /// looked for ended alliances rather than alliances that just ended would repeat it every
+        /// week for the rest of the season.
+        /// </summary>
+        [Test]
+        public void AnAllianceThatEndedEarlierIsNotToldAgain()
+        {
+            var before = EvictionResolved(PlayerSurvives);
+            string you = before.playerId;
+            var partner = before.Active.First(c => !c.isPlayer);
+            var old = Ally(before, you, partner.id);
+            old.active = false;                          // left, or dissolved, some earlier week
+            OneWay(before, you, partner.id, NpcAlliances.SourLine - 5);
+
+            var added = OpenTheSocialWeek(before, out _);
+
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty,
+                "An alliance that was already over going into the week is not news this week.");
+        }
+
+        /// <summary>Two alliances ending in one week are two lines, each in its own words.</summary>
+        [Test]
+        public void EveryAllianceThatEndsIsTold()
+        {
+            var before = EvictionResolved(PlayerSurvives);
+            string you = before.playerId;
+            var gone = before.contestants.Single(c => !c.isPlayer && c.status != ContestantStatus.Active);
+            var soured = before.Active.First(c => !c.isPlayer);
+            Ally(before, you, gone.id);
+            Ally(before, you, soured.id);
+            OneWay(before, you, soured.id, NpcAlliances.SourLine - 5);
+
+            var added = OpenTheSocialWeek(before, out _);
+
+            Assert.That(added.Where(e => e.kind == "alliance").Select(e => e.text), Is.EquivalentTo(new[]
+            {
+                gone.name + " has left the house, and your alliance has ended.",
+                "Your alliance with " + soured.name + " has fallen apart.",
+            }));
+        }
+
+        /// <summary>
+        /// The notice spends nothing: no roll - one would re-roll every competition and vote after it -
+        /// and no memory, which the player's gossip is drawn from. Opening the same week with and
+        /// without an alliance to end leaves the generator and the player's memories identical.
+        /// </summary>
+        [Test]
+        public void TellingThePlayerSpendsNoRollAndNoMemory()
+        {
+            var quiet = EvictionResolved(PlayerSurvives);
+            var told = quiet.Clone();
+            string you = told.playerId;
+            var partner = told.Active.First(c => !c.isPlayer);
+            Ally(told, you, partner.id);
+            OneWay(told, you, partner.id, NpcAlliances.SourLine - 5);
+            OneWay(quiet, you, partner.id, NpcAlliances.SourLine - 5);
+
+            var saidNothing = OpenTheSocialWeek(quiet, out var afterQuiet);
+            var saidIt = OpenTheSocialWeek(told, out var afterTold);
+
+            Assert.That(saidIt.Count(e => e.kind == "alliance"), Is.EqualTo(1), "Precondition: one of them was told.");
+            Assert.That(saidNothing.Count(e => e.kind == "alliance"), Is.EqualTo(0));
+            Assert.That(afterTold.randomState, Is.EqualTo(afterQuiet.randomState),
+                "Telling the player drew from the season's generator.");
+            Assert.That(afterTold.memories.Count(m => m.ownerId == you), Is.EqualTo(afterQuiet.memories.Count(m => m.ownerId == you)),
+                "Telling the player wrote them a memory.");
+        }
+
+        /// <summary>The player's own reading exactly on the sour line keeps the alliance, as the source's strict comparison does.</summary>
+        [Test]
+        public void ThePlayerExactlyOnTheSourLineStaysAllied()
+        {
+            var state = Warm(SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 9u), 10);
+            string you = state.playerId;
+            var partner = state.contestants.First(c => !c.isPlayer && c.status == ContestantStatus.Active);
+            var pact = Ally(state, you, partner.id);
+            OneWay(state, you, partner.id, NpcAlliances.SourLine);
+
+            NpcSocialActions.Settle(state);
+
+            Assert.That(pact.active, Is.True, "On the line is not past it.");
+        }
+
+        [Test]
+        public void NobodyIsToldOnceThePlayerIsOutOfTheHouse()
+        {
+            var before = EvictionResolved(PlayerEvicted);
+            string you = before.playerId;
+            Assert.That(before.Find(you).status, Is.Not.EqualTo(ContestantStatus.Active), "Precondition: the player was this week's evictee.");
+            var partner = before.Active.First(c => !c.isPlayer);
+            var pact = Ally(before, you, partner.id);
+            OneWay(before, you, partner.id, NpcAlliances.SourLine - 5);
+
+            var added = OpenTheSocialWeek(before, out var after);
+
+            Assert.That(after.alliances.Single(a => a.id == pact.id).active, Is.False, "Precondition: it ended.");
+            Assert.That(added.Where(e => e.kind == "alliance"), Is.Empty,
+                "A juror is not playing the social week; there is nobody in the house to tell.");
+        }
+
         // ---------------------------------------------------------------- what it feeds
 
         /// <summary>
@@ -255,6 +515,62 @@ namespace Gamesim.Tests.EditMode
             foreach (var edge in state.relationships.Where(r =>
                          (r.fromId == from && r.toId == to) || (r.fromId == to && r.toId == from)))
                 edge.score = score;
+        }
+
+        // A real season each: in the first the player is still in the house after week one's
+        // eviction, in the second the player was its evictee. Both are past the autonomy boundary.
+        private const uint PlayerSurvives = 3;
+        private const uint PlayerEvicted = 15;
+
+        /// <summary>A real season walked through the engine to the moment an eviction has resolved.</summary>
+        private static EpisodeState EvictionResolved(uint seed)
+        {
+            var engine = new EpisodeEngine(ContentCatalog.Create(seed));
+            for (int guard = 0; guard < 260; guard++)
+            {
+                var snapshot = engine.Snapshot;
+                if (snapshot.phase == EpisodePhase.Eviction && snapshot.evictionResolved)
+                {
+                    Assert.That(NpcSocialState.AutonomyHasBegun(snapshot), Is.True, "Precondition: the settle runs.");
+                    return snapshot;
+                }
+                var result = engine.Apply(EpisodeEngineTests.NextCommand(snapshot));
+                Assert.That(result.accepted, Is.True, result.reason);
+            }
+            Assert.Fail("Seed " + seed + " never reached a resolved eviction.");
+            return null;
+        }
+
+        /// <summary>The Continue that opens the social week, through the engine; returns what it logged.</summary>
+        private static List<EpisodeEvent> OpenTheSocialWeek(EpisodeState before, out EpisodeState after)
+        {
+            var engine = new EpisodeEngine(before);
+            var result = engine.Apply(EpisodeEngineTests.Command(before, EpisodeCommandKind.Advance));
+            Assert.That(result.accepted, Is.True, result.reason);
+            after = engine.Snapshot;
+            Assert.That(after.phase, Is.EqualTo(EpisodePhase.Social));
+            long from = before.nextSequence;
+            return after.events.Where(e => e.sequence >= from).ToList();
+        }
+
+        private static bool Sees(EpisodeState state, EpisodeEvent e) =>
+            e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId);
+
+        private static AllianceState Ally(EpisodeState state, string first, string second)
+        {
+            var pact = new AllianceState
+            {
+                id = "alliance-fixture-" + state.alliances.Count, name = "The Fixture Pact",
+                members = new List<string> { first, second }, active = true,
+            };
+            state.alliances.Add(pact);
+            return pact;
+        }
+
+        /// <summary>One direction only: what <paramref name="from"/> thinks of <paramref name="to"/>.</summary>
+        private static void OneWay(EpisodeState state, string from, string to, double score)
+        {
+            foreach (var edge in state.relationships.Where(r => r.fromId == from && r.toId == to)) edge.score = score;
         }
 
         private static List<string> Pacts(EpisodeState state) => state.alliances

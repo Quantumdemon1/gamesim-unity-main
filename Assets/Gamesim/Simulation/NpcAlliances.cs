@@ -182,18 +182,29 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// An alliance ends when either side has come to dislike the other.
+        /// An alliance ends when either side has come to dislike the other - or, for an alliance
+        /// the player is in, when the PLAYER has come to dislike their partner.
         ///
         /// <para>No ledger entry, and deliberately so: this is not something either of them did. A
         /// pact that dies because two people drifted apart is not a betrayal, and recording it as
         /// one would put a permanent grudge on the books that nobody earned.</para>
+        ///
+        /// <para>The player's alliance reads only the player's own score toward their partner. That
+        /// is what the reference build's weekly check reads: <c>checkForDissolution</c> in
+        /// <c>alliance-system.ts</c> looks at each pair once, from the earlier member toward the
+        /// later, and every path that forms a player alliance there puts the player first. This
+        /// used to read both directions, so the partner's private feeling - a number the player
+        /// has no way to know - could end the player's alliance, and the ending itself was the
+        /// only way the player ever learned it. Houseguests' own pacts still read both.</para>
         /// </summary>
         public static void Dissolve(EpisodeState state)
         {
             foreach (var alliance in state.alliances.Where(a => a.active).ToList())
             {
-                bool soured = alliance.members.Any(one =>
-                    alliance.members.Any(other => one != other && state.Score(one, other) < SourLine));
+                bool soured = alliance.members.Contains(state.playerId)
+                    ? alliance.members.Any(other => other != state.playerId && state.Score(state.playerId, other) < SourLine)
+                    : alliance.members.Any(one =>
+                        alliance.members.Any(other => one != other && state.Score(one, other) < SourLine));
                 bool intact = alliance.members.Count(id => state.Find(id)?.status == ContestantStatus.Active) >= 2;
                 if (soured || !intact) alliance.active = false;
             }

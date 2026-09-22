@@ -239,6 +239,8 @@ namespace Gamesim.Simulation
                         // personality makes natural. This one DOES draw from the season's generator
                         // — target choice is weighted sampling — which is why it sits behind the
                         // same rules boundary and why a recording declares itself past it.
+                        // The player's alliances going in, so the ones the settle ends can be told.
+                        var theirs = s.alliances.Where(a => a.active && a.members.Contains(s.playerId)).ToList();
                         NpcSocialActions.Settle(s);
                         NpcDeals.Settle(s);
                         NpcDeals.Propose(s);
@@ -249,6 +251,7 @@ namespace Gamesim.Simulation
                         BeginStoryline(s);
                         OfferHouseEvent(s);
                         NarrateHouse(s);
+                        TellThePlayerWhichAlliancesEnded(s, theirs);
                         return;
                     }
                     // Eviction night runs as stages inside this phase rather than as phases of its
@@ -1797,6 +1800,41 @@ namespace Gamesim.Simulation
         {
             var value = Target(s, id, actorId);
             return value.Length == 0 ? value : char.ToUpperInvariant(value[0]) + value.Substring(1);
+        }
+
+        /// <summary>
+        /// Tells the player which of their alliances the week's settle ended, and nothing more.
+        ///
+        /// <para><see cref="NpcAlliances.Dissolve"/> ends the player's alliance when the player has
+        /// soured on their partner, or when the partner has left the house, and it used to do so
+        /// without a word: "Allied" simply went from the web, the conversation header and the cast
+        /// strip. The reference build toasts the same moment.</para>
+        ///
+        /// <para>Logged LAST in the step that opens the social week, after the house has narrated
+        /// itself, for two reasons. Every id minted in the step - the pacts, promises, deals and
+        /// house events the settle writes - is what it was before this existed. And the director's
+        /// status line is the last event the player may see, so this is what they read. It draws
+        /// no roll and saves no new field.</para>
+        ///
+        /// <para>It carries no number and no direction. A partner leaving the house is public; an
+        /// alliance that sours has fallen apart, in the same words however it soured. Nobody is
+        /// told anything once the player is out of the house themselves.</para>
+        /// </summary>
+        private static void TellThePlayerWhichAlliancesEnded(EpisodeState s, List<AllianceState> theirs)
+        {
+            if (s.Find(s.playerId)?.status != ContestantStatus.Active) return;
+            foreach (var alliance in theirs.Where(a => !a.active))
+            {
+                var partners = alliance.members.Where(id => id != s.playerId)
+                    .Select(id => s.Find(id)).Where(actor => actor != null).ToList();
+                if (partners.Count == 0) continue;
+                string names = string.Join(" and ", partners.Select(actor => actor.name));
+                bool gone = partners.All(actor => actor.status != ContestantStatus.Active);
+                string text = gone
+                    ? names + (partners.Count == 1 ? " has" : " have") + " left the house, and your alliance has ended."
+                    : "Your alliance with " + names + " has fallen apart.";
+                Log(s, "alliance", text, new[] { s.playerId }.Concat(partners.Select(actor => actor.id)).ToArray());
+            }
         }
 
         private static void Phase(EpisodeState s, EpisodePhase phase) { s.phase = phase; Log(s, "phase", "Week " + s.week + " · " + phase); }

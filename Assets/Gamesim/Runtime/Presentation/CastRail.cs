@@ -31,6 +31,21 @@ namespace Gamesim.Presentation
     /// The band is narrow, so the strip stops short of the right column rather than running under
     /// it; see <see cref="Bottom"/>.</para>
     ///
+    /// <para>Each chip also says where the PLAYER stands with that houseguest - Allied, Friendly,
+    /// Wary or Hostile - in a dark pill of its own at the ring's foot, beside the role pill when
+    /// there is one. A five-week ally and a stranger used to be the same grey chip. Every other
+    /// channel keeps its one meaning: the ring is the role, the border is the camera, the word
+    /// under the name is the houseguest's mood. Neutral says nothing, so the first frame of a
+    /// season - every score at its opening value - is the strip it always was.</para>
+    ///
+    /// <para>What the tag reads is the player's own record: their outbound score and the alliances
+    /// they are in, through <see cref="RelationshipWeb.KindOf"/> - never a houseguest's private
+    /// view of the player, and never anything between two houseguests. Two known leaks sit under
+    /// that record and are not this strip's to fix: a weekly NPC settle can dissolve the player's
+    /// alliance on the NPC's private score without a word, and an act an NPC initiates moves the
+    /// player's outbound score by the reciprocal draw. Both already show in the web and the
+    /// conversation header; the strip makes them more visible, not new.</para>
+    ///
     /// <para>Rebuilt from committed state on each HUD render and never animated per frame: the rail
     /// shows what the simulation holds and holds no opinion of its own.</para>
     /// </summary>
@@ -53,6 +68,20 @@ namespace Gamesim.Presentation
         public const string MoodGlyphName = "Mood";
         public const string MoodWordName = "Mood word";
         public const string BadgeName = "Badge";
+        public const string StandingTagName = "Standing tag";
+        public const string StandingWordName = "Standing word";
+
+        // The pills at the ring's foot. The role badge always had these numbers inline.
+        private const float BadgeWidth = 46f;
+        private const float BadgeHeight = 15f;
+        private const float BadgeLift = 11f;
+        private const float PairGap = 2f;
+        /// <summary>
+        /// How far the standing tag's ground leans from ink toward the standing's colour. Pinned by
+        /// <c>CastRailStandingTag_ItsWordIsReadableOnEveryGroundTheStripCanGiveIt</c>: at .55, Paper
+        /// on the Friendship ground falls to 4.27:1, under what body copy needs.
+        /// </summary>
+        private const float StandingTint = .45f;
 
         // The chip is one line deeper than the bare portrait it replaces — name, then mood — and the
         // depth comes out of the face rather than out of the column: the rail has to end above the
@@ -213,6 +242,37 @@ namespace Gamesim.Presentation
             && actor.status != ContestantStatus.Winner
             && actor.status != ContestantStatus.RunnerUp;
 
+        /// <summary>
+        /// Where the player stands with <paramref name="actor"/>, as the strip shows it.
+        ///
+        /// <para><see cref="RelationshipWeb.Kind.Neutral"/> doubles as "the strip shows nothing":
+        /// for the player's own chip, for anyone no longer in the house, and for a houseguest the
+        /// player has no reading of yet. Neutral is also the resting MOOD of nearly everyone, so a
+        /// tag for it would make most chips read "Neutral / Neutral".</para>
+        /// </summary>
+        public static RelationshipWeb.Kind StandingOf(EpisodeState state, ContestantState actor)
+        {
+            if (state == null || actor == null) return RelationshipWeb.Kind.Neutral;
+            if (actor.isPlayer || actor.id == state.playerId) return RelationshipWeb.Kind.Neutral;
+            if (actor.status != ContestantStatus.Active) return RelationshipWeb.Kind.Neutral;
+            return RelationshipWeb.KindOf(state, actor.id);
+        }
+
+        /// <summary>
+        /// The standing tag's ground: the web's own colour for that reading, sunk toward ink, and
+        /// opaque because the pill sits over the face.
+        ///
+        /// <para>The inverse of a role pill on purpose. A role is a saturated fill with a dark
+        /// capital word; a standing is a dark fill with a light title-case word, so "Allied" alone
+        /// in the slot cannot be mistaken for a role.</para>
+        /// </summary>
+        public static Color StandingGround(RelationshipWeb.Kind kind)
+        {
+            var ground = Color.Lerp(UiTheme.Ink, RelationshipWeb.StandingColour(kind), StandingTint);
+            ground.a = 1f;
+            return ground;
+        }
+
         private static Standing Read(EpisodeState state, ContestantState actor)
         {
             if (actor.status == ContestantStatus.Winner) return new Standing("WINNER", UiTheme.Gold, false);
@@ -270,7 +330,7 @@ namespace Gamesim.Presentation
             chip.offsetMin = new Vector2(ChipInsetX, ChipBottom * scale);
             chip.offsetMax = new Vector2(-ChipInsetX, -ChipTop * scale);
             // Cyan says "the camera is on this one", and nothing else in the rail says it. It used
-            // to say "this one is you", permanently, on a chip whose standing word is already the
+            // to say "this one is you", permanently, on a chip whose role word is already the
             // word YOU - so the rail lit one houseguest in every frame of the game for a fact the
             // rail was already stating, and had nothing left to mark the one being followed with.
             // Every other chip is structure: a seam, dimmed further when the houseguest is out.
@@ -356,25 +416,54 @@ namespace Gamesim.Presentation
             mood.rectTransform.anchoredPosition = new Vector2(0f, -(top + ring + 23f * scale));
             mood.rectTransform.sizeDelta = new Vector2(-8f, 14f * scale);
 
+            RectTransform badgeChip = null;
+            TMP_Text badge = null;
             if (!string.IsNullOrEmpty(standing.Badge))
             {
                 // The badge sits over the bottom of the rim rather than beside it, so the rail stays
                 // one column wide however many people are holding something this week.
-                var badgeChip = new GameObject(BadgeName, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                badgeChip = new GameObject(BadgeName, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
                 badgeChip.SetParent(entry, false);
                 badgeChip.anchorMin = new Vector2(.5f, 1f); badgeChip.anchorMax = new Vector2(.5f, 1f); badgeChip.pivot = new Vector2(.5f, 1f);
-                badgeChip.anchoredPosition = new Vector2(0f, -(top + ring - 11f * scale));
-                badgeChip.sizeDelta = new Vector2(46f * scale, 15f * scale);
+                badgeChip.anchoredPosition = new Vector2(0f, -(top + ring - BadgeLift * scale));
+                badgeChip.sizeDelta = new Vector2(BadgeWidth * scale, BadgeHeight * scale);
                 var chipImage = badgeChip.GetComponent<Image>();
                 UiTheme.Style(chipImage, standing.Colour, 4);
                 chipImage.raycastTarget = false;
 
-                var badge = Label(badgeChip, standing.Badge, 10, UiTheme.Ink, scale, font, TextAlignmentOptions.Center);
+                badge = Label(badgeChip, standing.Badge, 10, UiTheme.Ink, scale, font, TextAlignmentOptions.Center);
                 badge.rectTransform.anchorMin = Vector2.zero;
                 badge.rectTransform.anchorMax = Vector2.one;
                 badge.rectTransform.offsetMin = Vector2.zero;
                 badge.rectTransform.offsetMax = Vector2.zero;
             }
+
+            // Where the player stands with this houseguest, in the same row as the role and in
+            // words. Parented to the entry rather than to the badge: they are two facts that happen
+            // to share a row, and the tests that read a chip's role read the Badge alone.
+            RectTransform tag = null;
+            TMP_Text word = null;
+            var kind = StandingOf(state, actor);
+            if (kind != RelationshipWeb.Kind.Neutral)
+            {
+                tag = new GameObject(StandingTagName, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                tag.SetParent(entry, false);
+                tag.anchorMin = new Vector2(.5f, 1f); tag.anchorMax = new Vector2(.5f, 1f); tag.pivot = new Vector2(.5f, 1f);
+                tag.anchoredPosition = new Vector2(0f, -(top + ring - BadgeLift * scale));
+                tag.sizeDelta = new Vector2(BadgeWidth * scale, BadgeHeight * scale);
+                var tagImage = tag.GetComponent<Image>();
+                UiTheme.Style(tagImage, StandingGround(kind), 4);
+                tagImage.raycastTarget = false;
+
+                word = Label(tag, Localisation.Text(RelationshipWeb.StandingWord(kind)), 10, UiTheme.Paper,
+                    scale, font, TextAlignmentOptions.Center);
+                word.name = StandingWordName;
+                word.rectTransform.anchorMin = Vector2.zero;
+                word.rectTransform.anchorMax = Vector2.one;
+                word.rectTransform.offsetMin = Vector2.zero;
+                word.rectTransform.offsetMax = Vector2.zero;
+            }
+            StatusRow(entry, badgeChip, badge, tag, word, scale);
 
             // A portrait is a button: click it and the camera follows that houseguest. The button
             // carries the name chip as its caption, so the keyboard and a screen reader find it the
@@ -398,6 +487,56 @@ namespace Gamesim.Presentation
             button.colors = colours;
             button.onClick.AddListener(() => onSelect(id));
             return entry;
+        }
+
+        /// <summary>
+        /// Lays out the ring's foot: the role pill, the standing tag, or both side by side.
+        ///
+        /// <para>This is the only band on the chip with any horizontal room - the name and the mood
+        /// word own the rows below it and there is no height for a third - so when a houseguest
+        /// holds a role AND the player has a reading of them, the two pills share it, each fitted to
+        /// its measured word and centred as a pair. A role alone keeps the badge it always had. A
+        /// tag alone takes the badge's slot, widened only if its word needs it, so a longer
+        /// translation grows the pill rather than truncating inside it.</para>
+        ///
+        /// <para>Everything is kept clear of the chip's BORDER, not just inside its glass: the edge
+        /// is drawn on the glass's own rect, and an opaque pill across it would cut through the
+        /// cyan that says the camera is on this houseguest. The border does not scale, so neither
+        /// does the reserve. The one pair that cannot fit at its scaled size - VETO beside Friendly
+        /// at a scale of about three quarters, where the font rounds 7.5 up to 8 - drops both words
+        /// one point, to the size the next scale down already draws them at.</para>
+        /// </summary>
+        private static void StatusRow(
+            RectTransform entry, RectTransform role, TMP_Text roleWord, RectTransform tag, TMP_Text tagWord, float scale)
+        {
+            float inner = entry.sizeDelta.x - 2f * ChipInsetX - 2f * (UiTheme.BorderThickness + 1f);
+            if (tag == null) return;
+            if (role == null)
+            {
+                float measured = tagWord.GetPreferredValues(tagWord.text).x;
+                float solo = Mathf.Min(inner, Mathf.Max(BadgeWidth * scale, measured + 4f * scale));
+                tag.sizeDelta = new Vector2(solo, tag.sizeDelta.y);
+                return;
+            }
+
+            float gap = PairGap * scale;
+            float roleText = roleWord.GetPreferredValues(roleWord.text).x;
+            float tagText = tagWord.GetPreferredValues(tagWord.text).x;
+            if (roleText + tagText + 4f * scale + gap > inner)
+            {
+                roleWord.fontSize -= 1f;
+                tagWord.fontSize -= 1f;
+                roleText = roleWord.GetPreferredValues(roleWord.text).x;
+                tagText = tagWord.GetPreferredValues(tagWord.text).x;
+            }
+            float pad = Mathf.Clamp((inner - roleText - tagText - gap) / 4f, 1f * scale, 4f * scale);
+            float roleWidth = roleText + 2f * pad;
+            float tagWidth = tagText + 2f * pad;
+            float total = roleWidth + gap + tagWidth;
+            role.sizeDelta = new Vector2(roleWidth, role.sizeDelta.y);
+            role.anchoredPosition = new Vector2(-total / 2f + roleWidth / 2f, role.anchoredPosition.y);
+            tag.sizeDelta = new Vector2(tagWidth, tag.sizeDelta.y);
+            tag.anchoredPosition = new Vector2(total / 2f - tagWidth / 2f, tag.anchoredPosition.y);
         }
 
         /// <summary>

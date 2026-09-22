@@ -179,6 +179,28 @@ namespace Gamesim.Tests.EditMode
                 ratio.ToString("F2") + ":1), so edges will vanish against a lit set.");
         }
 
+        /// <summary>
+        /// The cast strip's standing tag is a light word on a dark tint of the standing's own
+        /// colour. It has to read on every tint the strip can give it, and the tint has to be
+        /// opaque, because the pill sits over a face.
+        /// </summary>
+        [Test]
+        public void CastRailStandingTag_ItsWordIsReadableOnEveryGroundTheStripCanGiveIt()
+        {
+            foreach (var kind in new[]
+            {
+                RelationshipWeb.Kind.Alliance, RelationshipWeb.Kind.Friendship,
+                RelationshipWeb.Kind.Distrust, RelationshipWeb.Kind.Rivalry,
+            })
+            {
+                var ground = CastRail.StandingGround(kind);
+                AssertContrast(UiTheme.Paper, ground, BodyMinimum, "the " + kind + " standing tag's word");
+                Assert.That(ground.a, Is.EqualTo(1f).Within(.001f),
+                    "The " + kind + " tag sits over the portrait; a translucent ground lets the face "
+                    + "through behind the word.");
+            }
+        }
+
         private static void AssertContrast(Color foreground, Color background, double minimum, string what)
         {
             double ratio = Contrast(foreground, background);

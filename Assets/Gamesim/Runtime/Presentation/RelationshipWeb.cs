@@ -217,6 +217,12 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>
+        /// The colour the web draws this reading's edge in. Public so the cast strip tints its
+        /// standing tag from this switch rather than from a copy of it that could drift.
+        /// </summary>
+        public static Color StandingColour(Kind kind) => EdgeColour(kind);
+
         /// <summary>The generated glyph for a mood word, in the icon set's vocabulary.</summary>
         public static string MoodIcon(string mood)
         {

@@ -84,6 +84,44 @@ namespace Gamesim.Tests.EditMode
             Assert.That(RelationshipWeb.KindOf(state, You), Is.EqualTo(RelationshipWeb.Kind.Neutral));
         }
 
+        /// <summary>
+        /// The cast strip's standing tag says the player's own reading of everyone still in the
+        /// house, and nothing about anyone else's.
+        /// </summary>
+        [Test]
+        public void CastRailStanding_IsThePlayersOwnReadingOfEveryoneStillInTheHouse()
+        {
+            var state = House();
+            RelationshipWeb.Kind Of(string id) => CastRail.StandingOf(state, state.Find(id));
+
+            Assert.That(Of("a"), Is.EqualTo(RelationshipWeb.Kind.Friendship),
+                "Maya reads Friendly: the player's own +40. Her -60 toward the player is hers, and "
+                + "the player does not know it.");
+            Assert.That(Of("b"), Is.EqualTo(RelationshipWeb.Kind.Alliance));
+            Assert.That(Of("c"), Is.EqualTo(RelationshipWeb.Kind.Distrust));
+            Assert.That(Of("d"), Is.EqualTo(RelationshipWeb.Kind.Rivalry));
+            Assert.That(Of("e"), Is.EqualTo(RelationshipWeb.Kind.Neutral),
+                "Out of the house, so no tag - even on the warmest reading in the save.");
+            Assert.That(Of("f"), Is.EqualTo(RelationshipWeb.Kind.Neutral), "No record, no reading.");
+            // The explicit player guard is an equivalent mutant: KindOf already answers Neutral for
+            // the player's own id. It stays, because the strip should not depend on that.
+            Assert.That(Of(You), Is.EqualTo(RelationshipWeb.Kind.Neutral), "The player has no standing with themself.");
+
+            // A role is a separate fact on a separate pill. Holding one must not hide the reading -
+            // an ally on the block is exactly when the player most needs to see "Allied".
+            state.hohId = "c";
+            state.vetoHolderId = "d";
+            state.nominees = new List<string> { "b" };
+            Assert.That(Of("b"), Is.EqualTo(RelationshipWeb.Kind.Alliance));
+            Assert.That(Of("c"), Is.EqualTo(RelationshipWeb.Kind.Distrust));
+            Assert.That(Of("d"), Is.EqualTo(RelationshipWeb.Kind.Rivalry));
+
+            Assert.That(RelationshipWeb.StandingWord(Of("a")), Is.EqualTo("Friendly"));
+            Assert.That(RelationshipWeb.StandingWord(Of("b")), Is.EqualTo("Allied"));
+            Assert.That(RelationshipWeb.StandingWord(Of("c")), Is.EqualTo("Wary"));
+            Assert.That(RelationshipWeb.StandingWord(Of("d")), Is.EqualTo("Hostile"));
+        }
+
         [Test]
         public void AlliesAndRivals_AreOrderedByStrengthAndLeaveOutTheEvicted()
         {

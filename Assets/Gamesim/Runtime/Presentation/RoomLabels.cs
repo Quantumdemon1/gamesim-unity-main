@@ -18,7 +18,9 @@ namespace Gamesim.Presentation
         public const string RootName = "Room labels";
         /// <summary>Metres above the floor the chips float: over the walls, under the camera.</summary>
         public const float Height = 3.4f;
-        private const float ChipHeight = 56f, WorldScale = 0.017f, MarkSide = 30f;
+        // Read from the overview's height: at 0.017 a chip was eighteen pixels tall, a caption on a
+        // blueprint rather than mockup-03's labels over its rooms.
+        private const float ChipHeight = 56f, WorldScale = 0.03f, MarkSide = 30f;
 
         private readonly List<RectTransform> chips = new List<RectTransform>();
         private Transform root;

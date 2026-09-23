@@ -192,6 +192,11 @@ namespace Gamesim.Presentation
             ruleRect.pivot = new Vector2(0f, 0.5f);
 
             headline = NewText("Sting headline", card, HeadlineSize, UiTheme.Accent);
+            headline.overflowMode = TextOverflowModes.Overflow;
+            headline.textWrappingMode = TextWrappingModes.NoWrap;
+            headline.characterSpacing = 2f;
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) headline.font = bold;
             detail = NewText("Sting detail", card, DetailSize, UiTheme.Paper);
 
             card.gameObject.SetActive(false);
@@ -205,7 +210,9 @@ namespace Gamesim.Presentation
         {
             float head = Mathf.Round(HeadlineSize * FontScale);
             float body = Mathf.Round(DetailSize * FontScale);
-            float headLine = Mathf.Ceil(head * 1.2f);
+            // Inter's line is taller than 1.2 of its size, and a headline in a box one pixel short of
+            // its line is truncated whole: every sting drew its detail under an empty band.
+            float headLine = Mathf.Ceil(head * 1.35f);
             float bodyLine = Mathf.Ceil(body * 1.25f);
             float height = TopPad + headLine + Gap + bodyLine + BottomPad;
 

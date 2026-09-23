@@ -75,6 +75,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (var ballot in ballots.Where(b => !b.IsPlayer)) Assert.That(labels, Does.Contain(ballot.Reason));
             Assert.That(labels, Does.Contain("SEASONS"), "The report's career card reads the ledger.");
             Assert.That(labels, Does.Contain("1st").Or.Contain(CareerSummary.PlaceWord(record.seasons[0].placement)));
+            if (UnityEngine.Application.isBatchMode) yield return CaptureFraming("season-report");
         }
 
         [UnityTest]

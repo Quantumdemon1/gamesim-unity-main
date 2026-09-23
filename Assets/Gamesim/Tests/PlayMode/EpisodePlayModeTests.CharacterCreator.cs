@@ -58,6 +58,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.SavePath, Is.EqualTo(slot));
             Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId));
             if (bytes != null) Assert.That(File.ReadAllBytes(slot), Is.EqualTo(bytes));
+            if (UnityEngine.Application.isBatchMode) yield return CaptureFraming("creator");
         }
 
         [UnityTest]

@@ -80,7 +80,13 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var screen = SceneComponents<CompetitionGameScreen>().Single();
             Assert.That(screen.IsShowing, Is.True);
-            if (Application.isBatchMode) yield return CaptureFraming("competition-practice");
+            if (Application.isBatchMode) yield return CaptureFraming("competition-assembly");
+            // Past the walk to the stations and the count-in, into the game itself.
+            if (screen.IsAssembling)
+                screen.GetComponentsInChildren<UnityEngine.UI.Button>().First(button => button.name == "Continue to competition").onClick.Invoke();
+            float playing = Time.realtimeSinceStartup + 3.6f;
+            while (Time.realtimeSinceStartup < playing && screen.IsShowing) yield return null;
+            if (Application.isBatchMode && screen.IsShowing) yield return CaptureFraming("competition-practice");
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
         }
     }

@@ -139,15 +139,26 @@ namespace Gamesim.Presentation
             foreach (Transform child in transform) Destroy(child.gameObject);
             lines.Clear();
 
-            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(0.02f, 0.04f, 0.06f, 0.96f), 1);
+            // The house dimmed behind the week rather than blacked out, and the week on a glass
+            // card, as the mockups set every summary over the room it is about.
+            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.86f), 1);
             Stretch(scrim);
+            HudPrimitives.Vignette(scrim);
 
-            viewport = HudPrimitives.Fill("Viewport", scrim, new Color(0f, 0f, 0f, 0f), 1);
+            var card = HudPrimitives.Fill("Recap card", scrim, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .94f), UiTheme.GlassRadius);
+            card.anchorMin = new Vector2(0.5f, 0f);
+            card.anchorMax = new Vector2(0.5f, 1f);
+            card.pivot = new Vector2(0.5f, 0.5f);
+            card.sizeDelta = new Vector2(Width + 40f, -96f);
+            card.anchoredPosition = Vector2.zero;
+            UiTheme.Glass(card, UiTheme.GlassRadius);
+
+            viewport = HudPrimitives.Fill("Viewport", card, new Color(0f, 0f, 0f, 0f), 1);
             viewport.anchorMin = new Vector2(0.5f, 0f);
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, 0f);
-            viewport.anchoredPosition = Vector2.zero;
+            viewport.sizeDelta = new Vector2(Width, -8f);
+            viewport.anchoredPosition = new Vector2(0f, -4f);
             viewport.gameObject.AddComponent<RectMask2D>();
 
             content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -168,14 +179,19 @@ namespace Gamesim.Presentation
             var recap = WeeklyRecap.Build(shown, openWeek);
 
             Space(Pad);
-            Text(browsing ? "WEEK " + recap.week : "WEEK " + recap.week + " IS OVER",
-                24f, UiTheme.Gold, 32f, TextAlignmentOptions.Center);
-            Text(recap.Headline, 17f, UiTheme.Paper, 28f, TextAlignmentOptions.Center);
-            Space(8f);
+            var title = Text(browsing ? "WEEK " + recap.week : "WEEK " + recap.week + " IS OVER",
+                32f, Color.white, 42f, TextAlignmentOptions.Center);
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 3f;
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(UiTheme.Glow, UiTheme.Glow, UiTheme.Heading, UiTheme.Heading);
+            Text(recap.Headline, 18f, UiTheme.Paper, 0f, TextAlignmentOptions.Center);
+            Space(10f);
 
             Ceremony(recap);
             YourWeek(recap);
-            Bullets("How the house voted", recap.ballots, UiTheme.Paper);
+            Bullets("How the house voted", recap.ballots, UiTheme.Accent);
             Relationships(recap);
             Bullets("Alliances", recap.alliances, UiTheme.Accent);
             Bullets("Deals", recap.deals, UiTheme.Accent);
@@ -186,23 +202,77 @@ namespace Gamesim.Presentation
             content.sizeDelta = new Vector2(0f, cursor + Pad);
         }
 
+        /// <summary>
+        /// The week's ceremonies as a row of tiles, the mockups' stat cards: what each role is,
+        /// who held it, and its mark - gold for the two powers, red for the block and the door.
+        /// </summary>
         private void Ceremony(WeeklyRecap.Week recap)
         {
             Heading("The week");
-            Row("Head of Household", recap.headOfHousehold ?? "—", UiTheme.Accent);
-            Row("Nominees", recap.nominees.Count > 0 ? string.Join(", ", recap.nominees) : "—", UiTheme.Paper);
-            Row("Veto", recap.vetoHolder ?? "—", UiTheme.Accent);
-            // Three readings, not two: no meeting at all is not the same as a veto left in the box.
-            Row("Veto used", recap.vetoUsed == null ? "No meeting" : recap.vetoUsed.Value ? "Yes" : "No",
-                recap.vetoUsed == true ? UiTheme.Accent : UiTheme.Muted);
-            Row("Evicted", recap.evicted ?? "—", recap.evicted == null ? UiTheme.Muted : UiTheme.Danger);
+            var tiles = new[]
+            {
+                ("Head of Household", recap.headOfHousehold ?? "\u2014", "crown", UiTheme.Gold),
+                ("Nominees", recap.nominees.Count > 0 ? string.Join(", ", recap.nominees) : "\u2014", "target", UiTheme.Danger),
+                ("Veto", recap.vetoHolder ?? "\u2014", "veto-token", UiTheme.Gold),
+                // Three readings, not two: no meeting at all is not the same as a veto left in the box.
+                ("Veto used", recap.vetoUsed == null ? "No meeting" : recap.vetoUsed.Value ? "Yes" : "No", "key",
+                    recap.vetoUsed == true ? UiTheme.Accent : UiTheme.Muted),
+                ("Evicted", recap.evicted ?? "\u2014", "evicted", recap.evicted == null ? UiTheme.Muted : UiTheme.Danger),
+            };
+            const float gap = 12f, height = 104f;
+            float inner = Width - Pad * 2f, each = (inner - gap * (tiles.Length - 1)) / tiles.Length;
+            var row = new GameObject("Ceremony tiles", typeof(RectTransform)).GetComponent<RectTransform>();
+            row.SetParent(content, false);
+            Place(row, inner, height, -cursor);
+            for (int i = 0; i < tiles.Length; i++)
+            {
+                var (label, value, glyph, tint) = tiles[i];
+                var tile = HudPrimitives.Fill("Row", row, new Color(UiTheme.Surface.r, UiTheme.Surface.g, UiTheme.Surface.b, .9f), 10);
+                tile.anchorMin = tile.anchorMax = new Vector2(0f, 1f);
+                tile.pivot = new Vector2(0f, 1f);
+                tile.sizeDelta = new Vector2(each, height);
+                tile.anchoredPosition = new Vector2(i * (each + gap), 0f);
+                UiTheme.AddBorder(tile, 10, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .35f));
+                var icon = UiTheme.Icon(glyph);
+                if (icon != null)
+                {
+                    var mark = new GameObject("Mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                    mark.rectTransform.SetParent(tile, false);
+                    mark.rectTransform.anchorMin = mark.rectTransform.anchorMax = new Vector2(.5f, 1f);
+                    mark.rectTransform.pivot = new Vector2(.5f, 1f);
+                    mark.rectTransform.sizeDelta = new Vector2(28f, 28f);
+                    mark.rectTransform.anchoredPosition = new Vector2(0f, -12f);
+                    mark.sprite = icon; mark.color = tint; mark.preserveAspect = true; mark.raycastTarget = false;
+                }
+                var shown = HudPrimitives.Label("Value", tile, 17f, value == "\u2014" ? UiTheme.Muted : UiTheme.Paper, TextAlignmentOptions.Center);
+                shown.text = Localisation.Text(value);
+                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (semibold != null) shown.font = semibold;
+                shown.enableAutoSizing = true; shown.fontSizeMax = 17f; shown.fontSizeMin = 11f;
+                TileLine(shown.rectTransform, each, 44f, 36f);
+                var name = HudPrimitives.Label("Label", tile, 11f, UiTheme.Muted, TextAlignmentOptions.Center);
+                name.text = Localisation.Text(label).ToUpperInvariant();
+                name.characterSpacing = 3f;
+                name.enableAutoSizing = true; name.fontSizeMax = 11f; name.fontSizeMin = 8f;
+                TileLine(name.rectTransform, each, 82f, 16f);
+                lines.Add(label + ": " + value);
+            }
+            cursor += height + 6f;
+        }
+
+        private static void TileLine(RectTransform rect, float width, float top, float height)
+        {
+            rect.anchorMin = rect.anchorMax = new Vector2(.5f, 1f);
+            rect.pivot = new Vector2(.5f, 1f);
+            rect.sizeDelta = new Vector2(width - 16f, height);
+            rect.anchoredPosition = new Vector2(0f, -top);
         }
 
         private void YourWeek(WeeklyRecap.Week recap)
         {
             if (string.IsNullOrEmpty(recap.yourWeek)) return;
             Heading("Your week");
-            Text(recap.yourWeek, 16f, UiTheme.Paper, 46f, TextAlignmentOptions.TopLeft);
+            Text(recap.yourWeek, 16f, UiTheme.Paper, 0f, TextAlignmentOptions.TopLeft);
             lines.Add(recap.yourWeek);
         }
 
@@ -214,8 +284,7 @@ namespace Gamesim.Presentation
             {
                 string line = move.Line + " (" + (move.delta > 0 ? "+" : "")
                     + move.delta.ToString("0") + ")";
-                Text("· " + line, 15f, move.delta > 0 ? UiTheme.Accent : UiTheme.Danger, 24f,
-                    TextAlignmentOptions.Left);
+                Bullet(line, move.delta > 0 ? UiTheme.Allied : UiTheme.Danger, move.delta > 0 ? UiTheme.Allied : UiTheme.Danger);
                 lines.Add(line);
             }
         }
@@ -226,24 +295,45 @@ namespace Gamesim.Presentation
             Heading(heading);
             foreach (string entry in entries)
             {
-                Text("· " + entry, 15f, tint, 24f, TextAlignmentOptions.Left);
+                Bullet(entry, tint, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .9f));
                 lines.Add(entry);
             }
         }
 
+        /// <summary>A line of the recap behind a dot in its section's colour, as tall as its words.</summary>
+        private void Bullet(string value, Color dot, Color ink)
+        {
+            const float indent = 22f;
+            var label = HudPrimitives.Label("Text", content, 15f, ink, TextAlignmentOptions.TopLeft);
+            label.text = Localisation.Text(value);
+            label.textWrappingMode = TextWrappingModes.Normal;
+            float width = Width - Pad * 2f - indent;
+            float height = Mathf.Max(22f, Mathf.Ceil(label.GetPreferredValues(label.text, width, 0f).y) + 4f);
+            label.rectTransform.anchorMin = label.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+            label.rectTransform.pivot = new Vector2(0.5f, 1f);
+            label.rectTransform.sizeDelta = new Vector2(width, height);
+            label.rectTransform.anchoredPosition = new Vector2(indent * .5f, -cursor);
+            var mark = HudPrimitives.Disc("Dot", content, dot);
+            mark.anchorMin = mark.anchorMax = new Vector2(0.5f, 1f);
+            mark.pivot = new Vector2(0.5f, 0.5f);
+            mark.sizeDelta = new Vector2(7f, 7f);
+            mark.anchoredPosition = new Vector2(-(Width - Pad * 2f) * .5f + 6f, -cursor - 10f);
+            cursor += height + 4f;
+        }
+
         private void Controls()
         {
-            Space(18f);
+            Space(22f);
             var bar = Panel(56f, new Color(0f, 0f, 0f, 0f));
             if (browsing)
             {
-                Button(bar, BackCaption, 0f, Back);
+                Button(bar, BackCaption, 0f, Back, true);
             }
             else
             {
-                Button(bar, ContinueCaption, -150f, Dismiss);
+                Button(bar, ContinueCaption, -150f, Dismiss, true);
                 // Only offered where there is an earlier week to look at.
-                if (openWeek > 1) Button(bar, ReviewCaption, 150f, () => Review(shown, openWeek - 1));
+                if (openWeek > 1) Button(bar, ReviewCaption, 150f, () => Review(shown, openWeek - 1), false);
             }
             Space(12f);
         }
@@ -273,21 +363,27 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- layout
 
-        private void Row(string label, string value, Color tint)
-        {
-            var panel = Panel(30f, UiTheme.Surface);
-            Cell(panel, 20f, 300f, Localisation.Text(label).ToUpperInvariant(), 13f, UiTheme.Muted, TextAlignmentOptions.Left);
-            Cell(panel, 330f, Width - 380f, value, 15f, tint, TextAlignmentOptions.Left);
-            lines.Add(label + ": " + value);
-        }
-
+        /// <summary>
+        /// A section's name, small and letterspaced in the heading blue over a soft rule. It was
+        /// gold, and gold is power in this house - the Head of Household, the veto, the win - not
+        /// the heading over a list of deals.
+        /// </summary>
         private void Heading(string text)
         {
-            Space(14f);
-            var label = HudPrimitives.Label("Heading", content, 17f, UiTheme.Gold, TextAlignmentOptions.Left);
+            Space(18f);
+            var label = HudPrimitives.Label("Heading", content, 14f, UiTheme.Heading, TextAlignmentOptions.Left);
             label.text = Localisation.Text(text).ToUpperInvariant();
-            Place(label.rectTransform, Width - Pad * 2f, 24f, -cursor);
-            cursor += 28f;
+            label.characterSpacing = 4f;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) label.font = semibold;
+            Place(label.rectTransform, Width - Pad * 2f, 22f, -cursor);
+            cursor += 24f;
+            var rule = new GameObject("Rule", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            rule.rectTransform.SetParent(content, false);
+            Place(rule.rectTransform, Width - Pad * 2f, 1f, -cursor);
+            rule.color = new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .35f);
+            rule.raycastTarget = false;
+            cursor += 10f;
         }
 
         private RectTransform Panel(float height, Color colour)
@@ -298,12 +394,19 @@ namespace Gamesim.Presentation
             return panel;
         }
 
-        private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
+        /// <summary>A line of copy; a height of zero sizes it to its words.</summary>
+        private TMP_Text Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Text", content, size, colour, align);
             label.text = Localisation.Text(value);
+            if (height <= 0f)
+            {
+                label.textWrappingMode = TextWrappingModes.Normal;
+                height = Mathf.Ceil(label.GetPreferredValues(label.text, Width - Pad * 2f, 0f).y) + 6f;
+            }
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
             cursor += height;
+            return label;
         }
 
         private void Space(float amount) => cursor += amount;
@@ -330,19 +433,23 @@ namespace Gamesim.Presentation
             rect.anchoredPosition = new Vector2(x, 0f);
         }
 
-        private static void Button(Transform parent, string text, float x, Action action)
+        /// <summary>The recap's controls: Continue in the mockups' action blue, the rest quiet.</summary>
+        private static void Button(Transform parent, string text, float x, Action action, bool primary)
         {
-            var panel = HudPrimitives.Fill(text, parent, UiTheme.SurfaceRaised, 8);
+            var panel = HudPrimitives.Fill(text, parent, primary ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 10);
             panel.anchorMin = new Vector2(0.5f, 0.5f);
             panel.anchorMax = new Vector2(0.5f, 0.5f);
             panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(280f, 44f);
+            panel.sizeDelta = new Vector2(280f, 48f);
             panel.anchoredPosition = new Vector2(x, 0f);
             panel.GetComponent<Image>().raycastTarget = true;
-            UiTheme.AddBorder(panel, 8, UiTheme.Outline);
+            UiTheme.AddBorder(panel, 10, primary ? UiTheme.Glow : UiTheme.Outline);
+            if (primary) UiTheme.AddGlow(panel, 10);
 
-            var label = HudPrimitives.Label("Label", panel, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
+            var label = HudPrimitives.Label("Label", panel, 17f, primary ? Color.white : UiTheme.Paper, TextAlignmentOptions.Center);
             label.text = Localisation.Text(text);
+            var weight = UiTheme.Font(primary ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
+            if (weight != null) label.font = weight;
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.sizeDelta = Vector2.zero;

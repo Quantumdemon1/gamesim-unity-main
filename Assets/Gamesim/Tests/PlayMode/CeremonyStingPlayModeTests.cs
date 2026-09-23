@@ -203,6 +203,30 @@ namespace Gamesim.Tests.PlayMode
         /// in the 1600x900 reference, so the card has to stay above that at every text size.
         /// </summary>
         /// <summary>
+        /// The headline has to be drawn, not only set. In a box a pixel shorter than Inter's line
+        /// TextMesh Pro truncates the whole line, and every sting showed its detail under a band of
+        /// empty glass while its text still said NOMINATION CEREMONY - which is all the other
+        /// tests here read.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Play_DrawsTheHeadlineAtEveryTextSize()
+        {
+            foreach (float scale in new[] { 1f, 1.2f })
+            {
+                sting.FontScale = scale;
+                sting.Play(CeremonySting.NominationKind, "Maya Hassan nominated Taylor Kim.", true);
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                var headline = sting.GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == "Sting headline");
+                headline.ForceMeshUpdate(true);
+                int drawn = headline.textInfo.characterInfo.Take(headline.textInfo.characterCount).Count(glyph => glyph.isVisible);
+                Assert.That(headline.isTextTruncated, Is.False, "At font scale " + scale + " the headline is truncated away.");
+                Assert.That(drawn, Is.EqualTo("NOMINATIONCEREMONY".Length), "At font scale " + scale + " the headline draws " + drawn + " glyphs.");
+                sting.Cancel();
+            }
+        }
+
+        /// <summary>
         /// Two different bounds, because the card is in two different situations.
         ///
         /// The lower bound holds at every instant: the card descends into place, so it is never

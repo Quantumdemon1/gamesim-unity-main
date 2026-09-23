@@ -17,15 +17,32 @@ namespace Gamesim.Presentation
         {
             IsAssembling=true;assemblyElapsed=0;panel.gameObject.SetActive(false);
 
-            assemblyPanel=HudPrimitives.Fill("Visible competition assembly",transform,new Color(.035f,.055f,.085f,.96f),16);
+            // The competition's own glass card, as its challenge and timer are drawn (mockup-05):
+            // the award under its trophy, what is happening, and one control lit - the one that
+            // moves on. It was a near-black slab the width of the frame with three equal blue
+            // buttons and the title in gold, which is the colour of the win, not of the walk to it.
+            assemblyPanel=HudPrimitives.Fill("Visible competition assembly",transform,new Color(UiTheme.GlassFill.r,UiTheme.GlassFill.g,UiTheme.GlassFill.b,.94f),UiTheme.GlassRadius);
             assemblyPanel.anchorMin=assemblyPanel.anchorMax=new Vector2(.5f,0);assemblyPanel.pivot=new Vector2(.5f,0);
-            assemblyPanel.anchoredPosition=new Vector2(0,30);assemblyPanel.sizeDelta=new Vector2(1420,190);
+            assemblyPanel.anchoredPosition=new Vector2(0,30);assemblyPanel.sizeDelta=new Vector2(1060,178);
             assemblyPanel.GetComponent<Image>().raycastTarget=true;
-            Label("Assembly title",assemblyPanel,title+" · TAKING YOUR PLACES",26,30,15,1360,45,UiTheme.Gold);
-            assemblyStatus=Label("Assembly status",assemblyPanel,"Walking to reserved competition stations. The attempt clock has not started.",18,30,64,1360,48,UiTheme.Paper);
-            assemblyContinue=Button("Continue to competition",assemblyPanel,"Skip assembly view",30,126,450,48,FinishAssembly);
-            assemblyPause=Button("Pause assembly",assemblyPanel,"Pause",502,126,310,48,TogglePause);
-            assemblyCancel=Button("Cancel assembly",assemblyPanel,"Back to briefing",834,126,556,48,()=>cancelAction?.Invoke());
+            UiTheme.Glass(assemblyPanel,UiTheme.GlassRadius);
+            float titleX=30f;
+            var trophy=UiTheme.Icon("trophy");
+            if(trophy!=null)
+            {
+                var mark=new GameObject("Assembly mark",typeof(RectTransform),typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(assemblyPanel,false);Place(mark.rectTransform,30,18,30,30);
+                mark.sprite=trophy;mark.color=UiTheme.Gold;mark.preserveAspect=true;mark.raycastTarget=false;
+                titleX=72f;
+            }
+            var heading=Label("Assembly title",assemblyPanel,title+" · TAKING YOUR PLACES",24,titleX,15,1000-titleX,40,UiTheme.Paper);
+            var semibold=UiTheme.Font(UiTheme.Weight.SemiBold);if(semibold!=null)heading.font=semibold;
+            heading.characterSpacing=1f;Fit(heading,15);
+            assemblyStatus=Label("Assembly status",assemblyPanel,"Walking to reserved competition stations. The attempt clock has not started.",17,30,60,1000,44,UiTheme.Muted);
+            assemblyContinue=Button("Continue to competition",assemblyPanel,"Skip assembly view",30,112,380,48,FinishAssembly);
+            assemblyPause=Button("Pause assembly",assemblyPanel,"Pause",426,112,240,48,TogglePause);
+            assemblyCancel=Button("Cancel assembly",assemblyPanel,"Back to briefing",682,112,348,48,()=>cancelAction?.Invoke());
+            Secondary(assemblyPause);Secondary(assemblyCancel);
             var ring=new[]{assemblyContinue,assemblyPause,assemblyCancel};
             for(int i=0;i<ring.Length;i++)
                 ring[i].navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnLeft=ring[(i+2)%3],selectOnRight=ring[(i+1)%3],

@@ -165,6 +165,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPanelOpen, Is.True);
             Assert.That(CastButtons("Main menu"), Has.Length.EqualTo(1),
                 "Settings must offer a way back to the menu, or it is a one-way door.");
+            if (Application.isBatchMode) yield return CaptureFraming("settings");
 
             CastButtons("Main menu")[0].onClick.Invoke();
             yield return null;

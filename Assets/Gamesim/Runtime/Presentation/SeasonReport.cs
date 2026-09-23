@@ -166,15 +166,26 @@ namespace Gamesim.Presentation
         {
             foreach (Transform child in transform) Destroy(child.gameObject);
 
-            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(0.02f, 0.04f, 0.06f, 0.97f), 1);
+            // The house dimmed behind the season rather than blacked out, and the season on a
+            // glass card, as the mockups set every summary over the room it is about.
+            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.88f), 1);
             Stretch(scrim);
+            HudPrimitives.Vignette(scrim);
 
-            viewport = HudPrimitives.Fill("Viewport", scrim, new Color(0f, 0f, 0f, 0f), 1);
+            var sheet = HudPrimitives.Fill("Report card", scrim, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .94f), UiTheme.GlassRadius);
+            sheet.anchorMin = new Vector2(0.5f, 0f);
+            sheet.anchorMax = new Vector2(0.5f, 1f);
+            sheet.pivot = new Vector2(0.5f, 0.5f);
+            sheet.sizeDelta = new Vector2(Width + 40f, -96f);
+            sheet.anchoredPosition = Vector2.zero;
+            UiTheme.Glass(sheet, UiTheme.GlassRadius);
+
+            viewport = HudPrimitives.Fill("Viewport", sheet, new Color(0f, 0f, 0f, 0f), 1);
             viewport.anchorMin = new Vector2(0.5f, 0f);
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, 0f);
-            viewport.anchoredPosition = Vector2.zero;
+            viewport.sizeDelta = new Vector2(Width, -8f);
+            viewport.anchoredPosition = new Vector2(0f, -4f);
             viewport.gameObject.AddComponent<RectMask2D>();
 
             content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -211,7 +222,12 @@ namespace Gamesim.Presentation
         private void Header(EpisodeState state)
         {
             Space(Pad);
-            Text("SEASON COMPLETE", 26f, UiTheme.Gold, 34f, TextAlignmentOptions.Center);
+            var title = Text("SEASON COMPLETE", 34f, Color.white, 44f, TextAlignmentOptions.Center);
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 3f;
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(UiTheme.Glow, UiTheme.Glow, UiTheme.Heading, UiTheme.Heading);
             Text(state.week + (state.week == 1 ? " week" : " weeks") + " · "
                 + state.contestants.Count + " houseguests · "
                 + state.contestants.Count(c => c.status == ContestantStatus.Jury) + " on the jury",
@@ -235,6 +251,17 @@ namespace Gamesim.Presentation
             if (winner == null) return;
 
             var card = Panel(216f, UiTheme.SurfaceRaised);
+            // The winner lit in gold: this is where the season is won.
+            var gold = UiTheme.Pack(PackArt.GlowGold);
+            if (gold != null)
+            {
+                var light = new GameObject("Winner glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                light.rectTransform.SetParent(card, false);
+                light.rectTransform.anchorMin = light.rectTransform.anchorMax = new Vector2(.5f, .5f);
+                light.rectTransform.sizeDelta = new Vector2(240f, 240f);
+                light.rectTransform.anchoredPosition = new Vector2(runnerUp != null ? -180f : 0f, 38f);
+                light.sprite = gold; light.color = new Color(1f, 1f, 1f, .55f); light.preserveAspect = true; light.raycastTarget = false;
+            }
             var row = new GameObject("Finalists", typeof(RectTransform)).GetComponent<RectTransform>();
             row.SetParent(card, false);
             row.anchorMin = new Vector2(0.5f, 0.5f);
@@ -665,7 +692,7 @@ namespace Gamesim.Presentation
         /// <summary>A pill control, the same shape the cast screen and the creator use.</summary>
         private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)
         {
-            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.AccentDeep : UiTheme.SurfaceRaised, 16);
+            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 16);
             pill.anchorMin = new Vector2(0.5f, 0.5f);
             pill.anchorMax = new Vector2(0.5f, 0.5f);
             pill.pivot = new Vector2(0.5f, 0.5f);
@@ -676,7 +703,7 @@ namespace Gamesim.Presentation
             var image = pill.GetComponent<Image>();
             image.raycastTarget = true;
 
-            var label = HudPrimitives.Label("Label", pill, 12f, active ? UiTheme.Paper : UiTheme.Muted,
+            var label = HudPrimitives.Label("Label", pill, 12f, active ? Color.white : UiTheme.Muted,
                 TextAlignmentOptions.Center);
             label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
@@ -694,8 +721,8 @@ namespace Gamesim.Presentation
         {
             Space(6f);
             var bar = Panel(56f, new Color(0f, 0f, 0f, 0f));
-            if (onReview != null) Button(bar, "Review the season", -150f, onReview);
-            Button(bar, "Close", 150f, Hide);
+            if (onReview != null) Button(bar, "Review the season", -150f, onReview, true);
+            Button(bar, "Close", onReview != null ? 150f : 0f, Hide, onReview == null);
             Space(Pad);
         }
 
@@ -796,29 +823,44 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- layout
 
+        /// <summary>
+        /// A section's name, small and letterspaced in the heading blue over a soft rule. It was
+        /// gold, and gold is power in this house - the win, the crown - not every heading on the page.
+        /// </summary>
         private void Heading(string text)
         {
-            Space(16f);
-            var label = HudPrimitives.Label("Heading", content, 18f, UiTheme.Gold, TextAlignmentOptions.Left);
+            Space(20f);
+            var label = HudPrimitives.Label("Heading", content, 14f, UiTheme.Heading, TextAlignmentOptions.Left);
             label.text = Localisation.Text(text).ToUpperInvariant();
-            Place(label.rectTransform, Width - Pad * 2f, 26f, -cursor);
-            cursor += 30f;
+            label.characterSpacing = 4f;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) label.font = semibold;
+            Place(label.rectTransform, Width - Pad * 2f, 22f, -cursor);
+            cursor += 24f;
+            var rule = new GameObject("Rule", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            rule.rectTransform.SetParent(content, false);
+            Place(rule.rectTransform, Width - Pad * 2f, 1f, -cursor);
+            rule.color = new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .35f);
+            rule.raycastTarget = false;
+            cursor += 10f;
         }
 
         private RectTransform Panel(float height, Color colour)
         {
-            var panel = HudPrimitives.Fill("Row", content, colour, 8);
+            var panel = HudPrimitives.Fill("Row", content, colour, 10);
             Place(panel, Width - Pad * 2f, height, -cursor);
+            if (colour.a > 0f) UiTheme.AddBorder(panel, 10, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .3f));
             cursor += height + 6f;
             return panel;
         }
 
-        private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
+        private TMP_Text Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Text", content, size, colour, align);
             label.text = Localisation.Text(value);
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
             cursor += height;
+            return label;
         }
 
         private void Space(float amount) => cursor += amount;
@@ -845,18 +887,22 @@ namespace Gamesim.Presentation
             rect.anchoredPosition = new Vector2(x, y);
         }
 
-        private static void Button(Transform parent, string text, float x, Action action)
+        /// <summary>The report's controls: the one the player most likely wants in the action blue.</summary>
+        private static void Button(Transform parent, string text, float x, Action action, bool primary)
         {
-            var panel = HudPrimitives.Fill(text, parent, UiTheme.SurfaceRaised, 8);
+            var panel = HudPrimitives.Fill(text, parent, primary ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 10);
             panel.anchorMin = new Vector2(0.5f, 0.5f);
             panel.anchorMax = new Vector2(0.5f, 0.5f);
             panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(260f, 44f);
+            panel.sizeDelta = new Vector2(260f, 48f);
             panel.anchoredPosition = new Vector2(x, 0f);
             panel.GetComponent<Image>().raycastTarget = true;
-            UiTheme.AddBorder(panel, 8, UiTheme.Outline);
+            UiTheme.AddBorder(panel, 10, primary ? UiTheme.Glow : UiTheme.Outline);
+            if (primary) UiTheme.AddGlow(panel, 10);
 
-            var label = HudPrimitives.Label("Label", panel, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
+            var label = HudPrimitives.Label("Label", panel, 17f, primary ? Color.white : UiTheme.Paper, TextAlignmentOptions.Center);
+            var weight = UiTheme.Font(primary ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
+            if (weight != null) label.font = weight;
             label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;

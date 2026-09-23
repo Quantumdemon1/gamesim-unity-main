@@ -279,6 +279,10 @@ namespace Gamesim.Tests.PlayMode
             var confirmAt = ScreenRect((RectTransform)ButtonWithCaption(EpisodeHud.DiaryConfirmCaption).transform);
             Assert.That(confirmAt.yMin, Is.GreaterThanOrEqualTo(viewport.yMin - 1f),
                 "Confirm stands under the ballot, not past the fold of the panel.");
+            var cards = ScreenRect(director.GetComponentsInChildren<RectTransform>()
+                .First(rect => rect.name == EpisodeHud.BallotRowName && rect.gameObject.activeInHierarchy));
+            Assert.That(cards.yMin - confirmAt.yMax, Is.LessThan(confirmAt.height),
+                "Confirm follows the cards directly; the explanation comes after it.");
             AssertEquivalent(before,director.Snapshot);
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;

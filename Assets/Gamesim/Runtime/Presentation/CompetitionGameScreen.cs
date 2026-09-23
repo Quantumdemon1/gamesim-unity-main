@@ -393,12 +393,14 @@ namespace Gamesim.Presentation
 
         private Button Button(string name,Transform parent,string caption,float x,float y,float w,float h,Action action)
         {
-            var rect=HudPrimitives.Fill(name,parent,UiTheme.AccentDeep,8);Place(rect,x,y,w,h);
+            // The mockups' action blue with white words: Paper on AccentDeep is 3.89:1, under the
+            // 4.5 a label this size needs.
+            var rect=HudPrimitives.Fill(name,parent,UiTheme.ActionBlue,8);Place(rect,x,y,w,h);
             rect.GetComponent<Image>().raycastTarget=true;
             var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=rect.GetComponent<Image>();
             button.onClick.AddListener(() => action?.Invoke());
-            var label=Label("Label",rect,caption,20,10,4,w-20,h-8,UiTheme.Paper);label.alignment=TextAlignmentOptions.Center;
-            var medium=UiTheme.Font(UiTheme.Weight.Medium);if(medium!=null)label.font=medium;
+            var label=Label("Label",rect,caption,20,10,4,w-20,h-8,Color.white);label.alignment=TextAlignmentOptions.Center;
+            var medium=UiTheme.Font(UiTheme.Weight.SemiBold);if(medium!=null)label.font=medium;
             Fit(label,11);
             return button;
         }
@@ -423,6 +425,8 @@ namespace Gamesim.Presentation
         {
             if (button == null) return;
             UiTheme.PackSliced(button.GetComponent<Image>(), PackArt.ButtonSecondary, 10f);
+            var label = button.GetComponentInChildren<TMP_Text>();
+            if (label != null) { label.color = UiTheme.Paper; var medium = UiTheme.Font(UiTheme.Weight.Medium); if (medium != null) label.font = medium; }
         }
 
         private static void Fit(TMP_Text label, float floor)

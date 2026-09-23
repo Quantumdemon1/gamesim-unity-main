@@ -61,6 +61,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(screen.Lines.Any(line => line.StartsWith("Evicted: ")), Is.True);
             if (expected.evicted != null)
                 Assert.That(screen.Lines, Does.Contain("Evicted: " + expected.evicted));
+            if (Application.isBatchMode) yield return CaptureFraming("weekly-recap");
 
             var dismiss = ButtonWithCaption(WeeklyRecapScreen.ContinueCaption);
             Assert.That(dismiss.IsInteractable(), Is.True);

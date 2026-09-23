@@ -8,7 +8,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeHud
     {
         /// <summary>Activities own their layout; they share controls, focus and save semantics.</summary>
-        public enum ActivityLayout { Standard, Relationships, Conversation, Competition, Creation, Diary, Nominations, HouseEvent, Ballot }
+        public enum ActivityLayout { Standard, Relationships, Conversation, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings }
 
         private ActivityLayout activityLayout;
         private RectTransform relationshipRoot;
@@ -79,6 +79,7 @@ namespace Gamesim.Episode
             if (layout == ActivityLayout.Nominations || layout == ActivityLayout.HouseEvent) { NominationsLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Diary) { DiaryLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Ballot) { BallotLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Settings) { SettingsLayout(canvasWidth, canvasHeight); return; }
             float left = LeftColumnX;
             float right = 24f;
             float availableWidth = canvasWidth - left - right;
@@ -261,6 +262,34 @@ namespace Gamesim.Episode
             if (modalScroll != null)
             {
                 Stretch((RectTransform)modalScroll.transform, 16f, 60f, 16f, 14f);
+                modalScroll.verticalNormalizedPosition = 1f;
+            }
+        }
+
+        /// <summary>
+        /// The settings (a menu, not a beat of the week): a tall panel down the middle of the free
+        /// area between the rail and the right column. In the docked panel's 300 units it showed
+        /// four of its twenty rows, and the rest were a scroll nobody knew was there.
+        /// </summary>
+        private void SettingsLayout(float canvasWidth, float canvasHeight)
+        {
+            float right = RightColumnInset + RightColumnWidth + 16f;
+            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - right);
+            float width = Mathf.Min(860f * FontScale, free);
+            float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom);
+            modal.anchorMin = modal.anchorMax = new Vector2(0f, 0f);
+            modal.pivot = new Vector2(.5f, 0f);
+            modal.anchoredPosition = new Vector2(LeftColumnX + free * .5f, ModalLift);
+            modal.sizeDelta = new Vector2(width, height);
+            CompactClose();
+            SetChromeVisible("Exploration controls", false);
+            SetChromeVisible(FollowChipName, false);
+            SetChromeVisible("Interaction prompt", false);
+            var hint = modal.Find("Panel control hint");
+            if (hint != null) hint.gameObject.SetActive(false);
+            if (modalScroll != null)
+            {
+                Stretch((RectTransform)modalScroll.transform, 16f, 76f, 16f, 14f);
                 modalScroll.verticalNormalizedPosition = 1f;
             }
         }

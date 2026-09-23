@@ -124,7 +124,11 @@ namespace Gamesim.Presentation
             var fieldCard = Card("Competition field card", panel, new Vector2(-24f, -84f), new Vector2(248, 356), true);
             var fieldHeading = Label("Field heading", fieldCard, "COMPETITORS", 12, 16, 14, 216, 20, UiTheme.Accent);
             fieldHeading.characterSpacing = 6f;
-            Fit(Label("Competition field", fieldCard, field, 14, 16, 40, 216, 250, UiTheme.Paper), 10);
+            // Listed from the top of the card, under its heading, not centred in the box's middle.
+            var entrants = Label("Competition field", fieldCard, field, 14, 16, 40, 216, 250, UiTheme.Paper);
+            entrants.alignment = TextAlignmentOptions.TopLeft;
+            entrants.lineSpacing = 12f;
+            Fit(entrants, 10);
             arenaStatus = Label("Arena status", fieldCard, "", 12, 16, 296, 216, 50, UiTheme.Muted);
             Fit(arenaStatus, 9);
 

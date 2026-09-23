@@ -231,6 +231,11 @@ namespace Gamesim.Presentation
             Skipper();
 
             var title = Title("GAMESIM", 84f, UiTheme.Heading, 120f);
+            // The wordmark as the menu and the HUD draw it: bold, lit from above.
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(UiTheme.Hex("6CC0FF"), UiTheme.Hex("6CC0FF"), UiTheme.Hex("3A86FF"), UiTheme.Hex("3A86FF"));
+            title.color = Color.white;
+            title.characterSpacing = 6f;
             var subtitle = Title("A NEW SEASON BEGINS", 26f, UiTheme.Paper, 40f);
             var panels = Panels();
 
@@ -261,7 +266,8 @@ namespace Gamesim.Presentation
             Clear();
             Scrim(new Color(0.01f, 0.02f, 0.03f, 0.96f));
             Skipper();
-            Title("THE HOUSEGUESTS ARRIVE", 48f, UiTheme.Gold, 70f);
+            // The heading blue, not gold: gold is power in this house, and nobody has any yet.
+            Title("THE HOUSEGUESTS ARRIVE", 48f, UiTheme.Heading, 70f);
             Title(string.IsNullOrEmpty(settings.ArrivalLine)
                     ? "Doors open, bags come down, and nobody knows anybody yet."
                     : settings.ArrivalLine,
@@ -328,7 +334,7 @@ namespace Gamesim.Presentation
             Clear();
             Scrim(new Color(0.01f, 0.02f, 0.03f, 0.96f));
             Skipper();
-            Title("MEET THE HOUSE", 48f, UiTheme.Gold, 70f);
+            Title("MEET THE HOUSE", 48f, UiTheme.Heading, 70f);
             Title("First impressions, before anybody has done anything worth remembering.",
                 19f, UiTheme.Muted, 44f);
             Panels();
@@ -355,6 +361,19 @@ namespace Gamesim.Presentation
             scrim.offsetMin = Vector2.zero;
             scrim.offsetMax = Vector2.zero;
             scrim.GetComponent<Image>().raycastTarget = false;
+            // An opaque beat is a title card: the pack's night ground under a vignette, the same
+            // ground the menu and the cast screen stand on, rather than one flat colour.
+            if (colour.a >= 0.9f)
+            {
+                var night = UiTheme.Pack(PackArt.BackgroundNavy);
+                if (night != null)
+                {
+                    var ground = scrim.GetComponent<Image>();
+                    ground.sprite = night; ground.type = Image.Type.Simple;
+                    ground.color = new Color(1f, 1f, 1f, colour.a);
+                }
+                HudPrimitives.Vignette(scrim);
+            }
 
             // Titles stack downward from here, reset for every beat so the second card does not
             // start where the first one finished.
@@ -398,6 +417,13 @@ namespace Gamesim.Presentation
         {
             var label = HudPrimitives.Label("Title", stage, size, colour, TextAlignmentOptions.Center);
             label.text = Localisation.Text(value);
+            // A title in the bold cut, a line under one in the regular.
+            if (size >= 40f)
+            {
+                var bold = UiTheme.Font(UiTheme.Weight.Bold);
+                if (bold != null) label.font = bold;
+                label.characterSpacing = 2f;
+            }
             var rect = label.rectTransform;
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);

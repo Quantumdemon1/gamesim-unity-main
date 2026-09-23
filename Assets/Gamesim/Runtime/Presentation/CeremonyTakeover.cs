@@ -184,7 +184,7 @@ namespace Gamesim.Presentation
             markOuter.GetComponent<Image>().preserveAspect = glyph != null;
             markInner.gameObject.SetActive(glyph == null);
             markInner.GetComponent<Image>().color = tint;
-            title.color = UiTheme.Paper;
+            title.color = Color.white;
 
             Faces(subjects, tint);
 
@@ -292,8 +292,15 @@ namespace Gamesim.Presentation
             markOuter = Disc("Takeover mark", column, UiTheme.Danger);
             markInner = Disc("Takeover mark core", markOuter, UiTheme.Danger);
 
-            title = NewText("Takeover title", column, 62f, UiTheme.Paper);
+            // The beat's name in the bold cut, lit from above as every title in the mockups is; the
+            // regular weight at this size read as a caption blown up rather than as a title card.
+            title = NewText("Takeover title", column, 56f, UiTheme.Paper);
             title.alignment = TextAlignmentOptions.Center;
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 1f;
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(Color.white, Color.white, UiTheme.Glow, UiTheme.Glow);
 
             flavour = NewText("Takeover flavour", column, 20f, UiTheme.Muted);
             flavour.alignment = TextAlignmentOptions.Center;
@@ -323,7 +330,7 @@ namespace Gamesim.Presentation
             const float width = 820f;
 
             eyebrow.fontSize = 15f * scale;
-            title.fontSize = 62f * scale;
+            title.fontSize = 56f * scale;
             flavour.fontSize = 20f * scale;
 
             float mark = 54f * scale;

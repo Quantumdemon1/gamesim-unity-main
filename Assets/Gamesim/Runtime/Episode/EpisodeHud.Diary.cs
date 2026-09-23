@@ -23,7 +23,18 @@ namespace Gamesim.Episode
         /// phase band stands on every other panel, because the diary is a room rather than a beat
         /// of the week. A ballot passes no title: it brings its own, the eviction vote's.
         /// </summary>
-        public void DiaryHeader(string title)
+        public void DiaryHeader(string title) =>
+            ScreenHeader(DiaryHeaderName, DiaryEyebrowCopy, title, UiTheme.Pack(PackArt.IconChat));
+
+        /// <summary>The settings screen's head, so a test can find it the way it finds a named panel.</summary>
+        public const string SettingsHeaderName = "Settings header";
+
+        /// <summary>
+        /// A screen's head in place of the week's phase band: a letterspaced eyebrow, the screen's
+        /// title behind its glyph, a soft rule, and Close at the other end - for the screens that
+        /// are places or menus rather than beats of the week (the diary, the settings).
+        /// </summary>
+        public void ScreenHeader(string name, string eyebrowCopy, string title, Sprite mark)
         {
             if (modal == null) return;
             foreach (Transform child in modal)
@@ -31,20 +42,19 @@ namespace Gamesim.Episode
             float s = FontScale, width = modal.sizeDelta.x;
             float closeWidth = CompactClose();
 
-            var header = new GameObject(DiaryHeaderName, typeof(RectTransform)).GetComponent<RectTransform>();
+            var header = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
             header.SetParent(modal, false);
             header.SetSiblingIndex(0);
             float height = (string.IsNullOrEmpty(title) ? 46f : 72f) * s;
             Anchor(header, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(width - closeWidth - 20f, height));
 
-            var eyebrow = FixedText(header, DiaryEyebrowCopy, 12, UiTheme.Strategic, new Vector2(18f, -16f * s), new Vector2(width - closeWidth - 44f, 18f * s));
+            var eyebrow = FixedText(header, eyebrowCopy, 12, name == DiaryHeaderName ? UiTheme.Strategic : UiTheme.Muted, new Vector2(18f, -16f * s), new Vector2(width - closeWidth - 44f, 18f * s));
             eyebrow.characterSpacing = 6f;
             var medium = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (medium != null) eyebrow.font = medium;
             if (!string.IsNullOrEmpty(title))
             {
                 float x = 18f;
-                var mark = UiTheme.Pack(PackArt.IconChat);
                 if (mark != null)
                 {
                     var glyph = new GameObject("Diary mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
@@ -103,7 +113,10 @@ namespace Gamesim.Episode
         /// mockups label a card's contents. The diary's sections were shouted in the docked panel's
         /// 26-point heading, five of them, in a column 380 wide.
         /// </summary>
-        public void DiarySection(string value)
+        public void DiarySection(string value) => Section(value);
+
+        /// <summary>A section's name in a screen's column; see <see cref="DiarySection"/>.</summary>
+        public void Section(string value)
         {
             var text = FlowText(value, 13, UiTheme.Heading);
             text.characterSpacing = 4f;

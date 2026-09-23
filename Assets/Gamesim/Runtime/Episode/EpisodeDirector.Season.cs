@@ -47,22 +47,30 @@ namespace Gamesim.Episode
 
         private void Settings(EpisodeState state)
         {
-            hud.PanelTitle(blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", "Offline play is available. No credentials or online connection are required.");
+            // A menu, not a beat of the week: its own tall panel and its own head (mockup
+            // language: the glyph, the title, the eyebrow), with its rows under section labels.
+            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Settings);
+            hud.ScreenHeader(EpisodeHud.SettingsHeaderName, "OFFLINE \u00b7 NO ACCOUNT NEEDED",
+                blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", UiTheme.Icon("settings"));
+            hud.Aside("Offline play is available. No credentials or online connection are required.");
+            hud.Section("YOUR SAVE");
             // The slot's name, not its path: this panel used to print the full file path,
             // which on Windows contains the player's user name, and which they can do
             // nothing with. The name is the part that tells one slot from another.
             hud.Paragraph("Slot: " + Path.GetFileNameWithoutExtension(saves.SavePath));
-            hud.Paragraph(message);
+            hud.Aside(message);
             hud.Action("Save now  [F5]", SaveNow);
             hud.Action("Reload current slot", LoadNow);
             hud.Action("Recover validated backup (preserve current file)", RecoverBackup);
             hud.Action("New season in a NEW slot (preserves this season)", NewSeason);
             hud.Action("Main menu", OpenMainMenu);
+            hud.Section("SOUND");
             hud.Meter("Master volume", volumePercent, 100, muted ? UiTheme.Muted : UiTheme.Accent);
             hud.Action("Volume down", () => { volumePercent = Mathf.Max(0, volumePercent - 10); ApplyPreferences(); Render(); });
             hud.Action("Volume up", () => { volumePercent = Mathf.Min(100, volumePercent + 10); ApplyPreferences(); Render(); });
             hud.Action(muted ? "Turn sound on" : "Mute sound", () => { muted = !muted; ApplyPreferences(); Render(); });
             hud.Action(musicOn ? "Turn music off" : "Turn music on", () => { musicOn = !musicOn; ApplyPreferences(); Render(); });
+            hud.Section("ACCESSIBILITY");
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
             hud.Action(largeText ? "Use standard text" : "Use larger text", () => SetLargeText(!largeText));

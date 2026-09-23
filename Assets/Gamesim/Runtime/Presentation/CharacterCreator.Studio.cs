@@ -310,15 +310,31 @@ namespace Gamesim.Presentation
             var row = StudioRow(66f);
             var caption = HudPrimitives.Label(control.Label, row, 15f, UiTheme.Paper, TextAlignmentOptions.TopLeft);
             Stretch(caption.rectTransform); caption.text = control.Label + "  " + value.ToString("0.00");
-            var track = HudPrimitives.Fill(control.Label + " slider", row, UiTheme.SurfaceRaised, 6);
+            // The track is the row's hit area; what shows is a thin line, the accent up to the
+            // value and a round handle, as the mockups draw a meter. The track used to be the
+            // raised surface colour, which on the studio's ground drew a handle on nothing.
+            var track = HudPrimitives.Fill(control.Label + " slider", row, new Color(0f, 0f, 0f, 0f), 6);
             track.anchorMin = new Vector2(0f, 0f); track.anchorMax = new Vector2(1f, 0f);
-            track.pivot = new Vector2(.5f, 0f); track.sizeDelta = new Vector2(-16f, 24f);
-            var handle = HudPrimitives.Fill("Handle", track, UiTheme.Accent, 8);
-            handle.sizeDelta = new Vector2(22f, 26f);
+            track.pivot = new Vector2(.5f, 0f); track.sizeDelta = new Vector2(-28f, 24f);
+            var line = HudPrimitives.Fill("Line", track, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .9f), 3);
+            line.anchorMin = new Vector2(0f, .5f); line.anchorMax = new Vector2(1f, .5f);
+            line.pivot = new Vector2(.5f, .5f); line.sizeDelta = new Vector2(0f, 6f); line.anchoredPosition = Vector2.zero;
+            var fill = HudPrimitives.Fill("Fill", track, UiTheme.Accent, 3);
+            fill.anchorMin = new Vector2(0f, .5f); fill.anchorMax = new Vector2(.5f, .5f);
+            fill.pivot = new Vector2(0f, .5f); fill.sizeDelta = new Vector2(0f, 6f); fill.anchoredPosition = Vector2.zero;
+            var handle = HudPrimitives.Disc("Handle", track, UiTheme.Paper);
+            handle.anchorMin = handle.anchorMax = new Vector2(.5f, .5f);
+            handle.pivot = new Vector2(.5f, .5f); handle.sizeDelta = new Vector2(22f, 22f); handle.anchoredPosition = Vector2.zero;
+            var ring = HudPrimitives.Disc("Handle ring", handle, UiTheme.Accent);
+            ring.anchorMin = Vector2.zero; ring.anchorMax = Vector2.one; ring.offsetMin = new Vector2(-3f, -3f); ring.offsetMax = new Vector2(3f, 3f);
+            ring.SetAsFirstSibling();
+            ring.GetComponent<Image>().raycastTarget = false;
             track.GetComponent<Image>().raycastTarget = true;
             handle.GetComponent<Image>().raycastTarget = true;
+            line.GetComponent<Image>().raycastTarget = false;
+            fill.GetComponent<Image>().raycastTarget = false;
             var slider = track.gameObject.AddComponent<Slider>();
-            slider.targetGraphic = handle.GetComponent<Image>(); slider.handleRect = handle;
+            slider.targetGraphic = handle.GetComponent<Image>(); slider.handleRect = handle; slider.fillRect = fill;
             slider.direction = Slider.Direction.LeftToRight;
             slider.minValue = control.Minimum; slider.maxValue = control.Maximum; slider.value = value;
             slider.onValueChanged.AddListener(next =>

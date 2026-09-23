@@ -937,6 +937,8 @@ namespace Gamesim.Presentation
 
             var number = HudPrimitives.Label("Value", holder, 26f, tint, TextAlignmentOptions.Center);
             number.text = value;
+            // A placement is words, not a figure: "6th - Jury member" ran out of its cell at 26.
+            number.enableAutoSizing = true; number.fontSizeMax = 26f; number.fontSizeMin = 14f;
             number.rectTransform.sizeDelta = new Vector2(step - 10f, 34f);
             number.rectTransform.anchoredPosition = new Vector2(0f, 8f);
 

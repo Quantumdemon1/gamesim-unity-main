@@ -8,6 +8,71 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 0. The UI pass against the mockups (22 September, evening)
+
+The goal: *make the menus and the layout of the UI look like `ArtSource/reference/mockups/`*,
+using the imported packs (`Resources/Packs`, named in `PackArt.cs`, loaded through `UiTheme.Pack`
+and `UiTheme.PackSliced`). Commits, oldest first: `891c500` diary branding, `43c2159` HUD /
+conversation / ceremonies / decisions, `2c176c3` diary, ring, notebook and web tuning, `473093a`
+the diary as a room of options, the ballot, the cast as photographs, `94b3cca` the front door,
+the web's faces, room names, stale results, `fa79d3b` recap and report on glass, the sting's
+headline, the competition cards.
+
+| Mockup | Screen | Where it stands |
+|---|---|---|
+| 01 | HUD | Top bar of chips, icon rail, right column (live feed, recent events, this week), cast strip with quote. |
+| 02 | Cast select | Photo cards, action-blue pills, house-size stepper, pack night ground. No featured rail or top-right stats. |
+| 03 | Overview | Room chips with glyphs over each room (`RoomLabels`), "Who is where" column. |
+| 04 | House event | `HouseEventHeader` + `EventChoices` tiles in the decision band. |
+| 05 | Competition | Challenge / timer / competitors cards over the yard; assembly card. No entrant strip with per-stage pips. |
+| 06 | Night | **Not done.** The "Nearby: you can eavesdrop" card is a new entry point to `Eavesdrop`, not layout. |
+| 07 | Relationship web | Geometry sized from the notebook's page; legend card lower left; pack node art. |
+| 08 | Eviction vote | `ActivityLayout.Ballot`: centred panel over the diary chair, Confirm straight under the cards. |
+| 09 | HoH nominees | `ActivityLayout.Nominations` band of candidate cards. |
+| 10 | Nomination ceremony | `KeyCeremony` card with key slots. |
+| 11 | Diary room | `ActivityLayout.Diary`: a right-hand column of option cards; `ScreenHeader` in place of the phase band. |
+| 12 | Conversation | Column + dial, two-shot framing. |
+
+Also restyled with no mockup of their own, in the same language: main menu, settings (its own tall
+panel and head), weekly recap, season report, tutorial card, opening titles, ceremony takeover
+titles, competition result card.
+
+**How it was verified.** Every screen above has a capture taken in batchmode (`CaptureFraming`,
+16:9) by the test that opens it: `cast-select`, `diary-options`, `ballot-diary`/`-review`,
+`nominations-band`, `house-event`, `conversation-panel`, `overview`, `main-menu`, `settings`,
+`creator`, `weekly-recap`, `season-report`, `competition-assembly`/`-practice`, and the walkthrough
+frames. (The opening sequence cannot be photographed: in batchmode it skips every hold.) They land in `D:\GamesimAcceptance\*.png` after a run. Look at them;
+the tests assert structure, not appearance.
+
+**Traps this pass fell into:**
+
+- **Inter's line is taller than the boxes that were sized for the old font.** The HUD labels
+  truncate, and TextMesh Pro truncates a line *whole* when its box is shorter than the line, so the
+  sting's headline and the eviction tally's figures drew nothing while their `text` said the right
+  thing. `Labels_EveryScreenAndCardDrawsItsCopy` now counts visible glyphs across the house, the
+  menu, the notebook, the diary and a season's cards. Size a label's box at ≥1.3× its font size.
+- **Automation commits past cards a player could not.** The competition result holds the input
+  until Continue; `Submit` does not, and the walkthrough stacked the HoH result under three later
+  beats. A beat now takes down the cards before it (`EndCeremonyCards(includingResult)`).
+- **A reveal that records where its element rests must record it after the layout.** `HudReveal`
+  read the panel's position the moment the panel was built; the activity layouts move the panel
+  after that, so every activity panel opened from closed rose back to the docked panel's offset in
+  its new anchors (the settings column at the canvas's left edge, the conversation over the rail)
+  until the next re-render. Captures never showed it: `CaptureFraming` re-renders first. It now
+  reads its rest position on its first frame.
+- **A test that checks "visible" may not check "where".** The ballot's Confirm stayed on screen
+  in a tall panel even when a mutation moved it under the explanation; the test now measures the gap
+  to the cards.
+- **Commit exactly what was tested.** Work continued on C: while D: ran; the commits were staged from
+  the D: copy's content (`git hash-object -w --path` + `update-index --cacheinfo`) so each commit is
+  the snapshot its green run tested, not the working tree.
+
+**What remains:** the night eavesdrop card (06); the competition's entrant strip (05); the web's
+right-hand card as a portrait card (07); NPC name plates over heads; the mockups' speech bar
+(06–08, 11); a creator preview that renders in batchmode.
+
+---
+
 ## 1. What shipped
 
 Twelve commits, newest last. The last five are the six-track programme's first moves (§2).
@@ -372,7 +437,7 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
 - **Never commit** `ProjectSettings/ProjectSettings.asset` while it carries `GAMESIM_UMA`.
 - The four **Inter SDF font atlases** churn ~700k lines; they have been left unstaged all session.
 - `Assets/_Recovery/` is a crash artefact still sitting untracked in the tree.
-- `Tools/baseline.txt` floors: EditMode **1421**, PlayMode **309**, SimulationTests **740**. Raise a floor in the same commit
+- `Tools/baseline.txt` floors: EditMode **1429**, PlayMode **322**, SimulationTests **740**. Raise a floor in the same commit
   that adds tests; never lower one to make a red run green.
 - A spawned task fixed the `DestinationChosen` raise **in this same working tree**, not a separate
   worktree. If you spin off tasks, expect concurrent edits to the files you are holding.

@@ -208,6 +208,13 @@ namespace Gamesim.Presentation
             }
             var scrim = HudPrimitives.Fill("Scrim", transform, new Color(.02f, .04f, .06f, .98f), 1);
             Stretch(scrim);
+            // The cast screen's ground: the pack's night navy, the studio it opens from.
+            var night = UiTheme.Pack(PackArt.BackgroundNavy);
+            if (night != null)
+            {
+                var ground = scrim.GetComponent<Image>();
+                ground.sprite = night; ground.type = Image.Type.Simple; ground.color = Color.white;
+            }
             BuildNavigation(scrim);
             if (studioPage == "Appearance") BuildAppearanceStudio(scrim);
             else

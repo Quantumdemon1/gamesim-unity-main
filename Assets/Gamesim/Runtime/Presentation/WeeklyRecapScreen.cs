@@ -200,6 +200,16 @@ namespace Gamesim.Presentation
 
             Controls();
             content.sizeDelta = new Vector2(0f, cursor + Pad);
+
+            // The card as tall as the week it holds, up to the screen: a short week drew its
+            // Continue half-way down a card whose lower half was empty glass.
+            float room = ((RectTransform)transform).rect.height;
+            if (room > 0f)
+            {
+                float height = Mathf.Min(room - 96f, cursor + Pad + 8f);
+                card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
+                card.sizeDelta = new Vector2(Width + 40f, height);
+            }
         }
 
         /// <summary>
@@ -331,7 +341,8 @@ namespace Gamesim.Presentation
             }
             else
             {
-                Button(bar, ContinueCaption, -150f, Dismiss, true);
+                // Centred when it is the only control; beside Review when there is an earlier week.
+                Button(bar, ContinueCaption, openWeek > 1 ? -150f : 0f, Dismiss, true);
                 // Only offered where there is an earlier week to look at.
                 if (openWeek > 1) Button(bar, ReviewCaption, 150f, () => Review(shown, openWeek - 1), false);
             }

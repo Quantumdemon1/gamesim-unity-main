@@ -275,7 +275,9 @@ namespace Gamesim.Presentation
 
                 var count = HudPrimitives.Label("Votes", column, 58f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
                 count.text = "0";
-                Place(count.rectTransform, slot, 66f * scale, -(100f + portrait + 40f) * scale, x);
+                // Taller than the figure's line: Inter's line is 1.21 of its size, and a 58-point
+                // figure in a 66 box was truncated whole - the tally counted to nothing on screen.
+                Place(count.rectTransform, slot, 72f * scale, -(100f + portrait + 36f) * scale, x);
                 counts.Add(count);
 
                 var caption = HudPrimitives.Label("Votes caption", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);

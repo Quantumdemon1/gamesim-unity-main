@@ -315,30 +315,32 @@ namespace Gamesim.Episode
             if (!room) return;
 
             hud.Heading("THE WHOLE HOUSE");
-            hud.Paragraph("A meeting moves everybody at once. Rallying the room is mostly positive "
-                + "with one sceptic; airing everything has no middle ground — each housemate either "
-                + "comes down with you or against you.");
-            hud.Tag(hud.Action(EpisodeHud.RallyHouseCaption,
+            hud.Paragraph("House meetings affect everyone at once. Rallying is broadly positive; airing everything is volatile.");
+            var meetingGrid = hud.ActionGrid(2);
+            hud.Tag(hud.GridAction(meetingGrid,EpisodeHud.RallyHouseCaption,
                     () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops)),
                 Category(EpisodeCommandKind.HouseMeeting));
-            hud.Tag(hud.Action(EpisodeHud.AirLaundryCaption,
+            hud.Tag(hud.GridAction(meetingGrid,EpisodeHud.AirLaundryCaption,
                     () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry)),
                 Category(EpisodeCommandKind.HouseMeeting));
 
             int left = WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints;
             if (left <= 0)
             {
-                hud.Paragraph("You have bought as much time as the house will give you this season.");
+                hud.Paragraph("Extra-action purchases are exhausted for this season.");
                 return;
             }
-            hud.Paragraph("Out of interactions? You can buy another, and it is paid for in goodwill: "
-                + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " points with one housemate, or "
-                + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost) + " with every one of them. "
-                + left + (left == 1 ? " purchase" : " purchases") + " left.");
-            hud.Tag(hud.Action(EpisodeHud.BuyBurnOneCaption,
+
+            hud.Heading("BUY MORE TIME");
+            hud.Paragraph(left + (left == 1 ? " purchase remains. " : " purchases remain. ")
+                + "Pay in goodwill: " + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost)
+                + " with one houseguest, or " + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost)
+                + " with everyone.");
+            var purchaseGrid = hud.ActionGrid(2);
+            hud.Tag(hud.GridAction(purchaseGrid,EpisodeHud.BuyBurnOneCaption,
                     () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.BurnOne)),
                 Category(EpisodeCommandKind.BuyActionPoint));
-            hud.Tag(hud.Action(EpisodeHud.BuySpreadCaption,
+            hud.Tag(hud.GridAction(purchaseGrid,EpisodeHud.BuySpreadCaption,
                     () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.SpreadAll)),
                 Category(EpisodeCommandKind.BuyActionPoint));
         }

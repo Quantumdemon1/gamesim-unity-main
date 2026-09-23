@@ -2,6 +2,7 @@ using System.Collections;
 using System.Linq;
 using Gamesim.House;
 using Gamesim.Presentation;
+using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -52,6 +53,38 @@ namespace Gamesim.Tests.PlayMode
 
             if (Application.isBatchMode) yield return CaptureFraming("followed");
             director.FollowHouseguest(chosen.Id);
+            yield return null;
+        }
+
+        /// <summary>
+        /// Mockup-12 keeps the name of the one you are talking to over their head. The two-shot
+        /// frames the pair's faces in the upper third, and a plate at its dollhouse height went up
+        /// with them into the top bar's band, behind the chips; close up it comes down to the head.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NamePlates_TheOneYouAreTalkingToWearsTheirNameUnderTheTopBar()
+        {
+            var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
+            yield return OpenNearbyNpc(maya);
+            yield return Settle(() => !cameraRig.IsTravelling && cameraRig.HasArrived(0.05f), 4f);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            var corners = new Vector3[4];
+            Plate(maya).GetWorldCorners(corners);
+            var eye = cameraRig.ViewCamera;
+            float top = corners.Max(corner => eye.WorldToScreenPoint(corner).y);
+            float bottom = corners.Min(corner => eye.WorldToScreenPoint(corner).y);
+            var bar = ActiveRect("House pill");
+            Assume.That(bar, Is.Not.Null);
+            Assert.That(bottom, Is.GreaterThan(0f), "The plate is in the frame.");
+            var seat = maya.GetComponent<HouseSeatPresentation>();
+            Assert.That(top, Is.LessThan(ScreenRect(bar).yMin),
+                "Maya's plate stands under the top bar, over her head: its top at " + top + ", the bar's foot at " + ScreenRect(bar).yMin
+                + " on a " + Screen.width + "x" + Screen.height + " screen; plate centre y " + Plate(maya).position.y.ToString("0.00")
+                + ", feet y " + maya.transform.position.y.ToString("0.00") + ", seated " + (seat != null && seat.Active)
+                + ", eye " + eye.transform.position.ToString("0.00") + " pitch " + cameraRig.Pitch.ToString("0.0")
+                + " distance " + cameraRig.Distance.ToString("0.00") + ".");
+            director.ClosePanels();
             yield return null;
         }
 

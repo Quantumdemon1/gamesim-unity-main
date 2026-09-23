@@ -155,7 +155,15 @@ namespace Gamesim.House
                 // metres, where the same tag would fill the top of the frame. Inside the near
                 // distance it shrinks with the range instead, down to a floor that still reads.
                 if (!nameTagScaleKnown) { nameTagScale = nameLabel.transform.localScale; nameTagScaleKnown = true; }
-                nameLabel.transform.localScale = nameTagScale * Mathf.Clamp(away / NameTagNear, NameTagNearestScale, 1f);
+                float near = Mathf.Clamp(away / NameTagNear, NameTagNearestScale, 1f);
+                nameLabel.transform.localScale = nameTagScale * near;
+                // And it comes down toward the head as it shrinks. At the authored height it floats
+                // clear of the heads around it from the dollhouse's distance; in a two-shot the same
+                // height put it in the top bar's band, and mockup-12 keeps the name over the head.
+                // All the way down by a conversation's distance, and no further closer in, where it
+                // would sink into the head it names.
+                if ((seat == null || !seat.Active) && labelPositionKnown)
+                    nameLabel.transform.localPosition = labelRestPosition - Vector3.up * Mathf.InverseLerp(1f, .5f, near) * NameTagCloseDrop;
                 var colour = nameLabel.color;
                 if (!Mathf.Approximately(colour.a, NameTagAlpha)) { colour.a = NameTagAlpha; nameLabel.color = colour; }
                 if (plateGroup != null) plateGroup.alpha = spotlit ? 1f : NameTagAlpha;
@@ -166,6 +174,8 @@ namespace Gamesim.House
         public const float NameTagNear = 9f, NameTagFar = 14f;
         /// <summary>How small a tag gets, as a share of its authored size, when a shot is right on top of it.</summary>
         public const float NameTagNearestScale = 0.3f;
+        /// <summary>How far a tag comes down toward the head, in metres, by half the near distance.</summary>
+        public const float NameTagCloseDrop = 0.45f;
         private Vector3 nameTagScale;
         private bool nameTagScaleKnown;
         /// <summary>How much of the name tag the camera's distance leaves visible, 0 to 1.</summary>

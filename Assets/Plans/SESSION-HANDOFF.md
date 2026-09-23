@@ -80,6 +80,11 @@ the tests assert structure, not appearance.
 - **A Slider owns its fill's and handle's anchors.** It sets them to the full height of their
   parent every time it draws, so a 6-unit fill parented to the track stood as tall as the track.
   Give each its own area of the height it should have (`CharacterCreator.SliderArea`).
+- **A name at dollhouse height is in the top bar in a two-shot.** Raising the pair's faces into
+  the upper third took their 2.4 m plates into the chips' band. A plate comes down toward the head
+  as the camera closes in (`HouseNpc.NameTagCloseDrop`, all of it by a conversation's distance);
+  `NamePlates_TheOneYouAreTalkingToWearsTheirNameUnderTheTopBar` measures it. It passed and failed
+  by turns at half that drop, depending on where the partner stood - measure a margin, not a pass.
 - **A per-frame follow that re-derives a shot's pivot must derive all of it.** The two-shot's
   sideways shift held for the shot's first frame only: `LateUpdate` rebuilt the focus from the
   lift alone. Both now go through `HouseCameraRig.TwoShotPivot`.
@@ -463,7 +468,7 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
 - **Never commit** `ProjectSettings/ProjectSettings.asset` while it carries `GAMESIM_UMA`.
 - The four **Inter SDF font atlases** churn ~700k lines; they have been left unstaged all session.
 - `Assets/_Recovery/` is a crash artefact still sitting untracked in the tree.
-- `Tools/baseline.txt` floors: EditMode **1429**, PlayMode **324**, SimulationTests **740**. Raise a floor in the same commit
+- `Tools/baseline.txt` floors: EditMode **1430**, PlayMode **326**, SimulationTests **740**. Raise a floor in the same commit
   that adds tests; never lower one to make a red run green.
 - A spawned task fixed the `DestinationChosen` raise **in this same working tree**, not a separate
   worktree. If you spin off tasks, expect concurrent edits to the files you are holding.

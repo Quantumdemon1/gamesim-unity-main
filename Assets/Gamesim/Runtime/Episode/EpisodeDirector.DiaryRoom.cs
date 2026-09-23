@@ -375,12 +375,16 @@ namespace Gamesim.Episode
                 {
                     hud.Paragraph("You can also settle on who this week is really aimed at. A backdoor plan "
                         + "costs nothing, tells nobody, and is yours to change until you nominate.");
+                    var targetGrid = privateRoom ? null : hud.ActionGrid(2,68f);
                     foreach (var aim in EpisodeEngine.NominationCandidates(state))
                     {
                         string id = aim.id;
-                        hud.Tag(hud.ActionFor(id, "Aim this week at " + aim.name,
-                            () => Commit(state, EpisodeCommandKind.SetBackdoorPlan, id)),
-                            Category(EpisodeCommandKind.SetBackdoorPlan));
+                        var action = targetGrid != null
+                            ? hud.GridActionFor(targetGrid,id,"Aim this week at " + aim.name,
+                                () => Commit(state, EpisodeCommandKind.SetBackdoorPlan, id))
+                            : hud.ActionFor(id,"Aim this week at " + aim.name,
+                                () => Commit(state, EpisodeCommandKind.SetBackdoorPlan, id));
+                        hud.Tag(action,Category(EpisodeCommandKind.SetBackdoorPlan));
                     }
                 }
                 else hud.Paragraph("This week is aimed at " + state.Find(state.backdoorTargetId).name
@@ -401,8 +405,13 @@ namespace Gamesim.Episode
             {
                 if (state.vetoHolderId == state.playerId)
                 {
-                    hud.Action("Do not use the veto", () => OfferPlayerDecision(state, privateRoom,
-                        EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
+                    var vetoGrid = privateRoom ? null : hud.ActionGrid(2,68f);
+                    if (vetoGrid != null)
+                        hud.GridAction(vetoGrid,"Do not use the veto", () => OfferPlayerDecision(state, privateRoom,
+                            EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
+                    else
+                        hud.Action("Do not use the veto", () => OfferPlayerDecision(state, privateRoom,
+                            EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
                     if (EpisodeEngine.VetoIsLockedAtFinalFour(state))
                     {
                         hud.Paragraph("At the final four a veto holder who is not on the block cannot use the veto. "
@@ -415,9 +424,13 @@ namespace Gamesim.Episode
                     {
                         string saved = nominee;
                         if (state.hohId == state.playerId) VetoReplacements(state, saved, privateRoom);
-                        else hud.ActionFor(saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
-                            OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
-                                "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true));
+                        else
+                        {
+                            Action use = () => OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
+                                "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true);
+                            if (vetoGrid != null) hud.GridActionFor(vetoGrid,saved,"Save " + state.Find(saved).name + " (HoH chooses replacement)",use);
+                            else hud.ActionFor(saved,"Save " + state.Find(saved).name + " (HoH chooses replacement)",use);
+                        }
                     }
                     return true;
                 }
@@ -447,12 +460,15 @@ namespace Gamesim.Episode
                     hud.Paragraph("At the final four only one houseguest votes, and tonight that is you. "
                         + "Your single vote decides the eviction outright.");
                 VoterRoster(state);
+                var ballotGrid = privateRoom ? null : hud.ActionGrid(2,68f);
                 foreach (var nominee in state.nominees)
                 {
                     string id = nominee;
-                    hud.ActionFor(id, "Vote to evict " + state.Find(id).name, () => OfferPlayerDecision(state, privateRoom,
-                        EpisodeCommandKind.CastVote, (tieBreak ? "Cast the deciding vote to evict " : "Vote privately to evict ")
-                        + state.Find(id).name + ". This records your ballot only; the eviction reveal happens at the episode screen.", id));
+                    Action vote = () => OfferPlayerDecision(state, privateRoom,
+                        EpisodeCommandKind.CastVote,(tieBreak ? "Cast the deciding vote to evict " : "Vote privately to evict ")
+                        + state.Find(id).name + ". This records your ballot only; the eviction reveal happens at the episode screen.",id);
+                    if (ballotGrid != null) hud.GridActionFor(ballotGrid,id,"Vote to evict " + state.Find(id).name,vote);
+                    else hud.ActionFor(id,"Vote to evict " + state.Find(id).name,vote);
                 }
                 return true;
             }
@@ -462,11 +478,14 @@ namespace Gamesim.Episode
         private void VetoReplacements(EpisodeState state, string saved, bool privateRoom)
         {
             hud.Heading("Save " + state.Find(saved).name + " and nominate:");
+            var grid = privateRoom ? null : hud.ActionGrid(2,68f);
             foreach (var candidate in EpisodeEngine.ReplacementCandidates(state))
             {
                 string id = candidate.id;
-                hud.ActionFor(id, candidate.name, () => OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
-                    "Use the veto to save " + state.Find(saved).name + " and nominate " + state.Find(id).name + " as the replacement.", saved, id, true));
+                Action replace = () => OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
+                    "Use the veto to save " + state.Find(saved).name + " and nominate " + state.Find(id).name + " as the replacement.", saved, id, true);
+                if (grid != null) hud.GridActionFor(grid,id,candidate.name,replace);
+                else hud.ActionFor(id,candidate.name,replace);
             }
         }
     }

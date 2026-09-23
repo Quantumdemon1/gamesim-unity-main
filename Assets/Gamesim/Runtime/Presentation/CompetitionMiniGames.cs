@@ -232,6 +232,21 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>
+        /// The game's name for the briefing's title where a competition has no authored title of
+        /// its own (rules before version 3): each is the game's own instruction, from its brief.
+        /// </summary>
+        public static string DisplayName(Kind kind)
+        {
+            switch (kind)
+            {
+                case Kind.Endurance: return "Hold On";
+                case Kind.Reaction: return "Hit Every Target";
+                case Kind.Memory: return "Match the Pairs";
+                default: return "Stop the Marker";
+            }
+        }
+
         /// <summary>The words on the control that starts a game. Captions are a contract.</summary>
         public static string EnterCaption(Kind kind)
         {

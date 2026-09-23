@@ -187,7 +187,7 @@ namespace Gamesim.Episode
         /// column's width pushes its description down instead of running under it.</para>
         /// </summary>
         public Button OptionCard(string caption, string description, string glyph, Action action,
-            string note = null, Color? noteTint = null)
+            string note = null, Color? noteTint = null, bool compact = false)
         {
             float s = FontScale;
             var rect = Chrome(caption, content, UiTheme.Emphasis.Interactive);
@@ -199,11 +199,13 @@ namespace Gamesim.Episode
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
 
-            float textX = 60f * s, chevron = 18f * s;
+            // Compact: a row in a list of ways to do one thing (the competition's), not a room's
+            // options - a smaller mark, and the words a size down.
+            float textX = (compact ? 48f : 60f) * s, chevron = 18f * s;
             float textWidth = Mathf.Max(80f, ContentWidth() - textX - chevron - 22f);
-            float y = 12f * s;
+            float y = (compact ? 9f : 12f) * s;
 
-            var title = NewText(rect, caption, 16, Paper);
+            var title = NewText(rect, caption, compact ? 15 : 16, Paper);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) title.font = semibold;
             float titleHeight = Mathf.Ceil(title.GetPreferredValues(title.text, textWidth, 0f).y) + 2f;
@@ -212,7 +214,7 @@ namespace Gamesim.Episode
 
             if (!string.IsNullOrEmpty(description))
             {
-                var line = NewText(rect, description, 14, UiTheme.Muted);
+                var line = NewText(rect, description, compact ? 13 : 14, UiTheme.Muted);
                 float lineHeight = Mathf.Ceil(line.GetPreferredValues(line.text, textWidth, 0f).y) + 2f;
                 Anchor(line.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(textX, -y), new Vector2(textWidth, lineHeight));
                 y += lineHeight + 2f * s;
@@ -224,12 +226,12 @@ namespace Gamesim.Episode
                 Anchor(word.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(textX, -y), new Vector2(textWidth, wordHeight));
                 y += wordHeight;
             }
-            float height = Mathf.Max(68f * s, y + 12f * s);
+            float height = Mathf.Max((compact ? 52f : 68f) * s, y + (compact ? 9f : 12f) * s);
             element.minHeight = element.preferredHeight = height;
             rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
 
             // The glyph, big and pale as the mockup's are, centred on the card's height.
-            var mark = HudPrimitives.Glyph("Option mark", rect, glyph, Paper, Vector2.zero, 36f * s);
+            var mark = HudPrimitives.Glyph("Option mark", rect, glyph, compact ? UiTheme.Heading : Paper, Vector2.zero, (compact ? 24f : 36f) * s);
             if (mark != null)
             {
                 var place = mark.rectTransform;

@@ -36,6 +36,7 @@ speech bar, `558fc3d` name plates, the dial's discs, one follow marker, the crea
 | 11 | Diary room | `ActivityLayout.Diary`: a right-hand column of option cards; `ScreenHeader` in place of the phase band; the chair captioned with the player's latest memory. |
 | 12 | Conversation | Column + dial: 96-unit glass discs with the caption inside under the glyph, centred under the pair; the two-shot puts the pair either side of it with their faces in the upper third. |
 | 01, 12 | World | Every houseguest's name on the pack's name plate (`HouseNpc.Plate`), and the follow diamond over the plate with a neon ring at the feet (`FollowRing`). |
+| Style guide | Competition briefing | `ActivityLayout.Competition`: a 640-wide card beside the rail with the right column and the strip up, the camera on the arena beside it (`FrameBriefing`). A hero card (the player's face, the category chip, the competition's title, the stakes), the brief, four facts from the rules the game runs, Practice as the one primary action beside "View full rules" (the old paragraphs, on request), and the ranked entry, the accessible alternative, Simulate and Throw as compact cards under "COMPETE FOR REAL". The rail's lists carry their names ("PLAY", "NOTEBOOK & SETTINGS"). No quote card: the game writes the player no lines. `EpisodeHud.Briefing.cs`. |
 
 Also restyled with no mockup of their own, in the same language: main menu, settings (its own tall
 panel and head), weekly recap, season report, tutorial card, opening titles, ceremony takeover
@@ -468,7 +469,7 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
 - **Never commit** `ProjectSettings/ProjectSettings.asset` while it carries `GAMESIM_UMA`.
 - The four **Inter SDF font atlases** churn ~700k lines; they have been left unstaged all session.
 - `Assets/_Recovery/` is a crash artefact still sitting untracked in the tree.
-- `Tools/baseline.txt` floors: EditMode **1430**, PlayMode **326**, SimulationTests **740**. Raise a floor in the same commit
+- `Tools/baseline.txt` floors: EditMode **1430**, PlayMode **327**, SimulationTests **740**. Raise a floor in the same commit
   that adds tests; never lower one to make a red run green.
 - A spawned task fixed the `DestinationChosen` raise **in this same working tree**, not a separate
   worktree. If you spin off tasks, expect concurrent edits to the files you are holding.

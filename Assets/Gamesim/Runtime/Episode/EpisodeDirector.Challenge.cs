@@ -86,47 +86,119 @@ namespace Gamesim.Episode
             return AwardTitle(state.phase) + (definition != null ? " · " + definition.Title : "");
         }
 
+        /// <summary>
+        /// The competition's briefing, as the style guide's modal draws it: the hero card (the
+        /// player's face, the discipline, the competition's name, the stakes), how it is played in
+        /// a short paragraph, four facts in a row, practice as the one primary action beside the
+        /// full rules, and the ways to compete for real under them. Every line is the game's own:
+        /// the paragraphs the briefing used to be are the full rules, and what Simulate and Throw
+        /// mean is said on their cards rather than in paragraphs above them.
+        /// </summary>
         private void CompetitionBriefing(EpisodeState state)
         {
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Competition);
+            FrameBriefing();
             var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
             var definition = CompetitionDefinitions.For(state);
-            hud.Heading(CompetitionTitle(state) + " · " + EpisodeEngine.CompetitionCategory(state));
-            hud.Paragraph(state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
+            string stakes = state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
                 : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
-                : "At stake: progress toward the final Head of Household decision.");
-            hud.Paragraph("Competing: " + string.Join(", ", field.Select(c => c.name)) + ".");
+                : "At stake: progress toward the final Head of Household decision.";
+            hud.CompetitionHero(state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
+                definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes);
+            hud.CompetitionBrief(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));
+            hud.CompetitionFacts(BriefingFacts(state, game, definition));
+
+            // Who sits this one out, and why: the strip shows everyone, not who is playing.
             var excluded = state.Active.Where(c => !field.Any(p => p.id == c.id)).ToArray();
             foreach (var c in excluded)
-                hud.Paragraph(c.name + (state.phase == EpisodePhase.Veto ? ": not drawn for this veto field."
+                hud.Aside(c.name + (state.phase == EpisodePhase.Veto ? ": not drawn for this veto field."
                     : state.phase == EpisodePhase.FinalHoHPart2 ? ": already qualified by winning part one."
                     : state.phase == EpisodePhase.FinalHoHPart3 ? ": did not qualify for this round."
                     : ": outgoing HoH is ineligible this week."));
-            hud.Paragraph(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));
-            if (definition != null) hud.Paragraph(definition.Summary);
-            hud.Paragraph("Rules " + state.competitionRulesVersion + ". Practice cannot alter your season. Ranked attempts use the same board after cancel or reload. "
-                + "Pause stops the clock, including when this window loses focus.");
-            hud.Paragraph(state.phase == EpisodePhase.FinalHoHPart1
-                ? "Performance adds 0–2 effective endurance points, capped at 10, for this competition only. Statistics and seeded survival rolls still matter; full marks do not guarantee a win."
-                : "Performance adds a 0–2 point bonus. Character statistics and seeded rolls determine the remaining score; full marks do not guarantee a win.");
+
+            var rules = new List<string>
+            {
+                "Competing: " + string.Join(", ", field.Select(c => c.name)) + ".",
+                definition?.Summary,
+                "Rules " + state.competitionRulesVersion + ". Practice cannot alter your season. Ranked attempts use the same board after cancel or reload. "
+                    + "Pause stops the clock, including when this window loses focus.",
+                state.phase == EpisodePhase.FinalHoHPart1
+                    ? "Performance adds 0–2 effective endurance points, capped at 10, for this competition only. Statistics and seeded survival rolls still matter; full marks do not guarantee a win."
+                    : "Performance adds a 0–2 point bonus. Character statistics and seeded rolls determine the remaining score; full marks do not guarantee a win.",
+            };
             if (state.competitionRulesVersion >= 3)
-                hud.Paragraph("Every entry route keeps the same earned bonuses: preparation " + state.playerStudyBonus
+                rules.Add("Every entry route keeps the same earned bonuses: preparation " + state.playerStudyBonus
                     + ", event " + state.phaseEventCompBonus + ", storyline " + Storylines.CompetitionBonus(state)
                     + ". Playing or the accessible alternative adds performance on top; preparation is retained.");
-            hud.Action("Practice this competition", () => StartChallenge(state, true));
-            hud.Action(CompetitionMiniGames.EnterCaption(game), () => StartChallenge(state));
-            hud.Action("Accessible alternative: steady 1-point bonus", () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
+            hud.CompetitionActions("Practice this competition", () => StartChallenge(state, true), rules);
+
+            hud.Section("COMPETE FOR REAL");
+            hud.OptionCard(CompetitionMiniGames.EnterCaption(game),
+                "Ranked. The same board after a cancel or a reload; pause stops the clock.", "trophy",
+                () => StartChallenge(state), compact: true);
+            hud.OptionCard("Accessible alternative: steady 1-point bonus",
+                "No timing needed: a steady 1-point performance bonus in place of the minigame.", "star",
+                () => Commit(state, EpisodeCommandKind.Compete, performance: .5), compact: true);
             if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
             {
-                hud.Paragraph(state.competitionRulesVersion >= 3
-                    ? "Simulate: the same statistics, earned bonuses and seeded rolls as playing, with zero performance bonus."
-                    : "Simulate: weighted statistics plus preparation " + state.playerStudyBonus + "/5 and event bonus "
-                        + state.phaseEventCompBonus + ". No minigame performance bonus. Preparation is retained for later weeks.");
-                hud.Action(EpisodeHud.SimulateCompetitionCaption, () => SimulateCompetition(state));
-                hud.Paragraph("Throw: receive zero performance bonus. Your statistics and seeded rolls still count, so you may still win.");
-                hud.Action(EpisodeHud.ThrowCompetitionCaption, () => ThrowCompetition(state));
+                hud.OptionCard(EpisodeHud.SimulateCompetitionCaption, state.competitionRulesVersion >= 3
+                        ? "The same statistics, earned bonuses and seeded rolls as playing, with zero performance bonus."
+                        : "Weighted statistics plus preparation " + state.playerStudyBonus + "/5 and event bonus "
+                            + state.phaseEventCompBonus + ". No minigame performance bonus; preparation is retained for later weeks.",
+                    "dumbbell", () => SimulateCompetition(state), compact: true);
+                hud.OptionCard(EpisodeHud.ThrowCompetitionCaption,
+                    "Zero performance bonus. Your statistics and seeded rolls still count, so you may still win.", "exit",
+                    () => ThrowCompetition(state), compact: true);
             }
+        }
+
+        /// <summary>
+        /// The briefing's four facts: the game's twist where its variant has one (otherwise what
+        /// the board is), the clock, pausing, and what performance is worth - each from the rules
+        /// the game runs, never a number written for the card.
+        /// </summary>
+        private static IList<EpisodeHud.BriefingFact> BriefingFacts(EpisodeState state, CompetitionMiniGames.Kind game,
+            CompetitionDefinition definition)
+        {
+            var facts = new List<EpisodeHud.BriefingFact>();
+            double seconds = definition?.Duration ?? CompetitionMiniGames.TimeLimit(game);
+            var target = UiTheme.Icon("target");
+            if (definition != null && definition.PreviewSeconds > 0)
+                facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("eye"), definition.PreviewSeconds.ToString("0") + " second preview", "Study the cards"));
+            else if (definition != null && definition.Pattern == CompetitionPattern.AlternatingWindows)
+                facts.Add(new EpisodeHud.BriefingFact(target, "Changing windows", "0.65 or 1.15 seconds"));
+            else if (definition != null && definition.Pattern == CompetitionPattern.PressureWaves)
+                facts.Add(new EpisodeHud.BriefingFact(UiTheme.Pack("Pack4_Presentation/Icons_PNG/fire"), "Pressure waves", "1.5 seconds, every 6"));
+            else switch (game)
+            {
+                case CompetitionMiniGames.Kind.Memory:
+                    facts.Add(new EpisodeHud.BriefingFact(UiTheme.Pack("Pack1_Foundation/Icons_PNG/grid"), "Eight pairs", "A 4 by 4 board")); break;
+                case CompetitionMiniGames.Kind.Reaction:
+                    facts.Add(new EpisodeHud.BriefingFact(target, "Every target", "Hit it before it goes")); break;
+                case CompetitionMiniGames.Kind.Endurance:
+                    facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("dumbbell"), "Grip and recover", "Hold to earn time")); break;
+                default:
+                    facts.Add(new EpisodeHud.BriefingFact(target, "Three stops", "Near the centre")); break;
+            }
+            var clock = UiTheme.Pack("Pack3_Systems/Icons_PNG/history");
+            if (seconds > 0)
+            {
+                string goal = game == CompetitionMiniGames.Kind.Memory ? "Match eight pairs"
+                    : game == CompetitionMiniGames.Kind.Reaction ? "Hit the targets"
+                    : state.competitionRulesVersion >= CompetitionMiniGames.ImprovedRules
+                        ? "Hold " + (seconds * .65).ToString("0.#") + " for full marks" : "Hold as long as you can";
+                facts.Add(new EpisodeHud.BriefingFact(clock, seconds.ToString("0") + " seconds", goal));
+                facts.Add(EpisodeHud.BriefingFact.PauseMark("Pause any time", "Stops the clock"));
+            }
+            else
+            {
+                facts.Add(new EpisodeHud.BriefingFact(clock, "No time limit", "Three attempts"));
+                facts.Add(EpisodeHud.BriefingFact.PauseMark("Escape cancels", "Nothing is committed"));
+            }
+            facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("star"), "Performance bonus",
+                state.phase == EpisodePhase.FinalHoHPart1 ? "Adds 0–2 endurance" : "Adds 0–2 points"));
+            return facts;
         }
 
         private void StartChallenge(EpisodeState state) => StartChallenge(state, false);
@@ -301,6 +373,35 @@ namespace Gamesim.Episode
         public const float CompetitionShotPitch = 18f;
         public const float CompetitionShotFieldOfView = 50f;
         public const float CompetitionShotSeconds = 1.2f;
+
+        /// <summary>
+        /// How far left of the arena the briefing's shot looks, in metres: the set stands in the
+        /// free area right of the briefing's card rather than behind it.
+        /// </summary>
+        public const float BriefingShotShift = 3.75f;
+        private bool briefingFramed;
+
+        /// <summary>Whether the camera is on the arena for the briefing, for a test.</summary>
+        public bool IsFramingBriefing => briefingFramed && phaseOpen && !challengeActive && cameraRig != null && cameraRig.HasShot;
+
+        /// <summary>
+        /// The briefing looks at the competition's set, as the mockup's frames the arena beside its
+        /// card: the competition's own shot, moved over. Taken once a briefing, let go with the panel
+        /// as every panel's shot is, and replaced by the competition's own when an attempt starts.
+        /// </summary>
+        private void FrameBriefing()
+        {
+            if (cameraRig == null || cameraRig.ReducedMotion || !phaseOpen || challengeActive) return;
+            if (briefingFramed && cameraRig.HasShot) return;
+            var station = StationPosition;
+            if (float.IsInfinity(station.x)) return;
+            briefingFramed = true;
+            cameraRig.MoveTo(new HouseCameraRig.Shot
+            {
+                Focus = station + Vector3.up - Vector3.right * BriefingShotShift, Distance = CompetitionShotDistance,
+                Pitch = CompetitionShotPitch, Yaw = 0f, FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds,
+            });
+        }
 
         private void FrameCompetition()
         {

@@ -320,7 +320,7 @@ namespace Gamesim.Episode
         /// <summary>
         /// The left gutter (mockup-01): one glass ground under three lists of the same kind of row -
         /// the notebook's pages and the overview, the two places to go next, and the notebook, save
-        /// and settings - with a hairline between the lists.
+        /// and settings - each list after the first under its name (the style guide's rail).
         ///
         /// <para>Three rects, not one, because each is a contract of its own: the tests count six
         /// buttons under the rail, the keyboard suite reads the navigation's labels, and the
@@ -343,7 +343,7 @@ namespace Gamesim.Episode
 
             if (!Compact)
             {
-                RailDivider(y);
+                y = RailLabel("PLAY", y);
                 var next = RailGroup("Next move", y, 2);
                 RailButton(next, "Go to episode screen", UiTheme.Icon("camera"), 0, director.GoToStation, true);
                 RailButton(next, DiaryTravelCaption, UiTheme.Icon("chat"), 1, director.GoToDiary).interactable =
@@ -351,7 +351,7 @@ namespace Gamesim.Episode
                 y += next.sizeDelta.y;
             }
 
-            RailDivider(y);
+            y = RailLabel("NOTEBOOK & SETTINGS", y);
             var navigation = RailGroup("Navigation", y, 3);
             RailButton(navigation, "Notebook [J]", UiTheme.Icon("journal"), 0, director.OpenJournal);
             RailButton(navigation, "Save [F5]", UiTheme.Pack(PackArt.IconSave), 1, director.SaveNow);
@@ -371,11 +371,25 @@ namespace Gamesim.Episode
             return group;
         }
 
-        private void RailDivider(float y)
+        /// <summary>A rail label's band, at the resting text size.</summary>
+        private const float RailLabelBand = 16f;
+
+        /// <summary>
+        /// A group's name over its rows, in place of the hairline that used to divide the lists -
+        /// the style guide's navigation rail, "grouped by context with clear labels". Returns where
+        /// the group under it starts.
+        /// </summary>
+        private float RailLabel(string words, float y)
         {
-            var line = Panel("Rail divider", canvas.transform, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .7f), 0);
-            Anchor(line, new Vector2(0, 1), new Vector2(0, 1), new Vector2(26f, -y), new Vector2(IconRail.Width - 24f, 1f));
-            line.GetComponent<Image>().raycastTarget = false;
+            float band = RailLabelBand * FontScale;
+            var label = FixedText((RectTransform)canvas.transform, words, 10, UiTheme.Muted, new Vector2(30f, -(y + 1f)), new Vector2(IconRail.Width - 30f, band));
+            label.gameObject.name = "Rail label";
+            label.characterSpacing = 6f;
+            label.alignment = TextAlignmentOptions.MidlineLeft;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) label.font = semibold;
+            label.raycastTarget = false;
+            return y + band;
         }
 
         private Button RailButton(RectTransform group, string caption, Sprite icon, int index, System.Action action,

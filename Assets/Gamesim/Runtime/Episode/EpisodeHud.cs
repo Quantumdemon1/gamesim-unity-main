@@ -385,7 +385,8 @@ namespace Gamesim.Episode
         /// </summary>
         private bool CompactCopy => activityLayout == ActivityLayout.Conversation || activityLayout == ActivityLayout.Diary
             || activityLayout == ActivityLayout.Nominations || activityLayout == ActivityLayout.HouseEvent
-            || activityLayout == ActivityLayout.Ballot || activityLayout == ActivityLayout.Settings;
+            || activityLayout == ActivityLayout.Ballot || activityLayout == ActivityLayout.Settings
+            || activityLayout == ActivityLayout.Competition;
         private int BodySize => CompactCopy ? 17 : 21;
         private int HeadingSize => CompactCopy ? 20 : 26;
 

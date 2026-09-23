@@ -422,6 +422,38 @@ namespace Gamesim.Presentation
             return fadeRight;
         }
 
+        private static Sprite playMark;
+
+        /// <summary>A filled triangle pointing right, the play mark: the packs' is a hairline outline
+        /// that disappears on a lit button. Generated once.</summary>
+        public static Sprite PlayMark()
+        {
+            if (playMark != null) return playMark;
+            const int side = 32;
+            var texture = new Texture2D(side, side, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Play Mark", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[side * side];
+            for (int y = 0; y < side; y++)
+            for (int x = 0; x < side; x++)
+            {
+                // Inside the triangle (4,2)-(4,30)-(29,16), with a pixel of soft edge.
+                float px = x + .5f, py = y + .5f;
+                float half = 14f * (1f - (px - 4f) / 25f);
+                float inside = Mathf.Min(px - 4f, half - Mathf.Abs(py - 16f));
+                byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(inside + .5f) * 255f);
+                pixels[y * side + x] = new Color32(255, 255, 255, px > 29f ? (byte)0 : alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            playMark = Sprite.Create(texture, new Rect(0, 0, side, side), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            playMark.name = texture.name;
+            playMark.hideFlags = HideFlags.HideAndDontSave;
+            return playMark;
+        }
+
         private static Sprite fadeDown;
 
         /// <summary>A vertical ramp, solid at the top and clear at the bottom: a shade under a band

@@ -77,6 +77,7 @@ namespace Gamesim.Episode
             if (layout == ActivityLayout.Conversation) { ConversationLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Nominations) { NominationsLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.HouseEvent) { HouseEventLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Competition) { CompetitionLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Diary) { DiaryLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Ballot) { BallotLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Settings) { SettingsLayout(canvasWidth, canvasHeight); return; }
@@ -200,6 +201,34 @@ namespace Gamesim.Episode
             if (modalScroll != null)
             {
                 Stretch((RectTransform)modalScroll.transform, 20f, 72f, 20f, 14f);
+                modalScroll.verticalNormalizedPosition = 1f;
+            }
+        }
+
+        /// <summary>
+        /// The competition's briefing (the style guide's modal): a card beside the rail, the
+        /// height of the free area, with the house, the right column and the strip left up around
+        /// it. It was the generic activity panel - the whole width, the strip and the column gone -
+        /// which made a briefing a wall of paragraphs with every line the width of the screen.
+        /// </summary>
+        private void CompetitionLayout(float canvasWidth, float canvasHeight)
+        {
+            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - RightColumnInset - RightColumnWidth - 12f);
+            float width = Mathf.Min(BriefingWidth * FontScale, free);
+            float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom);
+            modal.anchorMin = modal.anchorMax = Vector2.zero;
+            modal.pivot = Vector2.zero;
+            modal.anchoredPosition = new Vector2(LeftColumnX, ModalLift);
+            modal.sizeDelta = new Vector2(width, height);
+            CompactClose();
+            SetChromeVisible("Exploration controls", false);
+            SetChromeVisible(FollowChipName, false);
+            SetChromeVisible("Interaction prompt", false);
+            var hint = modal.Find("Panel control hint");
+            if (hint != null) hint.gameObject.SetActive(false);
+            if (modalScroll != null)
+            {
+                Stretch((RectTransform)modalScroll.transform, 18f, 72f, 18f, 14f);
                 modalScroll.verticalNormalizedPosition = 1f;
             }
         }

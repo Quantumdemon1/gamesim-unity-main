@@ -173,15 +173,30 @@ namespace Gamesim.Tests.PlayMode
 
             var brand = ActiveRect("Brand");
             var pill = ActiveRect("House pill");
+            var week = ActiveRect("Week chip");
+            var objective = ActiveRect("Objective");
             var navigation = ActiveRect("Navigation");
-            Assert.That(brand, Is.Not.Null); Assert.That(pill, Is.Not.Null); Assert.That(navigation, Is.Not.Null);
+            var rail = ActiveRect(IconRail.RootName);
+            Assert.That(brand, Is.Not.Null); Assert.That(pill, Is.Not.Null); Assert.That(week, Is.Not.Null);
+            Assert.That(objective, Is.Not.Null); Assert.That(navigation, Is.Not.Null); Assert.That(rail, Is.Not.Null);
 
-            // One band: the mockups' top bar is a row, not three panels at three heights.
+            // One band: the mockups' top bar is a row of chips, not panels at different heights -
+            // and a row in the mockups' order, brand, week, objective, the house's numbers.
             float top = ScreenRect(brand).yMax;
-            Assert.That(ScreenRect(pill).yMax, Is.EqualTo(top).Within(1f),
-                "The week chip sits on the top bar's band with the brand.");
-            Assert.That(ScreenRect(navigation).yMax, Is.EqualTo(top).Within(1f),
-                "The navigation sits on the top bar's band with the brand.");
+            var chips = new[] { brand, week, objective, pill };
+            foreach (var chip in chips)
+                Assert.That(ScreenRect(chip).yMax, Is.EqualTo(top).Within(1f),
+                    "'" + chip.name + "' sits on the top bar's band with the brand.");
+            for (int i = 1; i < chips.Length; i++)
+                Assert.That(ScreenRect(chips[i]).xMin, Is.GreaterThan(ScreenRect(chips[i - 1]).xMax),
+                    "'" + chips[i].name + "' follows '" + chips[i - 1].name + "' along the band.");
+
+            // And navigation belongs to the left rail, under the notebook's pages, where every
+            // mockup puts it - not buttons at the end of the top bar.
+            Assert.That(ScreenRect(navigation).yMax, Is.LessThanOrEqualTo(ScreenRect(rail).yMin + 1f),
+                "The navigation stacks under the rail.");
+            Assert.That(ScreenRect(navigation).xMin, Is.EqualTo(ScreenRect(rail).xMin).Within(1f),
+                "The navigation shares the rail's gutter.");
 
             var events = ActiveRect(EpisodeHud.RecentEventsCardName);
             Assert.That(events, Is.Not.Null, "The right column carries a recent-events card.");

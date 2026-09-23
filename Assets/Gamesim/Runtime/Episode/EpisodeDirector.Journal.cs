@@ -117,8 +117,8 @@ namespace Gamesim.Episode
         /// </summary>
         private void RenderStorySoFar(EpisodeState state)
         {
-            hud.Heading("THE STORY SO FAR", UiTheme.Gold);
-            hud.Eyebrow("PREVIOUSLY ON BIG BROTHER", UiTheme.Gold);
+            hud.Heading("THE STORY SO FAR", UiTheme.Heading);
+            hud.Eyebrow("PREVIOUSLY ON GAMESIM", UiTheme.Muted);
             hud.Mark(NotebookSection.Story);
 
             var visible = state.events

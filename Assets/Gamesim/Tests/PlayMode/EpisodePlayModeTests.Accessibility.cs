@@ -331,15 +331,32 @@ namespace Gamesim.Tests.PlayMode
             var previousActive = RenderTexture.active;
             try
             {
+                camera.targetTexture = texture;
                 foreach (var canvas in overlays)
                 {
                     canvas.renderMode = RenderMode.ScreenSpaceCamera;
                     canvas.worldCamera = camera;
                     canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
                 }
-                camera.targetTexture = texture;
+                // Let queued portraits land first: a frame with empty discs where the faces go
+                // cannot say what the screen looks like. The studio builds one look at a time, so
+                // in a short filtered run the queue can still be working seconds after the panel
+                // opened; wait for it, but not forever - a face that never lands is a capture worth
+                // having too.
+                float settle = Time.realtimeSinceStartup + 10f;
+                float least = Time.realtimeSinceStartup + 0.5f;
+                while (Time.realtimeSinceStartup < least
+                    || (Time.realtimeSinceStartup < settle && AnyBoundFaceIsStillMissing()))
+                    yield return null;
                 Canvas.ForceUpdateCanvases();
+                // Then lay the HUD out again for the frame being photographed. A batchmode canvas is
+                // 4:3 and this frame is 16:9; anchored chrome follows the change by itself, but a
+                // panel whose size is computed when the HUD renders - the activity layouts are -
+                // kept its 4:3 numbers and photographed distorted, which made the review frames
+                // unusable for judging a screen against its mockup.
+                RenderHudForTheCurrentCanvas();
                 yield return null;
+                Canvas.ForceUpdateCanvases();
                 camera.Render();
 
                 RenderTexture.active = texture;
@@ -359,11 +376,32 @@ namespace Gamesim.Tests.PlayMode
             {
                 RenderTexture.active = previousActive;
                 camera.targetTexture = previousTarget;
-                foreach (var canvas in overlays) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                // A canvas can be gone by now: the wait above spans frames, and a panel's fade-out
+                // ghost is a canvas that destroys itself when its fade ends.
+                foreach (var canvas in overlays)
+                    if (canvas != null) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 Object.Destroy(readback);
                 texture.Release();
                 Object.Destroy(texture);
             }
+            // And back to the layout the rest of the test is measuring.
+            Canvas.ForceUpdateCanvases();
+            RenderHudForTheCurrentCanvas();
+            yield return null;
+        }
+
+        private static bool AnyBoundFaceIsStillMissing() =>
+            Object.FindObjectsByType<CharacterPortraitBinding>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                .Select(binding => binding.GetComponent<RawImage>())
+                .Any(face => face != null && face.gameObject.activeInHierarchy && (face.texture == null || !face.enabled));
+
+        /// <summary>Re-renders the HUD against whatever shape its canvas has right now.</summary>
+        private void RenderHudForTheCurrentCanvas()
+        {
+            typeof(EpisodeDirector).GetMethod("Render",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                    null, System.Type.EmptyTypes, null)
+                .Invoke(director, null);
         }
 
         /// <summary>
@@ -456,11 +494,12 @@ namespace Gamesim.Tests.PlayMode
                     if (!opener.Open()) { unreached.Add(opener.Name + " at " + (larger ? "larger" : "standard") + " text"); continue; }
 
                     // Let asynchronous content land before measuring. This is not politeness: a
-                    // panel whose picture has not arrived draws a DIFFERENT layout - SpeakerTitle
-                    // falls back to a wrapping PanelTitle when the portrait is null, and a wrapping
-                    // label cannot clip. Asserting immediately therefore exercises the one path that
-                    // is incapable of failing. A mutation that re-crammed the conversation subtitle
-                    // into one fixed-width line survived this sweep for exactly that reason.
+                    // panel whose picture had not arrived used to draw a DIFFERENT layout -
+                    // SpeakerTitle fell back to a wrapping PanelTitle when the portrait was null, and
+                    // a wrapping label cannot clip. A mutation that re-crammed the conversation
+                    // subtitle into one fixed-width line survived this sweep for exactly that reason.
+                    // The header now binds its face instead, but a panel measured before its content
+                    // lands is still a panel measured in a state nobody sees for long.
                     float settle = Time.realtimeSinceStartup + 2f;
                     while (Time.realtimeSinceStartup < settle) yield return null;
                     Canvas.ForceUpdateCanvases();

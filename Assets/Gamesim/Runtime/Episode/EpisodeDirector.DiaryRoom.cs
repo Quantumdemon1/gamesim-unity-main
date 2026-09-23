@@ -260,7 +260,16 @@ namespace Gamesim.Episode
                 var reviewed = diaryDraft;
                 bool reflection = diaryDraft.kind == EpisodeCommandKind.ReflectDiary;
                 bool study = diaryDraft.kind == EpisodeCommandKind.StudyHouse;
-                hud.Heading(study ? "REVIEW YOUR STUDY APPROACH" : reflection ? "REVIEW YOUR PRIVATE ANSWER" : "REVIEW YOUR DECISION");
+                if (diaryDraft.kind == EpisodeCommandKind.CastVote && state.phase == EpisodePhase.Eviction)
+                {
+                    // The ballot stays on screen while the choice waits to be confirmed, the chosen
+                    // card marked - pressing the other card changes the choice, nothing is cast
+                    // until Confirm.
+                    bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
+                    hud.BallotCards(state, state.nominees, reviewed.target, id => id == reviewed.target ? "Your choice: " + state.Find(id).name : "Choose " + state.Find(id).name + " instead",
+                        id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); });
+                }
+                else hud.Heading(study ? "REVIEW YOUR STUDY APPROACH" : reflection ? "REVIEW YOUR PRIVATE ANSWER" : "REVIEW YOUR DECISION");
                 hud.Paragraph(diaryDraft.summary);
                 hud.Paragraph("Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
                 hud.Action(study ? EpisodeHud.StudyConfirmCaption : reflection ? EpisodeHud.DiaryConfirmReflectionCaption : EpisodeHud.DiaryConfirmCaption,
@@ -448,11 +457,28 @@ namespace Gamesim.Episode
             if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
             if (state.phase == EpisodePhase.Nomination && state.nominees.Count == 0 && state.hohId == state.playerId)
             {
+                // Out of the diary, the decision is a band across the house (mockup-09); in the
+                // diary it keeps the diary's own column.
+                if (!privateRoom) hud.SetActivityLayout(EpisodeHud.ActivityLayout.Nominations);
                 hud.Paragraph("You are HoH. Choose two different nominees. Commit only when both choices are correct.");
-                // The week's real target, named before the two people who will stand in for it.
+                if (!string.IsNullOrEmpty(state.backdoorTargetId))
+                    hud.Paragraph("This week is aimed at " + state.Find(state.backdoorTargetId).name
+                        + ". Nominate two others and use the veto to put them up.");
+                var candidates = EpisodeEngine.NominationCandidates(state).Select(c => new EpisodeHud.Option(c.id, c.name)).ToArray();
+                hud.ChooseNominationPair(state, candidates, (first, second) =>
+                {
+                    if (privateRoom && (first == second || !candidates.Any(option => option.Id == first)
+                        || !candidates.Any(option => option.Id == second)))
+                    { message = "Choose two different eligible nominees before reviewing the decision."; Render(); return; }
+                    OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.Nominate,
+                        "Nominate " + state.Find(first)?.name + " and " + state.Find(second)?.name + ". Confirmed nominations become part of the episode record.", first, second);
+                }, privateRoom ? EpisodeHud.DiaryReviewNominationsCaption : "Commit nominations");
+                // The week's real target, after the decision it would shape rather than before the
+                // cards: it is the optional move, and the cards are the one that has to be made.
                 // Costs nothing and moves nobody: it is a plan, and the house cannot hear a plan.
                 if (string.IsNullOrEmpty(state.backdoorTargetId))
                 {
+                    hud.Heading("A BACKDOOR PLAN");
                     hud.Paragraph("You can also settle on who this week is really aimed at. A backdoor plan "
                         + "costs nothing, tells nobody, and is yours to change until you nominate.");
                     foreach (var aim in EpisodeEngine.NominationCandidates(state))
@@ -463,17 +489,6 @@ namespace Gamesim.Episode
                             Category(EpisodeCommandKind.SetBackdoorPlan));
                     }
                 }
-                else hud.Paragraph("This week is aimed at " + state.Find(state.backdoorTargetId).name
-                    + ". Nominate two others and use the veto to put them up.");
-                var candidates = EpisodeEngine.NominationCandidates(state).Select(c => new EpisodeHud.Option(c.id, c.name)).ToArray();
-                hud.ChooseNominationPair(state, candidates, (first, second) =>
-                {
-                    if (privateRoom && (first == second || !candidates.Any(option => option.Id == first)
-                        || !candidates.Any(option => option.Id == second)))
-                    { message = "Choose two different eligible nominees before reviewing the decision."; Render(); return; }
-                    OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.Nominate,
-                        "Nominate " + state.Find(first)?.name + " and " + state.Find(second)?.name + ". Confirmed nominations become part of the episode record.", first, second);
-                }, privateRoom ? EpisodeHud.DiaryReviewNominationsCaption : "Commit nominations");
                 return true;
             }
             if (state.phase == EpisodePhase.VetoMeeting && !state.vetoResolved
@@ -526,18 +541,18 @@ namespace Gamesim.Episode
                 if (!tieBreak && EpisodeEngine.Voters(state).Count() == 1)
                     hud.Paragraph("At the final four only one houseguest votes, and tonight that is you. "
                         + "Your single vote decides the eviction outright.");
+                hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
+                    id => OfferBallot(state, privateRoom, tieBreak, id));
                 VoterRoster(state);
-                foreach (var nominee in state.nominees)
-                {
-                    string id = nominee;
-                    hud.ActionFor(id, "Vote to evict " + state.Find(id).name, () => OfferPlayerDecision(state, privateRoom,
-                        EpisodeCommandKind.CastVote, (tieBreak ? "Cast the deciding vote to evict " : "Vote privately to evict ")
-                        + state.Find(id).name + ". This records your ballot only; the eviction reveal happens at the episode screen.", id));
-                }
                 return true;
             }
             return false;
         }
+
+        private void OfferBallot(EpisodeState state, bool privateRoom, bool tieBreak, string id) =>
+            OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.CastVote,
+                (tieBreak ? "Cast the deciding vote to evict " : "Vote privately to evict ")
+                + state.Find(id).name + ". This records your ballot only; the eviction reveal happens at the episode screen.", id);
 
         private void VetoReplacements(EpisodeState state, string saved, bool privateRoom)
         {

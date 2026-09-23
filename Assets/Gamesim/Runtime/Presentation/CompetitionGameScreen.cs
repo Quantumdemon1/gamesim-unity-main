@@ -63,34 +63,79 @@ namespace Gamesim.Presentation
             group.alpha = 1; group.blocksRaycasts = true; group.interactable = true;
             if (scrim == null)
             {
-                scrim = HudPrimitives.Fill("Competition input shield",transform,new Color(0,0,0,.55f),1);
+                // Still the shield: it takes every click meant for the house while a competition
+                // runs. It no longer paints the frame black - the lit stage the competition is
+                // played on is the scene (mockup-05) - so only a vignette darkens the edges.
+                scrim = HudPrimitives.Fill("Competition input shield",transform,new Color(0,0,0,0),1);
                 scrim.anchorMin=Vector2.zero;scrim.anchorMax=Vector2.one;scrim.offsetMin=scrim.offsetMax=Vector2.zero;
                 scrim.GetComponent<Image>().raycastTarget=true;
+                var legibility=HudPrimitives.Vignette(scrim);
+                legibility.name="Competition legibility";
+                legibility.GetComponent<Image>().color=new Color(1f,1f,1f,.65f);
             }
-            panel = HudPrimitives.Fill("Competition studio", transform, new Color(.035f,.055f,.085f,.98f), 16);
-            panel.anchorMin = panel.anchorMax = new Vector2(.5f,.5f); panel.pivot = new Vector2(.5f,.5f);
-            panel.sizeDelta = new Vector2(1420, 780); panel.GetComponent<Image>().raycastTarget = true;
-            Label("Competition title", panel, title + (practice ? " · PRACTICE" : " · RANKED"), 30, 36, 22, 1348, 52, UiTheme.Paper);
+            // The studio is a frame the cards hang in now, not a slab over the set: a transparent
+            // container across the screen, still the one thing assembly hides and shows.
+            panel = HudPrimitives.Fill("Competition studio", transform, new Color(0,0,0,0), 16);
+            panel.anchorMin = Vector2.zero; panel.anchorMax = Vector2.one; panel.pivot = new Vector2(.5f,.5f);
+            panel.offsetMin = panel.offsetMax = Vector2.zero; panel.GetComponent<Image>().raycastTarget = false;
+
+            float left = Episode.EpisodeHud.LeftColumnX;
+            // The challenge: what this is and how it is played.
+            var challenge = Card("Competition challenge", panel, new Vector2(left, -84f), new Vector2(470, 176));
+            var crest = HudPrimitives.Glyph("Challenge mark", challenge, title != null && title.ToUpperInvariant().Contains("VETO") ? "veto-token" : "crown",
+                UiTheme.Gold, new Vector2(16, -14), 20);
+            var eyebrow = Label("Challenge eyebrow", challenge, "CURRENT CHALLENGE", 12, crest != null ? 44 : 16, 14, 300, 20, UiTheme.Gold);
+            eyebrow.characterSpacing = 6f;
+            var mode = HudPrimitives.Chip("Attempt mode", challenge, practice ? "PRACTICE" : "RANKED", practice ? UiTheme.Muted : UiTheme.Accent, 86, 20);
+            mode.anchorMin = mode.anchorMax = new Vector2(1, 1); mode.pivot = new Vector2(1, 1); mode.anchoredPosition = new Vector2(-14, -12);
+            mode.GetComponent<Image>().raycastTarget = false;
+            var heading = Label("Competition title", challenge, title, 18, 16, 40, 438, 26, UiTheme.Paper);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold); if (semibold != null) heading.font = semibold;
+            Fit(heading, 12);
             string rules = run.Definition?.Summary ?? CompetitionMiniGames.Brief(run.Kind, run.RulesVersion);
             if (run.Definition != null && run.Kind == CompetitionMiniGames.Kind.Reaction)
                 rules += " Click the target or press its direction. Early input and incorrect aim cost accuracy.";
-            Label("Rules", panel, rules, 18, 36, 82, 1348, 96, UiTheme.Muted);
-            clock = Label("Competition clock", panel, "Ready in 3", 26, 36, 174, 450, 42, UiTheme.Gold);
-            status = Label("Progress", panel, "", 22, 494, 174, 420, 42, UiTheme.Paper);
-            playArea = HudPrimitives.Fill("Game surface", panel, UiTheme.Surface, 12);
-            Place(playArea, 36, 230, 880, 430);
-            controls = playArea.gameObject.AddComponent<CanvasGroup>(); controls.interactable = false;
-            Label("Competition field", panel, "COMPETITORS\n" + field, 16, 956, 230, 425, 282, UiTheme.Paper);
-            arenaStatus=Label("Arena status",panel,"",16,956,514,420,44,UiTheme.Muted);
-            Label("Attempt policy", panel, practice
+            Fit(Label("Rules", challenge, rules, 13, 16, 68, 438, 60, UiTheme.Muted), 10);
+            Fit(Label("Attempt policy", challenge, practice
                 ? "Practice never changes your season. Ranked play uses a separate, fixed board."
                 : "Cancel or reload returns to this same ranked board. Scores commit once, after play ends.",
-                17, 956, 562, 420, 98, UiTheme.Muted);
-            feedback = Label("Attempt feedback", panel, "", 18, 36, 672, 1350, 36, UiTheme.Paper);
-            pause = Button("Pause competition", panel, "Pause", 36, 718, 250, 46, TogglePause);
-            cancel = Button("Cancel attempt", panel, "Back to briefing", 310, 718, 310, 46, () => cancelAction?.Invoke());
-            finishAction = Button("Competition result action", panel, "Continue", 950, 718, 434, 46, () => { });
+                12, 16, 132, 438, 34, UiTheme.Muted), 9);
+
+            // The clock, as the mockup's timer card: time is the one number that is always moving.
+            var timer = Card("Competition timer", panel, new Vector2(left + 482f, -84f), new Vector2(210, 176));
+            UiTheme.AddGlow(timer, UiTheme.GlassRadius);
+            var stopwatch = Label("Timer eyebrow", timer, "TIME REMAINING", 12, 16, 14, 180, 20, UiTheme.Accent);
+            stopwatch.characterSpacing = 6f;
+            clock = Label("Competition clock", timer, "Ready in 3", 24, 16, 42, 180, 64, UiTheme.Paper);
+            var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) clock.font = bold;
+            Fit(clock, 14);
+            status = Label("Progress", timer, "", 14, 16, 110, 180, 54, UiTheme.Glow);
+            Fit(status, 10);
+
+            // The board: fixed geometry, on glass the stage shows through at its gutters.
+            playArea = HudPrimitives.Fill("Game surface", panel, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .72f), 12);
+            Place(playArea, left, 272, 880, 430);
+            UiTheme.AddBorder(playArea, 12, UiTheme.Edge(UiTheme.Emphasis.Resting));
+            controls = playArea.gameObject.AddComponent<CanvasGroup>(); controls.interactable = false;
+            feedback = Label("Attempt feedback", panel, "", 14, left, 710, 880, 26, UiTheme.Paper);
+            Fit(feedback, 10);
+
+            // Who is competing, down the right-hand side where the column of cards always is.
+            var fieldCard = Card("Competition field card", panel, new Vector2(-24f, -84f), new Vector2(248, 356), true);
+            var fieldHeading = Label("Field heading", fieldCard, "COMPETITORS", 12, 16, 14, 216, 20, UiTheme.Accent);
+            fieldHeading.characterSpacing = 6f;
+            Fit(Label("Competition field", fieldCard, field, 14, 16, 40, 216, 250, UiTheme.Paper), 10);
+            arenaStatus = Label("Arena status", fieldCard, "", 12, 16, 296, 216, 50, UiTheme.Muted);
+            Fit(arenaStatus, 9);
+
+            // The controls, in their own card under it: nothing in the frame is a big blue slab.
+            var footer = Card("Competition controls", panel, new Vector2(-24f, -452f), new Vector2(248, 172), true);
+            pause = Button("Pause competition", footer, "Pause", 12, 14, 224, 44, TogglePause);
+            cancel = Button("Cancel attempt", footer, "Back to briefing", 12, 66, 224, 44, () => cancelAction?.Invoke());
+            finishAction = Button("Competition result action", footer, "Continue", 12, 118, 224, 44, () => { });
             finishAction.gameObject.SetActive(false);
+            Secondary(pause); Secondary(cancel);
+            UiTheme.PackSliced(finishAction.GetComponent<Image>(), PackArt.ButtonPrimary, 16f);
             switch (run.Kind)
             {
                 case CompetitionMiniGames.Kind.Memory: BuildMemory(flip); break;
@@ -119,8 +164,9 @@ namespace Gamesim.Presentation
                     hold.navigation = new Navigation { mode=Navigation.Mode.Explicit, selectOnDown=pause, selectOnUp=cancel };
                     break;
             }
-            countdown = Label("Countdown", playArea, "3", 80, 0, 125, 880, 160, UiTheme.Gold);
+            countdown = Label("Countdown", playArea, "3", 90, 0, 125, 880, 160, UiTheme.Gold);
             countdown.alignment = TextAlignmentOptions.Center;
+            var display = UiTheme.Font(UiTheme.Weight.Bold); if (display != null) countdown.font = display;
             pause.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnRight = cancel, selectOnLeft = cancel,
                 selectOnUp = run.Kind == CompetitionMiniGames.Kind.Memory ? cards[12] : null };
             cancel.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnLeft = pause, selectOnRight = pause,
@@ -352,7 +398,36 @@ namespace Gamesim.Presentation
             var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=rect.GetComponent<Image>();
             button.onClick.AddListener(() => action?.Invoke());
             var label=Label("Label",rect,caption,20,10,4,w-20,h-8,UiTheme.Paper);label.alignment=TextAlignmentOptions.Center;
+            var medium=UiTheme.Font(UiTheme.Weight.Medium);if(medium!=null)label.font=medium;
+            Fit(label,11);
             return button;
+        }
+
+        /// <summary>
+        /// One of the screen's glass cards, anchored to a top corner of the frame: top-left when
+        /// <paramref name="right"/> is false, top-right when it is. Nothing on it takes a click.
+        /// </summary>
+        private static RectTransform Card(string name, Transform parent, Vector2 position, Vector2 size, bool right = false)
+        {
+            var card = HudPrimitives.Fill(name, parent, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .9f), UiTheme.GlassRadius);
+            var corner = right ? new Vector2(1, 1) : new Vector2(0, 1);
+            card.anchorMin = card.anchorMax = corner; card.pivot = corner;
+            card.anchoredPosition = position; card.sizeDelta = size;
+            card.GetComponent<Image>().raycastTarget = false;
+            UiTheme.AddBorder(card, UiTheme.GlassRadius, UiTheme.Edge(UiTheme.Emphasis.Resting));
+            return card;
+        }
+
+        /// <summary>A control that is not the one to press next: the pack's secondary button.</summary>
+        private static void Secondary(Button button)
+        {
+            if (button == null) return;
+            UiTheme.PackSliced(button.GetComponent<Image>(), PackArt.ButtonSecondary, 10f);
+        }
+
+        private static void Fit(TMP_Text label, float floor)
+        {
+            label.enableAutoSizing = true; label.fontSizeMax = label.fontSize; label.fontSizeMin = Mathf.Min(floor, label.fontSize);
         }
 
         private static void Place(RectTransform rect,float x,float y,float w,float h)

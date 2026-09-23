@@ -261,9 +261,11 @@ namespace Gamesim.Presentation
             // The set stays visible behind the card, but only just. The web build darkens almost to
             // black here and the house reads as a texture rather than as a room; at 0.93 the set was
             // bright enough to compete with the title for attention.
-            scrim = NewPanel("Scrim", root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.975f), 1);
+            // Dimmed and vignetted, so the room the ceremony is in stays a room behind the card.
+            scrim = NewPanel("Scrim", root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.55f), 1);
             scrim.anchorMin = Vector2.zero; scrim.anchorMax = Vector2.one;
             scrim.offsetMin = Vector2.zero; scrim.offsetMax = Vector2.zero;
+            HudPrimitives.Vignette(scrim);
 
             column = new GameObject("Card", typeof(RectTransform)).GetComponent<RectTransform>();
             column.SetParent(root, false);
@@ -504,9 +506,7 @@ namespace Gamesim.Presentation
             var holder = new GameObject(name, typeof(RectTransform));
             holder.transform.SetParent(parent, false);
             var label = holder.AddComponent<TextMeshProUGUI>();
-            var font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            var font = UiTheme.Font(UiTheme.Weight.Regular);
             if (font != null) label.font = font;
             label.fontSize = size;
             label.color = color;

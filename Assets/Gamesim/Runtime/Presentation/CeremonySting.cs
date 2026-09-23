@@ -52,8 +52,10 @@ namespace Gamesim.Presentation
         /// drew straight over the Notebook button during every ceremony.
         /// </summary>
         private const float LeftInset = Episode.EpisodeHud.LeftColumnX + 330f + 16f; // column start, width, gap
-        private const float RightInset = 24f + 465f + 16f;  // navigation margin, width, gap
-        private const float TopInset = 18f;
+        private const float RightInset = 24f + Episode.EpisodeHud.RightColumnWidth + 16f;  // column margin, width, gap
+        // Under the top bar: the objective is a chip on the band now, and the card may cover no
+        // part of it.
+        private const float TopInset = 80f;
         private const float HeadlineSize = 34f;
         private const float DetailSize = 19f;
         private const float TopPad = 14f, Gap = 6f, BottomPad = 14f;
@@ -276,9 +278,7 @@ namespace Gamesim.Presentation
             var holder = new GameObject(name, typeof(RectTransform));
             holder.transform.SetParent(parent, false);
             var label = holder.AddComponent<TextMeshProUGUI>();
-            var font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            var font = UiTheme.Font(UiTheme.Weight.Regular);
             if (font != null) label.font = font;
             label.fontSize = size;
             label.color = color;

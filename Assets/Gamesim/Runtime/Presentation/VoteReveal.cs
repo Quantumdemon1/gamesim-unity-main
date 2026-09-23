@@ -224,11 +224,16 @@ namespace Gamesim.Presentation
                 group.interactable = false;
                 group.blocksRaycasts = false;
 
-                // Near-opaque, matching the web build and the other phase cards.
+                // Dimmed and vignetted, not blacked out: the eviction is announced in the living
+                // room, and the room - with everyone in it reacting - stays behind the tally. The
+                // near-opaque scrim this was made the one beat the whole house exists for play in
+                // front of a black wall.
                 scrim = HudPrimitives.Fill("Scrim", root,
-                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.975f), 1);
+                    new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.55f), 1);
                 scrim.anchorMin = Vector2.zero; scrim.anchorMax = Vector2.one;
                 scrim.offsetMin = Vector2.zero; scrim.offsetMax = Vector2.zero;
+                scrim.GetComponent<Image>().raycastTarget = false;
+                HudPrimitives.Vignette(scrim);
 
                 column = new GameObject("Card", typeof(RectTransform)).GetComponent<RectTransform>();
                 column.SetParent(root, false);

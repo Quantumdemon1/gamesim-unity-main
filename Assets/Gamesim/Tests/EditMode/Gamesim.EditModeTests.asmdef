@@ -5,7 +5,8 @@
     "Gamesim.Runtime",
     "Gamesim.Simulation",
     "Gamesim.Editor",
-    "Unity.InputSystem"
+    "Unity.InputSystem",
+    "UnityEngine.UI"
   ],
   "includePlatforms": [
     "Editor"

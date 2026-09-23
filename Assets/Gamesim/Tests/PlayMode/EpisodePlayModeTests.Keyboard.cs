@@ -38,64 +38,64 @@ namespace Gamesim.Tests.PlayMode
         private const string CompetitionResultRoot = "Gamesim Competition Result";
 
         [UnityTest]
-        public IEnumerator Conversation_ArrowKeysMoveSpatiallyWhileTabKeepsReadingOrder()
+        public IEnumerator Conversation_ArrowKeysWalkTheRingWhileTabKeepsReadingOrder()
         {
             var maya=SceneComponents<HouseNpc>().Single(npc=>npc.Id==ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
-            var grid=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
-            var buttons=grid.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
-            Assert.That(buttons.Length,Is.GreaterThan(5));
-            EventSystem.current.SetSelectedGameObject(buttons[0].gameObject);yield return null;
+            var dial=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
+            var petals=dial.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
+            Assert.That(petals.Length,Is.EqualTo(7),"Seven seats, clockwise from the top.");
+            EventSystem.current.SetSelectedGameObject(petals[0].gameObject);yield return null;
+
+            // Arrows go where they point on the ring: from the head, Right is the next seat
+            // clockwise and Left the last; from there, Down is the next seat down the side.
             yield return PressKey(Key.RightArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[1].gameObject));
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[1].gameObject));
             yield return PressKey(Key.DownArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[5].gameObject));
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[2].gameObject));
+            // Tab keeps reading order whatever the arrows did.
             yield return PressKey(Key.Tab,shift:true);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[4].gameObject));
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[1].gameObject));
+            yield return PressKey(Key.LeftArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[0].gameObject));
+            yield return PressKey(Key.LeftArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[6].gameObject),
+                "Left from the head of the ring is the seat to its left, not nowhere.");
             director.ClosePanels();yield return null;
         }
 
         [UnityTest]
-        public IEnumerator Conversation_GridBoundaryArrowsReachTheFollowingRowsWithoutMovingSideways()
+        public IEnumerator Conversation_TheRingsFootLeadsToTheRowsAndTheRowsLeadBack()
         {
             var maya=SceneComponents<HouseNpc>().Single(npc=>npc.Id==ContentCatalog.MayaId);
             yield return OpenNearbyNpc(maya);
-            var grid=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
-            var buttons=grid.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
-            Assert.That(buttons.Length,Is.EqualTo(7),"The final row has three cells and an empty fourth column.");
+            var dial=director.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==EpisodeHud.DialName);
+            var petals=dial.GetComponentsInChildren<Button>().Where(button=>button.IsInteractable()).ToArray();
+            Assert.That(petals.Length,Is.EqualTo(7));
+            var more=ButtonWithCaption(EpisodeHud.MorePetalCaption);
+            Assert.That(more,Is.EqualTo(petals[3]),"More ways to talk sits at the ring's foot, on the right.");
             var following=ButtonWithCaption(EpisodeHud.DiscussGameCaption);
             var revision=director.Snapshot.revision;
-            EventSystem.current.SetSelectedGameObject(buttons[0].gameObject);yield return null;
+            EventSystem.current.SetSelectedGameObject(petals[3].gameObject);yield return null;
 
-            // Only this initial focus is staged. Every transition below is real input through
-            // the UI module, including both the first and middle cells of the bottom row.
-            yield return PressKey(Key.LeftArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[0].gameObject));
+            // Only this initial focus is staged; every move below is real input through the UI module.
             yield return PressKey(Key.RightArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[2].gameObject),"Right from the foot climbs the right side.");
+            yield return PressKey(Key.LeftArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[3].gameObject));
+            yield return PressKey(Key.LeftArrow);
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[4].gameObject),"Left crosses the foot to the other side.");
             yield return PressKey(Key.DownArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[5].gameObject));
-            yield return PressKey(Key.DownArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"Down exits the middle bottom cell to the rows below.");
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"Down from the foot leaves the ring for the rows.");
             yield return PressKey(Key.UpArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[6].gameObject),"The first row returns to the grid's last topic.");
-            yield return PressKey(Key.RightArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[6].gameObject));
-            yield return PressKey(Key.LeftArrow);yield return PressKey(Key.LeftArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[4].gameObject));
-            yield return PressKey(Key.LeftArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[4].gameObject));
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(more.gameObject),
+                "Up from the first row returns to the petal that hands the keyboard to it.");
             yield return PressKey(Key.DownArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"Down must not move sideways to the next bottom-row topic.");
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject));
             yield return PressKey(Key.Tab,shift:true);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[6].gameObject),"Shift+Tab retains reading order.");
+            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(petals[6].gameObject),"Shift+Tab retains reading order.");
             yield return PressKey(Key.Tab);
             Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject));
-            yield return PressKey(Key.UpArrow);yield return PressKey(Key.UpArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[2].gameObject));
-            yield return PressKey(Key.RightArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(buttons[3].gameObject));
-            yield return PressKey(Key.DownArrow);
-            Assert.That(EventSystem.current.currentSelectedGameObject,Is.EqualTo(following.gameObject),"An empty cell below also exits vertically rather than wrapping left.");
             Assert.That(director.Snapshot.revision,Is.EqualTo(revision),"Moving focus must not commit a conversation.");
             director.ClosePanels();yield return null;
         }

@@ -78,6 +78,13 @@ namespace Gamesim.Presentation
         public static readonly Color Joke = Hex("FFA82C");      // joke, ambition
         public static readonly Color Allied = Hex("4ADE80");    // reassure, chill, allied
         public static readonly Color Conflict = Hex("FF5A5A");  // conflict, nominated
+        /// <summary>
+        /// The mockups' title blue: card titles, the objective's title and the wordmark's base. A
+        /// saturated mid-blue, deliberately apart from <see cref="Accent"/> - that pale blue is the
+        /// fixture glow and reads as a light rather than as a word, which is why every heading
+        /// drawn in it looked like one more lamp in the set.
+        /// </summary>
+        public static readonly Color Heading = Hex("4DA8FF");
 
         /// <summary>The mockups' corner radius, and how far a panel's glow reaches past its edge.</summary>
         public const int GlassRadius = 14;
@@ -270,6 +277,49 @@ namespace Gamesim.Presentation
 
         private static readonly System.Collections.Generic.Dictionary<string, Sprite> icons
             = new System.Collections.Generic.Dictionary<string, Sprite>();
+
+        /// <summary>
+        /// A sprite from the imported UI packs, by its path under <c>Resources/Packs</c> without the
+        /// extension - one of the <see cref="PackArt"/> names - or null when it is not there.
+        ///
+        /// <para>Cached, and null-safe the same way <see cref="Icon"/> is: the packs are an import
+        /// (<c>ArtSource/ui-packs/tools/bb_ui_packs.py --install</c>), so every caller keeps the
+        /// shape it drew before and a clone without them gets the plainer HUD, not holes. The pack
+        /// files stay where the importer put them; copying one into <c>GamesimIcons</c> would be
+        /// undone the next time the icon pass regenerates that folder.</para>
+        /// </summary>
+        public static Sprite Pack(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            if (packs.TryGetValue(path, out var cached)) return cached;
+            var sprite = Resources.Load<Sprite>("Packs/" + path);
+            packs[path] = sprite;
+            return sprite;
+        }
+
+        private static readonly Dictionary<string, Sprite> packs = new Dictionary<string, Sprite>();
+
+        /// <summary>
+        /// Paints <paramref name="image"/> with a nine-sliced pack sprite at
+        /// <paramref name="border"/> canvas units a side, keeping whatever it had when the sprite is
+        /// missing. Returns whether the pack art was applied.
+        ///
+        /// <para>The pack's nine-slice borders are authored for a 1920-wide screen at two to four
+        /// times the size a HUD edge wants, so the multiplier is solved from the border the caller
+        /// asks for rather than guessed per call.</para>
+        /// </summary>
+        public static bool PackSliced(Image image, string path, float border, Color? tint = null)
+        {
+            var sprite = Pack(path);
+            if (image == null || sprite == null) return false;
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+            float authored = Mathf.Max(sprite.border.x, sprite.border.y, sprite.border.z, sprite.border.w);
+            image.pixelsPerUnitMultiplier = authored > 0f && border > 0f
+                ? authored / border * (100f / sprite.pixelsPerUnit) : 1f;
+            image.color = tint ?? Color.white;
+            return true;
+        }
 
         public static Sprite Circle()
         {

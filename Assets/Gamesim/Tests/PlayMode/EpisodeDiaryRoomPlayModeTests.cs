@@ -264,8 +264,11 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             yield return OpenDiaryFixturePanel();
             var caption = "Vote to evict " + before.Find(before.nominees[0]).name;
+            // Review frames of the ballot (mockup-08), before a choice and while it waits.
+            if (Application.isBatchMode) yield return CaptureFraming("ballot-diary");
             ButtonWithCaption(caption).onClick.Invoke();
             yield return null; yield return null;
+            if (Application.isBatchMode) yield return CaptureFraming("ballot-review");
             AssertEquivalent(before,director.Snapshot);
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;

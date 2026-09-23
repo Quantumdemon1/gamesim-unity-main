@@ -314,7 +314,9 @@ namespace Gamesim.Episode
 
         private void ChallengePanel()
         {
-            if (challengeRun != null) return;
+            // While a game is being played its screen is the decision: the panel and the column
+            // step aside rather than sit, empty, under a competition that no longer hides them.
+            if (challengeRun != null) { hud.StandAsideForPlay(); return; }
             hud.Paragraph("Press Space or STOP when the marker is near the center. Three attempts; no time limit. Escape cancels without committing.");
             hud.ChallengeMeter(); hud.Action("STOP marker  [Space]", RecordChallengeHit);
         }

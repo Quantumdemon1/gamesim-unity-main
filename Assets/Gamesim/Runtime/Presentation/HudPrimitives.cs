@@ -256,9 +256,7 @@ namespace Gamesim.Presentation
             var holder = new GameObject(name, typeof(RectTransform));
             holder.transform.SetParent(parent, false);
             var label = holder.AddComponent<TextMeshProUGUI>();
-            var font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            var font = UiTheme.Font(UiTheme.Weight.Regular);
             if (font != null) label.font = font;
             label.fontSize = size;
             label.color = colour;
@@ -328,6 +326,50 @@ namespace Gamesim.Presentation
                 }
             }
             return rim;
+        }
+
+        /// <summary>
+        /// A rectangular photo: the portrait cropped to the rect's shape - never squashed - inside
+        /// rounded corners, bound so a face still being built lands when it is ready. The mockups'
+        /// ceremony screens and ballots frame faces this way rather than in circles.
+        /// </summary>
+        public static RectTransform RectPortrait(Transform parent, string name, Texture face, ContestantState character,
+            Vector2 size, int radius = 8)
+        {
+            var frame = Fill(name, parent, UiTheme.SurfaceRaised, radius);
+            frame.sizeDelta = size;
+            frame.GetComponent<Image>().raycastTarget = false;
+            frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+            raw.rectTransform.SetParent(frame, false);
+            raw.rectTransform.anchorMin = Vector2.zero; raw.rectTransform.anchorMax = Vector2.one;
+            raw.rectTransform.offsetMin = Vector2.zero; raw.rectTransform.offsetMax = Vector2.zero;
+            raw.texture = face;
+            raw.raycastTarget = false;
+            // The render is square; take the middle column of it at the rect's own shape.
+            float share = size.y > 0f ? Mathf.Clamp01(size.x / size.y) : 1f;
+            raw.uvRect = new Rect((1f - share) * .5f, 0f, share, 1f);
+            if (character != null) CharacterPortraits.Bind(raw, character);
+            return frame;
+        }
+
+        /// <summary>
+        /// The broadcast vignette the ceremonies play over: the house darkened at the frame's edges
+        /// and left to be seen in the middle, instead of a near-opaque scrim that blacked out the
+        /// room the ceremony was happening in. Falls back to a light dim without the pack.
+        /// </summary>
+        public static RectTransform Vignette(Transform parent)
+        {
+            var art = UiTheme.Pack(PackArt.Vignette);
+            var rect = new GameObject("Vignette", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero;
+            var image = rect.GetComponent<Image>();
+            image.sprite = art;
+            image.color = art != null ? new Color(1f, 1f, 1f, .9f) : new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .35f);
+            image.raycastTarget = false;
+            return rect;
         }
 
         /// <summary>Which role badge sits on a portrait, if any.</summary>

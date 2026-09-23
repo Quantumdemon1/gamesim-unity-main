@@ -658,14 +658,22 @@ namespace Gamesim.Episode
                     .LastOrDefault(entry => entry.kind == CeremonyTakeover.VetoSelectionKind
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (field != null && takeover != null)
+                {
+                    EndCeremonyCards();
                     takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
                         VetoField(result.state), reducedMotion);
+                }
 
                 var ceremony = result.state.events.Skip(knownEvents)
                     .LastOrDefault(entry => CeremonySting.IsCeremony(entry.kind)
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (ceremony != null)
                 {
+                    // A new ceremony replaces whatever card is still up. Each ends on its own timer,
+                    // but a player who commits the next beat inside that time got the old card
+                    // over the new one: the nomination's keys sit at sort 110 over the takeover's
+                    // 100, so the veto field played underneath a finished nomination ceremony.
+                    if (field == null) EndCeremonyCards();
                     // The takeover opens the scene and the sting reports the result, so they play
                     // together rather than instead of each other: the card is over by the time the
                     // strip has finished its own entrance.
@@ -705,6 +713,14 @@ namespace Gamesim.Episode
                 }
             }
             Render(); return result;
+        }
+
+        /// <summary>Takes down every ceremony card still on screen, before the next one plays.</summary>
+        private void EndCeremonyCards()
+        {
+            if (takeover != null) takeover.Cancel();
+            if (voteReveal != null) voteReveal.Cancel();
+            if (keyCeremony != null) keyCeremony.Cancel();
         }
 
         /// <summary>
@@ -1155,6 +1171,10 @@ namespace Gamesim.Episode
             if (state.vetoHolderId != null) hud.Paragraph("Veto holder: " + state.Find(state.vetoHolderId).name);
             if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
             {
+                // Before anything the player chose to do: something has happened to them, and a
+                // situation buried under the ordinary controls is a situation they will not see.
+                // It used to come after the location and the meter, below the fold of the panel.
+                PendingHouseEvent(state);
                 CurrentLocation(state);
                 // The web build draws this as a bar you can watch drain rather than a sentence you
                 // have to read and subtract. The caption still carries the numbers.
@@ -1169,9 +1189,6 @@ namespace Gamesim.Episode
                     hud.Paragraph("Carrying a +" + state.phaseEventSocialBonus + " social bonus from earlier choices.");
                 if (state.playerStudyBonus > 0)
                     hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
-                // Before anything the player chose to do: something has happened to them, and a
-                // situation buried under the ordinary controls is a situation they will not see.
-                PendingHouseEvent(state);
                 HouseWideActions(state);
                 hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
                     + "The house gives you half its number in actions each week, so the budget tightens as people leave.");

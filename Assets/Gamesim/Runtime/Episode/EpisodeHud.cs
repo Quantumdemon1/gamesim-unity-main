@@ -161,11 +161,9 @@ namespace Gamesim.Episode
         public void Initialize(EpisodeDirector owner)
         {
             director = owner;
-            // TMP_Settings carries the imported default; the explicit load is the fallback if a
-            // project ever ships without TMP Essential Resources.
-            font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            // The mockups' face (VISUAL-TARGET.md §4). UiTheme.Font falls back to the TMP default,
+            // so a clone without Resources/Fonts still draws every label.
+            font = UiTheme.Font(UiTheme.Weight.Regular);
             var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false); canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 70;
             var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -176,9 +174,9 @@ namespace Gamesim.Episode
         /// Where the panel column starts: clear of the left gutter. The ceremony card insets
         /// against this too, so it lives here rather than as a literal in two places.
         ///
-        /// <para>The gutter used to hold twelve faces at 184 wide. It holds the six-item navigation
-        /// rail now, at 52, and the 132 the cast strip gave back is the room every card the mockups
-        /// still owe this screen was waiting on.</para>
+        /// <para>The gutter used to hold twelve faces at 184 wide, then a strip of unlabelled marks
+        /// at 52. It holds the mockups' labelled rail now, which is wider than either because its
+        /// rows carry words.</para>
         /// </summary>
         public const float LeftColumnX = 14f + IconRail.Width + 12f;
 
@@ -204,7 +202,7 @@ namespace Gamesim.Episode
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
-            dialRoot = null; topicSeats = topicTaken = 0;
+            dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
@@ -215,40 +213,21 @@ namespace Gamesim.Episode
                 director.FollowedId);
             FollowChip(director.FollowedName);
 
-            var leftColumn = new GameObject("Left column",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>();
-            leftColumn.SetParent(canvas.transform,false);
-            leftColumn.anchorMin = new Vector2(0,1); leftColumn.anchorMax = new Vector2(0,1); leftColumn.pivot = new Vector2(0,1);
-            leftColumn.anchoredPosition = new Vector2(LeftColumnX,-TopBarTop);
-            var columnLayout = leftColumn.GetComponent<VerticalLayoutGroup>();
-            columnLayout.spacing = TopBarGap; columnLayout.childControlWidth = true; columnLayout.childControlHeight = true;
-            columnLayout.childForceExpandWidth = false; columnLayout.childForceExpandHeight = false;
-            var columnFitter = leftColumn.GetComponent<ContentSizeFitter>();
-            columnFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-            columnFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            BrandCard(leftColumn, state);
-            var controls = Chrome("Navigation",canvas.transform); Anchor(controls,new Vector2(1,1),new Vector2(1,1),new Vector2(-24,-TopBarTop),new Vector2(465,TopBarHeight));
-            FixedButton(controls,"Notebook [J]",new Vector2(10,-9),new Vector2(142,46),director.OpenJournal);
-            FixedButton(controls,"Save [F5]",new Vector2(161,-9),new Vector2(122,46),director.SaveNow);
-            FixedButton(controls,"Settings",new Vector2(292,-9),new Vector2(162,46),director.OpenSettings);
-            ObjectiveCard(leftColumn, state, recovery);
-            // House vibe is a right-column card now; RightColumn already returns early when the
-            // HUD is compact, so the preference keeps working without a second guard here.
+            // The top bar (mockup-01): the brand, the week, the objective, the house's numbers
+            // and the tagline, as separate chips on one band - never a button among them. The
+            // buttons that lived at its right-hand end are rows of the left rail now, which is
+            // where every mockup puts navigation.
+            BrandCard(canvas.transform, state);
+            WeekChip(state);
+            if (!Compact) ObjectiveChip(state);
             HousePill(state);
+            Tagline();
 
-            // The section rail: five pages and the overview, which is a camera mode rather than a
-            // page. The director routes the section name and says which one is open, so the rail can
-            // fill it - the mockups' rail always shows you where you are, and a row of six identical
-            // buttons is exactly the "they all default to the same view" complaint in miniature.
-            IconRail.Build(canvas.transform, new[]
-            {
-                new IconRail.Entry(IconRail.Mark.People,   EpisodeDirector.NotebookSection.People,  "Houseguests"),
-                new IconRail.Entry(IconRail.Mark.Network,  EpisodeDirector.NotebookSection.Network, "Relationships"),
-                new IconRail.Entry(IconRail.Mark.Rooms,    EpisodeDirector.NotebookSection.Rooms,   "Who is where"),
-                new IconRail.Entry(IconRail.Mark.Votes,    EpisodeDirector.NotebookSection.Votes,   "The vote"),
-                new IconRail.Entry(IconRail.Mark.Story,    EpisodeDirector.NotebookSection.Story,   "The story so far"),
-                new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection,         "Overview"),
-            }, FontScale, director.ShowNotebookSection, director.ActiveSection);
+            // The left gutter: the notebook's pages, the two places to go next and the notebook,
+            // save and settings, as one list on one ground.
+            LeftGutter(state, recovery);
+            if (Compact) CompactObjective(state, recovery);
+
             RightColumn(state);
 
             // Five lines, not four, because click-to-follow had to be added without lengthening a
@@ -263,17 +242,26 @@ namespace Gamesim.Episode
             // The lower third sits ABOVE the cast strip now rather than on the floor, and it no
             // longer runs the full width: the controls box occupies the same band at the right-hand
             // end, and fixed chrome may not overlap. It stops a gap short of it instead.
+            // A lower third as wide as what it says, centred over the strip: the mockups leave the
+            // band above the faces to the house, and a caption spanning 1255 units to say one line
+            // was the widest thing in the frame. Never wider than the room between the controls on
+            // either side, so the expanded help box still cannot reach it.
             var status = Chrome("Status",canvas.transform);
-            status.anchorMin = new Vector2(0,0); status.anchorMax = new Vector2(1,0); status.pivot = new Vector2(.5f,0);
-            status.offsetMin = new Vector2(24,StatusBottom); status.offsetMax = new Vector2(-HelpGutter,StatusBottom+StatusHeight);
+            var statusBounds = ((RectTransform)canvas.transform).rect;
+            float statusRoom = (statusBounds.width > 0 ? statusBounds.width : 1600f) - 2f * HelpGutter;
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.
             var rule = Panel("Caption rule",status,recovery ? UiTheme.Warning : Accent,2);
-            Anchor(rule,new Vector2(0,1),new Vector2(0,1),new Vector2(16,-12),new Vector2(5,40));
+            Anchor(rule,new Vector2(0,.5f),new Vector2(0,.5f),new Vector2(16,0),new Vector2(4,28*FontScale));
             rule.GetComponent<Image>().raycastTarget = false;
-            var caption = FixedText(status,message,18,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
-            Stretch(caption.rectTransform,32,9,24,7);
+            var caption = FixedText(status,message,16,recovery ? UiTheme.Warning : Paper,new Vector2(32,-9),new Vector2(1150,48));
+            AutoSize(caption,12);
+            float wanted = caption.GetPreferredValues(caption.text).x + 64f;
+            float statusWidth = Mathf.Clamp(wanted, Mathf.Min(420f, statusRoom), statusRoom);
+            Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,StatusBottom),new Vector2(statusWidth,StatusHeight*FontScale));
+            Stretch(caption.rectTransform,32,6,20,6);
+            caption.alignment = TextAlignmentOptions.MidlineLeft;
             // Above the cast strip, in the band the docked panel also uses. They never share the
             // screen: the director clears the prompt outright while a panel is open, which is why
             // one band can carry both.
@@ -355,13 +343,13 @@ namespace Gamesim.Episode
         /// this was found - the overlap test reported 'Status' sitting on 'Cast rail' by 5.18
         /// screen pixels, at larger text only.
         /// </remarks>
-        private float StatusBottom => CastRail.Bottom + CastRail.Height * FontScale + 8f;
-        private const float StatusHeight = 64f;
+        private float StatusBottom => CastRail.Bottom + CastRail.Height * FontScale + 14f;
+        private const float StatusHeight = 50f;
         /// <summary>The controls box shares the status band and owns the right-hand end of it.</summary>
         public float HelpBottom => StatusBottom;
         public const float HelpWidth = 285f;
         private const float HelpGutter = 24f + HelpWidth + 12f;
-        private float ModalLift => StatusBottom + StatusHeight + 8f;
+        private float ModalLift => StatusBottom + StatusHeight * FontScale + 8f;
         /// <summary>The proximity prompt shares the panel's band; see <see cref="ModalLift"/>.</summary>
         private float PromptLift => ModalLift;
 
@@ -383,10 +371,16 @@ namespace Gamesim.Episode
             FlowText(detail,19,UiTheme.Muted);
         }
 
-        public void Heading(string value) { FlowText(value,26,Accent); }
+        public void Heading(string value) { Heading(value,Accent); }
 
         /// <summary>A heading in a given colour. The recap uses gold, as the reference build does.</summary>
-        public void Heading(string value,Color colour) { FlowText(value,26,colour); }
+        public void Heading(string value,Color colour)
+        {
+            var text = FlowText(value,26,colour);
+            // Headings take the semibold cut, the weight the mockups title every card in.
+            var weight = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (weight != null) text.font = weight;
+        }
 
         /// <summary>Small letterspaced copy above a section, the reference build's eyebrow.</summary>
         public void Eyebrow(string value,Color colour)
@@ -400,15 +394,19 @@ namespace Gamesim.Episode
         /// A panel title fronted by the speaker's face.
         ///
         /// <para>The same information as <see cref="PanelTitle"/>, but a conversation is with a
-        /// person and the cast rail has just taught the player which face that is. Falls back to the
-        /// plain title when the persona has no authored art, so a missing portrait costs a picture
-        /// rather than a header.</para>
+        /// person and the cast rail has just taught the player which face that is. The face is bound
+        /// rather than read once, the way the cast rail's are: a generated body's portrait is queued
+        /// and lands a few frames later, and a header that asked once kept its no-portrait layout for
+        /// as long as the conversation stayed open. Only a speaker the state does not know falls
+        /// back to the plain title.</para>
         /// </summary>
         public void SpeakerTitle(string contestantId, string title, string subtitle)
         {
             SetActivityLayout(ActivityLayout.Conversation);
-            var portrait = Portrait(contestantId);
-            if (portrait == null) { PanelTitle(title, subtitle); return; }
+            var state = director != null ? director.Snapshot : null;
+            var speaker = state != null ? state.Find(contestantId) : null;
+            if (speaker == null) { PanelTitle(title, subtitle); return; }
+            var portrait = CharacterPortraits.Get(speaker);
 
             var row = new GameObject("Speaker",typeof(RectTransform)).GetComponent<RectTransform>();
             row.SetParent(content,false);
@@ -422,6 +420,9 @@ namespace Gamesim.Episode
             frame.sizeDelta = new Vector2(side,side);
             var disc = frame.GetComponent<Image>();
             disc.sprite = UiTheme.Circle(); disc.type = Image.Type.Simple; disc.raycastTarget = false;
+            // What shows while the face is still on its way: the cast rail's empty-seat ground,
+            // not a white disc that reads as a rendering fault.
+            disc.color = UiTheme.SurfaceRaised;
             frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
 
             var face = new GameObject("Face",typeof(RectTransform),typeof(RawImage)).GetComponent<RawImage>();
@@ -429,10 +430,16 @@ namespace Gamesim.Episode
             face.rectTransform.anchorMin = Vector2.zero; face.rectTransform.anchorMax = Vector2.one;
             face.rectTransform.offsetMin = Vector2.zero; face.rectTransform.offsetMax = Vector2.zero;
             face.texture = portrait; face.raycastTarget = false;
+            CharacterPortraits.Bind(face, speaker);
 
             float text = side + 16f * FontScale;
-            FixedText(row,title,26,Accent,new Vector2(text,-4f),new Vector2(420f * FontScale,32f * FontScale));
-            FixedText(row,subtitle,21,Paper,new Vector2(text,-34f * FontScale),new Vector2(420f * FontScale,28f * FontScale));
+            float room = Mathf.Max(160f, ContentWidth() - text - 8f);
+            var name = FixedText(row,title,22,UiTheme.Heading,new Vector2(text,-6f),new Vector2(room,30f * FontScale));
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) name.font = semibold;
+            AutoSize(name,14);
+            var line = FixedText(row,subtitle,15,UiTheme.Muted,new Vector2(text,-36f * FontScale),new Vector2(room,24f * FontScale));
+            AutoSize(line,11);
         }
 
         /// <summary>The houseguest's second line after a Talk, drawn only when it is news.</summary>
@@ -459,17 +466,49 @@ namespace Gamesim.Episode
                 string said = HouseDialogue.TalkAcknowledgement(state, npc.id);
                 if (said.Length > 0)
                 {
-                    FlowText("\"" + said + "\"",21,Paper).gameObject.name = "NPC spoken dialogue";
+                    Speech("\"" + said + "\"", "NPC spoken dialogue", false);
                     string now = HouseDialogue.Response(state, npc.id);
                     if (!string.IsNullOrEmpty(now) && now != standingBefore)
-                        FlowText("\"" + now + "\"",21,Paper).gameObject.name = FollowUpDialogueName;
+                        Speech("\"" + now + "\"", FollowUpDialogueName, false);
                     return;
                 }
             }
             string line = acceptedAction.HasValue
                 ? HouseDialogue.Response(state, npc.id, acceptedAction.Value)
                 : HouseDialogue.Greeting(state, npc.id);
-            if (!string.IsNullOrEmpty(line)) FlowText("\"" + line + "\"",21,Paper).gameObject.name = "NPC spoken dialogue";
+            bool confided = acceptedAction == EpisodeCommandKind.ShareSecret || acceptedAction == EpisodeCommandKind.SpreadRumor;
+            if (!string.IsNullOrEmpty(line)) Speech("\"" + line + "\"", "NPC spoken dialogue", confided);
+        }
+
+        /// <summary>
+        /// A line somebody says, in a speech card: the pack's bubble - the whisper bubble for a
+        /// confidence - with the words in italic inside it. The label keeps the name it is found
+        /// by, and the card grows with what it holds, so a long reply wraps rather than clips.
+        /// </summary>
+        private TMP_Text Speech(string quoted, string name, bool whisper)
+        {
+            var card = new GameObject("Speech card", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup)).GetComponent<RectTransform>();
+            card.SetParent(content, false);
+            var ground = card.GetComponent<Image>();
+            ground.raycastTarget = false;
+            if (!UiTheme.PackSliced(ground, whisper ? PackArt.WhisperBubble : PackArt.SpeechBubble, 14f))
+                UiTheme.Style(ground, UiTheme.SurfaceRaised, 12);
+            var layout = card.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(18, 18, 12, 14);
+            layout.childControlWidth = true; layout.childControlHeight = true;
+            layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
+
+            var text = NewText(card, quoted, 17, Paper);
+            text.gameObject.name = name;
+            text.fontStyle = FontStyles.Italic;
+            return text;
+        }
+
+        /// <summary>The width a line in the panel's column has, past its padding and scrollbar.</summary>
+        private float ContentWidth()
+        {
+            if (conversationColumn != null) return conversationColumn.sizeDelta.x - 14f - 10f - 18f - 16f;
+            return modal != null ? modal.sizeDelta.x - 40f - 18f - 16f : 420f;
         }
 
         /// <summary>
@@ -587,22 +626,46 @@ namespace Gamesim.Episode
         private TMP_Text liveFeedHeading;
         private Image liveFeedDot;
 
+        private TMP_Text liveFeedBadge;
+
         private float LiveFeedCard(Transform parent, float top)
         {
-            const float height = 226f;
+            // The feed's own 16:9 at the column's width, with a two-line caption under it.
+            float pictureWidth = RightColumnWidth - 24f;
+            float pictureHeight = Mathf.Round(pictureWidth * LiveFeed.Height / LiveFeed.Width);
+            float height = 42f + pictureHeight + 8f + 38f;
             var card = Chrome(EpisodeDirector.LiveFeedCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(RightColumnWidth, height));
-            liveFeedHeading = CardHeading(card, "LIVE FEED", "camera");
+            liveFeedHeading = CardHeading(card, "Live Feed", Paper);
+
+            // The mockups' "● LIVE" at the heading's end: the dot and the word, in the red a
+            // broadcast bug is. Paused, both go grey and the word says so.
             var dot = HudPrimitives.Disc("Live dot", card, UiTheme.Conflict);
-            Anchor(dot, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-16, -14), new Vector2(10, 10));
+            Anchor(dot, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-72f, -17f), new Vector2(8f, 8f));
+            dot.GetComponent<Image>().raycastTarget = false;
             liveFeedDot = dot.GetComponent<Image>();
+            // Wide enough for PAUSED, the longer of its two words.
+            liveFeedBadge = FixedText(card, "LIVE", 12, UiTheme.Conflict, new Vector2(RightColumnWidth - 68f, -11f), new Vector2(56f, 20f));
+            AutoSize(liveFeedBadge, 9);
+            liveFeedBadge.alignment = TextAlignmentOptions.Left;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) liveFeedBadge.font = semibold;
+
+            // Rounded, as the mockups crop every picture: a masked frame rather than a border drawn
+            // over square corners.
+            var frame = Panel("Picture frame", card, Color.white, 8);
+            Anchor(frame, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f, -40f), new Vector2(pictureWidth, pictureHeight));
+            frame.GetComponent<Image>().raycastTarget = false;
+            frame.gameObject.AddComponent<Mask>().showMaskGraphic = false;
             var picture = new GameObject("Picture", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
-            picture.transform.SetParent(card, false);
+            picture.transform.SetParent(frame, false);
             picture.texture = director.LiveFeedTexture;
             picture.raycastTarget = false;
-            Anchor(picture.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12, -36), new Vector2(RightColumnWidth - 24f, 145));
-            UiTheme.AddBorder(picture.rectTransform, 6, UiTheme.Edge(UiTheme.Emphasis.Resting));
-            liveFeedCaption = FixedText(card, director.LiveFeedCaption, 13, Paper, new Vector2(16, -188), new Vector2(RightColumnWidth - 32f, 30));
+            Stretch(picture.rectTransform, 0, 0, 0, 0);
+
+            liveFeedCaption = FixedText(card, director.LiveFeedCaption, 13, Paper,
+                new Vector2(14f, -(40f + pictureHeight + 8f)), new Vector2(RightColumnWidth - 28f, 34f));
+            AutoSize(liveFeedCaption, 11);
             SetLiveFeedPaused(director.IsPanelOpen);
             return height;
         }
@@ -615,7 +678,11 @@ namespace Gamesim.Episode
 
         public void SetLiveFeedPaused(bool paused)
         {
-            if (liveFeedHeading != null) liveFeedHeading.text = paused ? "FEED PAUSED" : "LIVE FEED";
+            if (liveFeedBadge != null)
+            {
+                liveFeedBadge.text = paused ? "PAUSED" : "LIVE";
+                liveFeedBadge.color = paused ? UiTheme.Muted : UiTheme.Conflict;
+            }
             if (liveFeedDot != null) liveFeedDot.color = paused ? UiTheme.Muted : UiTheme.Conflict;
         }
 
@@ -629,13 +696,13 @@ namespace Gamesim.Episode
             var column = Chrome(OverviewColumnName, parent);
             Anchor(column, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
                 new Vector2(RightColumnWidth, 40 + rooms.Count * RowHeight));
-            CardHeading(column, "WHO IS WHERE", "house");
+            CardHeading(column, "Who Is Where");
             for (int i = 0; i < rooms.Count; i++)
             {
                 var room = rooms[i];
                 float y = -(36 + i * RowHeight);
-                FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(16, y), new Vector2(200, 20));
-                var count = FixedText(column, room.Occupants.Count.ToString(), 15, Accent, new Vector2(218, y), new Vector2(52, 20));
+                FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(16, y), new Vector2(RightColumnWidth - 88f, 20));
+                var count = FixedText(column, room.Occupants.Count.ToString(), 15, Accent, new Vector2(RightColumnWidth - 68f, y), new Vector2(52, 20));
                 count.alignment = TextAlignmentOptions.Right;
                 // Trimmed: a room holding the whole house is a line of eight names, and this row is
                 // 254 px wide at a size that has nowhere left to shrink to.
@@ -839,6 +906,7 @@ namespace Gamesim.Episode
         public void Tag(Button target,string text,TagSeat seat)
         {
             if (target == null || string.IsNullOrEmpty(text)) return;
+            if (dialRoot != null && target.transform.parent == dialRoot) { PetalTag(target, text); return; }
             var chip = Panel("Tag",target.transform,new Color(Accent.r,Accent.g,Accent.b,.16f));
             // Wide enough for what is in it. A row-end tag was a fixed 104, which was right while it
             // held one word and wrong the moment a deal row started carrying its stakes as well as
@@ -866,6 +934,33 @@ namespace Gamesim.Episode
             label.alignment = TextAlignmentOptions.Center;
             label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(6f,0f); label.rectTransform.offsetMax = new Vector2(-6f,0f);
+            if (seat == TagSeat.CardFoot) return;
+            // The caption stops short of the tag, and wraps rather than running under it. A row in
+            // a wide panel never met its tag; in the conversation's column it ran straight under
+            // it, "Talk game openly" behind "risky".
+            var caption = target.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(text => text.transform.parent == target.transform && text.text == Localisation.Text(target.name));
+            if (caption != null)
+            {
+                float clear = -chip.anchoredPosition.x + size.x + 8f;
+                caption.rectTransform.offsetMax = new Vector2(-clear, caption.rectTransform.offsetMax.y);
+                caption.enableAutoSizing = false;
+                caption.textWrappingMode = TextWrappingModes.Normal;
+            }
+        }
+
+        /// <summary>A petal's category: a small badge seated on the disc's lower rim.</summary>
+        private void PetalTag(Button petal, string text)
+        {
+            var size = new Vector2(60f * dialScale, 16f * dialScale);
+            var chip = Panel("Tag", petal.transform, UiTheme.SurfaceRaised, 5);
+            Anchor(chip, new Vector2(.5f, 0f), new Vector2(.5f, .5f), Vector2.zero, size);
+            chip.GetComponent<Image>().raycastTarget = false;
+            UiTheme.AddBorder(chip, 5, UiTheme.Edge(UiTheme.Emphasis.Resting));
+            var label = FixedText(chip, text, 10, Accent, Vector2.zero, size);
+            AutoSize(label, 8);
+            label.alignment = TextAlignmentOptions.Center;
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(3f, 0f); label.rectTransform.offsetMax = new Vector2(-3f, 0f);
         }
 
         /// <summary>
@@ -916,10 +1011,30 @@ namespace Gamesim.Episode
             // Same framing the notebook uses, so a trust number is never mistaken for fact.
             Paragraph("Trust readings are your own perspective; another housemate may feel differently.");
             var selection = FlowText("Choose two houseguests below.",21,Accent);
+
+            // The candidates as cards (mockup-09): a photo, the name, where the player stands with
+            // them and the trust reading, in a grid as wide as the panel allows. A card is pressed
+            // to pick and pressed again to put back; the pick lights the card in place - nothing is
+            // rebuilt, so the control a test or the keyboard is holding stays the one it held.
+            float cellWidth = NomineeCardWidth * FontScale, cellHeight = NomineeCardHeight * FontScale, spacing = 10f * FontScale;
+            int columns = Mathf.Max(1, Mathf.FloorToInt((ContentWidth() + spacing) / (cellWidth + spacing)));
+            int rows = Mathf.Max(1, Mathf.CeilToInt(options.Length / (float)columns));
+            var grid = new GameObject(NomineeGridName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
+            grid.SetParent(content,false);
+            var layout = grid.GetComponent<GridLayoutGroup>();
+            layout.cellSize = new Vector2(cellWidth,cellHeight);
+            layout.spacing = new Vector2(spacing,spacing);
+            layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            layout.constraintCount = columns;
+            layout.childAlignment = TextAnchor.UpperLeft;
+            var size = grid.GetComponent<LayoutElement>();
+            size.minHeight = size.preferredHeight = rows * cellHeight + (rows - 1) * spacing;
+
+            var cards = new System.Collections.Generic.Dictionary<string, RectTransform>();
             foreach (var option in options)
             {
                 var captured = option;
-                var row = Action(option.Label,Portrait(option.Id),() =>
+                var card = NomineeCard(grid, option, () =>
                 {
                     if (first == captured.Id) first = null;
                     else if (second == captured.Id) second = null;
@@ -927,11 +1042,103 @@ namespace Gamesim.Episode
                     else second = captured.Id;
                     string Label(string id) => Array.Find(options,o=>o.Id==id).Label ?? "—";
                     selection.text = "Selected: " + Label(first) + " and " + Label(second);
+                    foreach (var pair in cards) MarkPicked(pair.Value, pair.Key == first || pair.Key == second);
                     selectionChanged?.Invoke(first,second);
                 });
-                Annotate(row, captured.Id);
+                cards[option.Id] = (RectTransform)card.transform;
             }
             Action(commitCaption,() => commit(first,second));
+        }
+
+        /// <summary>The candidate grid, so a test can find it the way it finds a named panel.</summary>
+        public const string NomineeGridName = "Nominee grid";
+        private const float NomineeCardWidth = 132f;
+        private const float NomineeCardHeight = 184f;
+
+        /// <summary>
+        /// One candidate: the photo, the name, the standing the player has with them in the web's
+        /// word and colour, and the trust reading as a bar and a number - the player's own record,
+        /// nothing a houseguest thinks in return. The card is named, and captioned, by the name.
+        /// </summary>
+        private Button NomineeCard(RectTransform grid, Option option, Action press)
+        {
+            var rect = Chrome(option.Label, grid, UiTheme.Emphasis.Interactive);
+            HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+            var button = Pressable(rect, press);
+            var colours = button.colors;
+            colours.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
+            colours.selectedColor = colours.highlightedColor;
+            button.colors = colours;
+
+            var state = director != null ? director.Snapshot : null;
+            var actor = state != null ? state.Find(option.Id) : null;
+            float s = FontScale, width = NomineeCardWidth * s;
+
+            var photo = HudPrimitives.RectPortrait(rect, "Photo", Portrait(option.Id), actor, new Vector2(width - 12f * s, 96f * s), 7);
+            photo.anchorMin = photo.anchorMax = new Vector2(.5f, 1f);
+            photo.pivot = new Vector2(.5f, 1f);
+            photo.anchoredPosition = new Vector2(0f, -6f * s);
+            // The week's role, as a pill on the photo's foot: the crown, the veto, the block.
+            var role = state != null ? RoleOf(state, option.Id) : HudPrimitives.RoleMark.None;
+            if (role != HudPrimitives.RoleMark.None)
+            {
+                var pill = Panel("Role", photo, role == HudPrimitives.RoleMark.Nominee ? UiTheme.Danger : UiTheme.Gold, 4);
+                Anchor(pill, new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(0f, 4f * s), new Vector2(46f * s, 15f * s));
+                pill.GetComponent<Image>().raycastTarget = false;
+                var word = FixedText(pill, role == HudPrimitives.RoleMark.HeadOfHousehold ? "HOH"
+                    : role == HudPrimitives.RoleMark.VetoHolder ? "VETO" : "NOM", 10, UiTheme.Ink, Vector2.zero, pill.sizeDelta);
+                word.alignment = TextAlignmentOptions.Center;
+            }
+
+            var name = NewText(rect, option.Label, 14, Paper);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) name.font = semibold;
+            name.alignment = TextAlignmentOptions.Top;
+            AutoSize(name, 10);
+            Anchor(name.rectTransform, new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(0f, -106f * s), new Vector2(width - 10f * s, 34f * s));
+
+            if (actor == null || state == null) return button;
+            var kind = RelationshipWeb.KindOf(state, option.Id);
+            var tint = kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind);
+            var standing = FixedText(rect, RelationshipWeb.StandingWord(kind), 12, tint, new Vector2(8f * s, -142f * s), new Vector2(width - 16f * s, 16f * s));
+            standing.alignment = TextAlignmentOptions.Center;
+            double trust = state.Score(state.playerId, option.Id);
+            var track = Panel("Trust track", rect, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .55f), 2);
+            Anchor(track, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f * s, -161f * s), new Vector2(width - 24f * s, 4f * s));
+            track.GetComponent<Image>().raycastTarget = false;
+            float fill = Mathf.Clamp01((float)(trust + 100.0) / 200f);
+            if (fill > 0f)
+            {
+                var bar = Panel("Trust fill", rect, trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted, 2);
+                Anchor(bar, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f * s, -161f * s), new Vector2((width - 24f * s) * fill, 4f * s));
+                bar.GetComponent<Image>().raycastTarget = false;
+            }
+            var reading = FixedText(rect, "Trust " + trust.ToString("0"), 11, UiTheme.Muted, new Vector2(8f * s, -167f * s), new Vector2(width - 16f * s, 14f * s));
+            reading.alignment = TextAlignmentOptions.Center;
+            return button;
+        }
+
+        /// <summary>A picked card's edge is lit and it carries the pack's check; a put-back one is not.</summary>
+        private static void MarkPicked(RectTransform card, bool picked)
+        {
+            if (card == null) return;
+            HudEmphasis.Promote(card, picked ? UiTheme.Emphasis.Active : UiTheme.Emphasis.Interactive);
+            var mark = card.Find("Picked");
+            if (picked && mark == null)
+            {
+                var check = UiTheme.Pack(PackArt.BadgeSelected);
+                var image = new GameObject("Picked", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                image.rectTransform.SetParent(card, false);
+                Anchor(image.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-4f, -4f), new Vector2(26f, 26f));
+                image.sprite = check != null ? check : UiTheme.Circle();
+                image.color = check != null ? Color.white : UiTheme.Accent;
+                image.preserveAspect = true; image.raycastTarget = false;
+            }
+            else if (!picked && mark != null)
+            {
+                mark.gameObject.SetActive(false);
+                Destroy(mark.gameObject);
+            }
         }
 
         /// <summary>
@@ -1214,14 +1421,14 @@ namespace Gamesim.Episode
                     eligible[index].navigation = navigation;
                 }
                 tabOrder = eligible;
-                if (!spatialOverlay) WireConversationGrid();
+                if (!spatialOverlay) WireConversationRing();
                 // Whatever is already selected and still eligible keeps the focus: a rewire is not a
                 // reason to move the keyboard. The HUD's own rebuilds destroy the old selection, so
                 // for them this is null and the named restore below takes over as before.
                 var current = events.currentSelectedGameObject;
                 var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
                     ?? eligible.FirstOrDefault(item => item.name == preferredSelection)
-                    ?? eligible.FirstOrDefault(item => content != null && item.transform.IsChildOf(content))
+                    ?? OpeningControl(eligible)
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
                     ?? eligible.FirstOrDefault();
                 events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
@@ -1348,28 +1555,71 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>The glyph a phase's header carries, drawn in its <see cref="PhaseTint"/>.</summary>
+        private static string PhaseGlyph(EpisodePhase phase)
+        {
+            switch (phase)
+            {
+                case EpisodePhase.Nomination: return "target";
+                case EpisodePhase.Eviction:
+                case EpisodePhase.FinalEviction: return "gavel";
+                case EpisodePhase.VetoSelection:
+                case EpisodePhase.Veto:
+                case EpisodePhase.VetoMeeting: return "veto-token";
+                case EpisodePhase.Finished: return "trophy";
+                case EpisodePhase.HoH:
+                case EpisodePhase.FinalHoHPart1:
+                case EpisodePhase.FinalHoHPart2:
+                case EpisodePhase.FinalHoHPart3: return "crown";
+                default: return "house";
+            }
+        }
+
         /// <summary>
         /// The panel's fixed header: phase, week, and how many are left.
         ///
-        /// <para>The foreground is chosen by luminance rather than fixed, because the band runs from
-        /// a deep blue to gold and one hard-coded colour is unreadable at one end.</para>
+        /// <para>A header on the glass, not a painted bar. It used to fill the panel's top 62 units
+        /// with the phase colour and pick Ink or Paper for the words by luminance; the mockups never
+        /// paint a header - their section titles are white caps on the glass and the colour lives on
+        /// an icon and a line (mockup-08, -09, -11). A saturated band was also the brightest thing
+        /// in every frame it appeared in, which spent the eye on "which part of the week is this"
+        /// rather than on the decision under it. The phase keeps its colour, on the glyph and the
+        /// underline, so the vocabulary the ceremonies use - red for the block and the vote, blue
+        /// and green for the veto, gold for the finish - still reads at a glance.</para>
         /// </summary>
         private RectTransform PhaseBand(RectTransform parent, EpisodeState state)
         {
             var tint = PhaseTint(state.phase);
-            var ink = UiTheme.OnColor(tint);
 
-            var rect = Panel("Phase band",parent,tint,UiTheme.PanelRadius);
+            var rect = Panel("Phase band",parent,new Color(0,0,0,0),UiTheme.PanelRadius);
             rect.anchorMin = new Vector2(0,1); rect.anchorMax = new Vector2(1,1); rect.pivot = new Vector2(.5f,1);
             rect.offsetMin = new Vector2(0,-62); rect.offsetMax = new Vector2(0,0);
             rect.GetComponent<Image>().raycastTarget = false;
 
-            FixedText(rect,EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),21,ink,
-                new Vector2(22,-9),new Vector2(540,27));
+            // Where the words start: past the glyph when there is one, flush when a clone without
+            // the icon set draws none.
+            var glyph = HudPrimitives.Glyph("Phase glyph",rect,PhaseGlyph(state.phase),tint,new Vector2(22,-14),26);
+            float words = glyph != null ? 58f : 22f;
+            var title = FixedText(rect,EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),20,Paper,
+                new Vector2(words,-9),new Vector2(540,27));
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 4f;
             FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
                     ? "Season complete"
                     : state.Active.Count() + " houseguests remain"),
-                14,new Color(ink.r,ink.g,ink.b,.82f),new Vector2(22,-36),new Vector2(540,20));
+                13,UiTheme.Muted,new Vector2(words,-36),new Vector2(540,20));
+
+            // The phase's colour as a short stroke under the title, over a hairline the width of
+            // the panel that separates the header from what it heads.
+            var rule = Panel("Phase rule",rect,new Color(UiTheme.Outline.r,UiTheme.Outline.g,UiTheme.Outline.b,.55f),0);
+            rule.anchorMin = new Vector2(0,0); rule.anchorMax = new Vector2(1,0); rule.pivot = new Vector2(.5f,0);
+            rule.offsetMin = new Vector2(18,0); rule.offsetMax = new Vector2(-18,1);
+            rule.GetComponent<Image>().raycastTarget = false;
+            var stroke = Panel("Phase stroke",rect,tint,1);
+            stroke.anchorMin = new Vector2(0,0); stroke.anchorMax = new Vector2(0,0); stroke.pivot = new Vector2(0,0);
+            stroke.anchoredPosition = new Vector2(18,-1); stroke.sizeDelta = new Vector2(120,3);
+            stroke.GetComponent<Image>().raycastTarget = false;
             return rect;
         }
 

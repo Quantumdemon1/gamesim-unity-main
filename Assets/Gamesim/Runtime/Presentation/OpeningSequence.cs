@@ -230,7 +230,7 @@ namespace Gamesim.Presentation
             Scrim(new Color(0.01f, 0.02f, 0.03f, 1f));
             Skipper();
 
-            var title = Title("BIG BROTHER", 84f, UiTheme.Gold, 120f);
+            var title = Title("GAMESIM", 84f, UiTheme.Heading, 120f);
             var subtitle = Title("A NEW SEASON BEGINS", 26f, UiTheme.Paper, 40f);
             var panels = Panels();
 

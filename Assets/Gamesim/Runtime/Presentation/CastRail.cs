@@ -127,6 +127,23 @@ namespace Gamesim.Presentation
         private const float ChipTop = 2f;
         private const float ChipBottom = 4f;
 
+        /// <summary>
+        /// The mockups' landscape chip (mockup-01, -12): a photo down the left of the card and the
+        /// words beside it. Used whenever the house fits the band at the player's text size; a full
+        /// house at the larger size does not, and keeps the narrow chip, whose whole reason for
+        /// being narrow is that twelve of them honour the text preference on a 4:3 canvas.
+        /// </summary>
+        private const float WideEntryWidth = 144f;
+        private const float WideGap = 6f;
+        private const float WidePhotoWidth = 62f;
+        private const float WidePhotoHeight = 86f;
+        private const float WideText = 74f;
+
+        /// <summary>The strip's full-width glass, and the quote card at its far end.</summary>
+        public const string StripName = "Cast strip";
+        public const string QuoteName = "Strip quote";
+        private const float QuoteWidth = 290f;
+
         /// <summary>How a houseguest is standing right now, and the colour that says so.</summary>
         private readonly struct Standing
         {
@@ -152,20 +169,92 @@ namespace Gamesim.Presentation
             System.Func<string, Texture> portrait, System.Action<string> onSelect = null,
             string followedId = null)
         {
+            var order = Order(state);
+            bool wide = Wide(parent as RectTransform, order.Count, fontScale);
+            float scale = wide ? fontScale : Fit(parent as RectTransform, order.Count, fontScale);
+
+            // The strip's glass first, so it draws behind the chips: a sibling of the rail rather
+            // than its child, because a chip is whatever the rail's children are.
+            Ground(parent, scale);
+
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
             root.anchorMin = new Vector2(0f, 0f);
             root.anchorMax = new Vector2(0f, 0f);
             root.pivot = new Vector2(0f, 0f);
             root.anchoredPosition = new Vector2(SideMargin, Bottom);
-
-            var order = Order(state);
-            float scale = Fit(parent as RectTransform, order.Count, fontScale);
-            root.sizeDelta = new Vector2(RailWidth(order.Count) * scale, EntryHeight * scale);
+            float width = (wide ? WideRailWidth(order.Count) : RailWidth(order.Count)) * scale;
+            root.sizeDelta = new Vector2(width, EntryHeight * scale);
 
             for (int index = 0; index < order.Count; index++)
-                Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
+            {
+                if (wide) WideEntry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
+                else Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
+            }
+
+            // The mockups end the strip on a line of the show's own voice, where there is room for
+            // it past the last chip.
+            var canvas = parent as RectTransform;
+            float spare = canvas != null ? canvas.rect.width - 2f * SideMargin - width : 0f;
+            if (spare >= (QuoteWidth + 16f) * scale) Quote(parent, scale);
             return root;
+        }
+
+        /// <summary>Whether the house fits the band as landscape chips at the player's text size.</summary>
+        private static bool Wide(RectTransform canvas, int count, float fontScale)
+        {
+            if (canvas == null || count <= 0) return false;
+            float available = canvas.rect.width - SideMargin * 2f;
+            return available > 0f && WideRailWidth(count) * fontScale <= available;
+        }
+
+        private static float WideRailWidth(int count) => Mathf.Max(0f, count * (WideEntryWidth + WideGap) - WideGap);
+
+        /// <summary>The strip's glass: the whole width of the frame, a little proud of the chips.</summary>
+        private static void Ground(Transform parent, float scale)
+        {
+            var ground = HudPrimitives.Fill(StripName, parent,
+                new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .88f), 12);
+            ground.anchorMin = new Vector2(0f, 0f); ground.anchorMax = new Vector2(1f, 0f);
+            ground.pivot = new Vector2(.5f, 0f);
+            ground.offsetMin = new Vector2(SideMargin - 6f, Bottom - 6f);
+            ground.offsetMax = new Vector2(-(SideMargin - 6f), Bottom + EntryHeight * scale + 6f);
+            ground.GetComponent<Image>().raycastTarget = false;
+            UiTheme.AddBorder(ground, 12, UiTheme.Edge(UiTheme.Emphasis.Resting));
+        }
+
+        /// <summary>The mockups' quote card at the strip's right-hand end.</summary>
+        private static void Quote(Transform parent, float scale)
+        {
+            var card = HudPrimitives.Fill(QuoteName, parent, UiTheme.CardFill, ChipRadius);
+            card.anchorMin = card.anchorMax = new Vector2(1f, 0f);
+            card.pivot = new Vector2(1f, 0f);
+            card.anchoredPosition = new Vector2(-SideMargin, Bottom + ChipBottom * scale);
+            card.sizeDelta = new Vector2(QuoteWidth * scale, (EntryHeight - ChipTop - ChipBottom) * scale);
+            card.GetComponent<Image>().raycastTarget = false;
+            UiTheme.AddBorder(card, ChipRadius, UiTheme.Edge(UiTheme.Emphasis.Resting));
+
+            var mark = HudPrimitives.Label("Quote mark", card, Mathf.Round(44f * scale), UiTheme.Heading, TextAlignmentOptions.TopLeft);
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) mark.font = bold;
+            mark.text = "\u201C";
+            mark.rectTransform.anchorMin = mark.rectTransform.anchorMax = new Vector2(0f, 1f);
+            mark.rectTransform.pivot = new Vector2(0f, 1f);
+            mark.rectTransform.anchoredPosition = new Vector2(12f * scale, -2f * scale);
+            // Inter's line at 44 is 53 tall: a box shorter than that clips the mark it holds.
+            mark.rectTransform.sizeDelta = new Vector2(44f * scale, 58f * scale);
+            mark.enableAutoSizing = true; mark.fontSizeMax = mark.fontSize; mark.fontSizeMin = Mathf.Min(24f, mark.fontSize);
+
+            var line = HudPrimitives.Label("Quote line", card, Mathf.Round(14f * scale),
+                new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .88f), TextAlignmentOptions.MidlineLeft);
+            line.fontStyle = FontStyles.Italic;
+            line.text = Localisation.Text("Same house.\nDifferent stories.\nWho will you become?");
+            line.enableAutoSizing = true;
+            line.fontSizeMax = line.fontSize;
+            line.fontSizeMin = Mathf.Min(10f, line.fontSize);
+            line.rectTransform.anchorMin = Vector2.zero; line.rectTransform.anchorMax = Vector2.one;
+            line.rectTransform.offsetMin = new Vector2(58f * scale, 8f * scale);
+            line.rectTransform.offsetMax = new Vector2(-14f * scale, -8f * scale);
         }
 
         /// <summary>
@@ -491,6 +580,185 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// The landscape chip: the houseguest's photo down the left, and beside it the mood face,
+        /// the name, a bar for where the player stands, the mood in a word and the standing tag.
+        ///
+        /// <para>Every part the narrow chip names, it names the same way - the glass is
+        /// <see cref="ChipName"/>, the mood face <see cref="MoodGlyphName"/> with its "Face", the
+        /// word <see cref="MoodWordName"/>, the role <see cref="BadgeName"/>, the standing
+        /// <see cref="StandingTagName"/> - so everything that reads a chip reads this one.</para>
+        /// </summary>
+        private static RectTransform WideEntry(
+            RectTransform root, EpisodeState state, ContestantState actor, int index, float scale,
+            TMP_FontAsset font, System.Func<string, Texture> portrait, System.Action<string> onSelect,
+            string followedId)
+        {
+            var standing = Read(state, actor);
+            bool isPlayer = actor.isPlayer || actor.id == state.playerId;
+            var moodColour = standing.Dim ? UiTheme.Muted : RelationshipWeb.MoodColour(actor.mood);
+
+            var entry = new GameObject(actor.name, typeof(RectTransform)).GetComponent<RectTransform>();
+            entry.SetParent(root, false);
+            entry.anchorMin = entry.anchorMax = new Vector2(0f, 1f);
+            entry.pivot = new Vector2(0f, 1f);
+            entry.anchoredPosition = new Vector2(index * (WideEntryWidth + WideGap) * scale, 0f);
+            entry.sizeDelta = new Vector2(WideEntryWidth * scale, EntryHeight * scale);
+
+            // A card on the strip's glass: lifted a step, with a seam - and the followed one lit and
+            // glowing, the one channel that says "the camera is on this one".
+            var chip = HudPrimitives.Fill(ChipName, entry, UiTheme.CardFill, ChipRadius);
+            chip.anchorMin = Vector2.zero; chip.anchorMax = Vector2.one;
+            chip.offsetMin = new Vector2(0f, ChipBottom * scale);
+            chip.offsetMax = new Vector2(0f, -ChipTop * scale);
+            bool followed = !string.IsNullOrEmpty(followedId) && actor.id == followedId;
+            var seam = UiTheme.Edge(UiTheme.Emphasis.Resting);
+            if (followed) UiTheme.AddGlow(chip, ChipRadius);
+            UiTheme.AddBorder(chip, ChipRadius, followed
+                ? UiTheme.Edge(UiTheme.Emphasis.Active)
+                : new Color(seam.r, seam.g, seam.b, standing.Dim ? seam.a * .6f : seam.a));
+
+            // The photo: the portrait cropped to a head-and-shoulders column with rounded corners,
+            // as the mockups crop every face in the strip.
+            float photoTop = (ChipTop + 4f) * scale;
+            var frame = HudPrimitives.Fill("Frame", entry, UiTheme.SurfaceRaised, 8);
+            frame.anchorMin = frame.anchorMax = new Vector2(0f, 1f);
+            frame.pivot = new Vector2(0f, 1f);
+            frame.anchoredPosition = new Vector2(5f * scale, -photoTop);
+            frame.sizeDelta = new Vector2(WidePhotoWidth * scale, WidePhotoHeight * scale);
+            frame.GetComponent<Image>().raycastTarget = false;
+            frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var face = portrait != null ? portrait(actor.id) : null;
+            if (face != null)
+            {
+                var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+                raw.rectTransform.SetParent(frame, false);
+                raw.rectTransform.anchorMin = Vector2.zero; raw.rectTransform.anchorMax = Vector2.one;
+                raw.rectTransform.offsetMin = Vector2.zero; raw.rectTransform.offsetMax = Vector2.zero;
+                raw.texture = face;
+                // The render is square; the column is not, so take its middle rather than squash it.
+                float share = WidePhotoWidth / WidePhotoHeight;
+                raw.uvRect = new Rect((1f - share) * .5f, 0f, share, 1f);
+                raw.raycastTarget = false;
+                raw.color = standing.Dim ? new Color(.6f, .65f, .7f, 1f) : Color.white;
+            }
+            else
+            {
+                var glyph = Label(frame, string.IsNullOrEmpty(actor.name) ? "?" : actor.name.Substring(0, 1),
+                    22, standing.Dim ? UiTheme.Muted : UiTheme.Paper, scale, font, TextAlignmentOptions.Center);
+                glyph.rectTransform.anchorMin = Vector2.zero; glyph.rectTransform.anchorMax = Vector2.one;
+                glyph.rectTransform.offsetMin = Vector2.zero; glyph.rectTransform.offsetMax = Vector2.zero;
+            }
+
+            float x = WideText * scale;
+            float column = (WideEntryWidth - WideText - 6f) * scale;
+
+            // The mood face at the head of the column, in the mood's own colour.
+            MoodFace(entry, actor.mood, moodColour, new Vector2(x, -(ChipTop + 6f) * scale), 22f * scale);
+
+            // A role, when there is one, rides on the photo's foot, as a lower third on a face.
+            RectTransform badgeChip = null;
+            if (!string.IsNullOrEmpty(standing.Badge))
+            {
+                badgeChip = new GameObject(BadgeName, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                badgeChip.SetParent(entry, false);
+                badgeChip.anchorMin = badgeChip.anchorMax = new Vector2(0f, 1f);
+                badgeChip.pivot = new Vector2(.5f, 0f);
+                badgeChip.anchoredPosition = new Vector2((5f + WidePhotoWidth * .5f) * scale, -(photoTop + WidePhotoHeight * scale) + 4f * scale);
+                badgeChip.sizeDelta = new Vector2(BadgeWidth * scale, BadgeHeight * scale);
+                var chipImage = badgeChip.GetComponent<Image>();
+                UiTheme.Style(chipImage, standing.Colour, 4);
+                chipImage.raycastTarget = false;
+                var badge = Label(badgeChip, standing.Badge, 10, UiTheme.Ink, scale, font, TextAlignmentOptions.Center);
+                badge.rectTransform.anchorMin = Vector2.zero; badge.rectTransform.anchorMax = Vector2.one;
+                badge.rectTransform.offsetMin = Vector2.zero; badge.rectTransform.offsetMax = Vector2.zero;
+            }
+
+            string given = actor.name ?? string.Empty;
+            int nameSpace = given.IndexOf(' ');
+            if (nameSpace > 0) given = given.Substring(0, nameSpace);
+            var name = Label(entry, given, 14, standing.Dim ? UiTheme.Muted : UiTheme.Paper, scale, font, TextAlignmentOptions.Left);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) name.font = semibold;
+            Fit(name, 10f);
+            Place(name.rectTransform, x, (ChipTop + 31f) * scale, column, 18f * scale);
+
+            // Where the player stands with them, as a bar in the web's colour for that reading. The
+            // player's own chip is the full accent: the one relationship that is not a reading.
+            var kind = StandingOf(state, actor);
+            float fill = isPlayer ? 1f
+                : Mathf.Clamp01((float)(state.Score(state.playerId, actor.id) + 100.0) / 200f);
+            var tint = isPlayer ? UiTheme.Accent
+                : kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind);
+            var track = HudPrimitives.Fill("Standing track", entry,
+                new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .55f), 2);
+            Place(track, x, (ChipTop + 51f) * scale, column, 4f * scale);
+            track.GetComponent<Image>().raycastTarget = false;
+            if (!standing.Dim && fill > 0f)
+            {
+                var bar = HudPrimitives.Fill("Standing bar", entry, tint, 2);
+                Place(bar, x, (ChipTop + 51f) * scale, column * fill, 4f * scale);
+                bar.GetComponent<Image>().raycastTarget = false;
+            }
+
+            var mood = Label(entry, MoodWord(actor, standing), 12, moodColour, scale, font, TextAlignmentOptions.Left);
+            mood.name = MoodWordName;
+            Fit(mood, 9f);
+            Place(mood.rectTransform, x, (ChipTop + 58f) * scale, column, 16f * scale);
+
+            if (kind != RelationshipWeb.Kind.Neutral)
+            {
+                var tag = new GameObject(StandingTagName, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                tag.SetParent(entry, false);
+                var tagImage = tag.GetComponent<Image>();
+                UiTheme.Style(tagImage, StandingGround(kind), 4);
+                tagImage.raycastTarget = false;
+                var word = Label(tag, Localisation.Text(RelationshipWeb.StandingWord(kind)), 10, UiTheme.Paper,
+                    scale, font, TextAlignmentOptions.Center);
+                word.name = StandingWordName;
+                word.rectTransform.anchorMin = Vector2.zero; word.rectTransform.anchorMax = Vector2.one;
+                word.rectTransform.offsetMin = Vector2.zero; word.rectTransform.offsetMax = Vector2.zero;
+                float measured = word.GetPreferredValues(word.text).x + 8f * scale;
+                Place(tag, x, (ChipTop + 76f) * scale, Mathf.Min(column, Mathf.Max(BadgeWidth * scale, measured)), BadgeHeight * scale);
+            }
+
+            if (onSelect == null) return entry;
+            string id = actor.id;
+            var hit = HudPrimitives.Fill("Press", entry, new Color(1f, 1f, 1f, 0f), ChipRadius);
+            hit.anchorMin = Vector2.zero; hit.anchorMax = Vector2.one;
+            hit.offsetMin = new Vector2(0f, ChipBottom * scale);
+            hit.offsetMax = new Vector2(0f, -ChipTop * scale);
+            var hitImage = hit.GetComponent<Image>();
+            hitImage.raycastTarget = true;
+            var button = entry.gameObject.AddComponent<Button>();
+            button.targetGraphic = hitImage;
+            var colours = button.colors;
+            colours.normalColor = new Color(1f, 1f, 1f, 0f);
+            colours.highlightedColor = new Color(1f, 1f, 1f, 0.10f);
+            colours.selectedColor = colours.highlightedColor;
+            colours.pressedColor = new Color(1f, 1f, 1f, 0.22f);
+            button.colors = colours;
+            button.onClick.AddListener(() => onSelect(id));
+            return entry;
+        }
+
+        /// <summary>Top-left placement inside an entry, in the entry's own units.</summary>
+        private static void Place(RectTransform rect, float x, float top, float width, float height)
+        {
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = new Vector2(x, -top);
+            rect.sizeDelta = new Vector2(width, height);
+        }
+
+        /// <summary>Lets a label shrink to a floor rather than clip.</summary>
+        private static void Fit(TMP_Text label, float floor)
+        {
+            label.enableAutoSizing = true;
+            label.fontSizeMax = label.fontSize;
+            label.fontSizeMin = Mathf.Min(floor, label.fontSize);
+        }
+
+        /// <summary>
         /// Lays out the ring's foot: the role pill, the standing tag, or both side by side.
         ///
         /// <para>This is the only band on the chip with any horizontal room - the name and the mood
@@ -551,11 +819,18 @@ namespace Gamesim.Presentation
         {
             if (rim == null) return;
             float size = Mathf.Max(13f, diameter * 0.33f);
-            var badge = Disc(MoodGlyphName, rim, UiTheme.Ink);
+            MoodFace(rim, mood, colour, new Vector2(size * 0.28f, -size * 0.28f), size, true);
+        }
+
+        /// <summary>The mood face at a given spot in <paramref name="parent"/>.</summary>
+        private static void MoodFace(RectTransform parent, string mood, Color colour, Vector2 at, float size,
+            bool centred = false)
+        {
+            var badge = Disc(MoodGlyphName, parent, UiTheme.Ink);
             badge.anchorMin = new Vector2(0f, 1f);
             badge.anchorMax = new Vector2(0f, 1f);
-            badge.pivot = new Vector2(.5f, .5f);
-            badge.anchoredPosition = new Vector2(size * 0.28f, -size * 0.28f);
+            badge.pivot = centred ? new Vector2(.5f, .5f) : new Vector2(0f, 1f);
+            badge.anchoredPosition = at;
             badge.sizeDelta = new Vector2(size, size);
 
             var glyph = UiTheme.Icon(RelationshipWeb.MoodIcon(mood)) ?? UiTheme.Icon("mood-neutral");

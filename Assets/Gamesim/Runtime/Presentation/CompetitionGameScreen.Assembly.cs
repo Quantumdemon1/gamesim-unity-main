@@ -16,7 +16,7 @@ namespace Gamesim.Presentation
         private void BeginAssembly(string title)
         {
             IsAssembling=true;assemblyElapsed=0;panel.gameObject.SetActive(false);
-            scrim.GetComponent<Image>().color=new Color(0,0,0,.08f);
+
             assemblyPanel=HudPrimitives.Fill("Visible competition assembly",transform,new Color(.035f,.055f,.085f,.96f),16);
             assemblyPanel.anchorMin=assemblyPanel.anchorMax=new Vector2(.5f,0);assemblyPanel.pivot=new Vector2(.5f,0);
             assemblyPanel.anchoredPosition=new Vector2(0,30);assemblyPanel.sizeDelta=new Vector2(1420,190);
@@ -46,7 +46,7 @@ namespace Gamesim.Presentation
         {
             if(!IsAssembling)return;
             IsAssembling=false;assemblyPanel.gameObject.SetActive(false);panel.gameObject.SetActive(true);
-            scrim.GetComponent<Image>().color=new Color(0,0,0,.55f);shownFrame=Time.frameCount;
+            shownFrame=Time.frameCount;
             pause.GetComponentInChildren<TMP_Text>().text=Paused?"Resume":"Pause";
             countdown.gameObject.SetActive(true);countdown.text=Paused?"PAUSED":"3";
             Select(pause);Canvas.ForceUpdateCanvases();
@@ -72,7 +72,7 @@ namespace Gamesim.Presentation
             IsAssembling=false;
             if(assemblyPanel!=null){assemblyPanel.gameObject.SetActive(false);Destroy(assemblyPanel.gameObject);}
             assemblyPanel=null;assemblyStatus=null;
-            if(scrim!=null)scrim.GetComponent<Image>().color=new Color(0,0,0,.55f);
+
         }
     }
 }

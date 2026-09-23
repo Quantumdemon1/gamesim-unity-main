@@ -185,9 +185,7 @@ namespace Gamesim.Episode
             var textRect = text.GetComponent<RectTransform>(); textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one;
             textRect.offsetMin = new Vector2(16, 6); textRect.offsetMax = new Vector2(-16, -6);
             label = text.GetComponent<TextMeshProUGUI>();
-            label.font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            label.font = Gamesim.Presentation.UiTheme.Font(Gamesim.Presentation.UiTheme.Weight.Regular);
             label.color = new Color(.95f, .96f, .98f); label.alignment = TextAlignmentOptions.Center;
             label.richText = false; label.raycastTarget = false;
             label.enableAutoSizing = false;

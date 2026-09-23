@@ -139,20 +139,30 @@ namespace Gamesim.Presentation
             {
                 var image = mark.gameObject.AddComponent<Image>();
                 image.sprite = glyph;
-                image.color = UiTheme.Gold;
+                image.color = UiTheme.Heading;
                 image.preserveAspect = true;
                 image.raycastTarget = false;
             }
             else
             {
-                var ring = HudPrimitives.Disc("Ring", mark, UiTheme.Gold);
+                var ring = HudPrimitives.Disc("Ring", mark, UiTheme.Heading);
                 Centre(ring, 96f, 96f);
                 var pupil = HudPrimitives.Disc("Pupil", mark, UiTheme.Ink);
                 Centre(pupil, 40f, 40f);
             }
             cursor += 120f;
 
-            Text(column, "BIG BROTHER", 40f, UiTheme.Gold, 52f, ref cursor);
+            // The show's own name, in the title blue the HUD's wordmark is set in. It said BIG
+            // BROTHER in gold here and on the opening card while every other surface - the HUD,
+            // the mockups, the neon on the set - said GAMESIM; and gold is the colour of power in
+            // this house, which a title is not.
+            var word = Text(column, "GAMESIM", 44f, UiTheme.Heading, 54f, ref cursor);
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) word.font = bold;
+            word.characterSpacing = 4f;
+            word.enableVertexGradient = true;
+            word.colorGradient = new VertexGradient(UiTheme.Hex("6CC0FF"), UiTheme.Hex("6CC0FF"), UiTheme.Hex("3A86FF"), UiTheme.Hex("3A86FF"));
+            word.color = Color.white;
             Text(column, "A house, a vote, and everyone watching.", 16f, UiTheme.Muted, 28f, ref cursor);
             if (!string.IsNullOrEmpty(note)) Text(column, note, 13f, UiTheme.Warning, 40f, ref cursor);
             cursor += 16f;
@@ -200,13 +210,14 @@ namespace Gamesim.Presentation
             cursor += 62f;
         }
 
-        private static void Text(Transform parent, string value, float size, Color colour,
+        private static TMP_Text Text(Transform parent, string value, float size, Color colour,
             float height, ref float cursor)
         {
             var label = HudPrimitives.Label("Text", parent, size, colour, TextAlignmentOptions.Center);
             label.text = Localisation.Text(value);
             Place(label.rectTransform, Width, height, -cursor);
             cursor += height;
+            return label;
         }
 
         private static void Place(RectTransform rect, float width, float height, float y)

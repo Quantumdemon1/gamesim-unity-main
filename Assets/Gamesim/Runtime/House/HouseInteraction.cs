@@ -218,9 +218,7 @@ namespace Gamesim.House
                 return;
             }
 
-            font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            font = UiTheme.Font(UiTheme.Weight.Regular);
             GameObject canvasObject = new GameObject("Gamesim House HUD", typeof(RectTransform),
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObject.transform.SetParent(transform, false);

@@ -490,17 +490,15 @@ namespace Gamesim.Episode
             var item = HouseEvents.Pending(state);
             if (item == null) return;
 
-            hud.Heading(item.title.ToUpperInvariant());
-            hud.Paragraph(item.narrative);
-            hud.KnownHouseEventContext(state,item);
-            foreach (var choice in item.choices)
+            hud.HouseEventHeader(item.title, item.narrative);
+            hud.EventChoices(item.choices.Select(choice =>
             {
                 string label = choice.label;
-                var control = hud.ActionFor(item.id, EpisodeHud.EventChoiceCaption(label),
-                    () => Commit(state, EpisodeCommandKind.ResolveHouseEvent, item.id, text: label));
-                hud.Tag(control, EpisodeHud.RiskTag(choice.risk));
-                if (!string.IsNullOrEmpty(choice.description)) hud.Paragraph(choice.description);
-            }
+                return (EpisodeHud.EventChoiceCaption(label), choice.description, EpisodeHud.RiskTag(choice.risk),
+                    (Action)(() => Commit(state, EpisodeCommandKind.ResolveHouseEvent, item.id, text: label)));
+            }).ToList());
+            // What the player has seen this week, after the choices it informs.
+            hud.KnownHouseEventContext(state,item);
         }
 
         /// <summary>

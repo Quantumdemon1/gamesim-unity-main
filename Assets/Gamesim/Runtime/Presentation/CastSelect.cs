@@ -751,7 +751,8 @@ namespace Gamesim.Presentation
         /// green for the warm ones, violet for the calculating ones, gold for the competitive ones
         /// and red for the ones that start fights. An unlisted trait takes the neutral accent.
         /// </summary>
-        private static Color TraitTint(string trait)
+        /// <summary>The colour a trait word is drawn in, wherever the HUD shows one.</summary>
+        internal static Color TraitTint(string trait)
         {
             switch ((trait ?? string.Empty).Trim().ToLowerInvariant())
             {

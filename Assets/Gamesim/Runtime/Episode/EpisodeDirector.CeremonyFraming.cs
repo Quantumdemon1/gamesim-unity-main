@@ -65,7 +65,10 @@ namespace Gamesim.Episode
             cameraRig.MoveTo(new Vector3(at.x, focus.y, at.z), CeremonyDistance, CeremonyMoveSeconds);
             float until = Time.unscaledTime + CeremonyHoldSeconds;
             yield return null;
-            while (Time.unscaledTime < until || (takeover != null && takeover.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying))
+            // Held for as long as any card narrating the ceremony is up; the key reveal was left out
+            // of this, so the camera could pull back to the house halfway through the keys.
+            while (Time.unscaledTime < until || (takeover != null && takeover.IsPlaying)
+                || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying))
                 yield return null;
             if (cameraRig != null) cameraRig.MoveTo(focus, distance, CeremonyMoveSeconds);
             IsFramingCeremony = false;

@@ -46,6 +46,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(copy,Does.Not.Contain("High tension").And.Not.Contain("Harmony"));
             AssertDecisionCopyFits(context);
             AssertEquivalent(before,director.Snapshot);
+            var hud=director.GetComponentInChildren<EpisodeHud>();
+            Assert.That(hud.CurrentActivityLayout,Is.EqualTo(EpisodeHud.ActivityLayout.HouseEvent),
+                "A pending event takes the band, where its choices are above the fold.");
+            var choices=DecisionUiRoot(EpisodeHud.EventChoicesName);
+            Assert.That(choices,Is.Not.Null,"The choices are tiles.");
+            Assert.That(ButtonWithCaption(EpisodeHud.EventChoiceCaption("Listen without taking sides")).transform.IsChildOf(choices),Is.True);
+            if(Application.isBatchMode)yield return CaptureFraming("house-event");
             ButtonWithCaption(EpisodeHud.EventChoiceCaption("Listen without taking sides")).onClick.Invoke();
             yield return null;
             var after=director.Snapshot;
@@ -103,6 +110,54 @@ namespace Gamesim.Tests.PlayMode
                 director.ClosePanels();
                 yield return null;
             }
+        }
+
+        /// <summary>
+        /// The Head of Household's decision out of the diary (mockup-09): the candidates as a grid
+        /// of cards in a band between the rail and the right column, with the house, the strip and
+        /// the column left up around it, and a pick lit on its card without rebuilding the input.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Nominations_TheDecisionIsABandOfCandidateCards()
+        {
+            yield return InstallDiaryFixture(state=>state.phase==EpisodePhase.Nomination && state.hohId==state.playerId
+                && state.nominees.Count==0,"player nominations in the house");
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(),Is.True);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            var hud=director.GetComponentInChildren<EpisodeHud>();
+            Assert.That(hud.CurrentActivityLayout,Is.EqualTo(EpisodeHud.ActivityLayout.Nominations),
+                "Out of the diary the nominations take the band, not the docked panel.");
+
+            var grid=ActiveRect(EpisodeHud.NomineeGridName);
+            Assert.That(grid,Is.Not.Null,"The candidates are a grid of cards.");
+            var candidates=EpisodeEngine.NominationCandidates(director.Snapshot).ToArray();
+            Assert.That(grid.GetComponentsInChildren<UnityEngine.UI.Button>().Select(card=>card.name),
+                Is.EquivalentTo(candidates.Select(candidate=>candidate.name)),"One card per candidate, named by the candidate.");
+
+            // The band stands clear of the chrome the mockup keeps up around it.
+            var panel=ActiveRect("Episode panel");
+            foreach(var name in new[]{CastRail.RootName,EpisodeHud.HouseVibeCardName,IconRail.RootName,"Status"})
+            {
+                var chrome=ActiveRect(name);
+                Assert.That(chrome,Is.Not.Null,name+" stays up while the Head of Household decides.");
+                Assert.That(ScreenRect(panel).Overlaps(ScreenRect(chrome)),Is.False,"The band covers '"+name+"'.");
+            }
+
+            // A pick lights its card in place; pressing it again puts it back.
+            var first=ButtonWithCaption(candidates[0].name);
+            first.onClick.Invoke();
+            var picked=first.transform.Find("Picked");
+            Assert.That(picked!=null && picked.gameObject.activeSelf,Is.True,"A picked card is marked.");
+            Assert.That(ButtonWithCaption(candidates[0].name),Is.SameAs(first),"Picking must not rebuild the input.");
+            first.onClick.Invoke();
+            picked=first.transform.Find("Picked");
+            Assert.That(picked==null || !picked.gameObject.activeSelf,Is.True,"A card put back is not marked.");
+
+            yield return CaptureFraming("nominations-band");
+            director.ClosePanels();
+            yield return null;
         }
 
         private RectTransform DecisionUiRoot(string name) => director.GetComponentsInChildren<RectTransform>()

@@ -286,6 +286,10 @@ namespace Gamesim.Episode
             modal.pivot = new Vector2(.5f, 1f);
             modal.anchoredPosition = new Vector2(LeftColumnX + free * .5f, -ActivityHeadroom);
             modal.sizeDelta = new Vector2(width, height);
+            // Near opaque: the diary's neon sign stands right behind the ballot, and through the
+            // glass it read as a second heading beside the first.
+            var frame = modal.GetComponent<Image>();
+            if (frame != null) { var ground = frame.color; frame.color = new Color(ground.r, ground.g, ground.b, Mathf.Max(ground.a, .96f)); }
             SetChromeVisible("Exploration controls", false);
             SetChromeVisible(FollowChipName, false);
             SetChromeVisible("Interaction prompt", false);

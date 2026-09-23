@@ -587,14 +587,16 @@ namespace Gamesim.Episode
             if (BallotIsLive(state))
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
+                hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
+                    id => OfferBallot(state, privateRoom, tieBreak, id));
+                // Under the cards, where mockup-08 keeps its line: ahead of the title it read as
+                // the page's heading.
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");
                 // At four there is exactly one eligible voter. That has always been true by
                 // arithmetic and has never been said, which makes a sole ballot look like a bug.
                 if (!tieBreak && EpisodeEngine.Voters(state).Count() == 1)
                     hud.Paragraph("At the final four only one houseguest votes, and tonight that is you. "
                         + "Your single vote decides the eviction outright.");
-                hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
-                    id => OfferBallot(state, privateRoom, tieBreak, id));
                 VoterRoster(state);
                 return true;
             }

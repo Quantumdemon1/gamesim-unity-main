@@ -914,7 +914,8 @@ namespace Gamesim.Presentation
             var rect=HudPrimitives.Fill(caption,parent,UiTheme.GlassFill,6);
             UiTheme.AddBorder(rect,6,new Color(UiTheme.Hairline.r,UiTheme.Hairline.g,UiTheme.Hairline.b,.45f));
             rect.anchorMin=rect.anchorMax=new Vector2(slot*.5f,0);rect.pivot=Vector2.zero;
-            rect.anchoredPosition=new Vector2(slot==0?0:3f,0);rect.sizeDelta=new Vector2((ColumnWidth*scale+14f)/2f-3f,30f*scale);
+            // Clear of the page's foot, which clipped the pills' lower edges.
+            rect.anchoredPosition=new Vector2(slot==0?0:3f,6f*scale);rect.sizeDelta=new Vector2((ColumnWidth*scale+14f)/2f-3f,30f*scale);
             var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=rect.GetComponent<Image>();button.targetGraphic.raycastTarget=true;
             button.onClick.AddListener(()=>{Canvas.ForceUpdateCanvases();float travel=scroll.content.rect.height-scroll.viewport.rect.height;
                 if(travel>1){scroll.StopMovement();scroll.verticalNormalizedPosition=Mathf.Clamp01(scroll.verticalNormalizedPosition+direction*scroll.viewport.rect.height*.75f/travel);}});

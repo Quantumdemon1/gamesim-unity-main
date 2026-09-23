@@ -16,7 +16,8 @@ and `UiTheme.PackSliced`). Commits, oldest first: `891c500` diary branding, `43c
 conversation / ceremonies / decisions, `2c176c3` diary, ring, notebook and web tuning, `473093a`
 the diary as a room of options, the ballot, the cast as photographs, `94b3cca` the front door,
 the web's faces, room names, stale results, `fa79d3b` recap and report on glass, the sting's
-headline, the competition cards.
+headline, the competition cards, `5339cc8` the reveal fix and settings, `54d1ba6` the status floor,
+`f03aa0f` Nearby, the entrant strip, the confessional's caption, the notebook's head.
 
 | Mockup | Screen | Where it stands |
 |---|---|---|
@@ -24,13 +25,13 @@ headline, the competition cards.
 | 02 | Cast select | Photo cards, action-blue pills, house-size stepper, pack night ground. No featured rail or top-right stats. |
 | 03 | Overview | Room chips with glyphs over each room (`RoomLabels`), "Who is where" column. |
 | 04 | House event | `HouseEventHeader` + `EventChoices` tiles in the decision band. |
-| 05 | Competition | Challenge / timer / competitors cards over the yard; assembly card. No entrant strip with per-stage pips. |
-| 06 | Night | **Not done.** The "Nearby: you can eavesdrop" card is a new entry point to `Eavesdrop`, not layout. |
-| 07 | Relationship web | Geometry sized from the notebook's page; legend card lower left; pack node art. |
+| 05 | Competition | Challenge / timer / competitors cards over the yard; assembly card; the strip says Competing / Sitting out while it is played (no invented scores). |
+| 06 | Night | The Nearby card in the week card's place while a conversation is witnessed: Listen in commits the house's `Eavesdrop`, cost and odds printed. |
+| 07 | Relationship web | The notebook's slim head; geometry sized from the page; icon pill tabs; legend card lower left; wider column led by a larger face. |
 | 08 | Eviction vote | `ActivityLayout.Ballot`: centred panel over the diary chair, Confirm straight under the cards. |
 | 09 | HoH nominees | `ActivityLayout.Nominations` band of candidate cards. |
 | 10 | Nomination ceremony | `KeyCeremony` card with key slots. |
-| 11 | Diary room | `ActivityLayout.Diary`: a right-hand column of option cards; `ScreenHeader` in place of the phase band. |
+| 11 | Diary room | `ActivityLayout.Diary`: a right-hand column of option cards; `ScreenHeader` in place of the phase band; the chair captioned with the player's latest memory. |
 | 12 | Conversation | Column + dial, two-shot framing. |
 
 Also restyled with no mockup of their own, in the same language: main menu, settings (its own tall
@@ -41,7 +42,7 @@ titles, competition result card.
 16:9) by the test that opens it: `cast-select`, `diary-options`, `ballot-diary`/`-review`,
 `nominations-band`, `house-event`, `conversation-panel`, `overview`, `main-menu`, `settings`,
 `creator`, `weekly-recap`, `season-report`, `competition-assembly`/`-practice`, and the walkthrough
-frames. (The opening sequence cannot be photographed: in batchmode it skips every hold.) They land in `D:\GamesimAcceptance\*.png` after a run. Look at them;
+frames, and `nearby` and `opening-title` (the opening holds its card headless only for that test). They land in `D:\GamesimAcceptance\*.png` after a run. Look at them;
 the tests assert structure, not appearance.
 
 **Traps this pass fell into:**
@@ -77,9 +78,10 @@ the tests assert structure, not appearance.
   the D: copy's content (`git hash-object -w --path` + `update-index --cacheinfo`) so each commit is
   the snapshot its green run tested, not the working tree.
 
-**What remains:** the night eavesdrop card (06); the competition's entrant strip (05); the web's
-right-hand card as a portrait card (07); NPC name plates over heads; the mockups' speech bar
-(06–08, 11); a creator preview that renders in batchmode.
+**What remains:** the mockups' bottom speech bar in 06-08 (the player's inner line - the game
+writes none, and the status line in that place carries other speakers' lines too, so it is not
+given the player's face); per-stage progress pips for the other competitors (their scores do not
+exist until the result commits); a creator preview that renders in batchmode.
 
 ---
 
@@ -447,7 +449,7 @@ Kept because they are load-bearing and plausible enough to be re-proposed.
 - **Never commit** `ProjectSettings/ProjectSettings.asset` while it carries `GAMESIM_UMA`.
 - The four **Inter SDF font atlases** churn ~700k lines; they have been left unstaged all session.
 - `Assets/_Recovery/` is a crash artefact still sitting untracked in the tree.
-- `Tools/baseline.txt` floors: EditMode **1429**, PlayMode **322**, SimulationTests **740**. Raise a floor in the same commit
+- `Tools/baseline.txt` floors: EditMode **1429**, PlayMode **324**, SimulationTests **740**. Raise a floor in the same commit
   that adds tests; never lower one to make a red run green.
 - A spawned task fixed the `DestinationChosen` raise **in this same working tree**, not a separate
   worktree. If you spin off tasks, expect concurrent edits to the files you are holding.

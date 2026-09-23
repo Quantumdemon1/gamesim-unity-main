@@ -118,6 +118,7 @@ namespace Gamesim.Episode
         private Slider challengeMeter;
         private RectTransform modal;
         private ScrollRect modalScroll;
+        private RectTransform modalScrollRoot;
         private string preferredSelection, retainedImportPath = "";
         private string retainedSpeech = "", speechSession, speechSpeaker;
         private bool restoreSelection;
@@ -158,7 +159,7 @@ namespace Gamesim.Episode
         /// </summary>
         public const float LeftColumnX = 14f + CastRail.Width + 12f;
 
-        public void Begin(EpisodeState state, string message, bool recovery, bool open)
+        public void Begin(EpisodeState state, string message, bool recovery, bool open, bool phasePanel = false)
         {
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             preferredSelection = selected != null && modal != null && selected.transform.IsChildOf(modal)
@@ -172,7 +173,7 @@ namespace Gamesim.Episode
             else if (!open && modal != null && !recovery) Foley(HouseAudio.Cue.PanelClose);
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
-            modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
+            modal = null; modalScroll = null; modalScrollRoot = null; lastSelection = null; restoreSelection = true;
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
@@ -262,7 +263,15 @@ namespace Gamesim.Episode
             promptRoot.gameObject.SetActive(false);
             content = null;
             if (!open && !recovery) { modalWasOpen = false; return; }
-            modal = Chrome("Episode panel",canvas.transform,Ink); Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(95,-10),new Vector2(790,680));
+            // Phase screens are decision surfaces, not popovers. Give them most of the centre
+            // viewport so the player sees the result/options together instead of discovering core
+            // actions by scrolling a small modal. Notebook/settings/conversation keep the compact
+            // reading width because their job is different.
+            float modalWidth = phasePanel ? 1040f : 790f;
+            float modalHeight = phasePanel ? 748f : 680f;
+            Vector2 modalOffset = phasePanel ? new Vector2(58f,-4f) : new Vector2(95f,-10f);
+            modal = Chrome("Episode panel",canvas.transform,Ink);
+            Anchor(modal,new Vector2(.5f,.5f),new Vector2(.5f,.5f),modalOffset,new Vector2(modalWidth,modalHeight));
             // Only on closed -> open. Re-renders of an already-open panel must not re-animate.
             if (!modalWasOpen) HudReveal.Play(modal,ReducedMotion);
             modalWasOpen = true;
@@ -271,12 +280,15 @@ namespace Gamesim.Episode
             // "which part of the week is this" is the question every panel is answered against.
             // Built before the Close button so it sits behind it in the hierarchy.
             var band = PhaseBand(modal, state);
-            FixedButton(modal,"Close  [Esc]",new Vector2(598,-15),new Vector2(174,45),director.ClosePanels);
+            FixedButton(modal,"Close  [Esc]",new Vector2(modalWidth - 192f,-15),new Vector2(174,45),director.ClosePanels);
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
-            // would render as tofu. Words also read better to a screen reader.
-            FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
+            // would render as tofu. On the expanded event surface scrolling is a fallback, not the
+            // primary way to discover decisions, so the instruction says only what is always true.
+            FixedText(modal,phasePanel ? "Tab / Up / Down select · Enter confirm" : "Tab / Up / Down select · Enter confirm · Scroll for more",
+                15,UiTheme.Muted,new Vector2(24,-72),new Vector2(modalWidth - 250f,26));
             var scrollRoot = new GameObject("Episode scroll",typeof(RectTransform),typeof(ScrollRect)); scrollRoot.transform.SetParent(modal,false);
             var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,104,20,22);
+            modalScrollRoot = scrollRect;
             var viewport = Panel("Viewport",scrollRect,new Color(0,0,0,0)); Stretch(viewport,0,0,18,0); viewport.gameObject.AddComponent<RectMask2D>();
             content = new GameObject("Episode content",typeof(RectTransform),typeof(VerticalLayoutGroup),typeof(ContentSizeFitter)).GetComponent<RectTransform>(); content.SetParent(viewport,false);
             content.anchorMin = new Vector2(0,1); content.anchorMax = Vector2.one; content.pivot = new Vector2(.5f,1); content.sizeDelta = Vector2.zero;
@@ -679,6 +691,65 @@ namespace Gamesim.Episode
             frameRect.anchoredPosition = new Vector2(8f,0f);
             var raw = frame.GetComponent<RawImage>();
             raw.texture = portrait; raw.raycastTarget = false;
+            return button;
+        }
+
+        /// <summary>
+        /// Two-column action deck for phase-level decisions. Unlike the ordinary vertical action
+        /// list this keeps a small family of peer choices visible together on the expanded episode
+        /// surface. Captions remain unchanged so tests and screen readers keep their contract.
+        /// </summary>
+        public RectTransform ActionGrid(int columns = 2, float cellHeight = 64f)
+        {
+            columns = Mathf.Max(1, columns);
+            var grid = new GameObject("Action grid",typeof(RectTransform),typeof(GridLayoutGroup),typeof(LayoutElement)).GetComponent<RectTransform>();
+            grid.SetParent(content,false);
+            var layout = grid.GetComponent<GridLayoutGroup>();
+            layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            layout.constraintCount = columns;
+            layout.spacing = new Vector2(12f,12f);
+            // Expanded phase panels are 1040 wide. The grid's content width is about 980 after
+            // margins/scrollbar, so two 480-wide controls fit without depending on frame timing.
+            layout.cellSize = new Vector2(columns == 2 ? 475f : 300f,cellHeight * FontScale);
+            var element = grid.GetComponent<LayoutElement>();
+            element.minHeight = cellHeight * FontScale;
+            return grid;
+        }
+
+        public Button GridAction(RectTransform grid,string caption,Action action)
+        {
+            if (grid == null) return Action(caption,action);
+            var rect = Panel(caption,grid,Surface);
+            var button = FinishButton(rect,caption,action);
+            var layout = grid.GetComponent<GridLayoutGroup>();
+            var element = grid.GetComponent<LayoutElement>();
+            if (layout != null && element != null)
+            {
+                int count = grid.childCount;
+                int columns = Mathf.Max(1,layout.constraintCount);
+                int rows = Mathf.CeilToInt(count / (float)columns);
+                element.minHeight = rows * layout.cellSize.y + Mathf.Max(0,rows - 1) * layout.spacing.y;
+                element.preferredHeight = element.minHeight;
+            }
+            return button;
+        }
+
+        /// <summary>
+        /// A phase's irreversible/progression action stays visible below the scroll body. This is
+        /// the escape hatch for the old "scroll until you find Continue" problem: secondary detail
+        /// may still scroll at large-text sizes, but the next step never does.
+        /// </summary>
+        public Button FooterAction(string caption,Action action)
+        {
+            if (modal == null || modalScrollRoot == null) return Action(caption,action);
+
+            modalScrollRoot.offsetMin = new Vector2(modalScrollRoot.offsetMin.x,104f);
+            var footer = Panel("Phase footer",modal,new Color(Surface.r,Surface.g,Surface.b,.96f));
+            footer.anchorMin = new Vector2(0,0); footer.anchorMax = new Vector2(1,0); footer.pivot = new Vector2(.5f,0);
+            footer.offsetMin = new Vector2(20f,18f); footer.offsetMax = new Vector2(-20f,88f);
+            var button = FinishButton(footer,caption,action);
+            var label = button.GetComponentInChildren<TMP_Text>();
+            if (label != null) label.color = Accent;
             return button;
         }
 

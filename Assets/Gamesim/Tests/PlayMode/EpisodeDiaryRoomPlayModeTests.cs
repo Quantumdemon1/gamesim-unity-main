@@ -269,6 +269,16 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(caption).onClick.Invoke();
             yield return null; yield return null;
             if (Application.isBatchMode) yield return CaptureFraming("ballot-review");
+            // The eviction vote's own panel (mockup-08), with Confirm straight under the cards:
+            // on screen without a scroll, where the choice was just made.
+            Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout,
+                Is.EqualTo(EpisodeHud.ActivityLayout.Ballot), "A ballot in the diary is the eviction vote's panel.");
+            Canvas.ForceUpdateCanvases();
+            var viewport = ScreenRect(director.GetComponentsInChildren<RectTransform>()
+                .First(rect => rect.name == "Episode scroll" && rect.gameObject.activeInHierarchy));
+            var confirmAt = ScreenRect((RectTransform)ButtonWithCaption(EpisodeHud.DiaryConfirmCaption).transform);
+            Assert.That(confirmAt.yMin, Is.GreaterThanOrEqualTo(viewport.yMin - 1f),
+                "Confirm stands under the ballot, not past the fold of the panel.");
             AssertEquivalent(before,director.Snapshot);
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;

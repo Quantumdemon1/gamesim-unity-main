@@ -131,6 +131,7 @@ namespace Gamesim.Tests.EditMode
             AssertContrast(UiTheme.Muted, UiTheme.CardFill, LargeMinimum, "the age and occupation line on a card");
             AssertContrast(UiTheme.Glow, UiTheme.CardFill, LargeMinimum, "PLAYING AS on the picked card");
             AssertContrast(UiTheme.Brass, UiTheme.CardFill, 3.0, "the brass ring around a portrait");
+            AssertContrast(Color.white, UiTheme.ActionBlue, BodyMinimum, "a word on the action blue");
             double lift = Contrast(UiTheme.CardFill, UiTheme.Background);
             Assert.That(lift, Is.GreaterThan(1.12),
                 "A card has to be visible as a card against the ground behind it, and this one is "

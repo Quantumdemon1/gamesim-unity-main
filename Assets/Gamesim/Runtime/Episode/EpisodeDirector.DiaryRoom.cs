@@ -248,10 +248,16 @@ namespace Gamesim.Episode
 
         private void RenderDiary(EpisodeState state)
         {
-            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Diary);
-            hud.PanelTitle("PRIVATE DIARY ROOM", "Your own memories, and the decisions that are yours to make.");
+            // A live ballot, or one waiting to be confirmed, is the eviction vote as mockup-08 draws
+            // it: a panel across the top of the room, over the player in the chair. Every other
+            // visit is the room's own page (mockup-11): a column of what the player can do here.
+            bool ballotDraft = diaryDraft != null && diaryDraft.kind == EpisodeCommandKind.CastVote && state.phase == EpisodePhase.Eviction;
+            bool ballot = IsDiarySettled && (ballotDraft || (diaryDraft == null && state.pendingDiary == null && BallotIsLive(state)));
+            hud.SetActivityLayout(ballot ? EpisodeHud.ActivityLayout.Ballot : EpisodeHud.ActivityLayout.Diary);
+            hud.DiaryHeader(ballot ? null : EpisodeHud.DiaryOptionsTitle);
             if(!IsDiarySettled)
             {
+                hud.Aside("Your own memories, and the decisions that are yours to make.");
                 hud.Paragraph("Walk to the chair, turn and sit. Your diary choices appear when you are seated.");
                 return;
             }
@@ -260,94 +266,105 @@ namespace Gamesim.Episode
                 var reviewed = diaryDraft;
                 bool reflection = diaryDraft.kind == EpisodeCommandKind.ReflectDiary;
                 bool study = diaryDraft.kind == EpisodeCommandKind.StudyHouse;
-                if (diaryDraft.kind == EpisodeCommandKind.CastVote && state.phase == EpisodePhase.Eviction)
+                if (ballotDraft)
                 {
                     // The ballot stays on screen while the choice waits to be confirmed, the chosen
                     // card marked - pressing the other card changes the choice, nothing is cast
-                    // until Confirm.
+                    // until Confirm. Confirm stands straight under the cards, where mockup-08 puts
+                    // its button; the explanation follows it rather than pushing it past the fold.
                     bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
                     hud.BallotCards(state, state.nominees, reviewed.target, id => id == reviewed.target ? "Your choice: " + state.Find(id).name : "Choose " + state.Find(id).name + " instead",
                         id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); });
+                    hud.Action(EpisodeHud.DiaryConfirmCaption, () => ConfirmDiaryDecision(reviewed));
+                    hud.Action(EpisodeHud.DiaryCancelCaption, () => CancelDiaryDecision(reviewed));
+                    hud.Paragraph(reviewed.summary);
+                    hud.Aside("Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
+                    return;
                 }
-                else hud.Heading(study ? "REVIEW YOUR STUDY APPROACH" : reflection ? "REVIEW YOUR PRIVATE ANSWER" : "REVIEW YOUR DECISION");
+                hud.DiarySection(study ? "REVIEW YOUR STUDY APPROACH" : reflection ? "REVIEW YOUR PRIVATE ANSWER" : "REVIEW YOUR DECISION");
                 hud.Paragraph(diaryDraft.summary);
-                hud.Paragraph("Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
+                hud.Aside("Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
                 hud.Action(study ? EpisodeHud.StudyConfirmCaption : reflection ? EpisodeHud.DiaryConfirmReflectionCaption : EpisodeHud.DiaryConfirmCaption,
                     () => ConfirmDiaryDecision(reviewed));
                 hud.Action(study ? EpisodeHud.StudyCancelCaption : reflection ? EpisodeHud.DiaryCancelReflectionCaption : EpisodeHud.DiaryCancelCaption,
                     () => CancelDiaryDecision(reviewed));
                 return;
             }
-            // A live ballot is the reason the player is in the chair, so it comes first
-            // (mockup-08): it sat under the record, the reflections and the study notes, below the
-            // fold of a column the player had to scroll to find the one thing they came to do.
-            bool ballot = state.pendingDiary == null && BallotIsLive(state);
+            // A live ballot is the reason the player is in the chair, so it comes first (mockup-08).
+            // Otherwise the page leads with what can be done here - an answer owed, a decision, a
+            // way to study - and keeps what the room remembers under it.
             if (ballot) RenderPlayerDecision(state, true);
-            hud.Paragraph("A quiet place to reflect. Looking back costs you nothing.");
-            RenderDiaryRecord(state);
-            RenderDiaryReflection(state);
-            RenderStudyHouse(state);
-            if (state.pendingDiary == null && !ballot)
+            else
             {
-                hud.Heading("YOUR PENDING DECISION");
-                hud.Paragraph("Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
-                if (!RenderPlayerDecision(state, true))
-                    hud.Paragraph(state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId)
-                        ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
-                        : "You have no private decision to make right now. You can review your own memories or leave the room.");
+                hud.Aside("Your own memories, and the decisions that are yours to make. Looking back costs you nothing.");
+                RenderDiaryReflection(state);
+                if (state.pendingDiary == null)
+                {
+                    hud.DiarySection("YOUR PENDING DECISION");
+                    hud.Aside("Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
+                    if (!RenderPlayerDecision(state, true))
+                        hud.Paragraph(state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId)
+                            ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
+                            : "You have no private decision to make right now. You can review your own memories or leave the room.");
+                }
+                RenderStudyHouse(state);
             }
-            hud.Heading("YOUR PRIVATE REFLECTIONS");
+            RenderDiaryRecord(state);
+            hud.DiarySection("YOUR PRIVATE REFLECTIONS");
             var memories = state.memories.Where(memory => memory.ownerId == state.playerId).Reverse().Take(20).ToArray();
-            if (memories.Length == 0) hud.Paragraph("You have no recorded personal memories yet. Explore and talk to the housemates.");
-            foreach (var memory in memories) hud.Paragraph("Week " + memory.week + ": " + memory.text);
+            if (memories.Length == 0) hud.Aside("You have no recorded personal memories yet. Explore and talk to the housemates.");
+            foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + memory.text);
         }
 
         private void RenderDiaryRecord(EpisodeState state)
         {
-            hud.Heading("YOUR DIARY RECORD");
-            hud.Paragraph("Study preparation: " + state.playerStudyBonus + "/5. Saved between weeks; used only by the weekly simulated HoH/Veto option, not precision play or final HoH.");
-            hud.Paragraph("Current diary persona: " + state.playerPersona.current + ". Recorded reflections: " + state.playerPersona.history.Count + ".");
-            hud.Paragraph("How the jury has read you so far: " + state.jurySentiment.overallSentiment.ToString("0")
-                + " across " + state.jurySentiment.jurors.Count + " jurors. An impression, not a promise.");
+            hud.DiarySection("YOUR DIARY RECORD");
+            hud.DiaryRecord(
+                ("star", "Study preparation: " + state.playerStudyBonus + "/5",
+                    "Saved between weeks; used only by the weekly simulated HoH/Veto option, not precision play or final HoH."),
+                ("journal", "Current diary persona: " + state.playerPersona.current + ".",
+                    "Recorded reflections: " + state.playerPersona.history.Count + "."),
+                ("people", "How the jury has read you so far: " + state.jurySentiment.overallSentiment.ToString("0")
+                    + " across " + state.jurySentiment.jurors.Count + " jurors.", "An impression, not a promise."));
         }
 
         private void RenderStudyHouse(EpisodeState state)
         {
             if (state.phase != EpisodePhase.Social || state.Find(state.playerId)?.status != ContestantStatus.Active) return;
-            hud.Heading("STUDY THE HOUSE");
-            hud.Paragraph("Study here in the private room during free time. Each confirmed approach uses one of the "
+            hud.DiarySection("STUDY THE HOUSE");
+            hud.Aside("Study here in the private room during free time. Each confirmed approach uses one of the "
                 + EpisodeEngine.SocialActionBudget(state) + " social actions this week allows. "
                 + "Opening, reading, and cancelling cost nothing.");
             if (state.pendingDiary != null)
             { hud.Paragraph("Answer or skip your pending private reflection before studying."); return; }
             if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
             { hud.Paragraph("No social actions remain in this window. Return to the episode screen when ready to continue."); return; }
-            hud.Paragraph("Memorize: Guaranteed +1 preparation, up to the limit of 5. Sneak: "
-                + WebStudyHouse.SuccessChance("sneak-peek", null)
-                + "% success chance; +2 on success, −1 on failure. Preparation stays between 0 and 5.");
-            hud.Paragraph("Choose an approach to review it. Your preparation changes only when you confirm.");
-            hud.Action(EpisodeHud.StudyMemorizeCaption, () => ReviewStudyHouse(state, "memorize-layout"));
-            hud.Action(EpisodeHud.StudySneakCaption, () => ReviewStudyHouse(state, "sneak-peek"));
+            hud.OptionCard(EpisodeHud.StudyMemorizeCaption, "Guaranteed +1 preparation, up to the limit of 5.", "house",
+                () => ReviewStudyHouse(state, "memorize-layout"));
+            hud.OptionCard(EpisodeHud.StudySneakCaption, WebStudyHouse.SuccessChance("sneak-peek", null)
+                + "% success chance: +2 preparation on success, \u22121 on failure.", "eye",
+                () => ReviewStudyHouse(state, "sneak-peek"));
+            hud.Aside("Preparation stays between 0 and 5, and changes only when you confirm.");
         }
 
         private void RenderDiaryReflection(EpisodeState state)
         {
             var prompt = EpisodeEngine.CurrentDiary(state);
             if (prompt == null) return;
-            hud.Heading("POST-EVICTION REFLECTION · WEEK " + prompt.week);
+            hud.DiarySection("POST-EVICTION REFLECTION \u00b7 WEEK " + prompt.week);
             hud.Paragraph("After " + (state.Find(state.pendingDiary.evictedId)?.name ?? "a housemate")
                 + "'s eviction, what do you want to record about your own response?");
-            hud.Paragraph("Choose an answer to review before committing it privately. Nothing here claims another housemate's feelings or that you caused the result.");
+            hud.Aside("Choose an answer to review before committing it privately. Nothing here claims another housemate's feelings or that you caused the result.");
             foreach (var choice in prompt.choices)
             {
                 var selected = choice;
-                // The exposure badge is a chip on the control, not part of its caption: the
-                // caption is how the suite and a screen reader identify a button, and appending to
-                // it renamed every diary choice. Same mistake as the social action categories.
-                hud.Tag(hud.Action(choice.persona + " · " + choice.text,
-                    () => ReviewDiaryReflection(state, selected.id)), Exposure(choice));
+                // How exposed the answer leaves the player is the card's last line, in words and
+                // its colour - never part of the caption, which is how the suite and a screen
+                // reader identify the control. Same mistake as the social action categories.
+                hud.OptionCard(choice.persona + " \u00b7 " + choice.text, null, PersonaGlyph(choice.persona),
+                    () => ReviewDiaryReflection(state, selected.id), Exposure(choice), ExposureTint(choice));
             }
-            hud.Action(EpisodeHud.DiarySkipReflectionCaption, SkipDiary);
+            hud.OptionCard(EpisodeHud.DiarySkipReflectionCaption, "Record nothing about this week.", "exit", SkipDiary);
         }
 
         private void ReviewDiaryReflection(EpisodeState state, string choiceId)
@@ -384,6 +401,25 @@ namespace Gamesim.Episode
         {
             int jury = choice?.effects?.juryDelta ?? 0;
             return jury < 0 ? "costs jury goodwill" : jury > 0 ? "wins jury goodwill" : "safe";
+        }
+
+        /// <summary>The exposure's colour: amber for a cost, green for a gain, the accent for safe.</summary>
+        private static Color ExposureTint(WebDiaryChoice choice)
+        {
+            int jury = choice?.effects?.juryDelta ?? 0;
+            return jury < 0 ? UiTheme.Joke : jury > 0 ? UiTheme.Allied : UiTheme.Accent;
+        }
+
+        /// <summary>The glyph an answer's card is drawn with, from the persona it records.</summary>
+        private static string PersonaGlyph(string persona)
+        {
+            switch ((persona ?? string.Empty).ToLowerInvariant())
+            {
+                case "ruthless": return "target";
+                case "remorseful": return "mood-sad";
+                case "calculated": return "journal";
+                default: return "mood-neutral";
+            }
         }
 
         /// <summary>Whose thoughts the voter roster is currently showing, if any.</summary>

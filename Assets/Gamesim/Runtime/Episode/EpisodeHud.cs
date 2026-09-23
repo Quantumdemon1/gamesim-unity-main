@@ -380,7 +380,8 @@ namespace Gamesim.Episode
         /// -11, -12 all set their copy at 15 to 17).
         /// </summary>
         private bool CompactCopy => activityLayout == ActivityLayout.Conversation || activityLayout == ActivityLayout.Diary
-            || activityLayout == ActivityLayout.Nominations || activityLayout == ActivityLayout.HouseEvent;
+            || activityLayout == ActivityLayout.Nominations || activityLayout == ActivityLayout.HouseEvent
+            || activityLayout == ActivityLayout.Ballot;
         private int BodySize => CompactCopy ? 17 : 21;
         private int HeadingSize => CompactCopy ? 20 : 26;
 

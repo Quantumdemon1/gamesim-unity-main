@@ -8,7 +8,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeHud
     {
         /// <summary>Activities own their layout; they share controls, focus and save semantics.</summary>
-        public enum ActivityLayout { Standard, Relationships, Conversation, Competition, Creation, Diary, Nominations, HouseEvent }
+        public enum ActivityLayout { Standard, Relationships, Conversation, Competition, Creation, Diary, Nominations, HouseEvent, Ballot }
 
         private ActivityLayout activityLayout;
         private RectTransform relationshipRoot;
@@ -77,10 +77,12 @@ namespace Gamesim.Episode
             if (layout == ActivityLayout.Conversation) { ConversationLayout(canvasWidth, canvasHeight); return; }
             // Both are decisions about the people in the house, and both take the same band.
             if (layout == ActivityLayout.Nominations || layout == ActivityLayout.HouseEvent) { NominationsLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Diary) { DiaryLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Ballot) { BallotLayout(canvasWidth, canvasHeight); return; }
             float left = LeftColumnX;
             float right = 24f;
             float availableWidth = canvasWidth - left - right;
-            float width = Mathf.Min(layout == ActivityLayout.Diary ? 600f : layout == ActivityLayout.Conversation ? 1040f : 1180f, availableWidth);
+            float width = Mathf.Min(1180f, availableWidth);
             if (layout == ActivityLayout.Relationships) width = availableWidth;
             // An activity stands on the same floor the docked panel does. It used to stand at 100,
             // which was above the lower third while the lower third was on the canvas floor; the
@@ -196,6 +198,69 @@ namespace Gamesim.Episode
             if (modalScroll != null)
             {
                 Stretch((RectTransform)modalScroll.transform, 20f, 72f, 20f, 14f);
+                modalScroll.verticalNormalizedPosition = 1f;
+            }
+        }
+
+        /// <summary>The diary's column (mockup-11), at the resting text size.</summary>
+        private const float DiaryColumnWidth = 384f;
+        /// <summary>The ballot's panel (mockup-08), at the resting text size.</summary>
+        private const float BallotPanelWidth = 640f;
+        private const float BallotPanelHeight = 520f;
+
+        /// <summary>
+        /// The diary's own page (mockup-11): a column down the right-hand side of the frame, where
+        /// the right column's cards stand the rest of the time, with the player in the chair in the
+        /// rest of it. The strip stays - the room is still in the house - and so does the rail.
+        /// </summary>
+        private void DiaryLayout(float canvasWidth, float canvasHeight)
+        {
+            float width = Mathf.Min(DiaryColumnWidth * FontScale, canvasWidth - LeftColumnX - RightColumnInset);
+            float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom);
+            Anchor(modal, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-RightColumnInset, ModalLift), new Vector2(width, height));
+            CompactClose();
+            if (Compact) SetChromeVisible("Objective", false);
+            SetChromeVisible(HouseVibeCardName, false);
+            SetChromeVisible(EpisodeDirector.LiveFeedCardName, false);
+            SetChromeVisible(RecentEventsCardName, false);
+            SetChromeVisible(RelationshipsCardName, false);
+            SetChromeVisible(OverviewColumnName, false);
+            SetChromeVisible("Exploration controls", false);
+            SetChromeVisible(FollowChipName, false);
+            SetChromeVisible("Interaction prompt", false);
+            var hint = modal.Find("Panel control hint");
+            if (hint != null) hint.gameObject.SetActive(false);
+            if (modalScroll != null)
+            {
+                Stretch((RectTransform)modalScroll.transform, 14f, 76f, 12f, 14f);
+                modalScroll.verticalNormalizedPosition = 1f;
+            }
+        }
+
+        /// <summary>
+        /// The eviction vote in the diary (mockup-08): a panel across the top of the room, centred
+        /// between the rail and the right column, with the player in the chair below it. The right
+        /// column stays up - the mockup keeps the house's feed beside the ballot - and so does the
+        /// strip, the faces the vote is about.
+        /// </summary>
+        private void BallotLayout(float canvasWidth, float canvasHeight)
+        {
+            float right = RightColumnInset + RightColumnWidth + 16f;
+            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - right);
+            float width = Mathf.Min(BallotPanelWidth * FontScale, free);
+            float height = Mathf.Min(BallotPanelHeight * FontScale, Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom));
+            modal.anchorMin = modal.anchorMax = new Vector2(0f, 1f);
+            modal.pivot = new Vector2(.5f, 1f);
+            modal.anchoredPosition = new Vector2(LeftColumnX + free * .5f, -ActivityHeadroom);
+            modal.sizeDelta = new Vector2(width, height);
+            SetChromeVisible("Exploration controls", false);
+            SetChromeVisible(FollowChipName, false);
+            SetChromeVisible("Interaction prompt", false);
+            var hint = modal.Find("Panel control hint");
+            if (hint != null) hint.gameObject.SetActive(false);
+            if (modalScroll != null)
+            {
+                Stretch((RectTransform)modalScroll.transform, 16f, 60f, 16f, 14f);
                 modalScroll.verticalNormalizedPosition = 1f;
             }
         }

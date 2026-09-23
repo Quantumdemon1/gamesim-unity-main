@@ -85,6 +85,12 @@ namespace Gamesim.Presentation
         /// drawn in it looked like one more lamp in the set.
         /// </summary>
         public static readonly Color Heading = Hex("4DA8FF");
+        /// <summary>
+        /// The mockups' action blue: the one control to press on a setup screen, and the chosen
+        /// segment of a switch - saturated, with white words on it (4.6:1; Paper is 4.2:1 and falls
+        /// short of body copy). Deliberately not <see cref="AccentDeep"/>, whose best word is 3.89:1.
+        /// </summary>
+        public static readonly Color ActionBlue = Hex("076CFE");
 
         /// <summary>The mockups' corner radius, and how far a panel's glow reaches past its edge.</summary>
         public const int GlassRadius = 14;
@@ -386,6 +392,34 @@ namespace Gamesim.Presentation
             softLine.name = texture.name;
             softLine.hideFlags = HideFlags.HideAndDontSave;
             return softLine;
+        }
+
+        private static Sprite fadeRight;
+
+        /// <summary>A horizontal ramp, clear on the left and solid on the right: a photo's edge
+        /// fading into the card it sits on. Generated once.</summary>
+        public static Sprite FadeRight()
+        {
+            if (fadeRight != null) return fadeRight;
+            const int width = 32, height = 4;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Fade Right", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[width * height];
+            for (int x = 0; x < width; x++)
+            {
+                float t = x / (width - 1f);
+                byte alpha = (byte)Mathf.RoundToInt(t * t * (3f - 2f * t) * 255f);
+                for (int y = 0; y < height; y++) pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            fadeRight = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            fadeRight.name = texture.name;
+            fadeRight.hideFlags = HideFlags.HideAndDontSave;
+            return fadeRight;
         }
 
         private static Sprite Fill(int radius) => Cached(FillCache, radius, false);

@@ -35,6 +35,7 @@ namespace Gamesim.Presentation
         public const string IconStar = "Pack1_Foundation/Icons_PNG/star";
         public const string IconTrophy = "Pack1_Foundation/Icons_PNG/trophy";
         public const string IconSave = "Pack1_Foundation/Icons_PNG/save";
+        public const string BackgroundNavy = "Pack1_Foundation/Backgrounds/background_dark_navy_1920x1080";
 
         // Gameplay.
         public const string LeftNavRail = "Pack2_Gameplay/HUD/left_nav_rail_9slice";

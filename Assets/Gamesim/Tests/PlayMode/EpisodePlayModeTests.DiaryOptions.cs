@@ -19,6 +19,13 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Diary_TheRoomIsAColumnOfOptionCardsBesideTheChair()
         {
+            // Free time with something to talk about: an action left to study with, and a memory
+            // of the player's own for the chair's caption.
+            yield return InstallDiaryFixture(state => state.phase == Gamesim.Simulation.EpisodePhase.Social
+                && state.pendingDiary == null
+                && state.Find(state.playerId).status == Gamesim.Simulation.ContestantStatus.Active
+                && Gamesim.Simulation.EpisodeEngine.SocialActionsSpent(state) < Gamesim.Simulation.EpisodeEngine.SocialActionBudget(state)
+                && state.memories.Any(memory => memory.ownerId == state.playerId), "free time with a memory of the player's own");
             yield return OpenDiaryFixturePanel();
             Canvas.ForceUpdateCanvases();
             var hud = director.GetComponentInChildren<EpisodeHud>();
@@ -47,6 +54,18 @@ namespace Gamesim.Tests.PlayMode
                 var chrome = ActiveRect(name);
                 Assert.That(chrome, Is.Not.Null, name + " stays up in the diary.");
                 Assert.That(column.Overlaps(ScreenRect(chrome)), Is.False, "The column covers '" + name + "'.");
+            }
+            // The chair is captioned with what the player has to talk about: their own latest
+            // memory, under their name, clear of the column and the chrome around it.
+            var state = director.Snapshot;
+            var latest = state.memories.LastOrDefault(memory => memory.ownerId == state.playerId);
+            Assert.That(latest, Is.Not.Null, "The fixture should give the player a memory.");
+            {
+                var caption = ActiveRect(EpisodeHud.ConfessionalName);
+                Assert.That(caption, Is.Not.Null, "The chair has its caption.");
+                Assert.That(caption.GetComponentsInChildren<TMPro.TMP_Text>().Select(text => text.text), Does.Contain(latest.text));
+                foreach (var chrome in new[] { ActiveRect("Episode panel"), ActiveRect(CastRail.RootName), ActiveRect(IconRail.RootName) })
+                    Assert.That(ScreenRect(caption).Overlaps(ScreenRect(chrome)), Is.False, "The caption covers '" + chrome.name + "'.");
             }
             if (Application.isBatchMode) yield return CaptureFraming("diary-options");
         }

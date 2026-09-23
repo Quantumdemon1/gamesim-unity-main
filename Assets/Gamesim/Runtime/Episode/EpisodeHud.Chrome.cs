@@ -489,6 +489,56 @@ namespace Gamesim.Episode
                 top += RecentEventsCard(canvas.transform, state, top) + RightColumnGap;
             }
             HouseVibeCard(canvas.transform, top, state);
+            if (director.CanListenIn) NearbyCard(canvas.transform, top);
+        }
+
+        /// <summary>The Nearby card's name, and its control's caption.</summary>
+        public const string NearbyCardName = "Nearby card";
+        public const string ListenInCaption = "Listen in";
+        private RectTransform nearbyCard;
+
+        /// <summary>
+        /// Mockup-06's Nearby card: two houseguests are talking where the player can see them, and
+        /// listening in is on offer - the house's own Eavesdrop, with its real cost and odds. Built
+        /// hidden in the week card's place and swapped in by <see cref="SetNearby"/> while a
+        /// conversation is being witnessed. It names nobody: what is overheard is the house's to
+        /// decide, not the pair's on screen.
+        /// </summary>
+        private void NearbyCard(Transform parent, float top)
+        {
+            float width = RightColumnWidth, height = 168f;
+            nearbyCard = Chrome(NearbyCardName, parent);
+            Anchor(nearbyCard, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
+            CardHeading(nearbyCard, "Nearby");
+            float x = 16f;
+            if (HudPrimitives.Glyph("Nearby mark", nearbyCard, "ear", UiTheme.Joke, new Vector2(14f, -42f), 30f) != null) x = 54f;
+            var title = FixedText(nearbyCard, "You can eavesdrop", 15, UiTheme.Allied, new Vector2(x, -40f), new Vector2(width - x - 12f, 22f));
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) title.font = semibold;
+            var line = FixedText(nearbyCard, "Two houseguests are talking within earshot.", 12, UiTheme.Muted, new Vector2(x, -62f), new Vector2(width - x - 12f, 32f));
+            AutoSize(line, 10);
+            var listen = FixedButton(nearbyCard, ListenInCaption, new Vector2(14f, -100f), new Vector2(width - 28f, 36f), director.ListenInNearby);
+            var ground = listen.GetComponent<Image>();
+            ground.color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f);
+            UiTheme.AddBorder((RectTransform)listen.transform, UiTheme.ControlRadius, UiTheme.Allied);
+            var words = listen.GetComponentInChildren<TMP_Text>();
+            if (words != null)
+            {
+                words.fontSize = 15; words.fontSizeMax = 15; words.alignment = TextAlignmentOptions.Center;
+                if (semibold != null) words.font = semibold;
+            }
+            var odds = FixedText(nearbyCard, "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -140f), new Vector2(width - 28f, 18f));
+            odds.alignment = TextAlignmentOptions.Center;
+            nearbyCard.gameObject.SetActive(false);
+        }
+
+        /// <summary>Swaps the Nearby card in for the week card while a conversation is witnessed.</summary>
+        public void SetNearby(bool visible)
+        {
+            if (nearbyCard == null || nearbyCard.gameObject.activeSelf == visible) return;
+            nearbyCard.gameObject.SetActive(visible);
+            var week = nearbyCard.parent != null ? nearbyCard.parent.Find(HouseVibeCardName) : null;
+            if (week != null) week.gameObject.SetActive(!visible);
         }
 
         /// <summary>The relationships card's name. Not "Relationships": that is a rail row's caption.</summary>

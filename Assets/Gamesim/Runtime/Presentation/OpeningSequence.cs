@@ -68,6 +68,12 @@ namespace Gamesim.Presentation
 
             public bool ReducedMotion;
 
+            /// <summary>
+            /// Holds each card for its time even in batchmode, which otherwise skips every hold so
+            /// an automated season is never kept waiting. Only a test that photographs a card sets it.
+            /// </summary>
+            public bool HoldHeadless;
+
             /// <summary>The house, for the fly-in panels and the meet and greet.</summary>
             public IReadOnlyList<ContestantState> Cast = new List<ContestantState>();
 
@@ -599,7 +605,7 @@ namespace Gamesim.Presentation
 
         private IEnumerator Hold(float seconds)
         {
-            if (Application.isBatchMode) yield break;
+            if (Application.isBatchMode && !settings.HoldHeadless) yield break;
             float elapsed = 0f;
             while (elapsed < seconds) { elapsed += Time.unscaledDeltaTime; yield return null; }
         }

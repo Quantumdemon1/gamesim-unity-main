@@ -318,7 +318,7 @@ namespace Gamesim.Tests.PlayMode
             return Mathf.Abs(crown.y - feet.y) / camera.pixelHeight;
         }
 
-        private IEnumerator CaptureFraming(string name)
+        private IEnumerator CaptureFraming(string name, bool settle = true)
         {
             const int width = 1600, height = 900;
             var camera = cameraRig.ViewCamera;
@@ -343,10 +343,12 @@ namespace Gamesim.Tests.PlayMode
                 // in a short filtered run the queue can still be working seconds after the panel
                 // opened; wait for it, but not forever - a face that never lands is a capture worth
                 // having too.
-                float settle = Time.realtimeSinceStartup + 10f;
-                float least = Time.realtimeSinceStartup + 0.5f;
+                // Unless the frame is of something that will not wait: a caption the house's
+                // world tick takes down within a tenth of a second.
+                float until = Time.realtimeSinceStartup + (settle ? 10f : 0f);
+                float least = Time.realtimeSinceStartup + (settle ? 0.5f : 0f);
                 while (Time.realtimeSinceStartup < least
-                    || (Time.realtimeSinceStartup < settle && AnyBoundFaceIsStillMissing()))
+                    || (Time.realtimeSinceStartup < until && AnyBoundFaceIsStillMissing()))
                     yield return null;
                 Canvas.ForceUpdateCanvases();
                 // Then lay the HUD out again for the frame being photographed. A batchmode canvas is

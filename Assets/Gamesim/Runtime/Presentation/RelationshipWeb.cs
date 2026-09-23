@@ -54,7 +54,8 @@ namespace Gamesim.Presentation
         /// <summary>How many allies, rivals or secrets the column lists before it stops.</summary>
         public const int ListLimit = 3;
 
-        private const float ColumnWidth = 250f;
+        // The reading column, as wide as mockup-07's card needs for a face and a name beside it.
+        private const float ColumnWidth = 300f;
         private const float Gap = 14f;
         private const float NodeSize = 46f;
         private const float PlayerSize = 62f;
@@ -65,7 +66,7 @@ namespace Gamesim.Presentation
         /// <summary>The key's card at the web's lower left (mockup-07), at the resting text size.</summary>
         private const float LegendWidth = 196f, LegendTall = 278f;
         /// <summary>The largest a face gets, and the share of the ring's reach it takes.</summary>
-        private const float LargestNode = 104f, NodeShare = .38f;
+        private const float LargestNode = 118f, NodeShare = .42f;
 
         /// <summary>
         /// The web's geometry for the room it has: how far the ring reaches, how big a face is, and
@@ -75,24 +76,34 @@ namespace Gamesim.Presentation
         /// </summary>
         private struct Shape
         {
-            public float Radius, Node, Player, Height, HubShift;
+            public float Radius, Node, Player, Height, HubShift, Top;
+            /// <summary>Whether the tab pills stand beside the title (mockup-07) or on a row under it.</summary>
+            public bool TabsBeside;
         }
+
+        /// <summary>The tab pills' width, and the title's, when they share the top line.</summary>
+        private const float TabsWidth = 440f, TitleBlockWidth = 440f, TabsRow = 44f;
 
         private static Shape Measure(EpisodeState state, float scale, float availableWidth, float availableHeight)
         {
             int count = Others(state).Count;
             var shape = new Shape();
+            // The tabs beside the title where the web has the width for both, as mockup-07 draws
+            // them; on a row of their own under it where it does not (a 4:3 frame, larger text).
+            shape.TabsBeside = float.IsInfinity(availableWidth) || availableWidth <= 0f
+                || availableWidth - (ColumnWidth + Gap) * scale - 14f >= (TabsWidth + TitleBlockWidth + 20f) * scale;
+            shape.Top = (TitleHeight + (shape.TabsBeside ? 0f : TabsRow)) * scale;
             if (float.IsInfinity(availableHeight) || availableHeight <= 0f)
             {
                 // No room given: the ring the web always drew.
                 shape.Radius = Radius(count, scale);
                 shape.Node = NodeSize * scale; shape.Player = PlayerSize * scale;
-                shape.Height = TitleHeight * scale + 2f * (shape.Radius + shape.Node * .5f + ChipDrop * scale) + 12f * scale;
+                shape.Height = shape.Top + 2f * (shape.Radius + shape.Node * .5f + ChipDrop * scale) + 12f * scale;
                 shape.HubShift = LegendWidth * scale * .5f;
                 return shape;
             }
             shape.Height = availableHeight - 2f;
-            float reachY = (shape.Height - TitleHeight * scale - 12f * scale) * .5f;
+            float reachY = (shape.Height - shape.Top - 12f * scale) * .5f;
             float reach = reachY;
             if (!float.IsInfinity(availableWidth) && availableWidth > 0f)
             {
@@ -343,7 +354,7 @@ namespace Gamesim.Presentation
             var shape = Measure(state, scale, availableWidth, availableHeight);
             Graph(root, state, focus, scale, font, portrait, select, shape);
             Column(root, state, focus, scale, font, portrait, shape.Height);
-            Filters(root,state,scale,font,select);
+            Filters(root,state,scale,font,select,shape.TabsBeside);
             return root;
         }
 
@@ -351,25 +362,48 @@ namespace Gamesim.Presentation
             Mathf.Min((112f + Mathf.Max(0, count - 6) * 6f) * scale, 140f);
 
 
-        private static void Filters(RectTransform root,EpisodeState state,float scale,TMP_FontAsset font,Action<string> refresh)
+        private static void Filters(RectTransform root,EpisodeState state,float scale,TMP_FontAsset font,Action<string> refresh,bool beside)
         {
             var toolbar=new GameObject("Relationship filters",typeof(RectTransform)).GetComponent<RectTransform>();
             toolbar.SetParent(root,false);toolbar.gameObject.AddComponent<LayoutElement>().ignoreLayout=true;
             toolbar.anchorMin=toolbar.anchorMax=Vector2.one;toolbar.pivot=Vector2.one;
             toolbar.anchoredPosition=new Vector2(-((ColumnWidth+Gap)*scale+14f),0);
-            toolbar.sizeDelta=new Vector2(308f*scale,28f*scale);
+            if(!beside)
+            {
+                // Under the title and its strap, from the web's left edge.
+                toolbar.anchorMin=toolbar.anchorMax=new Vector2(0f,1f);toolbar.pivot=new Vector2(0f,1f);
+                toolbar.anchoredPosition=new Vector2(4f*scale,-TitleHeight*scale);
+            }
+            // The mockup's tab pills: a glyph and a word each, the one showing in the action blue.
+            const float pill = 104f, step = 110f;
+            toolbar.sizeDelta=new Vector2(4f*step*scale,34f*scale);
             var values=new[]{Filter.All,Filter.Allies,Filter.Friends,Filter.Tension};
+            var glyphs=new[]{"people","handshake","heart","target"};
             for(int i=0;i<values.Length;i++)
             {
                 var value=values[i];
-                var rect=HudPrimitives.Fill("Filter relationships: "+value,toolbar,filter==value ? UiTheme.AccentDeep : UiTheme.Surface,6);
-                Place(rect,i*78f*scale,0,74f*scale,28f*scale);
+                bool on=filter==value;
+                var rect=HudPrimitives.Fill("Filter relationships: "+value,toolbar,on ? UiTheme.ActionBlue : UiTheme.GlassFill,16);
+                Place(rect,i*step*scale,0,pill*scale,34f*scale);
+                UiTheme.AddBorder(rect,16,on ? UiTheme.Glow : new Color(UiTheme.Hairline.r,UiTheme.Hairline.g,UiTheme.Hairline.b,.45f));
+                if(on)UiTheme.AddGlow(rect,16);
                 var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=rect.GetComponent<Image>();
                 button.targetGraphic.raycastTarget=true;
                 button.onClick.AddListener(()=>{SetFilter(state,value);refresh?.Invoke(SelectedFor(state)?.id);});
-                var label=Text(rect,value.ToString(),12,UiTheme.Paper,UiTheme.Weight.Medium,scale,font,TextAlignmentOptions.Center);
+                float lead=10f*scale;
+                var icon=UiTheme.Icon(glyphs[i]);
+                if(icon!=null)
+                {
+                    var mark=new GameObject("Filter mark",typeof(RectTransform),typeof(Image)).GetComponent<Image>();
+                    mark.rectTransform.SetParent(rect,false);
+                    mark.rectTransform.anchorMin=mark.rectTransform.anchorMax=new Vector2(0f,.5f);mark.rectTransform.pivot=new Vector2(0f,.5f);
+                    mark.rectTransform.anchoredPosition=new Vector2(12f*scale,0f);mark.rectTransform.sizeDelta=new Vector2(16f*scale,16f*scale);
+                    mark.sprite=icon;mark.color=on?Color.white:UiTheme.Heading;mark.preserveAspect=true;mark.raycastTarget=false;
+                    lead=32f*scale;
+                }
+                var label=Text(rect,value.ToString(),13,on?Color.white:UiTheme.Paper,on?UiTheme.Weight.SemiBold:UiTheme.Weight.Medium,scale,font,TextAlignmentOptions.MidlineLeft);
                 label.rectTransform.anchorMin=Vector2.zero;label.rectTransform.anchorMax=Vector2.one;
-                label.rectTransform.offsetMin=Vector2.zero;label.rectTransform.offsetMax=Vector2.zero;
+                label.rectTransform.offsetMin=new Vector2(lead,0f);label.rectTransform.offsetMax=new Vector2(-6f*scale,0f);
                 if (filter == value)
                 {
                     var selectedMark = HudPrimitives.Fill("Selected relationship filter",rect,UiTheme.Paper,1);
@@ -401,7 +435,7 @@ namespace Gamesim.Presentation
             var others = FilteredOthers(state);
             float radius = shape.Radius;
             float ringExtent = radius + shape.Node * .5f + ChipDrop * scale;
-            float height = Mathf.Max(shape.Height, TitleHeight * scale + ringExtent * 2f + 12f * scale);
+            float height = Mathf.Max(shape.Height, shape.Top + ringExtent * 2f + 12f * scale);
             var element = area.gameObject.AddComponent<LayoutElement>();
             element.flexibleWidth = 1f;
             element.minHeight = height; element.preferredHeight = height;
@@ -423,7 +457,7 @@ namespace Gamesim.Presentation
             hub.pivot = new Vector2(.5f, .5f);
             // Centred in the room the title leaves, and half the key's width right of centre so
             // the key's card at the lower left stands clear of the ring.
-            hub.anchoredPosition = new Vector2(shape.HubShift, -(TitleHeight * scale + (height - TitleHeight * scale) * .5f));
+            hub.anchoredPosition = new Vector2(shape.HubShift, -(shape.Top + (height - shape.Top) * .5f));
             hub.sizeDelta = Vector2.zero;
 
             // Edges first, so the portraits draw over them.
@@ -906,7 +940,7 @@ namespace Gamesim.Presentation
         {
             var row = Row(column, 84f * scale);
             // The face the column reads, large and lit as mockup-07's card leads with it.
-            float face = 72f * scale;
+            float face = 96f * scale;
             var kind = isPlayer ? Kind.Neutral : KindOf(state, focus.id);
             var lit = UiTheme.Pack(PackArt.GlowCyan);
             if (lit != null)

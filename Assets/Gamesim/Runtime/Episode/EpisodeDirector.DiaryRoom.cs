@@ -296,6 +296,12 @@ namespace Gamesim.Episode
             if (ballot) RenderPlayerDecision(state, true);
             else
             {
+                // What the player has to talk about in here, as mockup-11 captions the chair: their
+                // own latest memory under their name.
+                var latest = state.memories.LastOrDefault(memory => memory.ownerId == state.playerId);
+                var self = state.Find(state.playerId);
+                if (latest != null && self != null)
+                    hud.Confessional((self.name ?? "You").Split(' ')[0], latest.text);
                 // The things to do here come first, as mockup-11's cards do; what they cost and
                 // what the room keeps follow them.
                 RenderDiaryReflection(state);

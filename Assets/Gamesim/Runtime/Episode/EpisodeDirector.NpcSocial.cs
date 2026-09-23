@@ -41,6 +41,31 @@ namespace Gamesim.Episode
 
         public bool NpcAutonomyReady => npcMeetings != null && npcMeetings.IsReady && !npcWorldFailed && !npcDiagnosticsSuspended;
         public string ObservedNpcConversation => npcCaption != null ? npcCaption.CurrentText : "";
+
+        /// <summary>
+        /// Whether listening in is on offer right now: the house's Eavesdrop, on the same terms the
+        /// episode screen offers it - free time or the campaign, an action left, and at least two
+        /// other houseguests to overhear.
+        /// </summary>
+        public bool CanListenIn
+        {
+            get
+            {
+                var state = projected;
+                if (!IsReady || blockedRecovery || challengeActive || state == null) return false;
+                if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign) return false;
+                if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
+                if (state.Active.Count(c => !c.isPlayer) < 2) return false;
+                return EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
+            }
+        }
+
+        /// <summary>The Nearby card's control: the house's Eavesdrop, committed as the episode screen commits it.</summary>
+        public void ListenInNearby()
+        {
+            if (!CanListenIn || IsPanelOpen) return;
+            Commit(projected, EpisodeCommandKind.Eavesdrop);
+        }
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>
         public bool IsNpcConversationPhysicallyReady(long sequence) => npcMeetings != null

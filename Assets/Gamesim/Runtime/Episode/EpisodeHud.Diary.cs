@@ -26,6 +26,9 @@ namespace Gamesim.Episode
         public void DiaryHeader(string title) =>
             ScreenHeader(DiaryHeaderName, DiaryEyebrowCopy, title, UiTheme.Pack(PackArt.IconChat));
 
+        /// <summary>The notebook's head, so a test can find it the way it finds a named panel.</summary>
+        public const string NotebookHeaderName = "Notebook header";
+
         /// <summary>The settings screen's head, so a test can find it the way it finds a named panel.</summary>
         public const string SettingsHeaderName = "Settings header";
 
@@ -85,6 +88,50 @@ namespace Gamesim.Episode
                 Stretch((RectTransform)modalScroll.transform, 14f, height + 10f, 12f, 14f);
                 modalScroll.verticalNormalizedPosition = 1f;
             }
+        }
+
+        /// <summary>The diary's caption, so a test can find it the way it finds a named panel.</summary>
+        public const string ConfessionalName = "Confessional caption";
+
+        /// <summary>
+        /// Mockup-11's caption in the confessional: the speaker's name on a tab and a line under
+        /// it, low in the frame between the rail and the diary's column, over the chair. The line
+        /// is the player's own most recent memory - what they have to talk about in here - never
+        /// words put in their mouth.
+        /// </summary>
+        public void Confessional(string speaker, string line)
+        {
+            if (canvas == null || modal == null || string.IsNullOrEmpty(line)) return;
+            float s = FontScale;
+            var root = (RectTransform)canvas.transform;
+            float canvasWidth = root.rect.width > 0 ? root.rect.width : 1600f;
+            float left = LeftColumnX, right = canvasWidth - RightColumnInset - modal.sizeDelta.x - 16f;
+            float width = Mathf.Min(640f * s, right - left - 32f);
+            if (width < 280f) return;
+
+            var bar = Chrome(ConfessionalName, canvas.transform, UiTheme.Emphasis.Interactive);
+            bar.GetComponent<Image>().raycastTarget = false;
+            var words = NewText(bar, line, 18, Paper);
+            words.alignment = TextAlignmentOptions.MidlineLeft;
+            float textWidth = width - 44f;
+            float lines = Mathf.Ceil(words.GetPreferredValues(words.text, textWidth, 0f).y) + 4f;
+            float height = Mathf.Clamp(lines, 26f * s, 84f * s) + 30f * s;
+            Anchor(bar, new Vector2(0f, 0f), new Vector2(.5f, 0f), new Vector2((left + right) * .5f, ModalLift + 26f * s), new Vector2(width, height));
+            Stretch(words.rectTransform, 22f, 16f * s, 22f, 12f * s);
+            AutoSize(words, 13);
+
+            if (string.IsNullOrEmpty(speaker)) return;
+            var tab = Panel("Speaker tab", bar, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .96f), 8);
+            tab.GetComponent<Image>().raycastTarget = false;
+            UiTheme.AddBorder(tab, 8, UiTheme.Hairline);
+            var name = NewText(tab, speaker, 15, Paper);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) name.font = semibold;
+            name.alignment = TextAlignmentOptions.Center;
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            float tabWidth = Mathf.Min(width * .5f, Mathf.Ceil(name.GetPreferredValues(name.text).x) + 32f);
+            Anchor(tab, new Vector2(0f, 1f), new Vector2(0f, .5f), new Vector2(18f, 0f), new Vector2(tabWidth, 30f * s));
+            Stretch(name.rectTransform, 8f, 2f, 8f, 2f);
         }
 
         /// <summary>

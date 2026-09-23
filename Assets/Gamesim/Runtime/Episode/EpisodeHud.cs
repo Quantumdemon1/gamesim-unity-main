@@ -198,7 +198,7 @@ namespace Gamesim.Episode
             else if (!open && modal != null && !recovery) Foley(HouseAudio.Cue.PanelClose);
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
-            modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
+            modal = null; modalScroll = null; lastSelection = null; restoreSelection = true; nearbyCard = null;
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.

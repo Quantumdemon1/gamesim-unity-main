@@ -164,6 +164,14 @@ namespace Gamesim.Presentation
         /// not know how personas map to art — the HUD already owns that mapping, and a second copy
         /// of it is how the two would drift apart.</para>
         /// </summary>
+        /// <summary>
+        /// While a competition is being played, who is in it (mockup-05's entrant strip): each
+        /// chip says Competing or Sitting out in place of its mood. Null the rest of the time. It
+        /// is the engine's own field, and it claims no score for anybody - the houseguests' scores
+        /// do not exist until the result commits.
+        /// </summary>
+        public static System.Collections.Generic.ICollection<string> CompetitionField;
+
         public static RectTransform Build(
             Transform parent, EpisodeState state, float fontScale, TMP_FontAsset font,
             System.Func<string, Texture> portrait, System.Action<string> onSelect = null,
@@ -383,6 +391,8 @@ namespace Gamesim.Presentation
         private static string MoodWord(ContestantState actor, Standing standing)
         {
             if (standing.Dim) return Localisation.Text("Evicted");
+            if (CompetitionField != null)
+                return Localisation.Text(CompetitionField.Contains(actor.id) ? "Competing" : "Sitting out");
             string mood = actor.mood;
             if (string.IsNullOrEmpty(mood)) return Localisation.Text("Neutral");
             // Defensive: a word is what fits in a 100px chip, so anything composed is cut at the
@@ -499,6 +509,7 @@ namespace Gamesim.Presentation
             // The mood in a word, in the mood's colour, under the name. The mockups put it exactly
             // here, and it is the half of the mood a screen reader can actually read out.
             var mood = Label(entry, MoodWord(actor, standing), 11, moodColour, scale, font, TextAlignmentOptions.Top);
+            if (CompetitionField != null && !standing.Dim) mood.color = CompetitionField.Contains(actor.id) ? UiTheme.Accent : UiTheme.Muted;
             mood.name = MoodWordName;
             mood.rectTransform.anchorMin = new Vector2(0f, 1f);
             mood.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -701,6 +712,7 @@ namespace Gamesim.Presentation
             }
 
             var mood = Label(entry, MoodWord(actor, standing), 12, moodColour, scale, font, TextAlignmentOptions.Left);
+            if (CompetitionField != null && !standing.Dim) mood.color = CompetitionField.Contains(actor.id) ? UiTheme.Accent : UiTheme.Muted;
             mood.name = MoodWordName;
             Fit(mood, 9f);
             Place(mood.rectTransform, x, (ChipTop + 58f) * scale, column, 16f * scale);

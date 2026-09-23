@@ -307,6 +307,8 @@ namespace Gamesim.Episode
 
         private void Update()
         {
+            // The Nearby card (mockup-06) is up exactly while a conversation is being witnessed.
+            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation) && CanListenIn);
             // ] and [ (or the shoulders) cycle who the camera follows, out in the house with no panel
             // open. Tab does the same only when no HUD control is focused - a mouse player who
             // clicked the house - because with one focused, Tab is the keyboard ring's, and the HUD
@@ -951,6 +953,10 @@ namespace Gamesim.Episode
             // The committed snapshot, not the projection: a projected eviction is not a fact
             // yet, and the set must never show an outcome the save does not hold.
             if (memoryWall != null) memoryWall.Refresh(engine.Snapshot);
+            // While a competition is being played the strip is its entrant strip (mockup-05): who
+            // is in the engine's field, and who is sitting it out.
+            CastRail.CompetitionField = challengeRun != null && competitionScreen != null && competitionScreen.IsShowing
+                ? new HashSet<string>(EpisodeEngine.CompetitionPlayers(state).Select(actor => actor.id)) : null;
             hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen);
             // Committed state, not the projection: a projected eviction is not a fact, and telling
             // someone they are out of the game is the last claim that should run ahead of the save.
@@ -964,6 +970,10 @@ namespace Gamesim.Episode
                 // others were rendered into the docked panel, whose viewport is about 174 units
                 // tall - the room map showed its header and nothing of the map.
                 hud.SetActivityLayout(EpisodeHud.ActivityLayout.Relationships);
+                // The notebook is a place to read, not a beat of the week: a slim head of its own
+                // in place of the phase band, so each page's title - the web's RELATIONSHIP WEB
+                // above all (mockup-07) - is the first thing at the top of the frame.
+                hud.ScreenHeader(EpisodeHud.NotebookHeaderName, "YOUR NOTEBOOK \u00b7 WHAT YOUR CHARACTER KNOWS", null, null);
                 hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
                 // A command rather than a section, so it stays put whichever page you are on.
                 hud.Action("House activities",OpenHouseActivities);
@@ -1245,6 +1255,7 @@ namespace Gamesim.Episode
         // The sting is a scene root rather than a child, so it has to be taken down explicitly.
         private void OnDestroy()
         {
+            CastRail.CompetitionField = null;
             EndDiaryVisit(true);
             DisposeNpcSocialWorld();
             if (hud != null) Destroy(hud);

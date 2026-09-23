@@ -144,6 +144,24 @@ namespace Gamesim.Tests.PlayMode
                 "The preference removes movement, not information.");
         }
 
+        /// <summary>The title card, held long enough to photograph: the frame to judge the opening by.</summary>
+        [UnityTest]
+        public IEnumerator Opening_CapturesTheTitleForReview()
+        {
+            var sequence = Opening();
+            var recorded = new List<string>();
+            var plan = Plan(recorded, reducedMotion: true);
+            plan.HoldHeadless = true;
+            sequence.Play(new string[0], plan);
+            yield return null;
+            Assert.That(sequence.IsPlaying, Is.True);
+            if (Application.isBatchMode) yield return CaptureFraming("opening-title");
+            Assert.That(sequence.IsPlaying, Is.True, "The title card is still up after the capture: it was photographed, not the house.");
+            sequence.Skip();
+            yield return null;
+            Assert.That(sequence.IsPlaying, Is.False);
+        }
+
         /// <summary>
         /// The camera is taken for the sequence and given back afterwards. A player left unable to
         /// move the camera after the intro would have no way to work out why.

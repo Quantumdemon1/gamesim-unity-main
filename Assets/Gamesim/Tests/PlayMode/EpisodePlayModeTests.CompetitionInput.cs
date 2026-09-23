@@ -86,6 +86,16 @@ namespace Gamesim.Tests.PlayMode
                 screen.GetComponentsInChildren<UnityEngine.UI.Button>().First(button => button.name == "Continue to competition").onClick.Invoke();
             float playing = Time.realtimeSinceStartup + 3.6f;
             while (Time.realtimeSinceStartup < playing && screen.IsShowing) yield return null;
+            Assert.That(screen.IsShowing, Is.True, "The practice should still be in play.");
+
+            // While it is played the strip is the entrant strip (mockup-05): who is in the field.
+            RenderHudForTheCurrentCanvas();
+            yield return null;
+            var field = Gamesim.Simulation.EpisodeEngine.CompetitionPlayers(before).ToArray();
+            var words = director.GetComponentsInChildren<TMPro.TMP_Text>()
+                .Where(text => text.name == CastRail.MoodWordName).Select(text => text.text).ToArray();
+            Assert.That(words.Count(word => word == "Competing"), Is.EqualTo(field.Length),
+                "Each houseguest in the field is marked as competing: " + string.Join(", ", words));
             if (Application.isBatchMode && screen.IsShowing) yield return CaptureFraming("competition-practice");
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
         }

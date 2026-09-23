@@ -33,7 +33,10 @@ namespace Gamesim.Tests.PlayMode
                     var info = label.textInfo;
                     return !info.characterInfo.Take(info.characterCount).Any(glyph => glyph.isVisible);
                 })
-                .Select(label => "'" + label.text + "' (" + label.name + " under " + (label.transform.parent != null ? label.transform.parent.name : "-") + ")")
+                .Select(label => "'" + label.text + "' (" + label.name + " under " + (label.transform.parent != null ? label.transform.parent.name : "-")
+                    + "; font " + (label.font != null ? label.font.name : "none") + " " + label.fontSize.ToString("0.#")
+                    + ", box " + label.rectTransform.rect.size.ToString("0")
+                    + ", chars " + label.textInfo.characterCount + ", truncated " + label.isTextTruncated + ")")
                 .ToArray();
             Assert.That(empty, Is.Empty, where + ": copy that draws nothing: " + string.Join(" | ", empty));
         }

@@ -60,6 +60,16 @@ the tests assert structure, not appearance.
   its new anchors (the settings column at the canvas's left edge, the conversation over the rail)
   until the next re-render. Captures never showed it: `CaptureFraming` re-renders first. It now
   reads its rest position on its first frame.
+- **The first frame's canvas is the raw screen.** Before the scaler has run, a 640-wide batchmode
+  canvas is 640 units, and the status toast's room (width minus both gutters) came to −2: the toast
+  was built at a negative width and its line drew nothing. It is floored at a caption's width now.
+  Only a test that runs first sees this, which is why the label sweep found it in a filtered run.
+- **`InstallDiaryFixture` fails when its test is the first in a run** (the installed session is not
+  the one the director holds: `gamesim-00000003` against a fresh one). It passes whenever anything
+  ran before it; a filtered run of one diary test needs a warm-up test ahead of it in the filter.
+  Not investigated further.
+- **Mutations that reach every screen mask everything else.** A broken `HudReveal` misplaced the
+  settings panel a diary fixture presses through; run such a mutation in a round of its own.
 - **A test that checks "visible" may not check "where".** The ballot's Confirm stayed on screen
   in a tall panel even when a mutation moved it under the explanation; the test now measures the gap
   to the cards.

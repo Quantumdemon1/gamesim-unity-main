@@ -905,8 +905,20 @@ namespace Gamesim.Presentation
             TMP_FontAsset font, Func<string, Texture> portrait)
         {
             var row = Row(column, 84f * scale);
-            float face = 56f * scale;
+            // The face the column reads, large and lit as mockup-07's card leads with it.
+            float face = 72f * scale;
             var kind = isPlayer ? Kind.Neutral : KindOf(state, focus.id);
+            var lit = UiTheme.Pack(PackArt.GlowCyan);
+            if (lit != null)
+            {
+                var glow = new GameObject("Face glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                glow.rectTransform.SetParent(row, false);
+                glow.rectTransform.anchorMin = glow.rectTransform.anchorMax = new Vector2(0f, 1f);
+                glow.rectTransform.pivot = new Vector2(.5f, .5f);
+                glow.rectTransform.sizeDelta = new Vector2(face * 1.7f, face * 1.7f);
+                glow.rectTransform.anchoredPosition = new Vector2(face * .5f, -face * .5f);
+                glow.sprite = lit; glow.color = new Color(1f, 1f, 1f, .45f); glow.preserveAspect = true; glow.raycastTarget = false;
+            }
             var rim = HudPrimitives.Portrait(row, portrait != null ? portrait(focus.id) : null,
                 isPlayer ? UiTheme.Accent : RingColour(kind), face, RingWidth * scale, false);
             rim.anchorMin = new Vector2(0f, 1f); rim.anchorMax = new Vector2(0f, 1f);
@@ -923,7 +935,7 @@ namespace Gamesim.Presentation
             float nameHeight = Mathf.Max(24f * scale,name.GetPreferredValues(name.text,width,float.PositiveInfinity).y + 2f * scale);
             Place(name.rectTransform, left, -1f * scale, width, nameHeight);
             var rowSize = row.GetComponent<LayoutElement>();
-            rowSize.minHeight = rowSize.preferredHeight = nameHeight + 60f * scale;
+            rowSize.minHeight = rowSize.preferredHeight = Mathf.Max(face + 8f * scale, nameHeight + 60f * scale);
 
             string line = isPlayer ? Localisation.Text("You") : CardLine(focus) ?? Localisation.Text("Houseguest");
             var who = Text(row, line, 12, UiTheme.Muted, UiTheme.Weight.Regular, scale, font);

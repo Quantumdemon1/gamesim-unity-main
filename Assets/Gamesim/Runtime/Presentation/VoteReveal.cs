@@ -252,6 +252,12 @@ namespace Gamesim.Presentation
 
             title = HudPrimitives.Label("Title", column, 48f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
             title.text = "LIVE EVICTION";
+            // The bold cut, lit from above, as the ceremony cards set their titles.
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 2f;
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(Color.white, Color.white, UiTheme.Glow, UiTheme.Glow);
             Place(title.rectTransform, 880f * scale, 60f * scale, -26f * scale);
 
             // The two columns, with the tally between them.

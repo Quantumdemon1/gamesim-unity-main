@@ -248,7 +248,10 @@ namespace Gamesim.Episode
             // either side, so the expanded help box still cannot reach it.
             var status = Chrome("Status",canvas.transform);
             var statusBounds = ((RectTransform)canvas.transform).rect;
-            float statusRoom = (statusBounds.width > 0 ? statusBounds.width : 1600f) - 2f * HelpGutter;
+            // Never narrower than a caption: on a run's first frame the canvas can still be the raw
+            // screen, and at 640 wide the room between the gutters came to -2 - the toast was built
+            // at a negative width and its line truncated away until the next render.
+            float statusRoom = Mathf.Max(420f, (statusBounds.width > 0 ? statusBounds.width : 1600f) - 2f * HelpGutter);
             if (message != lastStatusMessage) { HudReveal.Play(status,ReducedMotion,10f); lastStatusMessage = message; }
             // Lower third: a coloured rule leads the caption, and turns amber on recovery so the
             // state of the save is legible at a glance rather than only in the wording.

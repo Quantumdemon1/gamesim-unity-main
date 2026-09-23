@@ -957,6 +957,10 @@ namespace Gamesim.Episode
             // is in the engine's field, and who is sitting it out.
             CastRail.CompetitionField = challengeRun != null && competitionScreen != null && competitionScreen.IsShowing
                 ? new HashSet<string>(EpisodeEngine.CompetitionPlayers(state).Select(actor => actor.id)) : null;
+            // And the player's own chip carries their progress as it happens: theirs is the one
+            // score that exists before the result commits.
+            var run = challengeRun;
+            CastRail.PlayerProgress = CastRail.CompetitionField != null && run != null ? () => ProgressWord(run) : (System.Func<string>)null;
             hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen);
             // Committed state, not the projection: a projected eviction is not a fact, and telling
             // someone they are out of the game is the last claim that should run ahead of the save.
@@ -1014,6 +1018,12 @@ namespace Gamesim.Episode
                     // the same sentence twice within one screen.
                     hud.SocialGraphPanel(state);
                     hud.Mark(NotebookSection.Network);
+                    // Mockup-07's bar: the player, and where they stand by their own reading.
+                    int allies = RelationshipWeb.Allies(state).Count, rivals = RelationshipWeb.Rivals(state).Count;
+                    int known = state.memories.Count(memory => memory.ownerId == state.playerId);
+                    hud.SpeechBar(state.playerId, EpisodeHud.SelfTitle(state.Find(state.playerId)),
+                        "By your own reading: " + allies + (allies == 1 ? " ally, " : " allies, ") + rivals
+                        + (rivals == 1 ? " rival, " : " rivals, ") + known + (known == 1 ? " thing" : " things") + " you know.", true);
                 }
                 hud.ApplyPendingScroll();
                 return;
@@ -1253,9 +1263,22 @@ namespace Gamesim.Episode
         }
 
         // The sting is a scene root rather than a child, so it has to be taken down explicitly.
+        /// <summary>The player's progress in the game being played, in the game's own measure.</summary>
+        private static string ProgressWord(MiniGameRun run)
+        {
+            switch (run.Kind)
+            {
+                case CompetitionMiniGames.Kind.Memory: return run.MatchedPairs + " / " + run.Pairs + " pairs";
+                case CompetitionMiniGames.Kind.Reaction: return run.Hits + (run.Hits == 1 ? " hit" : " hits");
+                case CompetitionMiniGames.Kind.Endurance: return run.Held.ToString("0.0") + "s held";
+                default: return "Score " + run.Score.ToString("0");
+            }
+        }
+
         private void OnDestroy()
         {
             CastRail.CompetitionField = null;
+            CastRail.PlayerProgress = null;
             EndDiaryVisit(true);
             DisposeNpcSocialWorld();
             if (hud != null) Destroy(hud);

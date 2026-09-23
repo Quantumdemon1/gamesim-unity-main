@@ -25,10 +25,10 @@ headline, the competition cards, `5339cc8` the reveal fix and settings, `54d1ba6
 | 02 | Cast select | Photo cards, action-blue pills, house-size stepper, pack night ground. No featured rail or top-right stats. |
 | 03 | Overview | Room chips with glyphs over each room (`RoomLabels`), "Who is where" column. |
 | 04 | House event | `HouseEventHeader` + `EventChoices` tiles in the decision band. |
-| 05 | Competition | Challenge / timer / competitors cards over the yard; assembly card; the strip says Competing / Sitting out while it is played (no invented scores). |
-| 06 | Night | The Nearby card in the week card's place while a conversation is witnessed: Listen in commits the house's `Eavesdrop`, cost and odds printed. |
-| 07 | Relationship web | The notebook's slim head; geometry sized from the page; icon pill tabs; legend card lower left; wider column led by a larger face. |
-| 08 | Eviction vote | `ActivityLayout.Ballot`: centred panel over the diary chair, Confirm straight under the cards. |
+| 05 | Competition | Challenge / timer / competitors cards over the yard; assembly card; while it is played the strip says Competing / Sitting out and the player's own chip carries their live progress (hits, pairs, seconds held). The others' progress is not drawn: their scores do not exist until the result commits, and the web build shows none either. |
+| 06 | Night | The Nearby card in the week card's place while a conversation is witnessed (Listen in commits the house's `Eavesdrop`, cost and odds printed), and the speech bar in the status line's place. |
+| 07 | Relationship web | The notebook's slim head; geometry sized from the page; icon pill tabs; legend card lower left; wider column led by a larger face; the speech bar at the foot (the player, and where they stand by their own reading). |
+| 08 | Eviction vote | `ActivityLayout.Ballot`: centred panel over the diary chair, Confirm straight under the cards; the speech bar in the strip's place, short of the quote card. |
 | 09 | HoH nominees | `ActivityLayout.Nominations` band of candidate cards. |
 | 10 | Nomination ceremony | `KeyCeremony` card with key slots. |
 | 11 | Diary room | `ActivityLayout.Diary`: a right-hand column of option cards; `ScreenHeader` in place of the phase band; the chair captioned with the player's latest memory. |
@@ -78,10 +78,12 @@ the tests assert structure, not appearance.
   the D: copy's content (`git hash-object -w --path` + `update-index --cacheinfo`) so each commit is
   the snapshot its green run tested, not the working tree.
 
-**What remains:** the mockups' bottom speech bar in 06-08 (the player's inner line - the game
-writes none, and the status line in that place carries other speakers' lines too, so it is not
-given the player's face); per-stage progress pips for the other competitors (their scores do not
-exist until the result commits); a creator preview that renders in batchmode.
+**The speech bar (06-08)** is always the player's own face and something true of them on that
+screen - the game writes the player no inner monologue, and a status line is not always speech
+("Maya Hassan: Build a dependable voting partnership..." is her goal, not her words), so neither
+is dressed up as a quote. `EpisodeHud.SpeechBar`.
+
+**What remains:** a creator preview that renders in batchmode.
 
 ---
 

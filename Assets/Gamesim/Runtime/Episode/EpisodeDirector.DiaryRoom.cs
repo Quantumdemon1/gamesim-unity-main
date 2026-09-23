@@ -255,6 +255,12 @@ namespace Gamesim.Episode
             bool ballot = IsDiarySettled && (ballotDraft || (diaryDraft == null && state.pendingDiary == null && BallotIsLive(state)));
             hud.SetActivityLayout(ballot ? EpisodeHud.ActivityLayout.Ballot : EpisodeHud.ActivityLayout.Diary);
             hud.DiaryHeader(ballot ? null : EpisodeHud.DiaryOptionsTitle);
+            // Mockup-08's bar under the vote: the player, and the rule the vote is cast under.
+            if (ballot)
+                hud.SpeechBar(state.playerId, EpisodeHud.SelfTitle(state.Find(state.playerId)),
+                    EpisodeEngine.NeedsPlayerTieBreak(state)
+                        ? "The vote is tied, and yours decides it."
+                        : "One vote, cast in private. Nobody sees it until the reveal.", true);
             if(!IsDiarySettled)
             {
                 hud.Aside("Your own memories, and the decisions that are yours to make.");

@@ -92,10 +92,17 @@ namespace Gamesim.Tests.PlayMode
             RenderHudForTheCurrentCanvas();
             yield return null;
             var field = Gamesim.Simulation.EpisodeEngine.CompetitionPlayers(before).ToArray();
+            bool playerCompetes = field.Any(actor => actor.id == before.playerId);
             var words = director.GetComponentsInChildren<TMPro.TMP_Text>()
                 .Where(text => text.name == CastRail.MoodWordName).Select(text => text.text).ToArray();
-            Assert.That(words.Count(word => word == "Competing"), Is.EqualTo(field.Length),
+            Assert.That(words.Count(word => word == "Competing"), Is.EqualTo(field.Length - (playerCompetes ? 1 : 0)),
                 "Each houseguest in the field is marked as competing: " + string.Join(", ", words));
+            // The player's own chip carries their progress as it happens, in the game's measure.
+            var progress = director.GetComponentsInChildren<TMPro.TMP_Text>().Where(text => text.name == CastRail.ProgressWordName).ToArray();
+            Assert.That(progress, Has.Length.EqualTo(playerCompetes ? 1 : 0), "The player's chip reads their progress.");
+            if (playerCompetes)
+                Assert.That(progress[0].text, Does.EndWith("hits").Or.EndWith("hit").Or.EndWith("pairs").Or.EndWith("held").Or.StartWith("Score"),
+                    "The progress is the game's own measure: '" + progress[0].text + "'.");
             if (Application.isBatchMode && screen.IsShowing) yield return CaptureFraming("competition-practice");
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
         }

@@ -191,6 +191,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(legend.yMin - frame.yMin, Is.LessThan(2f), "and at its foot.");
             foreach (var node in nodes)
                 Assert.That(legend.Overlaps(ScreenRect((RectTransform)node.transform)), Is.False, "The key covers '" + node.name + "'.");
+
+            // Mockup-07's bar at the foot: the player, and where they stand by their own reading.
+            var bar = ActiveRect(EpisodeHud.SpeechBarName);
+            Assert.That(bar, Is.Not.Null, "The web's page has its bar.");
+            Assert.That(bar.GetComponentsInChildren<TMP_Text>().Select(text => text.text).Any(text => text.StartsWith("By your own reading")), Is.True);
+            foreach (var chrome in new[] { ActiveRect("Episode panel"), ActiveRect(IconRail.RootName) })
+                Assert.That(ScreenRect(bar).Overlaps(ScreenRect(chrome)), Is.False, "The bar covers '" + chrome.name + "'.");
             director.ClosePanels();
             yield return null;
         }

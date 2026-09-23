@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
@@ -28,6 +29,11 @@ namespace Gamesim.Tests.PlayMode
             var card = ActiveRect(EpisodeHud.NearbyCardName);
             Assert.That(card, Is.Not.Null, "A witnessed conversation brings up the Nearby card.");
             Assert.That(ActiveRect(EpisodeHud.HouseVibeCardName), Is.Null, "It takes the week card's place.");
+            // And mockup-06's bar, in the status line's place while it holds.
+            var bar = ActiveRect(EpisodeHud.SpeechBarName);
+            Assert.That(bar, Is.Not.Null, "The bar comes up with the card.");
+            Assert.That(ActiveRect("Status"), Is.Null, "It stands in the status line's place.");
+            Assert.That(ScreenRect(bar).Overlaps(ScreenRect(ActiveRect(CastRail.RootName))), Is.False, "The bar covers the strip.");
             foreach (var name in new[] { EpisodeDirector.LiveFeedCardName, EpisodeHud.RecentEventsCardName })
             {
                 var other = ActiveRect(name);
@@ -49,6 +55,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(ActiveRect(EpisodeHud.NearbyCardName), Is.Null, "It goes when the conversation does.");
             Assert.That(ActiveRect(EpisodeHud.HouseVibeCardName), Is.Not.Null, "and the week card comes back.");
+            Assert.That(ActiveRect(EpisodeHud.SpeechBarName), Is.Null, "and the bar goes with it,");
+            Assert.That(ActiveRect("Status"), Is.Not.Null, "the status line back in its place.");
         }
     }
 }

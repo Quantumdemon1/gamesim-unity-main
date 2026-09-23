@@ -48,7 +48,7 @@ namespace Gamesim.Episode
                     // chrome a world bubble must clear, and the caption used to be low enough that
                     // the default floor covered it.
                     bool bottomCard=item.name=="Interaction prompt" || item.name==CastRail.RootName
-                        || item.name=="Status" || item.name==CastRail.StripName;
+                        || item.name=="Status" || item.name==CastRail.StripName || item.name==SpeechBarName;
                     // The follow chip is anchored TOP-centre, under the house pill, and was being
                     // counted as a bottom card: it pushed `bottom` to 834 while `top` was 796, so
                     // MinMaxRect returned an inverted rect and every world bubble was pinned above

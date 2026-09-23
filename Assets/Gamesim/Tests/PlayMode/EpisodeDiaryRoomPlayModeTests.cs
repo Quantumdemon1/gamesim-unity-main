@@ -283,6 +283,14 @@ namespace Gamesim.Tests.PlayMode
                 .First(rect => rect.name == EpisodeHud.BallotRowName && rect.gameObject.activeInHierarchy));
             Assert.That(cards.yMin - confirmAt.yMax, Is.LessThan(confirmAt.height),
                 "Confirm follows the cards directly; the explanation comes after it.");
+            // Mockup-08's bar under the vote, in the strip's place.
+            Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy),
+                Is.True, "The ballot has its bar.");
+            Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.RootName && rect.gameObject.activeInHierarchy),
+                Is.False, "The bar stands in the strip's place.");
+            var speech = director.GetComponentsInChildren<RectTransform>().First(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy);
+            foreach (var quote in director.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == Gamesim.Presentation.CastRail.QuoteName && rect.gameObject.activeInHierarchy))
+                Assert.That(ScreenRect(speech).Overlaps(ScreenRect(quote)), Is.False, "The bar stops short of the quote card.");
             AssertEquivalent(before,director.Snapshot);
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;

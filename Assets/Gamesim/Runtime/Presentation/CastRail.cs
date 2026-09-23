@@ -172,6 +172,26 @@ namespace Gamesim.Presentation
         /// </summary>
         public static System.Collections.Generic.ICollection<string> CompetitionField;
 
+        /// <summary>
+        /// The player's own progress while the game is played - the one competitor whose progress
+        /// exists before the result, read every frame onto their chip. Null the rest of the time.
+        /// </summary>
+        public static System.Func<string> PlayerProgress;
+
+        /// <summary>The player's chip's live progress word, so a test can find it.</summary>
+        public const string ProgressWordName = "Progress word";
+
+        /// <summary>Hands the player's status word to the live progress source while a game is played.</summary>
+        private static void Live(TMP_Text word, bool isPlayer)
+        {
+            if (!isPlayer || CompetitionField == null || PlayerProgress == null) return;
+            word.name = ProgressWordName;
+            word.gameObject.AddComponent<LiveText>().Source = PlayerProgress;
+            string now = PlayerProgress();
+            if (!string.IsNullOrEmpty(now)) word.text = now;
+            word.color = UiTheme.Glow;
+        }
+
         public static RectTransform Build(
             Transform parent, EpisodeState state, float fontScale, TMP_FontAsset font,
             System.Func<string, Texture> portrait, System.Action<string> onSelect = null,
@@ -511,6 +531,7 @@ namespace Gamesim.Presentation
             var mood = Label(entry, MoodWord(actor, standing), 11, moodColour, scale, font, TextAlignmentOptions.Top);
             if (CompetitionField != null && !standing.Dim) mood.color = CompetitionField.Contains(actor.id) ? UiTheme.Accent : UiTheme.Muted;
             mood.name = MoodWordName;
+            Live(mood, isPlayer);
             mood.rectTransform.anchorMin = new Vector2(0f, 1f);
             mood.rectTransform.anchorMax = new Vector2(1f, 1f);
             mood.rectTransform.pivot = new Vector2(.5f, 1f);
@@ -714,6 +735,7 @@ namespace Gamesim.Presentation
             var mood = Label(entry, MoodWord(actor, standing), 12, moodColour, scale, font, TextAlignmentOptions.Left);
             if (CompetitionField != null && !standing.Dim) mood.color = CompetitionField.Contains(actor.id) ? UiTheme.Accent : UiTheme.Muted;
             mood.name = MoodWordName;
+            Live(mood, isPlayer);
             Fit(mood, 9f);
             Place(mood.rectTransform, x, (ChipTop + 58f) * scale, column, 16f * scale);
 

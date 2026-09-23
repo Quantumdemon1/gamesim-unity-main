@@ -530,7 +530,15 @@ namespace Gamesim.Episode
             var odds = FixedText(nearbyCard, "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -140f), new Vector2(width - 28f, 18f));
             odds.alignment = TextAlignmentOptions.Center;
             nearbyCard.gameObject.SetActive(false);
+
+            // And mockup-06's bar low in the frame, in the status line's place while it holds.
+            var state = director.Snapshot;
+            nearbyBar = state != null ? SpeechBar(state.playerId, SelfTitle(state.Find(state.playerId)),
+                "Two houseguests are talking within earshot. Listening in uses an action, and somebody may notice.", false) : null;
+            if (nearbyBar != null) nearbyBar.gameObject.SetActive(false);
         }
+
+        private RectTransform nearbyBar;
 
         /// <summary>Swaps the Nearby card in for the week card while a conversation is witnessed.</summary>
         public void SetNearby(bool visible)
@@ -539,6 +547,12 @@ namespace Gamesim.Episode
             nearbyCard.gameObject.SetActive(visible);
             var week = nearbyCard.parent != null ? nearbyCard.parent.Find(HouseVibeCardName) : null;
             if (week != null) week.gameObject.SetActive(!visible);
+            if (nearbyBar != null)
+            {
+                nearbyBar.gameObject.SetActive(visible);
+                var status = nearbyBar.parent.Find("Status");
+                if (status != null) status.gameObject.SetActive(!visible);
+            }
         }
 
         /// <summary>The relationships card's name. Not "Relationships": that is a rail row's caption.</summary>

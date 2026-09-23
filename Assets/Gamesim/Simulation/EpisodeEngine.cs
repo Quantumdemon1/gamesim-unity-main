@@ -725,7 +725,10 @@ namespace Gamesim.Simulation
             Require(s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign, "Social actions are available during free time and campaigning.");
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
-            Require(target != null && target.status == ContestantStatus.Active && !target.isPlayer, "Approach an active housemate.");
+            // Listening in names nobody: the engine draws the pair it overhears. Every other action
+            // is aimed at somebody, and at somebody still in the house.
+            if (c.kind != EpisodeCommandKind.Eavesdrop)
+                Require(target != null && target.status == ContestantStatus.Active && !target.isPlayer, "Approach an active housemate.");
             Require(SocialActionsSpent(s) < SocialActionBudget(s),
                 "This social window is complete. Continue the episode.");
             switch (c.kind)

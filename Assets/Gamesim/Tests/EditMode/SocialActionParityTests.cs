@@ -226,6 +226,28 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The phase panel's "Listen in on a conversation" names nobody - the engine draws the pair
+        /// it overhears itself - so a command without a target has to be one the engine takes. It
+        /// was refused with "Approach an active housemate": the check every other action needs ran
+        /// before the switch reached the one action that has no housemate to approach, and the row
+        /// that offers it could never succeed.
+        /// </summary>
+        [Test]
+        public void ListeningInNeedsNobodyNamed()
+        {
+            var engine = Engine();
+            var before = engine.Snapshot;
+            var command = Command(before, EpisodeCommandKind.Eavesdrop);
+            command.targetId = null;
+            var result = engine.Apply(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            Assert.That(result.state.events.Where(e => e.sequence >= before.nextSequence).Select(e => e.kind),
+                Does.Contain("eavesdrop"), "Listening in happened.");
+            Assert.That(EpisodeEngine.SocialActionsSpent(result.state),
+                Is.EqualTo(EpisodeEngine.SocialActionsSpent(before) + 1), "and it cost the week's action.");
+        }
+
+        /// <summary>
         /// A backdoor plan is intent, not a nomination, and it does not outlive its week.
         ///
         /// <para>It is set at nominations rather than during the social week, and costs no action.

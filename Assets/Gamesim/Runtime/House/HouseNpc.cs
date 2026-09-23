@@ -1,4 +1,7 @@
+using Gamesim.Presentation;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Gamesim.House
 {
@@ -47,7 +50,81 @@ namespace Gamesim.House
             {
                 if(!labelPositionKnown){labelRestPosition=nameLabel.transform.localPosition;labelPositionKnown=true;}
                 nameLabel.text = displayName;
+                Plate();
             }
+        }
+
+        /// <summary>The plate's name, so a test can find it.</summary>
+        public const string PlateName = "Name plate";
+        /// <summary>Canvas units to metres: a 48-unit plate stands about a quarter of a metre tall.</summary>
+        private const float PlateScale = 0.0055f;
+        private RectTransform plate;
+        private CanvasGroup plateGroup;
+        private TMP_Text plateWord;
+        private bool spotlit;
+
+        /// <summary>
+        /// Whether this houseguest is the one the player is with - followed or talked to. Their
+        /// plate stays up at any distance, under the follow diamond (mockup-01): it is how the
+        /// player finds who they picked from across the house.
+        /// </summary>
+        public bool Spotlit
+        {
+            get => spotlit;
+            set => spotlit = value;
+        }
+
+        /// <summary>
+        /// The name as the mockups draw it over a houseguest (01, 12): the given name in the HUD's
+        /// face on the pack's name plate - dark glass with a blue edge. The TextMesh stays as the
+        /// name's holder and its fade, and stops drawing: in the default font it was a large grey
+        /// word in a director's close shot, not a plate.
+        /// </summary>
+        private void Plate()
+        {
+            var renderer = nameLabel.GetComponent<MeshRenderer>();
+            if (renderer != null) renderer.enabled = false;
+            if (plate == null)
+            {
+                var holder = new GameObject(PlateName, typeof(RectTransform), typeof(Canvas), typeof(CanvasGroup));
+                plate = (RectTransform)holder.transform;
+                plate.SetParent(nameLabel.transform, false);
+                plate.localPosition = Vector3.zero;
+                plate.localRotation = Quaternion.identity;
+                plate.localScale = Vector3.one * PlateScale;
+                holder.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+                plateGroup = holder.GetComponent<CanvasGroup>();
+                plateGroup.interactable = false; plateGroup.blocksRaycasts = false;
+
+                var ground = new GameObject("Plate", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                ground.rectTransform.SetParent(plate, false);
+                ground.rectTransform.anchorMin = Vector2.zero; ground.rectTransform.anchorMax = Vector2.one;
+                ground.rectTransform.offsetMin = Vector2.zero; ground.rectTransform.offsetMax = Vector2.zero;
+                ground.raycastTarget = false;
+                if (!UiTheme.PackSliced(ground, PackArt.Nameplate, 14f))
+                {
+                    UiTheme.Style(ground, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f), 10);
+                    UiTheme.AddBorder(ground.rectTransform, 10, UiTheme.Hairline);
+                }
+
+                plateWord = new GameObject("Name", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
+                plateWord.rectTransform.SetParent(plate, false);
+                plateWord.rectTransform.anchorMin = Vector2.zero; plateWord.rectTransform.anchorMax = Vector2.one;
+                plateWord.rectTransform.offsetMin = new Vector2(14f, 2f); plateWord.rectTransform.offsetMax = new Vector2(-14f, -2f);
+                var face = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (face != null) plateWord.font = face;
+                plateWord.fontSize = 28f; plateWord.color = UiTheme.Paper;
+                plateWord.alignment = TextAlignmentOptions.Center;
+                plateWord.textWrappingMode = TextWrappingModes.NoWrap;
+                plateWord.overflowMode = TextOverflowModes.Overflow;
+                plateWord.raycastTarget = false; plateWord.richText = false;
+            }
+            string given = displayName ?? string.Empty;
+            int space = given.IndexOf(' ');
+            if (space > 0) given = given.Substring(0, space);
+            plateWord.text = given;
+            float width = Mathf.Max(80f, Mathf.Ceil(plateWord.GetPreferredValues(given).x) + 40f);
+            plate.sizeDelta = new Vector2(width, 48f);
         }
 
         private void LateUpdate()
@@ -81,6 +158,7 @@ namespace Gamesim.House
                 nameLabel.transform.localScale = nameTagScale * Mathf.Clamp(away / NameTagNear, NameTagNearestScale, 1f);
                 var colour = nameLabel.color;
                 if (!Mathf.Approximately(colour.a, NameTagAlpha)) { colour.a = NameTagAlpha; nameLabel.color = colour; }
+                if (plateGroup != null) plateGroup.alpha = spotlit ? 1f : NameTagAlpha;
             }
         }
 

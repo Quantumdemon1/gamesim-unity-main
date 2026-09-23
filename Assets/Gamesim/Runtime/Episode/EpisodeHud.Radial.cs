@@ -17,7 +17,9 @@ namespace Gamesim.Episode
     /// one active control in the HUD with any given caption, so a petal reading "Chat" where the
     /// list read "Make small talk" would be a different button as far as either is concerned. The
     /// mockup's single words survive as the glyph and the colour on each petal, and the caption
-    /// hangs under the disc where a sentence has room.</para>
+    /// sits in the disc under the glyph, as the mockup's word does - on a disc wide enough for
+    /// three short lines. Hung under the disc it ran across the player's body and the set, and
+    /// the captions of neighbouring petals ran into each other.</para>
     ///
     /// <para>It was a ring once before, then a four-column grid of cards "to leave the people
     /// visible" - inside an opaque panel that covered exactly where the two-shot puts the people.
@@ -41,21 +43,22 @@ namespace Gamesim.Episode
         /// <summary>Where the dial stands in the column's reading order.</summary>
         public const string DialSeatName = "Conversation radial seat";
 
-        // The ring at the standard text size: petals on a 140 radius, 60 across, their captions in
-        // a 90-by-40 box under each disc - two lines of 13 for the longest caption, "Tell them
-        // something personal", which three lines of the narrower box clipped. At 140 the right-hand
-        // petal's caption clears the foot's disc by a unit, and the pair at the foot, whose captions
-        // hang toward each other, clear by 31. The block is 368 by 380: about the ring mockup-12
-        // draws, and narrow enough to stand at the right of the free area with the pair the
-        // two-shot frames between it and the column.
-        private const float DialRadius = 140f;
-        private const float PetalSize = 60f;
-        private const float PetalCaptionWidth = 90f;
+        // The ring at the standard text size, in mockup-12's proportions: petals 96 across on a
+        // 146 radius around a 120 hub. Seven discs on that ring leave 30 between neighbours and 38
+        // between each and the hub. Each caption is inside its disc, in a 76-by-40 box under the
+        // glyph: three lines of 12 for the longest, "Tell them something personal". The block is
+        // the ring and the category chips that straddle the foot of each disc, 400 square.
+        private const float DialRadius = 146f;
+        private const float PetalSize = 96f;
+        private const float PetalCaptionWidth = 76f;
         private const float PetalCaptionHeight = 40f;
-        private const float DialBlockWidth = 368f;
-        private const float DialBlockHeight = 380f;
+        private const float PetalGlyphSide = 30f;
+        private const float PetalGlyphTop = 12f;
+        private const float DialHub = 120f;
+        private const float DialBlockWidth = 400f;
+        private const float DialBlockHeight = 400f;
         /// <summary>How far above the block's foot the ring's centre sits.</summary>
-        private const float DialCentreLift = 209f;
+        private const float DialCentreLift = 200f;
 
         private RectTransform dialRoot;
         private RectTransform dialSeat;
@@ -143,9 +146,10 @@ namespace Gamesim.Episode
             if (conversationColumn != null) dialRoot.SetSiblingIndex(conversationColumn.GetSiblingIndex());
             dialRoot.anchorMin = dialRoot.anchorMax = new Vector2(0f, 0f);
             dialRoot.pivot = new Vector2(.5f, 0f);
-            // At the right of the free area: the two-shot puts the pair near the frame's centre,
-            // which is the middle of this area, and a ring there stood on them.
-            dialRoot.anchoredPosition = new Vector2(column + Mathf.Max(areaWidth * .5f, areaWidth - DialBlockWidth * dialScale * .5f - 8f), 0f);
+            // In the middle of the free area, at its foot: the two-shot stands the pair either side
+            // of that middle with their faces in the upper third, so the ring is under them, over
+            // their knees, as mockup-12's is.
+            dialRoot.anchoredPosition = new Vector2(column + areaWidth * .5f, 0f);
             dialRoot.sizeDelta = new Vector2(DialBlockWidth * dialScale, DialBlockHeight * dialScale);
 
             var centre = new Vector2(0f, DialCentreLift * dialScale);
@@ -157,7 +161,7 @@ namespace Gamesim.Episode
             ground.preserveAspect = true;
             DialPiece("Dial ring", UiTheme.Pack(PackArt.WheelRing), new Color(1f, 1f, 1f, .45f), centre,
                 2f * DialRadius / .826f * dialScale);
-            float hub = 96f * dialScale;
+            float hub = DialHub * dialScale;
             var hubArt = UiTheme.Pack(PackArt.WheelHub);
             if (hubArt != null) DialPiece("Dial hub", hubArt, Color.white, centre, hub / .733f);
             else
@@ -166,13 +170,13 @@ namespace Gamesim.Episode
                 UiTheme.AddBorder(disc.rectTransform, Mathf.RoundToInt(hub * .5f) - 1, UiTheme.Hairline);
             }
 
-            var line = NewText(dialRoot, DialPrompt, 13, UiTheme.Paper);
+            var line = NewText(dialRoot, DialPrompt, 14, UiTheme.Paper);
             line.alignment = TextAlignmentOptions.Center;
             AutoSize(line, 10);
             line.rectTransform.anchorMin = line.rectTransform.anchorMax = new Vector2(.5f, 0f);
             line.rectTransform.pivot = new Vector2(.5f, .5f);
             line.rectTransform.anchoredPosition = centre;
-            line.rectTransform.sizeDelta = new Vector2(76f * dialScale, 52f * dialScale);
+            line.rectTransform.sizeDelta = new Vector2(92f * dialScale, 60f * dialScale);
         }
 
         /// <summary>One piece of the dial's dressing, centred on the ring. Nothing on it takes a click.</summary>
@@ -192,9 +196,9 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Seats one action on the dial: a disc with the glyph and the colour the mockup gives that
-        /// kind of conversation, and the caption the build already used for it under the disc.
-        /// Clockwise from the top, in the order the director fills the seats.
+        /// Seats one action on the dial: a glass disc with the glyph and the colour the mockup gives
+        /// that kind of conversation, and under the glyph, inside the disc, the caption the build
+        /// already used for it. Clockwise from the top, in the order the director fills the seats.
         /// </summary>
         public Button Petal(string caption, string icon, Color tint, Action action)
         {
@@ -222,21 +226,32 @@ namespace Gamesim.Episode
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
 
-            float side = 28f * dialScale;
-            HudPrimitives.Glyph("Petal mark", rect, icon, tint,
-                new Vector2((size - side) * .5f, -(size - side) * .5f), side);
+            // Glass: a lighter wash over the top half of the disc, as the mockup's discs catch the
+            // light from above.
+            var wash = new GameObject("Petal wash", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            wash.rectTransform.SetParent(rect, false);
+            wash.rectTransform.anchorMin = Vector2.zero; wash.rectTransform.anchorMax = Vector2.one;
+            wash.rectTransform.offsetMin = new Vector2(3f, 3f); wash.rectTransform.offsetMax = new Vector2(-3f, -3f);
+            wash.sprite = UiTheme.Circle(); wash.preserveAspect = true; wash.raycastTarget = false;
+            wash.color = new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .10f);
+            wash.transform.SetAsFirstSibling();
 
-            var label = NewText(rect, caption, 13, Paper);
+            float side = PetalGlyphSide * dialScale;
+            HudPrimitives.Glyph("Petal mark", rect, icon, tint,
+                new Vector2((size - side) * .5f, -PetalGlyphTop * dialScale), side);
+
+            var label = NewText(rect, caption, 12, Paper);
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) label.font = medium;
             label.alignment = TextAlignmentOptions.Top;
-            label.rectTransform.anchorMin = label.rectTransform.anchorMax = new Vector2(.5f, 0f);
+            label.lineSpacing = -8f;
+            label.rectTransform.anchorMin = label.rectTransform.anchorMax = new Vector2(.5f, 1f);
             label.rectTransform.pivot = new Vector2(.5f, 1f);
-            label.rectTransform.anchoredPosition = new Vector2(0f, -9f * dialScale);
+            label.rectTransform.anchoredPosition = new Vector2(0f, -(PetalGlyphTop + PetalGlyphSide + 3f) * dialScale);
             label.rectTransform.sizeDelta = new Vector2(PetalCaptionWidth * dialScale, PetalCaptionHeight * dialScale);
-            // The captions are sentences of very different lengths under a disc of one size, so the
+            // The captions are sentences of very different lengths in a disc of one size, so the
             // longest of them is allowed to shrink rather than to clip.
-            AutoSize(label, 10);
+            AutoSize(label, 9);
             return button;
         }
 

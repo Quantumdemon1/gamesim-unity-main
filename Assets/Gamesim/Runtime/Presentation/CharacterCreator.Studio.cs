@@ -57,8 +57,14 @@ namespace Gamesim.Presentation
 
         private void BuildNavigation(RectTransform scrim)
         {
-            var header = HudPrimitives.Label("Studio title", scrim, 26f, UiTheme.Paper, TextAlignmentOptions.Center);
+            var header = HudPrimitives.Label("Studio title", scrim, 30f, Color.white, TextAlignmentOptions.Center);
             header.text = editingCastSlot ? "EDIT CAST HOUSEGUEST" : "CREATE A HOUSEGUEST";
+            // The cast screen's title, bold and lit from above: the studio is the same room.
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) header.font = bold;
+            header.characterSpacing = 2f;
+            header.enableVertexGradient = true;
+            header.colorGradient = new VertexGradient(UiTheme.Paper, UiTheme.Paper, UiTheme.Glow, UiTheme.Glow);
             Place(header.rectTransform, Width, 45f, -18f);
             var navigation = HudPrimitives.Fill("Setup steps", scrim, Color.clear, 1);
             Place(navigation, Width, 52f, -70f);
@@ -303,6 +309,17 @@ namespace Gamesim.Presentation
                 ?? new CharacterAppearance { presetId = id });
         }
 
+        /// <summary>A band across the slider's track, centred on it and <paramref name="height"/> tall.</summary>
+        private static RectTransform SliderArea(string name, RectTransform track, float height)
+        {
+            var area = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            area.SetParent(track, false);
+            area.anchorMin = new Vector2(0f, .5f); area.anchorMax = new Vector2(1f, .5f);
+            area.pivot = new Vector2(.5f, .5f);
+            area.sizeDelta = new Vector2(0f, height); area.anchoredPosition = Vector2.zero;
+            return area;
+        }
+
         private void ControlSlider(AppearanceControl control)
         {
             var appearance = Catalog.Materialize(draft.Appearance);
@@ -319,12 +336,16 @@ namespace Gamesim.Presentation
             var line = HudPrimitives.Fill("Line", track, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .9f), 3);
             line.anchorMin = new Vector2(0f, .5f); line.anchorMax = new Vector2(1f, .5f);
             line.pivot = new Vector2(.5f, .5f); line.sizeDelta = new Vector2(0f, 6f); line.anchoredPosition = Vector2.zero;
-            var fill = HudPrimitives.Fill("Fill", track, UiTheme.Accent, 3);
-            fill.anchorMin = new Vector2(0f, .5f); fill.anchorMax = new Vector2(.5f, .5f);
-            fill.pivot = new Vector2(0f, .5f); fill.sizeDelta = new Vector2(0f, 6f); fill.anchoredPosition = Vector2.zero;
-            var handle = HudPrimitives.Disc("Handle", track, UiTheme.Paper);
-            handle.anchorMin = handle.anchorMax = new Vector2(.5f, .5f);
-            handle.pivot = new Vector2(.5f, .5f); handle.sizeDelta = new Vector2(22f, 22f); handle.anchoredPosition = Vector2.zero;
+            // The fill and the handle each ride in an area of their own height. A Slider sets its
+            // fill's and handle's anchors to the full height of their parent every time it draws,
+            // so parented to the track the 6-unit fill stood 30 tall and the 22-unit handle 46 -
+            // a slab with an oval on it, reaching down over the next row's caption.
+            var fillArea = SliderArea("Fill area", track, 6f);
+            var fill = HudPrimitives.Fill("Fill", fillArea, UiTheme.Accent, 3);
+            fill.pivot = new Vector2(0f, .5f); fill.sizeDelta = Vector2.zero; fill.anchoredPosition = Vector2.zero;
+            var handleArea = SliderArea("Handle area", track, 22f);
+            var handle = HudPrimitives.Disc("Handle", handleArea, UiTheme.Paper);
+            handle.pivot = new Vector2(.5f, .5f); handle.sizeDelta = new Vector2(22f, 0f); handle.anchoredPosition = Vector2.zero;
             var ring = HudPrimitives.Disc("Handle ring", handle, UiTheme.Accent);
             ring.anchorMin = Vector2.zero; ring.anchorMax = Vector2.one; ring.offsetMin = new Vector2(-3f, -3f); ring.offsetMax = new Vector2(3f, 3f);
             ring.SetAsFirstSibling();

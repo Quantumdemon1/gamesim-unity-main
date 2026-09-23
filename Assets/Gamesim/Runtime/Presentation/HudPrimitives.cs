@@ -21,6 +21,17 @@ namespace Gamesim.Presentation
     public static class HudPrimitives
     {
         /// <summary>A filled circle. Used for portrait frames, status rings and ceremony marks.</summary>
+        /// <summary>
+        /// A houseguest's name as a list shows it, with "(You)" after the player's - once. A player
+        /// who keeps the default name is already "You", and the competitors' list read "You (You)".
+        /// </summary>
+        public static string WithYou(string name, bool isPlayer, string gap = " ")
+        {
+            if (!isPlayer) return name ?? string.Empty;
+            if (string.IsNullOrEmpty(name) || name == "You") return "You";
+            return name + gap + "(You)";
+        }
+
         public static RectTransform Disc(string name, Transform parent, Color colour)
         {
             var rect = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();

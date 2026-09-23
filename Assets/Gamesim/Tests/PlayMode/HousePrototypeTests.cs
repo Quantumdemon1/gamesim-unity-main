@@ -310,9 +310,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.TryMoveTo(Room("Bedroom").transform.position), Is.False);
             AssertDestination(destination);
 
-            // The conversation's framing is the two-shot (V5): the pair's midpoint, a head higher.
-            var expectedFocus = (player.transform.position + npc.transform.position) * 0.5f + Vector3.up * (1f + HouseCameraRig.TwoShotLift);
-            yield return WaitForCameraFocus(expectedFocus);
+            // The conversation's framing is the two-shot (V5): the pair's midpoint at hip height,
+            // shifted across the frame by the shot's constant - every frame, not only the first.
+            yield return WaitForCameraFocus(() => (player.transform.position + npc.transform.position) * 0.5f
+                + Vector3.up * (1f + HouseCameraRig.TwoShotLift)
+                + Quaternion.Euler(0f, rig.Yaw, 0f) * Vector3.right * HouseCameraRig.TwoShotShift);
             Assert.That(Vector3.Distance(player.transform.position, stoppedPosition), Is.LessThan(0.05f));
             var responseText = interaction.GetComponentsInChildren<TMPro.TMP_Text>(true)
                 .Single(text => text.name == "Conversation text");
@@ -441,6 +443,18 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.Agent.hasPath, Is.True);
             Assert.That(Vector3.Distance(player.Agent.destination, expected), Is.LessThan(0.001f));
             Assert.That(player.Agent.pathStatus, Is.EqualTo(NavMeshPathStatus.PathComplete));
+        }
+
+        /// <summary>As below, for a focus that depends on where the camera has turned to.</summary>
+        private IEnumerator WaitForCameraFocus(System.Func<Vector3> focus)
+        {
+            var deadline = Time.realtimeSinceStartup + 2f;
+            while (Vector3.Distance(rig.transform.position, focus()) > 0.1f && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.That(Vector3.Distance(rig.transform.position, focus()), Is.LessThanOrEqualTo(0.1f));
         }
 
         private IEnumerator WaitForCameraFocus(Vector3 focus)

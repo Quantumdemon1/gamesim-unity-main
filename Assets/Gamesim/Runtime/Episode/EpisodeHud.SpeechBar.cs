@@ -12,12 +12,7 @@ namespace Gamesim.Episode
         public const string SpeechBarName = "Speech bar";
 
         /// <summary>The player as the bar names them: their name and "(You)", once.</summary>
-        public static string SelfTitle(ContestantState self)
-        {
-            string name = self?.name;
-            if (string.IsNullOrEmpty(name) || name == "You") return "You";
-            return name + " (You)";
-        }
+        public static string SelfTitle(ContestantState self) => HudPrimitives.WithYou(self?.name, true);
 
         /// <summary>
         /// The mockups' bar at the foot of the frame (06, 07, 08): the chat mark, a face in a ring,

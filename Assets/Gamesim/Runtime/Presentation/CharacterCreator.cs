@@ -574,19 +574,24 @@ namespace Gamesim.Presentation
 
         private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)
         {
-            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.AccentDeep : UiTheme.SurfaceRaised, 18);
+            // The cast screen's pills (mockup-02): the one that is on in the action blue with white
+            // words, the rest glass with a hairline and the words in paper.
+            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.ActionBlue : new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .92f), 18);
             pill.anchorMin = new Vector2(0.5f, 0.5f);
             pill.anchorMax = new Vector2(0.5f, 0.5f);
             pill.pivot = new Vector2(0.5f, 0.5f);
             pill.sizeDelta = new Vector2(width, 36f);
             pill.anchoredPosition = new Vector2(x, 0f);
-            UiTheme.AddBorder(pill, 18, active ? UiTheme.Accent : UiTheme.Outline);
+            UiTheme.AddBorder(pill, 18, active ? UiTheme.Glow : new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .5f));
+            if (active) UiTheme.AddGlow(pill, 18);
 
             var image = pill.GetComponent<Image>();
             image.raycastTarget = true;
 
-            var label = HudPrimitives.Label("Label", pill, 13f, active ? UiTheme.Paper : UiTheme.Muted,
+            var label = HudPrimitives.Label("Label", pill, 13f, active ? Color.white : UiTheme.Paper,
                 TextAlignmentOptions.Center);
+            var weight = UiTheme.Font(active ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
+            if (weight != null) label.font = weight;
             label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;

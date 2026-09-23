@@ -168,7 +168,7 @@ namespace Gamesim.Presentation
                 Place(row,32*scale,y*scale,inner,(RowHeight-4)*scale);
                 if(entry.IsWinner)UiTheme.AddBorder(row,6,new Color(UiTheme.Gold.r,UiTheme.Gold.g,UiTheme.Gold.b,.55f));
                 Label("Rank",row,(i+1).ToString(),14,10,0,30,RowHeight-4,UiTheme.Muted).alignment=TextAlignmentOptions.MidlineLeft;
-                var name=Label("Name",row,entry.Name+(entry.IsPlayer?" (You)":""),15,40,0,barX-50,RowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
+                var name=Label("Name",row,HudPrimitives.WithYou(entry.Name,entry.IsPlayer),15,40,0,barX-50,RowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
                 name.alignment=TextAlignmentOptions.MidlineLeft;Fit(name,11);
                 var track=HudPrimitives.Fill("Track",row,new Color(UiTheme.Outline.r,UiTheme.Outline.g,UiTheme.Outline.b,.5f),3);
                 Place(track,barX*scale,((RowHeight-4)*.5f-3)*scale,barWidth*scale,6*scale);

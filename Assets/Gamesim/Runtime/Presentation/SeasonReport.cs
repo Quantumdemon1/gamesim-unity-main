@@ -457,7 +457,7 @@ namespace Gamesim.Presentation
             {
                 var ballot = ballots[i];
                 var line = Panel(36f, i % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
-                Cell(line, 22f, 230f, ballot.Juror + (ballot.IsPlayer ? "  (You)" : string.Empty), 15f,
+                Cell(line, 22f, 230f, HudPrimitives.WithYou(ballot.Juror, ballot.IsPlayer, "  "), 15f,
                     ballot.IsPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
                 Cell(line, 260f, 230f, "voted for " + ballot.Finalist, 14f,
                     winner != null && ballot.Finalist == winner.name ? UiTheme.Gold : UiTheme.Muted,
@@ -493,7 +493,7 @@ namespace Gamesim.Presentation
                 var line = Panel(34f, i % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
 
                 Cell(line, 22f, 44f, (i + 1).ToString(), 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-                Cell(line, 78f, 320f, who.name + (who.isPlayer ? "  (You)" : string.Empty), 16f,
+                Cell(line, 78f, 320f, HudPrimitives.WithYou(who.name, who.isPlayer, "  "), 16f,
                     who.isPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
                 Cell(line, 420f, 200f, StatusWord(who.status), 15f, PlacementTint(who.status),
                     TextAlignmentOptions.Left);
@@ -583,7 +583,7 @@ namespace Gamesim.Presentation
                 face.pivot = new Vector2(0.5f, 0.5f);
                 face.anchoredPosition = new Vector2(46f, 0f);
 
-                Cell(row, 84f, 300f, who.name + (who.isPlayer ? "  (You)" : string.Empty), 17f,
+                Cell(row, 84f, 300f, HudPrimitives.WithYou(who.name, who.isPlayer, "  "), 17f,
                     who.isPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
                 Cell(row, 84f, 300f, StatusWord(who.status), 13f, PlacementTint(who.status),
                     TextAlignmentOptions.Left, -18f);

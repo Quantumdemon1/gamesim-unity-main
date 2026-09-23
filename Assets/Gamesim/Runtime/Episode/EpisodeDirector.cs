@@ -307,6 +307,13 @@ namespace Gamesim.Episode
 
         private void Update()
         {
+            // The houseguest the player is with keeps their plate up at any distance.
+            if (housemates != null)
+            {
+                string with = TalkingToId ?? FollowedId;
+                foreach (var housemate in housemates)
+                    if (housemate != null) housemate.Spotlit = with != null && housemate.Id == with;
+            }
             // The Nearby card (mockup-06) is up exactly while a conversation is being witnessed.
             if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation) && CanListenIn);
             // ] and [ (or the shoulders) cycle who the camera follows, out in the house with no panel

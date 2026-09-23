@@ -155,7 +155,7 @@ namespace Gamesim.Episode
                 }
                 competitionScreen.FontScale = largeText ? 1.2f : 1f;
                 competitionScreen.Show(challengeRun, CompetitionTitle(state),
-                    string.Join("\n", EpisodeEngine.CompetitionPlayers(state).Select(c => c.name + (c.isPlayer ? " (You)" : ""))),
+                    string.Join("\n", EpisodeEngine.CompetitionPlayers(state).Select(c => HudPrimitives.WithYou(c.name, c.isPlayer))),
                     practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, CancelChallenge, MissReactionTarget, !reducedMotion);
             }
             audioBed.PlayCue(HouseAudio.Cue.CompetitionStart); Render();

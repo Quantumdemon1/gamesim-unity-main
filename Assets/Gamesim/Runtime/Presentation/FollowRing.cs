@@ -4,8 +4,9 @@ using UnityEngine;
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// The marker on whoever the camera is following: a flat gold disc at their feet and a green
-    /// diamond over their head, riding with them, and nothing when the camera is following nobody.
+    /// The marker on whoever the camera is following: a neon ring at their feet and a green
+    /// diamond over their name plate, riding with them, and nothing when the camera is following
+    /// nobody.
     /// Read off the rig every frame, so it agrees with every way a subject can be chosen - a click
     /// on a body, a portrait on the cast rail, Tab - and with every way one can be dropped.
     ///
@@ -27,8 +28,18 @@ namespace Gamesim.Presentation
         public const string DiamondName = "Follow diamond";
 
         private const float Radius = 0.55f;
-        /// <summary>How far over the feet the diamond floats: clear of a 1.8 m houseguest's head.</summary>
-        private const float DiamondHeight = 2.25f;
+        /// <summary>The ring's width: a line on the floor, as mockup-01 draws it, not a disc.</summary>
+        private const float RingWidth = 0.07f;
+        /// <summary>
+        /// How far over the feet the diamond floats: over the name plate, as mockup-01 stacks them.
+        /// The plate is centred at 2.4 m and reaches 0.13 m above it at full size; at 2.25 m the
+        /// diamond stood across it and read as a white shape through the name.
+        /// </summary>
+        private const float DiamondHeight = 2.9f;
+        /// <summary>The same, over a seated body's focus, where the name rides 0.35 m up.</summary>
+        private const float SeatedDiamondLift = 0.85f;
+        /// <summary>The diamond's half height, so a test can say what it clears.</summary>
+        public const float DiamondHalfHeight = DiamondTall;
         private const float DiamondWidth = 0.17f;
         private const float DiamondTall = 0.26f;
 
@@ -60,7 +71,7 @@ namespace Gamesim.Presentation
             if (!marker.gameObject.activeSelf) marker.gameObject.SetActive(true);
             var seat=subject.GetComponent<HouseSeatPresentation>();
             marker.position = seat!=null && seat.Active ? seat.VisualFeet : subject.position;
-            if(diamond!=null)diamond.position=seat!=null && seat.Active ? seat.VisualFocus+Vector3.up*.45f
+            if(diamond!=null)diamond.position=seat!=null && seat.Active ? seat.VisualFocus+Vector3.up*SeatedDiamondLift
                 : subject.position+Vector3.up*DiamondHeight;
         }
 
@@ -68,15 +79,14 @@ namespace Gamesim.Presentation
         {
             marker = new GameObject("Follow marker").transform;
 
-            var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            disc.name = RingName;
-            Destroy(disc.GetComponent<Collider>());
+            var disc = new GameObject(RingName, typeof(MeshFilter), typeof(MeshRenderer));
             disc.transform.SetParent(marker, false);
             disc.transform.localPosition = new Vector3(0f, 0.03f, 0f);
-            disc.transform.localScale = new Vector3(Radius * 2f, 0.01f, Radius * 2f);
+            disc.GetComponent<MeshFilter>().sharedMesh = Ring();
             // Following someone is navigation, not power. The ring and the diamond also used to
-            // disagree with each other - gold underfoot, green overhead, one marker.
-            Paint(disc.GetComponent<Renderer>(), UiTheme.Accent, 2.2f);
+            // disagree with each other - gold underfoot, green overhead, one marker. A filled disc
+            // at 2.2 times its colour bloomed to a white pool the size of a rug.
+            Paint(disc.GetComponent<Renderer>(), UiTheme.Accent, 1.6f);
             ring = disc.transform;
 
             var gem = new GameObject(DiamondName, typeof(MeshFilter), typeof(MeshRenderer));
@@ -84,7 +94,31 @@ namespace Gamesim.Presentation
             gem.transform.localPosition = new Vector3(0f, DiamondHeight, 0f);
             diamond=gem.transform;
             gem.GetComponent<MeshFilter>().sharedMesh = Diamond();
-            Paint(gem.GetComponent<Renderer>(), UiTheme.Positive, 2.6f);
+            // Green: at 2.6 times its colour the bloom took it to white.
+            Paint(gem.GetComponent<Renderer>(), UiTheme.Positive, 1.2f);
+        }
+
+        /// <summary>A flat band on the floor, facing up, <see cref="RingWidth"/> wide.</summary>
+        private static Mesh Ring()
+        {
+            const int segments = 48;
+            var vertices = new Vector3[segments * 2];
+            var triangles = new int[segments * 6];
+            for (int i = 0; i < segments; i++)
+            {
+                float angle = i * Mathf.PI * 2f / segments;
+                var along = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                vertices[i * 2] = along * (Radius - RingWidth);
+                vertices[i * 2 + 1] = along * Radius;
+                int next = (i + 1) % segments;
+                // Clockwise seen from above, which Unity treats as facing up.
+                triangles[i * 6] = i * 2; triangles[i * 6 + 1] = i * 2 + 1; triangles[i * 6 + 2] = next * 2 + 1;
+                triangles[i * 6 + 3] = i * 2; triangles[i * 6 + 4] = next * 2 + 1; triangles[i * 6 + 5] = next * 2;
+            }
+            var mesh = new Mesh { name = RingName, vertices = vertices, triangles = triangles };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         /// <summary>

@@ -468,7 +468,7 @@ namespace Gamesim.Episode
                 bool voted = state.votes.Any(vote => vote.voterId == actor.id);
 
                 if (actor.isPlayer)
-                { hud.Paragraph(actor.name + " (You)" + (voted ? "  ·  voted" : "")); continue; }
+                { hud.Paragraph(HudPrimitives.WithYou(actor.name, true) + (voted ? "  ·  voted" : "")); continue; }
 
                 // The caption is fixed whatever the state, and the "voted" marker is a chip rather
                 // than part of it. A control whose name changes as you use it is a control neither

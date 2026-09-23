@@ -105,14 +105,19 @@ namespace Gamesim.House
         /// begun two frames after the panel opened reads as the camera ignoring the conversation.
         /// </summary>
         public const float TwoShotSeconds = 0f;
-        /// <summary>The two-shot's pivot sits this much above the dollhouse's: faces in the upper half, not the middle.</summary>
-        public const float TwoShotLift = 0.3f;
         /// <summary>
-        /// How far the two-shot's pivot sits to the camera's right of the pair, in metres: it puts
-        /// the pair a little left of the frame's centre, between the conversation's column on the
-        /// left and its dial on the right (mockup-12), rather than behind the dial.
+        /// The two-shot's pivot sits this much above the dollhouse's, at the pair's hips: mockup-12
+        /// has the faces in the upper third of the frame and the conversation's dial under the
+        /// pair, over their knees, not across their chests.
         /// </summary>
-        public const float TwoShotShift = 0.12f;
+        public const float TwoShotLift = -0.1f;
+        /// <summary>
+        /// How far the two-shot's pivot sits to the camera's right of the pair, in metres. Negative:
+        /// to the left, which puts the pair right of the frame's centre, in the middle of what the
+        /// conversation's column on the left and the relationships column on the right leave -
+        /// where mockup-12 stands its pair, over the dial.
+        /// </summary>
+        public const float TwoShotShift = -0.54f;
 
         private Shot? activeShot;
         private Vector3 shotReturnFocus;
@@ -302,7 +307,7 @@ namespace Gamesim.House
             float farther = nearer == left ? right : left;
             var pivot = ConversationFocus() + Vector3.up * TwoShotLift;
             float side = TwoShotSideIsClear(pivot, nearer, player, npc) || !TwoShotSideIsClear(pivot, farther, player, npc) ? nearer : farther;
-            pivot += Quaternion.Euler(0f, side, 0f) * Vector3.right * TwoShotShift;
+            pivot = TwoShotPivot(side);
             return new Shot
             {
                 Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,
@@ -547,7 +552,7 @@ namespace Gamesim.House
                 }
                 else if (!reducedMotion)
                 {
-                    desiredFocus = ConversationFocus() + (activeShot.HasValue ? Vector3.up * TwoShotLift : Vector3.zero);
+                    desiredFocus = activeShot.HasValue ? TwoShotPivot(activeShot.Value.Yaw) : ConversationFocus();
                 }
             }
             else
@@ -825,6 +830,16 @@ namespace Gamesim.House
         private Vector3 ConversationFocus()
         {
             return ClampFocus((conversationPlayer.position + conversationNpc.position) * 0.5f + Vector3.up);
+        }
+
+        /// <summary>
+        /// Where the two-shot looks from the side <paramref name="sideYaw"/>: the pair, lifted and
+        /// shifted as the constants say. The follow each frame goes through here as well - it once
+        /// re-derived the pivot without the shift, which held for the shot's first frame only.
+        /// </summary>
+        private Vector3 TwoShotPivot(float sideYaw)
+        {
+            return ConversationFocus() + Vector3.up * TwoShotLift + Quaternion.Euler(0f, sideYaw, 0f) * Vector3.right * TwoShotShift;
         }
 
         /// <summary>

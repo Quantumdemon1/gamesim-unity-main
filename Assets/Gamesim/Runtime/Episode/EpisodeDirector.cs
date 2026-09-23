@@ -560,6 +560,9 @@ namespace Gamesim.Episode
             // retire them too. A new competition result is shown after commit-time panel changes.
             if (competitionCard != null) competitionCard.Cancel();
             EndDiaryVisit(!render);
+            // The line said where the player was; once they have left, it says so. Anything the
+            // visit put there since - a result, a discarded choice - stays.
+            if (diaryOpen && message == DiaryInsideMessage) message = "You left the private diary room.";
             diaryOpen = false; diaryDraft = null;
             lastSocialAction = null;
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
@@ -575,7 +578,7 @@ namespace Gamesim.Episode
         }
 
         public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
-        public void OpenJournal() { PauseNpcSocialForPanel(); ClosePanels(); journalSection = NotebookSection.Network; journalOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
+        public void OpenJournal() => OpenNotebookAt(NotebookSection.Network, scroll: false);
 
         public CommandResult Submit(EpisodeCommand command)
         {
@@ -790,8 +793,10 @@ namespace Gamesim.Episode
         /// a camera mode the director owns and the sections are a field it owns. Exposing the answer
         /// is cheaper than the rail keeping a second copy of the same two facts.</para>
         /// </summary>
-        public string ActiveSection => IsOverview ? OverviewSection
-            : journalOpen ? journalSection : null;
+        // The page on screen first: the notebook and the overview no longer stand together, but if
+        // they ever did the rail must light what the player is reading.
+        public string ActiveSection => journalOpen ? journalSection
+            : IsOverview ? OverviewSection : null;
 
         /// <summary>Whether the week's recap is on screen. Read by the HUD's own open-panel test.</summary>
         public bool IsWeeklyRecapOpen => weeklyRecap != null && weeklyRecap.IsOpen;
@@ -846,56 +851,6 @@ namespace Gamesim.Episode
             ReconcileNpcSocialWorld();
         }
 
-
-        /// <summary>How the house voted, with the reason each voter committed.</summary>
-        /// <summary>
-        /// The house, as a list of the people in it: name, standing, where you stand with them, and
-        /// who they are outside the game.
-        ///
-        /// <para>Name, then who they are outside the game, then where you stand - the order the
-        /// reference build's houseguest list uses. The card line is omitted rather than left blank
-        /// when a save predates those fields.</para>
-        /// </summary>
-        private void RenderNotebookPeople(EpisodeState state)
-        {
-            hud.Heading("HOUSEGUESTS");
-            hud.Mark(NotebookSection.People);
-            foreach (var c in state.contestants.Where(c => !c.isPlayer))
-            {
-                string card = CardLine(c);
-                hud.PortraitRow(c.id,
-                    c.name + " · " + c.status + " · Your trust " + state.Score(state.playerId, c.id).ToString("0"),
-                    card);
-            }
-        }
-
-        private void RenderNotebookVotes(EpisodeState state)
-        {
-            if (state.votes == null || state.votes.Count == 0)
-            {
-                // The mark still has to exist: it is what the rail scrolls to, and an
-                // absent one is the difference between an empty page and no page at all.
-                hud.Heading("HOW THE HOUSE VOTED");
-                hud.Mark(NotebookSection.Votes);
-                hud.Paragraph("Nobody has voted yet this season.");
-                return;
-            }
-            // How the house voted, with the reason each voter committed. The engine has written
-            // these to every ballot since the beginning and nothing has ever shown them — the
-            // event log carries the sentence, but only the last line of it reaches the status
-            // bar, so the "why" behind an eviction was effectively private.
-            hud.Heading("HOW THE HOUSE VOTED");
-            hud.Mark(NotebookSection.Votes);
-            foreach (var vote in state.votes)
-            {
-                var voter = state.Find(vote.voterId);
-                var target = state.Find(vote.targetId);
-                if (voter == null || target == null) continue;
-                hud.PortraitRow(voter.id,
-                    voter.name + " voted to evict " + (target.id == state.playerId ? "you" : target.name),
-                    vote.reason);
-            }
-        }
 
         /// <summary>The season as it has been lived: weeks, mood, promises, oaths, memories.</summary>
         private void RenderNotebookStory(EpisodeState state)
@@ -984,10 +939,23 @@ namespace Gamesim.Episode
                 // The notebook is a place to read, not a beat of the week: a slim head of its own
                 // in place of the phase band, so each page's title - the web's RELATIONSHIP WEB
                 // above all (mockup-07) - is the first thing at the top of the frame.
-                hud.ScreenHeader(EpisodeHud.NotebookHeaderName, "YOUR NOTEBOOK \u00b7 WHAT YOUR CHARACTER KNOWS", null, null);
-                hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
-                // A command rather than a section, so it stays put whichever page you are on.
-                hud.Action("House activities",OpenHouseActivities);
+                // The redesigned pages (Refinement Kit 6) carry their own title in the head and the
+                // house activities in their foot; the others keep the notebook's title and the
+                // command at their top, where the web's layout and the activities tests expect it.
+                bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
+                    || journalSection == NotebookSection.Votes;
+                if (kitPage)
+                {
+                    var head = NotebookPageHead(journalSection);
+                    hud.ScreenHeader(EpisodeHud.NotebookHeaderName, EpisodeHud.NotebookEyebrowCopy, head.Title, null, head.Subtitle);
+                }
+                else
+                {
+                    hud.ScreenHeader(EpisodeHud.NotebookHeaderName, EpisodeHud.NotebookEyebrowCopy, null, null);
+                    hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
+                    // A command rather than a section, so it stays put whichever page you are on.
+                    hud.Action("House activities",OpenHouseActivities);
+                }
                 // ONE section at a time. The rail's four buttons were four scroll positions in a
                 // single document: every render emitted the relationship web, the house map, every
                 // houseguest, every vote, every finished week, mood, promises, alliances, oaths, the
@@ -997,9 +965,7 @@ namespace Gamesim.Episode
                 // emitted - which is why they all looked identical.
                 if (journalSection == NotebookSection.Rooms)
                 {
-                    hud.Heading("WHO IS WHERE");
-                    hud.Mark(NotebookSection.Rooms);
-                    hud.HouseMapPanel(HouseOccupancy(state));
+                    RenderNotebookRooms(state);
                 }
                 else if (journalSection == NotebookSection.Votes)
                 {
@@ -1038,6 +1004,23 @@ namespace Gamesim.Episode
             if (focusedNpc != null)
             {
                 var npc = state.Find(focusedNpc.Id);
+                // Outside free time the house cannot talk, so there is nothing to choose: a card
+                // sized to the one thing it says (Refinement Kit 6), not the drawer cut short. Mood
+                // and your trust are two pills - the drawer's "Neutral -9" was a band and a number
+                // that read as a mood - and the week's budget is not on it, because nothing here
+                // spends it.
+                if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
+                {
+                    double trust = state.Score(state.playerId, npc.id);
+                    var identity = new List<string>();
+                    if (!string.IsNullOrEmpty(npc.pronouns)) identity.Add(npc.pronouns);
+                    if (npc.traits != null && npc.traits.Count > 0) identity.Add(string.Join(" / ", npc.traits));
+                    hud.ConversationNotice(npc, string.Join(" · ", identity),
+                        string.IsNullOrEmpty(npc.mood) ? null : "Mood: " + npc.mood,
+                        "Your trust: " + TrustFigure(trust), TrustTint(trust),
+                        HouseDialogue.Greeting(state, npc.id), ConversationUnavailableLine);
+                    return;
+                }
                 // Where you stand with them, and what you have left to spend on them, in the header
                 // of the panel that spends it.
                 //
@@ -1059,8 +1042,6 @@ namespace Gamesim.Episode
                 hud.Paragraph(Standing(state, npc.id) + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
-                if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
-                { hud.Paragraph("The next ceremony is waiting. We can catch up during free time or campaigning."); return; }
                 if (state.oathOpportunities.Contains(npc.id))
                 {
                     hud.Heading("A PERSONAL LOYALTY DECLARATION");

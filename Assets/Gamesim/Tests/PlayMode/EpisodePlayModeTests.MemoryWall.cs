@@ -128,6 +128,7 @@ namespace Gamesim.Tests.PlayMode
                 EpisodeDirector.NotebookSection.People,
                 EpisodeDirector.NotebookSection.Network,
                 EpisodeDirector.NotebookSection.Rooms,
+                EpisodeDirector.NotebookSection.Votes,
                 EpisodeDirector.NotebookSection.Story,
             };
 

@@ -250,6 +250,29 @@ namespace Gamesim.Presentation
             return rect;
         }
 
+        /// <summary>
+        /// One of Refinement Kit 6's cards: the kit's card fill tinted the card ground, and its edge
+        /// on a child named "Border" - quiet at rest, the accent when <paramref name="focus"/> - with
+        /// no glow. A resting card that glowed was the notebook's complaint: every room row lit, the
+        /// empty ones too. Falls back to the drawn card where the kit is not installed.
+        /// </summary>
+        public static RectTransform KitCard(string name, Transform parent, bool focus = false, float corner = 12f)
+        {
+            var rect = Fill(name, parent, UiTheme.CardFill, Mathf.RoundToInt(corner));
+            var image = rect.GetComponent<Image>();
+            UiTheme.PackSliced(image, PackArt.KitCardFill, corner, UiTheme.CardFill);
+            var tint = focus ? UiTheme.Edge(UiTheme.Emphasis.Active) : UiTheme.Edge(UiTheme.Emphasis.Interactive);
+            string path = focus ? PackArt.KitCardEdgeFocus : PackArt.KitCardEdge;
+            if (UiTheme.Pack(path) == null) { UiTheme.AddBorder(rect, Mathf.RoundToInt(corner), tint); return rect; }
+            var edge = new GameObject("Border", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            edge.rectTransform.SetParent(rect, false);
+            edge.rectTransform.anchorMin = Vector2.zero; edge.rectTransform.anchorMax = Vector2.one;
+            edge.rectTransform.offsetMin = Vector2.zero; edge.rectTransform.offsetMax = Vector2.zero;
+            edge.raycastTarget = false;
+            UiTheme.PackSliced(edge, path, corner, tint);
+            return rect;
+        }
+
         public static RectTransform Fill(string name, Transform parent, Color colour, int radius)
         {
             var rect = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();

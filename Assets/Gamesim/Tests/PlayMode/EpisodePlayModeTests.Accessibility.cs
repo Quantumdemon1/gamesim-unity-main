@@ -473,6 +473,17 @@ namespace Gamesim.Tests.PlayMode
             var openers = new (string Name, Func<bool> Open)[]
             {
                 ("the notebook", () => { director.OpenJournal(); return director.IsPanelOpen; }),
+                // Refinement Kit 6's pages each lay their own copy out, so each is swept.
+                ("who is where", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Rooms); return director.IsPanelOpen; }),
+                ("the houseguests", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.People); return director.IsPanelOpen; }),
+                ("a houseguest profile", () =>
+                {
+                    var someone = director.Snapshot.contestants.FirstOrDefault(c => !c.isPlayer);
+                    if (someone == null) return false;
+                    director.ShowHouseguestProfile(someone.id);
+                    return director.ProfileId == someone.id;
+                }),
+                ("the vote", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes); return director.IsPanelOpen; }),
                 ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }),
                 ("house activities", () => { director.OpenHouseActivities(); return director.IsHouseActivityOpen; }),
                 ("a conversation", () =>

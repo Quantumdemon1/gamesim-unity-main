@@ -1390,3 +1390,35 @@ Files in `Assets/Gamesim/Art/Packs/Pack5_HouseBroadcast/VFXTextures/`:
 | `soft_particle.png` | 512x512 | Particle |  |  |
 | `star_sparkle.png` | 512x512 | Particle |  |  |
 
+
+## Refinement Kit 6 - Kit6_Refinement
+
+Imported 2026-09-23 by `ArtSource/ui-packs/tools/bb_ui_kit6.py` (sha256, size and border checked against the kit's
+manifest); 71 white, tintable sprites under `Resources/Packs/Kit6_Refinement/{Chrome,Widgets,Icons,EmptyStates}`, the
+previews, review boards, SVG sources and the kit's two documents under `ArtSource/ui-packs/Kit6_Refinement/`. Unlike
+packs 1-5 the kit is **wired**: it is the notebook's pages, the conversation notice and the diary's record, and
+`PackArt.Kit*` names every sprite the HUD draws with it.
+
+- **White masks, tinted by role.** `Image.color` is a `UiTheme` token - `CardFill` on a card, `SurfaceRaised` on a
+  quiet pill, `ActionBlue` on the chosen filter, `Edge(Interactive)` on a resting edge. No kit colour replaces a token.
+- **Slice borders are the manifest's**, not measured: card 18, button 14, pill 32/30, panel 24 (left, bottom, right,
+  top). `UiPackImportTests` exempts the kit from packs 1-4's `_9slice` naming rule and holds each sliced sprite to
+  its catalogue kind.
+- **A card is two images** (`HudPrimitives.KitCard`): the fill and a `Border` child from `card_edge_rest` (or
+  `card_edge_focus`). No `Glow` child - the kit's rule, and `NotebookRooms_EveryoneIsInOneRoomCardAndNoCardGlows`
+  holds the room cards to it.
+- **Opacity is on the ground Image, never a CanvasGroup**: the notebook's ground is at least .97, the conversation
+  notice's .97.
+
+| Screen | Where | Kit parts |
+|---|---|---|
+| Who is where | `HouseMap.Build`, `EpisodeDirector.RenderNotebookRooms` | card fill/edge, pill fill/edge (filters), room icons (`RoomLabels.Mark`), `ic_info` (footer), `ic_people` (footer action) |
+| Houseguests, profile | `EpisodeHud.Roster.cs`, `EpisodeDirector.RenderNotebookPeople` | card rows, pill status, `ic_search`, `ic_chevron_right`, `ic_arrow_back` |
+| The vote | `EpisodeHud.Votes.cs`, `EpisodeDirector.RenderNotebookVotes` | card records, `votes_no_records`, `ic_lock` |
+| Conversation unavailable | `EpisodeHud.Availability.cs` (`ActivityLayout.ConversationNotice`) | card fill/edge as the panel's ground, pills, `ic_lock` |
+| Diary record | `EpisodeHud.DiaryRecord.cs`, `EpisodeDirector.RenderDiary` | cards, pills (tabs), `ic_book`, `ic_person`, `ic_jury`, `ic_info`, `ic_chevron_*`, `ic_note`, `private_no_decision` |
+
+Not used yet: the panel family and its focus halo, the meter parts (a signed trust meter needs a confirmed score
+domain - the pages print the signed number instead), the timeline and relation widgets, `records_load_error` (no
+vote record can fail to load: the page reads the save in memory), `room_no_known_occupants` (every located
+houseguest is known; "Location unavailable" covers the rest).

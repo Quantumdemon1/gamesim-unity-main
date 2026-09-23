@@ -63,5 +63,39 @@ namespace Gamesim.Presentation
 
         // Presentation.
         public const string Vignette = "Pack4_Presentation/Transitions/cinematic_vignette";
+
+        // Refinement Kit 6: white, tintable parts. A fill, a resting edge and a focus edge share one
+        // size and one border per family, so a state changes a tint or a layer, never a rect.
+        public const string KitCardFill = "Kit6_Refinement/Chrome/card_fill";
+        public const string KitCardEdge = "Kit6_Refinement/Chrome/card_edge_rest";
+        public const string KitCardEdgeFocus = "Kit6_Refinement/Chrome/card_edge_focus";
+        public const string KitPillFill = "Kit6_Refinement/Chrome/pill_fill";
+        public const string KitPillEdge = "Kit6_Refinement/Chrome/pill_edge";
+        public const string KitButtonFill = "Kit6_Refinement/Chrome/button_fill";
+        public const string KitButtonEdge = "Kit6_Refinement/Chrome/button_edge_rest";
+        public const string KitSelectionStripe = "Kit6_Refinement/Widgets/selection_stripe";
+        public const string KitDivider = "Kit6_Refinement/Widgets/divider_h";
+        public const string KitIconBed = "Kit6_Refinement/Icons/ic_bed";
+        public const string KitIconSofa = "Kit6_Refinement/Icons/ic_sofa";
+        public const string KitIconKitchen = "Kit6_Refinement/Icons/ic_kitchen";
+        public const string KitIconGamepad = "Kit6_Refinement/Icons/ic_gamepad";
+        public const string KitIconCrown = "Kit6_Refinement/Icons/ic_crown";
+        public const string KitIconDiary = "Kit6_Refinement/Icons/ic_diary";
+        public const string KitIconLocation = "Kit6_Refinement/Icons/ic_location";
+        public const string KitIconLocationUnknown = "Kit6_Refinement/Icons/ic_location_unknown";
+        public const string KitIconInfo = "Kit6_Refinement/Icons/ic_info";
+        public const string KitIconPeople = "Kit6_Refinement/Icons/ic_people";
+        public const string KitIconSearch = "Kit6_Refinement/Icons/ic_search";
+        public const string KitIconChevronRight = "Kit6_Refinement/Icons/ic_chevron_right";
+        public const string KitIconArrowBack = "Kit6_Refinement/Icons/ic_arrow_back";
+        public const string KitIconBallot = "Kit6_Refinement/Icons/ic_ballot";
+        public const string KitIconLock = "Kit6_Refinement/Icons/ic_lock";
+        public const string KitIconBook = "Kit6_Refinement/Icons/ic_book";
+        public const string KitIconPerson = "Kit6_Refinement/Icons/ic_person";
+        public const string KitIconJury = "Kit6_Refinement/Icons/ic_jury";
+        public const string KitIconNote = "Kit6_Refinement/Icons/ic_note";
+        public const string KitIconChevronDown = "Kit6_Refinement/Icons/ic_chevron_down";
+        public const string KitEmptyVotes = "Kit6_Refinement/EmptyStates/votes_no_records";
+        public const string KitEmptyPrivate = "Kit6_Refinement/EmptyStates/private_no_decision";
     }
 }

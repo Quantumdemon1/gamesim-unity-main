@@ -80,6 +80,11 @@ namespace Gamesim.Tests.PlayMode
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes);
             yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
+            // Before the reveal the ballots the page knows are the player's own - and only that.
+            ButtonWithCaption("Known ballots").onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain("You voted to evict Taylor Kim"));
+            Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
             AssertBlocPrivateEvidenceAbsent(pending, witness);
             AssertEquivalent(pending, director.Snapshot);
             yield return ReloadBlocThroughActualSettings(pending);
@@ -126,6 +131,17 @@ namespace Gamesim.Tests.PlayMode
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain(publicMayaReveal));
+            // And the vote page holds the result and every ballot the reveal made public, with the
+            // reason each voter gave in public.
+            var gone = revealed.contestants.Single(c => pending.Find(c.id).status == ContestantStatus.Active
+                && c.status != ContestantStatus.Active);
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes);
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain(gone.id == revealed.playerId ? "You were evicted" : gone.name + " was evicted"));
+            ButtonWithCaption("Known ballots").onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain("Maya Hassan voted to evict Casey Wilson"));
+            Assert.That(ActiveDiaryText(), Does.Contain(publicReason));
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             AssertEquivalent(revealed, director.Snapshot);
             yield return ReloadBlocThroughActualSettings(revealed);

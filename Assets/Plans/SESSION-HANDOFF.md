@@ -8,6 +8,43 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 00. Refinement Kit 6 — the five missed screens (23 September)
+
+The kit (`ArtSource/ui-packs/Kit6_Refinement/`, its review `GAMESIM_REMAINING_MENUS_REVIEW.md` and
+integration notes) covers five screens the mockup pass left generic, plus three companion views.
+All five are done, in the order the kit asked for; `Assets/Plans/ASSET-PACKS.md` has a Kit 6 section
+saying which sprite goes where.
+
+| Screen | What it is now | Test (capture) |
+|---|---|---|
+| Who is where | Room cards in two columns, no glow at rest, a face and first name per occupant, filters All rooms / Occupied (and Location unavailable only when someone has no body), the house's count, House activities in the foot. Occupancy walks the roster, so everyone in the house is in exactly one card. | `NotebookRooms_EveryoneIsInOneRoomCardAndNoCardGlows` (`notebook-rooms`) |
+| Houseguests + profile | Columns: face and name with the card line, status word, your trust signed and coloured by sign, View profile. Filters "All · N", "Active · N", "Jury · N" (the counts keep the captions apart from a row's status word), a search that narrows in place and survives a repaint. A row opens the profile - identity card, your trust with what it is not, what you remember of them, the records you hold, Back to Houseguests - still on the Houseguests page. | `NotebookPeople_ColumnsFiltersAndSearch` (`notebook-people`), `NotebookPeople_ARowOpensTheProfileAndBackReturns` (`notebook-profile`) |
+| The vote | Read from the public record by `VoteRecords` (the page read the ballot box, which the engine empties when the next week begins - hence "Nobody has voted yet" in week 2). Tabs Eviction results / Known ballots; empty copy chosen by why (no eviction yet, record rolled off the 256-entry log, vote in progress); before the reveal the only ballot known is the player's own. | `NotebookVotes_AnEmptyPageSaysWhyInBothTabs` (`notebook-votes`), the post-reveal half of `VotingBloc_ActualPact...`, `VoteRecordsTests` (EditMode) |
+| Conversation unavailable | `ActivityLayout.ConversationNotice`: a card sized to its content low on the left - name, pronouns and traits, "Mood: X" and "Your trust: ±N" as two pills, the greeting once, and "Conversation unavailable during this ceremony." No budget, no dial, nothing spent. | `Conversation_OutsideFreeTimeIsACardThatSpendsNothing` (`conversation-unavailable`) |
+| Diary room | A 540-wide column (under 35% of the frame; house activities keep 420). Tabs Your record / Memories / Pending decision - the decision's tab opens first when there is something to choose. The record: a status card, preparation / persona / recorded jury impression as rows ("None yet" with no jury, never a zero), the long rules behind "How this record works". A review is two cards (what is decided, what confirming records) with the note and the same captions. The line under the frame no longer says "walk to the private room" once you are in it, and the rail lights Go to diary room while you are. | `Diary_TheRecordIsThreeTabsAndReadingThemChangesNothing` (`diary-record`) |
+
+Deliberate test updates (layout, not behaviour): the houseguest row's sentence became columns
+(`NpcRuntime_NotebookDoesNot...`); the diary's memories and persona are read from their tabs.
+
+**Traps:** `hud.Mark` renames the *last* content child, so a filter row becomes the section's mark -
+look the row up by the section name. A search field rebuilt by a repaint loses the caret unless it is
+handed back (`SearchBox`). A card whose scroll starts near its top covers its own Close unless Close is
+raised above the viewport (`ConversationNoticeLayout`) - the test's pressability check caught it.
+The C: editor re-imported the kit's sliced sprites with its catalogue stale and wrote their metas with
+`spriteBorder` zero (the importer's fallback for a file it does not list); D:'s fresh import wrote the
+right borders, so the tests passed over wrong C: metas. Check `git diff` on `Resources/Packs` before a
+commit, restore the metas from HEAD and force-reimport them in the editor.
+
+**PR #4** (`ui/expanded-event-screens`, another assistant's, built on `main` without Unity) forked 125
+commits back and conflicts in three of its four files; do not merge it. Its diagnosis holds here - a
+resolved competition's standings are a plain list with Continue under the 174-unit fold of the 900x300
+docked panel - and a review (23 September) lists what is worth rebuilding: a taller phase layout with
+the progression action pinned (focus must land on it, not on Close), Continue straight after "Review
+competition results", a one-line house status, two-column veto choices. Its copy cuts delete rule
+disclosures (the 7-in-10 odds, the weekly budget, what preparation does not boost) - keep those.
+
+---
+
 ## 0. The UI pass against the mockups (22 September, evening)
 
 The goal: *make the menus and the layout of the UI look like `ArtSource/reference/mockups/`*,

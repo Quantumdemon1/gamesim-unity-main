@@ -51,6 +51,46 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>
+        /// A room marker's name as a sentence says it - "Living room", "HoH suite" - for a card
+        /// title. <see cref="Title"/> is the floor paint's capitals, which the live feed's caption
+        /// and the overview's chips are held to.
+        /// </summary>
+        public static string Name(string roomName)
+        {
+            switch (roomName)
+            {
+                case "Living": return "Living room";
+                case "Kitchen": return "Kitchen";
+                case "Bedroom": return "Bedroom";
+                case "Private": return "Private room";
+                case "Yard": return "Competition yard";
+                case "HoH": return "HoH suite";
+                case "Nomination": return "Nomination room";
+                case "Games": return "Game room";
+                default: return roomName ?? "";
+            }
+        }
+
+        /// <summary>
+        /// The room's mark from Refinement Kit 6 where the kit draws one (a bed, a sofa, a kitchen,
+        /// a gamepad, a crown, the diary), and the room's own glyph where it does not.
+        /// </summary>
+        public static Sprite Mark(string roomName)
+        {
+            string kit = null;
+            switch (roomName)
+            {
+                case "Living": kit = PackArt.KitIconSofa; break;
+                case "Kitchen": kit = PackArt.KitIconKitchen; break;
+                case "Bedroom": kit = PackArt.KitIconBed; break;
+                case "Private": kit = PackArt.KitIconDiary; break;
+                case "HoH": kit = PackArt.KitIconCrown; break;
+                case "Games": kit = PackArt.KitIconGamepad; break;
+            }
+            return (kit != null ? UiTheme.Pack(kit) : null) ?? UiTheme.Icon(Glyph(roomName));
+        }
+
         /// <summary>The glyph a room's chip leads with, as mockup-03 marks each room.</summary>
         public static string Glyph(string roomName)
         {

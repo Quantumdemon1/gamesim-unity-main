@@ -586,10 +586,11 @@ namespace Gamesim.Episode
         }
 
         /// <summary>Adds the room-occupancy cards to the current panel.</summary>
-        public void HouseMapPanel(System.Collections.Generic.IList<HouseMap.Room> rooms)
+        public void HouseMapPanel(System.Collections.Generic.IList<HouseMap.Room> rooms,
+            System.Collections.Generic.IList<HouseMap.Occupant> unplaced = null, HouseMap.Filter filter = HouseMap.Filter.All)
         {
             if (content == null) return;
-            HouseMap.Build(content, rooms, FontScale, font);
+            HouseMap.Build(content, rooms, unplaced, filter, FontScale, font, ContentWidth());
         }
 
         /// <summary>

@@ -36,8 +36,11 @@ namespace Gamesim.Episode
         /// A screen's head in place of the week's phase band: a letterspaced eyebrow, the screen's
         /// title behind its glyph, a soft rule, and Close at the other end - for the screens that
         /// are places or menus rather than beats of the week (the diary, the settings).
+        ///
+        /// <para>With a <paramref name="subtitle"/> it is a page's head as Refinement Kit 6 draws
+        /// one: the title large and white, and what the page is in a quieter line under it.</para>
         /// </summary>
-        public void ScreenHeader(string name, string eyebrowCopy, string title, Sprite mark)
+        public void ScreenHeader(string name, string eyebrowCopy, string title, Sprite mark, string subtitle = null)
         {
             if (modal == null) return;
             foreach (Transform child in modal)
@@ -48,7 +51,8 @@ namespace Gamesim.Episode
             var header = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
             header.SetParent(modal, false);
             header.SetSiblingIndex(0);
-            float height = (string.IsNullOrEmpty(title) ? 46f : 72f) * s;
+            bool page = !string.IsNullOrEmpty(title) && !string.IsNullOrEmpty(subtitle);
+            float height = (string.IsNullOrEmpty(title) ? 46f : page ? 108f : 72f) * s;
             Anchor(header, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(width - closeWidth - 20f, height));
 
             var eyebrow = FixedText(header, eyebrowCopy, 12, name == DiaryHeaderName ? UiTheme.Strategic : UiTheme.Muted, new Vector2(18f, -16f * s), new Vector2(width - closeWidth - 44f, 18f * s));
@@ -67,10 +71,22 @@ namespace Gamesim.Episode
                     x += 34f * s;
                 }
                 // Stops short of Close, which shares the head's top line.
-                var heading = FixedText(header, title, 21, UiTheme.Heading, new Vector2(x, -34f * s), new Vector2(width - x - 24f, 30f * s));
-                heading.rectTransform.sizeDelta = new Vector2(Mathf.Max(80f, width - x - 30f), 30f * s);
-                if (medium != null) heading.font = medium;
-                AutoSize(heading, 15);
+                if (page)
+                {
+                    var display = FixedText(header, title, 30, Paper, new Vector2(x, -34f * s), new Vector2(Mathf.Max(80f, width - x - 30f), 40f * s));
+                    var bold = UiTheme.Font(UiTheme.Weight.Bold);
+                    if (bold != null) display.font = bold;
+                    AutoSize(display, 20);
+                    var under = FixedText(header, subtitle, 16, UiTheme.Muted, new Vector2(18f, -76f * s), new Vector2(Mathf.Max(80f, width - 48f), 22f * s));
+                    AutoSize(under, 12);
+                }
+                else
+                {
+                    var heading = FixedText(header, title, 21, UiTheme.Heading, new Vector2(x, -34f * s), new Vector2(width - x - 24f, 30f * s));
+                    heading.rectTransform.sizeDelta = new Vector2(Mathf.Max(80f, width - x - 30f), 30f * s);
+                    if (medium != null) heading.font = medium;
+                    AutoSize(heading, 15);
+                }
             }
             // A soft rule under the head, as the mockup's column draws one: the pack's divider, or a
             // hairline where the packs are not installed.

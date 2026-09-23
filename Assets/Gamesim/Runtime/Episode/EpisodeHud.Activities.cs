@@ -8,7 +8,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeHud
     {
         /// <summary>Activities own their layout; they share controls, focus and save semantics.</summary>
-        public enum ActivityLayout { Standard, Relationships, Conversation, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings }
+        public enum ActivityLayout { Standard, Relationships, Conversation, ConversationNotice, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings }
 
         private ActivityLayout activityLayout;
         private RectTransform relationshipRoot;
@@ -75,6 +75,7 @@ namespace Gamesim.Episode
             float canvasWidth = bounds.width > 0 ? bounds.width : 1600f;
             float canvasHeight = bounds.height > 0 ? bounds.height : 900f;
             if (layout == ActivityLayout.Conversation) { ConversationLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.ConversationNotice) { ConversationNoticeLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Nominations) { NominationsLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.HouseEvent) { HouseEventLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Competition) { CompetitionLayout(canvasWidth, canvasHeight); return; }
@@ -94,6 +95,14 @@ namespace Gamesim.Episode
                 ? Mathf.Min(540f * FontScale, canvasHeight - ModalLift - ActivityHeadroom)
                 : canvasHeight - ModalLift - ActivityHeadroom;
             Anchor(modal, new Vector2(1,0), new Vector2(1,0), new Vector2(-right,ModalLift), new Vector2(width,height));
+            // The notebook is a page to read: its ground near opaque, as Refinement Kit 6 asks
+            // (0.94 to 0.98, on the ground Image - never a CanvasGroup, which would fade the words
+            // with it). The house's neon read through the .94 glass as lines across the text.
+            if (layout == ActivityLayout.Relationships)
+            {
+                var ground = modal.GetComponent<Image>();
+                if (ground != null) { var c = ground.color; ground.color = new Color(c.r, c.g, c.b, Mathf.Max(c.a, .97f)); }
+            }
 
             // Context cards return when the player returns to exploration. They remain available
             // through the notebook and the persistent top navigation while an activity uses this space.
@@ -277,7 +286,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void DiaryLayout(float canvasWidth, float canvasHeight)
         {
-            float width = Mathf.Min(DiaryColumnWidth * FontScale, canvasWidth - LeftColumnX - RightColumnInset);
+            // Under 35% of the frame at either text size: the diary is a column beside the chair.
+            float column = diaryRoomColumn ? DiaryRoomColumnWidth : DiaryColumnWidth;
+            float width = Mathf.Min(column * FontScale, canvasWidth * .345f, canvasWidth - LeftColumnX - RightColumnInset);
             float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom);
             Anchor(modal, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-RightColumnInset, ModalLift), new Vector2(width, height));
             CompactClose();

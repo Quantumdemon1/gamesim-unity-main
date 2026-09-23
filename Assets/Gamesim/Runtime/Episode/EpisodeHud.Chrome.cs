@@ -156,8 +156,9 @@ namespace Gamesim.Episode
         /// <summary>
         /// Where the player is being sent next, in the words the HUD has always used for it.
         /// </summary>
-        private static string NextStop(EpisodeState state) =>
-            state.pendingDiary != null ? "Next stop: private diary room"
+        private string NextStop(EpisodeState state) =>
+            state.pendingDiary != null
+                ? (director != null && director.IsDiaryOpen ? "Here: your private reflection" : "Next stop: private diary room")
             : EpisodeEngine.IsCompetition(state.phase) ? "Next stop: competition yard"
             : "Next stop: ceremony screen";
 
@@ -346,7 +347,8 @@ namespace Gamesim.Episode
                 y = RailLabel("PLAY", y);
                 var next = RailGroup("Next move", y, 2);
                 RailButton(next, "Go to episode screen", UiTheme.Icon("camera"), 0, director.GoToStation, true);
-                RailButton(next, DiaryTravelCaption, UiTheme.Icon("chat"), 1, director.GoToDiary).interactable =
+                // Lit while the player is in the room it goes to, as the notebook's pages are.
+                RailButton(next, DiaryTravelCaption, UiTheme.Icon("chat"), 1, director.GoToDiary, on: director.IsDiaryOpen).interactable =
                     director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
                 y += next.sizeDelta.y;
             }
@@ -393,8 +395,8 @@ namespace Gamesim.Episode
         }
 
         private Button RailButton(RectTransform group, string caption, Sprite icon, int index, System.Action action,
-            bool primary = false) =>
-            IconRail.Row(group, caption, icon, null, false,
+            bool primary = false, bool on = false) =>
+            IconRail.Row(group, caption, icon, null, on,
                 (IconRail.Pad + index * (IconRail.RowHeight + IconRail.Gap)) * FontScale, FontScale,
                 () => action(), primary);
 

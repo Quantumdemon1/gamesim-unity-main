@@ -328,8 +328,14 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             yield return null;
             string people = Visible();
-            Assert.That(people, Does.Contain(first.name + " · " + first.status + " · Your trust "
-                + fixture.Score(fixture.playerId, first.id).ToString("0")));
+            // A row of the directory: the name, their status and your own trust, each in a column
+            // of its own (Refinement Kit 6) rather than run together into one sentence.
+            var firstRow = director.GetComponentsInChildren<RectTransform>()
+                .Single(rect => rect.name == EpisodeHud.RosterRowPrefix + first.name);
+            var cells = firstRow.GetComponentsInChildren<TMPro.TMP_Text>().Select(text => text.text).ToArray();
+            Assert.That(cells, Does.Contain(first.name));
+            Assert.That(cells, Does.Contain(EpisodeDirector.StatusWord(first.status)));
+            Assert.That(cells, Does.Contain(EpisodeDirector.TrustFigure(fixture.Score(fixture.playerId, first.id))));
 
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
             yield return null;

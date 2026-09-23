@@ -166,6 +166,9 @@ namespace Gamesim.Tests.PlayMode
                 && state.memories.Any(memory => memory.ownerId == state.playerId), "recorded player experience");
             var before = director.Snapshot;
             yield return OpenDiaryFixturePanel();
+            // The memories are their own tab now (Refinement Kit 6); the privacy rule is the same.
+            ButtonWithCaption(EpisodeDirector.DiaryMemoriesTabCaption).onClick.Invoke();
+            yield return null; yield return null;
             var labels = ActiveDiaryText();
             foreach (var memory in before.memories.Where(memory => memory.ownerId == before.playerId))
                 Assert.That(labels, Does.Contain("Week " + memory.week + ": " + memory.text));
@@ -437,7 +440,11 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenDiaryFixturePanel();
             Assert.That(DiaryHasButton(choiceCaption), Is.False);
             Assert.That(DiaryHasButton(EpisodeHud.DiarySkipReflectionCaption), Is.False);
-            Assert.That(ActiveDiaryText(), Does.Contain("Current diary persona: " + after.playerPersona.current));
+            // The persona is a row of the record's tab: its label, and the value under it.
+            ButtonWithCaption(EpisodeDirector.DiaryRecordTabCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveRect(EpisodeHud.DiaryRecordRowPrefix + "Diary persona").GetComponentsInChildren<TMPro.TMP_Text>()
+                .Select(label => label.text), Does.Contain(after.playerPersona.current));
             director.ClosePanels();
             var npc = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
             yield return OpenNearbyNpc(npc);

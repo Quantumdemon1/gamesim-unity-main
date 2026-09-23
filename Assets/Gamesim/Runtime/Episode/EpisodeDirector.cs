@@ -828,19 +828,18 @@ namespace Gamesim.Episode
                             EpisodeEngine.CompetitionCategory(state.phase, state.week));
                         hud.Paragraph(CompetitionMiniGames.Brief(game));
                         hud.Paragraph(state.phase == EpisodePhase.FinalHoHPart1
-                            ? "How you do adds 0–2 effective endurance points (capped at 10) for the survival challenge; stored stats are unchanged."
-                            : "How you do supplies a 0–2 point bonus; housemate stats and the saved seed determine the rest.");
-                        hud.Action(CompetitionMiniGames.EnterCaption(game), () => StartChallenge(state));
-                        hud.Action("Accessible alternative: steady 1-point bonus", () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
+                            ? "Performance adds 0–2 effective endurance points, capped at 10. Stored stats do not change."
+                            : "Performance adds a 0–2 bonus; houseguest stats and the saved seed determine the rest.");
+                        var competitionActions = hud.ActionGrid(2,68f);
+                        hud.GridAction(competitionActions,CompetitionMiniGames.EnterCaption(game),() => StartChallenge(state));
+                        hud.GridAction(competitionActions,"Accessible alternative: steady 1-point bonus",
+                            () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
                         if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
                         {
-                            hud.Paragraph("Or simulate this weekly competition using weighted rules. Preparation: "
-                                + state.playerStudyBonus + "/5; event bonus: " + state.phaseEventCompBonus
-                                + ". These boost only your simulated score, with no precision bonus. Preparation is kept for later weeks and does not boost final HoH.");
-                            hud.Action(EpisodeHud.SimulateCompetitionCaption, () => SimulateCompetition(state));
-                            hud.Paragraph("Or throw it. You still compete and the result still stands — "
-                                + "you simply do not try, which is sometimes the safer week.");
-                            hud.Action(EpisodeHud.ThrowCompetitionCaption, () => ThrowCompetition(state));
+                            hud.Paragraph("Preparation " + state.playerStudyBonus + "/5 · event bonus "
+                                + state.phaseEventCompBonus + ". Simulate uses weighted rules; throwing still records a real result.");
+                            hud.GridAction(competitionActions,EpisodeHud.SimulateCompetitionCaption,() => SimulateCompetition(state));
+                            hud.GridAction(competitionActions,EpisodeHud.ThrowCompetitionCaption,() => ThrowCompetition(state));
                         }
                     }
                     else hud.Action("Watch eligible housemates compete", () => Commit(state, EpisodeCommandKind.Advance));
@@ -865,19 +864,32 @@ namespace Gamesim.Episode
             if (RenderPlayerDecision(state, false)) return;
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
             {
-                hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
-                foreach (var candidate in state.Active.Where(c => !c.isPlayer)) { string id = candidate.id; hud.ActionFor(id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
+                hud.Paragraph("You won the final HoH. Choose who to evict; the other houseguest joins you in the final two.");
+                var finalGrid = hud.ActionGrid(2,68f);
+                foreach (var candidate in state.Active.Where(c => !c.isPlayer))
+                {
+                    string id = candidate.id;
+                    hud.GridActionFor(finalGrid,id,"Evict " + candidate.name,() => Commit(state, EpisodeCommandKind.FinalEvict, id));
+                }
                 return;
             }
             if (state.phase == EpisodePhase.Jury && !state.Active.Any(c => c.isPlayer) && !state.votes.Any(v => v.voterId == state.playerId))
             {
                 hud.Paragraph("As a juror, choose who deserves to win.");
-                foreach (var candidate in state.Active) { string id = candidate.id; hud.ActionFor(id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
+                var juryGrid = hud.ActionGrid(2,68f);
+                foreach (var candidate in state.Active)
+                {
+                    string id = candidate.id;
+                    hud.GridActionFor(juryGrid,id,"Vote for " + candidate.name + " to win",() => Commit(state, EpisodeCommandKind.CastVote, id));
+                }
                 return;
             }
-            if (state.nominees.Count > 0) hud.Paragraph("Nominees: " + string.Join(" and ", state.nominees.Select(id => state.Find(id).name)));
-            if (state.hohId != null) hud.Paragraph("HoH: " + state.Find(state.hohId).name);
-            if (state.vetoHolderId != null) hud.Paragraph("Veto holder: " + state.Find(state.vetoHolderId).name);
+
+            var houseStatus = new List<string>();
+            if (state.hohId != null) houseStatus.Add("HoH: " + state.Find(state.hohId).name);
+            if (state.vetoHolderId != null) houseStatus.Add("Veto: " + state.Find(state.vetoHolderId).name);
+            if (state.nominees.Count > 0) houseStatus.Add("Nominees: " + string.Join(" and ", state.nominees.Select(id => state.Find(id).name)));
+            if (houseStatus.Count > 0) hud.Paragraph(string.Join("  ·  ", houseStatus));
             if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
             {
                 CurrentLocation(state);

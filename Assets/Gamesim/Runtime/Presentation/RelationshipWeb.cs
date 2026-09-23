@@ -77,6 +77,8 @@ namespace Gamesim.Presentation
         private struct Shape
         {
             public float Radius, Node, Player, Height, HubShift, Top;
+            /// <summary>How much wider than tall the ring is: 1 is a circle.</summary>
+            public float Stretch;
             /// <summary>Whether the tab pills stand beside the title (mockup-07) or on a row under it.</summary>
             public bool TabsBeside;
         }
@@ -97,6 +99,7 @@ namespace Gamesim.Presentation
             {
                 // No room given: the ring the web always drew.
                 shape.Radius = Radius(count, scale);
+                shape.Stretch = 1f;
                 shape.Node = NodeSize * scale; shape.Player = PlayerSize * scale;
                 shape.Height = shape.Top + 2f * (shape.Radius + shape.Node * .5f + ChipDrop * scale) + 12f * scale;
                 shape.HubShift = LegendWidth * scale * .5f;
@@ -104,14 +107,15 @@ namespace Gamesim.Presentation
             }
             shape.Height = availableHeight - 2f;
             float reachY = (shape.Height - shape.Top - 12f * scale) * .5f;
-            float reach = reachY;
+            float reachX = float.PositiveInfinity;
             if (!float.IsInfinity(availableWidth) && availableWidth > 0f)
             {
                 // Beside the column, and clear of the key's card at the lower left: the hub stands
                 // half the card's width right of the area's centre.
                 float area = availableWidth - (ColumnWidth + Gap) * scale - 14f;
-                reach = Mathf.Min(reach, (area - LegendWidth * scale) * .5f - 8f * scale);
+                reachX = (area - LegendWidth * scale) * .5f - 8f * scale;
             }
+            float reach = Mathf.Min(reachY, reachX);
             float least = NodeSize * scale;
             float node = Mathf.Clamp(reach * NodeShare, least, LargestNode * scale);
             // Neighbours on the ring keep their name chips apart: a chip is as wide as its node's hit area.
@@ -121,6 +125,10 @@ namespace Gamesim.Presentation
             shape.Player = Mathf.Max(PlayerSize * scale, shape.Node * 1.1f);
             shape.Radius = Mathf.Max(shape.Player * .5f + shape.Node * .5f + ChipDrop * scale, reach - shape.Node * .5f - ChipDrop * scale);
             shape.HubShift = LegendWidth * scale * .5f;
+            // Where the page is wider than it is tall the ring widens into an ellipse, as mockup-07's
+            // web spreads across its page rather than standing in a circle in the middle of it.
+            float radiusX = float.IsInfinity(reachX) ? shape.Radius : reachX - shape.Node * .5f;
+            shape.Stretch = Mathf.Clamp(radiusX / Mathf.Max(1f, shape.Radius), 1f, 1.6f);
             return shape;
         }
 
@@ -415,13 +423,13 @@ namespace Gamesim.Presentation
             }
         }
 
-        private static Vector2 Ring(int index, int count, float radius)
+        private static Vector2 Ring(int index, int count, float radius, float stretch)
         {
             if (count <= 0) return Vector2.zero;
             // Top first, clockwise: stable between renders, so the player can build the same
             // spatial memory the cast rail gives them.
             float angle = Mathf.PI * 0.5f - index * (Mathf.PI * 2f / count);
-            return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            return new Vector2(Mathf.Cos(angle) * stretch, Mathf.Sin(angle)) * radius;
         }
 
         private static void Graph(
@@ -462,12 +470,12 @@ namespace Gamesim.Presentation
 
             // Edges first, so the portraits draw over them.
             for (int i = 0; i < others.Count; i++)
-                Edge(hub, Vector2.zero, Ring(all.IndexOf(others[i]), all.Count, radius), KindOf(state, others[i].id),
+                Edge(hub, Vector2.zero, Ring(all.IndexOf(others[i]), all.Count, radius, shape.Stretch), KindOf(state, others[i].id),
                     state.Score(state.playerId, others[i].id), scale);
 
             string focusId = focus != null ? focus.id : null;
             for (int i = 0; i < others.Count; i++)
-                Node(hub, state, others[i], Ring(all.IndexOf(others[i]), all.Count, radius), shape.Node, scale, font, portrait,
+                Node(hub, state, others[i], Ring(all.IndexOf(others[i]), all.Count, radius, shape.Stretch), shape.Node, scale, font, portrait,
                     false, others[i].id == focusId, select);
 
             var player = state.Find(state.playerId);
@@ -901,7 +909,10 @@ namespace Gamesim.Presentation
 
         private static void DetailsScrollButton(RectTransform parent,ScrollRect scroll,string caption,int slot,int direction,float scale,TMP_FontAsset font)
         {
-            var rect=HudPrimitives.Fill(caption,parent,UiTheme.Surface,6);
+            // A quiet glass pill with the way it scrolls drawn on it, as the rest of the column's
+            // controls are. A bare fill read as two stray words under the column.
+            var rect=HudPrimitives.Fill(caption,parent,UiTheme.GlassFill,6);
+            UiTheme.AddBorder(rect,6,new Color(UiTheme.Hairline.r,UiTheme.Hairline.g,UiTheme.Hairline.b,.45f));
             rect.anchorMin=rect.anchorMax=new Vector2(slot*.5f,0);rect.pivot=Vector2.zero;
             rect.anchoredPosition=new Vector2(slot==0?0:3f,0);rect.sizeDelta=new Vector2((ColumnWidth*scale+14f)/2f-3f,30f*scale);
             var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=rect.GetComponent<Image>();button.targetGraphic.raycastTarget=true;
@@ -909,7 +920,12 @@ namespace Gamesim.Presentation
                 if(travel>1){scroll.StopMovement();scroll.verticalNormalizedPosition=Mathf.Clamp01(scroll.verticalNormalizedPosition+direction*scroll.viewport.rect.height*.75f/travel);}});
             var label=Text(rect,slot==0?"Scroll up":"Scroll down",12,UiTheme.Paper,UiTheme.Weight.Medium,scale,font,TextAlignmentOptions.Center);
             label.rectTransform.anchorMin=Vector2.zero;label.rectTransform.anchorMax=Vector2.one;
-            label.rectTransform.offsetMin=Vector2.zero;label.rectTransform.offsetMax=Vector2.zero;
+            label.rectTransform.offsetMin=new Vector2(22f*scale,0f);label.rectTransform.offsetMax=Vector2.zero;
+            var mark=HudPrimitives.Chevron(rect,UiTheme.Accent,10f*scale);
+            mark.anchorMin=mark.anchorMax=new Vector2(0f,.5f);mark.pivot=new Vector2(.5f,.5f);
+            mark.anchoredPosition=new Vector2(20f*scale,0f);
+            // The chevron points right; a quarter turn either way points it up or down.
+            mark.localRotation=Quaternion.Euler(0f,0f,slot==0?90f:-90f);
         }
 
         /// <summary>

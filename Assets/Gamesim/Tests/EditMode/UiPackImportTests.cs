@@ -9,10 +9,11 @@ using UnityEngine;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The five UI/art asset packs, as imported: every file the catalogue lists is on disk and every
-    /// file on disk is listed; each imports as its kind says, and a 9-slice sprite carries the border
-    /// measured from its own pixels; the UI sprites load by path the way the code-built UI loads
-    /// everything; and the import rules touch nothing outside the packs.
+    /// The five UI/art asset packs and UI Refinement Kit 6, as imported: every file the catalogue
+    /// lists is on disk and every file on disk is listed; each imports as its kind says, and a 9-slice
+    /// sprite carries its border - measured from its own pixels for packs 1-5, the kit manifest's own
+    /// for Kit 6; the UI sprites load by path the way the code-built UI loads everything; and the
+    /// import rules touch nothing outside the packs.
     ///
     /// <para>The expectations are written out here per kind rather than asked of
     /// <see cref="UiPackImporter"/>, so a wrong rule fails against what the kind is for instead of
@@ -21,6 +22,7 @@ namespace Gamesim.Tests.EditMode
     public sealed class UiPackImportTests
     {
         private static readonly string[] Roots = { UiPackImporter.UiRoot, UiPackImporter.WorldRoot };
+        private const string Kit6Root = UiPackImporter.UiRoot + "Kit6_Refinement/";
 
         [Test]
         public void TheCatalogueAndTheFoldersHoldTheSameFiles()
@@ -32,7 +34,8 @@ namespace Gamesim.Tests.EditMode
                 .OrderBy(file => file, StringComparer.Ordinal).ToArray();
             var listed = UiPackCatalogue.All.Select(entry => entry.Path).OrderBy(path => path, StringComparer.Ordinal).ToArray();
 
-            Assert.That(listed.Length, Is.EqualTo(397), "Five packs, 397 images; the previews, READMEs and SVG sources live in ArtSource/ui-packs.");
+            Assert.That(listed.Length, Is.EqualTo(397 + 71),
+                "Five packs, 397 images, and Kit 6's 71 sprites; the previews, READMEs and SVG sources live in ArtSource/ui-packs.");
             Assert.That(onDisk.Except(listed), Is.Empty, "On disk and not in UiPackCatalogue - re-run ArtSource/ui-packs/tools/bb_ui_packs.py.");
             Assert.That(listed.Except(onDisk), Is.Empty, "In UiPackCatalogue and missing from disk.");
             Assert.That(onDisk.All(file => file.EndsWith(".png", StringComparison.Ordinal)), Is.True,
@@ -87,7 +90,9 @@ namespace Gamesim.Tests.EditMode
                     continue;
                 }
                 sliced++;
-                Assert.That(entry.Path.EndsWith("_9slice.png", StringComparison.Ordinal), Is.True, entry.Path);
+                // Packs 1-5 name their 9-slices; Kit 6 says which of its sprites are sliced in its manifest.
+                if (!entry.Path.StartsWith(Kit6Root, StringComparison.Ordinal))
+                    Assert.That(entry.Path.EndsWith("_9slice.png", StringComparison.Ordinal), Is.True, entry.Path);
                 var b = entry.Border;
                 Assert.That(b.x > 0 && b.y > 0 && b.z > 0 && b.w > 0, Is.True, entry.Path + ": every side of a 9-slice has a fixed corner.");
                 Assert.That(b.x + b.z, Is.LessThan(entry.Width), entry.Path + ": something is left to stretch across.");
@@ -97,7 +102,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(sprite, Is.Not.Null, entry.Path);
                 Assert.That(sprite.border, Is.EqualTo(b), entry.Path + ": and the sprite a Sliced Image draws carries it.");
             }
-            Assert.That(sliced, Is.EqualTo(186), "Every file named _9slice, across the five packs.");
+            Assert.That(sliced, Is.EqualTo(186 + 15), "Every file named _9slice across the five packs, and Kit 6's fifteen sliced sprites.");
         }
 
         /// <summary>

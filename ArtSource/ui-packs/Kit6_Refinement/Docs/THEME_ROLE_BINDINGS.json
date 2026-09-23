@@ -1,0 +1,24 @@
+{
+  "authoritativePalette": "Existing project UiTheme \u2014 no replacement hex values supplied",
+  "mapping": {
+    "Surface": "existing dark panel fill (inspect actual project API)",
+    "SurfaceRaised": "existing raised-panel fill (inspect actual project API)",
+    "TextPrimary": "existing high-contrast text role",
+    "Muted": "existing secondary/neutral role",
+    "OutlineResting": "existing low-emphasis neutral chrome role",
+    "Accent": "current selected/focused control",
+    "Allied": "positive relationship indicator",
+    "Conflict": "negative trust / tension per current project convention",
+    "Danger": "nominee / destructive / urgent risk",
+    "Gold": "power / award",
+    "ValueRole": "role assigned by existing real metric type",
+    "Scrim": "existing dark overlay role"
+  },
+  "defaultRules": [
+    "No full-panel halo on a resting row",
+    "No palette JSON silently copied into UiTheme",
+    "Color is not the sole status signal; pair with labels/icons",
+    "Gold is not neutral mood or an empty-state fallback",
+    "The preview palette is illustrative, not the project truth"
+  ]
+}

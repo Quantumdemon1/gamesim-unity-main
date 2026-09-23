@@ -1,0 +1,28 @@
+{
+  "runtimeTested": false,
+  "referenceCanvas": [
+    1920,
+    1080
+  ],
+  "sourceCaptures": {
+    "conversation": "02ca5c33-735b-4fe8-afd9-7f20fc4425c5.png",
+    "rooms": "aa64df88-3c70-4f58-a5e8-3a74ffc0bf8c.png",
+    "directory": "d311f442-f578-41d9-b622-987b2fe025f4.png",
+    "votes": "6d351c5c-efc1-4153-9eb8-0a6e2430c4ac.png",
+    "diary": "4a817e7a-96a8-4ab8-8fda-763fe755cb83.png"
+  },
+  "portraitSource": "1000025588.png",
+  "portraitMethod": "Exact circular interior crops; no generative retouching. Originals needed for higher-resolution production portraits.",
+  "data": "Directory trust/age/status rows and diary record values match visible screenshot text. Room placements and pending-decision layout are explicitly illustrative. Full-game state was not read.",
+  "previewColors": "Illustrative only, not authoritative UiTheme field values.",
+  "previews": [
+    "01_conversation_availability.png",
+    "02_who_is_where.png",
+    "03_houseguest_directory.png",
+    "04_vote_records_empty_state.png",
+    "05_diary_room_record.png",
+    "06_private_reflection_confirmation.png",
+    "07_houseguest_dossier_detail.png",
+    "08_relationships_known_information.png"
+  ]
+}

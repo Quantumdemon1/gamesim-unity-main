@@ -42,7 +42,10 @@ namespace Gamesim.Tests.EditMode
             {
                 string asset = "Assets/Gamesim/Resources/Packs/" + path + ".png";
                 Assert.That(UiPackCatalogue.TryGet(asset, out var entry), Is.True, name + " is not in the catalogue.");
-                bool sliced = path.EndsWith("_9slice");
+                // Packs 1-5 name their 9-slices; Kit 6's manifest says which of its sprites are sliced,
+                // and the catalogue carries that - so a Kit 6 name has only to be a UI sprite.
+                bool kit6 = path.StartsWith("Kit6_Refinement/");
+                bool sliced = kit6 ? entry.Kind == UiPackCatalogue.Kind.UiSliced : path.EndsWith("_9slice");
                 Assert.That(entry.Kind, Is.EqualTo(sliced ? UiPackCatalogue.Kind.UiSliced : UiPackCatalogue.Kind.UiSprite), name);
                 var sprite = UiTheme.Pack(path);
                 if (sliced) Assert.That(sprite.border, Is.EqualTo(entry.Border), name + "'s slice border.");

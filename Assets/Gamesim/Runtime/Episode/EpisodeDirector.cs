@@ -639,7 +639,9 @@ namespace Gamesim.Episode
             // The committed snapshot, not the projection: a projected eviction is not a fact
             // yet, and the set must never show an outcome the save does not hold.
             if (memoryWall != null) memoryWall.Refresh(engine.Snapshot);
-            hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen);
+            hud.Begin(state, message, blockedRecovery,
+                phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen,
+                phaseOpen);
             // Committed state, not the projection: a projected eviction is not a fact, and telling
             // someone they are out of the game is the last claim that should run ahead of the save.
             if (Spectating(engine.Snapshot)) hud.SpectatorNote(SpectatorDetail(engine.Snapshot));
@@ -826,46 +828,68 @@ namespace Gamesim.Episode
                             EpisodeEngine.CompetitionCategory(state.phase, state.week));
                         hud.Paragraph(CompetitionMiniGames.Brief(game));
                         hud.Paragraph(state.phase == EpisodePhase.FinalHoHPart1
-                            ? "How you do adds 0–2 effective endurance points (capped at 10) for the survival challenge; stored stats are unchanged."
-                            : "How you do supplies a 0–2 point bonus; housemate stats and the saved seed determine the rest.");
-                        hud.Action(CompetitionMiniGames.EnterCaption(game), () => StartChallenge(state));
-                        hud.Action("Accessible alternative: steady 1-point bonus", () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
+                            ? "Performance adds 0–2 effective endurance points, capped at 10. Stored stats do not change."
+                            : "Performance adds a 0–2 bonus; houseguest stats and the saved seed determine the rest.");
+                        var competitionActions = hud.ActionGrid(2,68f);
+                        hud.GridAction(competitionActions,CompetitionMiniGames.EnterCaption(game),() => StartChallenge(state));
+                        hud.GridAction(competitionActions,"Accessible alternative: steady 1-point bonus",
+                            () => Commit(state, EpisodeCommandKind.Compete, performance: .5));
                         if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
                         {
-                            hud.Paragraph("Or simulate this weekly competition using weighted rules. Preparation: "
-                                + state.playerStudyBonus + "/5; event bonus: " + state.phaseEventCompBonus
-                                + ". These boost only your simulated score, with no precision bonus. Preparation is kept for later weeks and does not boost final HoH.");
-                            hud.Action(EpisodeHud.SimulateCompetitionCaption, () => SimulateCompetition(state));
-                            hud.Paragraph("Or throw it. You still compete and the result still stands — "
-                                + "you simply do not try, which is sometimes the safer week.");
-                            hud.Action(EpisodeHud.ThrowCompetitionCaption, () => ThrowCompetition(state));
+                            hud.Paragraph("Preparation " + state.playerStudyBonus + "/5 · event bonus "
+                                + state.phaseEventCompBonus + ". Simulate uses weighted rules; throwing still records a real result.");
+                            hud.GridAction(competitionActions,EpisodeHud.SimulateCompetitionCaption,() => SimulateCompetition(state));
+                            hud.GridAction(competitionActions,EpisodeHud.ThrowCompetitionCaption,() => ThrowCompetition(state));
                         }
                     }
                     else hud.Action("Watch eligible housemates compete", () => Commit(state, EpisodeCommandKind.Advance));
                 }
                 else
                 {
-                    foreach (var score in state.competitionScores.OrderByDescending(x => x.score)) hud.Paragraph(state.Find(score.contestantId).name + "   " + score.score.ToString("0.00"));
-                    hud.Action("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
+                    hud.Heading("FINAL STANDINGS");
+                    var standings = state.competitionScores.OrderByDescending(x => x.score).ToList();
+                    for (int index = 0; index < standings.Count; index++)
+                    {
+                        var score = standings[index];
+                        var actor = state.Find(score.contestantId);
+                        if (actor == null) continue;
+                        string detail = score.score.ToString("0.00") + " points"
+                            + (index == 0 ? " · WINNER" : "");
+                        hud.PortraitRow(actor.id,(index + 1) + ".  " + actor.name,detail);
+                    }
+                    hud.FooterAction("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
                 }
                 return;
             }
             if (RenderPlayerDecision(state, false)) return;
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
             {
-                hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
-                foreach (var candidate in state.Active.Where(c => !c.isPlayer)) { string id = candidate.id; hud.ActionFor(id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
+                hud.Paragraph("You won the final HoH. Choose who to evict; the other houseguest joins you in the final two.");
+                var finalGrid = hud.ActionGrid(2,68f);
+                foreach (var candidate in state.Active.Where(c => !c.isPlayer))
+                {
+                    string id = candidate.id;
+                    hud.GridActionFor(finalGrid,id,"Evict " + candidate.name,() => Commit(state, EpisodeCommandKind.FinalEvict, id));
+                }
                 return;
             }
             if (state.phase == EpisodePhase.Jury && !state.Active.Any(c => c.isPlayer) && !state.votes.Any(v => v.voterId == state.playerId))
             {
                 hud.Paragraph("As a juror, choose who deserves to win.");
-                foreach (var candidate in state.Active) { string id = candidate.id; hud.ActionFor(id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
+                var juryGrid = hud.ActionGrid(2,68f);
+                foreach (var candidate in state.Active)
+                {
+                    string id = candidate.id;
+                    hud.GridActionFor(juryGrid,id,"Vote for " + candidate.name + " to win",() => Commit(state, EpisodeCommandKind.CastVote, id));
+                }
                 return;
             }
-            if (state.nominees.Count > 0) hud.Paragraph("Nominees: " + string.Join(" and ", state.nominees.Select(id => state.Find(id).name)));
-            if (state.hohId != null) hud.Paragraph("HoH: " + state.Find(state.hohId).name);
-            if (state.vetoHolderId != null) hud.Paragraph("Veto holder: " + state.Find(state.vetoHolderId).name);
+
+            var houseStatus = new List<string>();
+            if (state.hohId != null) houseStatus.Add("HoH: " + state.Find(state.hohId).name);
+            if (state.vetoHolderId != null) houseStatus.Add("Veto: " + state.Find(state.vetoHolderId).name);
+            if (state.nominees.Count > 0) houseStatus.Add("Nominees: " + string.Join(" and ", state.nominees.Select(id => state.Find(id).name)));
+            if (houseStatus.Count > 0) hud.Paragraph(string.Join("  ·  ", houseStatus));
             if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
             {
                 CurrentLocation(state);
@@ -886,19 +910,23 @@ namespace Gamesim.Episode
                 // situation buried under the ordinary controls is a situation they will not see.
                 PendingHouseEvent(state);
                 HouseWideActions(state);
-                hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
-                    + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
+                hud.Paragraph("Use the house or a conversation for targeted social moves. The actions below are the phase-level choices that do not require selecting a houseguest.");
                 // Listening in needs no one to talk to, so it sits here rather than in a conversation.
                 if (state.Active.Count(c => !c.isPlayer) >= 2)
                 {
-                    hud.Paragraph("You can also try to overhear a conversation you are not part of. "
-                        + "It works about seven times in ten; the rest of the time somebody notices.");
-                    hud.Tag(hud.Action("Listen in on a conversation", () => Commit(state, EpisodeCommandKind.Eavesdrop)),
+                    var quick = hud.ActionGrid(2);
+                    hud.Tag(hud.GridAction(quick,"Listen in on a conversation",
+                            () => Commit(state, EpisodeCommandKind.Eavesdrop)),
                         Category(EpisodeCommandKind.Eavesdrop));
                 }
             }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph("Four jurors choose the winner. The source game's tie rule awards a tied jury to the second finalist in cast order.");
-            hud.Action(state.phase == EpisodePhase.Social ? "Begin the next competition" : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode", () => Commit(state, EpisodeCommandKind.Advance));
+
+            string advanceCaption = state.phase == EpisodePhase.Social ? "Begin the next competition"
+                : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting"
+                : "Continue episode";
+            if (phaseOpen) hud.FooterAction(advanceCaption, () => Commit(state, EpisodeCommandKind.Advance));
+            else hud.Action(advanceCaption, () => Commit(state, EpisodeCommandKind.Advance));
         }
 
         /// <summary>Whether there is a season on screen worth going back to from the menu.</summary>

@@ -60,5 +60,28 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
             Assert.That(director.Snapshot.randomState, Is.EqualTo(before.randomState));
         }
+
+        /// <summary>
+        /// A competition being played, the frame to judge against mockup-05: the game's cards over
+        /// the yard, with the house's chrome standing aside for it. A practice attempt, so nothing
+        /// it does is committed.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Competition_CapturesThePracticeForReview()
+        {
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();
+            yield return null;
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            var before = director.Snapshot;
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            yield return null;
+            var screen = SceneComponents<CompetitionGameScreen>().Single();
+            Assert.That(screen.IsShowing, Is.True);
+            if (Application.isBatchMode) yield return CaptureFraming("competition-practice");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
+        }
     }
 }

@@ -91,6 +91,51 @@ namespace Gamesim.Tests.PlayMode
                 "The nomination's keys are still up over the veto draw; they sort over it and hide it.");
         }
 
+        /// <summary>
+        /// A competition's standings wait for Continue, and hold the input until they get it; but a
+        /// commit that arrives past them carried the Head of Household's result through the
+        /// nominations, the veto draw and the veto, every later card stacked on it - and the veto
+        /// draw's field played on under the veto's own result.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Ceremonies_AResultFromAnEarlierBeatGoesWhenTheHouseMovesOn()
+        {
+            var result = SceneComponents<CompetitionResult>().Single();
+            var keys = SceneComponents<KeyCeremony>().Single();
+            for (int guard = 0; guard < 40 && !result.IsPlaying; guard++)
+            { director.Submit(NextCommand(director.Snapshot)); yield return null; }
+            Assert.That(result.IsPlaying, Is.True, "The episode never reached a competition result.");
+
+            // Left up, the way a commit past it leaves it.
+            yield return PlayUntilTheKeyCeremony(keys);
+            Assert.That(result.IsPlaying, Is.False, "The Head of Household's result is still up under the nomination ceremony.");
+        }
+
+        /// <summary>A result is the beat when it arrives: the veto draw's field does not play on under it.</summary>
+        [UnityTest]
+        public IEnumerator Ceremonies_AResultTakesDownTheCardBeforeIt()
+        {
+            var result = SceneComponents<CompetitionResult>().Single();
+            var keys = SceneComponents<KeyCeremony>().Single();
+            var takeover = SceneComponents<CeremonyTakeover>().Single();
+            yield return PlayUntilTheKeyCeremony(keys);
+            result.Cancel();
+
+            // On to the veto: the draw brings up its field, and the veto's result replaces it.
+            bool fieldShown = false;
+            for (int guard = 0; guard < 60 && !result.IsPlaying; guard++)
+            {
+                var before = director.Snapshot;
+                if (before.phase == EpisodePhase.Finished) break;
+                director.Submit(NextCommand(before));
+                yield return null;
+                fieldShown |= takeover.IsPlaying && !result.IsPlaying;
+            }
+            Assert.That(result.IsPlaying, Is.True, "The episode never reached the veto's result.");
+            Assert.That(fieldShown, Is.True, "The veto draw should have brought up its card first.");
+            Assert.That(takeover.IsPlaying, Is.False, "The veto draw's card is still up under the veto's result.");
+        }
+
         [UnityTest]
         public IEnumerator Ceremonies_TheCameraHoldsTheRoomForTheWholeKeyCeremony()
         {

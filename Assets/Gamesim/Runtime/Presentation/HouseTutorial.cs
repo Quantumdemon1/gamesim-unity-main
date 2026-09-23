@@ -207,29 +207,50 @@ namespace Gamesim.Presentation
             if (card != null) return;
             var root = (RectTransform)canvas.transform;
 
-            card = HudPrimitives.Fill("Tutorial card", root, UiTheme.SurfaceRaised, UiTheme.PanelRadius);
+            // The HUD's glass with a lit edge, as the mockups draw the one card that is talking to
+            // the player; it was a flat raised grey with a gold button, and gold is power in this
+            // house, not "next".
+            var glass = UiTheme.GlassFill; glass.a = .95f;
+            card = HudPrimitives.Fill("Tutorial card", root, glass, UiTheme.PanelRadius);
             card.anchorMin = new Vector2(.5f, .5f);
             card.anchorMax = new Vector2(.5f, .5f);
             card.pivot = new Vector2(.5f, .5f);
             card.GetComponent<Image>().raycastTarget = true;
             UiTheme.AddBorder(card, UiTheme.PanelRadius, UiTheme.Accent);
+            UiTheme.AddGlow(card, UiTheme.PanelRadius);
 
             float scale = Mathf.Max(0.5f, FontScale);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
 
-            counter = HudPrimitives.Label("Counter", card, 13f * scale, UiTheme.Muted);
-            Corner(counter.rectTransform, new Vector2(16f, -12f), new Vector2(120f, 18f), scale);
+            float counterX = 16f;
+            var bulb = UiTheme.Icon("bulb");
+            if (bulb != null)
+            {
+                var mark = new GameObject("Tip mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(card, false);
+                Corner(mark.rectTransform, new Vector2(14f, -11f), new Vector2(18f, 18f), scale);
+                mark.sprite = bulb; mark.color = UiTheme.Joke; mark.preserveAspect = true; mark.raycastTarget = false;
+                counterX = 38f;
+            }
+            counter = HudPrimitives.Label("Counter", card, 13f * scale, UiTheme.Heading);
+            if (semibold != null) counter.font = semibold;
+            counter.characterSpacing = 3f;
+            Corner(counter.rectTransform, new Vector2(counterX, -12f), new Vector2(120f, 18f), scale);
 
             title = HudPrimitives.Label("Title", card, 21f * scale, UiTheme.Paper);
+            if (semibold != null) title.font = semibold;
             Corner(title.rectTransform, new Vector2(16f, -32f), new Vector2(CardWidth - 32f, 28f), scale);
 
-            body = HudPrimitives.Label("Body", card, 15f * scale, UiTheme.Muted);
+            body = HudPrimitives.Label("Body", card, 15f * scale, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .82f));
             Corner(body.rectTransform, new Vector2(16f, -62f), new Vector2(CardWidth - 32f, 66f), scale);
 
             skip = TextButton("Skip tutorial", card, UiTheme.Muted, 14f * scale);
             Corner(skip.GetComponent<RectTransform>(), new Vector2(12f, -(CardHeight - 40f)), new Vector2(120f, 30f), scale);
             skip.onClick.AddListener(Skip);
 
-            next = TextButton("Next", card, UiTheme.Ink, 15f * scale, UiTheme.Gold);
+            next = TextButton("Next", card, Color.white, 15f * scale, UiTheme.ActionBlue);
+            var nextLabel = next.GetComponentInChildren<TMP_Text>();
+            if (nextLabel != null && semibold != null) nextLabel.font = semibold;
             Corner(next.GetComponent<RectTransform>(), new Vector2(CardWidth - 110f, -(CardHeight - 40f)), new Vector2(98f, 32f), scale);
             next.onClick.AddListener(Next);
         }

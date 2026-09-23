@@ -66,6 +66,8 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(CastButtons(MainMenu.ContinueCaption), Has.Length.EqualTo(1),
                 "Continue must be offered once a season exists on disk.");
+            // Every control up: the frame to judge the front door by.
+            if (Application.isBatchMode) yield return CaptureFraming("main-menu");
         }
 
         [UnityTest]

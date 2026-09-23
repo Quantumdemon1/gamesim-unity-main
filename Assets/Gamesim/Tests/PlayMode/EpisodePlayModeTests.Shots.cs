@@ -53,6 +53,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(words, Does.Contain("KITCHEN").And.Contain("HOH SUITE").And.Contain("COMPETITION YARD"));
             Assert.That(director.GetComponentsInChildren<RectTransform>(true).Any(r => r.name == EpisodeHud.OverviewColumnName),
                 Is.True, "The column says who is where.");
+            // The frame to judge against mockup-03.
+            if (Application.isBatchMode) yield return CaptureFraming("overview");
 
             director.EndOverview();
             Assert.That(director.IsOverview, Is.False);

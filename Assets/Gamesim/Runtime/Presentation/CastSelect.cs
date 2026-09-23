@@ -802,11 +802,13 @@ namespace Gamesim.Presentation
             caption.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
             caption.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             caption.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            caption.rectTransform.sizeDelta = new Vector2(180f, 26f);
-            caption.rectTransform.anchoredPosition = new Vector2(270f, 0f);
-            caption.enableAutoSizing = true; caption.fontSizeMax = 17f; caption.fontSizeMin = 11f;
+            // The count between its two controls with room either side: in a 180 box the words
+            // shrank to 12 and still ran into "More houseguests".
+            caption.rectTransform.sizeDelta = new Vector2(210f, 26f);
+            caption.rectTransform.anchoredPosition = new Vector2(250f, 0f);
+            caption.enableAutoSizing = true; caption.fontSizeMax = 16f; caption.fontSizeMin = 12f;
 
-            Chip(bar, "Fewer houseguests", 90f, 150f, false, () =>
+            Chip(bar, "Fewer houseguests", 55f, 150f, false, () =>
             {
                 houseSize = SeasonBuilder.ClampHouseSize(roster, Math.Max(customHouseguests.Count + 1, houseSize - 1));
                 Rebuild();

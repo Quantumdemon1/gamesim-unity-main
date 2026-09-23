@@ -203,7 +203,7 @@ namespace Gamesim.Episode
         }
 
         /// <summary>The diary's column (mockup-11), at the resting text size.</summary>
-        private const float DiaryColumnWidth = 384f;
+        private const float DiaryColumnWidth = 420f;
         /// <summary>The ballot's panel (mockup-08), at the resting text size.</summary>
         private const float BallotPanelWidth = 640f;
         private const float BallotPanelHeight = 520f;

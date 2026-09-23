@@ -53,7 +53,9 @@ namespace Gamesim.Episode
                     glyph.sprite = mark; glyph.color = UiTheme.Heading; glyph.preserveAspect = true; glyph.raycastTarget = false;
                     x += 34f * s;
                 }
+                // Stops short of Close, which shares the head's top line.
                 var heading = FixedText(header, title, 21, UiTheme.Heading, new Vector2(x, -34f * s), new Vector2(width - x - 24f, 30f * s));
+                heading.rectTransform.sizeDelta = new Vector2(Mathf.Max(80f, width - x - 30f), 30f * s);
                 if (medium != null) heading.font = medium;
                 AutoSize(heading, 15);
             }
@@ -137,11 +139,11 @@ namespace Gamesim.Episode
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
 
-            float textX = 66f * s, chevron = 18f * s;
-            float textWidth = Mathf.Max(80f, ContentWidth() - textX - chevron - 26f);
+            float textX = 60f * s, chevron = 18f * s;
+            float textWidth = Mathf.Max(80f, ContentWidth() - textX - chevron - 22f);
             float y = 12f * s;
 
-            var title = NewText(rect, caption, 17, Paper);
+            var title = NewText(rect, caption, 16, Paper);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) title.font = semibold;
             float titleHeight = Mathf.Ceil(title.GetPreferredValues(title.text, textWidth, 0f).y) + 2f;
@@ -172,7 +174,7 @@ namespace Gamesim.Episode
             {
                 var place = mark.rectTransform;
                 place.anchorMin = place.anchorMax = new Vector2(0f, .5f); place.pivot = new Vector2(0f, .5f);
-                place.anchoredPosition = new Vector2(16f * s, 0f);
+                place.anchoredPosition = new Vector2(14f * s, 0f);
             }
             HudPrimitives.Chevron(rect, UiTheme.Hairline, chevron).anchoredPosition = new Vector2(-14f, 0f);
             return button;

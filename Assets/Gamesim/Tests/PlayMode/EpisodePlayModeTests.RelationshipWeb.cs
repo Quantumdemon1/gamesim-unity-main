@@ -165,6 +165,37 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// Mockup-07's faces are a hundred units across on a ring that fills the page, with the key
+        /// on a card at the lower left. The web drew them at 46 on a fixed ring whatever the room it
+        /// had, a small cluster in the middle of an empty notebook, over a strip of key.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RelationshipWeb_FacesGrowIntoTheRoomTheNotebookGives()
+        {
+            RelationshipWeb.ClearSelection();
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases();
+            var graph = Under(Section(), RelationshipWeb.GraphName);
+            var viewport = ScreenRect(graph.GetComponentInParent<ScrollRect>().viewport);
+            var frame = ScreenRect(graph);
+            Assert.That(frame.height, Is.GreaterThan(viewport.height * .9f), "The web takes the notebook's page.");
+
+            var nodes = graph.GetComponentsInChildren<Button>();
+            foreach (var node in nodes)
+                Assert.That(ScreenRect((RectTransform)node.transform).height, Is.GreaterThan(viewport.height * .13f),
+                    "'" + node.name + "' is a face on a page, not a coin in the middle of one.");
+
+            var legend = ScreenRect(Under(Section(), RelationshipWeb.LegendName));
+            Assert.That(legend.xMin - frame.xMin, Is.LessThan(2f), "The key's card stands at the web's left edge.");
+            Assert.That(legend.yMin - frame.yMin, Is.LessThan(2f), "and at its foot.");
+            foreach (var node in nodes)
+                Assert.That(legend.Overlaps(ScreenRect((RectTransform)node.transform)), Is.False, "The key covers '" + node.name + "'.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
         /// One node per houseguest still in the house, one edge per node — never an edge between
         /// two NPCs, because the player cannot know what they think of each other — and the column
         /// reading the player until a portrait is pressed.

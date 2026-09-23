@@ -91,7 +91,7 @@ namespace Gamesim.Presentation
         /// <summary>The card's width, and its rows', at the standard text size.</summary>
         private const float CardWidth = 760f;
         private const float RowHeight = 36f;
-        private const float HeaderHeight = 176f;
+        private const float HeaderHeight = 196f;
         private const float FooterHeight = 104f;
         private const float MinimumHeight = 500f;
 
@@ -144,19 +144,19 @@ namespace Gamesim.Presentation
             if(halo!=null)
             {
                 var light=new GameObject("Winner glow",typeof(RectTransform),typeof(Image)).GetComponent<Image>();
-                light.rectTransform.SetParent(column,false);Place(light.rectTransform,8*scale,74*scale,122*scale,122*scale);
+                light.rectTransform.SetParent(column,false);Place(light.rectTransform,14*scale,64*scale,110*scale,110*scale);
                 light.sprite=halo;light.color=new Color(1f,1f,1f,.6f);light.preserveAspect=true;light.raycastTarget=false;
             }
             var portrait=HudPrimitives.Portrait(column,winner.Portrait,UiTheme.Gold,64*scale,3*scale,false,winner.Character);
-            Place(portrait,34*scale,100*scale,70*scale,70*scale);
-            var line=Label("Winner",column,winner.IsPlayer?winner.Name+" \u00b7 You win!":winner.Name+" wins!",24,120,108,inner/scale-90,36,UiTheme.Gold);
+            Place(portrait,34*scale,84*scale,70*scale,70*scale);
+            var line=Label("Winner",column,winner.IsPlayer?winner.Name+" \u00b7 You win!":winner.Name+" wins!",24,120,100,inner/scale-90,36,UiTheme.Gold);
             var semibold=UiTheme.Font(UiTheme.Weight.SemiBold);if(semibold!=null)line.font=semibold;
             Fit(line,14);
             showingDetails=false;
             standingsPanel=new GameObject("Competition standings",typeof(RectTransform)).GetComponent<RectTransform>();
             standingsPanel.SetParent(column,false);standingsPanel.anchorMin=Vector2.zero;standingsPanel.anchorMax=Vector2.one;
             standingsPanel.offsetMin=standingsPanel.offsetMax=Vector2.zero;
-            var heading=Label("Standings heading",standingsPanel,"COMMITTED STANDINGS  \u00b7  Scores are relative to this competition",11,32,HeaderHeight-26,inner/scale,18,UiTheme.Muted);
+            var heading=Label("Standings heading",standingsPanel,"COMMITTED STANDINGS  \u00b7  Scores are relative to this competition",11,32,HeaderHeight-24,inner/scale,18,UiTheme.Muted);
             heading.characterSpacing=4f;Fit(heading,9);
             double best=0;foreach(var entry in standings)best=System.Math.Max(best,entry.Score);if(best<=0)best=1;
             float barX=300f, barWidth=inner/scale-300f-80f;

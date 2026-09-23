@@ -296,18 +296,20 @@ namespace Gamesim.Episode
             if (ballot) RenderPlayerDecision(state, true);
             else
             {
-                hud.Aside("Your own memories, and the decisions that are yours to make. Looking back costs you nothing.");
+                // The things to do here come first, as mockup-11's cards do; what they cost and
+                // what the room keeps follow them.
                 RenderDiaryReflection(state);
+                RenderStudyHouse(state);
                 if (state.pendingDiary == null)
                 {
                     hud.DiarySection("YOUR PENDING DECISION");
-                    hud.Aside("Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
-                    if (!RenderPlayerDecision(state, true))
-                        hud.Paragraph(state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId)
+                    if (RenderPlayerDecision(state, true))
+                        hud.Aside("Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
+                    else
+                        hud.Aside(state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId)
                             ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
                             : "You have no private decision to make right now. You can review your own memories or leave the room.");
                 }
-                RenderStudyHouse(state);
             }
             RenderDiaryRecord(state);
             hud.DiarySection("YOUR PRIVATE REFLECTIONS");
@@ -332,9 +334,9 @@ namespace Gamesim.Episode
         {
             if (state.phase != EpisodePhase.Social || state.Find(state.playerId)?.status != ContestantStatus.Active) return;
             hud.DiarySection("STUDY THE HOUSE");
-            hud.Aside("Study here in the private room during free time. Each confirmed approach uses one of the "
+            string cost = "Study here in the private room during free time. Each confirmed approach uses one of the "
                 + EpisodeEngine.SocialActionBudget(state) + " social actions this week allows. "
-                + "Opening, reading, and cancelling cost nothing.");
+                + "Opening, reading, and cancelling cost nothing.";
             if (state.pendingDiary != null)
             { hud.Paragraph("Answer or skip your pending private reflection before studying."); return; }
             if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
@@ -344,7 +346,7 @@ namespace Gamesim.Episode
             hud.OptionCard(EpisodeHud.StudySneakCaption, WebStudyHouse.SuccessChance("sneak-peek", null)
                 + "% success chance: +2 preparation on success, \u22121 on failure.", "eye",
                 () => ReviewStudyHouse(state, "sneak-peek"));
-            hud.Aside("Preparation stays between 0 and 5, and changes only when you confirm.");
+            hud.Aside("Preparation stays between 0 and 5, and changes only when you confirm. " + cost);
         }
 
         private void RenderDiaryReflection(EpisodeState state)

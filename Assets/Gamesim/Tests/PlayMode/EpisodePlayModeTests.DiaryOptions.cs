@@ -40,7 +40,7 @@ namespace Gamesim.Tests.PlayMode
             // A column at the right-hand side, leaving the chair in view, with the strip and the
             // rail still up around it.
             var column = ScreenRect(ActiveRect("Episode panel"));
-            Assert.That(column.width, Is.LessThan(Screen.width * .32f), "The diary is a column, not a panel over the room.");
+            Assert.That(column.width, Is.LessThan(Screen.width * .35f), "The diary is a column, not a panel over the room.");
             Assert.That(Screen.width - column.xMax, Is.LessThan(Screen.width * .03f), "The column stands at the right-hand side.");
             foreach (var name in new[] { CastRail.RootName, IconRail.RootName })
             {

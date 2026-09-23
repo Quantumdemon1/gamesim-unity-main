@@ -62,6 +62,56 @@ namespace Gamesim.Presentation
         private const float ChipDrop = 26f;
         private const float TitleHeight = 56f;
         private const float LegendHeight = 100f;
+        /// <summary>The key's card at the web's lower left (mockup-07), at the resting text size.</summary>
+        private const float LegendWidth = 196f, LegendTall = 278f;
+        /// <summary>The largest a face gets, and the share of the ring's reach it takes.</summary>
+        private const float LargestNode = 104f, NodeShare = .38f;
+
+        /// <summary>
+        /// The web's geometry for the room it has: how far the ring reaches, how big a face is, and
+        /// where the hub stands. Mockup-07's faces are a hundred units across on a ring that fills
+        /// the page; the web drew them at 46 on a fixed 112-unit ring whatever the page's size,
+        /// a small cluster in the middle of an empty notebook.
+        /// </summary>
+        private struct Shape
+        {
+            public float Radius, Node, Player, Height, HubShift;
+        }
+
+        private static Shape Measure(EpisodeState state, float scale, float availableWidth, float availableHeight)
+        {
+            int count = Others(state).Count;
+            var shape = new Shape();
+            if (float.IsInfinity(availableHeight) || availableHeight <= 0f)
+            {
+                // No room given: the ring the web always drew.
+                shape.Radius = Radius(count, scale);
+                shape.Node = NodeSize * scale; shape.Player = PlayerSize * scale;
+                shape.Height = TitleHeight * scale + 2f * (shape.Radius + shape.Node * .5f + ChipDrop * scale) + 12f * scale;
+                shape.HubShift = LegendWidth * scale * .5f;
+                return shape;
+            }
+            shape.Height = availableHeight - 2f;
+            float reachY = (shape.Height - TitleHeight * scale - 12f * scale) * .5f;
+            float reach = reachY;
+            if (!float.IsInfinity(availableWidth) && availableWidth > 0f)
+            {
+                // Beside the column, and clear of the key's card at the lower left: the hub stands
+                // half the card's width right of the area's centre.
+                float area = availableWidth - (ColumnWidth + Gap) * scale - 14f;
+                reach = Mathf.Min(reach, (area - LegendWidth * scale) * .5f - 8f * scale);
+            }
+            float least = NodeSize * scale;
+            float node = Mathf.Clamp(reach * NodeShare, least, LargestNode * scale);
+            // Neighbours on the ring keep their name chips apart: a chip is as wide as its node's hit area.
+            float step = count > 1 ? 2f * Mathf.Sin(Mathf.PI / count) : 2f;
+            while (node > least && (reach - node * .5f - ChipDrop * scale) * step < node + 18f * scale) node -= 2f;
+            shape.Node = Mathf.Max(least, node);
+            shape.Player = Mathf.Max(PlayerSize * scale, shape.Node * 1.1f);
+            shape.Radius = Mathf.Max(shape.Player * .5f + shape.Node * .5f + ChipDrop * scale, reach - shape.Node * .5f - ChipDrop * scale);
+            shape.HubShift = LegendWidth * scale * .5f;
+            return shape;
+        }
 
         /// <summary>What the player's own record says a relationship is.</summary>
         public enum Kind { Neutral, Friendship, Alliance, Rivalry, Distrust }
@@ -276,7 +326,8 @@ namespace Gamesim.Presentation
         /// </summary>
         public static RectTransform Build(
             Transform parent, EpisodeState state, float scale, TMP_FontAsset font,
-            Func<string, Texture> portrait, Action<string> select, float availableHeight = float.PositiveInfinity)
+            Func<string, Texture> portrait, Action<string> select, float availableHeight = float.PositiveInfinity,
+            float availableWidth = float.PositiveInfinity)
         {
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
@@ -289,10 +340,9 @@ namespace Gamesim.Presentation
             if(filterSession!=state.sessionId){filterSession=state.sessionId;filter=Filter.All;}
 
             var focus = SelectedFor(state);
-            bool sideLegend = GraphHeight(state,scale) + 6f > availableHeight;
-            float height = GraphHeight(state,scale) - (sideLegend ? LegendHeight * scale : 0f);
-            Graph(root, state, focus, scale, font, portrait, select, sideLegend);
-            Column(root, state, focus, scale, font, portrait, height);
+            var shape = Measure(state, scale, availableWidth, availableHeight);
+            Graph(root, state, focus, scale, font, portrait, select, shape);
+            Column(root, state, focus, scale, font, portrait, shape.Height);
             Filters(root,state,scale,font,select);
             return root;
         }
@@ -300,9 +350,6 @@ namespace Gamesim.Presentation
         private static float Radius(int count, float scale) =>
             Mathf.Min((112f + Mathf.Max(0, count - 6) * 6f) * scale, 140f);
 
-        private static float GraphHeight(EpisodeState state,float scale)
-            => TitleHeight*scale + 2f*(Radius(Others(state).Count,scale)+NodeSize*scale*.5f+ChipDrop*scale)
-                + 12f*scale + LegendHeight*scale;
 
         private static void Filters(RectTransform root,EpisodeState state,float scale,TMP_FontAsset font,Action<string> refresh)
         {
@@ -345,17 +392,16 @@ namespace Gamesim.Presentation
 
         private static void Graph(
             RectTransform root, EpisodeState state, ContestantState focus, float scale, TMP_FontAsset font,
-            Func<string, Texture> portrait, Action<string> select, bool sideLegend)
+            Func<string, Texture> portrait, Action<string> select, Shape shape)
         {
             var area = new GameObject(GraphName, typeof(RectTransform)).GetComponent<RectTransform>();
             area.SetParent(root, false);
 
             var all = Others(state);
             var others = FilteredOthers(state);
-            float radius = Radius(all.Count, scale);
-            float ringExtent = radius + NodeSize * scale * .5f + ChipDrop * scale;
-            float legendTop = TitleHeight * scale + ringExtent * 2f + 12f * scale;
-            float height = legendTop + (sideLegend ? 0f : LegendHeight * scale);
+            float radius = shape.Radius;
+            float ringExtent = radius + shape.Node * .5f + ChipDrop * scale;
+            float height = Mathf.Max(shape.Height, TitleHeight * scale + ringExtent * 2f + 12f * scale);
             var element = area.gameObject.AddComponent<LayoutElement>();
             element.flexibleWidth = 1f;
             element.minHeight = height; element.preferredHeight = height;
@@ -375,7 +421,9 @@ namespace Gamesim.Presentation
             hub.SetParent(area, false);
             hub.anchorMin = new Vector2(.5f, 1f); hub.anchorMax = new Vector2(.5f, 1f);
             hub.pivot = new Vector2(.5f, .5f);
-            hub.anchoredPosition = new Vector2(sideLegend ? -90f * scale : 0f, -(TitleHeight * scale + ringExtent));
+            // Centred in the room the title leaves, and half the key's width right of centre so
+            // the key's card at the lower left stands clear of the ring.
+            hub.anchoredPosition = new Vector2(shape.HubShift, -(TitleHeight * scale + (height - TitleHeight * scale) * .5f));
             hub.sizeDelta = Vector2.zero;
 
             // Edges first, so the portraits draw over them.
@@ -385,15 +433,15 @@ namespace Gamesim.Presentation
 
             string focusId = focus != null ? focus.id : null;
             for (int i = 0; i < others.Count; i++)
-                Node(hub, state, others[i], Ring(all.IndexOf(others[i]), all.Count, radius), NodeSize * scale, scale, font, portrait,
+                Node(hub, state, others[i], Ring(all.IndexOf(others[i]), all.Count, radius), shape.Node, scale, font, portrait,
                     false, others[i].id == focusId, select);
 
             var player = state.Find(state.playerId);
             if (player != null)
-                Node(hub, state, player, Vector2.zero, PlayerSize * scale, scale, font, portrait,
+                Node(hub, state, player, Vector2.zero, shape.Player, scale, font, portrait,
                     true, player.id == focusId, select);
 
-            Legend(area, sideLegend ? TitleHeight * scale : legendTop, scale, font, sideLegend);
+            Legend(area, scale, font);
         }
 
         private static void Edge(RectTransform hub, Vector2 from, Vector2 to, Kind kind, double score, float scale)
@@ -517,7 +565,7 @@ namespace Gamesim.Presentation
             MoodBadge(rim, actor.mood, diameter, scale);
 
             var chip = NameChip(holder, isPlayer ? "YOU" : GivenName(actor.name),
-                isPlayer ? UiTheme.Accent : UiTheme.Paper, hit, scale, font);
+                isPlayer ? UiTheme.Accent : UiTheme.Paper, hit, scale, font, diameter >= 80f * scale);
             chip.anchorMin = new Vector2(.5f, 0f); chip.anchorMax = new Vector2(.5f, 0f);
             chip.pivot = new Vector2(.5f, 1f);
             chip.anchoredPosition = new Vector2(0f, 4f * scale);
@@ -562,17 +610,19 @@ namespace Gamesim.Presentation
             image.preserveAspect = true; image.raycastTarget = false;
         }
 
-        private static RectTransform NameChip(Transform parent, string word, Color tint, float availableWidth, float scale, TMP_FontAsset font)
+        private static RectTransform NameChip(Transform parent, string word, Color tint, float availableWidth, float scale, TMP_FontAsset font,
+            bool large = false)
         {
             // A legal custom name may be a 100-character word. Keep its label within its
             // node's reserved width; selecting the named button reveals the full identity.
-            float width = Mathf.Min(availableWidth,Mathf.Max(40f, word.Length * 7.4f + 16f) * scale);
-            float height = 19f * scale;
+            float letter = large ? 9f : 7.4f;
+            float width = Mathf.Min(availableWidth,Mathf.Max(40f, word.Length * letter + 20f) * scale);
+            float height = (large ? 24f : 19f) * scale;
             var chip = HudPrimitives.Fill("Name chip", parent, new Color(UiTheme.Background.r, UiTheme.Background.g, UiTheme.Background.b, .92f), 7);
             chip.sizeDelta = new Vector2(width, height);
             UiTheme.PackSliced(chip.GetComponent<Image>(), PackArt.Nameplate, 6f * scale);
             UiTheme.AddBorder(chip, 7, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .7f));
-            var label = Text(chip, word, 12, tint, UiTheme.Weight.Medium, scale, font, TextAlignmentOptions.Center);
+            var label = Text(chip, word, large ? 15 : 12, tint, UiTheme.Weight.Medium, scale, font, TextAlignmentOptions.Center);
             label.enableAutoSizing = false;
             label.overflowMode = TextOverflowModes.Ellipsis;
             label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
@@ -580,20 +630,19 @@ namespace Gamesim.Presentation
             return chip;
         }
 
-        /// <summary>The key, under the ring: what each line means, and what each mark on a face means.</summary>
-        private static void Legend(RectTransform area, float top, float scale, TMP_FontAsset font, bool side)
+        /// <summary>
+        /// The key, on its own card at the web's lower left as mockup-07 draws it: what each line
+        /// means, what each mark on a face means, and the caveat that all of it is the player's
+        /// reading. It was a strip under the ring, which cost the ring a hundred units of height.
+        /// </summary>
+        private static void Legend(RectTransform area, float scale, TMP_FontAsset font)
         {
+            const bool side = true;
             var legend = new GameObject(LegendName, typeof(RectTransform)).GetComponent<RectTransform>();
             legend.SetParent(area, false);
-            legend.anchorMin = new Vector2(0f, 1f); legend.anchorMax = new Vector2(1f, 1f);
-            legend.pivot = new Vector2(.5f, 1f);
-            legend.anchoredPosition = new Vector2(0f, -top);
-            legend.sizeDelta = new Vector2(0f, LegendHeight * scale);
-            if(side)
-            {
-                legend.anchorMin = legend.anchorMax = Vector2.one; legend.pivot = Vector2.one;
-                legend.sizeDelta = new Vector2(180f * scale,280f * scale);
-            }
+            legend.anchorMin = legend.anchorMax = Vector2.zero; legend.pivot = Vector2.zero;
+            legend.anchoredPosition = Vector2.zero;
+            legend.sizeDelta = new Vector2(LegendWidth * scale, LegendTall * scale);
 
             // The key on a card of its own, as the mockup draws it, behind everything it holds.
             var card = new GameObject("Legend card", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
@@ -605,7 +654,9 @@ namespace Gamesim.Presentation
             ground.raycastTarget = false;
             if (!UiTheme.PackSliced(ground, PackArt.PanelResting, 12f * scale)) UiTheme.Style(ground, UiTheme.GlassFill, 10);
 
-            float cell = 128f * scale, rowHeight = 20f * scale;
+            var heading = Text(legend, "Relationship legend", 14, UiTheme.Paper, UiTheme.Weight.SemiBold, scale, font);
+            Place(heading.rectTransform, 12f * scale, -10f * scale, (LegendWidth - 24f) * scale, 20f * scale);
+            float cell = 128f * scale, rowHeight = 20f * scale, top = 38f * scale;
             var lines = new[]
             {
                 ("Friendship", Kind.Friendship),
@@ -616,8 +667,8 @@ namespace Gamesim.Presentation
             };
             for (int i = 0; i < lines.Length; i++)
             {
-                float x = 6f * scale + (side ? 0 : i % 3) * cell;
-                float y = -(side ? i : i / 3) * rowHeight;
+                float x = 12f * scale + (side ? 0 : i % 3) * cell;
+                float y = -top - (side ? i : i / 3) * rowHeight;
                 var (caption, kind) = lines[i];
                 var tint = EdgeColour(kind);
                 float weight = (kind == Kind.Neutral ? 1.5f : 3f) * scale;
@@ -645,10 +696,10 @@ namespace Gamesim.Presentation
                 ("veto-token", "Veto", UiTheme.Gold),
                 ("target", "Nominee", UiTheme.Danger),
             };
-            float markRow = -(side ? 6f : 2f) * rowHeight;
+            float markRow = -top - (side ? 5.4f : 2f) * rowHeight;
             for (int i = 0; i < marks.Length; i++)
             {
-                float x = 6f * scale + (side ? 0 : i) * cell;
+                float x = 12f * scale + (side ? 0 : i) * cell;
                 float markY = markRow - (side ? i * rowHeight : 0f);
                 var (icon, caption, tint) = marks[i];
                 var glyph = UiTheme.Icon(icon);
@@ -675,10 +726,10 @@ namespace Gamesim.Presentation
             note.textWrappingMode = TextWrappingModes.Normal;
             note.rectTransform.anchorMin = new Vector2(0f, 1f); note.rectTransform.anchorMax = new Vector2(1f, 1f);
             note.rectTransform.pivot = new Vector2(.5f, 1f);
-            note.rectTransform.anchoredPosition = new Vector2(0f, -(side ? 10f : 3f) * rowHeight - 4f * scale);
-            note.rectTransform.offsetMin = new Vector2(6f * scale, note.rectTransform.offsetMin.y);
-            note.rectTransform.offsetMax = new Vector2(-6f * scale, note.rectTransform.offsetMax.y);
-            note.rectTransform.sizeDelta = new Vector2(note.rectTransform.sizeDelta.x, (side ? 72f : 36f) * scale);
+            note.rectTransform.anchoredPosition = new Vector2(0f, -top - (side ? 8.6f : 3f) * rowHeight - 2f * scale);
+            note.rectTransform.offsetMin = new Vector2(12f * scale, note.rectTransform.offsetMin.y);
+            note.rectTransform.offsetMax = new Vector2(-12f * scale, note.rectTransform.offsetMax.y);
+            note.rectTransform.sizeDelta = new Vector2(note.rectTransform.sizeDelta.x, (side ? 54f : 36f) * scale);
         }
 
         // ------------------------------------------------------------------ the column

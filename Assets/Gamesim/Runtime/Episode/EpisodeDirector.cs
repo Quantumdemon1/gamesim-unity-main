@@ -646,6 +646,10 @@ namespace Gamesim.Episode
                     // does the body that cheers, so a houseguest can never celebrate a result the
                     // card puts second. The player cheers on the same terms as anyone else.
                     var standings = CompetitionStandings(result.state);
+                    // The result is the beat now. A ceremony card the last beat left up is over, or
+                    // it plays on under the standings: the veto draw's field sat behind the veto's
+                    // result, its players and its "press to continue" showing through the glass.
+                    EndCeremonyCards();
                     if (competitionCard != null)
                         competitionCard.Play(CompetitionTitle(result.state),
                             EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion), result.state.week,
@@ -659,7 +663,7 @@ namespace Gamesim.Episode
                         && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                 if (field != null && takeover != null)
                 {
-                    EndCeremonyCards();
+                    EndCeremonyCards(includingResult: competition == null);
                     takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
                         VetoField(result.state), reducedMotion);
                 }
@@ -673,7 +677,7 @@ namespace Gamesim.Episode
                     // but a player who commits the next beat inside that time got the old card
                     // over the new one: the nomination's keys sit at sort 110 over the takeover's
                     // 100, so the veto field played underneath a finished nomination ceremony.
-                    if (field == null) EndCeremonyCards();
+                    if (field == null) EndCeremonyCards(includingResult: competition == null);
                     // The takeover opens the scene and the sting reports the result, so they play
                     // together rather than instead of each other: the card is over by the time the
                     // strip has finished its own entrance.
@@ -715,12 +719,20 @@ namespace Gamesim.Episode
             Render(); return result;
         }
 
-        /// <summary>Takes down every ceremony card still on screen, before the next one plays.</summary>
-        private void EndCeremonyCards()
+        /// <summary>
+        /// Takes down every ceremony card still on screen, before the next one plays - and, when
+        /// <paramref name="includingResult"/>, a competition's standings from an earlier beat. The
+        /// standings wait for Continue, and in play they hold the input until they get it; but a
+        /// commit that arrives past them (the walkthrough's do) carried the Head of Household's
+        /// result through the nominations, the veto draw and the veto itself, every later card
+        /// stacked on it. A commit that produced the result it is showing keeps it.
+        /// </summary>
+        private void EndCeremonyCards(bool includingResult = false)
         {
             if (takeover != null) takeover.Cancel();
             if (voteReveal != null) voteReveal.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
+            if (includingResult && competitionCard != null) competitionCard.Cancel();
         }
 
         /// <summary>

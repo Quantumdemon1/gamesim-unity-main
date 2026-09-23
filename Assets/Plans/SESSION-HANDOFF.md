@@ -17,14 +17,16 @@ conversation / ceremonies / decisions, `2c176c3` diary, ring, notebook and web t
 the diary as a room of options, the ballot, the cast as photographs, `94b3cca` the front door,
 the web's faces, room names, stale results, `fa79d3b` recap and report on glass, the sting's
 headline, the competition cards, `5339cc8` the reveal fix and settings, `54d1ba6` the status floor,
-`f03aa0f` Nearby, the entrant strip, the confessional's caption, the notebook's head.
+`f03aa0f` Nearby, the entrant strip, the confessional's caption, the notebook's head, `76f2488` the
+speech bar, `558fc3d` name plates, the dial's discs, one follow marker, the creator's sliders,
+`267259e` the overview's feed, the house event card, cast select's dressing.
 
 | Mockup | Screen | Where it stands |
 |---|---|---|
 | 01 | HUD | Top bar of chips, icon rail, right column (live feed, recent events, this week), cast strip with quote. |
-| 02 | Cast select | Photo cards, action-blue pills, house-size stepper, pack night ground. No featured rail or top-right stats. |
-| 03 | Overview | Room chips with glyphs over each room (`RoomLabels`), "Who is where" column. |
-| 04 | House event | `HouseEventHeader` + `EventChoices` tiles in the decision band. |
+| 02 | Cast select | Photo cards on the lit ground with no frame round them, the mockup's type sizes, the brand in the corner, a featured rail of the roster's faces (decoration: never a second control with a houseguest's name), the corner lines. No top-right stats: a season has no social points or day count to put there. |
+| 03 | Overview | Room chips with glyphs over each room (`RoomLabels`); the camera looks `OverviewLift` nearer than the house's centre so the near rooms clear the status line; the live feed heads the column with "Who is where" under it, each row wearing its chip's glyph. |
+| 04 | House event | `ActivityLayout.HouseEvent`: a 760-wide card low in the free area (`HouseEventHeader`, `EventChoices` tiles, then the rest of the phase panel a scroll below), and a still shot of the event's people when they stand together (`FrameHouseEvent`), let go with the panel. No Conflict Status card: the game keeps no tension reading between two houseguests. |
 | 05 | Competition | Challenge / timer / competitors cards over the yard; assembly card; while it is played the strip says Competing / Sitting out and the player's own chip carries their live progress (hits, pairs, seconds held). The others' progress is not drawn: their scores do not exist until the result commits, and the web build shows none either. |
 | 06 | Night | The Nearby card in the week card's place while a conversation is witnessed (Listen in commits the house's `Eavesdrop`, cost and odds printed), and the speech bar in the status line's place. |
 | 07 | Relationship web | The notebook's slim head; geometry sized from the page; icon pill tabs; legend card lower left; wider column led by a larger face; the speech bar at the foot (the player, and where they stand by their own reading). |
@@ -32,7 +34,8 @@ headline, the competition cards, `5339cc8` the reveal fix and settings, `54d1ba6
 | 09 | HoH nominees | `ActivityLayout.Nominations` band of candidate cards. |
 | 10 | Nomination ceremony | `KeyCeremony` card with key slots. |
 | 11 | Diary room | `ActivityLayout.Diary`: a right-hand column of option cards; `ScreenHeader` in place of the phase band; the chair captioned with the player's latest memory. |
-| 12 | Conversation | Column + dial, two-shot framing. |
+| 12 | Conversation | Column + dial: 96-unit glass discs with the caption inside under the glyph, centred under the pair; the two-shot puts the pair either side of it with their faces in the upper third. |
+| 01, 12 | World | Every houseguest's name on the pack's name plate (`HouseNpc.Plate`), and the follow diamond over the plate with a neon ring at the feet (`FollowRing`). |
 
 Also restyled with no mockup of their own, in the same language: main menu, settings (its own tall
 panel and head), weekly recap, season report, tutorial card, opening titles, ceremony takeover
@@ -41,7 +44,7 @@ titles, competition result card.
 **How it was verified.** Every screen above has a capture taken in batchmode (`CaptureFraming`,
 16:9) by the test that opens it: `cast-select`, `diary-options`, `ballot-diary`/`-review`,
 `nominations-band`, `house-event`, `conversation-panel`, `overview`, `main-menu`, `settings`,
-`creator`, `weekly-recap`, `season-report`, `competition-assembly`/`-practice`, and the walkthrough
+`creator`, `weekly-recap`, `season-report`, `competition-assembly`/`-practice`, `followed`, and the walkthrough
 frames, and `nearby` and `opening-title` (the opening holds its card headless only for that test). They land in `D:\GamesimAcceptance\*.png` after a run. Look at them;
 the tests assert structure, not appearance.
 
@@ -74,6 +77,12 @@ the tests assert structure, not appearance.
 - **A test that checks "visible" may not check "where".** The ballot's Confirm stayed on screen
   in a tall panel even when a mutation moved it under the explanation; the test now measures the gap
   to the cards.
+- **A Slider owns its fill's and handle's anchors.** It sets them to the full height of their
+  parent every time it draws, so a 6-unit fill parented to the track stood as tall as the track.
+  Give each its own area of the height it should have (`CharacterCreator.SliderArea`).
+- **A per-frame follow that re-derives a shot's pivot must derive all of it.** The two-shot's
+  sideways shift held for the shot's first frame only: `LateUpdate` rebuilt the focus from the
+  lift alone. Both now go through `HouseCameraRig.TwoShotPivot`.
 - **Commit exactly what was tested.** Work continued on C: while D: ran; the commits were staged from
   the D: copy's content (`git hash-object -w --path` + `update-index --cacheinfo`) so each commit is
   the snapshot its green run tested, not the working tree.
@@ -83,7 +92,10 @@ screen - the game writes the player no inner monologue, and a status line is not
 ("Maya Hassan: Build a dependable voting partnership..." is her goal, not her words), so neither
 is dressed up as a quote. `EpisodeHud.SpeechBar`.
 
-**What remains:** a creator preview that renders in batchmode.
+**What remains:** the parts of the mockups the game has no data for - social points, a day count,
+tension between two houseguests, other competitors' live scores, the player's inner lines - are
+left out rather than invented. The creator's preview now renders in batchmode captures (the test
+waits for `StudioPreview.IsBuilding`).
 
 ---
 

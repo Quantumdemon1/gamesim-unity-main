@@ -87,6 +87,29 @@ namespace Gamesim.Episode
         /// as a strap beneath it - on the set itself, not in a card. The mockups float the logo, and
         /// a bordered box around it made it the heaviest panel in the bar.
         /// </summary>
+        /// <summary>The shade's name, so a test can find it the way it finds a named panel.</summary>
+        public const string TopShadeName = "Top shade";
+
+        /// <summary>
+        /// The dark band every mockup has along its top edge, under the brand and the chips. The
+        /// brand has no card of its own, and wherever the camera put a lit sign or a lamp behind
+        /// it the wordmark went into the set. Behind everything else on the canvas; it takes no
+        /// click.
+        /// </summary>
+        private void TopShade()
+        {
+            var shade = new GameObject(TopShadeName, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            shade.rectTransform.SetParent(canvas.transform, false);
+            shade.rectTransform.SetAsFirstSibling();
+            shade.rectTransform.anchorMin = new Vector2(0f, 1f); shade.rectTransform.anchorMax = new Vector2(1f, 1f);
+            shade.rectTransform.pivot = new Vector2(.5f, 1f);
+            shade.rectTransform.sizeDelta = new Vector2(0f, TopBarTop + TopBarHeight + 64f);
+            shade.rectTransform.anchoredPosition = Vector2.zero;
+            shade.sprite = UiTheme.FadeDown();
+            shade.color = new Color(UiTheme.Background.r, UiTheme.Background.g, UiTheme.Background.b, .78f);
+            shade.raycastTarget = false;
+        }
+
         private void BrandCard(Transform parent, EpisodeState state)
         {
             // A bare rect, named for the tests that measure the band: they need where it is, and

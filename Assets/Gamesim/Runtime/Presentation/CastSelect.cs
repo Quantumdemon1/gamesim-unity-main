@@ -980,6 +980,9 @@ namespace Gamesim.Presentation
             if (weight != null) label.font = weight;
             label.text = Localisation.Text(text);
             label.enableAutoSizing = true; label.fontSizeMax = 16f; label.fontSizeMin = 10f;
+            // One line, shrinking to fit: allowed to wrap, "Create your own houseguest" broke onto
+            // a second line inside a pill one line tall rather than coming down a size.
+            label.textWrappingMode = TextWrappingModes.NoWrap;
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(8f, 0f);
@@ -1101,8 +1104,9 @@ namespace Gamesim.Presentation
         /// <summary>The rail's name, so a test can find it the way it finds a named panel.</summary>
         public const string FeaturedRailName = "Featured rail";
         private const int FeaturedCount = 7;
-        private const float FeaturedFace = 84f;
-        private const float FeaturedStep = 108f;
+        private const float FeaturedFace = 76f;
+        /// <summary>A ring, its name and a clear gap before the next ring.</summary>
+        private const float FeaturedStep = 114f;
 
         /// <summary>
         /// Mockup-02's featured rail down the left edge: the first faces of the roster in rings,
@@ -1119,7 +1123,7 @@ namespace Gamesim.Presentation
             rail.anchorMin = rail.anchorMax = new Vector2(0f, 1f);
             rail.pivot = new Vector2(0f, 1f);
             rail.sizeDelta = new Vector2(140f, 60f + shown.Count * FeaturedStep);
-            rail.anchoredPosition = new Vector2(32f, -130f);
+            rail.anchoredPosition = new Vector2(32f, -118f);
 
             var heading = HudPrimitives.Label("Featured heading", rail, 14f, UiTheme.Paper, TextAlignmentOptions.TopLeft);
             heading.text = Localisation.Text("FEATURED\nHOUSEGUESTS");

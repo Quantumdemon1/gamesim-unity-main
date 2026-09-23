@@ -33,13 +33,14 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             yield return ApplyTextSize(true);
             WarpPlayer(director.StationPosition);
-            // The two it is about, standing together in the room with the screen.
+            // The two it is about, standing together in the middle of the living room.
+            var living=SceneComponents<Gamesim.House.HouseRoomMarker>().Single(marker=>marker.RoomName=="Living").transform.position;
             for(int i=0;i<ids.Length;i++)
             {
                 var body=SceneComponents<Gamesim.House.HouseNpc>().Single(npc=>npc.Id==ids[i]);
                 var agent=body.GetComponent<UnityEngine.AI.NavMeshAgent>();
                 Assume.That(agent,Is.Not.Null);
-                Assume.That(UnityEngine.AI.NavMesh.SamplePosition(director.StationPosition+new Vector3(i==0?-.8f:.8f,0f,2.4f),out var hit,1.5f,agent.areaMask),Is.True);
+                Assume.That(UnityEngine.AI.NavMesh.SamplePosition(living+new Vector3(i==0?-.7f:.7f,0f,0f),out var hit,1.5f,agent.areaMask),Is.True);
                 Assume.That(agent.Warp(hit.position),Is.True);
             }
             Assert.That(director.TryOpenPhasePanel(),Is.True);

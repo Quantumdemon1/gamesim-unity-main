@@ -217,6 +217,7 @@ namespace Gamesim.Episode
             // and the tagline, as separate chips on one band - never a button among them. The
             // buttons that lived at its right-hand end are rows of the left rail now, which is
             // where every mockup puts navigation.
+            TopShade();
             BrandCard(canvas.transform, state);
             WeekChip(state);
             if (!Compact) ObjectiveChip(state);
@@ -723,8 +724,10 @@ namespace Gamesim.Episode
                 float y = -(36 + i * rowHeight);
                 // The mark each room's chip wears on the map, so a row and its room read as one.
                 HudPrimitives.Glyph("Room mark", column, RoomLabels.Glyph(room.Name), Accent, new Vector2(14, y - 1), 18);
-                FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(40, y), new Vector2(RightColumnWidth - 112f, 20));
-                var count = FixedText(column, room.Occupants.Count.ToString(), 15, Accent, new Vector2(RightColumnWidth - 68f, y), new Vector2(52, 20));
+                // "NOMINATION ROOM" wants 146 at 15; the count keeps a two-digit box at the end.
+                var title = FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(40, y), new Vector2(RightColumnWidth - 88f, 20));
+                AutoSize(title, 12);
+                var count = FixedText(column, room.Occupants.Count.ToString(), 15, Accent, new Vector2(RightColumnWidth - 44f, y), new Vector2(28, 20));
                 count.alignment = TextAlignmentOptions.Right;
                 // Trimmed: a room holding the whole house is a line of eight names, and this row is
                 // 192 px wide beside the room's mark, at a size that has nowhere left to shrink to.

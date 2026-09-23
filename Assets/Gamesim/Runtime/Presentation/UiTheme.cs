@@ -422,6 +422,35 @@ namespace Gamesim.Presentation
             return fadeRight;
         }
 
+        private static Sprite fadeDown;
+
+        /// <summary>A vertical ramp, solid at the top and clear at the bottom: a shade under a band
+        /// of chrome along the frame's top edge. Generated once.</summary>
+        public static Sprite FadeDown()
+        {
+            if (fadeDown != null) return fadeDown;
+            const int width = 4, height = 32;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Fade Down", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                // A texture's first row is its bottom one.
+                float t = y / (height - 1f);
+                byte alpha = (byte)Mathf.RoundToInt(t * t * (3f - 2f * t) * 255f);
+                for (int x = 0; x < width; x++) pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            fadeDown = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            fadeDown.name = texture.name;
+            fadeDown.hideFlags = HideFlags.HideAndDontSave;
+            return fadeDown;
+        }
+
         private static Sprite Fill(int radius) => Cached(FillCache, radius, false);
         private static Sprite OutlineSprite(int radius) => Cached(OutlineCache, radius, true);
 

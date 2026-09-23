@@ -101,10 +101,11 @@ namespace Gamesim.Episode
             var centre = bodies.Aggregate(Vector3.zero, (sum, body) => sum + body.position) / bodies.Length;
             if (bodies.Any(body => Vector3.Distance(body.position, centre) > EventShotReach * .5f)) return;
             framedEventId = item.id;
-            // The pivot at knee height puts the faces in the upper third, over the card.
+            // The pivot under the floor puts the faces in the upper third, over the card, and the
+            // card over their legs - mockup-04's frame.
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
-                Focus = centre + Vector3.up * .4f, Distance = EventShotDistance, Pitch = EventShotPitch, KeepYaw = true,
+                Focus = centre - Vector3.up * .2f, Distance = EventShotDistance, Pitch = EventShotPitch, KeepYaw = true,
                 FieldOfView = HouseCameraRig.TwoShotFieldOfView, Seconds = EventShotSeconds, DepthOfFieldWeight = 1f,
             });
         }

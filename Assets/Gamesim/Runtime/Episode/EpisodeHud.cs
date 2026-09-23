@@ -129,6 +129,7 @@ namespace Gamesim.Episode
         // The canvas is rebuilt on every render, so motion is driven off genuine transitions
         // rather than off the rebuild itself.
         private bool modalWasOpen;
+        private bool expandedPhasePanel;
         private string lastStatusMessage;
         public bool IsTyping => EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null &&
             EventSystem.current.currentSelectedGameObject.GetComponent<TMP_InputField>() != null;
@@ -161,6 +162,7 @@ namespace Gamesim.Episode
 
         public void Begin(EpisodeState state, string message, bool recovery, bool open, bool phasePanel = false)
         {
+            expandedPhasePanel = phasePanel;
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             preferredSelection = selected != null && modal != null && selected.transform.IsChildOf(modal)
                 ? selected.name : null;
@@ -734,6 +736,38 @@ namespace Gamesim.Episode
             return button;
         }
 
+        public Button GridActionFor(RectTransform grid,string contestantId,string caption,Action action)
+        {
+            if (grid == null) return ActionFor(contestantId,caption,action);
+            var portrait = Portrait(contestantId);
+            var rect = Panel(caption,grid,Surface);
+            var button = FinishButton(rect,caption,action,portrait != null ? 62f * FontScale : 16f);
+            if (portrait != null)
+            {
+                var frame = new GameObject("Portrait",typeof(RectTransform),typeof(RawImage)).GetComponent<RectTransform>();
+                frame.SetParent(rect,false);
+                frame.anchorMin = new Vector2(0,.5f); frame.anchorMax = new Vector2(0,.5f); frame.pivot = new Vector2(0,.5f);
+                float side = 44f * FontScale;
+                frame.sizeDelta = new Vector2(side,side);
+                frame.anchoredPosition = new Vector2(8f,0f);
+                var raw = frame.GetComponent<RawImage>();
+                raw.texture = portrait; raw.raycastTarget = false;
+            }
+            Annotate(button,contestantId);
+
+            var layout = grid.GetComponent<GridLayoutGroup>();
+            var element = grid.GetComponent<LayoutElement>();
+            if (layout != null && element != null)
+            {
+                int count = grid.childCount;
+                int columns = Mathf.Max(1,layout.constraintCount);
+                int rows = Mathf.CeilToInt(count / (float)columns);
+                element.minHeight = rows * layout.cellSize.y + Mathf.Max(0,rows - 1) * layout.spacing.y;
+                element.preferredHeight = element.minHeight;
+            }
+            return button;
+        }
+
         /// <summary>
         /// A phase's irreversible/progression action stays visible below the scroll body. This is
         /// the escape hatch for the old "scroll until you find Continue" problem: secondary detail
@@ -759,10 +793,11 @@ namespace Gamesim.Episode
             // Same framing the notebook uses, so a trust number is never mistaken for fact.
             Paragraph("Trust readings are your own perspective; another housemate may feel differently.");
             var selection = FlowText("Choose two houseguests below.",21,Accent);
+            var grid = expandedPhasePanel ? ActionGrid(2,68f) : null;
             foreach (var option in options)
             {
                 var captured = option;
-                var row = Action(option.Label,Portrait(option.Id),() =>
+                Action choose = () =>
                 {
                     if (first == captured.Id) first = null;
                     else if (second == captured.Id) second = null;
@@ -770,10 +805,16 @@ namespace Gamesim.Episode
                     else second = captured.Id;
                     string Label(string id) => Array.Find(options,o=>o.Id==id).Label ?? "—";
                     selection.text = "Selected: " + Label(first) + " and " + Label(second);
-                });
-                Annotate(row, captured.Id);
+                };
+                if (grid != null) GridActionFor(grid,captured.Id,captured.Label,choose);
+                else
+                {
+                    var row = Action(captured.Label,Portrait(captured.Id),choose);
+                    Annotate(row,captured.Id);
+                }
             }
-            Action(commitCaption,() => commit(first,second));
+            if (expandedPhasePanel) FooterAction(commitCaption,() => commit(first,second));
+            else Action(commitCaption,() => commit(first,second));
         }
 
         /// <summary>

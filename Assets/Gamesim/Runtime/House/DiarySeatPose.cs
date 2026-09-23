@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Gamesim.Presentation;
 using UnityEngine;
 using UnityEngine.AI;
@@ -24,6 +25,7 @@ namespace Gamesim.House
         private HouseSeatPresentation seatPose;
         private GameObject studio;
         private Material backdropMaterial;
+        private readonly List<Material> brandingMaterials = new List<Material>();
         public enum VisitPhase { None, Approaching, Aligning, Seating, Seated, Leaving }
         private HousePlayerController player;
         private Vector3 approach;
@@ -145,13 +147,16 @@ namespace Gamesim.House
         {
             if(studio!=null)Destroy(studio);
             if(backdropMaterial!=null)Destroy(backdropMaterial);
+            DestroyBranding();
             studio=new GameObject("Diary interview backdrop");
             studio.transform.SetParent(anchor.transform,false);
             var panel=GameObject.CreatePrimitive(PrimitiveType.Cube);
             panel.name="Upholstered interview wall";
             panel.transform.SetParent(studio.transform,false);
             panel.transform.localPosition=new Vector3(0,1.45f,-.85f);
-            panel.transform.localScale=new Vector3(3.6f,2.9f,.10f);
+            // Wider than the shot, so the confessional fills the frame instead of showing the next
+            // room's walls and neon at both edges.
+            panel.transform.localScale=new Vector3(4.6f,2.9f,.10f);
             var collider=panel.GetComponent<Collider>();collider.enabled=false;Destroy(collider);
             var shader=Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if(shader!=null)
@@ -162,6 +167,13 @@ namespace Gamesim.House
             }
             InterviewLight("Diary key",new Vector3(-1.2f,2.2f,1.7f),1.5f,new Color(1f,.93f,.84f));
             InterviewLight("Diary fill",new Vector3(1.4f,1.8f,1.4f),.7f,new Color(.78f,.87f,1f));
+            DiaryStudioBranding.Dress(studio.transform,brandingMaterials);
+        }
+
+        private void DestroyBranding()
+        {
+            foreach(var material in brandingMaterials)if(material!=null)Destroy(material);
+            brandingMaterials.Clear();
         }
 
         private void InterviewLight(string label,Vector3 at,float intensity,Color colour)
@@ -182,6 +194,7 @@ namespace Gamesim.House
             End();
             if(studio!=null)Destroy(studio);
             if(backdropMaterial!=null)Destroy(backdropMaterial);
+            DestroyBranding();
         }
     }
 }

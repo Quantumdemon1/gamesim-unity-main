@@ -639,7 +639,9 @@ namespace Gamesim.Episode
             // The committed snapshot, not the projection: a projected eviction is not a fact
             // yet, and the set must never show an outcome the save does not hold.
             if (memoryWall != null) memoryWall.Refresh(engine.Snapshot);
-            hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen);
+            hud.Begin(state, message, blockedRecovery,
+                phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen,
+                phaseOpen);
             // Committed state, not the projection: a projected eviction is not a fact, and telling
             // someone they are out of the game is the last claim that should run ahead of the save.
             if (Spectating(engine.Snapshot)) hud.SpectatorNote(SpectatorDetail(engine.Snapshot));
@@ -845,8 +847,18 @@ namespace Gamesim.Episode
                 }
                 else
                 {
-                    foreach (var score in state.competitionScores.OrderByDescending(x => x.score)) hud.Paragraph(state.Find(score.contestantId).name + "   " + score.score.ToString("0.00"));
-                    hud.Action("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
+                    hud.Heading("FINAL STANDINGS");
+                    var standings = state.competitionScores.OrderByDescending(x => x.score).ToList();
+                    for (int index = 0; index < standings.Count; index++)
+                    {
+                        var score = standings[index];
+                        var actor = state.Find(score.contestantId);
+                        if (actor == null) continue;
+                        string detail = score.score.ToString("0.00") + " points"
+                            + (index == 0 ? " · WINNER" : "");
+                        hud.PortraitRow(actor.id,(index + 1) + ".  " + actor.name,detail);
+                    }
+                    hud.FooterAction("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
                 }
                 return;
             }
@@ -886,19 +898,23 @@ namespace Gamesim.Episode
                 // situation buried under the ordinary controls is a situation they will not see.
                 PendingHouseEvent(state);
                 HouseWideActions(state);
-                hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
-                    + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
+                hud.Paragraph("Use the house or a conversation for targeted social moves. The actions below are the phase-level choices that do not require selecting a houseguest.");
                 // Listening in needs no one to talk to, so it sits here rather than in a conversation.
                 if (state.Active.Count(c => !c.isPlayer) >= 2)
                 {
-                    hud.Paragraph("You can also try to overhear a conversation you are not part of. "
-                        + "It works about seven times in ten; the rest of the time somebody notices.");
-                    hud.Tag(hud.Action("Listen in on a conversation", () => Commit(state, EpisodeCommandKind.Eavesdrop)),
+                    var quick = hud.ActionGrid(2);
+                    hud.Tag(hud.GridAction(quick,"Listen in on a conversation",
+                            () => Commit(state, EpisodeCommandKind.Eavesdrop)),
                         Category(EpisodeCommandKind.Eavesdrop));
                 }
             }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph("Four jurors choose the winner. The source game's tie rule awards a tied jury to the second finalist in cast order.");
-            hud.Action(state.phase == EpisodePhase.Social ? "Begin the next competition" : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode", () => Commit(state, EpisodeCommandKind.Advance));
+
+            string advanceCaption = state.phase == EpisodePhase.Social ? "Begin the next competition"
+                : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting"
+                : "Continue episode";
+            if (phaseOpen) hud.FooterAction(advanceCaption, () => Commit(state, EpisodeCommandKind.Advance));
+            else hud.Action(advanceCaption, () => Commit(state, EpisodeCommandKind.Advance));
         }
 
         /// <summary>Whether there is a season on screen worth going back to from the menu.</summary>

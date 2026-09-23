@@ -62,6 +62,10 @@ namespace Gamesim.Tests.PlayMode
             var hud=director.GetComponentInChildren<EpisodeHud>();
             Assert.That(hud.CurrentActivityLayout,Is.EqualTo(EpisodeHud.ActivityLayout.HouseEvent),
                 "A pending event takes the band, where its choices are above the fold.");
+            // The event keeps the priority: the way on is not pinned over its choices, it follows them.
+            string onward=before.phase==EpisodePhase.Campaign?"Close campaigning and open voting":"Begin the next competition";
+            Assert.That(FindButton(onward).transform.parent.name,Is.EqualTo("Episode content"),
+                "Under a house event the way on stays in the column, after the choices.");
             var choices=DecisionUiRoot(EpisodeHud.EventChoicesName);
             Assert.That(choices,Is.Not.Null,"The choices are tiles.");
             Assert.That(ButtonWithCaption(EpisodeHud.EventChoiceCaption("Listen without taking sides")).transform.IsChildOf(choices),Is.True);

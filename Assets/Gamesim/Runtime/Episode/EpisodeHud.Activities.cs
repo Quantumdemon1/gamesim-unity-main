@@ -67,6 +67,15 @@ namespace Gamesim.Episode
 
         public void SetActivityLayout(ActivityLayout layout)
         {
+            ApplyActivityLayout(layout);
+            // A dedicated layout sizes itself; only the Standard panel is fitted to its content.
+            if (layout != ActivityLayout.Standard) fitToContent = false;
+            // Every layout re-stretches the scroll; its foot stays clear of a pinned action.
+            ApplyPinnedInset();
+        }
+
+        private void ApplyActivityLayout(ActivityLayout layout)
+        {
             if (modal == null || canvas == null) return;
             activityLayout = layout;
             if (layout == ActivityLayout.Standard) return;

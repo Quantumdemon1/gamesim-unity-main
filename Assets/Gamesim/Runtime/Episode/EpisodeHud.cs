@@ -198,7 +198,8 @@ namespace Gamesim.Episode
             else if (!open && modal != null && !recovery) Foley(HouseAudio.Cue.PanelClose);
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
-            modal = null; modalScroll = null; lastSelection = null; restoreSelection = true; nearbyCard = null; nearbyBar = null;
+            modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
+            fitToContent = false; pinnedAction = null; nearbyCard = null; nearbyBar = null;
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
@@ -300,8 +301,9 @@ namespace Gamesim.Episode
             Anchor((RectTransform)close.transform,new Vector2(1,1),new Vector2(1,1),new Vector2(-18,-15),new Vector2(174,45));
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.
-            var controlHint = FixedText(modal,"Tab / Up / Down select · Enter confirm · Scroll for more",15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
-            controlHint.name = "Panel control hint";
+            // "Scroll for more" is said only of a panel that scrolls (FitStandardPanel).
+            var controlHint = FixedText(modal,PanelHintScrollCopy,15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
+            controlHint.name = PanelHintName;
             var scrollRoot = new GameObject("Episode scroll",typeof(RectTransform),typeof(ScrollRect)); scrollRoot.transform.SetParent(modal,false);
             var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,104,20,22);
             var viewport = Panel("Viewport",scrollRect,new Color(0,0,0,0)); Stretch(viewport,0,0,18,0); viewport.gameObject.AddComponent<RectMask2D>();
@@ -998,9 +1000,11 @@ namespace Gamesim.Episode
         /// that have the width to give: a row fronted by a portrait already spends its right-hand
         /// end on the trust reading.</para>
         /// </summary>
-        public Button Action(string caption,Action action)
+        public Button Action(string caption,Action action) => ActionIn(content,caption,action);
+
+        private Button ActionIn(Transform parent,string caption,Action action)
         {
-            var rect = Chrome(caption,content,UiTheme.Emphasis.Interactive); HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+            var rect = Chrome(caption,parent,UiTheme.Emphasis.Interactive); HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             var element = rect.gameObject.AddComponent<LayoutElement>(); element.minHeight = 57 * FontScale;
             float mark = 18f * FontScale;
             var button = FinishButton(rect,caption,action,16f,16f + mark + 10f);
@@ -1013,10 +1017,12 @@ namespace Gamesim.Episode
         /// draw one (mockup-08, mockup-10): the face in a ring, with the role badge the house has
         /// given them. Falls back to a plain row when the persona has no art.
         /// </summary>
-        public Button Action(string caption,Texture portrait,Action action)
+        public Button Action(string caption,Texture portrait,Action action) => ActionIn(content,caption,portrait,action);
+
+        private Button ActionIn(Transform parent,string caption,Texture portrait,Action action)
         {
-            if (portrait == null) return Action(caption,action);
-            var rect = Chrome(caption,content,UiTheme.Emphasis.Interactive);
+            if (portrait == null) return ActionIn(parent,caption,action);
+            var rect = Chrome(caption,parent,UiTheme.Emphasis.Interactive);
             HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             rect.gameObject.AddComponent<LayoutElement>().minHeight = 68 * FontScale;
             var button = FinishButton(rect,caption,action,68f * FontScale);
@@ -1419,6 +1425,8 @@ namespace Gamesim.Episode
                             element.preferredHeight = Mathf.Max(element.minHeight,label.preferredHeight + 14f);
                     }
                     Canvas.ForceUpdateCanvases();
+                    // With the rows at their final heights, the panel can take its own.
+                    FitStandardPanel();
                 }
                 // Scrollbars stay out of the ring: the panel scrolls to whatever is selected, and a
                 // scrollbar the ScrollRect auto-hides after layout would sit in the ring inactive,
@@ -1456,6 +1464,7 @@ namespace Gamesim.Episode
                 var focus = eligible.FirstOrDefault(item => current != null && item.gameObject == current)
                     ?? eligible.FirstOrDefault(item => item.name == preferredSelection)
                     ?? OpeningControl(eligible)
+                    ?? PinnedSelectable(eligible)
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
                     ?? eligible.FirstOrDefault();
                 events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
@@ -1482,6 +1491,7 @@ namespace Gamesim.Episode
             if (scope != null && (selected == null || !selected.transform.IsChildOf(scope)))
             {
                 var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
+                    ?? (overlay == null && pinnedAction != null ? pinnedAction.GetComponent<Selectable>() : null)
                     ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
                 events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;

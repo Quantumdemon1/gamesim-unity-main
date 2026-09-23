@@ -1130,6 +1130,10 @@ namespace Gamesim.Episode
                 return;
             }
             if (!phaseOpen) return;
+            // The episode screen is a decision screen: it grows with what it holds rather than
+            // making the player scroll a 174-unit strip for the way on. A dedicated layout (the
+            // briefing, the nominations band, a house event) sizes itself instead.
+            hud.FitPanelToContent();
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
             // same sentence twice, six lines apart.
@@ -1172,8 +1176,18 @@ namespace Gamesim.Episode
                 else
                 {
                     hud.Action("Review competition results", () => ReviewCompetitionResult(state));
-                    foreach (var score in state.competitionScores.OrderByDescending(x => x.score)) hud.Paragraph(state.Find(score.contestantId).name + "   " + score.score.ToString("0.00"));
-                    hud.Action("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
+                    // Ranked as the engine ranks them: the stable order by score, the first the winner.
+                    hud.Section("FINAL STANDINGS");
+                    var standings = state.competitionScores.OrderByDescending(x => x.score).ToList();
+                    for (int rank = 0; rank < standings.Count; rank++)
+                    {
+                        var who = state.Find(standings[rank].contestantId);
+                        if (who == null) continue;
+                        hud.Paragraph((rank + 1) + ".  " + HudPrimitives.WithYou(who.name, who.isPlayer) + "   "
+                            + standings[rank].score.ToString("0.00") + (rank == 0 ? "  \u00b7  winner" : ""));
+                    }
+                    // The way on, pinned: it used to sit under the standings, well past the fold.
+                    hud.PinnedAction("Continue to the next ceremony", () => Commit(state, EpisodeCommandKind.Advance));
                 }
                 return;
             }
@@ -1181,18 +1195,21 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
             {
                 hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
-                foreach (var candidate in state.Active.Where(c => !c.isPlayer)) { string id = candidate.id; hud.ActionFor(id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
+                // The two of them side by side: one of two, not the first of a list.
+                var finalists = hud.Pairs();
+                foreach (var candidate in state.Active.Where(c => !c.isPlayer)) { string id = candidate.id; hud.PairedActionFor(finalists, id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
                 return;
             }
             if (state.phase == EpisodePhase.Jury && !state.Active.Any(c => c.isPlayer) && !state.votes.Any(v => v.voterId == state.playerId))
             {
                 hud.Paragraph("As a juror, choose who deserves to win.");
-                foreach (var candidate in state.Active) { string id = candidate.id; hud.ActionFor(id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
+                var finalTwo = hud.Pairs();
+                foreach (var candidate in state.Active) { string id = candidate.id; hud.PairedActionFor(finalTwo, id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
                 return;
             }
-            if (state.nominees.Count > 0) hud.Paragraph("Nominees: " + string.Join(" and ", state.nominees.Select(id => state.Find(id).name)));
-            if (state.hohId != null) hud.Paragraph("HoH: " + state.Find(state.hohId).name);
-            if (state.vetoHolderId != null) hud.Paragraph("Veto holder: " + state.Find(state.vetoHolderId).name);
+            // Who holds what this week, on one line rather than three stacked over everything else.
+            string houseStatus = HouseStatus(state);
+            if (houseStatus != null) hud.Paragraph(houseStatus);
             if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
             {
                 // Before anything the player chose to do: something has happened to them, and a
@@ -1226,7 +1243,13 @@ namespace Gamesim.Episode
                 }
             }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph("Four jurors choose the winner. The source game's tie rule awards a tied jury to the second finalist in cast order.");
-            hud.Action(state.phase == EpisodePhase.Social ? "Begin the next competition" : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode", () => Commit(state, EpisodeCommandKind.Advance));
+            string advance = state.phase == EpisodePhase.Social ? "Begin the next competition"
+                : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode";
+            // Pinned under the scroll, where it is always seen - except under a house event, whose
+            // choices keep the panel and the priority; the way on stays inline after them there.
+            if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard)
+                hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
+            else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
         }
 
         /// <summary>Whether there is a season on screen worth going back to from the menu.</summary>

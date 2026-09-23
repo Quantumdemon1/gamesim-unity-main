@@ -256,6 +256,22 @@ namespace Gamesim.Episode
         /// <summary>Why a conversation has nothing to choose outside free time, in the house's own word for it.</summary>
         public const string ConversationUnavailableLine = "Conversation unavailable during this ceremony.";
 
+        /// <summary>
+        /// Who holds what this week, as the episode screen says it: "HoH: X  ·  Veto holder: Y  ·
+        /// Nominees: A and B", each part only when it is so. It was three paragraphs, a third of the
+        /// panel before anything could be done. Null when nobody holds anything yet.
+        /// </summary>
+        public static string HouseStatus(EpisodeState state)
+        {
+            if (state == null) return null;
+            var parts = new List<string>();
+            if (state.hohId != null && state.Find(state.hohId) != null) parts.Add("HoH: " + state.Find(state.hohId).name);
+            if (state.vetoHolderId != null && state.Find(state.vetoHolderId) != null) parts.Add("Veto holder: " + state.Find(state.vetoHolderId).name);
+            var nominees = state.nominees.Select(id => state.Find(id)).Where(c => c != null).Select(c => c.name).ToList();
+            if (nominees.Count > 0) parts.Add("Nominees: " + string.Join(" and ", nominees));
+            return parts.Count > 0 ? string.Join("  \u00b7  ", parts) : null;
+        }
+
         /// <summary>A houseguest's place in the season, as one word.</summary>
         public static string StatusWord(ContestantStatus status)
         {

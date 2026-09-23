@@ -710,11 +710,14 @@ namespace Gamesim.Episode
                     }
                     if (!EpisodeEngine.ReplacementCandidates(state).Any())
                     { hud.Paragraph("No legal replacement exists at the final four, so the veto cannot be used."); return true; }
+                    // On the episode screen the nominees are peers, side by side; the diary keeps
+                    // its column of rows.
+                    var saves = privateRoom ? null : hud.Pairs();
                     foreach (var nominee in state.nominees)
                     {
                         string saved = nominee;
                         if (state.hohId == state.playerId) VetoReplacements(state, saved, privateRoom);
-                        else hud.ActionFor(saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
+                        else hud.PairedActionFor(saves, saved, "Save " + state.Find(saved).name + " (HoH chooses replacement)", () =>
                             OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
                                 "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true));
                     }
@@ -768,10 +771,11 @@ namespace Gamesim.Episode
         private void VetoReplacements(EpisodeState state, string saved, bool privateRoom)
         {
             hud.Heading("Save " + state.Find(saved).name + " and nominate:");
+            var replacements = privateRoom ? null : hud.Pairs();
             foreach (var candidate in EpisodeEngine.ReplacementCandidates(state))
             {
                 string id = candidate.id;
-                hud.ActionFor(id, candidate.name, () => OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
+                hud.PairedActionFor(replacements, id, candidate.name, () => OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.ResolveVeto,
                     "Use the veto to save " + state.Find(saved).name + " and nominate " + state.Find(id).name + " as the replacement.", saved, id, true));
             }
         }

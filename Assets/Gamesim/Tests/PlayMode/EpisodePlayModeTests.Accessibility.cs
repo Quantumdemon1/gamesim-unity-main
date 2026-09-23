@@ -484,6 +484,8 @@ namespace Gamesim.Tests.PlayMode
                     return director.ProfileId == someone.id;
                 }),
                 ("the vote", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes); return director.IsPanelOpen; }),
+                // The episode screen, fitted to what it holds with its way on pinned.
+                ("the episode screen", () => { WarpPlayer(director.StationPosition); return director.TryOpenPhasePanel(); }),
                 ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }),
                 ("house activities", () => { director.OpenHouseActivities(); return director.IsHouseActivityOpen; }),
                 ("a conversation", () =>

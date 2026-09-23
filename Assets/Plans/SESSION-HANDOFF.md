@@ -36,12 +36,29 @@ right borders, so the tests passed over wrong C: metas. Check `git diff` on `Res
 commit, restore the metas from HEAD and force-reimport them in the editor.
 
 **PR #4** (`ui/expanded-event-screens`, another assistant's, built on `main` without Unity) forked 125
-commits back and conflicts in three of its four files; do not merge it. Its diagnosis holds here - a
-resolved competition's standings are a plain list with Continue under the 174-unit fold of the 900x300
-docked panel - and a review (23 September) lists what is worth rebuilding: a taller phase layout with
-the progression action pinned (focus must land on it, not on Close), Continue straight after "Review
-competition results", a one-line house status, two-column veto choices. Its copy cuts delete rule
-disclosures (the 7-in-10 odds, the weekly budget, what preparation does not boost) - keep those.
+commits back and conflicts in three of its four files; do not merge it. Its diagnosis held here, and its
+worthwhile ideas are rebuilt on this branch's design (`EpisodeHud.PhasePanel.cs`):
+- **The episode screen fits its content.** The Standard panel (every phase-panel state without a
+  dedicated layout) keeps its dock and its 900 width, and grows from 200 up to the free area. The
+  height is measured in LateUpdate's selection pass, after rows grow to their wrapped labels. The
+  panel stops short of any chrome still above its column. It puts away the follow chip and the
+  compact objective card, as the activity layouts do, and narrows to the band between the rail and the
+  right column on squarer screens. Removing the chip-hiding alone is caught by nothing, because the
+  height cap then stops the panel under the chip instead. That is defence in depth, not a gap.
+- **The way on is pinned** (`PinnedAction`: "Begin the next competition", "Close campaigning and open
+  voting", "Continue episode", "Continue to the next ceremony"). It is named by its caption, sits
+  under the scroll, and the scroll's foot stays clear of it after any layout. A panel with nothing
+  else opens on it, so Enter advances rather than closing. Under a house event it stays inline after
+  the choices.
+- **The rest:**
+  - results rank the standings with the winner marked;
+  - the house status is one line (`EpisodeDirector.HouseStatus`);
+  - the veto holder's saves, the replacement candidates, the final-HoH eviction and the jury vote
+    are peers two to a row on the public screen (`PairedActionFor`), one column at the larger text,
+    and the diary keeps its rows;
+  - the hint says "Scroll for more" only when the panel scrolls.
+- **The rule copy is kept.** The PR's cuts deleted disclosures: the 7-in-10 odds, the weekly budget,
+  what preparation does not boost. They stay, and `PhasePanel_FreeTime...` holds the first two.
 
 ---
 

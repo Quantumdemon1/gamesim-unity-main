@@ -35,6 +35,16 @@ namespace Gamesim.Tests.PlayMode
                 "The scroll runs under the pinned '" + pinned.name + "'.");
         }
 
+        /// <summary>A screen that takes the stage covers most of the frame, and stands the right column and the strip down.</summary>
+        private void AssertOnTheStage(RectTransform panel)
+        {
+            var stage = ScreenRect(panel);
+            Assert.That(stage.width * stage.height, Is.GreaterThan(Screen.width * Screen.height * .55f),
+                "The episode screen takes most of the frame: " + stage + ".");
+            foreach (var name in new[] { CastRail.RootName, EpisodeHud.RecentEventsCardName, EpisodeHud.HouseVibeCardName })
+                Assert.That(ActiveRect(name), Is.Null, name + " stands down while the screen is up.");
+        }
+
         private void AssertClearOfTheChrome(RectTransform panel)
         {
             var shot = ScreenRect(panel);
@@ -69,16 +79,21 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
             Canvas.ForceUpdateCanvases();
             var hud = director.GetComponentInChildren<EpisodeHud>();
-            Assume.That(hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Standard),
+            Assume.That(hud.CurrentActivityLayout, Is.Not.EqualTo(EpisodeHud.ActivityLayout.HouseEvent),
                 "The fixture's free time has no house event pending.");
+            Assert.That(hud.CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Stage), "Free time takes the stage.");
 
             var panel = ActiveRect("Episode panel");
             var begin = ButtonWithCaption("Begin the next competition");
             Assert.That(begin.transform.parent, Is.SameAs(panel), "The way on is pinned to the panel, not in its scroll.");
             AssertInside(ScreenRect(panel), (RectTransform)begin.transform, "'Begin the next competition'");
             Assert.That(panel.rect.height, Is.GreaterThan(300f), "Free time holds more than the docked strip showed.");
+            AssertOnTheStage(panel);
             AssertClearOfTheChrome(panel);
             AssertScrollClearOfPinned(panel, begin);
+            // The rail stays up beside the stage, its groups under their names.
+            var railLabels = director.GetComponentsInChildren<TMP_Text>().Where(text => text.name == "Rail label").Select(text => text.text).ToArray();
+            Assert.That(railLabels, Does.Contain("PLAY").And.Contain("NOTEBOOK & SETTINGS"));
             // The column's last control scrolls into view above the pinned row, not under it.
             ButtonWithCaption("Listen in on a conversation");
 
@@ -116,6 +131,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.TryOpenPhasePanel(), Is.True);
             ButtonWithCaption("Accessible alternative: steady 1-point bonus").onClick.Invoke();
             yield return null;
+            // The result is the screen until Continue: its card fills most of the frame's height.
+            var resultCard = SceneComponents<CompetitionResult>().Single(card => card.IsPlaying)
+                .GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Card");
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ScreenRect(resultCard).height, Is.GreaterThan(Screen.height * .85f), "The result fills the frame: " + ScreenRect(resultCard) + ".");
+            Assert.That(ScreenRect(resultCard).yMin, Is.GreaterThanOrEqualTo(0f), "and fits it.");
+            Assert.That(ScreenRect(resultCard).yMax, Is.LessThanOrEqualTo(Screen.height));
             yield return ContinueCompetitionResults(byKeyboard: false);
             yield return null; yield return null;
             Canvas.ForceUpdateCanvases();
@@ -125,6 +147,7 @@ namespace Gamesim.Tests.PlayMode
             var panel = ActiveRect("Episode panel");
             var next = ButtonWithCaption("Continue to the next ceremony");
             Assert.That(next.transform.parent, Is.SameAs(panel), "The way on is pinned.");
+            AssertOnTheStage(panel);
             AssertInside(ScreenRect(panel), (RectTransform)next.transform, "'Continue to the next ceremony'");
             AssertScrollClearOfPinned(panel, next);
             Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo("Review competition results"),
@@ -201,6 +224,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Mathf.Abs(a.yMin - b.yMin), Is.LessThan(1f), "side by side,");
             Assert.That(a.Overlaps(b), Is.False, "and neither covers the other.");
             Assert.That(Mathf.Abs(a.width - b.width), Is.LessThan(1f), "as equals.");
+            // The stage stands the strip's badges down, so the week's roles head the decision.
+            Assert.That(PanelWords(ActiveRect("Episode panel")), Does.Contain(EpisodeDirector.HouseStatus(before)),
+                "Who holds what this week is said over the decision.");
             var decline = ButtonWithCaption("Do not use the veto");
             Assert.That(decline.transform.parent.name, Is.Not.EqualTo(EpisodeHud.ChoiceRowName), "Declining is its own row.");
             foreach (var label in ActiveRect("Episode panel").GetComponentsInChildren<TMP_Text>())

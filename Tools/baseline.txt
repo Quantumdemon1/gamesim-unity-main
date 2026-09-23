@@ -10,7 +10,7 @@
 #
 #   <assembly> <minimum tests>
 Gamesim.EditModeTests 1438
-Gamesim.PlayModeTests 337
+Gamesim.PlayModeTests 338
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).
 # Most of it is cases generated from the web fixtures - a fixture that stops loading drops
 # hundreds of tests and would otherwise still read green.

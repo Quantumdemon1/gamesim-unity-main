@@ -63,6 +63,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(hud.CurrentActivityLayout,Is.EqualTo(EpisodeHud.ActivityLayout.HouseEvent),
                 "A pending event takes the band, where its choices are above the fold.");
             // The event keeps the priority: the way on is not pinned over its choices, it follows them.
+            // The stage's width, low enough that the pair the camera frames stands above it.
+            var eventPanel=ScreenRect(ActiveRect("Episode panel"));
+            Assert.That(eventPanel.width,Is.GreaterThan(Screen.width*.75f),"The event takes the stage's width: "+eventPanel+".");
+            Assert.That(eventPanel.yMax,Is.LessThanOrEqualTo(Screen.height*.72f),"and stays low under the people it is about.");
             string onward=before.phase==EpisodePhase.Campaign?"Close campaigning and open voting":"Begin the next competition";
             Assert.That(FindButton(onward).transform.parent.name,Is.EqualTo("Episode content"),
                 "Under a house event the way on stays in the column, after the choices.");
@@ -153,14 +157,19 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(grid.GetComponentsInChildren<UnityEngine.UI.Button>().Select(card=>card.name),
                 Is.EquivalentTo(candidates.Select(candidate=>candidate.name)),"One card per candidate, named by the candidate.");
 
-            // The band stands clear of the chrome the mockup keeps up around it.
+            // The decision takes the stage: most of the frame, clear of the rail and the status line
+            // it keeps, with the strip and the right column stood down while it is up.
             var panel=ActiveRect("Episode panel");
-            foreach(var name in new[]{CastRail.RootName,EpisodeHud.HouseVibeCardName,IconRail.RootName,"Status"})
+            var stage=ScreenRect(panel);
+            Assert.That(stage.width*stage.height,Is.GreaterThan(Screen.width*Screen.height*.55f),"The nominations take most of the frame: "+stage+".");
+            foreach(var name in new[]{IconRail.RootName,"Status"})
             {
                 var chrome=ActiveRect(name);
                 Assert.That(chrome,Is.Not.Null,name+" stays up while the Head of Household decides.");
-                Assert.That(ScreenRect(panel).Overlaps(ScreenRect(chrome)),Is.False,"The band covers '"+name+"'.");
+                Assert.That(stage.Overlaps(ScreenRect(chrome)),Is.False,"The stage covers '"+name+"'.");
             }
+            foreach(var name in new[]{CastRail.RootName,EpisodeHud.HouseVibeCardName})
+                Assert.That(ActiveRect(name),Is.Null,name+" stands down while the nominations take the stage.");
 
             // A pick lights its card in place; pressing it again puts it back.
             var first=ButtonWithCaption(candidates[0].name);

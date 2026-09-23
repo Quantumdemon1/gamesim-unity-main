@@ -47,6 +47,8 @@ namespace Gamesim.Tests.PlayMode
             Canvas.ForceUpdateCanvases();
             Assert.That(ScreenRect(panel).Overlaps(ScreenRect(ActiveRect(IconRail.RootName))), Is.False,
                 "The settings panel came to rest over the rail.");
+            Assert.That(ScreenRect(panel).width * ScreenRect(panel).height, Is.GreaterThan(Screen.width * Screen.height * .55f),
+                "The settings take the stage: " + ScreenRect(panel) + ".");
             director.ClosePanels();
             yield return null;
         }

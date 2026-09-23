@@ -8,7 +8,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeHud
     {
         /// <summary>Activities own their layout; they share controls, focus and save semantics.</summary>
-        public enum ActivityLayout { Standard, Relationships, Conversation, ConversationNotice, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings }
+        public enum ActivityLayout { Standard, Relationships, Conversation, ConversationNotice, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings, Stage }
 
         private ActivityLayout activityLayout;
         private RectTransform relationshipRoot;
@@ -67,6 +67,9 @@ namespace Gamesim.Episode
 
         public void SetActivityLayout(ActivityLayout layout)
         {
+            // A layout starts from the full column: a stage's reading cap belongs to the stage, and
+            // a later layout (the briefing after the episode screen's stage) sizes its own.
+            UncapContent();
             ApplyActivityLayout(layout);
             // A dedicated layout sizes itself; only the Standard panel is fitted to its content.
             if (layout != ActivityLayout.Standard) fitToContent = false;
@@ -91,6 +94,7 @@ namespace Gamesim.Episode
             if (layout == ActivityLayout.Diary) { DiaryLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Ballot) { BallotLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Settings) { SettingsLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Stage) { StageLayout(canvasWidth, canvasHeight); return; }
             float left = LeftColumnX;
             float right = 24f;
             float availableWidth = canvasWidth - left - right;
@@ -206,14 +210,14 @@ namespace Gamesim.Episode
         /// </summary>
         private void NominationsLayout(float canvasWidth, float canvasHeight)
         {
-            float width = Mathf.Max(420f, canvasWidth - LeftColumnX - RightColumnInset - RightColumnWidth - 12f);
-            float height = Mathf.Min(470f * FontScale, Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom - 12f));
+            // The decision is the screen: the stage's whole frame, the candidates as many to a row
+            // as it holds.
+            var stage = StageRect(canvasWidth, canvasHeight);
             modal.anchorMin = modal.anchorMax = Vector2.zero;
             modal.pivot = Vector2.zero;
-            modal.anchoredPosition = new Vector2(LeftColumnX, ModalLift);
-            modal.sizeDelta = new Vector2(width, height);
-            SetChromeVisible(FollowChipName, false);
-            SetChromeVisible("Interaction prompt", false);
+            modal.anchoredPosition = stage.position;
+            modal.sizeDelta = stage.size;
+            HideStageChrome();
             var hint = modal.Find("Panel control hint");
             if (hint != null) hint.gameObject.SetActive(false);
             if (modalScroll != null)
@@ -231,17 +235,21 @@ namespace Gamesim.Episode
         /// </summary>
         private void CompetitionLayout(float canvasWidth, float canvasHeight)
         {
-            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - RightColumnInset - RightColumnWidth - 12f);
-            float width = Mathf.Min(BriefingWidth * FontScale, free);
-            float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom);
+            // A challenge is the whole screen: the house's chrome stands down, the briefing's sheet
+            // runs down the left from the frame's foot to its head, and the arena fills the rest of
+            // the frame, where the camera stands it (ArenaWindowOffset).
+            float width = Mathf.Min(BriefingSheetWidth * FontScale, (canvasWidth - 2f * FullFrameEdge) * .58f);
+            float height = canvasHeight - 2f * FullFrameEdge;
             modal.anchorMin = modal.anchorMax = Vector2.zero;
             modal.pivot = Vector2.zero;
-            modal.anchoredPosition = new Vector2(LeftColumnX, ModalLift);
+            modal.anchoredPosition = new Vector2(FullFrameEdge, FullFrameEdge);
             modal.sizeDelta = new Vector2(width, height);
+            var ground = modal.GetComponent<Image>();
+            if (ground != null) { var c = ground.color; ground.color = new Color(c.r, c.g, c.b, Mathf.Max(c.a, .97f)); }
             CompactClose();
-            SetChromeVisible("Exploration controls", false);
-            SetChromeVisible(FollowChipName, false);
-            SetChromeVisible("Interaction prompt", false);
+            HideChromeForFullFrame(canvasWidth, FullFrameEdge + width + FrameGapUnits);
+            float window = FullFrameEdge + width + (canvasWidth - FullFrameEdge - (FullFrameEdge + width)) * .5f;
+            ArenaWindowOffset = (window - canvasWidth * .5f) / (canvasHeight * .5f);
             var hint = modal.Find("Panel control hint");
             if (hint != null) hint.gameObject.SetActive(false);
             if (modalScroll != null)
@@ -249,6 +257,109 @@ namespace Gamesim.Episode
                 Stretch((RectTransform)modalScroll.transform, 18f, 72f, 18f, 14f);
                 modalScroll.verticalNormalizedPosition = 1f;
             }
+        }
+
+        /// <summary>
+        /// The stage: every screen that is a place or a decision rather than a card - the episode
+        /// screen, the nominations, the settings, the notebook - takes the frame from the rail to
+        /// the right edge and from the status line to the top bar. The rail, the top bar and the
+        /// status line stay; the right column and the strip stand down while it is up.
+        /// </summary>
+        private Rect StageRect(float canvasWidth, float canvasHeight)
+        {
+            float width = Mathf.Max(420f, canvasWidth - LeftColumnX - FullFrameEdge);
+            float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom);
+            return new Rect(LeftColumnX, ModalLift, width, height);
+        }
+
+        /// <summary>The widest a stage's reading column runs, at the resting text size.</summary>
+        private const float StageColumnWidth = 1040f;
+        private const float SettingsColumnWidth = 900f;
+
+        private void StageLayout(float canvasWidth, float canvasHeight)
+        {
+            var stage = StageRect(canvasWidth, canvasHeight);
+            modal.anchorMin = modal.anchorMax = Vector2.zero;
+            modal.pivot = Vector2.zero;
+            modal.anchoredPosition = stage.position;
+            modal.sizeDelta = stage.size;
+            var ground = modal.GetComponent<Image>();
+            if (ground != null) { var c = ground.color; ground.color = new Color(c.r, c.g, c.b, Mathf.Max(c.a, .97f)); }
+            HideStageChrome();
+            CapContent(StageColumnWidth * FontScale);
+        }
+
+        /// <summary>What a stage stands down: the right column, the strip, and the exploration furniture.</summary>
+        private void HideStageChrome()
+        {
+            if (Compact) SetChromeVisible("Objective", false);
+            SetChromeVisible(HouseVibeCardName, false);
+            SetChromeVisible(EpisodeDirector.LiveFeedCardName, false);
+            SetChromeVisible(RecentEventsCardName, false);
+            SetChromeVisible(RelationshipsCardName, false);
+            SetChromeVisible(NearbyCardName, false);
+            SetChromeVisible(OverviewColumnName, false);
+            SetChromeVisible("Exploration controls", false);
+            SetChromeVisible(FollowChipName, false);
+            SetChromeVisible("Interaction prompt", false);
+            SetChromeVisible(CastRail.RootName, false);
+            SetChromeVisible(CastRail.StripName, false);
+            SetChromeVisible(CastRail.QuoteName, false);
+        }
+
+        /// <summary>
+        /// Keeps a wide stage readable: the column its rows are laid in runs no wider than
+        /// <paramref name="width"/>, centred in the frame, however wide the frame is.
+        /// </summary>
+        private void CapContent(float width)
+        {
+            if (content == null || modal == null) return;
+            contentCap = width;
+            int extra = Mathf.Max(0, Mathf.RoundToInt((modal.sizeDelta.x - 40f - 18f - 16f - width) * .5f));
+            var layout = content.GetComponent<VerticalLayoutGroup>();
+            if (layout != null) layout.padding = new RectOffset(8 + extra, 8 + extra, layout.padding.top, layout.padding.bottom);
+        }
+
+        private void UncapContent()
+        {
+            contentCap = 0f;
+            var layout = content != null ? content.GetComponent<VerticalLayoutGroup>() : null;
+            if (layout != null) layout.padding = new RectOffset(8, 8, layout.padding.top, layout.padding.bottom);
+        }
+
+        /// <summary>The margin a full-frame screen keeps from the frame's edge.</summary>
+        public const float FullFrameEdge = 24f;
+
+        /// <summary>
+        /// Where the briefing leaves the arena: the middle of the frame's free area, right of its
+        /// sheet, in half-heights from the frame's centre - the unit a camera's vertical field of
+        /// view projects into, so the director can stand the arena there at any aspect ratio.
+        /// </summary>
+        public float ArenaWindowOffset { get; private set; }
+
+        private const float FrameGapUnits = 12f;
+
+        /// <summary>
+        /// A full-frame screen stands every piece of the house's chrome down: it is the screen. All
+        /// but the status line, which is how a failed start, a cancelled walk to the stations or a
+        /// rejected commit is said - it moves into the frame the screen leaves, at its foot.
+        /// The last child of that name, not Find's first: Begin's rebuild leaves the last render's
+        /// status line under the canvas, inactive, until the frame ends, ahead of the new one.
+        /// </summary>
+        private void HideChromeForFullFrame(float canvasWidth, float freeLeft)
+        {
+            RectTransform status = null;
+            foreach (Transform child in canvas.transform)
+            {
+                if (child == modal) continue;
+                child.gameObject.SetActive(false);
+                if (child.name == "Status") status = (RectTransform)child;
+            }
+            if (status == null) return;
+            status.gameObject.SetActive(true);
+            float room = canvasWidth - FullFrameEdge - freeLeft;
+            float width = Mathf.Min(status.sizeDelta.x, Mathf.Max(200f, room));
+            Anchor(status, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-FullFrameEdge, FullFrameEdge), new Vector2(width, status.sizeDelta.y));
         }
 
         /// <summary>The house event's card (mockup-04), at the resting text size.</summary>
@@ -264,15 +375,15 @@ namespace Gamesim.Episode
         /// </summary>
         private void HouseEventLayout(float canvasWidth, float canvasHeight)
         {
-            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - RightColumnInset - RightColumnWidth - 12f);
-            float width = Mathf.Min(HouseEventWidth * FontScale, free);
-            float height = Mathf.Min(HouseEventHeight * FontScale, Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom - 12f));
+            // The stage's width; its top stays at about two-thirds of the frame, because the
+            // camera stands the event's people above it and they are what the event is about.
+            var stage = StageRect(canvasWidth, canvasHeight);
+            float height = Mathf.Clamp(Mathf.Max(canvasHeight * .65f - ModalLift, HouseEventHeight * FontScale), 300f, stage.height);
             modal.anchorMin = modal.anchorMax = Vector2.zero;
             modal.pivot = Vector2.zero;
-            modal.anchoredPosition = new Vector2(LeftColumnX + (free - width) * .5f, ModalLift);
-            modal.sizeDelta = new Vector2(width, height);
-            SetChromeVisible(FollowChipName, false);
-            SetChromeVisible("Interaction prompt", false);
+            modal.anchoredPosition = stage.position;
+            modal.sizeDelta = new Vector2(stage.width, height);
+            HideStageChrome();
             var hint = modal.Find("Panel control hint");
             if (hint != null) hint.gameObject.SetActive(false);
             if (modalScroll != null)
@@ -327,14 +438,18 @@ namespace Gamesim.Episode
         /// </summary>
         private void BallotLayout(float canvasWidth, float canvasHeight)
         {
-            float right = RightColumnInset + RightColumnWidth + 16f;
-            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - right);
-            float width = Mathf.Min(BallotPanelWidth * FontScale, free);
-            float height = Mathf.Min(BallotPanelHeight * FontScale, Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom));
+            // The stage's width, from under the top bar down to the speech bar the vote is cast
+            // over, in the strip's band.
+            var stage = StageRect(canvasWidth, canvasHeight);
+            // Never below the status line, which carries the diary's messages while the vote is up.
+            float floor = Mathf.Max(CastRail.Bottom + (6f + CastRail.Height - 14f) * FontScale + 12f, ModalLift);
+            float height = Mathf.Max(300f, canvasHeight - ActivityHeadroom - floor);
             modal.anchorMin = modal.anchorMax = new Vector2(0f, 1f);
-            modal.pivot = new Vector2(.5f, 1f);
-            modal.anchoredPosition = new Vector2(LeftColumnX + free * .5f, -ActivityHeadroom);
-            modal.sizeDelta = new Vector2(width, height);
+            modal.pivot = new Vector2(0f, 1f);
+            modal.anchoredPosition = new Vector2(stage.x, -ActivityHeadroom);
+            modal.sizeDelta = new Vector2(stage.width, height);
+            HideStageChrome();
+            CapContent(StageColumnWidth * FontScale);
             // Near opaque: the diary's neon sign stands right behind the ballot, and through the
             // HUD's .94 glass it read as a second heading beside the first - six percent of a sign
             // that bright is still a word.
@@ -359,18 +474,14 @@ namespace Gamesim.Episode
         /// </summary>
         private void SettingsLayout(float canvasWidth, float canvasHeight)
         {
-            float right = RightColumnInset + RightColumnWidth + 16f;
-            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - right);
-            float width = Mathf.Min(860f * FontScale, free);
-            float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom);
+            var stage = StageRect(canvasWidth, canvasHeight);
             modal.anchorMin = modal.anchorMax = new Vector2(0f, 0f);
-            modal.pivot = new Vector2(.5f, 0f);
-            modal.anchoredPosition = new Vector2(LeftColumnX + free * .5f, ModalLift);
-            modal.sizeDelta = new Vector2(width, height);
+            modal.pivot = new Vector2(0f, 0f);
+            modal.anchoredPosition = stage.position;
+            modal.sizeDelta = stage.size;
             CompactClose();
-            SetChromeVisible("Exploration controls", false);
-            SetChromeVisible(FollowChipName, false);
-            SetChromeVisible("Interaction prompt", false);
+            HideStageChrome();
+            CapContent(SettingsColumnWidth * FontScale);
             var hint = modal.Find("Panel control hint");
             if (hint != null) hint.gameObject.SetActive(false);
             if (modalScroll != null)

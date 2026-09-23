@@ -8,6 +8,76 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 000. Screens fill the frame (23 September, late)
+
+The user's direction: *pretty much all the screens, especially challenge screens, should take up most
+of the screen if not full screen.* A mapping workflow (every screen's rect, chrome, camera shot and
+geometry tests) came first. The result is two frame sizes:
+
+- **FULL** covers about 92% of the frame; all HUD chrome stands down except the status line. It
+  is used for challenges. The status line carries a failed start, a cancelled walk to the stations
+  and a rejected commit, so it moves into the arena window's bottom-right corner instead of going.
+  - **The briefing** is a full-height sheet down the left, `min(900·FS, 58% of the frame)` wide.
+    The house's chrome is hidden (`HideChromeForFullFrame`), and the camera stands the arena in the
+    right-hand window. The shot's sideways shift is derived from `ArenaWindowOffset` through the
+    shot's vertical FOV, so the arena sits right at any aspect ratio.
+  - **The spectator's "Watch"** is the same sheet (`SpectatorBriefing`).
+  - **The minigame** is the whole frame: the challenge and clock across the top, the board filling
+    the rest, and the field and controls down the right. The HUD stays hidden for the whole attempt
+    and comes back at commit or cancel. Every board size is derived from the frame. That includes
+    the memory grid, the reaction target, which scales with the board so its share of the field
+    holds, and the endurance rows. With the HUD down, its focus rescue does not run, so the game
+    keeps a control selected itself (`RescueFocus`: the board while playing, Pause while paused). The frame is computed from `Screen` and the scaler's settings,
+    because the first competition builds its canvas in the same frame it lays it out, before the
+    scaler has run.
+  - **The result card** scales to fill the frame's height, clamped to [.75, 1.6]. A six-player
+    result is about 1.45× its old size, and a 16-player field that used to run off the screen now
+    fits.
+- **STAGE** covers about 60%: the rail, the top bar and the status line stay; the right column and
+  the strip stand down. It is the notebook's frame, from the rail to the right edge and from the
+  status line to the top bar. Content is capped to a centred reading column (`CapContent`; reset per
+  layout by `UncapContent`).
+  - **The episode screen** takes it in every state with something to read or decide. Quiet beats
+    (Continue-only, the reflection prompt) stay cards (`QuietBeat`). The strip and its badges
+    stand down, so the one-line `HouseStatus` (who holds what this week) heads every decision,
+    not only the quiet beats.
+  - **Nominations and settings** take the whole stage.
+  - **The diary ballot** runs from the top bar down to the status line, never below it: the status
+    line carries the diary's messages while the vote is up. Its cards grow up to 1.4·FS, but only
+    as far as the panel's height still holds them with Confirm underneath.
+  - **The house event** takes the stage's width, with its top at 0.65H so the people it frames stay
+    visible. It is never shorter than its old card at the current text size.
+
+**Deliberate exceptions** (the user can overrule any of them):
+- the conversation, where the two-shot is the screen;
+- the conversation notice;
+- the diary room's column beside the chair;
+- house activities;
+- quiet beats;
+- the competition assembly card, which shows the walk to the stations;
+- the ceremony cards and sting (the sting takes no input, so Close under it stays pressable);
+- the weekly recap and season report. They are already about 62% of the frame, and the recap sizes
+  its height to the week on purpose.
+
+**Traps:**
+- An `Assume` on the layout skipped the only check that the way on was pinned while it had
+  regressed (memory note).
+- A stage's reading cap leaked into the briefing laid out after it and pushed option text past its
+  cards. `isTextOverflowing` cannot see that: check that words stay inside their control.
+- The clip sweep's openers cannot wait a frame, so the briefing checks its own copy at both text
+  sizes.
+- `canvas.transform.Find(name)` in a layout returns the last render's copy. Begin's rebuild only
+  deactivates the old chrome and `Destroy`s it at the frame's end, so the old copy comes first. The
+  full-frame layout moved a dead status line while the live one sat over the sheet. Take the last
+  child of that name.
+- The result card sizes itself from `Screen` for the same first-frame reason as the minigame.
+
+**Not covered yet:** the spectator's briefing has no geometry test of its own (it shares
+`CompetitionLayout` with the tested briefing). The entrant strip's wiring in the game screen is
+dead now that the field card lists the competitors; it can go in a clean-up.
+
+---
+
 ## 00. Refinement Kit 6 — the five missed screens (23 September)
 
 The kit (`ArtSource/ui-packs/Kit6_Refinement/`, its review `GAMESIM_REMAINING_MENUS_REVIEW.md` and

@@ -1130,10 +1130,12 @@ namespace Gamesim.Episode
                 return;
             }
             if (!phaseOpen) return;
-            // The episode screen is a decision screen: it grows with what it holds rather than
-            // making the player scroll a 174-unit strip for the way on. A dedicated layout (the
-            // briefing, the nominations band, a house event) sizes itself instead.
-            hud.FitPanelToContent();
+            // The episode screen is a decision screen: it takes the stage, the frame from the rail
+            // to the right edge. A quiet beat - "Continue episode" under the house's status, or the
+            // reflection prompt - stays a card sized to its few lines. A dedicated layout (the
+            // briefing, the nominations, a house event) sizes itself instead.
+            if (QuietBeat(state)) hud.FitPanelToContent();
+            else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
             // same sentence twice, six lines apart.
@@ -1171,7 +1173,7 @@ namespace Gamesim.Episode
                     {
                         CompetitionBriefing(state);
                     }
-                    else hud.Action("Watch eligible housemates compete", () => Commit(state, EpisodeCommandKind.Advance));
+                    else SpectatorBriefing(state);
                 }
                 else
                 {
@@ -1191,6 +1193,10 @@ namespace Gamesim.Episode
                 }
                 return;
             }
+            // Who holds what this week, on one line, before whatever there is to decide: the stage
+            // stands the strip and its badges down, so this is where the roles are read.
+            string houseStatus = HouseStatus(state);
+            if (houseStatus != null) hud.Paragraph(houseStatus);
             if (RenderPlayerDecision(state, false)) return;
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
             {
@@ -1207,9 +1213,6 @@ namespace Gamesim.Episode
                 foreach (var candidate in state.Active) { string id = candidate.id; hud.PairedActionFor(finalTwo, id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
                 return;
             }
-            // Who holds what this week, on one line rather than three stacked over everything else.
-            string houseStatus = HouseStatus(state);
-            if (houseStatus != null) hud.Paragraph(houseStatus);
             if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
             {
                 // Before anything the player chose to do: something has happened to them, and a
@@ -1247,7 +1250,7 @@ namespace Gamesim.Episode
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode";
             // Pinned under the scroll, where it is always seen - except under a house event, whose
             // choices keep the panel and the priority; the way on stays inline after them there.
-            if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard)
+            if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage)
                 hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
             else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
         }

@@ -359,6 +359,25 @@ namespace Gamesim.Episode
             return HasPlayerDecision(state);
         }
 
+        /// <summary>
+        /// A beat of the episode screen with nothing to read or decide: the reflection prompt, and
+        /// "Continue episode" under the house's status. It stays a card rather than a stage of
+        /// empty space.
+        /// </summary>
+        private bool QuietBeat(EpisodeState state)
+        {
+            if (state.pendingDiary != null) return true;
+            if (challengeActive || EpisodeEngine.IsCompetition(state.phase)) return false;
+            if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign
+                || state.phase == EpisodePhase.JuryQuestioning || state.phase == EpisodePhase.FinalSpeeches
+                || state.phase == EpisodePhase.Finished) return false;
+            if (HasPlayerDecision(state)) return false;
+            if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId) return false;
+            if (state.phase == EpisodePhase.Jury && !state.Active.Any(c => c.isPlayer)
+                && !state.votes.Any(v => v.voterId == state.playerId)) return false;
+            return true;
+        }
+
         private static bool HasPlayerDecision(EpisodeState state)
         {
             if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;

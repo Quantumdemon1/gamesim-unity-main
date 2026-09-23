@@ -88,21 +88,25 @@ namespace Gamesim.Tests.PlayMode
             while (Time.realtimeSinceStartup < playing && screen.IsShowing) yield return null;
             Assert.That(screen.IsShowing, Is.True, "The practice should still be in play.");
 
-            // While it is played the strip is the entrant strip (mockup-05): who is in the field.
-            RenderHudForTheCurrentCanvas();
+            // While it is played the competition is the whole screen: the house's HUD stands down,
+            // and the game's own cards say who is in the field and how the player is doing.
             yield return null;
+            Assert.That(ActiveRect(IconRail.RootName), Is.Null, "The house's chrome stands down while the game is played.");
+            Assert.That(ActiveRect(CastRail.RootName), Is.Null);
             var field = Gamesim.Simulation.EpisodeEngine.CompetitionPlayers(before).ToArray();
-            bool playerCompetes = field.Any(actor => actor.id == before.playerId);
-            var words = director.GetComponentsInChildren<TMPro.TMP_Text>()
-                .Where(text => text.name == CastRail.MoodWordName).Select(text => text.text).ToArray();
-            Assert.That(words.Count(word => word == "Competing"), Is.EqualTo(field.Length - (playerCompetes ? 1 : 0)),
-                "Each houseguest in the field is marked as competing: " + string.Join(", ", words));
-            // The player's own chip carries their progress as it happens, in the game's measure.
-            var progress = director.GetComponentsInChildren<TMPro.TMP_Text>().Where(text => text.name == CastRail.ProgressWordName).ToArray();
-            Assert.That(progress, Has.Length.EqualTo(playerCompetes ? 1 : 0), "The player's chip reads their progress.");
-            if (playerCompetes)
-                Assert.That(progress[0].text, Does.EndWith("hits").Or.EndWith("hit").Or.EndWith("pairs").Or.EndWith("held").Or.StartWith("Score"),
-                    "The progress is the game's own measure: '" + progress[0].text + "'.");
+            var texts = screen.GetComponentsInChildren<TMPro.TMP_Text>();
+            string listed = texts.Single(text => text.name == "Competition field").text;
+            foreach (var actor in field)
+                Assert.That(listed, Does.Contain(HudPrimitives.WithYou(actor.name, actor.id == before.playerId)),
+                    "The field card lists everyone competing: '" + listed + "'.");
+            string progress = texts.Single(text => text.name == "Progress").text;
+            Assert.That(progress, Does.Contain("pairs").Or.Contain("hits").Or.Contain("Effort"),
+                "The player's progress is the game's own measure: '" + progress + "'.");
+            // And the board is most of what is on screen.
+            var board = screen.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Game surface");
+            var area = ScreenRect(board);
+            Assert.That(area.width * area.height, Is.GreaterThan(Screen.width * Screen.height * .45f),
+                "The board takes most of the frame: " + area + ".");
             if (Application.isBatchMode && screen.IsShowing) yield return CaptureFraming("competition-practice");
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
         }

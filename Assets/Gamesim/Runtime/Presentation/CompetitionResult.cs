@@ -94,6 +94,28 @@ namespace Gamesim.Presentation
         private const float HeaderHeight = 196f;
         private const float FooterHeight = 104f;
         private const float MinimumHeight = 500f;
+        /// <summary>The margin the card keeps from the frame's edge.</summary>
+        private const float FrameEdge = 24f;
+        /// <summary>How much the card is scaled to fill the frame; everything on it scales together.</summary>
+        private float cardScale = 1f;
+
+        /// <summary>
+        /// The frame in reference units, from the screen and the scaler's settings: a card attached
+        /// and played in the same frame sees the canvas before the scaler has run, in raw pixels.
+        /// </summary>
+        private Vector2 FrameSize()
+        {
+            var scaler=GetComponent<CanvasScaler>();
+            if(scaler!=null&&scaler.uiScaleMode==CanvasScaler.ScaleMode.ScaleWithScreenSize&&Screen.width>0&&Screen.height>0)
+            {
+                var reference=scaler.referenceResolution;
+                float log=Mathf.Lerp(Mathf.Log(Screen.width/reference.x,2f),Mathf.Log(Screen.height/reference.y,2f),scaler.matchWidthOrHeight);
+                float scale=Mathf.Pow(2f,log);
+                return new Vector2(Screen.width/scale,Screen.height/scale);
+            }
+            var rect=((RectTransform)transform).rect;
+            return new Vector2(rect.width>0?rect.width:1600f,rect.height>0?rect.height:900f);
+        }
 
         /// <summary>
         /// The result as a broadcast card over the room (mockup-05's language): the award under a
@@ -113,9 +135,16 @@ namespace Gamesim.Presentation
                 scrim.GetComponent<Image>().raycastTarget=true;
                 HudPrimitives.Vignette(scrim);
             }
-            float scale=Mathf.Clamp(FontScale,.8f,1.25f);
+            // The result is the screen until Continue: the card is drawn at its own proportions and
+            // then scaled to fill the frame's height - a six-player result about half as big again
+            // as it was - and down, for the biggest fields, so that it always fits.
+            float natural=Mathf.Max(MinimumHeight,HeaderHeight+standings.Count*RowHeight+FooterHeight+74f);
+            var frame=FrameSize();
+            float frameWidth=frame.x, frameHeight=frame.y;
+            cardScale=Mathf.Clamp(Mathf.Min((frameWidth-2f*FrameEdge)/CardWidth,(frameHeight-2f*FrameEdge)/natural),.75f,1.6f);
+            float scale=cardScale;
             float width=CardWidth*scale, inner=width-64f*scale;
-            float height=Mathf.Max(MinimumHeight*scale,(HeaderHeight+standings.Count*RowHeight+FooterHeight)*scale+74f*scale);
+            float height=natural*scale;
             column=new GameObject("Card",typeof(RectTransform)).GetComponent<RectTransform>();column.SetParent(transform,false);
             column.anchorMin=column.anchorMax=new Vector2(.5f,.5f);column.pivot=new Vector2(.5f,.5f);
             column.sizeDelta=new Vector2(width,height);
@@ -226,7 +255,7 @@ namespace Gamesim.Presentation
         /// <summary>A label placed in reference units, scaled with the card.</summary>
         private TMP_Text Label(string name,Transform parent,string text,float size,float x,float y,float width,float height,Color colour)
         {
-            float scale=Mathf.Clamp(FontScale,.8f,1.25f);
+            float scale=cardScale;
             var label=HudPrimitives.Label(name,parent,size*scale,colour,TextAlignmentOptions.Left);
             label.text=text;label.textWrappingMode=TextWrappingModes.Normal;
             Place(label.rectTransform,x*scale,y*scale,width*scale,height*scale);return label;

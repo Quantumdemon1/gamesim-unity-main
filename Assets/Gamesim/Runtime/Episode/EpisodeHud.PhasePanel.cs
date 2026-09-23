@@ -34,6 +34,11 @@ namespace Gamesim.Episode
         private bool fitToContent;
         /// <summary>The render's one pinned action, or null.</summary>
         private RectTransform pinnedAction;
+        /// <summary>The widest the column of a wide screen runs this render; zero when uncapped.</summary>
+        private float contentCap;
+
+        /// <summary>The width the panel's rows are built to this render, in canvas units, for a test.</summary>
+        public float ColumnWidth => ContentWidth();
 
         /// <summary>
         /// Lets the Standard panel take its height from what it holds, from a short card up to the
@@ -73,8 +78,10 @@ namespace Gamesim.Episode
             var rect = Chrome(caption, modal, UiTheme.Emphasis.Interactive);
             HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             rect.anchorMin = new Vector2(0f, 0f); rect.anchorMax = new Vector2(1f, 0f); rect.pivot = new Vector2(.5f, 0f);
-            rect.offsetMin = new Vector2(20f, PinnedMargin);
-            rect.offsetMax = new Vector2(-20f, PinnedMargin + PinnedHeight * s);
+            // Under the column it moves on from: on a capped stage, as wide as the column.
+            float side = 20f + (contentCap > 0f ? Mathf.Max(0f, (modal.sizeDelta.x - 40f - 18f - 16f - contentCap) * .5f) : 0f);
+            rect.offsetMin = new Vector2(side, PinnedMargin);
+            rect.offsetMax = new Vector2(-side, PinnedMargin + PinnedHeight * s);
             float mark = 18f * s;
             var button = FinishButton(rect, caption, action, 16f, 16f + mark + 10f);
             HudPrimitives.Chevron(rect, UiTheme.Hairline, mark).anchoredPosition = new Vector2(-16f, 0f);

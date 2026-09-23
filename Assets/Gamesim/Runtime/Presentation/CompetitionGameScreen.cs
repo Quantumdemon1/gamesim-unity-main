@@ -79,9 +79,18 @@ namespace Gamesim.Presentation
             panel.anchorMin = Vector2.zero; panel.anchorMax = Vector2.one; panel.pivot = new Vector2(.5f,.5f);
             panel.offsetMin = panel.offsetMax = Vector2.zero; panel.GetComponent<Image>().raycastTarget = false;
 
-            float left = Episode.EpisodeHud.LeftColumnX;
+            // The whole frame is the competition's (the HUD stands down for the attempt): the
+            // challenge and the clock across the top, the board filling the space under them, and
+            // the field and the controls down the right. Every size is taken from the frame, so
+            // the board is as big as the screen allows at any aspect ratio.
+            var frame = FrameSize();
+            float frameWidth = frame.x, frameHeight = frame.y;
+            float left = FrameEdge, sideX = frameWidth - FrameEdge - SideWidth, mainWidth = Mathf.Max(480f, sideX - FrameGap - left);
+            float challengeWidth = mainWidth - TimerWidth - FrameGap;
+            surfaceWidth = mainWidth;
+            surfaceHeight = Mathf.Max(360f, frameHeight - (FrameEdge + HeaderHeight + FrameGap) - (FrameEdge + FeedbackHeight + 8f));
             // The challenge: what this is and how it is played.
-            var challenge = Card("Competition challenge", panel, new Vector2(left, -84f), new Vector2(470, 176));
+            var challenge = Card("Competition challenge", panel, new Vector2(left, -FrameEdge), new Vector2(challengeWidth, HeaderHeight));
             var crest = HudPrimitives.Glyph("Challenge mark", challenge, title != null && title.ToUpperInvariant().Contains("VETO") ? "veto-token" : "crown",
                 UiTheme.Gold, new Vector2(16, -14), 20);
             var eyebrow = Label("Challenge eyebrow", challenge, "CURRENT CHALLENGE", 12, crest != null ? 44 : 16, 14, 300, 20, UiTheme.Gold);
@@ -89,20 +98,20 @@ namespace Gamesim.Presentation
             var mode = HudPrimitives.Chip("Attempt mode", challenge, practice ? "PRACTICE" : "RANKED", practice ? UiTheme.Muted : UiTheme.Accent, 86, 20);
             mode.anchorMin = mode.anchorMax = new Vector2(1, 1); mode.pivot = new Vector2(1, 1); mode.anchoredPosition = new Vector2(-14, -12);
             mode.GetComponent<Image>().raycastTarget = false;
-            var heading = Label("Competition title", challenge, title, 18, 16, 40, 438, 26, UiTheme.Paper);
+            var heading = Label("Competition title", challenge, title, 18, 16, 40, challengeWidth - 32f, 26, UiTheme.Paper);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold); if (semibold != null) heading.font = semibold;
             Fit(heading, 12);
             string rules = run.Definition?.Summary ?? CompetitionMiniGames.Brief(run.Kind, run.RulesVersion);
             if (run.Definition != null && run.Kind == CompetitionMiniGames.Kind.Reaction)
                 rules += " Click the target or press its direction. Early input and incorrect aim cost accuracy.";
-            Fit(Label("Rules", challenge, rules, 13, 16, 68, 438, 60, UiTheme.Muted), 10);
+            Fit(Label("Rules", challenge, rules, 13, 16, 68, challengeWidth - 32f, 60, UiTheme.Muted), 10);
             Fit(Label("Attempt policy", challenge, practice
                 ? "Practice never changes your season. Ranked play uses a separate, fixed board."
                 : "Cancel or reload returns to this same ranked board. Scores commit once, after play ends.",
-                12, 16, 132, 438, 34, UiTheme.Muted), 9);
+                12, 16, 132, challengeWidth - 32f, 34, UiTheme.Muted), 9);
 
             // The clock, as the mockup's timer card: time is the one number that is always moving.
-            var timer = Card("Competition timer", panel, new Vector2(left + 482f, -84f), new Vector2(210, 176));
+            var timer = Card("Competition timer", panel, new Vector2(left + challengeWidth + FrameGap, -FrameEdge), new Vector2(TimerWidth, HeaderHeight));
             UiTheme.AddGlow(timer, UiTheme.GlassRadius);
             var stopwatch = Label("Timer eyebrow", timer, "TIME REMAINING", 12, 16, 14, 180, 20, UiTheme.Accent);
             stopwatch.characterSpacing = 6f;
@@ -112,31 +121,35 @@ namespace Gamesim.Presentation
             status = Label("Progress", timer, "", 14, 16, 110, 180, 54, UiTheme.Glow);
             Fit(status, 10);
 
-            // The board: fixed geometry, on glass the stage shows through at its gutters.
+            // The board: as big as the frame leaves it, on glass the stage shows through.
             playArea = HudPrimitives.Fill("Game surface", panel, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .72f), 12);
-            Place(playArea, left, 272, 880, 430);
+            Place(playArea, left, FrameEdge + HeaderHeight + FrameGap, surfaceWidth, surfaceHeight);
             UiTheme.AddBorder(playArea, 12, UiTheme.Edge(UiTheme.Emphasis.Resting));
             controls = playArea.gameObject.AddComponent<CanvasGroup>(); controls.interactable = false;
-            feedback = Label("Attempt feedback", panel, "", 14, left, 710, 880, 26, UiTheme.Paper);
+            feedback = Label("Attempt feedback", panel, "", 14, left, frameHeight - FrameEdge - FeedbackHeight, surfaceWidth, FeedbackHeight, UiTheme.Paper);
             Fit(feedback, 10);
 
             // Who is competing, down the right-hand side where the column of cards always is.
-            var fieldCard = Card("Competition field card", panel, new Vector2(-24f, -84f), new Vector2(248, 356), true);
-            var fieldHeading = Label("Field heading", fieldCard, "COMPETITORS", 12, 16, 14, 216, 20, UiTheme.Accent);
+            // The field is the whole right-hand column above the controls: with the house's strip
+            // stood down for the attempt, this is where who is competing is read.
+            float fieldHeight = frameHeight - 2f * FrameEdge - ControlsHeight - FrameGap;
+            var fieldCard = Card("Competition field card", panel, new Vector2(-FrameEdge, -FrameEdge), new Vector2(SideWidth, fieldHeight), true);
+            var fieldHeading = Label("Field heading", fieldCard, "COMPETITORS", 12, 16, 14, SideWidth - 32f, 20, UiTheme.Accent);
             fieldHeading.characterSpacing = 6f;
             // Listed from the top of the card, under its heading, not centred in the box's middle.
-            var entrants = Label("Competition field", fieldCard, field, 14, 16, 40, 216, 250, UiTheme.Paper);
+            var entrants = Label("Competition field", fieldCard, field, 14, 16, 40, SideWidth - 32f, fieldHeight - 40f - 66f, UiTheme.Paper);
             entrants.alignment = TextAlignmentOptions.TopLeft;
             entrants.lineSpacing = 12f;
             Fit(entrants, 10);
-            arenaStatus = Label("Arena status", fieldCard, "", 12, 16, 296, 216, 50, UiTheme.Muted);
+            arenaStatus = Label("Arena status", fieldCard, "", 12, 16, fieldHeight - 60f, SideWidth - 32f, 50, UiTheme.Muted);
             Fit(arenaStatus, 9);
 
             // The controls, in their own card under it: nothing in the frame is a big blue slab.
-            var footer = Card("Competition controls", panel, new Vector2(-24f, -452f), new Vector2(248, 172), true);
-            pause = Button("Pause competition", footer, "Pause", 12, 14, 224, 44, TogglePause);
-            cancel = Button("Cancel attempt", footer, "Back to briefing", 12, 66, 224, 44, () => cancelAction?.Invoke());
-            finishAction = Button("Competition result action", footer, "Continue", 12, 118, 224, 44, () => { });
+            var footer = Card("Competition controls", panel, new Vector2(-FrameEdge, -(frameHeight - FrameEdge - ControlsHeight)), new Vector2(SideWidth, ControlsHeight), true);
+            float buttonWidth = SideWidth - 24f;
+            pause = Button("Pause competition", footer, "Pause", 12, 14, buttonWidth, 44, TogglePause);
+            cancel = Button("Cancel attempt", footer, "Back to briefing", 12, 66, buttonWidth, 44, () => cancelAction?.Invoke());
+            finishAction = Button("Competition result action", footer, "Continue", 12, 118, buttonWidth, 44, () => { });
             finishAction.gameObject.SetActive(false);
             Secondary(pause); Secondary(cancel);
             UiTheme.PackSliced(finishAction.GetComponent<Image>(), PackArt.ButtonPrimary, 16f);
@@ -149,26 +162,30 @@ namespace Gamesim.Presentation
                     input.targetGraphic = playArea.GetComponent<Image>(); reactionFocus = input;
                     input.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnDown = pause, selectOnUp = cancel };
                     playArea.GetComponent<Image>().raycastTarget = true;
-                    target = Button("Reaction target", playArea, "", 0, 0, 130, 92, () =>
+                    target = Button("Reaction target", playArea, "", 0, 0, TargetWidth * BoardScale, TargetHeight * BoardScale, () =>
                     { tap(); if(EventSystem.current!=null)EventSystem.current.SetSelectedGameObject(input.gameObject); }).GetComponent<RectTransform>();
                     targetLabel = target.GetComponentInChildren<TMP_Text>();
                     target.GetComponent<Button>().navigation = new Navigation { mode = Navigation.Mode.None };
                     target.gameObject.SetActive(false);
                     break;
                 case CompetitionMiniGames.Kind.Endurance:
-                    Label("Endurance instruction", playArea, "EFFORT / RECOVERY", 29, 38, 40, 802, 64, UiTheme.Paper);
-                    var track = HudPrimitives.Fill("Grip track", playArea, UiTheme.Ink, 8); Place(track,38,133,802,58);
+                    // The rows keep their places down the board as fractions of its height, and the
+                    // column keeps a readable width, centred, however wide the board is.
+                    float rows = Mathf.Clamp(surfaceHeight / BaseBoardHeight, 1f, 1.6f);
+                    float column = Mathf.Min(surfaceWidth - 78f, 960f * FontScale), columnX = (surfaceWidth - column) * .5f;
+                    Label("Endurance instruction", playArea, "EFFORT / RECOVERY", 29 * Mathf.Min(rows, 1.3f), columnX, surfaceHeight * 40f / BaseBoardHeight, column, 64 * rows, UiTheme.Paper);
+                    var track = HudPrimitives.Fill("Grip track", playArea, UiTheme.Ink, 8); Place(track,columnX,surfaceHeight * 133f / BaseBoardHeight,column,58 * rows);
                     var fill = HudPrimitives.Fill("Grip remaining",track,UiTheme.PositiveDeep,8);
                     fill.anchorMin = Vector2.zero; fill.anchorMax = Vector2.one; fill.offsetMin = fill.offsetMax = Vector2.zero;
                     gripFill = fill.GetComponent<Image>();
-                    gripLabel = Label("Grip value",playArea,"Grip 100%",24,38,205,802,45,UiTheme.Paper);
-                    var hold = Button("Toggle grip",playArea,"Start holding",38,285,802,86,toggleGrip);
+                    gripLabel = Label("Grip value",playArea,"Grip 100%",24 * Mathf.Min(rows, 1.3f),columnX,surfaceHeight * 205f / BaseBoardHeight,column,45 * rows,UiTheme.Paper);
+                    var hold = Button("Toggle grip",playArea,"Start holding",columnX,surfaceHeight * 285f / BaseBoardHeight,column,86 * rows,toggleGrip);
                     effortControl = hold;
                     actionLabel = hold.GetComponentInChildren<TMP_Text>();
                     hold.navigation = new Navigation { mode=Navigation.Mode.Explicit, selectOnDown=pause, selectOnUp=cancel };
                     break;
             }
-            countdown = Label("Countdown", playArea, "3", 90, 0, 125, 880, 160, UiTheme.Gold);
+            countdown = Label("Countdown", playArea, "3", 90, 0, (surfaceHeight - 160f) * .5f, surfaceWidth, 160, UiTheme.Gold);
             countdown.alignment = TextAlignmentOptions.Center;
             var display = UiTheme.Font(UiTheme.Weight.Bold); if (display != null) countdown.font = display;
             pause.navigation = new Navigation { mode = Navigation.Mode.Explicit, selectOnRight = cancel, selectOnLeft = cancel,
@@ -184,13 +201,18 @@ namespace Gamesim.Presentation
 
         private void BuildMemory(Action<int> flip)
         {
+            // Four by four across the whole board, the cards as large as it leaves them.
+            float pitchX = (surfaceWidth - 12f) / 4f, pitchY = (surfaceHeight - 12f) / 4f;
+            float cardWidth = pitchX - 12f, cardHeight = pitchY - 12f;
+            float words = Mathf.Clamp(Mathf.Min(cardWidth / 205f, cardHeight / 91f), 1f, 1.5f);
             for (int i=0;i<16;i++)
             {
                 int card = i;
                 cards[i] = Button("Memory card " + (i+1),playArea,"CARD " + (i+1),
-                    12 + i%4*217, 12 + i/4*103, 205, 91, () => flip(card));
+                    12 + i%4*pitchX, 12 + i/4*pitchY, cardWidth, cardHeight, () => flip(card));
                 cardLabels[i] = cards[i].GetComponentInChildren<TMP_Text>();
-                cardLabels[i].fontSize = 20 * FontScale;
+                cardLabels[i].fontSize = 20 * words * FontScale;
+                cardLabels[i].fontSizeMax = cardLabels[i].fontSize;
             }
             for (int i=0;i<16;i++)
                 cards[i].navigation = new Navigation { mode=Navigation.Mode.Explicit,
@@ -268,6 +290,22 @@ namespace Gamesim.Presentation
             else if (pad != null && pad.rightShoulder.wasPressedThisFrame) MoveControlFocus(false);
             else if (pad != null && pad.leftShoulder.wasPressedThisFrame) MoveControlFocus(true);
             RememberGameFocus();
+            RescueFocus();
+        }
+
+        /// <summary>
+        /// A stray click on the frame's glass deselects: with the HUD stood down for the attempt, its
+        /// rescue does not run, so the game puts the keyboard and the pad back on a control of its own.
+        /// </summary>
+        private void RescueFocus()
+        {
+            var events = EventSystem.current;
+            if (events == null || IsAssembling) return;
+            var selected = events.currentSelectedGameObject;
+            if (selected != null && selected.transform.IsChildOf(transform) && selected.activeInHierarchy) return;
+            if (finishAction != null && finishAction.gameObject.activeInHierarchy) Select(finishAction);
+            else if (IsPlaying) FocusGame();
+            else Select(pause);
         }
 
         /// <summary>Tab and shoulders visit the game, Pause and Back, preserving the selected card.</summary>
@@ -343,7 +381,10 @@ namespace Gamesim.Presentation
                     target.gameObject.SetActive(playing && !Paused && run.TargetLive);
                     if(run.TargetLive)
                     {
-                        Place(target, 16+(float)run.TargetX*718, 16+(1-(float)run.TargetY)*306, 130, 92);
+                        // The same normalised position on a board of any size; the target and its
+                        // margin grow with the board, so it keeps its share of the field.
+                        float inset = 16f * BoardScale, width = TargetWidth * BoardScale, height = TargetHeight * BoardScale;
+                        Place(target, inset+(float)run.TargetX*(surfaceWidth-width-2f*inset), inset+(1-(float)run.TargetY)*(surfaceHeight-height-2f*inset), width, height);
                         targetLabel.text = run.RulesVersion >= CompetitionMiniGames.ImprovedRules ? run.TargetDirection.ToString().ToUpperInvariant() : "HIT";
                         if (run.Definition != null) targetLabel.text += "\n" + run.TargetWindowSeconds.ToString("0.00") + " s";
                     }
@@ -388,6 +429,35 @@ namespace Gamesim.Presentation
                 && EventSystem.current.currentSelectedGameObject.transform.IsChildOf(transform))
                 EventSystem.current.SetSelectedGameObject(null);
         }
+
+        // The frame's layout, in reference units: the margin at the frame's edge, the gap between
+        // cards, the header row, the right-hand column, and the board the games were drawn for.
+        private const float FrameEdge = 24f, FrameGap = 12f, HeaderHeight = 176f, TimerWidth = 210f;
+        private const float SideWidth = 272f, ControlsHeight = 172f, FeedbackHeight = 26f;
+        private const float BaseBoardWidth = 880f, BaseBoardHeight = 430f, TargetWidth = 130f, TargetHeight = 92f;
+        private float surfaceWidth = BaseBoardWidth, surfaceHeight = BaseBoardHeight;
+        /// <summary>
+        /// The frame in the canvas's reference units. Read from the screen and the scaler's own
+        /// settings rather than from the canvas: the first competition builds its canvas and lays it
+        /// out in the same frame, before the scaler has run, when the canvas is still the raw screen
+        /// in pixels - which drew the board at less than half its size.
+        /// </summary>
+        private Vector2 FrameSize()
+        {
+            var scaler = GetComponent<CanvasScaler>();
+            if (scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize && Screen.width > 0 && Screen.height > 0)
+            {
+                var reference = scaler.referenceResolution;
+                float log = Mathf.Lerp(Mathf.Log(Screen.width / reference.x, 2f), Mathf.Log(Screen.height / reference.y, 2f), scaler.matchWidthOrHeight);
+                float scale = Mathf.Pow(2f, log);
+                return new Vector2(Screen.width / scale, Screen.height / scale);
+            }
+            var rect = ((RectTransform)transform).rect;
+            return new Vector2(rect.width > 0 ? rect.width : 1600f, rect.height > 0 ? rect.height : 900f);
+        }
+
+        /// <summary>How much larger than the board the games were drawn for this one is.</summary>
+        private float BoardScale => Mathf.Clamp(Mathf.Min(surfaceWidth / BaseBoardWidth, surfaceHeight / BaseBoardHeight), 1f, 1.6f);
 
         private TMP_Text Label(string name,Transform parent,string text,float size,float x,float y,float w,float h,Color colour)
         {

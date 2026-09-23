@@ -154,6 +154,28 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// The competition for a houseguest who is not in its field: the same full-screen briefing -
+        /// the arena beside the sheet, what is at stake, how it is played, who is competing - with
+        /// the one thing there is to do, which is to watch it.
+        /// </summary>
+        private void SpectatorBriefing(EpisodeState state)
+        {
+            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Competition);
+            FrameBriefing();
+            var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
+            var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
+            var definition = CompetitionDefinitions.For(state);
+            string stakes = state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
+                : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
+                : "At stake: progress toward the final Head of Household decision.";
+            hud.CompetitionHero(state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
+                definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes);
+            hud.CompetitionBrief(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));
+            hud.Paragraph("Competing: " + string.Join(", ", field.Select(c => c.name)) + ". You are not in this field.");
+            hud.Action("Watch eligible housemates compete", () => Commit(state, EpisodeCommandKind.Advance));
+        }
+
+        /// <summary>
         /// The briefing's four facts: the game's twist where its variant has one (otherwise what
         /// the board is), the clock, pausing, and what performance is worth - each from the rules
         /// the game runs, never a number written for the card.
@@ -231,7 +253,9 @@ namespace Gamesim.Episode
                     practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, CancelChallenge, MissReactionTarget, !reducedMotion);
             }
             audioBed.PlayCue(HouseAudio.Cue.CompetitionStart); Render();
-            competitionAssemblyHudHidden = competitionScreen != null && competitionScreen.IsAssembling;
+            // The competition is the whole screen for the whole attempt - the walk to the stations
+            // and the game after it - so the house's HUD stands down until it commits or is left.
+            competitionAssemblyHudHidden = competitionScreen != null && competitionScreen.IsShowing;
             if (competitionAssemblyHudHidden) hud.SetVisible(false);
         }
 
@@ -247,7 +271,6 @@ namespace Gamesim.Episode
             competitionScreen.SetArenaStatus(competitionArenaStatus);
             if (competitionScreen.IsAssembling)
             { competitionScreen.AdvanceAssembly(Time.unscaledDeltaTime, CompetitionArenaReady); return; }
-            RestoreCompetitionAssemblyHud();
             if (!CompetitionArenaReady) { competitionScreen.HoldReady("Houseguests are taking their places"); return; }
             if (!competitionScreen.AdvanceReady(Time.unscaledDeltaTime)) return;
             var keyboard = Keyboard.current;
@@ -323,6 +346,7 @@ namespace Gamesim.Episode
                 Render(); return;
             }
             competitionScreen.Hide(); challengeRun = null; challengeOrigin = null;
+            RestoreCompetitionAssemblyHud();
             if (cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
         }
 
@@ -396,9 +420,16 @@ namespace Gamesim.Episode
             var station = StationPosition;
             if (float.IsInfinity(station.x)) return;
             briefingFramed = true;
+            // Stand the arena in the middle of the frame the briefing's sheet leaves: its offset
+            // from the frame's centre, in half-heights, is metres at the shot's distance through
+            // the vertical field of view. The fixed shift is the fallback when the layout gave none.
+            float offset = hud != null ? hud.ArenaWindowOffset : 0f;
+            float shift = offset > 0f
+                ? offset * CompetitionShotDistance * Mathf.Tan(CompetitionShotFieldOfView * .5f * Mathf.Deg2Rad)
+                : BriefingShotShift;
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
-                Focus = station + Vector3.up - Vector3.right * BriefingShotShift, Distance = CompetitionShotDistance,
+                Focus = station + Vector3.up - Vector3.right * shift, Distance = CompetitionShotDistance,
                 Pitch = CompetitionShotPitch, Yaw = 0f, FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds,
             });
         }

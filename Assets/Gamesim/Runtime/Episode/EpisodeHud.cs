@@ -199,7 +199,7 @@ namespace Gamesim.Episode
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
-            fitToContent = false; pinnedAction = null; nearbyCard = null; nearbyBar = null;
+            fitToContent = false; pinnedAction = null; contentCap = 0f; nearbyCard = null; nearbyBar = null;
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
@@ -527,7 +527,8 @@ namespace Gamesim.Episode
         private float ContentWidth()
         {
             if (conversationColumn != null) return conversationColumn.sizeDelta.x - 14f - 10f - 18f - 16f;
-            return modal != null ? modal.sizeDelta.x - 40f - 18f - 16f : 420f;
+            float width = modal != null ? modal.sizeDelta.x - 40f - 18f - 16f : 420f;
+            return contentCap > 0f ? Mathf.Min(width, contentCap) : width;
         }
 
         /// <summary>

@@ -291,9 +291,14 @@ namespace Gamesim.Tests.PlayMode
                 Is.True, "The ballot has its bar.");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.RootName && rect.gameObject.activeInHierarchy),
                 Is.False, "The bar stands in the strip's place.");
-            var speech = director.GetComponentsInChildren<RectTransform>().First(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy);
-            foreach (var quote in director.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == Gamesim.Presentation.CastRail.QuoteName && rect.gameObject.activeInHierarchy))
-                Assert.That(ScreenRect(speech).Overlaps(ScreenRect(quote)), Is.False, "The bar stops short of the quote card.");
+            // The ballot takes the stage, so the strip's quote card stands down with the strip, and the
+            // bar runs under the whole vote; the vote's foot stays above the status line.
+            Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.QuoteName && rect.gameObject.activeInHierarchy),
+                Is.False, "The quote card stands down with the strip.");
+            var ballotPanel = ScreenRect(director.GetComponentsInChildren<RectTransform>().First(rect => rect.name == "Episode panel" && rect.gameObject.activeInHierarchy));
+            Assert.That(ballotPanel.width * ballotPanel.height, Is.GreaterThan(Screen.width * Screen.height * .5f), "The vote takes most of the frame: " + ballotPanel + ".");
+            var statusLine = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(rect => rect.name == "Status" && rect.gameObject.activeInHierarchy);
+            if (statusLine != null) Assert.That(ballotPanel.Overlaps(ScreenRect(statusLine)), Is.False, "The vote stands above the status line.");
             AssertEquivalent(before,director.Snapshot);
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;

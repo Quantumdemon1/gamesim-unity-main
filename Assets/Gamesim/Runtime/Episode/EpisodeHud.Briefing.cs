@@ -27,8 +27,11 @@ namespace Gamesim.Episode
         public const string ViewRulesCaption = "View full rules";
         public const string HideRulesCaption = "Hide full rules";
 
-        /// <summary>The briefing's card width at the resting text size (the style guide's modal).</summary>
-        private const float BriefingWidth = 640f;
+        /// <summary>
+        /// The briefing's sheet width at the resting text size: the style guide's modal grown to a
+        /// full-height sheet, never more than 58% of the frame so the arena keeps the rest.
+        /// </summary>
+        private const float BriefingSheetWidth = 900f;
 
         /// <summary>
         /// The hero card: the player's face down the left, fading into the card, and beside it the

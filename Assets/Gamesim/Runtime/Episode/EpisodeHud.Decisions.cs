@@ -223,7 +223,18 @@ namespace Gamesim.Episode
             layout.childAlignment = TextAnchor.UpperCenter;
             layout.childControlWidth = layout.childControlHeight = false;
             layout.childForceExpandWidth = layout.childForceExpandHeight = false;
-            float scale = Mathf.Min(FontScale, (ContentWidth() - 24f * FontScale) / (2f * BallotCardWidth));
+            // Large on a large screen - the two people the vote is between are what it shows - and
+            // never wider than the column holds them side by side.
+            float fitsWidth = (ContentWidth() - 24f * FontScale) / (2f * BallotCardWidth);
+            float fitsHeight = float.MaxValue;
+            if (modal != null && modalScroll != null)
+            {
+                var scroll = (RectTransform)modalScroll.transform;
+                float viewport = modal.sizeDelta.y + scroll.offsetMax.y - scroll.offsetMin.y;
+                // The heading, the line under it, the spacing, and a Confirm row under the cards.
+                fitsHeight = (viewport - (6f + 40f + 30f + 3f * 12f + 57f) * FontScale) / BallotCardHeight;
+            }
+            float scale = Mathf.Max(Mathf.Min(FontScale, fitsWidth), Mathf.Min(1.4f * FontScale, Mathf.Min(fitsWidth, fitsHeight)));
             row.GetComponent<LayoutElement>().minHeight = BallotCardHeight * scale + 4f;
             foreach (var id in nominees)
             {

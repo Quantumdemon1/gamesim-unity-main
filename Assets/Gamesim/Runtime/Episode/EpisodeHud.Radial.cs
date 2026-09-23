@@ -41,19 +41,21 @@ namespace Gamesim.Episode
         /// <summary>Where the dial stands in the column's reading order.</summary>
         public const string DialSeatName = "Conversation radial seat";
 
-        // The ring at the standard text size: petals on a 150 radius, 66 across, their captions in
-        // a 96-wide box under each disc. 150 is where no caption reaches the next petal's disc -
-        // the right-hand petal's caption clears the foot's disc by four - and the pair at the foot,
-        // whose captions hang toward each other, clear by 34. The block that holds it is 400
-        // square: about the ring mockup-12 draws, and small enough to stand beside the pair the
-        // two-shot frames rather than over them.
-        private const float DialRadius = 150f;
-        private const float PetalSize = 66f;
-        private const float PetalCaptionWidth = 96f;
-        private const float PetalCaptionHeight = 34f;
-        private const float DialBlock = 400f;
+        // The ring at the standard text size: petals on a 140 radius, 60 across, their captions in
+        // a 90-by-40 box under each disc - two lines of 13 for the longest caption, "Tell them
+        // something personal", which three lines of the narrower box clipped. At 140 the right-hand
+        // petal's caption clears the foot's disc by a unit, and the pair at the foot, whose captions
+        // hang toward each other, clear by 31. The block is 368 by 380: about the ring mockup-12
+        // draws, and narrow enough to stand at the right of the free area with the pair the
+        // two-shot frames between it and the column.
+        private const float DialRadius = 140f;
+        private const float PetalSize = 60f;
+        private const float PetalCaptionWidth = 90f;
+        private const float PetalCaptionHeight = 40f;
+        private const float DialBlockWidth = 368f;
+        private const float DialBlockHeight = 380f;
         /// <summary>How far above the block's foot the ring's centre sits.</summary>
-        private const float DialCentreLift = 214f;
+        private const float DialCentreLift = 209f;
 
         private RectTransform dialRoot;
         private RectTransform dialSeat;
@@ -132,7 +134,7 @@ namespace Gamesim.Episode
             float column = conversationColumn != null ? conversationColumn.sizeDelta.x + 12f : 0f;
             float areaWidth = Mathf.Max(1f, modal.sizeDelta.x - column);
             float areaHeight = Mathf.Max(1f, modal.sizeDelta.y);
-            dialScale = Mathf.Clamp(Mathf.Min(FontScale, areaWidth / DialBlock, areaHeight / DialBlock), .7f, FontScale);
+            dialScale = Mathf.Clamp(Mathf.Min(FontScale, areaWidth / DialBlockWidth, areaHeight / DialBlockHeight), .7f, FontScale);
 
             dialRoot = new GameObject(DialName, typeof(RectTransform)).GetComponent<RectTransform>();
             dialRoot.SetParent(modal, false);
@@ -143,8 +145,8 @@ namespace Gamesim.Episode
             dialRoot.pivot = new Vector2(.5f, 0f);
             // At the right of the free area: the two-shot puts the pair near the frame's centre,
             // which is the middle of this area, and a ring there stood on them.
-            dialRoot.anchoredPosition = new Vector2(column + Mathf.Max(areaWidth * .5f, areaWidth - DialBlock * dialScale * .5f - 8f), 0f);
-            dialRoot.sizeDelta = new Vector2(DialBlock * dialScale, DialBlock * dialScale);
+            dialRoot.anchoredPosition = new Vector2(column + Mathf.Max(areaWidth * .5f, areaWidth - DialBlockWidth * dialScale * .5f - 8f), 0f);
+            dialRoot.sizeDelta = new Vector2(DialBlockWidth * dialScale, DialBlockHeight * dialScale);
 
             var centre = new Vector2(0f, DialCentreLift * dialScale);
             // A dark disc behind the petals, so the ring reads as one object over the set rather
@@ -155,7 +157,7 @@ namespace Gamesim.Episode
             ground.preserveAspect = true;
             DialPiece("Dial ring", UiTheme.Pack(PackArt.WheelRing), new Color(1f, 1f, 1f, .45f), centre,
                 2f * DialRadius / .826f * dialScale);
-            float hub = 106f * dialScale;
+            float hub = 96f * dialScale;
             var hubArt = UiTheme.Pack(PackArt.WheelHub);
             if (hubArt != null) DialPiece("Dial hub", hubArt, Color.white, centre, hub / .733f);
             else
@@ -170,7 +172,7 @@ namespace Gamesim.Episode
             line.rectTransform.anchorMin = line.rectTransform.anchorMax = new Vector2(.5f, 0f);
             line.rectTransform.pivot = new Vector2(.5f, .5f);
             line.rectTransform.anchoredPosition = centre;
-            line.rectTransform.sizeDelta = new Vector2(84f * dialScale, 58f * dialScale);
+            line.rectTransform.sizeDelta = new Vector2(76f * dialScale, 52f * dialScale);
         }
 
         /// <summary>One piece of the dial's dressing, centred on the ring. Nothing on it takes a click.</summary>
@@ -220,7 +222,7 @@ namespace Gamesim.Episode
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
 
-            float side = 30f * dialScale;
+            float side = 28f * dialScale;
             HudPrimitives.Glyph("Petal mark", rect, icon, tint,
                 new Vector2((size - side) * .5f, -(size - side) * .5f), side);
 
@@ -230,7 +232,7 @@ namespace Gamesim.Episode
             label.alignment = TextAlignmentOptions.Top;
             label.rectTransform.anchorMin = label.rectTransform.anchorMax = new Vector2(.5f, 0f);
             label.rectTransform.pivot = new Vector2(.5f, 1f);
-            label.rectTransform.anchoredPosition = new Vector2(0f, -10f * dialScale);
+            label.rectTransform.anchoredPosition = new Vector2(0f, -9f * dialScale);
             label.rectTransform.sizeDelta = new Vector2(PetalCaptionWidth * dialScale, PetalCaptionHeight * dialScale);
             // The captions are sentences of very different lengths under a disc of one size, so the
             // longest of them is allowed to shrink rather than to clip.

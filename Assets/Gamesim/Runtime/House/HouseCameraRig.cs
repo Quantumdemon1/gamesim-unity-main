@@ -96,7 +96,7 @@ namespace Gamesim.House
         /// <summary>The scene volume a shot weights in: depth of field for the close shots.</summary>
         public const string CloseUpVolumeName = "Close-up Volume";
         /// <summary>The two-shot a conversation takes: low, close, across the pair, the pair in focus.</summary>
-        public const float TwoShotDistance = 4f;
+        public const float TwoShotDistance = 4.6f;
         public const float TwoShotPitch = 25f;
         public const float TwoShotFieldOfView = 40f;
         /// <summary>
@@ -107,6 +107,12 @@ namespace Gamesim.House
         public const float TwoShotSeconds = 0f;
         /// <summary>The two-shot's pivot sits this much above the dollhouse's: faces in the upper half, not the middle.</summary>
         public const float TwoShotLift = 0.3f;
+        /// <summary>
+        /// How far the two-shot's pivot sits to the camera's right of the pair, in metres: it puts
+        /// the pair a little left of the frame's centre, between the conversation's column on the
+        /// left and its dial on the right (mockup-12), rather than behind the dial.
+        /// </summary>
+        public const float TwoShotShift = 0.12f;
 
         private Shot? activeShot;
         private Vector3 shotReturnFocus;
@@ -296,6 +302,7 @@ namespace Gamesim.House
             float farther = nearer == left ? right : left;
             var pivot = ConversationFocus() + Vector3.up * TwoShotLift;
             float side = TwoShotSideIsClear(pivot, nearer, player, npc) || !TwoShotSideIsClear(pivot, farther, player, npc) ? nearer : farther;
+            pivot += Quaternion.Euler(0f, side, 0f) * Vector3.right * TwoShotShift;
             return new Shot
             {
                 Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,

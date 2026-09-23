@@ -161,7 +161,7 @@ namespace Gamesim.Episode
             conversationColumn.anchorMin = new Vector2(0f, 0f); conversationColumn.anchorMax = new Vector2(0f, 1f);
             conversationColumn.pivot = new Vector2(0f, .5f);
             conversationColumn.anchoredPosition = Vector2.zero;
-            conversationColumn.sizeDelta = new Vector2(Mathf.Min(380f, width * .42f), 0f);
+            conversationColumn.sizeDelta = new Vector2(Mathf.Min(340f, width * .40f), 0f);
             if (modalScroll != null)
             {
                 modalScroll.transform.SetParent(conversationColumn, false);

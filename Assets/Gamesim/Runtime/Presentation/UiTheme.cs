@@ -358,6 +358,36 @@ namespace Gamesim.Presentation
             return circle;
         }
 
+        private static Sprite softLine;
+
+        /// <summary>
+        /// A soft horizontal line: white, fading from its centre row to nothing over its height, for
+        /// the glow under a relationship's line. Generated once, like <see cref="Circle"/>.
+        /// </summary>
+        public static Sprite SoftLine()
+        {
+            if (softLine != null) return softLine;
+            const int width = 4, height = 32;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Soft Line", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                float t = (y + .5f - height * .5f) / 6f;
+                byte alpha = (byte)Mathf.RoundToInt(Mathf.Exp(-t * t) * 255f);
+                for (int x = 0; x < width; x++) pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            softLine = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            softLine.name = texture.name;
+            softLine.hideFlags = HideFlags.HideAndDontSave;
+            return softLine;
+        }
+
         private static Sprite Fill(int radius) => Cached(FillCache, radius, false);
         private static Sprite OutlineSprite(int radius) => Cached(OutlineCache, radius, true);
 

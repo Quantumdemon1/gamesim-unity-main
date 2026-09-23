@@ -278,11 +278,16 @@ namespace Gamesim.Episode
                     () => CancelDiaryDecision(reviewed));
                 return;
             }
+            // A live ballot is the reason the player is in the chair, so it comes first
+            // (mockup-08): it sat under the record, the reflections and the study notes, below the
+            // fold of a column the player had to scroll to find the one thing they came to do.
+            bool ballot = state.pendingDiary == null && BallotIsLive(state);
+            if (ballot) RenderPlayerDecision(state, true);
             hud.Paragraph("A quiet place to reflect. Looking back costs you nothing.");
             RenderDiaryRecord(state);
             RenderDiaryReflection(state);
             RenderStudyHouse(state);
-            if (state.pendingDiary == null)
+            if (state.pendingDiary == null && !ballot)
             {
                 hud.Heading("YOUR PENDING DECISION");
                 hud.Paragraph("Choose an option to review it before confirming. Episode ceremonies continue only at the episode screen.");
@@ -529,10 +534,7 @@ namespace Gamesim.Episode
                 hud.EvictionSpeech(SubmitEvictionSpeech);
                 return true;
             }
-            if (state.phase == EpisodePhase.Eviction && !state.evictionResolved
-                && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
-                && !state.votes.Any(vote => vote.voterId == state.playerId)
-                && (EpisodeEngine.Voters(state).Any(voter => voter.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
+            if (BallotIsLive(state))
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");
@@ -548,6 +550,14 @@ namespace Gamesim.Episode
             }
             return false;
         }
+
+        /// <summary>Whether the player has an eviction ballot to cast right now.</summary>
+        private static bool BallotIsLive(EpisodeState state) =>
+            state.Find(state.playerId)?.status == ContestantStatus.Active
+            && state.phase == EpisodePhase.Eviction && !state.evictionResolved
+            && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
+            && !state.votes.Any(vote => vote.voterId == state.playerId)
+            && (EpisodeEngine.Voters(state).Any(voter => voter.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state));
 
         private void OfferBallot(EpisodeState state, bool privateRoom, bool tieBreak, string id) =>
             OfferPlayerDecision(state, privateRoom, EpisodeCommandKind.CastVote,

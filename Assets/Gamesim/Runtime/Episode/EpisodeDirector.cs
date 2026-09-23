@@ -948,6 +948,10 @@ namespace Gamesim.Episode
             if (houseActivitiesOpen) { RenderHouseActivities(); return; }
             if (journalOpen)
             {
+                // Every page of the notebook takes the notebook's own frame, not only the web: the
+                // others were rendered into the docked panel, whose viewport is about 174 units
+                // tall - the room map showed its header and nothing of the map.
+                hud.SetActivityLayout(EpisodeHud.ActivityLayout.Relationships);
                 hud.PanelTitle("YOUR NOTEBOOK", "Private information is limited to what your character knows.");
                 // A command rather than a section, so it stays put whichever page you are on.
                 hud.Action("House activities",OpenHouseActivities);

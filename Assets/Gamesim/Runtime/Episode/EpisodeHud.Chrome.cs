@@ -607,6 +607,10 @@ namespace Gamesim.Episode
             if (state == null) return 0f;
             var entries = state.events
                 .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(state.playerId))
+                // Phase markers are the engine's scaffolding, not something that happened - the
+                // story page leaves them out for the same reason. They filled the card with
+                // "Week 1 · Nomination" where the nomination itself should have been.
+                .Where(entry => entry.kind != "phase")
                 .Reverse()
                 .Take(RecentEventRows)
                 .ToList();

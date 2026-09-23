@@ -22,9 +22,9 @@ namespace Gamesim.Presentation
     /// control's caption is its identity, and appending to one has broken seven tests at once
     /// before. A fill alone is a colour, and a colour must never be the only carrier.</para>
     ///
-    /// <para>The rows are a shortcut, not a focus target: keyboard players reach the same pages by
-    /// opening the notebook, and six more stops ahead of a panel's own controls would cost them more
-    /// than they save.</para>
+    /// <para>The rows join the HUD's keyboard ring like any other chrome: in it while nothing is
+    /// open, and out of it while a panel is, so they never stand between a panel and its own
+    /// controls.</para>
     /// </summary>
     public static class IconRail
     {
@@ -206,9 +206,10 @@ namespace Gamesim.Presentation
             // Land on the resting colour now rather than fading to it: a white ground mid-fade is a
             // lit row, and a row built during a HUD rebuild was drawn lit for its first frames.
             ground.canvasRenderer.SetColor(resting);
-            var navigation = button.navigation;
-            navigation.mode = Navigation.Mode.None;
-            button.navigation = navigation;
+            // Navigation is left to the HUD's keyboard ring, which takes every control outside an
+            // open panel out of it and wires the rest - a row that opted itself out here was out
+            // of the ring on the frames before the ring was rewired, and a keyboard player who
+            // pressed Settings then was pressing nothing.
             if (onClick != null) button.onClick.AddListener(() => onClick());
             return button;
         }

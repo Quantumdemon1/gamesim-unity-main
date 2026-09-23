@@ -373,10 +373,21 @@ namespace Gamesim.Episode
 
         public void Heading(string value) { Heading(value,Accent); }
 
+        /// <summary>
+        /// The body and heading sizes a panel's copy is set at. A docked panel reads as a card at
+        /// 21 and 26; a conversation, a decision band or the diary's column is a HUD surface over
+        /// the house, where those sizes read as a document someone left open (mockup-04, -08,
+        /// -11, -12 all set their copy at 15 to 17).
+        /// </summary>
+        private bool CompactCopy => activityLayout == ActivityLayout.Conversation || activityLayout == ActivityLayout.Diary
+            || activityLayout == ActivityLayout.Nominations || activityLayout == ActivityLayout.HouseEvent;
+        private int BodySize => CompactCopy ? 17 : 21;
+        private int HeadingSize => CompactCopy ? 20 : 26;
+
         /// <summary>A heading in a given colour. The recap uses gold, as the reference build does.</summary>
         public void Heading(string value,Color colour)
         {
-            var text = FlowText(value,26,colour);
+            var text = FlowText(value,HeadingSize,colour);
             // Headings take the semibold cut, the weight the mockups title every card in.
             var weight = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (weight != null) text.font = weight;
@@ -388,7 +399,7 @@ namespace Gamesim.Episode
             var text = FlowText(value,15,colour);
             text.characterSpacing = 10f;
         }
-        public void Paragraph(string value) { FlowText(value,21,Paper); }
+        public void Paragraph(string value) { FlowText(value,BodySize,Paper); }
 
         /// <summary>
         /// A panel title fronted by the speaker's face.

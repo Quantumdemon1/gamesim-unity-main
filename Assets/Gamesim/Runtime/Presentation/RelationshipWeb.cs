@@ -360,10 +360,16 @@ namespace Gamesim.Presentation
             element.flexibleWidth = 1f;
             element.minHeight = height; element.preferredHeight = height;
 
-            var title = Heading(area, TitleCopy, 15, UiTheme.Paper, scale, font);
-            Place(title.rectTransform, 4f * scale, -2f * scale, 260f * scale, 22f * scale);
-            var strap = Text(area, StrapCopy, 12, UiTheme.Muted, UiTheme.Weight.Regular, scale, font);
-            Place(strap.rectTransform, 4f * scale, -34f * scale, 430f * scale, 18f * scale);
+            // The mockup's title: bold, in the heading blue, lit from above.
+            var title = Heading(area, TitleCopy, 22, UiTheme.Heading, scale, font);
+            var display = UiTheme.Font(UiTheme.Weight.Bold); if (display != null) title.font = display;
+            title.characterSpacing = 2f;
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(UiTheme.Glow, UiTheme.Glow, UiTheme.Heading, UiTheme.Heading);
+            title.color = Color.white;
+            Place(title.rectTransform, 4f * scale, 0f, 420f * scale, 30f * scale);
+            var strap = Text(area, StrapCopy, 13, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .78f), UiTheme.Weight.Regular, scale, font);
+            Place(strap.rectTransform, 4f * scale, -32f * scale, 430f * scale, 18f * scale);
 
             var hub = new GameObject("Hub", typeof(RectTransform)).GetComponent<RectTransform>();
             hub.SetParent(area, false);
@@ -412,6 +418,16 @@ namespace Gamesim.Presentation
             edge.sizeDelta = new Vector2(length, weight);
             edge.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
 
+            if (kind != Kind.Neutral)
+            {
+                // The mockup's lines glow: a soft band of the same hue under the line itself.
+                var glow = new GameObject("Segment glow", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                glow.SetParent(edge, false);
+                glow.anchorMin = glow.anchorMax = new Vector2(0f, .5f); glow.pivot = new Vector2(0f, .5f);
+                glow.anchoredPosition = Vector2.zero; glow.sizeDelta = new Vector2(length, weight * 4.5f);
+                var image = glow.GetComponent<Image>();
+                image.sprite = UiTheme.SoftLine(); image.color = new Color(tint.r, tint.g, tint.b, .3f); image.raycastTarget = false;
+            }
             if (kind == Kind.Distrust)
             {
                 // The mockup's dashed line: distrust is a broken connection, drawn as one.
@@ -439,8 +455,10 @@ namespace Gamesim.Presentation
             float scale, TMP_FontAsset font, Func<string, Texture> portrait, bool isPlayer, bool selected,
             Action<string> select)
         {
-            var kind = isPlayer ? Kind.Neutral : KindOf(state, actor.id);
-            var ring = isPlayer ? UiTheme.Accent : RingColour(kind);
+            // One rim for everyone - the mockup's glowing blue - and the accent for the player. The
+            // reading is the line's colour and the column's tile; on the face it was a third copy
+            // that made the web read as a ring of different-coloured coins.
+            var ring = isPlayer ? UiTheme.Accent : UiTheme.Glow;
 
             // The node is a button so the column can be pointed at anyone. Its GameObject carries
             // the houseguest's name, decorated, which is what the keyboard restore and a screen
@@ -470,11 +488,27 @@ namespace Gamesim.Presentation
                 select?.Invoke(id);
             });
 
+            // A soft glow behind every face, strongest on the player's: the mockup's nodes are lit.
+            var lit = UiTheme.Pack(PackArt.GlowCyan);
+            if (lit != null)
+            {
+                var glow = new GameObject("Node glow", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                glow.SetParent(holder, false);
+                float reach = (diameter + 2f * RingWidth * scale) * 1.55f;
+                Centre(glow, Vector2.zero, reach, reach);
+                var glowImage = glow.GetComponent<Image>();
+                glowImage.sprite = lit; glowImage.preserveAspect = true; glowImage.raycastTarget = false;
+                glowImage.color = new Color(1f, 1f, 1f, isPlayer ? .7f : .28f);
+            }
             if (selected)
             {
-                // The mockup's blue halo on the houseguest being read.
-                var halo = HudPrimitives.Disc("Halo", holder, new Color(UiTheme.Glow.r, UiTheme.Glow.g, UiTheme.Glow.b, .35f));
-                Centre(halo, Vector2.zero, diameter + 18f * scale, diameter + 18f * scale);
+                // The mockup's selection ring on the houseguest being read: the pack's ring, its
+                // bright rim a few units outside the portrait's.
+                var ringArt = UiTheme.Pack(PackArt.NodeSelected);
+                float across = ringArt != null ? 1.364f * (diameter + 2f * RingWidth * scale) + 8f * scale : diameter + 18f * scale;
+                var halo = HudPrimitives.Disc("Halo", holder, ringArt != null ? Color.white : new Color(UiTheme.Glow.r, UiTheme.Glow.g, UiTheme.Glow.b, .35f));
+                if (ringArt != null) { var ringImage = halo.GetComponent<Image>(); ringImage.sprite = ringArt; ringImage.preserveAspect = true; }
+                Centre(halo, Vector2.zero, across, across);
             }
 
             var rim = HudPrimitives.Portrait(holder, portrait != null ? portrait(actor.id) : null, ring, diameter, RingWidth * scale, false);
@@ -500,8 +534,13 @@ namespace Gamesim.Presentation
         /// <summary>The mood face on a portrait's lower shoulder, in the mood's colour.</summary>
         private static void MoodBadge(RectTransform rim, string mood, float diameter, float scale)
         {
-            float size = Mathf.Max(14f, diameter * .36f);
-            var badge = HudPrimitives.Disc("Mood", rim, UiTheme.Ink);
+            float size = Mathf.Max(16f, diameter * .36f);
+            var outline = HudPrimitives.Disc("Mood rim", rim, UiTheme.Ink);
+            outline.anchorMin = new Vector2(1f, 0f); outline.anchorMax = new Vector2(1f, 0f);
+            outline.pivot = new Vector2(.5f, .5f);
+            outline.anchoredPosition = new Vector2(-size * .3f, size * .3f);
+            outline.sizeDelta = new Vector2(size + 3f * scale, size + 3f * scale);
+            var badge = HudPrimitives.Disc("Mood", rim, MoodColour(mood));
             badge.anchorMin = new Vector2(1f, 0f); badge.anchorMax = new Vector2(1f, 0f);
             badge.pivot = new Vector2(.5f, .5f);
             badge.anchoredPosition = new Vector2(-size * .3f, size * .3f);
@@ -518,7 +557,8 @@ namespace Gamesim.Presentation
             art.SetParent(badge, false);
             Centre(art, Vector2.zero, size * .82f, size * .82f);
             var image = art.GetComponent<Image>();
-            image.sprite = glyph; image.color = MoodColour(mood);
+            // The face drawn dark on the mood's colour, as the mockup draws its mood badges.
+            image.sprite = glyph; image.color = UiTheme.Ink;
             image.preserveAspect = true; image.raycastTarget = false;
         }
 
@@ -530,6 +570,7 @@ namespace Gamesim.Presentation
             float height = 19f * scale;
             var chip = HudPrimitives.Fill("Name chip", parent, new Color(UiTheme.Background.r, UiTheme.Background.g, UiTheme.Background.b, .92f), 7);
             chip.sizeDelta = new Vector2(width, height);
+            UiTheme.PackSliced(chip.GetComponent<Image>(), PackArt.Nameplate, 6f * scale);
             UiTheme.AddBorder(chip, 7, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .7f));
             var label = Text(chip, word, 12, tint, UiTheme.Weight.Medium, scale, font, TextAlignmentOptions.Center);
             label.enableAutoSizing = false;
@@ -553,6 +594,16 @@ namespace Gamesim.Presentation
                 legend.anchorMin = legend.anchorMax = Vector2.one; legend.pivot = Vector2.one;
                 legend.sizeDelta = new Vector2(180f * scale,280f * scale);
             }
+
+            // The key on a card of its own, as the mockup draws it, behind everything it holds.
+            var card = new GameObject("Legend card", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            card.SetParent(legend, false);
+            card.SetAsFirstSibling();
+            card.anchorMin = Vector2.zero; card.anchorMax = Vector2.one;
+            card.offsetMin = Vector2.zero; card.offsetMax = Vector2.zero;
+            var ground = card.GetComponent<Image>();
+            ground.raycastTarget = false;
+            if (!UiTheme.PackSliced(ground, PackArt.PanelResting, 12f * scale)) UiTheme.Style(ground, UiTheme.GlassFill, 10);
 
             float cell = 128f * scale, rowHeight = 20f * scale;
             var lines = new[]
@@ -673,6 +724,7 @@ namespace Gamesim.Presentation
             // rows come to. Glass() adds its glow and hairline as children of the panel, which is
             // why the panel is not the layout group itself.
             var glass = HudPrimitives.Fill("Glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
+            UiTheme.PackSliced(glass.GetComponent<Image>(), PackArt.SideInfoPanel, 14f * scale);
             UiTheme.AddBorder(glass, UiTheme.GlassRadius, new Color(UiTheme.Hairline.r,UiTheme.Hairline.g,UiTheme.Hairline.b,.3f));
             glass.anchorMin = Vector2.zero; glass.anchorMax = Vector2.one;
             glass.offsetMin = Vector2.zero; glass.offsetMax = Vector2.zero;

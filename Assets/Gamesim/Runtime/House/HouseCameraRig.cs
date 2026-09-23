@@ -106,11 +106,11 @@ namespace Gamesim.House
         /// </summary>
         public const float TwoShotSeconds = 0f;
         /// <summary>
-        /// The two-shot's pivot sits this much above the dollhouse's, at the pair's hips: mockup-12
+        /// The two-shot's pivot sits this much above the dollhouse's, below the pair's hips: mockup-12
         /// has the faces in the upper third of the frame and the conversation's dial under the
         /// pair, over their knees, not across their chests.
         /// </summary>
-        public const float TwoShotLift = -0.1f;
+        public const float TwoShotLift = -0.3f;
         /// <summary>
         /// How far the two-shot's pivot sits to the camera's right of the pair, in metres. Negative:
         /// to the left, which puts the pair right of the frame's centre, in the middle of what the

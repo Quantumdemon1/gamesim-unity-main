@@ -239,7 +239,7 @@ namespace Gamesim.Presentation
         private const float ButtonGap = 12f;
 
         /// <summary>A soft pool of pack light in a corner of the ground.</summary>
-        private static void CornerLight(Transform parent, string path, Vector2 corner, Vector2 size, float alpha)
+        internal static void CornerLight(Transform parent, string path, Vector2 corner, Vector2 size, float alpha)
         {
             var sprite = UiTheme.Pack(path);
             if (sprite == null) return;

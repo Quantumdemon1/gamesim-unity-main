@@ -499,6 +499,7 @@ namespace Gamesim.Episode
             }).ToList());
             // What the player has seen this week, after the choices it informs.
             hud.KnownHouseEventContext(state,item);
+            FrameHouseEvent(item);
         }
 
         /// <summary>

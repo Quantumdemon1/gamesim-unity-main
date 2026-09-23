@@ -75,8 +75,8 @@ namespace Gamesim.Episode
             float canvasWidth = bounds.width > 0 ? bounds.width : 1600f;
             float canvasHeight = bounds.height > 0 ? bounds.height : 900f;
             if (layout == ActivityLayout.Conversation) { ConversationLayout(canvasWidth, canvasHeight); return; }
-            // Both are decisions about the people in the house, and both take the same band.
-            if (layout == ActivityLayout.Nominations || layout == ActivityLayout.HouseEvent) { NominationsLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Nominations) { NominationsLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.HouseEvent) { HouseEventLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Diary) { DiaryLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Ballot) { BallotLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Settings) { SettingsLayout(canvasWidth, canvasHeight); return; }
@@ -192,6 +192,37 @@ namespace Gamesim.Episode
             modal.anchorMin = modal.anchorMax = Vector2.zero;
             modal.pivot = Vector2.zero;
             modal.anchoredPosition = new Vector2(LeftColumnX, ModalLift);
+            modal.sizeDelta = new Vector2(width, height);
+            SetChromeVisible(FollowChipName, false);
+            SetChromeVisible("Interaction prompt", false);
+            var hint = modal.Find("Panel control hint");
+            if (hint != null) hint.gameObject.SetActive(false);
+            if (modalScroll != null)
+            {
+                Stretch((RectTransform)modalScroll.transform, 20f, 72f, 20f, 14f);
+                modalScroll.verticalNormalizedPosition = 1f;
+            }
+        }
+
+        /// <summary>The house event's card (mockup-04), at the resting text size.</summary>
+        private const float HouseEventWidth = 760f;
+        private const float HouseEventHeight = 400f;
+
+        /// <summary>
+        /// A house event (mockup-04): a card low in the middle of the frame, over the house rather
+        /// than in place of it - what happened, the question and its answers, with the rest of the
+        /// phase panel a scroll below them. It shared the nominations' band once, which is the
+        /// whole width between the rail and the column and most of the height: the room the event
+        /// happened in was behind it.
+        /// </summary>
+        private void HouseEventLayout(float canvasWidth, float canvasHeight)
+        {
+            float free = Mathf.Max(420f, canvasWidth - LeftColumnX - RightColumnInset - RightColumnWidth - 12f);
+            float width = Mathf.Min(HouseEventWidth * FontScale, free);
+            float height = Mathf.Min(HouseEventHeight * FontScale, Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom - 12f));
+            modal.anchorMin = modal.anchorMax = Vector2.zero;
+            modal.pivot = Vector2.zero;
+            modal.anchoredPosition = new Vector2(LeftColumnX + (free - width) * .5f, ModalLift);
             modal.sizeDelta = new Vector2(width, height);
             SetChromeVisible(FollowChipName, false);
             SetChromeVisible("Interaction prompt", false);

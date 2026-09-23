@@ -41,7 +41,13 @@ namespace Gamesim.Presentation
         /// both edges of the last, and nothing in the suite can see it happen. So it is measured
         /// from the canvas at every rebuild instead.</para>
         /// </summary>
-        private const float MaxWidth = 1560f;
+        private const float MaxWidth = 1320f;
+        /// <summary>
+        /// The side margin mockup-02 spends on its featured rail and its corner lines. The grid was
+        /// 1560 wide and left none; at 1320 its cards are the mockup's width and the margins hold
+        /// the rest of its frame.
+        /// </summary>
+        private const float SideDressing = 150f;
         private const float MinWidth = 900f;
         private const float FrameMargin = 96f;
         private const float Pad = 28f;
@@ -81,7 +87,7 @@ namespace Gamesim.Presentation
         /// viewport's height and the header's height were free to disagree - and did. They are one
         /// number each now and the viewport is derived from both.</para>
         /// </summary>
-        private const float HeaderHeight = 268f;
+        private const float HeaderHeight = 280f;
         private const float FooterHeight = 196f;
 
         private float width = 1180f;
@@ -277,6 +283,17 @@ namespace Gamesim.Presentation
                 ground.sprite = night; ground.type = UnityEngine.UI.Image.Type.Simple; ground.color = Color.white;
             }
             Stretch(scrim);
+            // Lit as the menu's ground is: purple low on the left, cyan high on the right.
+            MainMenu.CornerLight(scrim, PackArt.GlowPurple, new Vector2(0f, 0f), new Vector2(1100f, 800f), .40f);
+            MainMenu.CornerLight(scrim, PackArt.GlowCyan, new Vector2(1f, 1f), new Vector2(1000f, 700f), .28f);
+            HudPrimitives.Vignette(scrim);
+            float margin = ((frame > 1f ? frame : 1920f) - Width) * .5f;
+            if (margin >= SideDressing)
+            {
+                Brand(scrim);
+                CornerLines(scrim);
+                if (!libraryMode && !castSlotsMode) FeaturedRail(scrim);
+            }
 
             content = new GameObject("Fixed setup navigation", typeof(RectTransform)).GetComponent<RectTransform>();
             content.SetParent(scrim, false);
@@ -403,7 +420,7 @@ namespace Gamesim.Presentation
             Space(Pad);
             // The mockup sets the title in white with the strap in a muted blue-grey under it. The
             // words are the build's own, unchanged; only the weight and the colour move.
-            var title = HudPrimitives.Heading("Text", content, 34f, UiTheme.Paper, TextAlignmentOptions.Center);
+            var title = HudPrimitives.Heading("Text", content, 46f, UiTheme.Paper, TextAlignmentOptions.Center);
             // ONE localisation key, looked up once. The reference draws the last word in the accent,
             // and the tempting way to get that - two adjacent labels - would split
             // "CHOOSE YOUR HOUSEGUEST" into two keys, neither of which matches the entry and one of
@@ -426,23 +443,23 @@ namespace Gamesim.Presentation
             // Was 8, which at 30px spread the title across most of the frame and read as a banner
             // rather than as a heading. The reference tracks its display type barely at all.
             title.characterSpacing = 2f;
-            Place(title.rectTransform, Width - Pad * 2f, 46f, -cursor);
-            cursor += 46f;
+            Place(title.rectTransform, Width - Pad * 2f, 58f, -cursor);
+            cursor += 58f;
             Text("Pick who you play as, then set the size of the house. Everyone else is cast from the same roster.",
-                15f, UiTheme.Muted, 24f, TextAlignmentOptions.Center);
+                17f, UiTheme.Muted, 24f, TextAlignmentOptions.Center);
             Space(8f);
         }
 
         private void RosterTabs()
         {
-            var bar = Row(42f);
+            var bar = Row(48f);
             var options = Enum.GetValues(typeof(CastTemplates.Roster)).Cast<CastTemplates.Roster>().ToList();
             const float span = 260f;
             float x = -(options.Count - 1) * span / 2f;
             foreach (var option in options)
             {
                 var pick = option;
-                Chip(bar, CastTemplates.RosterName(pick), x, span - 10f, roster == pick, () =>
+                var tab = Chip(bar, CastTemplates.RosterName(pick), x, span - 10f, roster == pick, () =>
                 {
                     if (roster == pick) return;
                     roster = pick;
@@ -452,6 +469,9 @@ namespace Gamesim.Presentation
                     houseSize = SeasonBuilder.ClampHouseSize(roster, houseSize);
                     Rebuild();
                 });
+                ((RectTransform)tab.transform).sizeDelta = new Vector2(span - 10f, 46f);
+                var words = tab.GetComponentInChildren<TMP_Text>();
+                if (words != null) { words.fontSizeMax = 18f; words.fontSize = 18f; }
                 x += span;
             }
             Space(2f);
@@ -485,19 +505,8 @@ namespace Gamesim.Presentation
                 return;
             }
 
-            // The reference holds the whole roster in one bordered panel rather than letting the
-            // cards float on the ground. Built before the cards so it sits behind them.
-            int rows = (shown.Count + Columns - 1) / Columns;
-            float gridHeight = rows * (CardHeight + Gutter) - Gutter;
-            var frame = HudPrimitives.Fill("Roster", content, UiTheme.CardFill, UiTheme.GlassRadius);
-            frame.anchorMin = new Vector2(0.5f, 1f);
-            frame.anchorMax = new Vector2(0.5f, 1f);
-            frame.pivot = new Vector2(0.5f, 1f);
-            frame.sizeDelta = new Vector2(Width - Pad * 2f + 24f, gridHeight + 24f);
-            frame.anchoredPosition = new Vector2(0f, -(cursor - 12f));
-            UiTheme.AddBorder(frame, UiTheme.GlassRadius,
-                new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, 0.30f));
-
+            // The cards stand on the lit ground, as mockup-02's do. They were held in one bordered
+            // panel, whose edge the viewport's mask cut along the top row.
             for (int index = 0; index < shown.Count; index++)
             {
                 int column = index % Columns;
@@ -858,7 +867,9 @@ namespace Gamesim.Presentation
                 Hide();
                 start?.Invoke(choice);
             });
-            ((RectTransform)start.transform).sizeDelta = new Vector2(420f, 50f);
+            ((RectTransform)start.transform).sizeDelta = new Vector2(460f, 54f);
+            var startWords = start.GetComponentInChildren<TMP_Text>();
+            if (startWords != null) { startWords.fontSizeMax = 20f; startWords.fontSize = 20f; }
             HudPrimitives.Chevron(start.transform, Color.white, 14f).anchoredPosition = new Vector2(-22f, 0f);
             Chip(bar, CancelCaption, 230f, 250f, false, Dismiss);
 
@@ -963,12 +974,12 @@ namespace Gamesim.Presentation
             var image = pill.GetComponent<Image>();
             image.raycastTarget = true;
 
-            var label = HudPrimitives.Label("Label", pill, 14f,
+            var label = HudPrimitives.Label("Label", pill, 16f,
                 active ? Color.white : UiTheme.Paper, TextAlignmentOptions.Center);
             var weight = UiTheme.Font(active ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
             if (weight != null) label.font = weight;
             label.text = Localisation.Text(text);
-            label.enableAutoSizing = true; label.fontSizeMax = 14f; label.fontSizeMin = 10f;
+            label.enableAutoSizing = true; label.fontSizeMax = 16f; label.fontSizeMin = 10f;
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(8f, 0f);
@@ -1022,6 +1033,134 @@ namespace Gamesim.Presentation
         }
 
         // ---------------------------------------------------------------- layout
+
+        /// <summary>
+        /// The brand in the corner, as every mockup carries it: the house mark and the name in the
+        /// title blue, lit from above, and the strap under it.
+        /// </summary>
+        private static void Brand(RectTransform scrim)
+        {
+            var brand = new GameObject("Brand", typeof(RectTransform)).GetComponent<RectTransform>();
+            brand.SetParent(scrim, false);
+            brand.anchorMin = brand.anchorMax = new Vector2(0f, 1f);
+            brand.pivot = new Vector2(0f, 1f);
+            brand.sizeDelta = new Vector2(300f, 64f);
+            brand.anchoredPosition = new Vector2(32f, -26f);
+            float left = 0f;
+            var houseMark = UiTheme.Pack(PackArt.IconHome);
+            if (houseMark != null)
+            {
+                var mark = new GameObject("Brand mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(brand, false);
+                mark.rectTransform.anchorMin = mark.rectTransform.anchorMax = new Vector2(0f, 1f);
+                mark.rectTransform.pivot = new Vector2(0f, 1f);
+                mark.rectTransform.sizeDelta = new Vector2(52f, 52f);
+                mark.rectTransform.anchoredPosition = new Vector2(0f, -2f);
+                mark.sprite = houseMark; mark.color = UiTheme.Heading; mark.preserveAspect = true; mark.raycastTarget = false;
+                left = 62f;
+            }
+            var word = HudPrimitives.Label("Brand word", brand, 36f, Color.white, TextAlignmentOptions.TopLeft);
+            word.text = Localisation.Text("GAMESIM");
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) word.font = bold;
+            word.characterSpacing = 2f;
+            word.enableVertexGradient = true;
+            word.colorGradient = new VertexGradient(UiTheme.Hex("6CC0FF"), UiTheme.Hex("6CC0FF"), UiTheme.Hex("3A86FF"), UiTheme.Hex("3A86FF"));
+            word.rectTransform.anchorMin = word.rectTransform.anchorMax = new Vector2(0f, 1f);
+            word.rectTransform.pivot = new Vector2(0f, 1f);
+            word.rectTransform.sizeDelta = new Vector2(300f - left, 46f);
+            word.rectTransform.anchoredPosition = new Vector2(left, 0f);
+            var strap = HudPrimitives.Label("Brand strap", brand, 14f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
+            strap.text = Localisation.Text("THE HOUSE");
+            strap.characterSpacing = 3f;
+            strap.rectTransform.anchorMin = strap.rectTransform.anchorMax = new Vector2(0f, 1f);
+            strap.rectTransform.pivot = new Vector2(0f, 1f);
+            strap.rectTransform.sizeDelta = new Vector2(300f - left, 20f);
+            strap.rectTransform.anchoredPosition = new Vector2(left + 2f, -44f);
+        }
+
+        /// <summary>The spaced lines in the lower corners of mockup-02, in the house's own voice.</summary>
+        private static void CornerLines(RectTransform scrim)
+        {
+            CornerLine(scrim, "Corner line left", "PEOPLE PLAY DIFFERENT\nSTORIES HERE.", 0f, TextAlignmentOptions.BottomLeft);
+            CornerLine(scrim, "Corner line right", "STRATEGY. FRIENDSHIPS.\nBIGGER STORIES.", 1f, TextAlignmentOptions.BottomRight);
+        }
+
+        private static void CornerLine(RectTransform scrim, string name, string words, float side, TextAlignmentOptions align)
+        {
+            var line = HudPrimitives.Label(name, scrim, 14f, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, .8f), align);
+            line.text = Localisation.Text(words);
+            line.characterSpacing = 6f;
+            line.lineSpacing = 12f;
+            line.rectTransform.anchorMin = line.rectTransform.anchorMax = new Vector2(side, 0f);
+            line.rectTransform.pivot = new Vector2(side, 0f);
+            line.rectTransform.sizeDelta = new Vector2(Mathf.Min(300f, SideDressing * 2f - 40f), 60f);
+            line.rectTransform.anchoredPosition = new Vector2(side < .5f ? 32f : -32f, 34f);
+        }
+
+        /// <summary>The rail's name, so a test can find it the way it finds a named panel.</summary>
+        public const string FeaturedRailName = "Featured rail";
+        private const int FeaturedCount = 7;
+        private const float FeaturedFace = 84f;
+        private const float FeaturedStep = 108f;
+
+        /// <summary>
+        /// Mockup-02's featured rail down the left edge: the first faces of the roster in rings,
+        /// with their given names, the picked one's ring lit. Decoration beside the grid and never a
+        /// second way to pick: a second control with a houseguest's name is a second control a test
+        /// or a screen reader has to tell from the card.
+        /// </summary>
+        private void FeaturedRail(RectTransform scrim)
+        {
+            var shown = CastTemplates.Filter(roster, CastTemplates.AllCategories).Take(FeaturedCount).ToList();
+            if (shown.Count == 0) return;
+            var rail = new GameObject(FeaturedRailName, typeof(RectTransform)).GetComponent<RectTransform>();
+            rail.SetParent(scrim, false);
+            rail.anchorMin = rail.anchorMax = new Vector2(0f, 1f);
+            rail.pivot = new Vector2(0f, 1f);
+            rail.sizeDelta = new Vector2(140f, 60f + shown.Count * FeaturedStep);
+            rail.anchoredPosition = new Vector2(32f, -130f);
+
+            var heading = HudPrimitives.Label("Featured heading", rail, 14f, UiTheme.Paper, TextAlignmentOptions.TopLeft);
+            heading.text = Localisation.Text("FEATURED\nHOUSEGUESTS");
+            heading.characterSpacing = 2f;
+            heading.rectTransform.anchorMin = heading.rectTransform.anchorMax = new Vector2(0f, 1f);
+            heading.rectTransform.pivot = new Vector2(0f, 1f);
+            heading.rectTransform.sizeDelta = new Vector2(140f, 44f);
+            heading.rectTransform.anchoredPosition = Vector2.zero;
+
+            float size = 1f / PortraitOverscan;
+            var window = new Rect((1f - size) * .5f, Mathf.Min(1f - size, (1f - size) * .5f + PortraitLift), size, size);
+            for (int i = 0; i < shown.Count; i++)
+            {
+                var template = shown[i];
+                bool chosen = string.Equals(selectedId, template.Id, StringComparison.Ordinal);
+                float y = -(58f + i * FeaturedStep);
+                var ring = HudPrimitives.Disc("Featured ring", rail, chosen ? UiTheme.Glow : new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .6f));
+                ring.anchorMin = ring.anchorMax = new Vector2(0f, 1f);
+                ring.pivot = new Vector2(.5f, 1f);
+                ring.sizeDelta = new Vector2(FeaturedFace, FeaturedFace);
+                ring.anchoredPosition = new Vector2(52f, y);
+                if (chosen) UiTheme.AddGlow(ring, Mathf.RoundToInt(FeaturedFace * .5f));
+                var face = HudPrimitives.Disc("Featured face", ring, CastPalette.For(template.Id));
+                face.anchorMin = Vector2.zero; face.anchorMax = Vector2.one;
+                face.offsetMin = new Vector2(3f, 3f); face.offsetMax = new Vector2(-3f, -3f);
+                face.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                var picture = new GameObject("Featured portrait", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+                picture.rectTransform.SetParent(face, false);
+                picture.rectTransform.anchorMin = Vector2.zero; picture.rectTransform.anchorMax = Vector2.one;
+                picture.rectTransform.offsetMin = Vector2.zero; picture.rectTransform.offsetMax = Vector2.zero;
+                picture.uvRect = window; picture.color = Color.clear; picture.raycastTarget = false;
+                portraits.Add(new KeyValuePair<RawImage, ContestantState>(picture, CastTemplates.ToContestant(template, false)));
+
+                var name = HudPrimitives.Label("Featured name", rail, 15f, chosen ? Color.white : UiTheme.Paper, TextAlignmentOptions.Top);
+                name.text = template.Name.Split(' ')[0];
+                name.rectTransform.anchorMin = name.rectTransform.anchorMax = new Vector2(0f, 1f);
+                name.rectTransform.pivot = new Vector2(.5f, 1f);
+                name.rectTransform.sizeDelta = new Vector2(110f, 22f);
+                name.rectTransform.anchoredPosition = new Vector2(52f, y - FeaturedFace - 4f);
+            }
+        }
 
         private RectTransform Row(float height)
         {

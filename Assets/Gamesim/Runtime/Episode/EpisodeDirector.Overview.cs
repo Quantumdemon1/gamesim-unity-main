@@ -25,6 +25,13 @@ namespace Gamesim.Episode
         /// <summary>Half the frame's height in metres; the house is forty deep, seen at a tilt.</summary>
         public const float OverviewOrthographicSize = 22f;
         public const float OverviewSeconds = 1.2f;
+        /// <summary>
+        /// How far toward the camera the overview looks from the house's centre, in metres. Centred,
+        /// the near rooms fell behind the status line and the strip, and so did their chips; this
+        /// raises the house about sixty pixels, into the band between the top bar and the status
+        /// line, which is where mockup-03 draws its labelled rooms.
+        /// </summary>
+        public const float OverviewLift = 3.3f;
 
         private bool overviewOpen;
         private RoomLabels roomLabels;
@@ -45,7 +52,8 @@ namespace Gamesim.Episode
             overviewOpen = true;
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
-                Focus = cameraRig.HouseCenter, Distance = cameraRig.FarthestDistance, Pitch = OverviewPitch, KeepYaw = true,
+                Focus = cameraRig.HouseCenter - Quaternion.Euler(0f, cameraRig.Yaw, 0f) * Vector3.forward * OverviewLift,
+                Distance = cameraRig.FarthestDistance, Pitch = OverviewPitch, KeepYaw = true,
                 Orthographic = true, OrthographicSize = OverviewOrthographicSize, Seconds = OverviewSeconds,
             });
             if (roomLabels == null) roomLabels = RoomLabels.Attach(gameObject);

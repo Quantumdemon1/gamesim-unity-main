@@ -324,15 +324,17 @@ namespace Gamesim.Presentation
         {
             var appearance = Catalog.Materialize(draft.Appearance);
             float value = appearance.dna.FirstOrDefault(item => item.id == control.Id)?.value ?? .5f;
-            var row = StudioRow(66f);
+            var row = StudioRow(58f);
             var caption = HudPrimitives.Label(control.Label, row, 15f, UiTheme.Paper, TextAlignmentOptions.TopLeft);
             Stretch(caption.rectTransform); caption.text = control.Label + "  " + value.ToString("0.00");
             // The track is the row's hit area; what shows is a thin line, the accent up to the
             // value and a round handle, as the mockups draw a meter. The track used to be the
             // raised surface colour, which on the studio's ground drew a handle on nothing.
             var track = HudPrimitives.Fill(control.Label + " slider", row, new Color(0f, 0f, 0f, 0f), 6);
-            track.anchorMin = new Vector2(0f, 0f); track.anchorMax = new Vector2(1f, 0f);
-            track.pivot = new Vector2(.5f, 0f); track.sizeDelta = new Vector2(-28f, 24f);
+            // Right under its own caption: at the foot of a taller row it stood nearer the next
+            // slider's caption than its own.
+            track.anchorMin = new Vector2(0f, 1f); track.anchorMax = new Vector2(1f, 1f);
+            track.pivot = new Vector2(.5f, 1f); track.sizeDelta = new Vector2(-28f, 24f); track.anchoredPosition = new Vector2(0f, -24f);
             var line = HudPrimitives.Fill("Line", track, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .9f), 3);
             line.anchorMin = new Vector2(0f, .5f); line.anchorMax = new Vector2(1f, .5f);
             line.pivot = new Vector2(.5f, .5f); line.sizeDelta = new Vector2(0f, 6f); line.anchoredPosition = Vector2.zero;

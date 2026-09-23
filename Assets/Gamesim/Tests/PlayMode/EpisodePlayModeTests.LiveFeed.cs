@@ -92,8 +92,15 @@ namespace Gamesim.Tests.PlayMode
 
             Assert.That(director.ShowOverview(), Is.True);
             yield return null;
-            Assert.That(director.GetComponentsInChildren<RectTransform>(true).Any(r => r.name == EpisodeDirector.LiveFeedCardName), Is.False,
-                "The overview is the live house; the card steps aside for its column.");
+            // Mockup-03: the feed stays at the head of the column over the labelled house, and the
+            // room list takes the timeline's place under it.
+            var overviewCard = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(r => r.name == EpisodeDirector.LiveFeedCardName);
+            var rooms = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(r => r.name == EpisodeHud.OverviewColumnName);
+            Assert.That(overviewCard, Is.Not.Null, "The overview keeps the feed at the head of its column.");
+            Assert.That(rooms, Is.Not.Null, "and the room list under it.");
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ScreenRect(rooms).yMax, Is.LessThanOrEqualTo(ScreenRect(overviewCard).yMin + 0.5f),
+                "The room list starts below the feed: " + ScreenRect(rooms) + " against " + ScreenRect(overviewCard) + ".");
             director.EndOverview();
             yield return null;
             Assert.That(director.GetComponentsInChildren<RectTransform>(true).Any(r => r.name == EpisodeDirector.LiveFeedCardName), Is.True);

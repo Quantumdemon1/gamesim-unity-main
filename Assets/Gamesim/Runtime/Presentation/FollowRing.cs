@@ -85,8 +85,9 @@ namespace Gamesim.Presentation
             disc.GetComponent<MeshFilter>().sharedMesh = Ring();
             // Following someone is navigation, not power. The ring and the diamond also used to
             // disagree with each other - gold underfoot, green overhead, one marker. A filled disc
-            // at 2.2 times its colour bloomed to a white pool the size of a rug.
-            Paint(disc.GetComponent<Renderer>(), UiTheme.Accent, 1.6f);
+            // at 2.2 times its colour bloomed to a white pool the size of a rug, and a band at 1.6
+            // to a white line: the blue survives the bloom at its own brightness.
+            Paint(disc.GetComponent<Renderer>(), UiTheme.Accent, 1.0f);
             ring = disc.transform;
 
             var gem = new GameObject(DiamondName, typeof(MeshFilter), typeof(MeshRenderer));
@@ -94,8 +95,8 @@ namespace Gamesim.Presentation
             gem.transform.localPosition = new Vector3(0f, DiamondHeight, 0f);
             diamond=gem.transform;
             gem.GetComponent<MeshFilter>().sharedMesh = Diamond();
-            // Green: at 2.6 times its colour the bloom took it to white.
-            Paint(gem.GetComponent<Renderer>(), UiTheme.Positive, 1.2f);
+            // Green: at 2.6 times its colour the bloom took it to white, and at 1.2 to a pale mint.
+            Paint(gem.GetComponent<Renderer>(), UiTheme.Positive, 0.7f);
         }
 
         /// <summary>A flat band on the floor, facing up, <see cref="RingWidth"/> wide.</summary>

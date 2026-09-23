@@ -472,12 +472,19 @@ namespace Gamesim.Episode
         /// house has just done - or, while somebody is in focus, where the player stands with the
         /// house, that person first (mockup-01's selected-houseguest state).
         ///
-        /// <para>The overview is a camera mode rather than a page, and its own column answers the
-        /// same question from the same gutter, so the two never share it.</para>
+        /// <para>The overview is a camera mode rather than a page. Mockup-03 keeps the live feed at
+        /// the head of the column over the labelled house, and the room list takes the timeline's
+        /// place under it: who is where is the question the overview answers.</para>
         /// </summary>
         private void RightColumn(EpisodeState state)
         {
-            if (director.IsOverview) { OverviewColumn(canvas.transform, RightColumnTop); return; }
+            if (director.IsOverview)
+            {
+                float at = RightColumnTop;
+                if (!Compact && director.LiveFeedTexture != null) at += LiveFeedCard(canvas.transform, at) + RightColumnGap;
+                OverviewColumn(canvas.transform, at);
+                return;
+            }
             if(Compact)return;
             float top = RightColumnTop;
             string focus = director.TalkingToId ?? director.FollowedId;

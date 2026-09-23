@@ -33,8 +33,20 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             yield return ApplyTextSize(true);
             WarpPlayer(director.StationPosition);
+            // The two it is about, standing together in the room with the screen.
+            for(int i=0;i<ids.Length;i++)
+            {
+                var body=SceneComponents<Gamesim.House.HouseNpc>().Single(npc=>npc.Id==ids[i]);
+                var agent=body.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                Assume.That(agent,Is.Not.Null);
+                Assume.That(UnityEngine.AI.NavMesh.SamplePosition(director.StationPosition+new Vector3(i==0?-.8f:.8f,0f,2.4f),out var hit,1.5f,agent.areaMask),Is.True);
+                Assume.That(agent.Warp(hit.position),Is.True);
+            }
             Assert.That(director.TryOpenPhasePanel(),Is.True);
             yield return null;
+            // Mockup-04: the card is low in the frame and the people it is about are above it.
+            Assert.That(director.IsFramingHouseEvent,Is.True,"The camera takes the event's people when they stand together.");
+            yield return Settle(()=>!cameraRig.IsTravelling&&cameraRig.HasArrived(0.05f),3f);
             Canvas.ForceUpdateCanvases();
             var before=director.Snapshot;
             var context=DecisionUiRoot(EpisodeHud.HouseEventContextName);

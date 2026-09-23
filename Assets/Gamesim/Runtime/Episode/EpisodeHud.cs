@@ -708,23 +708,29 @@ namespace Gamesim.Episode
         private void OverviewColumn(Transform parent, float top)
         {
             var rooms = director.WhoIsWhere();
-            const float RowHeight = 44f;
+            // Two lines a room, closer together when the live feed above leaves less than eight
+            // full rows between it and the help card.
+            var root = (RectTransform)canvas.transform;
+            float space = (root.rect.height > 0 ? root.rect.height : 900f) - top - 40f - (CastRail.Bottom + CastRail.Height + 64f);
+            float rowHeight = rooms.Count > 0 ? Mathf.Clamp(space / rooms.Count, 38f, 44f) : 44f;
             var column = Chrome(OverviewColumnName, parent);
             Anchor(column, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
-                new Vector2(RightColumnWidth, 40 + rooms.Count * RowHeight));
+                new Vector2(RightColumnWidth, 40 + rooms.Count * rowHeight));
             CardHeading(column, "Who Is Where");
             for (int i = 0; i < rooms.Count; i++)
             {
                 var room = rooms[i];
-                float y = -(36 + i * RowHeight);
-                FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(16, y), new Vector2(RightColumnWidth - 88f, 20));
+                float y = -(36 + i * rowHeight);
+                // The mark each room's chip wears on the map, so a row and its room read as one.
+                HudPrimitives.Glyph("Room mark", column, RoomLabels.Glyph(room.Name), Accent, new Vector2(14, y - 1), 18);
+                FixedText(column, RoomLabels.Title(room.Name), 15, Paper, new Vector2(40, y), new Vector2(RightColumnWidth - 112f, 20));
                 var count = FixedText(column, room.Occupants.Count.ToString(), 15, Accent, new Vector2(RightColumnWidth - 68f, y), new Vector2(52, 20));
                 count.alignment = TextAlignmentOptions.Right;
                 // Trimmed: a room holding the whole house is a line of eight names, and this row is
-                // 254 px wide at a size that has nowhere left to shrink to.
+                // 192 px wide beside the room's mark, at a size that has nowhere left to shrink to.
                 string who = room.Occupants.Count == 0 ? "empty"
-                    : Excerpt(string.Join(", ", room.Occupants.Select(o => o.Name.Split(' ')[0])), 36);
-                FixedText(column, who, 13, UiTheme.Muted, new Vector2(16, y - 19), new Vector2(RightColumnWidth - 32f, 18));
+                    : Excerpt(string.Join(", ", room.Occupants.Select(o => o.Name.Split(' ')[0])), 30);
+                FixedText(column, who, 13, UiTheme.Muted, new Vector2(40, y - 19), new Vector2(RightColumnWidth - 56f, 18));
             }
         }
 

@@ -154,13 +154,14 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Where the player is being sent next, in the words the HUD has always used for it.
+        /// Where the player is being sent next, named as the rail's button and the room icon name
+        /// it: the episode screen (HOUSE-LIFE-PLAN §6, decision 13), not the ceremony screen.
         /// </summary>
         private string NextStop(EpisodeState state) =>
             state.pendingDiary != null
                 ? (director != null && director.IsDiaryOpen ? "Here: your private reflection" : "Next stop: private diary room")
             : EpisodeEngine.IsCompetition(state.phase) ? "Next stop: competition yard"
-            : "Next stop: ceremony screen";
+            : "Next stop: episode screen";
 
         /// <summary>
         /// The objective, as the mockups' top-bar chip: a ringed mark, the title in the heading

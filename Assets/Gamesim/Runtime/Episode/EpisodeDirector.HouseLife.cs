@@ -150,6 +150,27 @@ namespace Gamesim.Episode
             return CharacterOutfits.ForContext(WithWardrobe(model), CharacterOutfits.Swimwear);
         }
 
+        private HouseActivityEffects activityEffects;
+
+        /// <summary>The bubbles, steam and splashes, once the house has them; null before.</summary>
+        public HouseActivityEffects ActivityEffects => activityEffects;
+
+        /// <summary>
+        /// The bubbles in the hot tub, the steam while the player cooks and the splashes while they
+        /// swim - from the moment the pose is under way until they start to get out.
+        /// </summary>
+        private void TickActivityEffects()
+        {
+            if (player == null) return;
+            if (activityEffects == null) activityEffects = HouseActivityEffects.Attach(gameObject.scene, transform);
+            var pose = player.GetComponent<HouseFurniturePose>();
+            bool doing = IsPlayerHouseActivityActive && pose != null && pose.IsPerforming && !pose.Ending;
+            var seat = player.GetComponent<HouseSeatPresentation>();
+            Vector3? swimmer = doing && playerActivityKind == HouseFurnitureActivity.Swim && seat != null && seat.Settled
+                ? seat.VisualFeet : (Vector3?)null;
+            activityEffects.Tick(cameraRig != null && cameraRig.ReducedMotion, doing && playerActivityKind == HouseFurnitureActivity.Cook, swimmer);
+        }
+
         /// <summary>
         /// Dims the fill light of the room the player is asleep in, and brings it back when they
         /// get up. The fills are Mixed lights under an indirect-only bake, so this takes down the

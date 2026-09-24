@@ -319,7 +319,7 @@ The record ledger:
 | Grab something from the fridge | Interact and PickUp_Table at a fridge anchor; a drink in hand. | **P** (web `fridge-eat`) | S | — |
 | Watch TV | A sofa perch facing a TV. Needs a TV placed in view (the living-room TV no longer renders). The HoH and Games consoles are candidates. | **P** (web `tv-watch`) | M | — |
 | Activity close-ups; the live feed shows the house living | A soft low shot when you settle into an activity. The live feed cuts to someone swimming or cooking when no conversation is on. | P\* | S | — |
-| Activity sound and small VFX | Splash, sizzle, bubbles, snoring and "z z z", steam, footstep dust. 3D one-shots from a small pool. | **P** (VFX) | M | — |
+| Activity sound and small VFX | Splash, sizzle, bubbles, snoring and "z z z", steam, footstep dust. 3D one-shots from a small pool. **Built, VFX only:** the web's bubbles, steam and splash (`HouseActivityEffects`). Sound, snoring and dust are not built. | **P** (VFX) | M | — |
 | Rooms and people as destinations wherever they are listed | Go, Watch and Find on the notebook's room cards and the cast strip. | N | S | — |
 | Study at the memory wall | A second route to "Study the House". No new command. | **P** | M | — |
 | Pair-specific Listen in, join, break it up | Three appended commands. The current Eavesdrop stays untouched, so nothing re-rolls. **Reverses the documented "It names nobody" choice; needs sign-off.** | **P** | M | new player-issued commands |

@@ -33,6 +33,17 @@ namespace Gamesim.House
         public const float TubFloor = .20f, TubSeat = .54f, TubSeatRing = .84f, TubApproach = 1.75f;
         /// <summary>The stove's centre along the kitchen run, from its fridge end's opposite side (bb_set_kitchenrun.py).</summary>
         private const float StoveAlongRun = 1.05f, CounterFront = 1.175f;
+        /// <summary>The hot tub's water surface and its reach, from bb_set_hottub.py: 0.08 under the 0.85 rim, just inside the 1.0 well.</summary>
+        public const float TubWater = .77f, TubWaterRadius = .98f;
+        /// <summary>The counter top the hob sits on, from bb_set_kitchenrun.py.</summary>
+        public const float CounterTop = .92f;
+
+        /// <summary>The set pieces the newer verbs are built on, by the names their scripts give them.</summary>
+        public const string PoolPiece = "bb_set_pool", TubPiece = "bb_set_hottub", KitchenRunPiece = "bb_set_kitchenrun";
+
+        /// <summary>The middle of the hob, on the counter top of the kitchen run.</summary>
+        public static Vector3 Hob(Transform run)
+            => run.position + run.rotation * new Vector3(StoveSide(run) * StoveAlongRun, CounterTop, 0f);
 
         public static void EnsureDefaults(Scene scene, HouseInteractionAnchor[] existing, Transform[] all, HouseRoomMarker[] markers)
         {
@@ -59,7 +70,7 @@ namespace Gamesim.House
                     anchor.SetSeatHeight(mattress);
                 }
 
-            var pool = all.FirstOrDefault(t => t.name == "bb_set_pool" && t.gameObject.activeInHierarchy);
+            var pool = all.FirstOrDefault(t => t.name == PoolPiece && t.gameObject.activeInHierarchy);
             if (pool != null && !Has(HouseFurniture.PoolAnchor, 0))
             {
                 // The deck's long side is the piece's local x; lengths are swum along it.
@@ -75,7 +86,7 @@ namespace Gamesim.House
                 }
             }
 
-            var tub = all.FirstOrDefault(t => t.name == "bb_set_hottub" && t.gameObject.activeInHierarchy);
+            var tub = all.FirstOrDefault(t => t.name == TubPiece && t.gameObject.activeInHierarchy);
             if (tub != null)
             {
                 // Two places on the seat ring, a quarter-turn apart, each facing the middle.
@@ -94,7 +105,7 @@ namespace Gamesim.House
                 }
             }
 
-            var run = all.FirstOrDefault(t => t.name == "bb_set_kitchenrun" && t.gameObject.activeInHierarchy);
+            var run = all.FirstOrDefault(t => t.name == KitchenRunPiece && t.gameObject.activeInHierarchy);
             if (run != null && !Has(HouseFurniture.StoveAnchor, 0))
             {
                 // The counter's own anchor stands 1.175 m out from the run's middle, facing it; the

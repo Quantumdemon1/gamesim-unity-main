@@ -26,6 +26,8 @@ namespace Gamesim.Episode
     public sealed class EpisodeTravelBeacons : MonoBehaviour
     {
         public const string RootName = "Travel beacons";
+        /// <summary>The count of houseguests on a room's icon, and the ring that marks the next stop.</summary>
+        public const string BadgeName = "Houseguests here", NextStopName = "Next stop";
         public const string BeaconPrefix = "Beacon · ";
         public const string StationCaption = "Travel to episode screen";
         public const string CompetitionCaption = "Travel to competition";
@@ -51,7 +53,11 @@ namespace Gamesim.Episode
             public string room;
             public RectTransform rect;
             public Button button;
-            public Image mark;
+            public Image mark, ring;
+            public RectTransform badge;
+            public TMP_Text count;
+            public int shownCount = -1;
+            public bool ringed;
             public TMP_Text caption;
             public GameObject tip;
             public CanvasGroup group;
@@ -127,6 +133,7 @@ namespace Gamesim.Episode
                 ring.anchorMin = Vector2.zero; ring.anchorMax = Vector2.one;
                 ring.offsetMin = new Vector2(-2f, -2f); ring.offsetMax = new Vector2(2f, 2f);
                 ring.SetAsFirstSibling();
+                beacon.ring = ring.GetComponent<Image>();
 
                 var mark = new GameObject("Mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
                 mark.rectTransform.SetParent(rect, false);
@@ -148,6 +155,23 @@ namespace Gamesim.Episode
                 caption.rectTransform.offsetMin = new Vector2(10f, 0f); caption.rectTransform.offsetMax = new Vector2(-10f, 0f);
                 beacon.caption = caption;
                 beacon.tip = tip.gameObject;
+
+                // How many houseguests are in the room, on the icon's shoulder: where the house is
+                // is where the talking is. A label, not a control - the icon takes the click - and
+                // made after the caption, so the caption stays the icon's first words.
+                var badge = HudPrimitives.Disc(BadgeName, rect, UiTheme.Accent);
+                badge.anchorMin = badge.anchorMax = new Vector2(1f, 1f);
+                badge.pivot = new Vector2(.5f, .5f);
+                badge.sizeDelta = new Vector2(20f, 20f);
+                badge.anchoredPosition = new Vector2(-4f, -4f);
+                badge.GetComponent<Image>().raycastTarget = false;
+                var count = HudPrimitives.Label("Count", badge, 12f, UiTheme.Ink, TextAlignmentOptions.Center);
+                count.textWrappingMode = TextWrappingModes.NoWrap;
+                count.raycastTarget = false;
+                count.rectTransform.anchorMin = Vector2.zero; count.rectTransform.anchorMax = Vector2.one;
+                count.rectTransform.offsetMin = Vector2.zero; count.rectTransform.offsetMax = Vector2.zero;
+                badge.gameObject.SetActive(false);
+                beacon.badge = badge; beacon.count = count;
 
                 var button = rect.gameObject.AddComponent<Button>();
                 button.targetGraphic = face;
@@ -226,6 +250,29 @@ namespace Gamesim.Episode
         private string stationRoom, playerRoom;
         private System.Func<string, Vector3> where;
         private System.Func<Vector2, bool> covered;
+        private System.Func<string, int> occupants;
+        private string nextStop;
+
+        /// <summary>How many houseguests the icon over a room says are in it, as last shown; -1 while it is hidden.</summary>
+        public int ShownCount(string room)
+        {
+            foreach (var beacon in beacons)
+                if (beacon.room == room) return beacon.rect != null && beacon.rect.gameObject.activeInHierarchy ? beacon.shownCount : -1;
+            return -1;
+        }
+
+        /// <summary>The room whose icon is marked as the next stop, while one is.</summary>
+        public string NextStop => nextStop;
+
+        /// <summary>
+        /// Who is where, and where the player is being sent next: the counts on the icons and the
+        /// ring round the one the objective names. Either may be null.
+        /// </summary>
+        public void Annotate(System.Func<string, int> countIn, string nextStopRoom)
+        {
+            occupants = countIn;
+            nextStop = nextStopRoom;
+        }
 
         /// <summary>
         /// What this frame's icons should show, from the director's Update. They are placed in
@@ -302,6 +349,24 @@ namespace Gamesim.Episode
                     tipRect.sizeDelta = new Vector2(Mathf.Ceil(beacon.caption.GetPreferredValues(beacon.caption.text).x) + 24f, 30f);
                 }
                 if (beacon.tip.activeSelf != beacon.hovered) beacon.tip.SetActive(beacon.hovered);
+
+                int here = occupants != null ? Mathf.Max(0, occupants(beacon.room)) : 0;
+                if (here != beacon.shownCount)
+                {
+                    beacon.shownCount = here;
+                    beacon.badge.gameObject.SetActive(here > 0);
+                    beacon.count.text = here > 9 ? "9+" : here.ToString();
+                }
+                // The next stop's ring is lit, and breathes unless motion is reduced.
+                bool next = beacon.room == nextStop;
+                float breathe = next && !rig.ReducedMotion ? .5f + .5f * Mathf.Sin(Time.unscaledTime * 3f) : 1f;
+                beacon.ring.color = next ? new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .55f + .45f * breathe)
+                    : new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .7f);
+                float reach = next ? 4f + 2f * breathe : 2f;
+                beacon.ring.rectTransform.offsetMin = new Vector2(-reach, -reach);
+                beacon.ring.rectTransform.offsetMax = new Vector2(reach, reach);
+                // Renamed only when it changes: reading a name back makes a string every frame.
+                if (beacon.ringed != next) { beacon.ringed = next; beacon.ring.name = next ? NextStopName : "Ring"; }
             }
             IsShowing = any;
         }

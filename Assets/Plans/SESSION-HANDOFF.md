@@ -99,6 +99,27 @@ A second review looked at the companion, the prompt button and the change of clo
 - On the clone, PlayMode only resolves scene scripts with play-mode domain reload on. The scratchpad runner turns it on there after each sync.
 - The old copy is usable again after a reboot.
 
+**Fifth pass: who is where, where to go, and a house that looks used.**
+- **Room icons count their houseguests.** Each icon wears a badge with the number of houseguests in its room, the player not counted (`EpisodeTravelBeacons.ShownCount`). The count reads the notebook's Who Is Where (`HouseOccupancy`) twice a second, so the two never disagree.
+- **The next stop is ringed.** The objective's next stop is the diary when one is owed, otherwise the episode screen. Its icon wears a lit ring, which breathes unless motion is reduced (`NextStop`, `NextStopName`).
+- **The objective chip's wording.** It now says "Next stop: episode screen", per decision 13; it used to say "ceremony screen".
+- **Activity effects, after the web game's** `EnvironmentalParticles.tsx` and `BackyardArea.tsx` (`HouseActivityEffects`):
+  - bubbles always rise in the hot tub;
+  - steam comes off the hob while the player cooks;
+  - splashes rise round the player while they swim.
+- **How the effects are made:**
+  - Counts, sizes and opacities follow the web. The splashes are paler, because the web's blue is lost against this pool's lit water.
+  - Nothing plays under reduced motion.
+  - The particles use `Sprites/Default`, which is always in a build, with a dot drawn at runtime. There is no new asset.
+- **A gap in the test captures:** `CaptureFraming` turns overlay canvases into camera canvases, so the room icons are placed wrongly in captures. Judge the icons by the tests, not by the PNGs.
+- **A review of this pass** confirmed three defects, and they are fixed:
+  - two per-frame allocations: the ring's name was read back every frame, and a method group was passed as a new delegate every frame;
+  - a 9% flake: the slowest splash drops fell below the test's bound, so the drops now live 0.4 s and land near the surface;
+  - splashes sorting behind the pool's translucent water: they and the bubbles now draw after it.
+  
+  The review's unverified note, that the test could not tell whether the player was counted, is also fixed. The test stands the player in the screen's room, whose icon always shows, and a mutation that counts the player is caught.
+- **The episode screen's icon can be hidden.** From over the house centre it often sits under the top bar, where icons are hidden by design. Pinning the next stop's icon to the nearest clear edge would keep it in view; that is not built.
+
 **Not done:**
 - M0b.
 - M8 and later, except the hot-tub companion. That leaves NPCs using the new verbs (decision 9 keeps them to their three places), props and IK, and sit-down and stand-up takes.

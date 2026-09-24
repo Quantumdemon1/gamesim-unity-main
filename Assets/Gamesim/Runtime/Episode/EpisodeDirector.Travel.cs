@@ -134,8 +134,29 @@ namespace Gamesim.Episode
         private EpisodeTravelBeacons travelBeacons;
         private readonly System.Collections.Generic.Dictionary<string, HouseRoomMarker> beaconRooms
             = new System.Collections.Generic.Dictionary<string, HouseRoomMarker>();
-        private float nextBeaconRoomCheck;
+        private float nextBeaconRoomCheck, nextBeaconCount;
+        private System.Func<string, int> houseguestsIn;
         private string beaconPlayerRoom;
+        private readonly System.Collections.Generic.Dictionary<string, int> beaconCounts
+            = new System.Collections.Generic.Dictionary<string, int>();
+
+        /// <summary>
+        /// The houseguests other than the player in each room, read the way the notebook's Who Is
+        /// Where reads them - the roster, by nearest room marker - so the icons and the notebook
+        /// never disagree.
+        /// </summary>
+        private void CountHouseguestsByRoom()
+        {
+            beaconCounts.Clear();
+            foreach (var room in HouseOccupancy(projected))
+            {
+                int others = room.Occupants == null ? 0 : room.Occupants.Count(person => !person.IsPlayer);
+                if (others > 0) beaconCounts[room.Name] = others;
+            }
+        }
+
+        /// <summary>How many houseguests besides the player the room icons last counted in a room.</summary>
+        public int HouseguestsIn(string room) => beaconCounts.TryGetValue(room, out var n) ? n : 0;
 
         /// <summary>The icons over the rooms, once they have been built; null before.</summary>
         public EpisodeTravelBeacons TravelBeacons => travelBeacons;
@@ -180,6 +201,17 @@ namespace Gamesim.Episode
                 beaconPlayerRoom = HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out _)
                     && player.Agent != null && rooms.TryLocate(player.transform.position, player.Agent.radius, out var room) ? room : null;
             }
+            if (Time.unscaledTime >= nextBeaconCount)
+            {
+                // Twice a second: people walk between rooms, not between frames.
+                nextBeaconCount = Time.unscaledTime + .5f;
+                CountHouseguestsByRoom();
+            }
+            // The objective's next stop, in the room the icon stands for.
+            string next = projected == null ? null : projected.pendingDiary != null ? (HasDiaryRoom ? "Private" : null) : StationRoomId();
+            // One reader, kept: a method group passed every frame is a new delegate every frame.
+            if (houseguestsIn == null) houseguestsIn = HouseguestsIn;
+            travelBeacons.Annotate(houseguestsIn, playerIsActive ? next : null);
             travelBeacons.Request(true, cameraRig, largeText ? 1.2f : 1f, StationRoomId(),
                 EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social), playerIsActive ? beaconPlayerRoom : null,
                 BeaconAnchor, hud.Covers);

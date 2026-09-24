@@ -126,8 +126,29 @@ namespace Gamesim.Episode
             bool going = TryRoomLanding(marker, out var landing) && TryTravel(landing);
             string name = RoomLabels.InSentence(room);
             message = !going ? "The " + name + " is not reachable from here."
-                : LastTravel == TravelKind.Warp ? "In the " + name + "."
+                : LastTravel == TravelKind.Warp ? ArrivalLine() ?? "In the " + name + "."
                 : "Heading to the " + name + ".";
+            // On foot, the room says who is in it when the player gets there.
+            if (going && LastTravel != TravelKind.Warp) arrivingIn = room;
+            Render();
+        }
+
+        /// <summary>The room a trip on foot is on its way to, until the player gets there or goes elsewhere.</summary>
+        private string arrivingIn;
+
+        /// <summary>
+        /// A trip on foot ends by saying where the player is and who else is there, in the
+        /// notebook's words: "In the kitchen.  2 houseguests here: Maya, Jamie".
+        /// </summary>
+        private void TickRoomArrival()
+        {
+            if (arrivingIn == null || player == null) return;
+            if (!playerIsActive) { arrivingIn = null; return; }
+            if (!player.HasArrived) return;
+            arrivingIn = null;
+            var line = ArrivalLine();
+            if (line == null) return;
+            message = line;
             Render();
         }
 

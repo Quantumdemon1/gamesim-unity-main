@@ -77,6 +77,7 @@ namespace Gamesim.Episode
         {
             headingToNpcId = null;
             headingToStation = false;
+            arrivingIn = null;
         }
 
         /// <summary>

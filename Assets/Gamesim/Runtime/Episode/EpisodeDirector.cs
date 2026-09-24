@@ -316,7 +316,7 @@ namespace Gamesim.Episode
             TickTravelDip();
             TickTravelBeacons();
             TickSleepLight();
-            if (IsReady) { TickCompanion(); TickActivityEffects(); }
+            if (IsReady) { TickCompanion(); TickActivityEffects(); TickRoomArrival(); }
             // The houseguest the player is with keeps their plate up at any distance.
             if (housemates != null)
             {

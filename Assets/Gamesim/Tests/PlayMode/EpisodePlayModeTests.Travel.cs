@@ -242,5 +242,43 @@ namespace Gamesim.Tests.PlayMode
             Assert.Fail("Nowhere between " + shortest + " and " + longest + " m on foot from " + place + ".");
             return place;
         }
+
+        /// <summary>
+        /// A trip to a room on foot ends by saying where the player is and who else is there, in
+        /// the notebook's words - first names, as the overview's column gives them - rather than
+        /// going on saying the player is heading there after they have arrived.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Travel_ArrivingOnFootSaysWhoElseIsThere()
+        {
+            director.ClosePanels();
+            // Nobody wanders in or out between the arrival and the check.
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            Assert.That(HouseRoomQuery.TryCreate(player.gameObject.scene, out var rooms, out var why), Is.True, why);
+            string mine = rooms.TryLocate(player.transform.position, player.Agent.radius, out var standing) ? standing : null;
+            var target = SceneComponents<HouseRoomMarker>()
+                .Where(marker => marker.isActiveAndEnabled && marker.RoomName != mine && marker.RoomName != "Private" && marker.RoomName != director.ScreenRoom)
+                .Select(marker => (marker, metres: RouteMetres(player.transform.position, marker.transform.position)))
+                .Where(entry => entry.metres < HousePlayerController.WarpRouteMetres - 2f)
+                .OrderBy(entry => entry.metres).Select(entry => entry.marker).FirstOrDefault();
+            Assert.That(target, Is.Not.Null, "A room within a walk or a run.");
+            player.Agent.speed = 20; player.Agent.acceleration = 100;
+            string name = Gamesim.Presentation.RoomLabels.InSentence(target.RoomName);
+
+            director.GoToRoom(target.RoomName);
+            Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Walk).Or.EqualTo(EpisodeDirector.TravelKind.Run), "On foot.");
+            Assert.That(director.StatusMessage, Is.EqualTo("Heading to the " + name + "."));
+            float deadline = Time.realtimeSinceStartup + 15f;
+            while (Time.realtimeSinceStartup < deadline && !director.StatusMessage.StartsWith("In the ")) yield return null;
+
+            var here = director.WhoIsWhere().Single(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
+            Assert.That(here.Name, Is.EqualTo(target.RoomName), "The player is in the room they asked for.");
+            var others = here.Occupants.Where(person => !person.IsPlayer).Select(person => person.Name.Split(' ')[0]).ToArray();
+            string company = others.Length == 0 ? "You have this room to yourself."
+                : others.Length + (others.Length == 1 ? " houseguest here: " : " houseguests here: ") + string.Join(", ", others);
+            Assert.That(director.StatusMessage, Is.EqualTo("In the " + name + ".  " + company),
+                "Arrived, the status says where they are and who else is there.");
+        }
     }
 }

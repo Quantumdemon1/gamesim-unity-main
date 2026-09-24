@@ -126,6 +126,14 @@ A second review looked at the companion, the prompt button and the change of clo
 - **Every other icon** keeps the old rule, with one change: the whole icon must be clear of the chrome, not just its middle. An icon half under the status line was being shown.
 - **Captures** now show the icons where the player sees them: the icons use the canvas's camera when a capture has made it a camera canvas.
 
+**Seventh pass: arriving says who else is there.**
+- **Before:** a trip to a room on foot kept saying "Heading to the kitchen." after the player had arrived.
+- **Now:** on arrival it says where they are and who else is there, in the notebook's own Current Location words: "In the kitchen.  2 houseguests here: Maya, Jamie", or "You have this room to yourself."
+  - The status line uses first names; the notebook keeps full names.
+  - A warp says the same at once.
+  - A floor click or another errand on the way cancels it.
+- **The words** come from `EpisodeDirector.CompanyLine`, which the notebook now uses too.
+
 **Not done:**
 - M0b.
 - M8 and later, except the hot-tub companion. That leaves NPCs using the new verbs (decision 9 keeps them to their three places), props and IK, and sit-down and stand-up takes.

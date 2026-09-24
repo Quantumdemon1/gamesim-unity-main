@@ -43,11 +43,30 @@ namespace Gamesim.Episode
                 .FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
             if (string.IsNullOrEmpty(here.Name)) return;
 
-            var others = here.Occupants.Where(person => !person.IsPlayer).Select(person => person.Name).ToArray();
             hud.Heading("CURRENT LOCATION  ·  " + here.Name.ToUpperInvariant());
-            hud.Paragraph(others.Length == 0
+            hud.Paragraph(CompanyLine(here, false));
+        }
+
+        /// <summary>
+        /// Who else is in a room, in the notebook's own words: "You have this room to yourself." or
+        /// "2 houseguests here: ..." - by full name in the notebook, first names in the status line.
+        /// </summary>
+        private static string CompanyLine(HouseMap.Room room, bool firstNames)
+        {
+            var others = (room.Occupants ?? new List<HouseMap.Occupant>()).Where(person => !person.IsPlayer)
+                .Select(person => firstNames ? person.Name.Split(' ')[0] : person.Name).ToArray();
+            return others.Length == 0
                 ? "You have this room to yourself."
-                : others.Length + (others.Length == 1 ? " houseguest here: " : " houseguests here: ") + string.Join(", ", others));
+                : others.Length + (others.Length == 1 ? " houseguest here: " : " houseguests here: ") + string.Join(", ", others);
+        }
+
+        /// <summary>The player's room and who else is in it, in the status line's words; null when the house cannot say.</summary>
+        private string ArrivalLine()
+        {
+            var here = HouseOccupancy(projected)
+                .FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
+            if (string.IsNullOrEmpty(here.Name)) return null;
+            return "In the " + RoomLabels.InSentence(here.Name) + ".  " + CompanyLine(here, true);
         }
 
         /// <summary>

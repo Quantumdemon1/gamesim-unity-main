@@ -172,6 +172,41 @@ namespace Gamesim.Episode
             Hide();
         }
 
+        public const string FurnitureTipName = "Furniture tip";
+        private RectTransform furnitureTip;
+        private TMP_Text furnitureTipText;
+
+        /// <summary>
+        /// Names what a click on the furniture under the pointer would do, just below the pointer;
+        /// null takes it away. It takes no click: the click is the furniture's.
+        /// </summary>
+        public void ShowFurnitureTip(string text, Vector2 screen, float textScale)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                if (furnitureTip != null && furnitureTip.gameObject.activeSelf) furnitureTip.gameObject.SetActive(false);
+                return;
+            }
+            if (furnitureTip == null)
+            {
+                furnitureTip = HudPrimitives.Fill(FurnitureTipName, root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .94f), 10);
+                furnitureTip.anchorMin = furnitureTip.anchorMax = Vector2.zero;
+                furnitureTip.pivot = new Vector2(.5f, 1f);
+                furnitureTip.GetComponent<Image>().raycastTarget = false;
+                furnitureTipText = HudPrimitives.Label("Caption", furnitureTip, 15f, UiTheme.Paper, TextAlignmentOptions.Center);
+                furnitureTipText.textWrappingMode = TextWrappingModes.NoWrap;
+                furnitureTipText.raycastTarget = false;
+                furnitureTipText.rectTransform.anchorMin = Vector2.zero; furnitureTipText.rectTransform.anchorMax = Vector2.one;
+                furnitureTipText.rectTransform.offsetMin = new Vector2(10f, 0f); furnitureTipText.rectTransform.offsetMax = new Vector2(-10f, 0f);
+            }
+            if (!furnitureTip.gameObject.activeSelf) furnitureTip.gameObject.SetActive(true);
+            furnitureTipText.text = Localisation.Text(text);
+            furnitureTip.localScale = Vector3.one * textScale;
+            furnitureTip.sizeDelta = new Vector2(Mathf.Ceil(furnitureTipText.GetPreferredValues(furnitureTipText.text).x) + 24f, 30f);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, null, out var local);
+            furnitureTip.anchoredPosition = local - root.rect.min + new Vector2(0f, -22f);
+        }
+
         /// <summary>Takes every icon off the screen, and out of the way of clicks.</summary>
         public void Hide()
         {

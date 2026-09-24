@@ -192,6 +192,8 @@ namespace Gamesim.Tests.PlayMode
             yield return BeginInHouse(pool, HouseFurnitureActivity.Swim);
             var seat = player.GetComponent<HouseSeatPresentation>();
             Assert.That(seat.Mode, Is.EqualTo(HouseAnchorPose.Float));
+            Assert.That(cameraRig.DesiredDistance, Is.LessThan(EpisodeTravelBeacons.HiddenBelow),
+                "The camera comes in close enough to see the swimmer: from the far view they are a dot.");
             var root = player.transform.position;
             var animator = PlayerAnimator();
             var along = Quaternion.Euler(0, pool.Facing, 0) * Vector3.forward;

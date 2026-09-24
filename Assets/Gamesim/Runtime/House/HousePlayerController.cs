@@ -315,11 +315,34 @@ namespace Gamesim.House
         /// </summary>
         public event System.Action<Ray, Vector2> ActivityInterruptRequested;
 
+        /// <summary>
+        /// The piece of furniture under the pointer, or null, and where the pointer is. Raised as
+        /// the pointer moves, so whoever listens can say what a click there would do before it is
+        /// made. The same pick the click makes, so the words and the click cannot disagree.
+        /// </summary>
+        public event System.Action<HouseInteractionAnchor, Vector2> FurnitureHovered;
+        private Vector2 lastHover = new Vector2(float.NaN, float.NaN);
+
+        private void TickHover(Mouse mouse)
+        {
+            if (FurnitureHovered == null || viewCamera == null || mouse == null) return;
+            var screen = mouse.position.ReadValue();
+            if (screen == lastHover) return;
+            lastHover = screen;
+            HouseInteractionAnchor under = null;
+            if (!Gamesim.Presentation.CeremonyOverlays.OnScreen
+                && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                && Physics.Raycast(ScreenRay(viewCamera, screen), out var hit, 500f, HouseLayers.Pick, QueryTriggerInteraction.Ignore))
+                under = HouseFurniture.AtProp(gameObject.scene, hit.transform, hit.point);
+            FurnitureHovered(under, screen);
+        }
+
         private void Update()
         {
             ValidateActivityOwner();
             ApplyPauseState();
             var mouse = Mouse.current;
+            TickHover(mouse);
             if (viewCamera == null || mouse == null
                 || !mouse.leftButton.wasPressedThisFrame
                 // A ceremony card is near-opaque and takes no input by design, so the click that
@@ -336,10 +359,32 @@ namespace Gamesim.House
             if (!InputEnabled)
             {
                 if (activityOwner != null && requestedInputEnabled && ActivityInterruptRequested != null)
-                    ActivityInterruptRequested(viewCamera.ScreenPointToRay(screen), screen);
+                    ActivityInterruptRequested(ScreenRay(viewCamera, screen), screen);
                 return;
             }
-            DispatchClick(viewCamera.ScreenPointToRay(screen), screen);
+            DispatchClick(ScreenRay(viewCamera, screen), screen);
+        }
+
+        /// <summary>
+        /// The ray under a screen point, through the projection the frame is actually drawn with.
+        ///
+        /// <para><c>Camera.ScreenPointToRay</c> builds its ray from the camera's field of view and
+        /// takes no account of a projection matrix set by hand - and the overview sets one, a blend
+        /// from perspective to orthographic. Under it, a click on the kitchen floor walked the
+        /// player to a patch of house somewhere else. Inverting the projection and view the frame
+        /// was rendered through gives the ray the click actually lies on, whatever the lens.</para>
+        /// </summary>
+        public static Ray ScreenRay(Camera camera, Vector2 screen)
+        {
+            var frame = camera.pixelRect;
+            float x = (screen.x - frame.x) / Mathf.Max(1f, frame.width) * 2f - 1f;
+            float y = (screen.y - frame.y) / Mathf.Max(1f, frame.height) * 2f - 1f;
+            // Unity's projection matrix is always the OpenGL convention, near plane at z = -1.
+            var inverse = (camera.projectionMatrix * camera.worldToCameraMatrix).inverse;
+            var near = inverse.MultiplyPoint(new Vector3(x, y, -1f));
+            var far = inverse.MultiplyPoint(new Vector3(x, y, 1f));
+            var along = far - near;
+            return along.sqrMagnitude > 1e-8f ? new Ray(near, along.normalized) : camera.ScreenPointToRay(screen);
         }
 
         /// <summary>

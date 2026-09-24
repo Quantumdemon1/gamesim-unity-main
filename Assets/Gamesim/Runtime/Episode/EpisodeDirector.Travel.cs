@@ -157,7 +157,11 @@ namespace Gamesim.Episode
         {
             if (!HouseIsTheView)
             {
-                if (travelBeacons != null) travelBeacons.Request(false, null, 1f, null, false, null, null);
+                if (travelBeacons != null)
+                {
+                    travelBeacons.Request(false, null, 1f, null, false, null, null);
+                    travelBeacons.ShowFurnitureTip(null, default, 1f);
+                }
                 return;
             }
             if (travelBeacons == null)

@@ -42,6 +42,12 @@ The request: implement `HOUSE-LIFE-PLAN.md` and keep improving. The owner's answ
   - The reactions: `HumanoidReactionAuthoring.Apply`.
   - Copy the metas and the controller back afterwards.
 
+**Second pass (same day):**
+- **The overview's floor clicks** went to the wrong place, by 3.7 m on the kitchen floor. `HousePlayerController.ScreenRay` now inverts the projection the frame is drawn with, and it is used for clicks and hovers.
+- **Pace is calibrated** from the planted foot. The walk take covers 1.36 m/s and the run 4.83 m/s; the plan's 1.7 was wrong. Pace may now rise to 1.65, so the walk covers the house's 2.2 m/s.
+- **Activities** now frame the player close up.
+- **Hover tips:** hovering a piece of furniture names what a click on it does, in the click's own caption (`EpisodeTravelBeacons.ShowFurnitureTip`).
+
 **Not done:** M0b; M8 and later. That includes company at the furniture, NPCs using the new verbs, props and IK, sit-down and stand-up takes, and room-light dimming for sleep. Nor is the non-UMA cast done: it sits where a UMA body lies.
 
 ---

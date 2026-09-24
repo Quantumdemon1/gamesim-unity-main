@@ -185,9 +185,23 @@ namespace Gamesim.Episode
             if(!IsPlayerHouseActivityActive){message="That place is not reachable from here.";Render();return;}
             // Changed on the way there, behind the body walking to it.
             DressPlayer(projected);
-            cameraRig?.FocusSubject(player.transform,false);
+            // In close enough to see what they are doing: from the far view a swimmer is a dot.
+            cameraRig?.FocusSubject(player.transform);
             message=ActivityStatus(kind);
             Render();
+        }
+
+        /// <summary>
+        /// What a click on the furniture under the pointer would do, said before it is made: "Take a
+        /// swim" over the pool, "Go to the diary room" over the diary chair. The words are the
+        /// click's own caption.
+        /// </summary>
+        private void HoverFurniture(HouseInteractionAnchor anchor,Vector2 screen)
+        {
+            string caption=null;
+            if(anchor!=null && HouseIsTheView && playerIsActive && HouseFurniture.TryClick(anchor,out _,out var said))caption=said;
+            if(caption!=null && travelBeacons==null)TickTravelBeacons();
+            travelBeacons?.ShowFurnitureTip(caption,screen,largeText ? 1.2f : 1f);
         }
 
         private static string ActivityStatus(HouseFurnitureActivity kind)
@@ -289,6 +303,7 @@ namespace Gamesim.Episode
                     furnitureInput.HouseguestSelected-=SelectHouseguest;
                     furnitureInput.DestinationChosen-=CancelTravel;
                     furnitureInput.ActivityInterruptRequested-=InterruptActivityInHouse;
+                    furnitureInput.FurnitureHovered-=HoverFurniture;
                 }
                 furnitureInput=player;
                 if(furnitureInput!=null)
@@ -299,6 +314,7 @@ namespace Gamesim.Episode
                     // somewhere else. An errand that outlived it dragged them back.
                     furnitureInput.DestinationChosen+=CancelTravel;
                     furnitureInput.ActivityInterruptRequested+=InterruptActivityInHouse;
+                    furnitureInput.FurnitureHovered+=HoverFurniture;
                 }
             }
             TickWalkToHouseguest();
@@ -349,6 +365,7 @@ namespace Gamesim.Episode
                 furnitureInput.HouseguestSelected-=SelectHouseguest;
                 furnitureInput.DestinationChosen-=CancelTravel;
                 furnitureInput.ActivityInterruptRequested-=InterruptActivityInHouse;
+                furnitureInput.FurnitureHovered-=HoverFurniture;
             }
             furnitureInput=null;nextAmbientActivity=0;ambientActivityIndex=0;headingToNpcId=null;
         }

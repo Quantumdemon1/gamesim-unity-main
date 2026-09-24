@@ -29,7 +29,18 @@ namespace Gamesim.House
 
         public bool ActivityAnchorAvailable(HouseInteractionAnchor anchor)
             => !disposed && !HasCompetitionStage && anchor!=null && anchor.isActiveAndEnabled && anchor.gameObject.scene==rooms.Scene
-                && !VenueInUse(anchor.VenueId) && !activities.Any(entry=>entry.lease.Anchor==anchor);
+                && (HouseFurniture.SeatsCompany(anchor.VenueId) ? !MeetingHolds(anchor.VenueId) : !VenueInUse(anchor.VenueId))
+                && !activities.Any(entry=>entry.lease.Anchor==anchor);
+
+        /// <summary>
+        /// Whether a conversation holds the venue. A venue for company is shared between activities
+        /// place by place, and only a conversation takes the whole of it.
+        /// </summary>
+        private bool MeetingHolds(string venue)
+        {
+            foreach(var lease in leases.Values)if(lease.VenueId==venue)return true;
+            return false;
+        }
 
         public bool TryReserveActivity(string actorId,HouseInteractionAnchor anchor,out HouseActivityLease lease,out string reason)
         {
@@ -44,14 +55,26 @@ namespace Gamesim.House
             activities.Add(new ActivityEntry{lease=candidate,npc=actor});lease=candidate;return true;
         }
 
-        public bool TryReservePlayerActivity(HousePlayerController player,HouseInteractionAnchor anchor,out HouseActivityLease lease,out string reason)
+        /// <summary>
+        /// Whether the player could take this place now, without taking it: every check the
+        /// reservation makes but the route. Asked before anything is done that cannot be taken
+        /// back - a warp to the place, above all.
+        /// </summary>
+        public bool PlayerActivityPossible(HousePlayerController player,HouseInteractionAnchor anchor,out string reason)
         {
-            lease=null;reason=null;
+            reason=null;
             if(player==null || player.gameObject.scene!=rooms.Scene || HasCompetitionStage || !ActivityAnchorAvailable(anchor))
             {reason="This place is busy or unavailable.";return false;}
             if(player.Agent==null || !rooms.TrySampleFloor(anchor.Approach,player.Agent.radius,filter,.25f,out var feet,out var room)
                 || room!=anchor.RoomId || !rooms.HasCapsuleClearance(feet,player.Agent.radius,player.Agent.height,player.transform))
             {reason="The activity approach is obstructed.";return false;}
+            return true;
+        }
+
+        public bool TryReservePlayerActivity(HousePlayerController player,HouseInteractionAnchor anchor,out HouseActivityLease lease,out string reason)
+        {
+            lease=null;
+            if(!PlayerActivityPossible(player,anchor,out reason))return false;
             var candidate=NewActivityLease("player",anchor);
             if(!player.TryBeginActivityMove(candidate,anchor.Approach,out reason))return false;
             activities.Add(new ActivityEntry{lease=candidate,player=player});lease=candidate;return true;

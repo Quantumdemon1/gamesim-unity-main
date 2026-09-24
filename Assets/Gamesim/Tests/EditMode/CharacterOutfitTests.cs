@@ -88,6 +88,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Slots(CharacterOutfits.ForActivity(appearance, CharacterOutfits.Swimwear)), Is.EqualTo(new[] { "Legs" }));
         }
 
+        /// <summary>A room's name mid-sentence keeps the capitals that mean something.</summary>
+        [Test]
+        public void RoomNamesReadRightInASentence()
+        {
+            Assert.That(RoomLabels.InSentence("Living"), Is.EqualTo("living room"));
+            Assert.That(RoomLabels.InSentence("Yard"), Is.EqualTo("competition yard"));
+            Assert.That(RoomLabels.InSentence("HoH"), Is.EqualTo("HoH suite"), "Not \"hoh suite\".");
+            Assert.That(Gamesim.Episode.EpisodeTravelBeacons.Caption("HoH", "Nomination", false), Is.EqualTo("Travel to the HoH suite"));
+        }
+
         private static CharacterAppearance Dressed(string body, params string[] slots)
         {
             var appearance = CharacterAppearance.Preset("player");

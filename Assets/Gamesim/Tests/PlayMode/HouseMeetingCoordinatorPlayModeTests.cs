@@ -412,7 +412,7 @@ namespace Gamesim.Tests.PlayMode
             var first = MotionMaya();
             Assert.That(first.GetComponent<HouseNpcMotion>(), Is.Null, "Clone the static U02 fixture before binding, never clone an owned agent.");
             var cast = new HouseNpc[count]; cast[0] = first;
-            var positions = new[] { new Vector3(-7,0,-7), new Vector3(3,0,-7), new Vector3(-7,0,2) };
+            var positions = new[] { new Vector3(-7,0,-7), new Vector3(3,0,-7), new Vector3(-7,0,2), new Vector3(-6,0,-6), new Vector3(2,0,-6) };
             for (int i = 1; i < count; i++)
             {
                 // Fixture-only actor placement, not a production arrival shortcut.

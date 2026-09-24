@@ -22,6 +22,8 @@ namespace Gamesim.House
         private static readonly RaycastHit[] pickHits = new RaycastHit[32];
         private Vector3 origin,anchorPosition,anchorContact,appliedOffset,lastWritten,baseLocalPosition;
         private Quaternion baseLocalRotation,startRotation;
+        /// <summary>The way the posed body last faced, for a body that takes its place after the old one has gone.</summary>
+        private Quaternion heldRotation=Quaternion.identity;
 
         /// <summary>The half-turn the authored seated clips need to face the way the anchor says.</summary>
         private const float SeatedClipHalfTurn = 180f;
@@ -69,7 +71,7 @@ namespace Gamesim.House
             if(target==null || character==null || !target.Posed)return;
             anchor=target;anchorPosition=target.Position;anchorContact=target.SeatContact;anchorFacing=target.Facing;origin=transform.position;ownsSeat=valid;
             wasSeated=character.IsSeated;began=Time.unscaledTime;nextScan=0;Active=true;mode=target.Pose;
-            lap=0f;lapHeading=1f;lapTurnedAt=float.NegativeInfinity;lapRestUntil=Time.unscaledTime+LapRest;
+            lap=0f;lapHeading=1f;lapTurnedAt=float.NegativeInfinity;lapRestUntil=Time.unscaledTime+LapRest;floatDepth=-1f;
             occupied.Add(this);
             Cue();
         }
@@ -90,7 +92,12 @@ namespace Gamesim.House
 
         /// <summary>Whether a swimmer is doing a length right now, rather than treading water or turning.</summary>
         private bool Stroking => mode==HouseAnchorPose.Float && Time.unscaledTime>=lapRestUntil
-            && Time.unscaledTime-lapTurnedAt>=LapTurnSeconds && !character.ReducedMotion;
+            && Time.unscaledTime-lapTurnedAt>=LapTurnSeconds && !character.ReducedMotion
+            && character.CanAct(CharacterPresentation.BodyActivity.Swimming);
+
+        /// <summary>How far under the water line the hips are: shallow for a stroke, deep for treading water, eased between.</summary>
+        private float floatDepth=-1f;
+        private const float StrokeDepth=-.12f, TreadDepth=-.3f, DepthPerSecond=.4f;
 
         /// <summary>
         /// Moves a swimmer along the pool: a length at a slow crawl, a turn at the end, a rest
@@ -98,7 +105,7 @@ namespace Gamesim.House
         /// </summary>
         private void TickLap()
         {
-            if(mode!=HouseAnchorPose.Float || character.ReducedMotion)return;
+            if(mode!=HouseAnchorPose.Float || character.ReducedMotion || !character.CanAct(CharacterPresentation.BodyActivity.Swimming))return;
             float reach=Mathf.Max(0f,HouseActivityAnchors.PoolBasinLength*.5f-LapMargin);
             if(!Stroking)return;
             lap+=lapHeading*LapPace*Time.unscaledDeltaTime;
@@ -182,6 +189,7 @@ namespace Gamesim.House
             }
             var local=body.parent.InverseTransformVector(offset*blend);
             body.localPosition=baseLocalPosition+local;appliedOffset=local;lastWritten=body.localPosition;
+            heldRotation=body.rotation;
         }
 
         /// <summary>
@@ -202,8 +210,15 @@ namespace Gamesim.House
             var along=Quaternion.Euler(0,anchor.Facing,0)*Vector3.forward;
             // The hips' place: on the mattress, clear of it by the body's thickness; in the water,
             // at the line when swimming and chest-deep when treading water.
+            // A body that rolls from treading water into a stroke rises to the line over a moment,
+            // not in the frame the stroke begins.
+            if(mode==HouseAnchorPose.Float)
+            {
+                float wanted=Stroking ? StrokeDepth : TreadDepth;
+                floatDepth=floatDepth<-.9f || character.ReducedMotion ? wanted : Mathf.MoveTowards(floatDepth,wanted,DepthPerSecond*Time.unscaledDeltaTime);
+            }
             var contact=anchor.SeatContact+along*(mode==HouseAnchorPose.Float ? lap : 0f)
-                + Vector3.up*(mode==HouseAnchorPose.Lie ? .1f : Stroking ? -.12f : -.3f);
+                + Vector3.up*(mode==HouseAnchorPose.Lie ? .1f : floatDepth);
             Vector3 offset=anchor.Position-transform.position;
             if(hips!=null)
             {
@@ -212,6 +227,7 @@ namespace Gamesim.House
             }
             var local=body.parent.InverseTransformVector(offset*blend);
             body.localPosition=baseLocalPosition+local;appliedOffset=local;lastWritten=body.localPosition;
+            heldRotation=body.rotation;
         }
 
         private void RestoreBody()
@@ -245,7 +261,19 @@ namespace Gamesim.House
 
         private void TickExit()
         {
-            if(character.VisualRoot!=body){End();return;}
+            if(character.VisualRoot!=body)
+            {
+                // A change of clothes finishing during the climb out - the change back out of the
+                // swimwear starts as they get up - hands over to the new body, which faces the way
+                // the old one faced and climbs on from where it had got to. Ending here instead
+                // dropped the climb halfway and jumped the body to the deck.
+                var facing=body!=null ? body.rotation : heldRotation;
+                RestoreBody();
+                body=character.VisualRoot;hips=leftFoot=rightFoot=head=null;bodyAnimator=null;
+                if(body==null){End();return;}
+                baseLocalPosition=body.localPosition;baseLocalRotation=body.localRotation;lastWritten=baseLocalPosition;
+                body.rotation=facing;
+            }
             character.SetActivity(CharacterPresentation.BodyActivity.None);
             character.SetSeated(false);
             float elapsed=Time.unscaledTime-exitBegan;
@@ -257,6 +285,7 @@ namespace Gamesim.House
                 baseLocalPosition=body.localPosition;
                 appliedOffset=exitOffset*(1-blend);
                 body.localPosition=baseLocalPosition+appliedOffset;lastWritten=body.localPosition;
+                heldRotation=body.rotation;
             }
             if(elapsed>=.7f)End();
         }

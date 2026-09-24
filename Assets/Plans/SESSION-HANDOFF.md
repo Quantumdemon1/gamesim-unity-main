@@ -48,7 +48,61 @@ The request: implement `HOUSE-LIFE-PLAN.md` and keep improving. The owner's answ
 - **Activities** now frame the player close up.
 - **Hover tips:** hovering a piece of furniture names what a click on it does, in the click's own caption (`EpisodeTravelBeacons.ShowFurnitureTip`).
 
-**Not done:** M0b; M8 and later. That includes company at the furniture, NPCs using the new verbs, props and IK, sit-down and stand-up takes, and room-light dimming for sleep. Nor is the non-UMA cast done: it sits where a UMA body lies.
+**Third pass: a review, the prompt, company.**
+
+A four-way review plus an adversarial verifier confirmed 16 of 17 findings. All 16 are fixed and each has a test:
+- **Travel and activities:**
+  - a refused place no longer warps the player there first (`HouseMeetingCoordinator.PlayerActivityPossible`);
+  - getting up no longer resumes the walk the activity interrupted (`StopHere` first);
+  - the House Activities menu no longer wakes an in-house sleeper;
+  - leaving the pool changes out of swimwear as the player climbs out, not after;
+  - the player is not dressed while the director is being torn down.
+- **Presentation:**
+  - an outfit swap mirrors the cues and takes over mid-state;
+  - a warp's cut resets the lens as well;
+  - the hover re-picks when the camera moves;
+  - the icons stand down through the vote reveal;
+  - the icons' captions follow the room;
+  - hidden icons forget their hover;
+  - room names keep their capitals mid-sentence (`RoomLabels.InSentence`: "the HoH suite").
+- **Swimming:** only a body that can swim does lengths, and its depth eases between the stroke and treading water.
+
+The interaction prompt is now a button: "E · Get up" gets you up. It has the fixed caption "Interact [E]", and `EpisodeDirector.Interact` is what both the key and the button call.
+
+In the hot tub, the housemate the player gets on with best, by score and never somebody who dislikes them, walks over, changes and takes the other seat, and gets out when the player does. Only the hot tub is shared place by place (`HouseFurniture.SeatsCompany`); a conversation still takes the whole venue.
+
+**Fourth pass: the review of the third.**
+
+A second review looked at the companion, the prompt button and the change of clothes. It confirmed six defects and left seven lower findings unverified; one of those repeats another. Six of the seven are fixed too. Only the prompt's caption under a loaded translation is left. Each fix has a test, and each test was mutation-checked.
+
+- **The change of clothes never handed over.**
+  - UMA replaces a body's Animator while it assembles. The handle `TickDressing` kept for the new body was a destroyed object within a frame, so the mirrored cues and the `Play` at the swap both went nowhere. A seated houseguest stood up out of Idle and sat down again.
+  - `TickDressing` now looks the new body's Animator up every tick.
+  - `HouseLife_AChangeOfClothesKeepsTheBodyWhereItIs` checks the new body is in the old one's state, and at the same moment in its loop.
+  - The pool test's own state check is gone: it sampled during a walk, so it couldn't tell.
+  - Removing the cue mirroring alone is not caught. The `Play` at the swap sets the state, and the cues are pushed again before the animator next steps, so the mirroring is a backstop.
+- **Company in the hot tub:**
+  - liking goes both ways (`Score(npc, player) >= 0` as well as the player's reading);
+  - a housemate the schedule has paired off is never asked;
+  - one the house takes out is not asked back until the player gets out;
+  - the companion climbs out as the player does (`LetCompanionOut`), not a frame after the player is out;
+  - "X joins you in the hot tub" is cleared when they go.
+- **`HouseMeetingCoordinator.Reserve`** checks for a free pair slot before taking anybody off their furniture. A pairing that could never happen used to pull the friend out of the tub every few seconds.
+- **The prompt button** stays out of the Tab ring, since E is its key. It also stands down under a ceremony card: the click that dismissed the card used to press it.
+- **A body that arrives mid-climb** now climbs on from where the old one had got to. This happens often, because the change back out of swimwear finishes on the way out. `HouseSeatPresentation.TickExit` used to end the climb and jump the body to the deck.
+- **A houseguest with no saved look** now changes into swimwear as themselves. `WithWardrobe` resolves the look the way a new season's snapshot does: the preset first, the trait recipe behind it.
+- **New accessors** for tests: `EpisodeDirector.IsPhasePanelOpen` and `IsConversationOpen`.
+
+**Harness:**
+- A batchmode run killed with `taskkill /T` while it was exiting left a Unity process that can't be killed, holding `D:\GamesimAcceptance`'s lock file.
+- Testing moved to a clone, `D:\GamesimAcceptance2` (set `GAMESIM_ACCEPTANCE`).
+- On the clone, PlayMode only resolves scene scripts with play-mode domain reload on. The scratchpad runner turns it on there after each sync.
+- The old copy is usable again after a reboot.
+
+**Not done:**
+- M0b.
+- M8 and later, except the hot-tub companion. That leaves NPCs using the new verbs (decision 9 keeps them to their three places), props and IK, and sit-down and stand-up takes.
+- The non-UMA cast: it sits where a UMA body lies.
 
 ---
 

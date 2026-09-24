@@ -43,7 +43,7 @@ namespace Gamesim.Episode
         {
             if (room == stationRoom) return competition ? CompetitionCaption : StationCaption;
             if (room == "Private") return DiaryCaption;
-            return "Travel to " + RoomLabels.Name(room).ToLowerInvariant();
+            return "Travel to the " + RoomLabels.InSentence(room);
         }
 
         private sealed class Beacon
@@ -56,7 +56,7 @@ namespace Gamesim.Episode
             public GameObject tip;
             public CanvasGroup group;
             public bool hovered;
-            public string glyph;
+            public string glyph, said;
         }
 
         /// <summary>Tells its beacon the pointer is over it, for the tip that names what a click does.</summary>
@@ -211,7 +211,13 @@ namespace Gamesim.Episode
         public void Hide()
         {
             IsShowing = false;
-            foreach (var beacon in beacons) if (beacon.rect != null && beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(false);
+            foreach (var beacon in beacons)
+            {
+                // An icon switched off never hears the pointer leave, so it forgets the hover here.
+                beacon.hovered = false;
+                if (beacon.tip != null && beacon.tip.activeSelf) beacon.tip.SetActive(false);
+                if (beacon.rect != null && beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(false);
+            }
         }
 
         private bool wanted, competition;
@@ -250,7 +256,7 @@ namespace Gamesim.Episode
             if (!Mathf.Approximately(shownScale, scale))
             {
                 shownScale = scale;
-                foreach (var beacon in beacons) { beacon.rect.localScale = Vector3.one * scale; beacon.glyph = null; }
+                foreach (var beacon in beacons) { beacon.rect.localScale = Vector3.one * scale; beacon.glyph = null; beacon.said = null; }
             }
             var frame = root.rect;
             bool any = false;
@@ -281,14 +287,17 @@ namespace Gamesim.Episode
                 beacon.group.interactable = fade > .5f;
 
                 string glyph = beacon.room == stationRoom ? (competition ? "trophy" : "camera") : RoomLabels.Glyph(beacon.room);
-                if (glyph != beacon.glyph)
+                // Keyed on the words, not the glyph: the yard wears the trophy as a room and as the
+                // competition's screen, and only its caption says which.
+                string said = Caption(beacon.room, stationRoom, competition);
+                if (glyph != beacon.glyph || said != beacon.said)
                 {
-                    beacon.glyph = glyph;
+                    beacon.glyph = glyph; beacon.said = said;
                     beacon.mark.sprite = UiTheme.Icon(glyph);
                     beacon.mark.enabled = beacon.mark.sprite != null;
                     // Gold is power: the Head of Household's suite wears it here as it does on the map.
                     beacon.mark.color = beacon.room == "HoH" ? UiTheme.Gold : special ? UiTheme.Accent : UiTheme.Heading;
-                    beacon.caption.text = Localisation.Text(Caption(beacon.room, stationRoom, competition));
+                    beacon.caption.text = Localisation.Text(said);
                     var tipRect = (RectTransform)beacon.tip.transform;
                     tipRect.sizeDelta = new Vector2(Mathf.Ceil(beacon.caption.GetPreferredValues(beacon.caption.text).x) + 24f, 30f);
                 }

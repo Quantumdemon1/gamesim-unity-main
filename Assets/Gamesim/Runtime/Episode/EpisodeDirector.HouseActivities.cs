@@ -46,18 +46,30 @@ namespace Gamesim.Episode
         private ContestantState PlayerDressed(EpisodeState state)
         {
             var me = state.Find(state.playerId);
-            string context = ActivityWardrobe(PlayerActivity);
+            var pose = player != null ? player.GetComponent<HouseFurniturePose>() : null;
+            string context = pose != null && pose.Ending ? null : ActivityWardrobe(PlayerActivity);
             if (context == null || me == null) return CharacterOutfits.ForPhase(me, state.phase);
-            var source = me;
-            // A preset look - or none saved at all - is filled in from what the preset wears.
-            if ((me.appearance?.outfits == null || me.appearance.outfits.Count == 0)
-                && CharacterBodySource.Provider is IModularCharacterBodyProvider modular && modular.Catalog != null)
-            {
-                source = me.Clone();
-                source.appearance = modular.Catalog.Materialize(me.appearance != null ? me.appearance.Clone()
-                    : CharacterAppearance.Preset(CharacterPresentation.AppearanceId(me, ContentCatalog.CanonicalId(me.id))));
-            }
-            return CharacterOutfits.ForContext(source, context);
+            return CharacterOutfits.ForContext(WithWardrobe(me), context);
+        }
+
+        /// <summary>
+        /// A houseguest whose look lists what they wear, so a change has something to take off. A
+        /// preset look - or none saved at all - is filled in on a copy, resolved exactly as a new
+        /// season's snapshot resolves it (<see cref="CharacterAppearanceSnapshots"/>): their own
+        /// preset first, the trait recipe behind it. Keyed on the recipe alone, a houseguest with no
+        /// saved look came out of the change as somebody else.
+        /// </summary>
+        private static ContestantState WithWardrobe(ContestantState person)
+        {
+            if (person.appearance?.outfits != null && person.appearance.outfits.Count > 0) return person;
+            if (!(CharacterBodySource.Provider is IModularCharacterBodyProvider modular) || modular.Catalog == null) return person;
+            var recipe = person.appearance?.Clone() ?? CharacterAppearance.Preset(person.sourceTemplateId ?? person.id);
+            recipe.fallbackId = CharacterPresentation.AppearanceId(person, ContentCatalog.CanonicalId(person.id));
+            var materialized = modular.Catalog.Materialize(recipe);
+            if (materialized == null) return person;
+            var copy = person.Clone();
+            copy.appearance = materialized;
+            return copy;
         }
 
         /// <summary>
@@ -67,7 +79,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void DressPlayer(EpisodeState state)
         {
-            if (player == null || state == null) return;
+            // Not while the director is being torn down: a new body built during an unload is a
+            // body nobody will ever see, and a build that outlives its scene.
+            if (player == null || state == null || !isActiveAndEnabled) return;
             var presentation = player.GetComponent<CharacterPresentation>();
             bool changing = ActivityWardrobe(PlayerActivity) != null || (presentation != null && presentation.IsChangingOutfit)
                 || (presentation != null && presentation.AppearanceSnapshot?.activeOutfit is string worn
@@ -175,6 +189,13 @@ namespace Gamesim.Episode
             if(!npcMeetings.ActivityAnchorAvailable(anchor))
                 anchor=HouseInteractionAnchors.InScene(gameObject.scene).FirstOrDefault(other=>other.VenueId==anchor.VenueId
                     && other.transform.parent==anchor.transform.parent && npcMeetings.ActivityAnchorAvailable(other)) ?? anchor;
+            // Asked before the warp: a player put across the house for a place that then turns out
+            // to be taken is a player moved for nothing.
+            if(!npcMeetings.PlayerActivityPossible(player,anchor,out var refused)){message=refused;Render();return;}
+            // Whatever walk the player was on ends here. The activity's move keeps the walk it
+            // interrupted and resumes it on release, which is right for a panel opened mid-walk
+            // and wrong for getting out of bed: the player would set off after the old errand.
+            player.StopHere();
             if(player.TryMeasureRoute(anchor.Approach,out float metres) && metres>HousePlayerController.WarpRouteMetres
                 && player.TryWarpTo(anchor.Approach))
             {cameraRig?.CutTo(player.transform);BeginTravelDip();}
@@ -271,7 +292,13 @@ namespace Gamesim.Episode
         public void FinishPlayerHouseActivity()
         {
             var pose=player!=null?player.GetComponent<HouseFurniturePose>():null;
-            if(pose!=null && pose.Active)pose.RequestFinish();
+            if(pose!=null && pose.Active)
+            {
+                pose.RequestFinish();
+                // Out of the swimwear as they climb out, not after: a swimwear body still being
+                // made would otherwise be swapped in once they were already out, and changed back.
+                if(playerActivityInHouse)DressPlayer(projected);
+            }
             else if(playerActivity!=null){npcMeetings?.ReleaseActivity(playerActivity);playerActivity=null;}
         }
 
@@ -290,7 +317,7 @@ namespace Gamesim.Episode
             // Closing the menu ends what the menu began. Something begun in the house is not the
             // menu's to end: the notebook, the settings or Escape over a sleeping player leave
             // them asleep.
-            else if(wasOpen || !playerActivityInHouse)FinishPlayerHouseActivity();
+            else if(!playerActivityInHouse)FinishPlayerHouseActivity();
         }
 
         private void TickHouseActivities()

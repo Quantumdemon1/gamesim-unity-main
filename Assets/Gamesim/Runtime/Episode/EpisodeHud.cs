@@ -135,6 +135,8 @@ namespace Gamesim.Episode
         private TMP_FontAsset font;
         private RectTransform content;
         private TMP_Text prompt, challengeCaption;
+        /// <summary>The interaction prompt's button, kept out of the Tab ring: E is its key.</summary>
+        private Button interactButton;
         private Slider challengeMeter;
         private RectTransform modal;
         private ScrollRect modalScroll;
@@ -273,6 +275,21 @@ namespace Gamesim.Episode
             // one band can carry both.
             var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,PromptLift),new Vector2(425,52));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
+            // The prompt is also the thing it prompts: a click on "E · Get up" gets up. Its words
+            // change with what E would do, so the control carries a fixed caption of its own, and
+            // the keyboard keeps the key rather than a stop in the Tab ring.
+            var pressPrompt = promptRoot.gameObject.AddComponent<Button>();
+            interactButton = pressPrompt;
+            pressPrompt.targetGraphic = promptRoot.GetComponent<Image>();
+            pressPrompt.navigation = new Navigation { mode = Navigation.Mode.None };
+            pressPrompt.onClick.AddListener(() =>
+            {
+                if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == promptRoot.gameObject)
+                    EventSystem.current.SetSelectedGameObject(null);
+                director.Interact();
+            });
+            var promptCaption = FixedText(promptRoot, InteractCaption, 12, Accent, Vector2.zero, new Vector2(10, 10));
+            promptCaption.gameObject.SetActive(false);
             promptRoot.gameObject.SetActive(false);
             content = null;
             if (!open && !recovery) { modalWasOpen = false; return; }
@@ -1375,6 +1392,9 @@ namespace Gamesim.Episode
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 
+        /// <summary>The interaction prompt's fixed caption, beside the words that change with what E would do.</summary>
+        public const string InteractCaption = "Interact [E]";
+
         /// <summary>
         /// Whether a piece of the HUD's chrome stands over this screen point. Whatever the house
         /// draws there is behind it: seen through a gap at best, and - where the chrome takes no
@@ -1455,9 +1475,11 @@ namespace Gamesim.Episode
                 // Scrollbars stay out of the ring: the panel scrolls to whatever is selected, and a
                 // scrollbar the ScrollRect auto-hides after layout would sit in the ring inactive,
                 // where Down and Tab both refuse to land - the keyboard stuck on the control before it.
+                // The interaction prompt stays out for the same reason: it comes and goes with what
+                // E would do, and E is the keyboard's way to it.
                 var all = canvas.GetComponentsInChildren<Selectable>()
                     .Concat(overlay != null ? overlay.GetComponentsInChildren<Selectable>() : Enumerable.Empty<Selectable>())
-                    .Where(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar)).ToArray();
+                    .Where(item => item.IsActive() && item.IsInteractable() && !(item is Scrollbar) && item != interactButton).ToArray();
                 var eligible = scope == null ? all : all.Where(item => item.transform.IsChildOf(scope)).ToArray();
                 bool spatialOverlay = overlay != null && overlay.GetComponent<CompetitionGameScreen>() != null;
                 foreach (var item in all)

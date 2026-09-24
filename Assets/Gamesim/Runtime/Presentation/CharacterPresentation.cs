@@ -283,6 +283,22 @@ namespace Gamesim.Presentation
             dressingRoom = room; dressing = created; dressingAs = character.Clone(); dressingKey = key;
         }
 
+        /// <summary>Copies every parameter the shown body's animator holds onto the one being made.</summary>
+        private static void MirrorCues(Animator from, Animator to)
+        {
+            if (from == null || to == null || from == to || !from.isActiveAndEnabled || !to.isActiveAndEnabled
+                || from.runtimeAnimatorController != to.runtimeAnimatorController || to.parameterCount == 0) return;
+            foreach (var parameter in from.parameters)
+            {
+                switch (parameter.type)
+                {
+                    case AnimatorControllerParameterType.Float: to.SetFloat(parameter.nameHash, from.GetFloat(parameter.nameHash)); break;
+                    case AnimatorControllerParameterType.Int: to.SetInteger(parameter.nameHash, from.GetInteger(parameter.nameHash)); break;
+                    case AnimatorControllerParameterType.Bool: to.SetBool(parameter.nameHash, from.GetBool(parameter.nameHash)); break;
+                }
+            }
+        }
+
         private void CancelDressing()
         {
             if (dressingRoom != null)
@@ -298,10 +314,22 @@ namespace Gamesim.Presentation
         {
             if (dressingRoom == null) return;
             if (!dressing.Exists) { CancelDressing(); return; }
+            // The Animator the new body has now, looked up every time: UMA replaces the one the
+            // body was created with while it assembles, so the handle taken at creation is a
+            // destroyed object within a frame - and cues sent to it, and the hand-over below,
+            // went nowhere. The body took over standing in Idle and sat down again.
+            var hidden = dressing.Root.GetComponentInChildren<Animator>(true);
+            // The body being made hears every cue the one on show does, so it is in the same
+            // state - sitting, swimming, walking - when it takes over, not standing up out of Idle.
+            MirrorCues(animator, hidden);
             var state = dressing.Root.GetComponent<CharacterBodyBuildState>();
             if (state != null && !state.Ready) return;
             if (dressing.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) return;
 
+            // And exactly where in it: the same state at the same moment.
+            bool aligned = animator != null && hidden != null && animator.isActiveAndEnabled
+                && animator.runtimeAnimatorController == hidden.runtimeAnimatorController;
+            var playing = aligned ? animator.GetCurrentAnimatorStateInfo(0) : default;
             var old = visual;
             if (old != null)
             {
@@ -313,8 +341,13 @@ namespace Gamesim.Presentation
             visual.name = "Gamesim Character Visual";
             visual.localScale = Vector3.one * heightScale;
             providedBody = dressing;
-            animator = dressing.Animator;
+            animator = hidden;
             if (animator != null) animator.applyRootMotion = false;
+            if (aligned && animator != null)
+            {
+                animator.Play(playing.fullPathHash, 0, playing.normalizedTime);
+                animator.Update(0f);
+            }
             inspectedController = null;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             hasRunningParam = hasPaceParam = false; activityParams = 0;

@@ -104,6 +104,17 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(tip != null && tip.gameObject.activeInHierarchy, Is.True, "Hovering the pool says what a click does.");
                 Assert.That(tip.GetComponentInChildren<TMPro.TMP_Text>().text, Is.EqualTo(HouseFurniture.SwimCaption), "In the click's own words.");
 
+                // A still pointer over a moving camera: the pool slides out from under it, and the
+                // words go with it.
+                cameraRig.MoveTo(pool.Position + new Vector3(12f, 0f, 12f), 12f);
+                float moving = Time.realtimeSinceStartup + 4f;
+                while (Time.realtimeSinceStartup < moving && tip.gameObject.activeInHierarchy) yield return null;
+                Assert.That(tip.gameObject.activeInHierarchy, Is.False, "The camera moved the pool away from a still pointer.");
+                cameraRig.MoveTo(pool.Position, 12f);
+                moving = Time.realtimeSinceStartup + 4f;
+                while (Time.realtimeSinceStartup < moving && !tip.gameObject.activeInHierarchy) yield return null;
+                Assert.That(tip.gameObject.activeInHierarchy, Is.True, "And brought it back.");
+
                 var away = new Vector2(camera.pixelRect.xMin + 6f, camera.pixelRect.center.y);
                 InputSystem.QueueStateEvent(mouse, new MouseState { position = away });
                 yield return null;

@@ -372,6 +372,16 @@ namespace Gamesim.House
             distance = desiredDistance;
             pitch = Mathf.Clamp(PitchFor(desiredDistance) + pitchOffset, 45f, 70f);
             ApplyCameraImmediately();
+            // The lens too: a shot released just before the cut - the overview's orthographic
+            // morph, a close-up's depth of field - would otherwise go on easing out on the far side.
+            if (defaultFieldOfView > 0f) lensFieldOfView = defaultFieldOfView;
+            lensOrthographic = 0f;
+            depthOfFieldWeight = 0f;
+            if (ViewCamera != null)
+            {
+                if (defaultFieldOfView > 0f) viewCamera.fieldOfView = defaultFieldOfView;
+                if (lensProjectionApplied) { viewCamera.ResetProjectionMatrix(); lensProjectionApplied = false; }
+            }
         }
 
         /// <summary>

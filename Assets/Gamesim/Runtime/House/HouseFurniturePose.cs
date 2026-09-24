@@ -26,6 +26,8 @@ namespace Gamesim.House
         public bool IsGestureApplied => Active && !ending && armWritten && arm!=null && visual!=null && body==visual.VisualRoot;
         /// <summary>What is being done here: the activity this pose was begun for.</summary>
         public HouseFurnitureActivity Kind => kind;
+        /// <summary>Whether the body is on its way out of the pose: getting up, climbing out.</summary>
+        public bool Ending => Active && ending;
         /// <summary>The furniture this pose is at, while it holds.</summary>
         public HouseInteractionAnchor Anchor => Active ? anchor : null;
 

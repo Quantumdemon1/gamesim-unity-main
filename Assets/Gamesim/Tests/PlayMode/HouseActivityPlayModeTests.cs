@@ -84,5 +84,31 @@ namespace Gamesim.Tests.PlayMode
             }
             finally{coordinator.Dispose();}
         }
+
+        /// <summary>
+        /// A pairing that cannot happen - both pair slots taken - leaves everybody where they
+        /// were. It used to take both of them off their furniture before finding that out, and a
+        /// friend keeping the player company in the hot tub was pulled out by every such attempt.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Activity_APairingWithNoRoomLeftDisturbsNobody()
+        {
+            var query=CreateNpcRoomQuery();var cast=CreateMeetingCast(5);
+            var ids=cast.Select(npc=>npc.Id).ToArray();var coordinator=CreateMeetingCoordinator(query);
+            try
+            {
+                Assert.That(coordinator.Reconcile("activity-test:2",cast,ids,ids,out var reason),Is.True,reason);
+                yield return WaitForMeetingBinding(coordinator,cast);
+                Assert.That(HouseInteractionAnchors.TryFind(query.Scene,"yard-south-chat",0,out var seat),Is.True);
+                Assert.That(coordinator.TryReserveActivity(ids[4],seat,out var activity,out reason),Is.True,reason);
+                Assert.That(coordinator.TryReservePair("first",ids[0],ids[1],out _,out reason),Is.True,reason);
+                Assert.That(coordinator.TryReservePair("second",ids[2],ids[3],out _,out reason),Is.True,reason);
+                Assert.That(coordinator.TryReservePair("third",ids[4],ids[0],out _,out _),Is.False,"Both pair slots are taken.");
+                Assert.That(activity.Released,Is.False,"The pairing that came to nothing left them at the furniture.");
+                Assert.That(coordinator.TryGetActivity(ids[4],out _),Is.True);
+                Assert.That(cast[4].GetComponent<HouseNpcMotion>().LeaseId,Is.Not.Null,"Their walk to the furniture is still theirs.");
+            }
+            finally{coordinator.Dispose();}
+        }
     }
 }

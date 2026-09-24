@@ -54,6 +54,12 @@ namespace Gamesim.House
             => activity==HouseFurnitureActivity.Sleep || activity==HouseFurnitureActivity.Swim
                || activity==HouseFurnitureActivity.Soak || activity==HouseFurnitureActivity.Dance;
 
+        /// <summary>
+        /// Whether a venue's places are for company: two people at once, each on their own lease.
+        /// The hot tub's two seats are; a conversation venue's two chairs are one meeting's.
+        /// </summary>
+        public static bool SeatsCompany(string venueId) => venueId==HotTubAnchor;
+
         /// <summary>The E prompt, and the status line, while the player is doing this.</summary>
         public static string StopPrompt(HouseFurnitureActivity activity)
         {

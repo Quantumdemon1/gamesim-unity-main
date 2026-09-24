@@ -99,6 +99,22 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>The glyph a room's chip leads with, as mockup-03 marks each room.</summary>
+        /// <summary>
+        /// A room's name as it reads mid-sentence: "the living room", "the HoH suite". Only a first
+        /// word that is an ordinary capitalised word is lowered; a name whose capitals mean
+        /// something keeps them.
+        /// </summary>
+        public static string InSentence(string roomName)
+        {
+            string name = Name(roomName);
+            if (string.IsNullOrEmpty(name)) return name;
+            int end = name.IndexOf(' ');
+            string first = end < 0 ? name : name.Substring(0, end);
+            bool ordinary = char.IsUpper(first[0]);
+            for (int i = 1; i < first.Length && ordinary; i++) ordinary = !char.IsUpper(first[i]);
+            return ordinary ? char.ToLowerInvariant(name[0]) + name.Substring(1) : name;
+        }
+
         public static string Glyph(string roomName)
         {
             switch (roomName)

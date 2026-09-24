@@ -113,7 +113,7 @@ namespace Gamesim.Episode
             {
                 ClosePanels();
                 cameraRig?.MoveTo(marker.transform.position, cameraRig.DesiredDistance);
-                message = "Watching the " + RoomLabels.Name(room).ToLowerInvariant() + ".";
+                message = "Watching the " + RoomLabels.InSentence(room) + ".";
                 Render();
                 return;
             }
@@ -124,10 +124,10 @@ namespace Gamesim.Episode
             ClosePanels();
             EndDiaryVisit(true); CloseHouseActivities(true);
             bool going = TryRoomLanding(marker, out var landing) && TryTravel(landing);
-            string name = RoomLabels.Name(room);
-            message = !going ? "The " + name.ToLowerInvariant() + " is not reachable from here."
-                : LastTravel == TravelKind.Warp ? "In the " + name.ToLowerInvariant() + "."
-                : "Heading to the " + name.ToLowerInvariant() + ".";
+            string name = RoomLabels.InSentence(room);
+            message = !going ? "The " + name + " is not reachable from here."
+                : LastTravel == TravelKind.Warp ? "In the " + name + "."
+                : "Heading to the " + name + ".";
             Render();
         }
 
@@ -148,7 +148,9 @@ namespace Gamesim.Episode
         /// shot, no ceremony, no competition, and the HUD up.
         /// </summary>
         private bool HouseIsTheView => IsReady && !blockedRecovery && !IsPanelOpen && !overviewOpen && !challengeActive
-            && !CeremonyOverlays.OnScreen && hud != null && hud.IsVisible && player != null
+            && !CeremonyOverlays.OnScreen && !IsFramingCeremony && (voteReveal == null || !voteReveal.IsPlaying)
+            && (takeover == null || !takeover.IsPlaying) && (keyCeremony == null || !keyCeremony.IsPlaying)
+            && hud != null && hud.IsVisible && player != null
             && cameraRig != null && cameraRig.ControlsEnabled && !cameraRig.HasShot && !cameraRig.IsConversationFocused
             && (mainMenu == null || !mainMenu.IsShowing) && (castSelect == null || !castSelect.IsShowing)
             && (characterCreator == null || !characterCreator.IsShowing);

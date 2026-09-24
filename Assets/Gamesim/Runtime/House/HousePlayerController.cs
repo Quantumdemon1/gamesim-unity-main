@@ -322,13 +322,16 @@ namespace Gamesim.House
         /// </summary>
         public event System.Action<HouseInteractionAnchor, Vector2> FurnitureHovered;
         private Vector2 lastHover = new Vector2(float.NaN, float.NaN);
+        private Matrix4x4 lastHoverView;
 
         private void TickHover(Mouse mouse)
         {
             if (FurnitureHovered == null || viewCamera == null || mouse == null) return;
             var screen = mouse.position.ReadValue();
-            if (screen == lastHover) return;
-            lastHover = screen;
+            // A still pointer over a moving camera is pointing at something new.
+            var view = viewCamera.worldToCameraMatrix;
+            if (screen == lastHover && view == lastHoverView) return;
+            lastHover = screen; lastHoverView = view;
             HouseInteractionAnchor under = null;
             if (!Gamesim.Presentation.CeremonyOverlays.OnScreen
                 && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())

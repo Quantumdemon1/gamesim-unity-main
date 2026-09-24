@@ -291,9 +291,13 @@ namespace Gamesim.House
                     return Fail(out reason, "The token already identifies a different pair or venue.");
                 lease = existing; return true;
             }
+            // Full before anybody is disturbed: a pair that cannot be reserved used to take both of
+            // them off their furniture first, and a friend in the hot tub was pulled out and put
+            // back every few seconds by pairings that never happened.
+            if (leases.Count >= 2) return Fail(out reason, "An actor is already reserved or both pair slots are occupied.");
             YieldActivity(firstId);YieldActivity(secondId);
             var first = actors[firstId]; var second = actors[secondId];
-            if (leases.Count >= 2 || first.motion.LeaseId != null || second.motion.LeaseId != null)
+            if (first.motion.LeaseId != null || second.motion.LeaseId != null)
                 return Fail(out reason, "An actor is already reserved or both pair slots are occupied.");
             Venue best = null; float bestLength = float.PositiveInfinity;
             Vector3 bestFirst = default, bestSecond = default;

@@ -88,6 +88,10 @@ namespace Gamesim.Episode
 
         public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen
                                    || journalOpen || diaryOpen || houseActivitiesOpen || IsWeeklyRecapOpen || (competitionCard != null && competitionCard.IsPlaying);
+        /// <summary>Whether the episode screen is the panel open, rather than a conversation or the notebook.</summary>
+        public bool IsPhasePanelOpen => phaseOpen;
+        /// <summary>Whether a conversation with a houseguest is the panel open.</summary>
+        public bool IsConversationOpen => focusedNpc != null;
         public bool IsChallengeActive => challengeActive;
         public float AverageFrameMilliseconds => frameAverage * 1000;
         public string SavePath => saves?.SavePath;
@@ -312,6 +316,7 @@ namespace Gamesim.Episode
             TickTravelDip();
             TickTravelBeacons();
             TickSleepLight();
+            if (IsReady) TickCompanion();
             // The houseguest the player is with keeps their plate up at any distance.
             if (housemates != null)
             {
@@ -411,26 +416,12 @@ namespace Gamesim.Episode
                 if (shortcuts.Overview.WasPressedThisFrame() && !IsPanelOpen) ToggleOverview();
                 if (shortcuts.Diary.WasPressedThisFrame() && !IsPanelOpen) GoToDiary();
                 // Busy at a piece of furniture, E is getting up, before it is anything else.
-                if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen && IsPlayerHouseActivityActive && playerActivityInHouse)
-                    FinishPlayerHouseActivity();
-                else if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen)
-                {
-                    switch (ChooseInteraction(out var target))
-                    {
-                        case InteractTarget.Diary:
-                            if (TryOpenDiary()) break;
-                            if (target != null) TryOpenNpc(target.Id); else TryOpenPhasePanel();
-                            break;
-                        case InteractTarget.Station:
-                            if (!TryOpenPhasePanel() && target != null) TryOpenNpc(target.Id);
-                            break;
-                        case InteractTarget.Talk:
-                            TryOpenNpc(target.Id);
-                            break;
-                    }
-                }
+                if (shortcuts.Interact.WasPressedThisFrame()) Interact();
             }
-            if (!IsPanelOpen)
+            // Nothing to press while a ceremony card is up: the card takes the pointer by reading the
+            // mouse, not through a raycaster, and the click that dismissed it went on to press
+            // whatever the prompt said underneath.
+            if (!IsPanelOpen && !CeremonyOverlays.OnScreen)
             {
                 // One decision, read twice. The prompt and the key used to run the same priority
                 // chain in two places, which is two chances to disagree about what E does.
@@ -444,6 +435,31 @@ namespace Gamesim.Episode
                 hud.SetPrompt(prompt);
             }
             else hud.SetPrompt("");
+        }
+
+        /// <summary>
+        /// Whatever E does right now: get up from the furniture, enter the diary room, open the
+        /// episode screen, talk to whoever is nearest. The key and the prompt's own button both come
+        /// here, so a mouse reaches everything the key does and neither can disagree with the other.
+        /// </summary>
+        public void Interact()
+        {
+            if (!IsReady || IsPanelOpen) return;
+            // Busy at a piece of furniture, E is getting up, before it is anything else.
+            if (IsPlayerHouseActivityActive && playerActivityInHouse) { FinishPlayerHouseActivity(); return; }
+            switch (ChooseInteraction(out var target))
+            {
+                case InteractTarget.Diary:
+                    if (TryOpenDiary()) break;
+                    if (target != null) TryOpenNpc(target.Id); else TryOpenPhasePanel();
+                    break;
+                case InteractTarget.Station:
+                    if (!TryOpenPhasePanel() && target != null) TryOpenNpc(target.Id);
+                    break;
+                case InteractTarget.Talk:
+                    TryOpenNpc(target.Id);
+                    break;
+            }
         }
 
         /// <summary>
@@ -850,7 +866,9 @@ namespace Gamesim.Episode
                 var model = npcStates[i];
                 npc.Configure(model.id, model.name);
                 npc.gameObject.SetActive(model.status == ContestantStatus.Active || model.status == ContestantStatus.Winner || model.status == ContestantStatus.RunnerUp);
-                CharacterPresentation.Attach(npc.gameObject, CharacterOutfits.ForPhase(model, state.phase), Palette(i)).SetReducedMotion(reducedMotion);
+                // The phase's clothes - or, for the player's company in the hot tub, swimwear, kept
+                // through a render and changed back behind the body when they get out.
+                DressHousemate(model.id);
                 var label = npc.GetComponentInChildren<TextMesh>(); if (label != null) label.text = model.name;
             }
             DressPlayer(state);

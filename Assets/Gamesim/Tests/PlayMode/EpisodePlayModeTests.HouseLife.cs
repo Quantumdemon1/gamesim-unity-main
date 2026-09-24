@@ -247,6 +247,9 @@ namespace Gamesim.Tests.PlayMode
             director.StartActivityInHouse(pool, HouseFurnitureActivity.Swim);
             Assert.That(director.PlayerActivity, Is.EqualTo(HouseFurnitureActivity.Swim), director.StatusMessage);
             float deadline = Time.realtimeSinceStartup + 20f;
+            // Whether the new body takes over in the old one's state is asked where the state holds
+            // still (HouseLife_AChangeOfClothesKeepsTheBodyWhereItIs), not on a walk, where Idle
+            // and Walk come and go on their own between one frame and the next.
             while (Time.realtimeSinceStartup < deadline && presentation.AppearanceSnapshot?.activeOutfit != CharacterOutfits.Swimwear)
             {
                 if (!Visible()) missing++;
@@ -273,6 +276,57 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(presentation.AppearanceSnapshot?.activeOutfit, Is.Not.EqualTo(CharacterOutfits.Swimwear), "And back out of it after.");
             Assert.That(missing, Is.Zero, "The player went missing for " + missing + " frames while changing back.");
             if (everyday != null) Assert.That(presentation.AppearanceSnapshot.activeOutfit, Is.EqualTo(everyday));
+        }
+
+        /// <summary>
+        /// A change of clothes while seated keeps the body seated: the new body takes over in the
+        /// state and at the moment the old one was in, rather than standing up out of Idle for a
+        /// frame and sitting back down. Asked with the player settled in the hot tub, where the
+        /// state is known, rather than on a walk, where Idle and Walk come and go on their own.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HouseLife_AChangeOfClothesKeepsTheBodyWhereItIs()
+        {
+            var seats = PlacesFor(HouseFurnitureActivity.Soak);
+            yield return BeginInHouse(seats[0], HouseFurnitureActivity.Soak);
+            var presentation = player.GetComponent<CharacterPresentation>();
+            float deadline = Time.realtimeSinceStartup + 20f;
+            while (Time.realtimeSinceStartup < deadline && presentation.IsChangingOutfit) yield return null;
+            Assert.That(PlayerAnimator().GetCurrentAnimatorStateInfo(0).IsName("SitIdle"), Is.True, "Settled in the tub.");
+            // Sat a while, so a body that sat down by itself behind the old one would be seconds
+            // behind it in the loop, not level with it by chance.
+            float sit = Time.realtimeSinceStartup + 2f;
+            while (Time.realtimeSinceStartup < sit) yield return null;
+
+            // The notebook open over the tub holds the house still: without it, the house's next
+            // commit re-dresses the player for the tub and cancels the test's change half made.
+            // The player stays in the water under it.
+            director.OpenJournal();
+            yield return null;
+            Assert.That(director.PlayerActivity, Is.EqualTo(HouseFurnitureActivity.Soak), "Still in the tub under the notebook.");
+
+            // Back into the day's clothes, from the test, while they sit.
+            var shownBody = presentation.VisualRoot;
+            var state = director.Snapshot;
+            CharacterPresentation.Dress(player.gameObject, CharacterOutfits.ForPhase(state.Find(state.playerId), state.phase), Color.white);
+            Assert.That(presentation.IsChangingOutfit, Is.True, "A new look is being made behind the body.");
+            float lastShown = 0f;
+            deadline = Time.realtimeSinceStartup + 20f;
+            while (Time.realtimeSinceStartup < deadline && presentation.IsChangingOutfit)
+            {
+                lastShown = PlayerAnimator().GetCurrentAnimatorStateInfo(0).normalizedTime;
+                yield return null;
+            }
+            Assert.That(presentation.IsChangingOutfit, Is.False, "It was made.");
+            Assert.That(presentation.VisualRoot, Is.Not.SameAs(shownBody), "The new body took over.");
+            var taken = PlayerAnimator().GetCurrentAnimatorStateInfo(0);
+            Assert.That(taken.IsName("SitIdle"), Is.True, "The new body sits, from the frame it takes over.");
+            Assert.That(PlayerAnimator().IsInTransition(0), Is.False, "Hearing the old body's cues, it is not on its way up.");
+            Assert.That(taken.normalizedTime, Is.EqualTo(lastShown).Within(.05f),
+                "And at the moment in the loop the old one had reached.");
+            director.ClosePanels();
+            director.FinishPlayerHouseActivity();
+            yield return null;
         }
 
         [UnityTest]

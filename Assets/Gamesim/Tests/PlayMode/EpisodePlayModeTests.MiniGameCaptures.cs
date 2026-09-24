@@ -13,8 +13,9 @@ namespace Gamesim.Tests.PlayMode
     {
         /// <summary>
         /// Every authored competition mid-play, over the arena, for review: the frames the game
-        /// screen is judged by. A practice attempt carries the arena; each definition is then shown
-        /// on the same screen with a run the test drives itself, so every frame is the same state.
+        /// screen is judged by. A practice attempt carries the arena and the camera; each definition
+        /// is then shown on a screen of the test's own with a run the test drives itself, so every
+        /// frame is the state the test put there.
         /// </summary>
         [UnityTest]
         public IEnumerator MiniGames_CaptureEveryDefinitionMidPlayForReview()
@@ -42,75 +43,75 @@ namespace Gamesim.Tests.PlayMode
             string field = string.Join("\n", EpisodeEngine.CompetitionPlayers(director.Snapshot)
                 .Select(actor => HudPrimitives.WithYou(actor.name, actor.isPlayer)));
 
-            // A capture's own frame is slow enough to read as a stalled frame, which pauses a live
-            // board; a fixed frame time keeps the frames the game shows, not the stall guard's.
-            Time.captureDeltaTime = 1f / 60f;
+            // The frames are taken on a screen of the test's own: the director drives its screen every
+            // frame - holding it while the arena settles, pausing it after a slow frame, ticking its
+            // own run - and a capture's frame is slow. Its practice stays up behind, holding the
+            // arena and the camera; its own screen stands aside.
+            screen.Hide();
+            var probeOwner = new GameObject("Review capture screen");
+            var probe = CompetitionGameScreen.Attach(probeOwner);
             try
             {
-            MiniGameRun lastRun = null;
-            foreach (var definition in CompetitionDefinitions.All)
-            {
-                var kind = CompetitionMiniGames.For(definition.Category);
-                var run = new MiniGameRun(kind, 77, CompetitionMiniGames.CurrentRules, definition);
-                lastRun = run;
-                screen.Show(run, "Head of Household · " + definition.Title, field, true, i => run.Flip(i), () => run.Tap(), d => run.Tap(d),
-                    () => run.SetHolding(!run.Holding), () => { });
-                yield return null;
-                if (definition == CompetitionDefinitions.All[0] && Application.isBatchMode) yield return CaptureFraming("minigame-count", false);
-                screen.AdvanceReady(4f);
-                if (definition.Pattern == CompetitionPattern.PreviewPairs)
+                MiniGameRun lastRun = null;
+                foreach (var definition in CompetitionDefinitions.All)
                 {
-                    screen.Refresh();
-                    if (Application.isBatchMode) yield return CaptureFraming("minigame-" + definition.Id + "-preview", false);
+                    var kind = CompetitionMiniGames.For(definition.Category);
+                    var run = new MiniGameRun(kind, 77, CompetitionMiniGames.CurrentRules, definition);
+                    lastRun = run;
+                    probe.Show(run, "Head of Household · " + definition.Title, field, true, i => run.Flip(i), () => run.Tap(), d => run.Tap(d),
+                        () => run.SetHolding(!run.Holding), () => { });
+                    yield return null;
+                    if (definition == CompetitionDefinitions.All[0] && Application.isBatchMode) yield return CaptureFraming("minigame-count", false);
+                    probe.AdvanceReady(4f);
+                    if (definition.Pattern == CompetitionPattern.PreviewPairs)
+                    {
+                        probe.Refresh();
+                        if (Application.isBatchMode) yield return CaptureFraming("minigame-" + definition.Id + "-preview", false);
+                    }
+                    // Small steps: a step over a quarter second reads as a stalled frame and pauses.
+                    for (int step = 0; step < 100 && !probe.IsPlaying; step++) { probe.AdvanceReady(.2f); yield return null; }
+                    Assert.That(probe.IsPlaying, Is.True, definition.Id + " is in play.");
+                    switch (kind)
+                    {
+                        case CompetitionMiniGames.Kind.Reaction:
+                            for (int hit = 0; hit < 4; hit++)
+                            {
+                                for (int step = 0; step < 100 && !run.TargetLive; step++) run.Tick(.05);
+                                if (hit < 3) run.Tap(run.TargetDirection);
+                            }
+                            break;
+                        case CompetitionMiniGames.Kind.Memory:
+                            int first = 0, pair = Enumerable.Range(1, 15).First(i => run.Faces[i] == run.Faces[0]);
+                            run.Flip(first); run.Flip(pair);
+                            run.Tick(1.5);
+                            int other = Enumerable.Range(1, 15).First(i => i != pair && run.Faces[i] != run.Faces[0]);
+                            int wrong = Enumerable.Range(1, 15).First(i => i != pair && i != other && run.Faces[i] != run.Faces[other] && run.Faces[i] != run.Faces[0]);
+                            run.Flip(other); run.Flip(wrong);
+                            break;
+                        case CompetitionMiniGames.Kind.Endurance:
+                            run.SetHolding(true);
+                            for (int step = 0; step < 50; step++) run.Tick(.1);
+                            break;
+                    }
+                    probe.Refresh();
+                    // Past GO, which stands over the board for its first half second.
+                    float clear = Time.realtimeSinceStartup + .7f;
+                    while (Time.realtimeSinceStartup < clear) yield return null;
+                    probe.Refresh();
+                    if (Application.isBatchMode) yield return CaptureFraming("minigame-" + definition.Id, false);
                 }
-                // Small steps: a step over a quarter second reads as a stalled frame and pauses - and
-                // a capture's own frame is that slow, so resume through the pause as a player would.
-                for (int step = 0; step < 100 && !screen.IsPlaying; step++)
-                {
-                    if (screen.Paused) screen.TogglePause();
-                    screen.AdvanceReady(.2f); yield return null;
-                }
-                Assert.That(screen.IsPlaying, Is.True, definition.Id + " is in play.");
-                switch (kind)
-                {
-                    case CompetitionMiniGames.Kind.Reaction:
-                        for (int hit = 0; hit < 4; hit++)
-                        {
-                            for (int step = 0; step < 100 && !run.TargetLive; step++) run.Tick(.05);
-                            if (hit < 3) run.Tap(run.TargetDirection);
-                        }
-                        break;
-                    case CompetitionMiniGames.Kind.Memory:
-                        int first = 0, pair = Enumerable.Range(1, 15).First(i => run.Faces[i] == run.Faces[0]);
-                        run.Flip(first); run.Flip(pair);
-                        run.Tick(1.5);
-                        int other = Enumerable.Range(1, 15).First(i => i != pair && run.Faces[i] != run.Faces[0]);
-                        int wrong = Enumerable.Range(1, 15).First(i => i != pair && i != other && run.Faces[i] != run.Faces[other] && run.Faces[i] != run.Faces[0]);
-                        run.Flip(other); run.Flip(wrong);
-                        break;
-                    case CompetitionMiniGames.Kind.Endurance:
-                        run.SetHolding(true);
-                        for (int step = 0; step < 50; step++) run.Tick(.1);
-                        break;
-                }
-                if (screen.Paused) screen.TogglePause();
-                screen.Refresh();
-                // Past GO, which stands over the board for its first half second.
-                float clear = Time.realtimeSinceStartup + .7f;
-                while (Time.realtimeSinceStartup < clear) yield return null;
-                screen.Refresh();
-                if (Application.isBatchMode) yield return CaptureFraming("minigame-" + definition.Id, false);
-            }
 
-            // The pause and the end of an attempt, on the last definition's board.
-            screen.TogglePause();
-            if (Application.isBatchMode) yield return CaptureFraming("minigame-paused", false);
-            screen.TogglePause();
-            lastRun.Finish(); screen.Refresh();
-            screen.ShowFinished("Practice complete. No competition result or season state was changed.", "Return to briefing", () => { }, hideCancel: true);
-            if (Application.isBatchMode) yield return CaptureFraming("minigame-finished", false);
+                // The pause, and the end of the last board as a practice ends: the grip giving out.
+                probe.TogglePause();
+                if (Application.isBatchMode) yield return CaptureFraming("minigame-paused", false);
+                probe.TogglePause();
+                lastRun.SetHolding(true);
+                while (!lastRun.Finished) lastRun.Tick(.1);
+                probe.Refresh();
+                probe.ShowFinished("Practice complete. No competition result or season state was changed.", "Return to briefing", () => { }, hideCancel: true);
+                if (Application.isBatchMode) yield return CaptureFraming("minigame-finished", false);
             }
-            finally { Time.captureDeltaTime = 0f; }
+            finally { Object.Destroy(probe.gameObject); Object.Destroy(probeOwner); }
         }
 
         /// <summary>The standings card a committed competition opens on, for review.</summary>

@@ -8,6 +8,34 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 000000. The backwards walk measured, and a plan for house life (24 September)
+
+The request:
+- the walk plays backwards;
+- use Quaternius's Universal Animation Library, for example for swimming when the pool is clicked;
+- clickable icons that take the player to rooms, the challenge, the episode screen and the diary room;
+- more to do in the house, such as sleeping and cooking;
+- a brainstorm and a detailed plan.
+
+**Only the plan shipped.** It is `Assets/Plans/HOUSE-LIFE-PLAN.md`: evidence, 57 ideas in tiers, milestones M0–M9 with files, tests and acceptance criteria, and 13 decisions for the owner.
+
+**The finding that matters:**
+- **What is turned.** Every custom animation take plays turned about 180° on both casts: Walk, WalkStop, standing Talk/Listen/Argue and all five reactions. Sitting is turned too, but hidden by the hard-coded `SeatedClipHalfTurn`.
+  - On UMA bodies, only UMA's own Idle and Run face forward.
+  - On the non-UMA cast, only the Quaternius Idle and Walk face forward.
+- **Cause, UMA takes:** `AuthoredAssetImporter` bakes root rotation "Based Upon: Original" (`:243-248`), and the Mixamo files store a reversed heading.
+- **Cause, authored reactions:** `HumanoidReactionAuthoring` copies Talk's reversed RootQ.
+- **Cause, non-UMA takes:** the Blender `bb_anim_casual` export's root is turned.
+- **The fix is M0 in the plan.** The three sources are fixed first, and only then is the seat hack removed.
+
+**Traps:**
+- **A facing probe must hold each state's parameters** and assert `IsName(state)` before it samples. Playing a state with its parameters cleared lets the controller leave it within a third of a second. The first probe did exactly that, and reported several turned takes as correct.
+- **The Universal Animation Library Standard is already committed and unused:** `Art/External/QuaterniusCharacters/AnimationLibrary_Unity_Standard.fbx`, 46 takes including Swim_Idle_Loop and Swim_Fwd_Loop.
+  - Do not drop it into `Art/Authored/Animation/Humanoid`. The importer renames every clip there to the file's name, and loops anything ending in `_loop`.
+- **The non-UMA rig is not a humanoid chain.** The legs hang off `Body`, and the feet are IK bones under the root. So "import it as Humanoid" is a re-rig, not a setting.
+
+---
+
 ## 00000. The character creator, rebuilt to its mockups — and colours that reach the body (23 September, late night)
 
 The user sent four mockups (Appearance, Identity, Personality, My Houseguests) and reported that hair

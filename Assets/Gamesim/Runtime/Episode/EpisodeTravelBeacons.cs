@@ -27,7 +27,7 @@ namespace Gamesim.Episode
     {
         public const string RootName = "Travel beacons";
         /// <summary>The count of houseguests on a room's icon, and the ring that marks the next stop.</summary>
-        public const string BadgeName = "Houseguests here", NextStopName = "Next stop";
+        public const string BadgeName = "Houseguests here", NextStopName = "Next stop", PointerName = "Toward the next stop";
         public const string BeaconPrefix = "Beacon · ";
         public const string StationCaption = "Travel to episode screen";
         public const string CompetitionCaption = "Travel to competition";
@@ -37,7 +37,7 @@ namespace Gamesim.Episode
         public const float HiddenBelow = 14f, ShownFrom = 18f;
 
         /// <summary>Metres over a room's floor: above the walls, which are cut away to 1.1 m, and above heads.</summary>
-        private const float Height = 2.9f;
+        public const float Height = 2.9f;
         private const float Side = 46f, MarkSide = 26f;
 
         /// <summary>The caption a room's icon carries: its name, or what it is for.</summary>
@@ -57,7 +57,8 @@ namespace Gamesim.Episode
             public RectTransform badge;
             public TMP_Text count;
             public int shownCount = -1;
-            public bool ringed;
+            public bool ringed, pinned;
+            public RectTransform pointer;
             public TMP_Text caption;
             public GameObject tip;
             public CanvasGroup group;
@@ -77,6 +78,12 @@ namespace Gamesim.Episode
         private Canvas canvas;
         private RectTransform root;
         private float shownScale = -1f;
+
+        /// <summary>
+        /// The camera a screen point is measured against: none for the overlay the icons are, the
+        /// canvas's own when something - a test capture - has turned it into a camera canvas.
+        /// </summary>
+        private Camera UiCamera => canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
 
         /// <summary>Whether any icon is on screen and can be clicked.</summary>
         public bool IsShowing { get; private set; }
@@ -173,6 +180,16 @@ namespace Gamesim.Episode
                 badge.gameObject.SetActive(false);
                 beacon.badge = badge; beacon.count = count;
 
+                // The pip on the rim of a next stop that has had to wait somewhere clear, on the
+                // side its place is on.
+                var pointer = HudPrimitives.Disc(PointerName, rect, UiTheme.Accent);
+                pointer.anchorMin = pointer.anchorMax = new Vector2(.5f, .5f);
+                pointer.pivot = new Vector2(.5f, .5f);
+                pointer.sizeDelta = new Vector2(10f, 10f);
+                pointer.GetComponent<Image>().raycastTarget = false;
+                pointer.gameObject.SetActive(false);
+                beacon.pointer = pointer;
+
                 var button = rect.gameObject.AddComponent<Button>();
                 button.targetGraphic = face;
                 button.navigation = new Navigation { mode = Navigation.Mode.None };
@@ -227,7 +244,7 @@ namespace Gamesim.Episode
             furnitureTipText.text = Localisation.Text(text);
             furnitureTip.localScale = Vector3.one * textScale;
             furnitureTip.sizeDelta = new Vector2(Mathf.Ceil(furnitureTipText.GetPreferredValues(furnitureTipText.text).x) + 24f, 30f);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, null, out var local);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
             furnitureTip.anchoredPosition = local - root.rect.min + new Vector2(0f, -22f);
         }
 
@@ -263,6 +280,14 @@ namespace Gamesim.Episode
 
         /// <summary>The room whose icon is marked as the next stop, while one is.</summary>
         public string NextStop => nextStop;
+
+        /// <summary>Whether a room's icon is on screen away from its place, waiting somewhere clear because its place is not.</summary>
+        public bool IsPinned(string room)
+        {
+            foreach (var beacon in beacons)
+                if (beacon.room == room) return beacon.pinned && beacon.rect != null && beacon.rect.gameObject.activeInHierarchy;
+            return false;
+        }
 
         /// <summary>
         /// Who is where, and where the player is being sent next: the counts on the icons and the
@@ -307,17 +332,32 @@ namespace Gamesim.Episode
             }
             var frame = root.rect;
             bool any = false;
+            // Middle to edge of an icon, in screen pixels, with a little air.
+            float margin = (Side * .5f + 6f) * scale * canvas.scaleFactor;
             foreach (var beacon in beacons)
             {
                 bool special = beacon.room == stationRoom || beacon.room == "Private";
                 bool show = beacon.room != playerRoom || special;
                 Vector3 screen = default;
+                bool pinned = false;
+                Vector2 toward = default;
                 if (show)
                 {
                     screen = eye.WorldToScreenPoint(where(beacon.room) + Vector3.up * Height);
                     // An icon under the HUD's chrome is not shown: it would be half hidden, and
-                    // where the chrome takes no click, clickable without being seen.
-                    show = screen.z > .5f && eye.pixelRect.Contains(screen) && (covered == null || !covered(screen));
+                    // where the chrome takes no click, clickable without being seen. Any of it, not
+                    // just its middle: an icon half under the status line was still being shown.
+                    show = screen.z > .5f && eye.pixelRect.Contains(screen) && !Covered(screen, margin);
+                    // Except the next stop, which is never lost that way: its icon waits at the
+                    // first clear spot on the way from its place to the middle of the screen,
+                    // whole and clickable, with a pip on the side its place is on.
+                    if (!show && beacon.room == nextStop && screen.z > .5f
+                        && TryPin(eye.pixelRect, screen, margin, out var clear))
+                    {
+                        toward = ((Vector2)screen - clear).normalized;
+                        screen = new Vector3(clear.x, clear.y, screen.z);
+                        show = pinned = true;
+                    }
                 }
                 if (!show)
                 {
@@ -327,7 +367,7 @@ namespace Gamesim.Episode
                 }
                 if (!beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(true);
                 any = true;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, null, out var local);
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
                 beacon.rect.anchoredPosition = local - frame.min;
                 beacon.group.alpha = fade;
                 beacon.group.blocksRaycasts = fade > .5f;
@@ -349,6 +389,8 @@ namespace Gamesim.Episode
                     tipRect.sizeDelta = new Vector2(Mathf.Ceil(beacon.caption.GetPreferredValues(beacon.caption.text).x) + 24f, 30f);
                 }
                 if (beacon.tip.activeSelf != beacon.hovered) beacon.tip.SetActive(beacon.hovered);
+                if (beacon.pinned != pinned) { beacon.pinned = pinned; beacon.pointer.gameObject.SetActive(pinned); }
+                if (pinned) beacon.pointer.anchoredPosition = toward * (Side * .5f + 6f);
 
                 int here = occupants != null ? Mathf.Max(0, occupants(beacon.room)) : 0;
                 if (here != beacon.shownCount)
@@ -369,6 +411,38 @@ namespace Gamesim.Episode
                 if (beacon.ringed != next) { beacon.ringed = next; beacon.ring.name = next ? NextStopName : "Ring"; }
             }
             IsShowing = any;
+        }
+
+        /// <summary>
+        /// The first spot on the way from <paramref name="target"/> to the middle of the screen
+        /// where the whole icon - <paramref name="margin"/> from its middle to its edge - is on
+        /// the screen and clear of the HUD's chrome.
+        /// </summary>
+        private bool TryPin(Rect pixels, Vector2 target, float margin, out Vector2 at)
+        {
+            at = default;
+            var inner = new Rect(pixels.xMin + margin, pixels.yMin + margin, pixels.width - 2f * margin, pixels.height - 2f * margin);
+            if (inner.width <= 0f || inner.height <= 0f) return false;
+            const int Steps = 24;
+            for (int step = 0; step <= Steps; step++)
+            {
+                var point = Vector2.Lerp(target, pixels.center, step / (float)Steps);
+                if (!inner.Contains(point) || Covered(point, margin)) continue;
+                at = point;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Whether the chrome covers an icon here: its middle, or anywhere on the square round it.</summary>
+        private bool Covered(Vector2 point, float margin)
+        {
+            if (covered == null) return false;
+            if (covered(point)) return true;
+            for (int x = -1; x <= 1; x++)
+                for (int y = -1; y <= 1; y++)
+                    if ((x != 0 || y != 0) && covered(point + new Vector2(x * margin, y * margin))) return true;
+            return false;
         }
     }
 }

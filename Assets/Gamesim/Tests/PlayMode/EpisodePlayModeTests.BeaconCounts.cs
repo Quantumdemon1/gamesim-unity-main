@@ -6,6 +6,7 @@ using Gamesim.House;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.PlayMode
@@ -111,6 +112,66 @@ namespace Gamesim.Tests.PlayMode
             }
             // For the eye: the counts and the ring over the house.
             if (Application.isBatchMode) yield return CaptureFraming("beacons-counts");
+        }
+
+        /// <summary>
+        /// The next stop is never lost. Looked at from the far end of the house, where the episode
+        /// screen's own place is off the screen or under the HUD, its icon waits at the nearest
+        /// clear spot on the way to it, whole, with a pip on the side the screen is on - and a
+        /// click on it still goes there.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beacons_TheNextStopIsNeverLostOffTheScreen()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return null;
+            Assert.That(director.Snapshot.pendingDiary, Is.Null, "No diary is owed, so the next stop is the episode screen.");
+            string next = director.ScreenRoom;
+            var place = director.StationPosition + Vector3.up * EpisodeTravelBeacons.Height;
+            var hud = director.GetComponentInChildren<EpisodeHud>(true);
+            var far = SceneComponents<HouseRoomMarker>().Where(marker => marker.isActiveAndEnabled)
+                .OrderByDescending(marker => (marker.transform.position - director.StationPosition).sqrMagnitude).First().transform.position;
+            cameraRig.SetReducedMotion(true);
+            bool outOfSight = false;
+            float deadline = Time.realtimeSinceStartup + 6f;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                cameraRig.MoveTo(far, EpisodeTravelBeacons.ShownFrom + 1f);
+                yield return null;
+                var natural = cameraRig.ViewCamera.WorldToScreenPoint(place);
+                outOfSight = natural.z > .5f && (!cameraRig.ViewCamera.pixelRect.Contains(natural) || hud.Covers(natural));
+                if (outOfSight && director.TravelBeacons != null && cameraRig.Distance >= EpisodeTravelBeacons.ShownFrom) break;
+            }
+            Assert.That(outOfSight, Is.True, "From the far end of the house the screen's own place is out of sight.");
+            // The shot holds still from here on: nothing is followed, so the icon stays where it is measured.
+            yield return null;
+            yield return null;
+
+            var beacons = director.TravelBeacons;
+            var icon = BeaconFor(next);
+            Assert.That(icon != null && icon.gameObject.activeInHierarchy, Is.True, "The next stop's icon is on screen all the same.");
+            Assert.That(beacons.IsPinned(next), Is.True, "Waiting somewhere clear, not at its place.");
+            var centre = ScreenCentre(icon);
+            Assert.That(cameraRig.ViewCamera.pixelRect.Contains(centre), Is.True, "On the screen.");
+            Assert.That(hud.Covers(centre), Is.False, "Clear of the HUD.");
+            var pointer = icon.Find(EpisodeTravelBeacons.PointerName);
+            Assert.That(pointer != null && pointer.gameObject.activeInHierarchy, Is.True, "With a pip pointing the way.");
+            var toward = ((Vector2)cameraRig.ViewCamera.WorldToScreenPoint(place) - centre).normalized;
+            var pip = (ScreenCentre((RectTransform)pointer) - centre).normalized;
+            Assert.That(Vector2.Dot(pip, toward), Is.GreaterThan(.9f), "On the side the screen is on.");
+            // For the eye: the icon waiting in sight, and its pip.
+            if (Application.isBatchMode) yield return CaptureFraming("beacons-pinned");
+            centre = ScreenCentre(icon);
+
+            var mouse = InputSystem.AddDevice<Mouse>();
+            try
+            {
+                yield return ClickAt(mouse, centre);
+                Assert.That(director.LastTravel, Is.Not.EqualTo(EpisodeDirector.TravelKind.None),
+                    "A click on it still goes there. Status: " + director.StatusMessage);
+            }
+            finally { InputSystem.RemoveDevice(mouse); }
         }
     }
 }

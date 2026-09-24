@@ -118,7 +118,13 @@ A second review looked at the companion, the prompt button and the change of clo
   - splashes sorting behind the pool's translucent water: they and the bubbles now draw after it.
   
   The review's unverified note, that the test could not tell whether the player was counted, is also fixed. The test stands the player in the screen's room, whose icon always shows, and a mutation that counts the player is caught.
-- **The episode screen's icon can be hidden.** From over the house centre it often sits under the top bar, where icons are hidden by design. Pinning the next stop's icon to the nearest clear edge would keep it in view; that is not built.
+**Sixth pass: the next stop is never lost.**
+- **The problem:** from over the house centre, the episode screen's icon often sat under the top bar, where icons are hidden by design. The one place the objective names was the one icon missing.
+- **The fix:** the next stop's icon now waits at the first clear spot on the way from its place to the middle of the screen (`EpisodeTravelBeacons.IsPinned`).
+  - It is whole, clear of the chrome, and still takes the player there.
+  - A pip on its rim (`PointerName`) sits on the side its place is on.
+- **Every other icon** keeps the old rule, with one change: the whole icon must be clear of the chrome, not just its middle. An icon half under the status line was being shown.
+- **Captures** now show the icons where the player sees them: the icons use the canvas's camera when a capture has made it a camera canvas.
 
 **Not done:**
 - M0b.

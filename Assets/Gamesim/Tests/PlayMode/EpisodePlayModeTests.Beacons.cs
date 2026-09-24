@@ -81,9 +81,16 @@ namespace Gamesim.Tests.PlayMode
             // None of them is under the HUD's chrome, where it would be half hidden - or, under the
             // chrome that takes no click, clickable without being seen.
             var hud = director.GetComponentInChildren<EpisodeHud>(true);
+            // Not even half of one: every corner of every icon on screen is clear.
+            var corners = new Vector3[4];
             foreach (var shown in director.GetComponentsInChildren<Button>()
                          .Where(b => b.name.StartsWith(EpisodeTravelBeacons.BeaconPrefix, System.StringComparison.Ordinal)))
+            {
                 Assert.That(hud.Covers(ScreenCentre((RectTransform)shown.transform)), Is.False, shown.name + " sits under the HUD.");
+                ((RectTransform)shown.transform).GetWorldCorners(corners);
+                foreach (var corner in corners)
+                    Assert.That(hud.Covers(RectTransformUtility.WorldToScreenPoint(null, corner)), Is.False, shown.name + " is half under the HUD.");
+            }
 
             var mouse = InputSystem.AddDevice<Mouse>();
             try
@@ -105,6 +112,41 @@ namespace Gamesim.Tests.PlayMode
                     "The trip ends in the room whose icon was clicked.");
             }
             finally { InputSystem.RemoveDevice(mouse); }
+        }
+
+        /// <summary>
+        /// An icon half under the HUD is not shown either: not just one whose middle is covered.
+        /// Asked with chrome of the test's own whose top edge crosses one icon below its middle, so
+        /// the middle is clear and the lower half is not - the case a check of the middle alone let
+        /// through, half hidden under the status line.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beacons_AnIconHalfUnderTheHudIsNotShown()
+        {
+            director.ClosePanels();
+            yield return null;
+            yield return PullBackOverTheHouse();
+            cameraRig.SetReducedMotion(true);
+            Assert.That(TryClearBeacon(out var room, out var screen), Is.True, "An icon on screen and clear of the HUD to start from.");
+            var icon = BeaconFor(room);
+            var corners = new Vector3[4];
+            icon.GetWorldCorners(corners);
+            float half = (RectTransformUtility.WorldToScreenPoint(null, corners[1]).y - RectTransformUtility.WorldToScreenPoint(null, corners[0]).y) * .5f;
+            Assert.That(half, Is.GreaterThan(4f), "The icon has a size on screen.");
+            var hud = director.GetComponentInChildren<EpisodeHud>(true);
+            var markers = SceneComponents<HouseRoomMarker>().Where(marker => marker.isActiveAndEnabled).ToDictionary(marker => marker.RoomName);
+            System.Func<string, Vector3> where = name => name == director.ScreenRoom ? director.StationPosition
+                : name == "Private" ? director.DiaryPosition : markers[name].transform.position;
+            // The chrome's top edge a quarter of the icon below its middle.
+            System.Func<Vector2, bool> band = point => hud.Covers(point) || point.y < screen.y - half * .5f;
+            for (int frame = 0; frame < 3; frame++)
+            {
+                // After the director's own request each frame, before the icons are placed.
+                director.TravelBeacons.Request(true, cameraRig, 1f, director.ScreenRoom, false, null, where, band);
+                yield return null;
+            }
+            Assert.That(icon.gameObject.activeInHierarchy, Is.False, room + "'s icon, half under the chrome, is not shown.");
+            Assert.That(band(screen), Is.False, "Though its middle is clear.");
         }
 
         [UnityTest]

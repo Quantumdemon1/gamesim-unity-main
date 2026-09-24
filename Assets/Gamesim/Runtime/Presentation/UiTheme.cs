@@ -364,6 +364,40 @@ namespace Gamesim.Presentation
             return circle;
         }
 
+        private static Sprite ring;
+
+        /// <summary>
+        /// A ring, white, anti-aliased on both edges, its stroke a ninth of its diameter: the track
+        /// and the draining arc of a clock or a window, drawn as a Filled Radial360 image. Generated
+        /// once, like <see cref="Circle"/>, and readable. The pack's timer ring bakes in a fixed
+        /// fill, so it can decorate but never drain.
+        /// </summary>
+        public static Sprite Ring()
+        {
+            if (ring != null) return ring;
+            const int size = 256;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Ring", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            const float half = size * .5f, outer = half - 1.5f, inner = outer - size / 9f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x + .5f - half, dy = y + .5f - half, d = Mathf.Sqrt(dx * dx + dy * dy);
+                float alpha = Mathf.Clamp01(.5f - (d - outer)) * Mathf.Clamp01(.5f + (d - inner));
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            ring = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            ring.name = texture.name;
+            ring.hideFlags = HideFlags.HideAndDontSave;
+            return ring;
+        }
+
         private static Sprite softLine;
 
         /// <summary>

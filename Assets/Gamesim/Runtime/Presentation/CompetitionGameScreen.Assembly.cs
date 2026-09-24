@@ -65,7 +65,8 @@ namespace Gamesim.Presentation
             IsAssembling=false;assemblyPanel.gameObject.SetActive(false);panel.gameObject.SetActive(true);
             shownFrame=Time.frameCount;
             pause.GetComponentInChildren<TMP_Text>().text=Paused?"Resume":"Pause";
-            countdown.gameObject.SetActive(true);countdown.text=Paused?"PAUSED":"3";
+            if(Paused)ShowOverlay(OverlayState.Paused,"Clock stopped. "+LegendKey(LegendAction.Pause)+" resumes  ·  "+LegendKey(LegendAction.Leave)+" returns to the briefing.");
+            else ShowOverlay(OverlayState.Count,"");
             Select(pause);Canvas.ForceUpdateCanvases();
         }
 

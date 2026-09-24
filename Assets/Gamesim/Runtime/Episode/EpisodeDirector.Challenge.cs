@@ -68,6 +68,11 @@ namespace Gamesim.Episode
 
         private CompetitionGameScreen competitionScreen;
         private bool challengePractice, challengeResultShown, challengeCommitting;
+        // A ranked attempt's finish plate stays up this long before it commits, so the player reads
+        // their own result before the standings replace it. Reading time, so reduced motion keeps it.
+        private const float RankedFinishSeconds = .9f;
+        private float challengeFinishHold;
+        private string pendingAttemptLine;
         private string challengeCommandId;
         private bool competitionInputSuspended, competitionAssemblyHudHidden;
 
@@ -231,7 +236,7 @@ namespace Gamesim.Episode
                 || !EpisodeEngine.IsCompetition(state.phase)
                 || !EpisodeEngine.CompetitionPlayers(state).Any(c => c.isPlayer)) return;
             challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0;
-            challengeStarted = Time.unscaledTime; challengePractice = practice; challengeResultShown = false;
+            challengeStarted = Time.unscaledTime; challengePractice = practice; challengeResultShown = false; challengeFinishHold = 0f;
             challengeCommandId = Guid.NewGuid().ToString("N");
             if (!BeginCompetitionArena(state))
             { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; Render(); return; }
@@ -246,13 +251,19 @@ namespace Gamesim.Episode
                 {
                     competitionScreen = CompetitionGameScreen.Attach(gameObject);
                     hud.RegisterOverlay(competitionScreen.GetComponent<CanvasGroup>());
+                    // The screen's own beats - the count, GO, the last seconds, a wave - on the house's audio.
+                    competitionScreen.CueRequested += cue => audioBed.PlayCue(cue);
                 }
                 competitionScreen.FontScale = largeText ? 1.2f : 1f;
+                competitionScreen.ReducedMotion = reducedMotion;
+                var field = EpisodeEngine.CompetitionPlayers(state).ToList();
                 competitionScreen.Show(challengeRun, CompetitionTitle(state),
-                    string.Join("\n", EpisodeEngine.CompetitionPlayers(state).Select(c => HudPrimitives.WithYou(c.name, c.isPlayer))),
-                    practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, CancelChallenge, MissReactionTarget, !reducedMotion);
+                    string.Join("\n", field.Select(c => HudPrimitives.WithYou(c.name, c.isPlayer))),
+                    practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, CancelChallenge, MissReactionTarget, !reducedMotion,
+                    field.Select(c => new CompetitionEntrant(c.id, c.name, c.isPlayer, CharacterPortraits.Get(c), c)).ToList());
             }
-            audioBed.PlayCue(HouseAudio.Cue.CompetitionStart); Render();
+            // The start sting belongs to GO now, when input goes live; opening the attempt is a panel.
+            audioBed.PlayCue(challengeRun != null ? HouseAudio.Cue.PanelOpen : HouseAudio.Cue.CompetitionStart); Render();
             // The competition is the whole screen for the whole attempt - the walk to the stations
             // and the game after it - so the house's HUD stands down until it commits or is left.
             competitionAssemblyHudHidden = competitionScreen != null && competitionScreen.IsShowing;
@@ -267,59 +278,85 @@ namespace Gamesim.Episode
 
         private void TickMiniGame()
         {
-            if (challengeRun == null || competitionScreen == null || challengeResultShown) return;
+            if (challengeRun == null || competitionScreen == null) return;
+            if (challengeFinishHold > 0f)
+            {
+                challengeFinishHold -= Time.unscaledDeltaTime;
+                if (challengeFinishHold <= 0f) { challengeFinishHold = 0f; CommitMiniGame(); }
+                return;
+            }
+            if (challengeResultShown) return;
             competitionScreen.SetArenaStatus(competitionArenaStatus);
             if (competitionScreen.IsAssembling)
             { competitionScreen.AdvanceAssembly(Time.unscaledDeltaTime, CompetitionArenaReady); return; }
-            if (!CompetitionArenaReady) { competitionScreen.HoldReady("Houseguests are taking their places"); return; }
+            // The arena gates the start, not a game under way: a houseguest stepping off their mark
+            // mid-attempt used to freeze the clock while taps still scored.
+            if (!CompetitionArenaReady && !competitionScreen.IsPlaying) { competitionScreen.HoldReady("Houseguests are taking their places"); return; }
             if (!competitionScreen.AdvanceReady(Time.unscaledDeltaTime)) return;
             var keyboard = Keyboard.current;
-            var pad = Gamepad.current;
-            if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance)
-            {
-                if ((keyboard != null && keyboard.spaceKey.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame))
-                    challengeRun.SetHolding(true);
-                if ((keyboard != null && keyboard.spaceKey.wasReleasedThisFrame) || (pad != null && pad.rightTrigger.wasReleasedThisFrame))
-                    challengeRun.SetHolding(false);
-            }
+            if (challengeRun.Kind == CompetitionMiniGames.Kind.Endurance) competitionScreen.SyncHoldKey();
             else if (challengeRun.Kind == CompetitionMiniGames.Kind.Reaction
                 && challengeRun.RulesVersion == CompetitionMiniGames.LegacyRules
                 && keyboard != null && keyboard.spaceKey.wasPressedThisFrame) TapTarget();
+            int expired = challengeRun.ExpiredTargets;
             challengeRun.Tick(Time.unscaledDeltaTime);
+            if (challengeRun.ExpiredTargets > expired) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
             competitionScreen.Refresh();
             if (!challengeRun.Finished) return;
             challengeResultShown = true;
             if (challengePractice)
-                competitionScreen.ShowFinished("Practice complete. No competition result or season state was changed.", "Return to briefing", CancelChallenge);
-            else CommitMiniGame();
+                competitionScreen.ShowFinished("Practice complete. No competition result or season state was changed.", "Return to briefing", CancelChallenge, hideCancel: true);
+            else
+            {
+                competitionScreen.ShowRankedFinish("Your result goes to the standings in a moment. Scores commit once.");
+                challengeFinishHold = RankedFinishSeconds;
+            }
         }
 
         public void TapTarget()
         {
             if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
+            int early = challengeRun.FalseStarts, wrong = challengeRun.WrongDirections;
             bool hit = challengeRun.RulesVersion >= CompetitionMiniGames.ImprovedRules
                 ? challengeRun.Tap(challengeRun.TargetDirection) : challengeRun.Tap();
-            if (hit) audioBed.PlayCue(HouseAudio.Cue.Button);
+            ReactionCue(hit, early, wrong);
             competitionScreen.Refresh();
         }
 
         private void TapDirection(MiniGameRun.Direction direction)
         {
             if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
-            if (challengeRun.Tap(direction)) audioBed.PlayCue(HouseAudio.Cue.Button);
+            int early = challengeRun.FalseStarts, wrong = challengeRun.WrongDirections;
+            ReactionCue(challengeRun.Tap(direction), early, wrong);
             competitionScreen.Refresh();
+        }
+
+        /// <summary>A hit rises, a miss falls, an early press ticks; a press the rules ignore is silent.</summary>
+        private void ReactionCue(bool hit, int earlyBefore, int wrongBefore)
+        {
+            if (hit) audioBed.PlayCue(HouseAudio.Cue.SocialUp);
+            else if (challengeRun.FalseStarts > earlyBefore) audioBed.PlayCue(HouseAudio.Cue.Hover);
+            else if (challengeRun.WrongDirections > wrongBefore) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
         }
 
         private void MissReactionTarget()
         {
             if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
-            challengeRun.MissPointer(); competitionScreen.Refresh();
+            int early = challengeRun.FalseStarts, missed = challengeRun.PointerMisses;
+            challengeRun.MissPointer();
+            if (challengeRun.PointerMisses > missed) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
+            else if (challengeRun.FalseStarts > early) audioBed.PlayCue(HouseAudio.Cue.Hover);
+            competitionScreen.Refresh();
         }
 
         public void FlipCard(int index)
         {
             if (!challengeActive || challengeRun == null || competitionScreen == null || !competitionScreen.IsPlaying) return;
-            if (challengeRun.Flip(index)) audioBed.PlayCue(HouseAudio.Cue.Button);
+            int pairs = challengeRun.MatchedPairs, mistakes = challengeRun.WrongFlips;
+            if (challengeRun.Flip(index))
+                // A pair rises, a miss falls, a first card is just a card.
+                audioBed.PlayCue(challengeRun.MatchedPairs > pairs ? HouseAudio.Cue.SocialUp
+                    : challengeRun.WrongFlips > mistakes ? HouseAudio.Cue.SocialDown : HouseAudio.Cue.Button);
             competitionScreen.Refresh();
             // The frame loop owns completion, so a submit cannot dismiss the result it created.
         }
@@ -329,16 +366,19 @@ namespace Gamesim.Episode
             if (challengeRun == null || !challengeRun.Finished || challengePractice || challengeCommitting) return;
             if (!IsCurrentDiaryRevision(challengeOrigin))
             {
-                competitionScreen.ShowFinished("The episode changed during this attempt. Return to the briefing to refresh.", "Return to briefing", CancelChallenge);
+                competitionScreen.ShowFinished("The episode changed during this attempt. Return to the briefing to refresh.", "Return to briefing", CancelChallenge, hideCancel: true);
                 return;
             }
             challengeCommitting = true;
+            // Said on the standings card the commit opens, then forgotten.
+            pendingAttemptLine = CompetitionGameScreen.AttemptLine(challengeRun);
             EndCompetitionArena();
             challengeActive = false;
             var result = Submit(new EpisodeCommand { id = challengeCommandId, actorId = challengeOrigin.playerId,
                 expectedPhase = challengeOrigin.phase, expectedRevision = challengeOrigin.revision,
                 kind = EpisodeCommandKind.Compete, performance = challengeRun.Performance });
             challengeCommitting = false;
+            pendingAttemptLine = null;
             if (!result.accepted)
             {
                 challengeActive = true;
@@ -368,7 +408,7 @@ namespace Gamesim.Episode
             RestoreCompetitionAssemblyHud();
             EndCompetitionArena();
             competitionScreen?.Hide(); challengeRun = null; challengeOrigin = null;
-            challengeActive = false; challengeResultShown = false; challengeCommitting = false;
+            challengeActive = false; challengeResultShown = false; challengeCommitting = false; challengeFinishHold = 0f;
         }
 
         private string CompetitionPerformanceExplanation(EpisodeState state)

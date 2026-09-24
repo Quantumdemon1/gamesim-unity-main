@@ -68,6 +68,16 @@ namespace Gamesim.Presentation
         public double TargetY { get; private set; }
         public double TargetWindowSeconds { get; private set; } = TargetLife;
         public double GripPressure => Definition?.GripPressure(Elapsed) ?? 1;
+
+        /// <summary>How long the live target has left of its window; zero with none up. Read-only.</summary>
+        public double TargetRemaining => TargetLive ? Math.Max(0, targetExpiresAt - Elapsed) : 0;
+
+        /// <summary>How fast the grip is changing right now, in percent a second. Read-only.</summary>
+        public double GripRate => Kind != CompetitionMiniGames.Kind.Endurance ? 0
+            : CompetitionMiniGames.MeterRatePerSecond(Elapsed, TimeLimit, Holding, GripPressure, RulesVersion);
+
+        /// <summary>Seconds until the grip is empty at the current rate; infinity while it is not falling.</summary>
+        public double SecondsToEmpty => GripRate < 0 ? Meter / -GripRate : double.PositiveInfinity;
         public double PressureChangeIn => Definition?.PressureChangeIn(Elapsed) ?? 0;
         private double nextTargetAt, targetExpiresAt;
 

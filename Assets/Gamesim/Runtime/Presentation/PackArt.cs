@@ -73,6 +73,20 @@ namespace Gamesim.Presentation
         public const string KitPillEdge = "Kit6_Refinement/Chrome/pill_edge";
         public const string KitButtonFill = "Kit6_Refinement/Chrome/button_fill";
         public const string KitButtonEdge = "Kit6_Refinement/Chrome/button_edge_rest";
+        public const string KitPanelFocusHalo = "Kit6_Refinement/Chrome/panel_focus_halo";
+        public const string KitMeterTrack = "Kit6_Refinement/Widgets/meter_track";
+        public const string KitMeterFillRect = "Kit6_Refinement/Widgets/meter_fill_rect";
+        public const string KitMeterZeroTick = "Kit6_Refinement/Widgets/meter_zero_tick";
+        public const string KitTimelineRing = "Kit6_Refinement/Widgets/timeline_ring";
+        public const string KitIconShield = "Kit6_Refinement/Icons/ic_shield";
+        public const string KitIconQuestion = "Kit6_Refinement/Icons/ic_question";
+        public const string KitIconCheck = "Kit6_Refinement/Icons/ic_check";
+        public const string KitIconCross = "Kit6_Refinement/Icons/ic_cross";
+        public const string KitIconClock = "Kit6_Refinement/Icons/ic_clock";
+        public const string KitIconWarning = "Kit6_Refinement/Icons/ic_warning";
+        // The competition art Pack 2 and Pack 3 drew for the games.
+        public const string AnswerTile = "Pack2_Gameplay/Competition/answer_tile_9slice";
+        public const string StaminaPanel = "Pack3_Systems/CompetitionHUD/endurance_stamina_panel_9slice";
         public const string KitSelectionStripe = "Kit6_Refinement/Widgets/selection_stripe";
         public const string KitDivider = "Kit6_Refinement/Widgets/divider_h";
         public const string KitIconBed = "Kit6_Refinement/Icons/ic_bed";

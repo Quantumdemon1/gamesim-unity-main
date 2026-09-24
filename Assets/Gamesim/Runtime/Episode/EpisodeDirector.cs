@@ -665,7 +665,7 @@ namespace Gamesim.Episode
                     if (competitionCard != null)
                         competitionCard.Play(CompetitionTitle(result.state),
                             EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion), result.state.week,
-                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state));
+                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine);
                     React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
                 }
 

@@ -31,6 +31,11 @@ namespace Gamesim.Presentation
         private int dismissedFrame = -10;
         private Button continueButton, detailsButton;
         private bool showingDetails;
+        // What the card was asked to show, so a change of frame can draw it again at the new size.
+        private string playedAward, playedCategory, playedExplanation, playedAttempt;
+        private int playedWeek;
+        private IList<Standing> playedStandings;
+        private Vector2 builtFor;
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
         public bool OwnsInput => playing || Time.frameCount <= dismissedFrame + 1;
@@ -48,9 +53,14 @@ namespace Gamesim.Presentation
             card.dismissedFrame=-10;return card;
         }
 
-        public bool Play(string award,string category,int week,IList<Standing> standings,bool reducedMotion,string explanation=null)
+        /// <summary>
+        /// Shows the committed standings. <paramref name="attempt"/> is the player's own attempt in
+        /// the game's own measure ("7 / 9 targets hit · performance 78%"), when there is one to say.
+        /// </summary>
+        public bool Play(string award,string category,int week,IList<Standing> standings,bool reducedMotion,string explanation=null,string attempt=null)
         {
             if(standings==null||standings.Count==0)return false;
+            playedAward=award;playedCategory=category;playedWeek=week;playedStandings=standings;playedExplanation=explanation;playedAttempt=attempt;
             Build(award,category,week,standings,explanation);
             reduced=reducedMotion;elapsed=0;playing=true;
             group.alpha=reduced?1:.01f;group.interactable=true;group.blocksRaycasts=true;
@@ -75,6 +85,26 @@ namespace Gamesim.Presentation
         }
 
         private void Dismiss(){if(playing&&elapsed>=.25f)Cancel();}
+
+        /// <summary>
+        /// A new frame shape - a resize, a resolution change, a review capture through a camera -
+        /// draws the card again at the new size, on the same page and with the same control lit.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if(!playing||playedStandings==null)return;
+            var frame=FrameSize();
+            if(Mathf.Abs(frame.x-builtFor.x)<=1f&&Mathf.Abs(frame.y-builtFor.y)<=1f)return;
+            bool details=showingDetails;
+            var selected=EventSystem.current!=null?EventSystem.current.currentSelectedGameObject:null;
+            string selectedName=selected!=null&&selected.transform.IsChildOf(transform)?selected.name:null;
+            Build(playedAward,playedCategory,playedWeek,playedStandings,playedExplanation);
+            column.gameObject.SetActive(true);
+            if(details){showingDetails=true;standingsPanel.gameObject.SetActive(false);detailsPanel.gameObject.SetActive(true);
+                detailsButton.GetComponentInChildren<TMP_Text>().text="Back to standings";}
+            if(EventSystem.current!=null&&selectedName!=null)
+                EventSystem.current.SetSelectedGameObject(selectedName==detailsButton.name?detailsButton.gameObject:continueButton.gameObject);
+        }
 
         private void Update()
         {
@@ -106,12 +136,17 @@ namespace Gamesim.Presentation
         private Vector2 FrameSize()
         {
             var scaler=GetComponent<CanvasScaler>();
-            if(scaler!=null&&scaler.uiScaleMode==CanvasScaler.ScaleMode.ScaleWithScreenSize&&Screen.width>0&&Screen.height>0)
+            var canvas=GetComponent<Canvas>();
+            float pixelsWide=Screen.width,pixelsHigh=Screen.height;
+            // A canvas drawn through a camera - a review capture - is the size of that camera's target.
+            if(canvas!=null&&canvas.renderMode!=RenderMode.ScreenSpaceOverlay&&canvas.worldCamera!=null)
+            {pixelsWide=canvas.worldCamera.pixelWidth;pixelsHigh=canvas.worldCamera.pixelHeight;}
+            if(scaler!=null&&scaler.uiScaleMode==CanvasScaler.ScaleMode.ScaleWithScreenSize&&pixelsWide>0&&pixelsHigh>0)
             {
                 var reference=scaler.referenceResolution;
-                float log=Mathf.Lerp(Mathf.Log(Screen.width/reference.x,2f),Mathf.Log(Screen.height/reference.y,2f),scaler.matchWidthOrHeight);
+                float log=Mathf.Lerp(Mathf.Log(pixelsWide/reference.x,2f),Mathf.Log(pixelsHigh/reference.y,2f),scaler.matchWidthOrHeight);
                 float scale=Mathf.Pow(2f,log);
-                return new Vector2(Screen.width/scale,Screen.height/scale);
+                return new Vector2(pixelsWide/scale,pixelsHigh/scale);
             }
             var rect=((RectTransform)transform).rect;
             return new Vector2(rect.width>0?rect.width:1600f,rect.height>0?rect.height:900f);
@@ -138,8 +173,14 @@ namespace Gamesim.Presentation
             // The result is the screen until Continue: the card is drawn at its own proportions and
             // then scaled to fill the frame's height - a six-player result about half as big again
             // as it was - and down, for the biggest fields, so that it always fits.
-            float natural=Mathf.Max(MinimumHeight,HeaderHeight+standings.Count*RowHeight+FooterHeight+74f);
+            // The larger text grows the card's rows and bands; the card then scales to fit the frame
+            // as it always has, so the words get bigger and the card never runs off it.
+            float fs=Mathf.Max(1f,FontScale);
+            textScale=fs;
+            float rowHeight=RowHeight*fs,headerHeight=HeaderHeight*fs,footerHeight=FooterHeight*fs;
+            float natural=Mathf.Max(MinimumHeight,headerHeight+standings.Count*rowHeight+footerHeight+74f);
             var frame=FrameSize();
+            builtFor=frame;
             float frameWidth=frame.x, frameHeight=frame.y;
             cardScale=Mathf.Clamp(Mathf.Min((frameWidth-2f*FrameEdge)/CardWidth,(frameHeight-2f*FrameEdge)/natural),.75f,1.6f);
             float scale=cardScale;
@@ -152,18 +193,24 @@ namespace Gamesim.Presentation
             glass.anchorMin=Vector2.zero;glass.anchorMax=Vector2.one;glass.offsetMin=glass.offsetMax=Vector2.zero;
             UiTheme.Glass(glass,UiTheme.GlassRadius);
 
-            var weekLine=Label("Week",column,"WEEK "+Mathf.Max(1,week)+" \u00b7 "+(category??"").ToUpperInvariant(),11,32,20,inner/scale,18,UiTheme.Muted);
+            // "Head of Household · Pressure Cooker": the award joins the week line, and the game's own
+            // name is the heading - the same name the briefing and the game gave it.
+            string awardName=award??"Competition",gameName=null;
+            int split=awardName.IndexOf(" \u00b7 ",System.StringComparison.Ordinal);
+            if(split>0){gameName=awardName.Substring(split+3);awardName=awardName.Substring(0,split);}
+            var weekLine=Label("Week",column,"WEEK "+Mathf.Max(1,week)+" \u00b7 "+(gameName!=null?awardName.ToUpperInvariant()+" \u00b7 ":"")
+                +(category??"").ToUpperInvariant(),11,32,20*fs,inner/scale,18*fs,UiTheme.Muted);
             weekLine.characterSpacing=8f;
             float titleX=32f;
             var trophy=UiTheme.Icon("trophy");
             if(trophy!=null)
             {
                 var mark=new GameObject("Award mark",typeof(RectTransform),typeof(Image)).GetComponent<Image>();
-                mark.rectTransform.SetParent(column,false);Place(mark.rectTransform,32*scale,42*scale,28*scale,28*scale);
+                mark.rectTransform.SetParent(column,false);Place(mark.rectTransform,32*scale,42*fs*scale,28*fs*scale,28*fs*scale);
                 mark.sprite=trophy;mark.color=UiTheme.Gold;mark.preserveAspect=true;mark.raycastTarget=false;
-                titleX=68f;
+                titleX=36f+32f*fs;
             }
-            var title=Label("Award",column,(award??"Competition").ToUpperInvariant(),24,titleX,40,inner/scale-titleX+32,34,UiTheme.Paper);
+            var title=Label("Award",column,(gameName??awardName).ToUpperInvariant(),24,titleX,40*fs,inner/scale-titleX+32,34*fs,UiTheme.Paper);
             var bold=UiTheme.Font(UiTheme.Weight.Bold);if(bold!=null)title.font=bold;title.characterSpacing=2f;
             Fit(title,14);
 
@@ -173,69 +220,88 @@ namespace Gamesim.Presentation
             if(halo!=null)
             {
                 var light=new GameObject("Winner glow",typeof(RectTransform),typeof(Image)).GetComponent<Image>();
-                light.rectTransform.SetParent(column,false);Place(light.rectTransform,14*scale,64*scale,110*scale,110*scale);
+                light.rectTransform.SetParent(column,false);Place(light.rectTransform,14*scale,(64*fs+(fs-1)*10)*scale,110*scale,110*scale);
                 light.sprite=halo;light.color=new Color(1f,1f,1f,.6f);light.preserveAspect=true;light.raycastTarget=false;
             }
             var portrait=HudPrimitives.Portrait(column,winner.Portrait,UiTheme.Gold,64*scale,3*scale,false,winner.Character);
-            Place(portrait,34*scale,84*scale,70*scale,70*scale);
-            var line=Label("Winner",column,winner.IsPlayer?winner.Name+" \u00b7 You win!":winner.Name+" wins!",24,120,100,inner/scale-90,36,UiTheme.Gold);
+            Place(portrait,34*scale,(84*fs+(fs-1)*10)*scale,70*scale,70*scale);
+            var line=Label("Winner",column,winner.IsPlayer?winner.Name+" \u00b7 You win!":winner.Name+" wins!",24,120,92*fs,inner/scale-90,36*fs,UiTheme.Gold);
             var semibold=UiTheme.Font(UiTheme.Weight.SemiBold);if(semibold!=null)line.font=semibold;
             Fit(line,14);
+            // The player's own attempt, in the game's own measure, where the player played one.
+            if(!string.IsNullOrEmpty(playedAttempt))
+            {
+                var attempt=Label("Player attempt",column,playedAttempt,14,120,(92+38)*fs,inner/scale-90,22*fs,UiTheme.Glow);
+                Fit(attempt,10);
+            }
             showingDetails=false;
             standingsPanel=new GameObject("Competition standings",typeof(RectTransform)).GetComponent<RectTransform>();
             standingsPanel.SetParent(column,false);standingsPanel.anchorMin=Vector2.zero;standingsPanel.anchorMax=Vector2.one;
             standingsPanel.offsetMin=standingsPanel.offsetMax=Vector2.zero;
-            var heading=Label("Standings heading",standingsPanel,"COMMITTED STANDINGS  \u00b7  Scores are relative to this competition",11,32,HeaderHeight-24,inner/scale,18,UiTheme.Muted);
+            var heading=Label("Standings heading",standingsPanel,"COMMITTED STANDINGS  \u00b7  Scores are relative to this competition",11,32,headerHeight-24*fs,inner/scale,18*fs,UiTheme.Muted);
             heading.characterSpacing=4f;Fit(heading,9);
             double best=0;foreach(var entry in standings)best=System.Math.Max(best,entry.Score);if(best<=0)best=1;
-            float barX=300f, barWidth=inner/scale-300f-80f;
+            float barX=320f, barWidth=inner/scale-barX-80f;
+            float face=(rowHeight-10f);
             for(int i=0;i<standings.Count;i++)
             {
-                var entry=standings[i];float y=HeaderHeight+i*RowHeight;
+                var entry=standings[i];float y=headerHeight+i*rowHeight;
                 var row=HudPrimitives.Fill("Standing "+(i+1),standingsPanel,entry.IsWinner
                     ?new Color(UiTheme.Gold.r,UiTheme.Gold.g,UiTheme.Gold.b,.16f):new Color(UiTheme.SurfaceRaised.r,UiTheme.SurfaceRaised.g,UiTheme.SurfaceRaised.b,.55f),6);
-                Place(row,32*scale,y*scale,inner,(RowHeight-4)*scale);
+                Place(row,32*scale,y*scale,inner,(rowHeight-4)*scale);
+                // The winner in gold; you, if you did not win, in the accent - found at a glance.
                 if(entry.IsWinner)UiTheme.AddBorder(row,6,new Color(UiTheme.Gold.r,UiTheme.Gold.g,UiTheme.Gold.b,.55f));
-                Label("Rank",row,(i+1).ToString(),14,10,0,30,RowHeight-4,UiTheme.Muted).alignment=TextAlignmentOptions.MidlineLeft;
-                var name=Label("Name",row,HudPrimitives.WithYou(entry.Name,entry.IsPlayer),15,40,0,barX-50,RowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
+                else if(entry.IsPlayer)UiTheme.AddBorder(row,6,UiTheme.Edge(UiTheme.Emphasis.Active));
+                Label("Rank",row,(i+1).ToString(),14,10,0,30,rowHeight-4,UiTheme.Muted).alignment=TextAlignmentOptions.MidlineLeft;
+                var rim=HudPrimitives.Portrait(row,entry.Portrait,entry.IsWinner?UiTheme.Gold:entry.IsPlayer?UiTheme.Accent:UiTheme.Outline,
+                    face*scale,1.5f*scale,false,entry.Character);
+                rim.name="Row portrait";
+                rim.anchorMin=rim.anchorMax=new Vector2(0f,.5f);rim.pivot=new Vector2(.5f,.5f);
+                rim.anchoredPosition=new Vector2((40f+face*.5f)*scale,0f);
+                var name=Label("Name",row,HudPrimitives.WithYou(entry.Name,entry.IsPlayer),15,48+face,0,barX-58-face,rowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
                 name.alignment=TextAlignmentOptions.MidlineLeft;Fit(name,11);
                 var track=HudPrimitives.Fill("Track",row,new Color(UiTheme.Outline.r,UiTheme.Outline.g,UiTheme.Outline.b,.5f),3);
-                Place(track,barX*scale,((RowHeight-4)*.5f-3)*scale,barWidth*scale,6*scale);
+                Place(track,barX*scale,((rowHeight-4)*.5f-3)*scale,barWidth*scale,6*scale);
                 var bar=HudPrimitives.Fill("Bar",row,entry.IsWinner?UiTheme.Gold:UiTheme.Glow,3);
-                Place(bar,barX*scale,((RowHeight-4)*.5f-3)*scale,Mathf.Max(2,barWidth*scale*Mathf.Clamp01((float)(entry.Score/best))),6*scale);
-                var score=Label("Score",row,entry.Score.ToString("0.00"),14,barX+barWidth+10,0,62,RowHeight-4,UiTheme.Paper);
+                Place(bar,barX*scale,((rowHeight-4)*.5f-3)*scale,Mathf.Max(2,barWidth*scale*Mathf.Clamp01((float)(entry.Score/best))),6*scale);
+                var score=Label("Score",row,entry.Score.ToString("0.00"),14,barX+barWidth+10,0,62,rowHeight-4,UiTheme.Paper);
                 score.alignment=TextAlignmentOptions.MidlineRight;
             }
-            float footer=height/scale-FooterHeight;
+            float footer=height/scale-footerHeight;
             var note=Label("Performance explanation",standingsPanel,"Character statistics, modifiers and seeded rolls determine placement. Choose Score details to review the available explanation. Perfect performance does not guarantee a win.",
-                12,32,footer-4,inner/scale,36,UiTheme.Muted);
+                12,32,footer-4,inner/scale,36*fs,UiTheme.Muted);
             Fit(note,9);
             detailsPanel=new GameObject("Competition score details",typeof(RectTransform)).GetComponent<RectTransform>();
             detailsPanel.SetParent(column,false);detailsPanel.anchorMin=Vector2.zero;detailsPanel.anchorMax=Vector2.one;
             detailsPanel.offsetMin=detailsPanel.offsetMax=Vector2.zero;
-            var detailsHeading=Label("Score details heading",detailsPanel,"SCORING EXPLANATION \u00b7 Committed result",14,32,HeaderHeight-28,inner/scale,22,UiTheme.Heading);
+            var detailsHeading=Label("Score details heading",detailsPanel,"SCORING EXPLANATION \u00b7 Committed result",14,32,headerHeight-28*fs,inner/scale,22*fs,UiTheme.Heading);
             if(semibold!=null)detailsHeading.font=semibold;
             var full=Label("Full performance explanation",detailsPanel,explanation??"Character statistics, modifiers and seeded rolls determine placement. Minigame performance provides a bounded bonus, so perfect play does not guarantee a win.",
-                16,32,HeaderHeight,inner/scale,footer-HeaderHeight-12,UiTheme.Paper);
+                16,32,headerHeight,inner/scale,footer-headerHeight-12,UiTheme.Paper);
             Fit(full,10);
             detailsPanel.gameObject.SetActive(false);
 
             // Secondary and primary, as the packs draw them.
             var detailsRect=HudPrimitives.Fill("Review competition score details",column,UiTheme.SurfaceRaised,8);
-            Place(detailsRect,32*scale,(footer+40)*scale,220*scale,44*scale);detailsRect.GetComponent<Image>().raycastTarget=true;
+            float buttonY=footer+36f*fs,buttonHeight=44f*fs;
+            Place(detailsRect,32*scale,buttonY*scale,220*scale,buttonHeight*scale);detailsRect.GetComponent<Image>().raycastTarget=true;
             UiTheme.PackSliced(detailsRect.GetComponent<Image>(),PackArt.ButtonSecondary,12f*scale);
             detailsButton=detailsRect.gameObject.AddComponent<Button>();detailsButton.targetGraphic=detailsRect.GetComponent<Image>();
             detailsButton.onClick.AddListener(ToggleDetails);
-            var detailsText=Label("Label",detailsRect,"Score details",16,8,0,204,44,UiTheme.Paper);detailsText.alignment=TextAlignmentOptions.Center;
-            var buttonRect=HudPrimitives.Fill("Continue from competition results",column,UiTheme.AccentDeep,8);
-            Place(buttonRect,width-(32+240)*scale,(footer+40)*scale,240*scale,44*scale);buttonRect.GetComponent<Image>().raycastTarget=true;
+            var detailsText=Label("Label",detailsRect,"Score details",16,8,0,204,buttonHeight,UiTheme.Paper);detailsText.alignment=TextAlignmentOptions.Center;
+            // Continue is the one thing to press next: the pack's primary, as the game's own is drawn.
+            var buttonRect=HudPrimitives.Fill("Continue from competition results",column,UiTheme.ActionBlue,8);
+            Place(buttonRect,width-(32+240)*scale,buttonY*scale,240*scale,buttonHeight*scale);buttonRect.GetComponent<Image>().raycastTarget=true;
+            UiTheme.PackSliced(buttonRect.GetComponent<Image>(),PackArt.ButtonPrimary,14f*scale);
             continueButton=buttonRect.gameObject.AddComponent<Button>();continueButton.targetGraphic=buttonRect.GetComponent<Image>();
             continueButton.onClick.AddListener(Dismiss);
+            foreach(var control in new[]{detailsRect,buttonRect})
+            { UiTheme.AddBorder(control,8,UiTheme.Edge(UiTheme.Emphasis.Interactive)); HudEmphasis.Promote(control,UiTheme.Emphasis.Interactive); }
             continueButton.navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnLeft=detailsButton,selectOnRight=detailsButton,selectOnUp=detailsButton,selectOnDown=detailsButton};
             detailsButton.navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnLeft=continueButton,selectOnRight=continueButton,selectOnUp=continueButton,selectOnDown=continueButton};
-            var buttonText=Label("Label",buttonRect,"Continue",17,8,0,224,44,UiTheme.Paper);buttonText.alignment=TextAlignmentOptions.Center;
+            var buttonText=Label("Label",buttonRect,"Continue",17,8,0,224,buttonHeight,Color.white);buttonText.alignment=TextAlignmentOptions.Center;
             if(semibold!=null)buttonText.font=semibold;
-            var hint=Label("Dismissal hint",column,"Results stay until you continue.",12,264,footer+40,width/scale-264-32-240-8,44,UiTheme.Muted);
+            var hint=Label("Dismissal hint",column,"Results stay until you continue.",12,264,buttonY,width/scale-264-32-240-8,buttonHeight,UiTheme.Muted);
             hint.alignment=TextAlignmentOptions.Center;Fit(hint,9);
         }
 
@@ -253,10 +319,13 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>A label placed in reference units, scaled with the card.</summary>
+        // The larger text's factor, as the card is being built.
+        private float textScale=1f;
+
         private TMP_Text Label(string name,Transform parent,string text,float size,float x,float y,float width,float height,Color colour)
         {
             float scale=cardScale;
-            var label=HudPrimitives.Label(name,parent,size*scale,colour,TextAlignmentOptions.Left);
+            var label=HudPrimitives.Label(name,parent,size*scale*textScale,colour,TextAlignmentOptions.Left);
             label.text=text;label.textWrappingMode=TextWrappingModes.Normal;
             Place(label.rectTransform,x*scale,y*scale,width*scale,height*scale);return label;
         }

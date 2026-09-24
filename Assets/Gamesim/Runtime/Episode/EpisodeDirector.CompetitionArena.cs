@@ -147,7 +147,9 @@ namespace Gamesim.Episode
 
         private void TickCompetitionArena()
         {
-            if(!competitionArenaStaging)return;
+            // A finished ranked result on its plate is past every staging check: a houseguest
+            // nudged off their mark in those 0.9 s must not throw the result away.
+            if(!competitionArenaStaging || challengeFinishHold>0f)return;
             if(player==null || competitionPlayerStation==null || !competitionPlayerStation.isActiveAndEnabled
                 || (competitionPlayerStation.Position-competitionPlayerStationPosition).sqrMagnitude>.0025f
                 || Mathf.Abs(Mathf.DeltaAngle(competitionPlayerStation.Facing,competitionPlayerStationFacing))>.5f

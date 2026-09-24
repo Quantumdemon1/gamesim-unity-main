@@ -28,7 +28,25 @@ namespace Gamesim.Presentation
         }
 
         public static double EnduranceScore(double heldSeconds, double limitSeconds, int rulesVersion) =>
-            EnduranceScore(heldSeconds, rulesVersion >= ImprovedRules ? limitSeconds * .65 : limitSeconds);
+            EnduranceScore(heldSeconds, EnduranceTarget(limitSeconds, rulesVersion));
+
+        /// <summary>The effort time that earns full marks: 65% of the clock from version 2, all of it before.</summary>
+        public static double EnduranceTarget(double limitSeconds, int rulesVersion) =>
+            rulesVersion >= ImprovedRules ? limitSeconds * .65 : limitSeconds;
+
+        /// <summary>
+        /// The grip's rate of change at a moment, in percent a second, for the board to show: the
+        /// same terms <see cref="MeterAfter(double,double,double,double,bool,int)"/> steps by, with a
+        /// pressure wave's multiplier on the drain while holding. Display only; the run steps the meter.
+        /// </summary>
+        public static double MeterRatePerSecond(double elapsedSeconds, double limitSeconds, bool holding, double pressure, int rulesVersion)
+        {
+            if (limitSeconds <= 0) return 0;
+            double progress = Math.Max(0, Math.Min(1, elapsedSeconds / limitSeconds));
+            if (rulesVersion < ImprovedRules)
+                return holding ? Math.Max(15, 40 - progress * 25) : -(30 + progress * 10);
+            return holding ? -(12 + 8 * progress) * Math.Max(1, pressure) : 28;
+        }
 
         /// <summary>Version 2: effort consumes grip; recovery restores it but earns no effort time.</summary>
         public static double MeterAfter(double meter, double elapsedSeconds, double limitSeconds,

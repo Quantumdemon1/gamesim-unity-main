@@ -8,6 +8,92 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 0000. The minigames redrawn, and new ones brainstormed (23 September, night)
+
+The user asked for more minigames in the games' tone and theme, and for better quality and styling
+in the ones already there. Two workflows ran: a brainstorm plus UI audit (24 concepts, 52 findings,
+judged and verified), then an adversarial review of the rewrite.
+
+**The brainstorm is a plan, not code:** `Assets/Plans/MINIGAME-IDEAS.md`. It has 11 ranked concepts
+with verified facts, a build order (Ready, Set, Whoa! with Grip Check, then Spotlight Sequence), and
+the one decision only the owner can make:
+- variants inside Skill, Mental and Endurance under a frozen rules-version-4 selector, with no
+  season re-roll; or
+- widening the category rotation, which re-rolls every seeded season.
+
+**The UI pass** (`CompetitionGameScreen` split into partials: `.Layout .Chrome .Overlay .Memory
+.Reaction .Endurance .Finish`):
+- **Built once, laid out often.** `Show` builds everything once; `LayoutForFrame` re-places it
+  whenever the frame changes shape. `LateUpdate` watches `CurrentFrame()`, which is the screen, or the
+  camera's target when the canvas is drawn through a camera. A real window resize mid-attempt pauses
+  first. Review captures now show the true 16:9 layout instead of the 4:3 runner's.
+- **Fairness.** A paused or held board shows no faces. First Impressions' preview shows its faces
+  for exactly its 3 seconds, however it is interrupted. The pause plate is opaque. The arena gate
+  applies before play only; a houseguest stepping off their mark mid-attempt used to freeze the clock
+  while taps still scored.
+- **The overlay.** GET READY says what it is waiting for, then 3-2-1, then GO for half a second,
+  and PAUSED; each state has its own size.
+- **The frame's cards.**
+  - The challenge card: the award as eyebrow, the game's own name, category and mode chips, and
+    larger rules that state the controls and costs.
+  - The clock: a draining ring, fixed-width digits, a state line, red for the last 5 seconds.
+  - A band over the board with the live message.
+  - A key-cap legend under the board that follows the last device used.
+  - Key hints beside Pause and Back to briefing.
+  - Faces in the competitors card.
+- **The boards.**
+  - Memory: tiles with the web game's symbols, and states that differ by mark (back, symbol,
+    cross, check), not only colour. A focus ring, a pair tray, a mistakes chip, a preview meter.
+  - Reaction: a round target with an arrow, a draining window ring and the window's seconds. The
+    field's diagonals and an edge legend make the direction rule visible. A mark stays where each
+    press landed. The target is sized to the board, never to the text.
+  - Endurance: a stamina panel holding the grip meter with a 25% tick, the rate, a warning before
+    the grip runs out, effort banked towards full marks, and Pressure Cooker's wave timeline.
+- **Endings.** Every attempt ends on a finish plate. A ranked one holds 0.9 s before it commits, and
+  nothing can leave it while it stands. The standings card shows the player's attempt, a face on
+  every row and the player's row outlined, honours large text, and follows the frame.
+- **Input.** Space and RT are read as a level, not an edge (`SyncHoldKey`). In ranked play the first
+  Esc/B pauses and asks. WASD and the left stick aim.
+- **Audio.** Pairs and hits rise, misses fall, and the start sting moves to GO. Only existing cues
+  are used; a new cue needs a recording.
+
+**Traps:**
+- Assigning a `Selectable`'s `targetGraphic` runs one colour transition before the transition can be
+  switched off. On a board that is not yet live, that left the graphic at the disabled half-alpha,
+  the board's own glass included. `Untinted()` stops the transition *and* clears the tint.
+- Board animations run on the screen's own `Update` clock, not `AdvanceReady`. Otherwise a test or a
+  capture that drives the run without the director leaves a card squeezed edge-on forever.
+- `CompetitionEntrant` carries nothing about how an NPC is doing: their result does not exist
+  until the commit.
+
+- The capture's own frame is slow enough to trip the stall guard and pause a live board. The
+  capture test pins `Time.captureDeltaTime` and resumes through a pause, as a player would.
+
+**The review** (4 reviewers, each finding checked by a skeptic): 24 of 30 findings were confirmed, and
+all 24 are fixed. The ones that mattered:
+- The arena's cancel checks could throw away a finished ranked result during the 0.9 s hold.
+  `TickCompetitionArena` now stands still while the hold runs.
+- Esc on a memory board just cleared by its last pair, before the plate went up, discarded the
+  result.
+- Back to briefing now asks first in a ranked attempt under way, as Esc does. It is one Up away
+  from the board's top row.
+- The live accuracy counted the target still up as a miss.
+- Pause, Back to briefing and the result card's buttons showed no focus (`Focusable`).
+- Version 1 endurance said "Release to recover" while letting go drained the grip. Its caption is
+  now "Let go (grip drains)"; the v2+ captions are unchanged.
+- A full grip read "+28 %/s refilling". It now reads "steady" and "RESTING · GRIP FULL".
+- The competitors list now fits a field of any size.
+- Large text no longer shrinks the reaction target at 16:9, nor the memory captions.
+
+Mutation testing covered the rewrite and the review fixes: 45 mutations, all caught.
+
+**Untested on purpose:**
+- The arena-gate-mid-play fix and the arena's stand-still during the finish hold have no dedicated
+  director test. The ranked finish test exercises them only when the audience is still walking.
+- The director's reaction cues (silent on a v1 no-op press) have no test either.
+
+---
+
 ## 000. Screens fill the frame (23 September, late)
 
 The user's direction: *pretty much all the screens, especially challenge screens, should take up most

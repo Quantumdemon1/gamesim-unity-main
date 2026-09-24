@@ -303,3 +303,15 @@ Two gaps worth closing as the work lands, because they would let a regression th
 `VisualFeet` forces Y to the navigation root, so the one test watching seated placement cannot see
 a vertical error at all; and no test asserts that a click on a prop reaches its anchor, which is
 why this broke unnoticed.
+
+## 5. House life (24 September)
+
+Rules the travel and activity work adds, alongside the ones above:
+
+- **The player root may warp.** It may only do so in free roam, on an errand whose route is over 20 m (`HousePlayerController.WarpRouteMetres`). The warp goes behind a dip, and never while anything else owns the player's movement. A floor click and a chase always walk or run.
+- **Arriving by warp is arriving.** The screen and the diary still open only within their own reach, and a warp lands inside it.
+- **Activity anchors are built at runtime** from the set pieces the scene places (`HouseActivityAnchors`), so there is no scene edit and no rebake.
+  - Approaches stand at least 0.6 m clear of the piece.
+  - An approach that does not sample onto the NavMesh inside a room means no anchor, rather than a guessed one.
+- **One pose owner.** `HouseSeatPresentation` places the visual body for Seat, Lie and Float, and the navigation root stays at the approach. A lying body is laid head-first along the anchor's forward. Every lying take is trimmed to lie that way, and `UmaFacingPlayModeTests` measures it.
+- **Clicks during an activity** are raised to the director rather than dropped. The activity ends, and the same click is then dispatched again.

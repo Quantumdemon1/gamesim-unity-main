@@ -22,6 +22,42 @@ namespace Gamesim.Presentation
         private static readonly int TalkingParam = Animator.StringToHash("Talking");
         private static readonly int ListeningParam = Animator.StringToHash("Listening");
         private static readonly int ArguingParam = Animator.StringToHash("Arguing");
+        private static readonly int PaceParam = Animator.StringToHash("Pace");
+
+        /// <summary>
+        /// The ground each take covers in a second as captured: what a body's own speed is divided
+        /// by, so a walk at the house's 2.2 m/s plays its steps fast enough to cover 2.2 m.
+        /// Measured by <c>UmaFacingPlayModeTests</c> from the planted foot.
+        /// </summary>
+        public const float WalkTakeSpeed = 1.7f, RunTakeSpeed = 5.4f;
+        /// <summary>How far a take may be sped up or slowed down before it stops reading as itself.</summary>
+        public const float SlowestPace = .75f, FastestPace = 1.35f;
+        private bool hasPaceParam;
+        private float groundSpeed;
+
+        /// <summary>How fast the walk or run is playing, as the animator was last told.</summary>
+        public float Pace
+        {
+            get
+            {
+                if (groundSpeed < .3f) return 1f;
+                return Mathf.Clamp(groundSpeed / (running && !seated ? RunTakeSpeed : WalkTakeSpeed), SlowestPace, FastestPace);
+            }
+        }
+
+        /// <summary>
+        /// What a body is doing at a piece of furniture, beyond sitting. Appended to, never
+        /// reordered: <see cref="ActivityParams"/> is indexed by it, less one.
+        /// </summary>
+        public enum BodyActivity { None, Sleeping, Swimming, Cooking, Dancing }
+        private static readonly int[] ActivityParams =
+        {
+            Animator.StringToHash("Sleeping"), Animator.StringToHash("Swimming"),
+            Animator.StringToHash("Cooking"), Animator.StringToHash("Dancing"),
+        };
+        private BodyActivity activity;
+        private bool activityMoving;
+        private int activityParams;
         /// <summary>
         /// The ceremony beats a body can act out: one-shot clips the controller may declare as
         /// triggers. Appended to, never reordered: <c>AuthoredClipWiring.Reactions</c> and
@@ -188,6 +224,101 @@ namespace Gamesim.Presentation
             return component;
         }
 
+        /// <summary>
+        /// Dresses a houseguest who is already standing in the house: into swimwear at the pool,
+        /// into nightwear at the bed, back into the day's clothes after.
+        ///
+        /// <para>A new look is a new body, and <see cref="Attach"/> builds one by taking the old
+        /// one away first - which leaves the houseguest missing for the half-second UMA takes to
+        /// make them again, or a stand-in in the wrong clothes. Here the new body is built out of
+        /// sight, at no size, beside the old one; the old one goes on walking, sitting and being
+        /// looked at until the frame the new one is ready, and then they change places.</para>
+        ///
+        /// <para>Anything with nothing to hide behind - a body not yet built, a different person, an
+        /// authored or primitive body - is attached the ordinary way.</para>
+        /// </summary>
+        public static CharacterPresentation Dress(GameObject root, ContestantState character, Color palette)
+        {
+            if (root == null || character == null) return null;
+            var component = root.GetComponent<CharacterPresentation>();
+            if (component == null || !component.built || !Application.isPlaying || !component.providedBody.Exists
+                || component.standIn != null || component.CharacterId != ContentCatalog.CanonicalId(character.id))
+            {
+                component?.CancelDressing();
+                return Attach(root, character, palette);
+            }
+            component.Redress(character, palette);
+            component.enabled = true;
+            component.SetMood(character.mood, character.stressLevel);
+            return component;
+        }
+
+        /// <summary>Whether a new look is being built behind this body.</summary>
+        public bool IsChangingOutfit => dressingRoom != null;
+
+        private Transform dressingRoom;
+        private CharacterBody dressing;
+        private ContestantState dressingAs;
+        private string dressingKey;
+
+        private void Redress(ContestantState character, Color palette)
+        {
+            string key = AppearanceKeyFor(character);
+            if (key == AppearanceKey) { CancelDressing(); return; }
+            if (dressingRoom != null && key == dressingKey) return;
+            CancelDressing();
+            var room = Joint("Gamesim Character Wardrobe", transform, Vector3.zero);
+            room.localScale = Vector3.zero;
+            if (!CharacterBodySource.TryCreate(new CharacterBodyRequest(CharacterId, AppearanceId(character, CharacterId),
+                    character.appearance), room, palette, out var created) || !created.Exists)
+            {
+                Destroy(room.gameObject);
+                return;
+            }
+            dressingRoom = room; dressing = created; dressingAs = character.Clone(); dressingKey = key;
+        }
+
+        private void CancelDressing()
+        {
+            if (dressingRoom != null)
+            {
+                dressingRoom.gameObject.SetActive(false);
+                if (Application.isPlaying) Destroy(dressingRoom.gameObject); else DestroyImmediate(dressingRoom.gameObject);
+            }
+            dressingRoom = null; dressing = default; dressingAs = null; dressingKey = null;
+        }
+
+        /// <summary>The frame the new look is ready, it takes the old one's place.</summary>
+        private void TickDressing()
+        {
+            if (dressingRoom == null) return;
+            if (!dressing.Exists) { CancelDressing(); return; }
+            var state = dressing.Root.GetComponent<CharacterBodyBuildState>();
+            if (state != null && !state.Ready) return;
+            if (dressing.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) return;
+
+            var old = visual;
+            if (old != null)
+            {
+                old.name = "Retired Gamesim Character Visual";
+                old.gameObject.SetActive(false);
+                Destroy(old.gameObject);
+            }
+            visual = dressingRoom;
+            visual.name = "Gamesim Character Visual";
+            visual.localScale = Vector3.one * heightScale;
+            providedBody = dressing;
+            animator = dressing.Animator;
+            if (animator != null) animator.applyRootMotion = false;
+            inspectedController = null;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
+            hasRunningParam = hasPaceParam = false; activityParams = 0;
+            modelHead = null; face = null;
+            definition = dressingAs; AppearanceKey = dressingKey;
+            dressingRoom = null; dressing = default; dressingAs = null; dressingKey = null;
+            PushMood();
+        }
+
         private FaceExpression face;
         private string mood = "Neutral", stress = "Normal";
 
@@ -253,6 +384,23 @@ namespace Gamesim.Presentation
         /// </summary>
         public void SetRunning(bool value) => running = value;
         public bool IsRunning => running;
+
+        /// <summary>
+        /// Plays an activity: lying asleep, swimming, working at the stove, dancing. The pose owner
+        /// sets it every frame it holds the body and sets it back to None when it lets go.
+        /// <paramref name="moving"/> is for a swimmer whose visual body is doing a length while the
+        /// root waits at the side: the root is still, the stroke is not.
+        /// </summary>
+        public void SetActivity(BodyActivity value, bool moving = false) { activity = value; activityMoving = moving; }
+        public BodyActivity Activity => activity;
+
+        /// <summary>
+        /// Whether this body's controller can act the activity out. A body that cannot is posed by
+        /// its owner instead, or left standing - never handed a cue it has no state for.
+        /// </summary>
+        public bool CanAct(BodyActivity value)
+            => value != BodyActivity.None && animator != null && inspectedController != null
+               && (activityParams & (1 << ((int)value - 1))) != 0;
         /// <summary>
         /// Whether this body is in a tense conversation rather than an ordinary one. The director
         /// sets it for the pairs whose topic the caption calls a tense conversation; the controller
@@ -435,7 +583,8 @@ namespace Gamesim.Presentation
             {
                 inspectedController = null;
                 hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
-                hasRunningParam = false;
+                hasRunningParam = hasPaceParam = false;
+                activityParams = 0;
                 return;
             }
 
@@ -446,8 +595,9 @@ namespace Gamesim.Presentation
 
             inspectedController = controller;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
-            hasRunningParam = false;
+            hasRunningParam = hasPaceParam = false;
             reactionParams = 0;
+            activityParams = 0;
             foreach (var parameter in animator.parameters)
             {
                 if (parameter.nameHash == SpeedParam && parameter.type == AnimatorControllerParameterType.Float)
@@ -456,6 +606,8 @@ namespace Gamesim.Presentation
                     hasSeatedParam = true;
                 else if (parameter.nameHash == RunningParam && parameter.type == AnimatorControllerParameterType.Bool)
                     hasRunningParam = true;
+                else if (parameter.nameHash == PaceParam && parameter.type == AnimatorControllerParameterType.Float)
+                    hasPaceParam = true;
                 else if (parameter.nameHash == TalkingParam && parameter.type == AnimatorControllerParameterType.Bool)
                     hasTalkingParam = true;
                 else if (parameter.nameHash == ListeningParam && parameter.type == AnimatorControllerParameterType.Bool)
@@ -465,6 +617,9 @@ namespace Gamesim.Presentation
                 else if (parameter.type == AnimatorControllerParameterType.Trigger)
                     for (int i = 0; i < ReactionParams.Length; i++)
                         if (parameter.nameHash == ReactionParams[i]) reactionParams |= 1 << i;
+                if (parameter.type == AnimatorControllerParameterType.Bool)
+                    for (int i = 0; i < ActivityParams.Length; i++)
+                        if (parameter.nameHash == ActivityParams[i]) activityParams |= 1 << i;
             }
         }
 
@@ -627,12 +782,14 @@ namespace Gamesim.Presentation
         private void LateUpdate()
         {
             if (!built || visual == null) return;
+            TickDressing();
             var delta = transform.position - previousPosition;
             previousPosition = transform.position;
             delta.y = 0;
             float speed = Time.deltaTime > 0.001f ? delta.magnitude / Time.deltaTime : 0f;
             // Teleports reposition the actor without producing a false running animation.
             float target = speed > 8f || seated ? 0f : Mathf.Clamp01(speed / 2.5f);
+            groundSpeed = Mathf.Lerp(groundSpeed, speed > 8f || seated ? 0f : speed, 1f - Mathf.Exp(-8f * Time.deltaTime));
             movementBlend = Mathf.Lerp(movementBlend, target, 1f - Mathf.Exp(-12f * Time.deltaTime));
             if (!float.IsNaN(facingYaw) && movementBlend < 0.02f) SettleFacing();
 
@@ -667,15 +824,27 @@ namespace Gamesim.Presentation
             // Not every rig's controller carries both cues — UMA's shipped locomotion has Speed but
             // no Seated — and driving a parameter a controller does not declare warns once per call.
             RefreshAnimatorParameters();
-            if (hasSpeedParam) animator.SetFloat(SpeedParam, movementBlend);
+            // A swimmer doing a length strokes while the root waits at the side, so the speed the
+            // stroke is chosen by comes from the activity, not from a root that is not moving.
+            if (hasSpeedParam) animator.SetFloat(SpeedParam, activity == BodyActivity.Swimming ? (activityMoving ? 1f : 0f) : movementBlend);
             if (hasSeatedParam) animator.SetBool(SeatedParam, seated);
             if (hasRunningParam) animator.SetBool(RunningParam, running && !seated);
+            if (hasPaceParam) animator.SetFloat(PaceParam, Pace);
             // Reduced motion keeps the authored talk loops off: the head-nod cue below is already
             // gated on it, and a gesturing body is the same kind of motion at a larger size.
             if (hasTalkingParam) animator.SetBool(TalkingParam, talking && speaking && !reducedMotion);
             if (hasListeningParam) animator.SetBool(ListeningParam, talking && !speaking && !reducedMotion);
             // The tense loop is the talk loop with the arms working, so it follows the same rule.
             if (hasArguingParam) animator.SetBool(ArguingParam, IsArguing);
+            // Lying and floating are where a body is, so they hold under reduced motion; the stove
+            // and the dance floor are motion, and follow the talk loops' rule.
+            for (int i = 0; i < ActivityParams.Length; i++)
+                if ((activityParams & (1 << i)) != 0)
+                {
+                    var cue = (BodyActivity)(i + 1);
+                    bool still = cue == BodyActivity.Sleeping || cue == BodyActivity.Swimming;
+                    animator.SetBool(ActivityParams[i], activity == cue && (still || !reducedMotion));
+                }
 
             // A provided body streams its rig in over a few frames. Retry on a slow cadence so the
             // hierarchy walk behind ResolveModelHead cannot become a per-frame cost on a body that
@@ -836,6 +1005,7 @@ namespace Gamesim.Presentation
 
         private void ReleasePresentation()
         {
+            CancelDressing();
             face = null;
             foreach (var old in replacedRenderers) if (old != null) old.enabled = true;
             replacedRenderers.Clear();
@@ -861,9 +1031,10 @@ namespace Gamesim.Presentation
             standIn = null; // destroyed with the visual root above
             inspectedController = null;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
-            hasRunningParam = false;
+            hasRunningParam = hasPaceParam = false;
             built = false;
             talking = seated = arguing = false; facingYaw = float.NaN; lookTarget = null; lookBlend = 0f;
+            activity = BodyActivity.None; activityMoving = false; activityParams = 0;
             movementBlend = walkPhase = 0f;
             CharacterId = null;
         }

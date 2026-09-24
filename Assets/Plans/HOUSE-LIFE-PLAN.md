@@ -756,6 +756,26 @@ New `HouseFurnitureActivity.Sleep`; caption e.g. "Lie down".
 
 ## 6. Decisions for you
 
+**Answered (24 September):** "Teleport if far away, run it closer and walk if very close. Presentation only, no non uma, keep its own idle and run, figure out outfit swaps, keep listen in."
+
+| # | Decision | Taken as |
+|---|---|---|
+| 1 | Transport | Errands measure their route: over 20 m a warp behind a 0.3 s dip with a camera cut, over 8 m a run, under that a walk. Floor clicks still walk or run; a chase still runs. |
+| 2 | Beacon arrival | Default taken: out of reach the icon travels; within reach (the screen's 3 m, the diary's room) it opens. Nothing opens on arrival by itself. |
+| 3 | Season effects | None. Presentation only; M9 is not built. |
+| 4 | The pool | Default taken: treading water and slow lengths in the existing pool, no rebuilt deck. |
+| 5 | The library | No download. The committed Universal Animation Library Standard supplies the clips. |
+| 6 | The non-UMA cast | No work: its bodies sit where a UMA body would lie or swim. |
+| 7 | Locomotion | UMA keeps its own idle and run; the library's idle and jog are only their override keys. |
+| 8 | Outfits | Swimwear for the pool and the hot tub, nightwear for bed: the player's own set, or the everyday set with the outer layers off. Built behind the visible body and swapped when ready. |
+| 9 | NPC life | Default taken: the cast keeps to its three old places (`HouseFurniture.Ambient`). |
+| 10 | Listen in | Unchanged. |
+| 11 | The HoH suite | Default taken: the HoH bed is the Head of Household's; the room itself is open. |
+| 12 | The TV | Not touched. |
+| 13 | Naming | "Episode screen"; room icons show when the camera is pulled back (18 m and over). |
+
+The original questions follow, for the record.
+
 1. **Transport.** Walk or run there with the camera following (recommended default), an instant cut, or both (a second press cuts, plus a Settings switch)?
 2. **Beacon arrival.** When a trip starts from the next-stop beacon, should the screen open by itself on arrival, or still wait for E?
 3. **Should activities affect the season?** Recommended for the MVP: no, presentation only. If yes, later:

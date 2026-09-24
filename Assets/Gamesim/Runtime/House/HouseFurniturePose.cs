@@ -24,14 +24,23 @@ namespace Gamesim.House
         public bool Active { get; private set; }
         public bool IsPerforming => Active && arrivedAt>=0 && Time.unscaledTime-arrivedAt>=.25f;
         public bool IsGestureApplied => Active && !ending && armWritten && arm!=null && visual!=null && body==visual.VisualRoot;
+        /// <summary>What is being done here: the activity this pose was begun for.</summary>
+        public HouseFurnitureActivity Kind => kind;
+        /// <summary>The furniture this pose is at, while it holds.</summary>
+        public HouseInteractionAnchor Anchor => Active ? anchor : null;
 
         public void Begin(HouseInteractionAnchor target,HouseFurnitureActivity activity,float seconds,
             Func<bool> owns,Func<bool> reached,Action completed,Func<bool> paused=null)
         {
             End();visual=GetComponent<CharacterPresentation>();
             if(!isActiveAndEnabled || target==null || visual==null)return;
-            anchor=target;kind=activity;duration=Mathf.Clamp(seconds,2,30);valid=owns;arrived=reached;finished=completed;isPaused=paused;
-            arrivedAt=-1;until=float.PositiveInfinity;routeDeadline=Time.unscaledTime+20f;
+            // Some things last until the player moves - nobody is woken on a timer.
+            duration=float.IsPositiveInfinity(seconds) ? seconds : Mathf.Clamp(seconds,2,30);
+            anchor=target;kind=activity;valid=owns;arrived=reached;finished=completed;isPaused=paused;
+            // Long enough to walk there, however far "there" is: a trip across the house to the pool
+            // at a walk used to time out on the twenty seconds a counter across the kitchen needed.
+            float route=Vector3.Distance(transform.position,target.Approach);
+            arrivedAt=-1;until=float.PositiveInfinity;routeDeadline=Time.unscaledTime+20f+route/1.5f;
             previousFacing=visual.FacingYaw;previousSeated=visual.IsSeated;ending=false;Active=true;
         }
 
@@ -55,13 +64,18 @@ namespace Gamesim.House
             if(arrivedAt<0){arrivedAt=Time.unscaledTime;until=arrivedAt+duration;}
             visual.SetFacing(anchor.Facing);visual.SetTalking(false);visual.SetArguing(false);
             if(!visual.ReducedMotion && Time.unscaledTime-arrivedAt<.25f)return;
-            if(anchor.Seated)
+            if(anchor.Posed)
             {
                 seat=GetComponent<HouseSeatPresentation>() ?? gameObject.AddComponent<HouseSeatPresentation>();
                 seat.Begin(anchor,()=>Active && valid!=null && valid());
                 if(!seat.Active){FinishNow();return;}
             }
-            else if(kind==HouseFurnitureActivity.PrepareSnack)CounterGesture();
+            else if(kind==HouseFurnitureActivity.Cook && visual.CanAct(CharacterPresentation.BodyActivity.Cooking))
+                visual.SetActivity(CharacterPresentation.BodyActivity.Cooking);
+            else if(kind==HouseFurnitureActivity.Dance && visual.CanAct(CharacterPresentation.BodyActivity.Dancing))
+                visual.SetActivity(CharacterPresentation.BodyActivity.Dancing);
+            // A body with no cooking state works the counter with its forearm instead.
+            else if(kind==HouseFurnitureActivity.PrepareSnack || kind==HouseFurnitureActivity.Cook)CounterGesture();
             if(Time.unscaledTime>=until)RequestFinish();
         }
 
@@ -89,6 +103,7 @@ namespace Gamesim.House
         {
             if(!Active || ending)return;
             ending=true;RestoreArm();
+            if(visual!=null && !anchor.Posed)visual.SetActivity(CharacterPresentation.BodyActivity.None);
             if(seat!=null && seat.Active)seat.RequestExit();else FinishNow();
         }
 
@@ -96,7 +111,7 @@ namespace Gamesim.House
         {
             if(!Active)return;
             Active=false;ending=false;RestoreArm();seat?.End();
-            if(visual!=null){visual.SetSeated(previousSeated);visual.SetFacing(previousFacing);}
+            if(visual!=null){visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetSeated(previousSeated);visual.SetFacing(previousFacing);}
             valid=null;arrived=null;isPaused=null;finished=null;anchor=null;body=arm=null;
         }
 

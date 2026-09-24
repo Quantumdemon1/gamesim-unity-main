@@ -8,6 +8,44 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 0000000. House life built: forward-facing takes, travel, room icons, beds, pool, hot tub, stove, outfits (24 September)
+
+The request: implement `HOUSE-LIFE-PLAN.md` and keep improving. The owner's answers are recorded in its §6: warp far, run nearer, walk near; presentation only; no non-UMA work; UMA keeps its own idle and run; work out outfit swaps; leave Listen in alone.
+
+**What shipped (M0–M4 of the plan, and the outfit swaps):**
+- **Every UMA take faces forward (M0).** Humanoid takes import "Based Upon: Body Orientation" (`AuthoredAssetImporter.ApplyTakeRules`). Lying takes keep "Original" plus a measured trim (`HorizontalTakes`). The four authored reactions lose the talk take's heading (`HumanoidReactionAuthoring.FaceForward`). The seat half-turn now applies to non-humanoid bodies only. `UmaFacingPlayModeTests` holds every state and checks the hips, the shoulders and the planted foot; it writes `uma-facing.png` beside the project.
+- **The library (M1).** Six clips are cut from the committed Universal Animation Library by `AuthoredAssetImporter.LibraryClips`: Idle, Jog, Swim idle, Swim forward, Cook (the Interact take, looped) and Dance. The Idle/Run override keys moved onto the library's idle and jog, which freed `Sleep_loop` to play a Sleep state. There are new Any State activity states with the cues `Sleeping`, `Swimming`, `Cooking` and `Dancing`, driven by `CharacterPresentation.SetActivity`.
+- **Travel (M2).** `EpisodeDirector.TryTravel` measures the route:
+  - over 20 m (`HousePlayerController.WarpRouteMetres`) it warps behind a 0.3 s dip with a camera `CutTo`;
+  - over 8 m it runs;
+  - otherwise it walks.
+
+  GoToStation, GoToDiary and the new GoToRoom all use it. Floor clicks and chases are unchanged. Display-only HUD chrome (Status, Week chip, House pill, Follow chip) no longer eats clicks.
+- **The clickable house (M3).** `EpisodeTravelBeacons` puts one screen-space icon over each room. The station room's icon is the screen's and Private's is the diary's; within reach they open instead of travelling. The icons show only when the camera is pulled back past 14–18 m, and they hide under HUD chrome (`EpisodeHud.Covers`). The overview's room chips are a map: `RoomLabels` lays screen-space hotspots over them.
+- **Activities (M4–M7 MVP).** `HouseActivityAnchors` builds runtime anchors from the set pieces' own geometry: eight beds (the HoH bed is the HoH's only), the pool (Float), two hot-tub seats, the stove, and a dance spot in the living room.
+  - Clicking the prop starts the activity with no menu. The menu lists one row per new verb.
+  - Nothing freezes: the notebook opens over a sleeper.
+  - E, or a click anywhere, ends it. The click is then replayed (`HousePlayerController.ActivityInterruptRequested` → `DispatchClick`), so one click gets you up and takes you there.
+  - `HouseSeatPresentation` owns Seat, Lie and Float. Swimmers do lengths with the root waiting at the side.
+  - The cast's own routine is fenced to its three old places by `HouseFurniture.Ambient`.
+- **Outfit swaps.** `CharacterOutfits.ForActivity` uses the player's own Swimwear or Sleepwear set if they have one. Otherwise it derives one from the everyday set: outer layers off, underwear kept, and the shirt kept for bed. It never derives from a look with no underwear. `CharacterPresentation.Dress` builds the new body out of sight at zero scale and swaps it in the frame it is ready. The director dresses the player on the way to the pool or bed, and back after.
+
+**Traps:**
+- **A trim offset turns the other way from its sign.** `Sleep_loop` measured its head at −117° and needed −117, not +117.
+- **The overview's lens is a blended projection matrix.** A world-space canvas is hit-tested with `ScreenPointToRay`, which ignores the blend, so clicks landed on the wrong chip. The screen-space hotspots are placed with `WorldToScreenPoint`, which does follow it. The player's own floor click in the overview uses `ScreenPointToRay` too; it has not been checked.
+- **The PlayMode fixture runs with reduced motion on.** The stove and dance cues respect it, so a test of them must turn it off. A third of a second of cross-fade is hundreds of batchmode frames: wait on the clock.
+- **The fixture's player has no saved appearance at all.** Swimwear is derived after the provider materialises the preset.
+- **`HumanoidReactionAuthoring` used to rename its clips on every run,** because CopySerialized copies the name. It now names them by file, and a re-run reproduces the committed clips byte for byte.
+- **The offline compiler reads D:'s Bee artefacts.** It fails while a D: run is rebuilding them; compile again afterwards.
+- **Regenerate on D:, never in the C: editor.**
+  - The library and lying-take metas: `-executeMethod Gamesim.Editor.HumanoidClipWiring.ReimportLibrary`.
+  - The reactions: `HumanoidReactionAuthoring.Apply`.
+  - Copy the metas and the controller back afterwards.
+
+**Not done:** M0b; M8 and later. That includes company at the furniture, NPCs using the new verbs, props and IK, sit-down and stand-up takes, and room-light dimming for sleep. Nor is the non-UMA cast done: it sits where a UMA body lies.
+
+---
+
 ## 000000. The backwards walk measured, and a plan for house life (24 September)
 
 The request:

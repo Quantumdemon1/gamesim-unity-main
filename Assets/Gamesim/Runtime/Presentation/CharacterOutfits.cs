@@ -40,6 +40,47 @@ namespace Gamesim.Presentation
             return copy;
         }
 
+        /// <summary>
+        /// What a houseguest wears to swim or to sleep: their own set for it if they made one, and
+        /// otherwise their everyday set with the outer layers off - hair, brows and beard kept, and
+        /// what they wear underneath, which in the water reads as swimwear and in bed as nightwear
+        /// (a shirt stays on for bed). Only derived when there is underwear to keep: a look with
+        /// none goes in what it is wearing rather than in nothing.
+        ///
+        /// <para>Presentation only, like every outfit: a copy of the saved look, never saved back.</para>
+        /// </summary>
+        public static CharacterAppearance ForActivity(CharacterAppearance source, string context)
+        {
+            var resolved = Resolve(source, context);
+            if (resolved == null || resolved.activeOutfit == context
+                || (context != Swimwear && context != Sleepwear) || resolved.outfits == null) return resolved;
+            var everyday = resolved.outfits.FirstOrDefault(item => item.id == resolved.activeOutfit);
+            if (everyday?.wardrobe == null) return resolved;
+            bool Worn(string slot) => everyday.wardrobe.Any(item => item != null && item.slot == slot);
+            bool female = (resolved.bodyId ?? "").IndexOf("Female", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!Worn("BottomUnderlayer") || (female && !Worn("TopUnderlayer"))) return resolved;
+            var kept = context == Sleepwear ? SleepSlots : SwimSlots;
+            var derived = everyday.Clone();
+            derived.id = context;
+            derived.wardrobe = derived.wardrobe.Where(item => item != null && kept.Contains(item.slot)).ToList();
+            resolved.outfits.RemoveAll(item => item.id == context);
+            resolved.outfits.Add(derived);
+            resolved.activeOutfit = context;
+            return resolved;
+        }
+
+        private static readonly string[] SwimSlots = { "Hair", "Beard", "Eyebrows", "TopUnderlayer", "BottomUnderlayer" };
+        private static readonly string[] SleepSlots = { "Hair", "Beard", "Eyebrows", "TopUnderlayer", "BottomUnderlayer", "Chest" };
+
+        /// <summary>A copy of the houseguest dressed for <paramref name="context"/>: a phase's set, or an activity's.</summary>
+        public static ContestantState ForContext(ContestantState source, string context)
+        {
+            if (source == null) return null;
+            var copy = source.Clone();
+            copy.appearance = ForActivity(source.appearance, context);
+            return copy;
+        }
+
         public static ContestantState ForPhase(ContestantState source, EpisodePhase phase)
         {
             if (source == null) return null;

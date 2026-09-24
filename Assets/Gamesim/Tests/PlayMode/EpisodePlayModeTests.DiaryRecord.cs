@@ -26,14 +26,14 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             player.Agent.speed = 25; player.Agent.acceleration = 100;
             director.GoToDiary();
-            Assert.That(ActiveDiaryText(), Does.Contain("Walk to the private room"), "The way there says how to get in.");
+            Assert.That(ActiveDiaryText(), Does.Contain("press E to open your diary"), "The way there says how to get in.");
             yield return WaitForDiaryWalk();
             Assert.That(director.TryOpenDiary(), Is.True);
             yield return WaitForDiarySeating();
             Canvas.ForceUpdateCanvases();
 
             string text = ActiveDiaryText();
-            Assert.That(text, Does.Not.Contain("Walk to the private room"), "Inside, the line says where the player is.");
+            Assert.That(text, Does.Not.Contain("press E to open your diary"), "Inside, the line says where the player is.");
             Assert.That(text, Does.Contain(EpisodeDirector.DiaryInsideMessage));
             var status = ActiveRect(EpisodeHud.DiaryStatusName);
             Assert.That(status, Is.Not.Null, "The record's tab opens first when there is nothing to decide.");

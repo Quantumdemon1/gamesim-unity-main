@@ -270,6 +270,7 @@ namespace Gamesim.Episode
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) phase.font = medium;
             AutoSize(phase, 11);
+            ClickThrough(chip);
         }
 
         /// <summary>
@@ -297,6 +298,7 @@ namespace Gamesim.Episode
                 Anchor(rule, new Vector2(0, 1), new Vector2(0, 1), new Vector2(i * PillCell, -11f), new Vector2(1f, 30f));
                 rule.GetComponent<Image>().raycastTarget = false;
             }
+            ClickThrough(pill);
         }
 
         /// <summary>

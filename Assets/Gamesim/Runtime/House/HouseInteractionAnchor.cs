@@ -6,6 +6,12 @@ using UnityEngine.SceneManagement;
 
 namespace Gamesim.House
 {
+    /// <summary>
+    /// How a body is placed at an anchor: on its feet, in a seat, lying along it, or floating in
+    /// water. Appended to, never reordered.
+    /// </summary>
+    public enum HouseAnchorPose { Stand, Seat, Lie, Float }
+
     /// <summary>A prop-relative interaction slot. It supplies geometry, never simulation effects.</summary>
     [DisallowMultipleComponent]
     public sealed class HouseInteractionAnchor : MonoBehaviour
@@ -16,16 +22,23 @@ namespace Gamesim.House
         [SerializeField] private Vector3 approachOffset;
         [SerializeField] private Vector3 cameraOffset = new Vector3(0,1.45f,2.6f);
         [SerializeField, Min(0f)] private float seatHeight = .46f;
+        /// <summary>Lie and Float; the seated flag still says Seat, for every scene authored before these.</summary>
+        [SerializeField] private HouseAnchorPose pose;
         public string VenueId => venueId;
         public string RoomId => roomId;
         public int Slot => slot;
         public bool Seated => seated;
+        public HouseAnchorPose Pose => seated ? HouseAnchorPose.Seat : pose;
+        /// <summary>Whether a body is posed here by <see cref="HouseSeatPresentation"/> rather than standing.</summary>
+        public bool Posed => Pose != HouseAnchorPose.Stand;
         public Vector3 Position => transform.position;
         public float Facing => transform.eulerAngles.y;
         public Vector3 Approach => transform.TransformPoint(approachOffset);
         public Vector3 CameraPosition => transform.TransformPoint(cameraOffset);
         public Vector3 SeatContact => transform.TransformPoint(new Vector3(0,seatHeight,0));
         public void SetSeatHeight(float metres) => seatHeight = Mathf.Clamp(metres,.15f,1.2f);
+        /// <summary>Lays a body along this anchor, or floats one in it. Runtime anchors only.</summary>
+        public void SetPose(HouseAnchorPose value) { pose = value; seated = value == HouseAnchorPose.Seat; }
 
         public void Configure(string venue, string room, int index, bool isSeated, Vector3 approach)
         {
@@ -133,6 +146,7 @@ namespace Gamesim.House
                     if(venue.Room=="Yard" && venue.Seated)created.SetSeatHeight(.36f);
                 }
             }
+            HouseActivityAnchors.EnsureDefaults(scene,existing,all,markers);
             EnsureDestination(existing,all,markers,EpisodeDestination,"bb_set_ceremonyscreen",
                 markers.Any(m=>m.RoomName=="Nomination") ? "Nomination" : "Living",-2.2f);
             var yard=all.FirstOrDefault(t=>t.name=="Competition yard floor");

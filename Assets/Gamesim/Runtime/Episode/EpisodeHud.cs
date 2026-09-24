@@ -267,6 +267,7 @@ namespace Gamesim.Episode
             Anchor(status,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,StatusBottom),new Vector2(statusWidth,StatusHeight*FontScale));
             Stretch(caption.rectTransform,32,6,20,6);
             caption.alignment = TextAlignmentOptions.MidlineLeft;
+            ClickThrough(status);
             // Above the cast strip, in the band the docked panel also uses. They never share the
             // screen: the director clears the prompt outright while a panel is open, which is why
             // one band can carry both.
@@ -1356,6 +1357,7 @@ namespace Gamesim.Episode
             var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Accent,
                 new Vector2(12, -8), new Vector2(336, 20));
             text.alignment = TextAlignmentOptions.Center;
+            ClickThrough(chip);
         }
 
         public void ChallengeMeter()
@@ -1371,6 +1373,27 @@ namespace Gamesim.Episode
         { if(challengeMeter!=null) challengeMeter.value=value; if(challengeCaption!=null) challengeCaption.text="Attempt " + (hits+1) + " of 3 · Aim for the center"; }
         public void SetPrompt(string value) { if(prompt==null)return; prompt.text=Localisation.Text(value); prompt.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value)); }
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
+        public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
+
+        /// <summary>
+        /// Whether a piece of the HUD's chrome stands over this screen point. Whatever the house
+        /// draws there is behind it: seen through a gap at best, and - where the chrome takes no
+        /// click - clickable without being seen. Containers the size of the frame are not chrome.
+        /// </summary>
+        public bool Covers(Vector2 screen)
+        {
+            if (canvas == null || !canvas.gameObject.activeInHierarchy) return false;
+            var frame = ((RectTransform)canvas.transform).rect;
+            float whole = Mathf.Max(1f, frame.width * frame.height);
+            foreach (Transform child in canvas.transform)
+            {
+                if (!child.gameObject.activeInHierarchy || !(child is RectTransform rect)) continue;
+                var size = rect.rect.size;
+                if (size.x * size.y > whole * .6f) continue;
+                if (RectTransformUtility.RectangleContainsScreenPoint(rect, screen, null)) return true;
+            }
+            return false;
+        }
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
 
         // Full-screen screens that sit over the HUD: the weekly recap and the season report. While
@@ -1687,6 +1710,20 @@ namespace Gamesim.Episode
         /// it is: the semantic colours belong on the badge, the crown, the glyph or the word, not
         /// on the frame around them.</para>
         /// </summary>
+        /// <summary>
+        /// Chrome that only says something takes no click, so the click lands on the house behind
+        /// it.
+        ///
+        /// <para>A glass panel is a raycast target by default, and the lower third spans the middle
+        /// of the frame over the floor the player walks on: a click on the floor behind the Status
+        /// line was eaten by the line and the player stood still. With something to click in the
+        /// house itself, a label in the way is not a label, it is a wall.</para>
+        /// </summary>
+        private static void ClickThrough(RectTransform rect)
+        {
+            foreach (var graphic in rect.GetComponentsInChildren<Graphic>(true)) graphic.raycastTarget = false;
+        }
+
         private static RectTransform Chrome(string name,Transform parent,
             UiTheme.Emphasis emphasis=UiTheme.Emphasis.Resting)
         {

@@ -352,6 +352,29 @@ namespace Gamesim.House
         }
 
         /// <summary>
+        /// Follows a subject from where it stands now, with no move to get there: the cut a warp
+        /// needs.
+        ///
+        /// <para>A warp that handed the camera its new subject the ordinary way would ease the view
+        /// across the house after the player - the whole trip the warp exists to skip, played as a
+        /// camera move. This puts the pivot on them in one frame and keeps the angle and distance
+        /// the viewer chose, so the far side of the cut is framed the way the near side was.</para>
+        /// </summary>
+        public void CutTo(Transform target)
+        {
+            Initialize();
+            if (target == null || IsConversationFocused) return;
+            DropShot(true);
+            subject = target;
+            travelSeconds = 0f;
+            desiredFocus = SubjectFocus();
+            transform.position = desiredFocus;
+            distance = desiredDistance;
+            pitch = Mathf.Clamp(PitchFor(desiredDistance) + pitchOffset, 45f, 70f);
+            ApplyCameraImmediately();
+        }
+
+        /// <summary>
         /// Stops following, and leaves the camera exactly where it is.
         ///
         /// <para>It deliberately does not spring back to where the view was before. Snapping the

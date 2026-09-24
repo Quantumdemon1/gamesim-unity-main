@@ -64,6 +64,148 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// Every upright take is turned to face the way its body faces, and the authored reactions
+        /// carry no heading of their own.
+        ///
+        /// <para>The walk played backwards. The takes were imported "Based Upon: Original", which
+        /// keeps the heading stored in the file, and the Mixamo files store one about 180 degrees
+        /// from Unity's forward; the four authored clips copied the talk take's first frame, heading
+        /// and all. Held here three ways: the rule the importer applies, the metas it wrote, and the
+        /// root curves of the clips authored from the talk take.</para>
+        /// </summary>
+        [Test]
+        public void EveryUprightTakeFacesTheWayItsBodyFaces()
+        {
+            foreach (var take in HumanoidClipWiring.Takes)
+            {
+                bool horizontal = AuthoredAssetImporter.HorizontalTakes.ContainsKey(take);
+                var rule = new ModelImporterClipAnimation { name = take, keepOriginalOrientation = true, rotationOffset = 90f };
+                AuthoredAssetImporter.ApplyTakeRules(rule, true);
+                Assert.That(rule.keepOriginalOrientation, Is.EqualTo(horizontal), take + (horizontal
+                    ? " lies down, so it has no body forward to turn to and keeps the file's heading"
+                    : " is imported Based Upon Body Orientation - Original is the file's heading, which faces away"));
+                Assert.That(rule.lockRootRotation, Is.True, take + " bakes its rotation into the pose");
+                if (!horizontal) Assert.That(rule.rotationOffset, Is.Zero, take + " is turned by its body, not by a number");
+
+                var written = ((ModelImporter)AssetImporter.GetAtPath(HumanoidClipWiring.Path(take))).clipAnimations;
+                Assert.That(written.Length, Is.EqualTo(1), take);
+                Assert.That(written[0].keepOriginalOrientation, Is.EqualTo(rule.keepOriginalOrientation),
+                    take + "'s meta was written by an older rule - force-reimport the Humanoid folder");
+                Assert.That(written[0].lockRootRotation, Is.True, take);
+                Assert.That(written[0].rotationOffset, Is.EqualTo(rule.rotationOffset).Within(.01f),
+                    take + "'s meta carries another trim offset than the table - force-reimport it");
+            }
+
+            var blender = new ModelImporterClipAnimation { name = "Walk_loop" };
+            AuthoredAssetImporter.ApplyTakeRules(blender, false);
+            Assert.That(blender.keepOriginalOrientation, Is.True,
+                "the Blender takes' own export decides where they face; this rule is for the mocap rig");
+
+            foreach (var take in HumanoidReactionAuthoring.Takes)
+            {
+                var path = HumanoidClipWiring.ClipFolder + "bb_anim_" + take + ".anim";
+                var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+                Assert.That(clip, Is.Not.Null, path);
+                var settings = AnimationUtility.GetAnimationClipSettings(clip);
+                Assert.That(settings.keepOriginalOrientation, Is.False, take + " turns with its body");
+                Assert.That(settings.loopBlendOrientation, Is.True, take + " bakes its rotation into the pose");
+
+                float Value(string attribute) => AnimationUtility.GetEditorCurve(clip,
+                    EditorCurveBinding.FloatCurve("", typeof(Animator), attribute)).Evaluate(0f);
+                var body = new Quaternion(Value("RootQ.x"), Value("RootQ.y"), Value("RootQ.z"), Value("RootQ.w"));
+                var ahead = body * Vector3.forward; ahead.y = 0f;
+                float heading = Vector3.SignedAngle(Vector3.forward, ahead, Vector3.up);
+                Assert.That(Mathf.Abs(heading), Is.LessThan(2f),
+                    take + " keeps the talk take's lean and loses its turn; it was built facing " + heading + " degrees round");
+                Assert.That(Value("RootT.x"), Is.Zero, take + " stands where its root is");
+                Assert.That(Value("RootT.z"), Is.Zero, take + " stands where its root is");
+            }
+        }
+
+        /// <summary>
+        /// The library's clips arrive cut from their takes under the same rule as the mocap, and
+        /// the activities they play start from anywhere and stop when their cue goes.
+        /// </summary>
+        [Test]
+        public void TheLibraryClipsArriveAndEveryActivityPlaysFromAnyState()
+        {
+            var importer = (ModelImporter)AssetImporter.GetAtPath(AuthoredAssetImporter.LibraryPath);
+            Assert.That(importer, Is.Not.Null, AuthoredAssetImporter.LibraryPath);
+            Assert.That(importer.animationType, Is.EqualTo(ModelImporterAnimationType.Human), "the library is retargeted like the mocap");
+            var cut = importer.clipAnimations;
+            Assert.That(cut.Select(c => c.name), Is.EqualTo(AuthoredAssetImporter.LibraryClips.Select(c => c.clip)),
+                "exactly the clips the house uses, in the table's order - force-reimport the library after changing the table");
+            foreach (var (name, take, loop) in AuthoredAssetImporter.LibraryClips)
+            {
+                var clip = cut.Single(c => c.name == name);
+                Assert.That(clip.takeName, Does.EndWith(take), name + " is cut from " + take);
+                Assert.That(clip.loopTime, Is.EqualTo(loop), name + (loop ? " loops" : " plays once"));
+                Assert.That(clip.keepOriginalOrientation, Is.EqualTo(AuthoredAssetImporter.HorizontalTakes.ContainsKey(name)),
+                    name + " is turned by its body unless it lies down");
+                Assert.That(clip.rotationOffset, Is.EqualTo(AuthoredAssetImporter.HorizontalTakes.TryGetValue(name, out var trim) ? trim : 0f)
+                    .Within(.01f), name + " carries the table's trim offset");
+                Assert.That(clip.lockRootRotation && clip.lockRootPositionXZ && clip.lockRootHeightY, Is.True,
+                    name + " stays where its root is");
+                var imported = AssetDatabase.LoadAllAssetsAtPath(AuthoredAssetImporter.LibraryPath).OfType<AnimationClip>()
+                    .FirstOrDefault(c => c.name == name);
+                Assert.That(imported != null && imported.humanMotion, Is.True, name + " imported as Humanoid motion");
+            }
+
+            // The stand-ins UMA overrides are the library's idle and jog, not the sleep takes: an
+            // override replaces a clip everywhere, and the sleep take now plays the Sleep state.
+            Assert.That(new[] { HumanoidClipWiring.IdleStandIn, HumanoidClipWiring.RunStandIn },
+                Is.SubsetOf(AuthoredAssetImporter.LibraryClips.Select(c => c.clip)));
+
+            var controller = Controller();
+            var machine = Machine(controller);
+            var idle = State(controller, "Idle");
+            foreach (var cue in HumanoidClipWiring.ActivityParameters)
+                Assert.That(controller.parameters.Any(p => p.name == cue && p.type == AnimatorControllerParameterType.Bool), Is.True,
+                    cue + " is declared, so CharacterPresentation drives it");
+            foreach (var (stateName, cue) in new[] { ("Sleep", HumanoidClipWiring.SleepingParameter),
+                         ("SwimIdle", HumanoidClipWiring.SwimmingParameter), ("SwimForward", HumanoidClipWiring.SwimmingParameter),
+                         ("Cook", HumanoidClipWiring.CookingParameter), ("Dance", HumanoidClipWiring.DancingParameter) })
+            {
+                var state = State(controller, stateName);
+                Assert.That(state, Is.Not.Null, stateName);
+                var any = machine.anyStateTransitions.FirstOrDefault(t => t.destinationState == state);
+                Assert.That(any, Is.Not.Null, stateName + " starts from whatever the body was doing");
+                Assert.That(any.conditions.Any(c => c.parameter == cue && c.mode == AnimatorConditionMode.If), Is.True, stateName + " on " + cue);
+                Assert.That(any.canTransitionToSelf, Is.False, stateName + " does not restart itself every frame its cue holds");
+                Assert.That(state.transitions.Any(t => t.destinationState == idle
+                    && t.conditions.Any(c => c.parameter == cue && c.mode == AnimatorConditionMode.IfNot)), Is.True,
+                    stateName + " ends when " + cue + " goes");
+            }
+            foreach (var (trigger, stateName) in HumanoidClipWiring.WiredReactions)
+            {
+                var any = machine.anyStateTransitions.First(t => t.destinationState == State(controller, stateName));
+                foreach (var cue in HumanoidClipWiring.ActivityParameters)
+                    Assert.That(any.conditions.Any(c => c.parameter == cue && c.mode == AnimatorConditionMode.IfNot), Is.True,
+                        stateName + " waits while the body is " + cue.ToLowerInvariant());
+            }
+        }
+
+        /// <summary>
+        /// The walk and the run play at the body's pace, so the feet keep up with the floor: a take
+        /// that covers 1.7 m a second on a body moving 2.2 skates the difference.
+        /// </summary>
+        [Test]
+        public void TheWalkAndTheRunPlayAtTheBodysPace()
+        {
+            var controller = Controller();
+            var pace = controller.parameters.SingleOrDefault(p => p.name == HumanoidClipWiring.PaceParameter);
+            Assert.That(pace, Is.Not.Null, "The controller declares Pace.");
+            Assert.That(pace.type, Is.EqualTo(AnimatorControllerParameterType.Float));
+            Assert.That(pace.defaultFloat, Is.EqualTo(1f), "Unset, a take plays as captured - not frozen at nought.");
+            foreach (var state in Machine(controller).states.Select(s => s.state))
+            {
+                bool paced = state.name == "Walk" || state.name == "Run";
+                Assert.That(state.speedParameterActive, Is.EqualTo(paced), state.name + (paced ? " follows the body's pace" : " plays at its own"));
+                if (paced) Assert.That(state.speedParameter, Is.EqualTo(HumanoidClipWiring.PaceParameter), state.name);
+            }
+        }
+
         [Test]
         public void TheControllerDeclaresEveryCueThePresentationDrives()
         {

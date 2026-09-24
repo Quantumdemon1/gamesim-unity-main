@@ -57,7 +57,8 @@ namespace Gamesim.Episode
                 Orthographic = true, OrthographicSize = OverviewOrthographicSize, Seconds = OverviewSeconds,
             });
             if (roomLabels == null) roomLabels = RoomLabels.Attach(gameObject);
-            roomLabels.Show(RoomMarkers(), largeText ? 1.2f : 1f);
+            // Each chip is a way there: the overview is the house's map.
+            roomLabels.Show(RoomMarkers(), largeText ? 1.2f : 1f, PressTravelBeacon, cameraRig.ViewCamera);
             Render();
             return true;
         }

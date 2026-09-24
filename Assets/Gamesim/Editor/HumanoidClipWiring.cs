@@ -26,8 +26,13 @@ namespace Gamesim.Editor
         public const string HandleResource = "Animation/GamesimHumanoid";
 
         /// <summary>
-        /// The take standing in for a clip this rig has not been given. Never played: the provider
-        /// overrides both, and falls back to UMA's Locomotion whole if it cannot.
+        /// The clips standing in for UMA's own idle and run. The provider overrides both by name,
+        /// and falls back to UMA's Locomotion whole if it cannot.
+        ///
+        /// <para>They are the library's idle and jog: a real idle and a real run, so an override
+        /// that ever failed would still stand the body up and move it. Until the library arrived
+        /// these places were held by the two Mixamo sleep takes - which left them unplayable as
+        /// sleep, because an override replaces a clip everywhere it is used.</para>
         ///
         /// <para>The walk no longer needs one. It used to, and the cost was that every houseguest
         /// RAN everywhere: the provider filled the walk by asking UMA's Locomotion controller for a
@@ -36,8 +41,8 @@ namespace Gamesim.Editor
         /// the only branch, and a borrowed run played whenever anyone moved a step. There is an
         /// authored walk now, and UMA's run stands in for the RUN state, where it belongs.</para>
         /// </summary>
-        public const string IdleStandIn = "Sleep_loop";
-        public const string RunStandIn = "SleepLying_loop";
+        public const string IdleStandIn = "Idle_Loop";
+        public const string RunStandIn = "Jog_Fwd_Loop";
 
         public const string SpeedParameter = "Speed";
         public const string SeatedParameter = "Seated";
@@ -46,11 +51,35 @@ namespace Gamesim.Editor
         public const string ArguingParameter = "Arguing";
 
         /// <summary>
+        /// How fast the walk and the run play: the body's ground speed over the take's own, so the
+        /// feet keep up with the floor instead of skating over it. Defaults to one, which is the
+        /// take as captured, for anything that never sets it.
+        /// </summary>
+        public const string PaceParameter = "Pace";
+
+        /// <summary>
+        /// What the body is doing at a piece of furniture, one cue each. Set by the pose owner every
+        /// frame it holds the pose and cleared when it lets go; the controller takes each from Any
+        /// State, so an activity begins from whatever the body was doing.
+        /// </summary>
+        public const string SleepingParameter = "Sleeping";
+        public const string SwimmingParameter = "Swimming";
+        public const string CookingParameter = "Cooking";
+        public const string DancingParameter = "Dancing";
+
+        /// <summary>The activity cues.</summary>
+        public static readonly string[] ActivityParameters = { SleepingParameter, SwimmingParameter, CookingParameter, DancingParameter };
+
+        /// <summary>The states an activity cue plays.</summary>
+        public static readonly string[] ActivityStates = { "Sleep", "SwimIdle", "SwimForward", "Cook", "Dance" };
+
+        /// <summary>
         /// Whether this body is covering ground rather than crossing a room.
         ///
         /// <para>Set by whoever issued the move, not derived from speed: the agent runs at one speed
         /// whatever the distance, so speed cannot tell a trip to the yard from a step to the fridge.
-        /// A houseguest runs when its destination is far; the player also runs on a double-click.</para>
+        /// Only the player sets it: on a long route, on a double-click, and while chasing somebody.
+        /// Houseguests always walk - nothing in their motion sets it, whatever this used to say.</para>
         /// </summary>
         public const string RunningParameter = "Running";
 
@@ -81,6 +110,11 @@ namespace Gamesim.Editor
             ("ReactNominated", "React_nominated", 1240, 350),
             ("ReactSaved", "React_saved", 1240, 420),
             ("ReactEvicted", "React_evicted", 1240, 490),
+            ("Sleep", "Sleep_loop", 1500, 0),
+            ("SwimIdle", "Swim_Idle_Loop", 1500, 120),
+            ("SwimForward", "Swim_Fwd_Loop", 1500, 240),
+            ("Cook", "Cook_Loop", 1500, 360),
+            ("Dance", "Dance_Loop", 1500, 480),
         };
 
         /// <summary>
@@ -107,11 +141,27 @@ namespace Gamesim.Editor
         private const float RingExit = 0.92f;
         private const float Still = 0.1f;
 
+        /// <summary>
+        /// Cuts the library's clips again from <see cref="AuthoredAssetImporter.LibraryClips"/>,
+        /// reimports the lying takes for their trim offsets, and rebuilds the controller over them. The table only takes effect on a reimport, and a
+        /// version bump would reimport every model the importer handles, UMA's included.
+        /// </summary>
+        [MenuItem("Gamesim/Characters/Reimport the animation library")]
+        public static void ReimportLibrary()
+        {
+            AssetDatabase.ImportAsset(AuthoredAssetImporter.LibraryPath, ImportAssetOptions.ForceUpdate);
+            // The lying mocap takes carry trim offsets from the same table, and take them the same way.
+            foreach (var take in Takes.Where(t => AuthoredAssetImporter.HorizontalTakes.ContainsKey(t)))
+                AssetDatabase.ImportAsset(Path(take), ImportAssetOptions.ForceUpdate);
+            Apply();
+        }
+
         [MenuItem("Gamesim/U07/Wire the Humanoid takes")]
         public static void Apply()
         {
             var clips = LoadTakes();
-            var missing = Takes.Concat(HumanoidReactionAuthoring.Takes).Where(t => !clips.ContainsKey(t)).ToArray();
+            var missing = Takes.Concat(HumanoidReactionAuthoring.Takes)
+                .Concat(AuthoredAssetImporter.LibraryClips.Select(c => c.clip)).Where(t => !clips.ContainsKey(t)).ToArray();
             if (missing.Length > 0)
                 throw new InvalidOperationException("No Humanoid take for " + string.Join(", ", missing)
                     + " under " + ClipFolder + "; each take is one FBX named bb_anim_<take>.fbx.");
@@ -130,6 +180,8 @@ namespace Gamesim.Editor
             Parameter(controller, ListeningParameter, AnimatorControllerParameterType.Bool);
             Parameter(controller, ArguingParameter, AnimatorControllerParameterType.Bool);
             Parameter(controller, RunningParameter, AnimatorControllerParameterType.Bool);
+            Parameter(controller, PaceParameter, AnimatorControllerParameterType.Float, 1f);
+            foreach (var activity in ActivityParameters) Parameter(controller, activity, AnimatorControllerParameterType.Bool);
             foreach (var (trigger, state) in Reactions)
             {
                 if (state != null) { Parameter(controller, trigger, AnimatorControllerParameterType.Trigger); continue; }
@@ -151,12 +203,17 @@ namespace Gamesim.Editor
                 machine.RemoveState(orphan);
             }
             machine.defaultState = states["Idle"];
+            foreach (var paced in new[] { states["Walk"], states["Run"] })
+            {
+                paced.speedParameterActive = true;
+                paced.speedParameter = PaceParameter;
+            }
 
             // A fixed order, rebuilt from nothing every run: the first transition whose conditions
             // hold is the one taken, so sitting and walking are listed before anything a
             // conversation asks for, and the talk ring - which only fires on exit time - is last.
             foreach (var state in states.Values) Clear(state);
-            foreach (var stateName in Reactions.Select(r => r.state))
+            foreach (var stateName in Reactions.Select(r => r.state).Concat(ActivityStates))
                 foreach (var existing in machine.anyStateTransitions
                              .Where(t => t.destinationState != null && t.destinationState.name == stateName).ToArray())
                     machine.RemoveAnyStateTransition(existing);
@@ -237,7 +294,23 @@ namespace Gamesim.Editor
                 any.canTransitionToSelf = false;
                 any.AddCondition(AnimatorConditionMode.If, 0f, trigger);
                 any.AddCondition(AnimatorConditionMode.IfNot, 0f, SeatedParameter);
+                // A body asleep, in the water or at the stove does not jump up to cheer.
+                foreach (var activity in ActivityParameters) any.AddCondition(AnimatorConditionMode.IfNot, 0f, activity);
             }
+
+            // Activities, from Any State so they begin from whatever the body was doing - a walk
+            // that arrives at the bed does not have to stop first. Each ends to idle when its cue
+            // goes, and none can restart itself while it holds.
+            Activity(machine, states["Sleep"], Bool(SleepingParameter, true));
+            Activity(machine, states["SwimForward"], Bool(SwimmingParameter, true), Moving(true));
+            Activity(machine, states["SwimIdle"], Bool(SwimmingParameter, true), Moving(false));
+            Activity(machine, states["Cook"], Bool(CookingParameter, true));
+            Activity(machine, states["Dance"], Bool(DancingParameter, true));
+            Go(states["Sleep"], states["Idle"], .45f, Bool(SleepingParameter, false));
+            Go(states["SwimIdle"], states["Idle"], .3f, Bool(SwimmingParameter, false));
+            Go(states["SwimForward"], states["Idle"], .3f, Bool(SwimmingParameter, false));
+            Go(states["Cook"], states["Idle"], .25f, Bool(CookingParameter, false));
+            Go(states["Dance"], states["Idle"], .25f, Bool(DancingParameter, false));
 
             EditorUtility.SetDirty(controller);
             WireHandle(controller);
@@ -248,7 +321,10 @@ namespace Gamesim.Editor
                 + IdleStandIn + " and " + RunStandIn + " until UmaBodyProvider overrides them.");
         }
 
-        /// <summary>The twelve takes, by clip name. One clip a file, the file names the take.</summary>
+        /// <summary>
+        /// Every take, by clip name: one clip a file for the mocap takes, where the file names the
+        /// take, and the library's clips by the names the importer cut them under.
+        /// </summary>
         public static Dictionary<string, AnimationClip> LoadTakes()
         {
             var clips = new Dictionary<string, AnimationClip>();
@@ -258,12 +334,28 @@ namespace Gamesim.Editor
                     .FirstOrDefault(c => !c.name.StartsWith("__preview", StringComparison.Ordinal));
                 if (clip != null) clips[take] = clip;
             }
+            foreach (var clip in AssetDatabase.LoadAllAssetsAtPath(AuthoredAssetImporter.LibraryPath).OfType<AnimationClip>())
+                if (AuthoredAssetImporter.LibraryClips.Any(row => row.clip == clip.name)) clips[clip.name] = clip;
             return clips;
         }
 
+        private static void Activity(AnimatorStateMachine machine, AnimatorState state,
+            params (AnimatorConditionMode mode, float threshold, string parameter)[] conditions)
+        {
+            var any = machine.AddAnyStateTransition(state);
+            any.hasExitTime = false;
+            any.exitTime = 0f;
+            any.duration = .35f;
+            any.hasFixedDuration = true;
+            any.canTransitionToSelf = false;
+            foreach (var (mode, threshold, parameter) in conditions) any.AddCondition(mode, threshold, parameter);
+        }
+
         /// <summary>The file a take arrived in.</summary>
-        public static string Path(string take) => ClipFolder + AuthoredAssetImporter.AnimationPrefix + take
-            + (HumanoidReactionAuthoring.Takes.Contains(take) ? ".anim" : ".fbx");
+        public static string Path(string take) => AuthoredAssetImporter.LibraryClips.Any(row => row.clip == take)
+            ? AuthoredAssetImporter.LibraryPath
+            : ClipFolder + AuthoredAssetImporter.AnimationPrefix + take
+                + (HumanoidReactionAuthoring.Takes.Contains(take) ? ".anim" : ".fbx");
 
         /// <summary>
         /// Keeps the Resources handle pointing at the controller, creating it if a clone has the
@@ -283,13 +375,13 @@ namespace Gamesim.Editor
             EditorUtility.SetDirty(handle);
         }
 
-        private static void Parameter(AnimatorController controller, string name, AnimatorControllerParameterType type)
+        private static void Parameter(AnimatorController controller, string name, AnimatorControllerParameterType type,
+            float initial = 0f)
         {
             var existing = controller.parameters.FirstOrDefault(p => p.name == name);
-            if (existing == null) { controller.AddParameter(name, type); return; }
-            if (existing.type == type) return;
-            controller.RemoveParameter(existing);
-            controller.AddParameter(name, type);
+            if (existing != null && existing.type == type && Mathf.Approximately(existing.defaultFloat, initial)) return;
+            if (existing != null) controller.RemoveParameter(existing);
+            controller.AddParameter(new AnimatorControllerParameter { name = name, type = type, defaultFloat = initial });
         }
 
         private static AnimatorState Ensure(AnimatorStateMachine machine, string name, Motion motion, Vector3 position)

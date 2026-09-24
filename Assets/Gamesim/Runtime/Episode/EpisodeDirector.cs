@@ -307,6 +307,11 @@ namespace Gamesim.Episode
 
         private void Update()
         {
+            // First, and whatever else returns early: the dip is only a clock, and a frame that
+            // skipped it would hold the house black for as long as a card or a load owned the frame.
+            TickTravelDip();
+            TickTravelBeacons();
+            TickSleepLight();
             // The houseguest the player is with keeps their plate up at any distance.
             if (housemates != null)
             {
@@ -405,7 +410,10 @@ namespace Gamesim.Episode
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
                 if (shortcuts.Overview.WasPressedThisFrame() && !IsPanelOpen) ToggleOverview();
                 if (shortcuts.Diary.WasPressedThisFrame() && !IsPanelOpen) GoToDiary();
-                if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen)
+                // Busy at a piece of furniture, E is getting up, before it is anything else.
+                if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen && IsPlayerHouseActivityActive && playerActivityInHouse)
+                    FinishPlayerHouseActivity();
+                else if (shortcuts.Interact.WasPressedThisFrame() && !IsPanelOpen)
                 {
                     switch (ChooseInteraction(out var target))
                     {
@@ -429,7 +437,8 @@ namespace Gamesim.Episode
                 var choice = ChooseInteraction(out var npc);
                 if (npc != promptNpc) { promptNpc = npc; npcPrompt = npc != null ? "E  ·  Talk to " + npc.DisplayName : null; }
                 string prompt = "";
-                if (choice == InteractTarget.Diary) prompt = "E  ·  Enter private diary room";
+                if (IsPlayerHouseActivityActive && playerActivityInHouse) prompt = HouseFurniture.StopPrompt(playerActivityKind);
+                else if (choice == InteractTarget.Diary) prompt = "E  ·  Enter private diary room";
                 else if (choice == InteractTarget.Station) prompt = "E  ·  Open episode screen";
                 else if (choice == InteractTarget.Talk) prompt = npcPrompt;
                 hud.SetPrompt(prompt);
@@ -530,17 +539,16 @@ namespace Gamesim.Episode
             CancelTravel();
             EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
-            if (!player.TryMoveTo(StationPosition)) message = "The episode screen is not reachable from here.";
+            if (!TryTravel(StationPosition)) message = "The episode screen is not reachable from here.";
             else
             {
-                // Watch them walk. Telling somebody to go somewhere and then leaving the camera
-                // behind is how "walk to the highlighted room" became a hunt for your own player.
+                // TryTravel puts the camera on them, walking, running or warped.
                 headingToStation = true;
-                cameraRig?.FocusSubject(player.transform, false);
                 // Shorter than it was, because it no longer has to narrate the camera. It used to
                 // read "Walk to the highlighted room, then press E to open the episode screen" - a
                 // full sentence of instructions for a walk you can now watch happen.
-                message = "Heading to the episode screen  ·  E to open";
+                message = LastTravel == TravelKind.Warp ? "At the episode screen  ·  E to open"
+                    : "Heading to the episode screen  ·  E to open";
             }
             Render();
         }
@@ -845,7 +853,7 @@ namespace Gamesim.Episode
                 CharacterPresentation.Attach(npc.gameObject, CharacterOutfits.ForPhase(model, state.phase), Palette(i)).SetReducedMotion(reducedMotion);
                 var label = npc.GetComponentInChildren<TextMesh>(); if (label != null) label.text = model.name;
             }
-            CharacterPresentation.Attach(player.gameObject, CharacterOutfits.ForPhase(state.Find(state.playerId), state.phase), new Color(0.4f, 0.88f, 0.76f)).SetReducedMotion(reducedMotion);
+            DressPlayer(state);
             player.SetInputEnabled(!IsPanelOpen && state.Find(state.playerId).status == ContestantStatus.Active);
             cameraRig.ControlsEnabled = !IsPanelOpen;
             ReconcileNpcSocialWorld();

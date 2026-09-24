@@ -158,6 +158,22 @@ namespace Gamesim.House
             => InputEnabled && TrySetReachablePath(position,destinationSampleRadius);
 
         /// <summary>
+        /// Go there on an errand, at the gait the route deserves: a walk across a room, a run
+        /// across the house.
+        ///
+        /// <para>The floor click has always chosen its gait this way; the buttons that send the
+        /// player somewhere did not, and inherited whatever the last move left behind. After a
+        /// run - a chase cut short, a long floor click - that was a run to a screen three metres
+        /// away, and after anything else it was a stroll from the far end of the yard.</para>
+        /// </summary>
+        public bool TryTravelTo(Vector3 position)
+        {
+            if (!TryMoveTo(position)) return false;
+            ApplyGait(RouteMetres > RunRouteMetres);
+            return true;
+        }
+
+        /// <summary>
         /// Go there at a run, whatever the distance, and keep running.
         ///
         /// <para>Chasing is not the same problem as travelling, and deciding the gait from the
@@ -193,8 +209,51 @@ namespace Gamesim.House
             ApplyGait(false);
         }
 
-        private bool TrySetReachablePath(Vector3 position,float sampleRadius)
+        /// <summary>
+        /// Past this many metres of route, an errand is not a trip worth watching: the player is
+        /// simply there (<see cref="TryWarpTo"/>). About two rooms and a corridor - the kitchen to
+        /// the bedroom is a run, the game room to the yard is not.
+        /// </summary>
+        public const float WarpRouteMetres = 20f;
+
+        /// <summary>
+        /// How far it is to walk there, by the route rather than the crow's flight, without going.
+        /// False when there is no complete route, or no floor near enough to the point.
+        /// </summary>
+        public bool TryMeasureRoute(Vector3 position, out float metres)
+            => TryPlanPath(position, destinationSampleRadius, out _, out metres);
+
+        /// <summary>
+        /// Puts the player at <paramref name="position"/> now: the far end of an errand, with no
+        /// trip in between.
+        ///
+        /// <para>Refused while anything else owns the player's movement - an activity, the diary
+        /// chair, the competition staging - exactly as a walk is, and refused where no route
+        /// reaches: somewhere the player could not walk to is somewhere they cannot be put. The
+        /// agent's speed is left alone; whatever it was, it still is.</para>
+        /// </summary>
+        public bool TryWarpTo(Vector3 position)
         {
+            if (!InputEnabled || !TryPlanPath(position, destinationSampleRadius, out var landing, out _)) return false;
+            var currentAgent = Agent;
+            if (!currentAgent.Warp(landing)) return false;
+            currentAgent.ResetPath();
+            currentAgent.velocity = Vector3.zero;
+            RouteMetres = 0f;
+            IsRunning = false;
+            var visual = GetComponent<Gamesim.Presentation.CharacterPresentation>();
+            if (visual != null) visual.SetRunning(false);
+            Physics.SyncTransforms();
+            return true;
+        }
+
+        /// <summary>
+        /// A complete route to the nearest walkable point, left in <see cref="candidatePath"/>.
+        /// </summary>
+        private bool TryPlanPath(Vector3 position, float sampleRadius, out Vector3 landing, out float metres)
+        {
+            landing = default;
+            metres = 0f;
             var currentAgent = Agent;
             if (currentAgent == null || !currentAgent.enabled || !currentAgent.isOnNavMesh
                 || !IsFinite(position))
@@ -223,28 +282,45 @@ namespace Gamesim.House
                 return false;
             }
 
+            // The route, not the crow's flight: a destination three metres away through two
+            // doorways is a long walk, and that is the distinction "far" has to make.
+            var corners = candidatePath.corners;
+            for (int i = 0; i + 1 < corners.Length; i++)
+                metres += Vector3.Distance(corners[i], corners[i + 1]);
+            landing = hit.position;
+            return true;
+        }
+
+        private bool TrySetReachablePath(Vector3 position,float sampleRadius)
+        {
+            if (!TryPlanPath(position, sampleRadius, out _, out float metres)) return false;
+            var currentAgent = Agent;
             if (!currentAgent.SetPath(candidatePath))
             {
                 return false;
             }
 
-            // The route, not the crow's flight: a destination three metres away through two
-            // doorways is a long walk, and that is the distinction "far" has to make.
-            RouteMetres = 0f;
-            var corners = candidatePath.corners;
-            for (int i = 0; i + 1 < corners.Length; i++)
-                RouteMetres += Vector3.Distance(corners[i], corners[i + 1]);
-
+            RouteMetres = metres;
             currentAgent.isStopped = false;
             return true;
         }
+
+        /// <summary>
+        /// A click on the house while an activity owns the player's movement, with no panel open.
+        ///
+        /// <para>Raised instead of acted on: lying on a bed or swimming a length, the player is
+        /// still in the house, and clicking somewhere else in it is the plainest way to say "get
+        /// up". The owner lets go - with the get-up it has - and hands the same click back through
+        /// <see cref="DispatchClick"/>, so one click gets the player up and takes them there.</para>
+        /// </summary>
+        public event System.Action<Ray, Vector2> ActivityInterruptRequested;
 
         private void Update()
         {
             ValidateActivityOwner();
             ApplyPauseState();
             var mouse = Mouse.current;
-            if (!InputEnabled || viewCamera == null || mouse == null
+            if (viewCamera == null || mouse == null
                 || !mouse.leftButton.wasPressedThisFrame
                 // A ceremony card is near-opaque and takes no input by design, so the click that
                 // dismisses one is still unclaimed when it arrives here - and the house is directly
@@ -257,7 +333,22 @@ namespace Gamesim.House
             }
 
             var screen = mouse.position.ReadValue();
-            var ray = viewCamera.ScreenPointToRay(screen);
+            if (!InputEnabled)
+            {
+                if (activityOwner != null && requestedInputEnabled && ActivityInterruptRequested != null)
+                    ActivityInterruptRequested(viewCamera.ScreenPointToRay(screen), screen);
+                return;
+            }
+            DispatchClick(viewCamera.ScreenPointToRay(screen), screen);
+        }
+
+        /// <summary>
+        /// Does what a click on the house does: picks a houseguest, a piece of furniture or the
+        /// player, or walks to the floor. Refused, and nothing done, while input is off.
+        /// </summary>
+        public void DispatchClick(Ray ray, Vector2 screen)
+        {
+            if (!InputEnabled) return;
             if(HouseSeatPresentation.TryPickNpc(gameObject.scene,ray,out var seatedGuest))
             {
                 if (!Select(seatedGuest)) CameraRig?.FocusSubject(seatedGuest.transform);
@@ -287,7 +378,7 @@ namespace Gamesim.House
                 return;
             }
 
-            var furniture=HouseFurniture.AtProp(gameObject.scene,hit.transform);
+            var furniture=HouseFurniture.AtProp(gameObject.scene,hit.transform,hit.point);
             if(furniture!=null && FurnitureSelected!=null)
             {FurnitureSelected(furniture);return;}
 

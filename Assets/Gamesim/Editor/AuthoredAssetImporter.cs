@@ -223,8 +223,33 @@ namespace Gamesim.Editor
             material.SetColor("_EmissionColor", material.color * (material.name.ToLowerInvariant().Contains("neon") ? 3.2f : 1.4f));
         }
 
+        /// <summary>
+        /// Quaternius's Universal Animation Library (CC0), committed whole: 45 takes on one
+        /// Humanoid skeleton. Only the takes in <see cref="LibraryClips"/> are imported from it.
+        /// </summary>
+        public const string LibraryPath = "Assets/Gamesim/Art/External/QuaterniusCharacters/AnimationLibrary_Unity_Standard.fbx";
+
+        /// <summary>
+        /// The clips the house takes from the library: the clip's name, the take it is cut from,
+        /// and whether it loops. A take may be cut twice - the reach at the counter is one reach
+        /// when a houseguest picks something up and a working loop when they cook.
+        /// </summary>
+        public static readonly (string clip, string take, bool loop)[] LibraryClips =
+        {
+            // Override keys for the UMA body's own idle and run: never played on a UMA body, and a
+            // real idle and jog if the override ever fails, where the sleep takes that held these
+            // places before would have laid the whole cast down.
+            ("Idle_Loop", "Idle_Loop", true),
+            ("Jog_Fwd_Loop", "Jog_Fwd_Loop", true),
+            ("Swim_Idle_Loop", "Swim_Idle_Loop", true),
+            ("Swim_Fwd_Loop", "Swim_Fwd_Loop", true),
+            ("Cook_Loop", "Interact", true),
+            ("Dance_Loop", "Dance_Loop", true),
+        };
+
         private void OnPreprocessAnimation()
         {
+            if (assetPath == LibraryPath) { ImportLibrary((ModelImporter)assetImporter); return; }
             if (!IsAnimation(assetPath)) return;
             var importer = (ModelImporter)assetImporter;
             var clips = importer.clipAnimations.Length > 0 ? importer.clipAnimations : importer.defaultClipAnimations;
@@ -237,17 +262,88 @@ namespace Gamesim.Editor
                 // A mocap take is named after the service that made it, which says nothing. The file
                 // name is the take, so the clip takes the file's name instead.
                 if (humanoidTake.Length > 0) clip.name = humanoidTake;
-                bool loop = clip.name.EndsWith(LoopSuffix, StringComparison.Ordinal);
-                clip.loopTime = loop;
-                clip.loopPose = loop;
-                clip.lockRootRotation = true;
-                clip.lockRootHeightY = true;
-                clip.lockRootPositionXZ = true;
-                clip.keepOriginalOrientation = true;
-                clip.keepOriginalPositionY = true;
-                clip.keepOriginalPositionXZ = true;
+                ApplyTakeRules(clip, IsHumanoidAnimation(assetPath));
             }
             importer.clipAnimations = clips;
         }
+
+        /// <summary>
+        /// The library's clips: cut by <see cref="LibraryClips"/>, under the same rule as the
+        /// mocap takes. Its skeleton stays Humanoid with the avatar Unity maps from it.
+        /// </summary>
+        private static void ImportLibrary(ModelImporter importer)
+        {
+            var takes = importer.defaultClipAnimations;
+            var clips = new System.Collections.Generic.List<ModelImporterClipAnimation>();
+            foreach (var (name, take, loop) in LibraryClips)
+            {
+                // The file names its takes "Rig|Idle_Loop": the armature, then the take.
+                ModelImporterClipAnimation source = null;
+                foreach (var candidate in takes)
+                    if (candidate.takeName == take || candidate.takeName.EndsWith("|" + take, StringComparison.Ordinal))
+                    { source = candidate; break; }
+                if (source == null) continue;
+                var clip = new ModelImporterClipAnimation
+                {
+                    name = name, takeName = source.takeName, firstFrame = source.firstFrame, lastFrame = source.lastFrame,
+                };
+                ApplyTakeRules(clip, true);
+                clip.loopTime = loop;
+                clip.loopPose = loop;
+                clips.Add(clip);
+            }
+            importer.animationType = ModelImporterAnimationType.Human;
+            importer.importAnimation = true;
+            importer.clipAnimations = clips.ToArray();
+        }
+
+        /// <summary>
+        /// How one take is imported, by its name and its rig. Public so a test can hold this rule
+        /// itself and not only the metas it last wrote: the metas change only on a reimport, so a
+        /// test that read nothing else would go on passing over a rule that had been reverted.
+        /// </summary>
+        public static void ApplyTakeRules(ModelImporterClipAnimation clip, bool humanoid)
+        {
+            // The library spells it "_Loop".
+            bool loop = clip.name.EndsWith(LoopSuffix, StringComparison.OrdinalIgnoreCase);
+            clip.loopTime = loop;
+            clip.loopPose = loop;
+            clip.lockRootRotation = true;
+            clip.lockRootHeightY = true;
+            clip.lockRootPositionXZ = true;
+            // A mocap take is turned to face the way its body faces. "Original" kept the heading
+            // stored in the file, and the Mixamo files store one about 180 degrees from Unity's
+            // forward: every walk, talk, sit and reaction played facing away from the way the
+            // houseguest was going or looking. A body that is not upright - lying, swimming - has
+            // no forward for Unity to read, so those keep the file's heading, turned by an offset.
+            // The Blender takes keep "Original": their own export decides where they face.
+            bool horizontal = HorizontalTakes.TryGetValue(clip.name, out float offset);
+            clip.keepOriginalOrientation = !humanoid || horizontal;
+            clip.rotationOffset = humanoid && horizontal ? offset : 0f;
+            clip.keepOriginalPositionY = true;
+            clip.keepOriginalPositionXZ = true;
+        }
+
+        /// <summary>
+        /// Humanoid takes whose body lies or swims, where "Based Upon: Body Orientation" means
+        /// nothing: each keeps the file's heading and turns by the offset here, in degrees.
+        ///
+        /// <para>Each offset is measured, not reasoned: the lying and swimming states in
+        /// <c>UmaFacingPlayModeTests</c> say where the head lies from the hips, and the offset turns
+        /// it to lie ahead of them. <c>SleepLying_loop</c> is played by nothing and stays at zero.</para>
+        /// </summary>
+        public static readonly System.Collections.Generic.IReadOnlyDictionary<string, float> HorizontalTakes =
+            new System.Collections.Generic.Dictionary<string, float>(StringComparer.Ordinal)
+            {
+                // Measured on a UMA body (UmaFacingPlayModeTests): the head lay 117 degrees round
+                // from the root's forward, towards -x, and a sleeper is laid head-forward along the
+                // bed. The offset turns the root the other way from its sign: +117 took the head
+                // to +126, -117 takes it to nought.
+                ["Sleep_loop"] = -117f,
+                ["SleepLying_loop"] = 0f,
+                // Front crawl: face down along the water, with no upright forward. The file swims
+                // it head-backward.
+                ["Swim_Fwd_Loop"] = 180f,
+            };
     }
 }

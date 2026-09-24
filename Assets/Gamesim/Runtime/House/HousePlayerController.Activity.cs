@@ -19,6 +19,9 @@ namespace Gamesim.House
             {reason="There is no complete route to this activity.";return false;}
             previousHadPath=hadPath;previousDestination=destination;
             activityDestination=Agent.destination;activityOwner=owner;activityPaused=false;
+            // At the gait the route deserves, as every other trip is chosen: a walk to the next
+            // chair, a run across the house to the pool.
+            ApplyGait(RouteMetres > RunRouteMetres);
             ApplyPauseState();return true;
         }
 

@@ -6,7 +6,10 @@ using UnityEngine.SceneManagement;
 
 namespace Gamesim.House
 {
-    /// <summary>Furniture presentation leaves the reserved navigation/collider root at its approach.</summary>
+    /// <summary>
+    /// The one owner of a body posed at furniture: sitting in a seat, lying on a bed, or in the
+    /// pool. The navigation and collider root waits at the approach; only the visual body moves.
+    /// </summary>
     [DisallowMultipleComponent,DefaultExecutionOrder(190)]
     public sealed class HouseSeatPresentation : MonoBehaviour
     {
@@ -14,6 +17,7 @@ namespace Gamesim.House
         private HouseInteractionAnchor anchor;
         private Func<bool> ownsSeat;
         private Transform body,hips,leftFoot,rightFoot,head;
+        private Animator bodyAnimator;
         private static readonly HashSet<HouseSeatPresentation> occupied = new HashSet<HouseSeatPresentation>();
         private static readonly RaycastHit[] pickHits = new RaycastHit[32];
         private Vector3 origin,anchorPosition,anchorContact,appliedOffset,lastWritten,baseLocalPosition;
@@ -23,6 +27,15 @@ namespace Gamesim.House
         private const float SeatedClipHalfTurn = 180f;
         private float began,nextScan,anchorFacing;
         private bool wasSeated;
+        private HouseAnchorPose mode;
+        /// <summary>Where a swimmer is along the pool, in metres from its middle, and which way they are going.</summary>
+        private float lap, lapHeading = 1f, lapTurnedAt = float.NegativeInfinity, lapRestUntil;
+
+        /// <summary>How a swimmer uses the pool: strokes along it at this pace, turns at the ends, and treads water for a while between lengths.</summary>
+        private const float LapPace = .75f, LapTurnSeconds = .9f, LapRest = 3.5f, LapMargin = 1f;
+
+        /// <summary>How the body is placed: seated, lying or in the water.</summary>
+        public HouseAnchorPose Mode => Active ? mode : HouseAnchorPose.Stand;
         private bool exiting;
         private float exitBegan;
         private Vector3 exitOffset;
@@ -53,11 +66,48 @@ namespace Gamesim.House
             if(Active && anchor==target && !exiting)return;
             End();
             character=GetComponent<CharacterPresentation>();
-            if(target==null || character==null || !target.Seated)return;
+            if(target==null || character==null || !target.Posed)return;
             anchor=target;anchorPosition=target.Position;anchorContact=target.SeatContact;anchorFacing=target.Facing;origin=transform.position;ownsSeat=valid;
-            wasSeated=character.IsSeated;began=Time.unscaledTime;nextScan=0;Active=true;
+            wasSeated=character.IsSeated;began=Time.unscaledTime;nextScan=0;Active=true;mode=target.Pose;
+            lap=0f;lapHeading=1f;lapTurnedAt=float.NegativeInfinity;lapRestUntil=Time.unscaledTime+LapRest;
             occupied.Add(this);
+            Cue();
+        }
+
+        /// <summary>
+        /// Says what the body is doing, every frame it holds the pose. A body that cannot lie down
+        /// or swim - a rig with no state for it - sits instead, which is at least on the furniture.
+        /// </summary>
+        private void Cue()
+        {
+            if(mode==HouseAnchorPose.Lie && character.CanAct(CharacterPresentation.BodyActivity.Sleeping))
+            {character.SetSeated(false);character.SetActivity(CharacterPresentation.BodyActivity.Sleeping);return;}
+            if(mode==HouseAnchorPose.Float && character.CanAct(CharacterPresentation.BodyActivity.Swimming))
+            {character.SetSeated(false);character.SetActivity(CharacterPresentation.BodyActivity.Swimming,Stroking);return;}
+            character.SetActivity(CharacterPresentation.BodyActivity.None);
             character.SetSeated(true);
+        }
+
+        /// <summary>Whether a swimmer is doing a length right now, rather than treading water or turning.</summary>
+        private bool Stroking => mode==HouseAnchorPose.Float && Time.unscaledTime>=lapRestUntil
+            && Time.unscaledTime-lapTurnedAt>=LapTurnSeconds && !character.ReducedMotion;
+
+        /// <summary>
+        /// Moves a swimmer along the pool: a length at a slow crawl, a turn at the end, a rest
+        /// treading water, and back. Only the visual body swims; the root waits at the side.
+        /// </summary>
+        private void TickLap()
+        {
+            if(mode!=HouseAnchorPose.Float || character.ReducedMotion)return;
+            float reach=Mathf.Max(0f,HouseActivityAnchors.PoolBasinLength*.5f-LapMargin);
+            if(!Stroking)return;
+            lap+=lapHeading*LapPace*Time.unscaledDeltaTime;
+            if(Mathf.Abs(lap)>=reach)
+            {
+                lap=Mathf.Clamp(lap,-reach,reach);lapHeading=-lapHeading;lapTurnedAt=Time.unscaledTime;
+                // Every other end, a breather.
+                if(lapHeading>0f)lapRestUntil=Time.unscaledTime+LapTurnSeconds+LapRest;
+            }
         }
 
         private void LateUpdate()
@@ -69,10 +119,11 @@ namespace Gamesim.House
                 || (transform.position-origin).sqrMagnitude>.16f || ownsSeat==null || !ownsSeat())
             {End();return;}
             if(exiting){TickExit();return;}
-            character.SetSeated(true);
+            Cue();
+            TickLap();
             if(character.VisualRoot!=body)
             {
-                RestoreBody();body=character.VisualRoot;hips=leftFoot=rightFoot=head=null;nextScan=0;
+                RestoreBody();body=character.VisualRoot;hips=leftFoot=rightFoot=head=null;bodyAnimator=null;nextScan=0;
                 if(body==null)return;
                 baseLocalPosition=body.localPosition;baseLocalRotation=body.localRotation;
                 lastWritten=baseLocalPosition;startRotation=body.rotation;
@@ -99,23 +150,21 @@ namespace Gamesim.House
                         if(bone.name=="Head" || bone.name=="Head pivot"){head=bone;break;}
             }
             float blend=character.ReducedMotion ? 1f : Mathf.SmoothStep(0,1,(Time.unscaledTime-began)/.75f);
-            // Half a turn, because the seated clips are authored facing the other way.
-            //
-            // Everything that could be measured about this shot was already correct - the root faced
-            // the camera to within 0.1 degrees, the body sat 0.05 m from the seat on the cushion,
-            // the animator was genuinely in a 4.30 s SitIdle - and the diary confessional still
-            // framed the back of the player's head for the whole visit. Five explanations were
-            // checked and killed before the frame was simply rendered and looked at: the chair mesh
-            // (correct, by its own export docstring), the anchor convention (the same rule every
-            // other seat uses), the camera side (in front), the Seated parameter (declared), the
-            // sit clips (present, playing). What is left is inside the clip, where no transform can
-            // see it, so it is corrected where seated facing is applied.
+            if(mode!=HouseAnchorPose.Seat){PoseAlong(blend);return;}
+            // Half a turn only for the non-humanoid bodies, whose Blender-authored seated clips are
+            // still exported facing the other way. It used to be applied to every body, because the
+            // humanoid (mocap) takes were imported "Based Upon: Original" and so faced away too - the
+            // diary confessional framed the back of the player's head until it was added. The
+            // importer now turns every humanoid take to face its body's forward
+            // (AuthoredAssetImporter.OnPreprocessAnimation), so a humanoid sits the way the anchor says.
             //
             // Through baseLocalRotation rather than over it, as well: this line used to set the
             // WORLD rotation and discard the base for the whole time somebody was sitting - the
             // value captured two methods up and carefully restored on the way out.
+            if(bodyAnimator==null)bodyAnimator=body.GetComponentInChildren<Animator>();
+            float halfTurn=bodyAnimator!=null && bodyAnimator.isHuman ? 0f : SeatedClipHalfTurn;
             body.rotation=Quaternion.Slerp(startRotation,
-                Quaternion.Euler(0,anchor.Facing+SeatedClipHalfTurn,0)*baseLocalRotation,blend);
+                Quaternion.Euler(0,anchor.Facing+halfTurn,0)*baseLocalRotation,blend);
             Vector3 offset=anchor.Position-transform.position;
             if(hips!=null && Time.unscaledTime-began>.45f)
             {
@@ -130,6 +179,36 @@ namespace Gamesim.House
                     float soles=Mathf.Min(leftFoot.position.y,rightFoot.position.y)+offset.y;
                     offset.y+=Mathf.Max(0,anchor.Position.y+.035f-soles);
                 }
+            }
+            var local=body.parent.InverseTransformVector(offset*blend);
+            body.localPosition=baseLocalPosition+local;appliedOffset=local;lastWritten=body.localPosition;
+        }
+
+        /// <summary>
+        /// Lying and floating: the body turned to run along the anchor, head first - the takes are
+        /// trimmed to lie head-forward - with the hips on the mattress or at the water line.
+        /// </summary>
+        private void PoseAlong(float blend)
+        {
+            // A swimmer turns at the end of a length over the turn's own time, not in a frame.
+            float heading=anchor.Facing;
+            if(mode==HouseAnchorPose.Float)
+            {
+                float turn=Mathf.Clamp01((Time.unscaledTime-lapTurnedAt)/LapTurnSeconds);
+                float from=lapHeading>0f ? 180f : 0f, to=lapHeading>0f ? 0f : 180f;
+                heading+=Mathf.LerpAngle(from,to,Mathf.SmoothStep(0,1,turn));
+            }
+            body.rotation=Quaternion.Slerp(startRotation,Quaternion.Euler(0,heading,0)*baseLocalRotation,blend);
+            var along=Quaternion.Euler(0,anchor.Facing,0)*Vector3.forward;
+            // The hips' place: on the mattress, clear of it by the body's thickness; in the water,
+            // at the line when swimming and chest-deep when treading water.
+            var contact=anchor.SeatContact+along*(mode==HouseAnchorPose.Float ? lap : 0f)
+                + Vector3.up*(mode==HouseAnchorPose.Lie ? .1f : Stroking ? -.12f : -.3f);
+            Vector3 offset=anchor.Position-transform.position;
+            if(hips!=null)
+            {
+                float fit=character.ReducedMotion ? 1f : Mathf.Clamp01((Time.unscaledTime-began-.3f)/.45f);
+                offset=Vector3.Lerp(offset,contact-hips.position,fit);
             }
             var local=body.parent.InverseTransformVector(offset*blend);
             body.localPosition=baseLocalPosition+local;appliedOffset=local;lastWritten=body.localPosition;
@@ -150,8 +229,8 @@ namespace Gamesim.House
             occupied.Remove(this);
             if(!Active)return;
             Active=false;exiting=false;RestoreBody();
-            if(character!=null)character.SetSeated(wasSeated);
-            body=hips=leftFoot=rightFoot=head=null;anchor=null;ownsSeat=null;
+            if(character!=null){character.SetActivity(CharacterPresentation.BodyActivity.None);character.SetSeated(wasSeated);}
+            body=hips=leftFoot=rightFoot=head=null;bodyAnimator=null;anchor=null;ownsSeat=null;
         }
 
         /// <summary>Normal departure stands at the chair before returning the visual body to its clear approach.</summary>
@@ -160,12 +239,14 @@ namespace Gamesim.House
             if(!Active || exiting)return;
             if(character==null || character.ReducedMotion){End();return;}
             exiting=true;exitBegan=Time.unscaledTime;exitOffset=appliedOffset;
+            character.SetActivity(CharacterPresentation.BodyActivity.None);
             character.SetSeated(false);
         }
 
         private void TickExit()
         {
             if(character.VisualRoot!=body){End();return;}
+            character.SetActivity(CharacterPresentation.BodyActivity.None);
             character.SetSeated(false);
             float elapsed=Time.unscaledTime-exitBegan;
             // The controller's stand cross-fade finishes before the short, clear seat approach.

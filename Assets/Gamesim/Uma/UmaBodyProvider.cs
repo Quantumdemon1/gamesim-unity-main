@@ -40,12 +40,12 @@ namespace Gamesim.Uma
         /// The two takes the Humanoid controller has no clip for. The twelve mocap takes have no
         /// standing idle and no walk, and UMA's own are not referenceable: UMA is not in Git, so a
         /// committed controller that named one by GUID would break every clone without it. They are
-        /// wired to two takes no cue reaches and swapped here, at runtime, for the idle and run that
+        /// wired to the Quaternius library's idle and jog and swapped here, at runtime, for the idle and run that
         /// UMA's Locomotion controller — resolved by name, like everything else UMA — already holds.
         /// Kept in step with <c>HumanoidClipWiring.IdleStandIn</c> and <c>RunStandIn</c>.
         /// </summary>
-        private const string IdleStandIn = "Sleep_loop";
-        private const string RunStandIn = "SleepLying_loop";
+        private const string IdleStandIn = "Idle_Loop";
+        private const string RunStandIn = "Jog_Fwd_Loop";
 
         // Built once and shared: every body wants the same graph over the same two borrowed clips.
         private RuntimeAnimatorController cast;

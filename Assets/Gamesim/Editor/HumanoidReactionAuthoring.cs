@@ -23,6 +23,7 @@ namespace Gamesim.Editor
                     || binding.propertyName.StartsWith("RootQ.", StringComparison.Ordinal)))
                 .ToDictionary(binding => binding.propertyName, binding => AnimationUtility.GetEditorCurve(source, binding).Evaluate(0f));
             if (!pose.ContainsKey("Head Nod Down-Up")) throw new InvalidOperationException("The source take does not expose Humanoid muscle curves.");
+            FaceForward(pose);
             var clips = new[]
             {
                 Build("Listen_loop", 3f, pose, new Dictionary<string, float>
@@ -42,12 +43,35 @@ namespace Gamesim.Editor
             foreach (var clip in clips)
             {
                 string path = HumanoidClipWiring.ClipFolder + "bb_anim_" + clip.name + ".anim";
+                // The asset is named by its file. CopySerialized copies the name with everything
+                // else, and a re-run used to rename every clip to its bare take.
+                clip.name = System.IO.Path.GetFileNameWithoutExtension(path);
                 var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
                 if (existing == null) AssetDatabase.CreateAsset(clip, path);
                 else { EditorUtility.CopySerialized(clip, existing); EditorUtility.SetDirty(existing); UnityEngine.Object.DestroyImmediate(clip); }
             }
             AssetDatabase.SaveAssets();
             HumanoidClipWiring.Apply();
+        }
+
+        /// <summary>
+        /// The talk take's first frame carries the Mixamo file's heading, about 164 degrees from
+        /// forward, and every reaction built on it played facing away from the room. The body keeps
+        /// its lean and loses its turn, and stands where its root is.
+        /// </summary>
+        public static void FaceForward(IDictionary<string, float> pose)
+        {
+            if (pose.TryGetValue("RootQ.x", out var x) && pose.TryGetValue("RootQ.y", out var y)
+                && pose.TryGetValue("RootQ.z", out var z) && pose.TryGetValue("RootQ.w", out var w))
+            {
+                var body = new Quaternion(x, y, z, w);
+                var ahead = body * Vector3.forward;
+                ahead.y = 0f;
+                if (ahead.sqrMagnitude > 1e-6f) body = Quaternion.Inverse(Quaternion.LookRotation(ahead.normalized)) * body;
+                pose["RootQ.x"] = body.x; pose["RootQ.y"] = body.y; pose["RootQ.z"] = body.z; pose["RootQ.w"] = body.w;
+            }
+            if (pose.ContainsKey("RootT.x")) pose["RootT.x"] = 0f;
+            if (pose.ContainsKey("RootT.z")) pose["RootT.z"] = 0f;
         }
 
         private static AnimationClip Build(string name, float duration, Dictionary<string, float> pose, Dictionary<string, float> offsets)
@@ -69,7 +93,9 @@ namespace Gamesim.Editor
                 AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve("", typeof(Animator), entry.Key), curve);
             }
             var settings = AnimationUtility.GetAnimationClipSettings(clip);
-            settings.loopTime = loop; settings.loopBlend = loop; settings.keepOriginalOrientation = true;
+            // The same rule the mocap takes import with: the root turns with the body and stays put.
+            settings.loopTime = loop; settings.loopBlend = loop;
+            settings.loopBlendOrientation = true; settings.keepOriginalOrientation = false;
             settings.keepOriginalPositionXZ = true; settings.keepOriginalPositionY = true;
             AnimationUtility.SetAnimationClipSettings(clip, settings);
             return clip;

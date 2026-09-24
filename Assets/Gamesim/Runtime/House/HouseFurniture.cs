@@ -5,7 +5,8 @@ using UnityEngine.SceneManagement;
 
 namespace Gamesim.House
 {
-    public enum HouseFurnitureActivity { PrepareSnack, SitAtTable, Rest }
+    /// <summary>What a houseguest does at a piece of furniture. Appended to, never reordered.</summary>
+    public enum HouseFurnitureActivity { PrepareSnack, SitAtTable, Rest, Sleep, Swim, Soak, Cook, Dance }
 
     /// <summary>Which command a click on a prop is a second route to.</summary>
     public enum HousePropClick { None, Activity, Diary, Station }
@@ -14,8 +15,58 @@ namespace Gamesim.House
     public static class HouseFurniture
     {
         public const string KitchenAnchor="kitchen-counter-activity";
+        public const string StoveAnchor="kitchen-stove-activity";
+        public const string BedPrefix="bed-";
+        public const string PoolAnchor="pool-swim";
+        public const string HotTubAnchor="hot-tub-activity";
+        public const string DanceAnchor="living-dance-activity";
+
+        public const string SleepCaption="Lie down", SwimCaption="Take a swim", SoakCaption="Soak in the hot tub",
+            CookCaption="Cook a meal", DanceCaption="Dance to the music";
+
         public static IEnumerable<HouseInteractionAnchor> InScene(Scene scene)
             => HouseInteractionAnchors.InScene(scene).Where(anchor=>anchor.isActiveAndEnabled && TryDescribe(anchor,out _,out _));
+
+        /// <summary>
+        /// The places the houseguests' own routine may take them between conversations - the
+        /// counter, the dining chairs and the loungers, and nothing the player's list has grown
+        /// since. Kept apart from <see cref="TryDescribe"/> on purpose: adding a bed to what the
+        /// player can do must not quietly send the cast to bed.
+        /// </summary>
+        public static bool Ambient(HouseInteractionAnchor anchor)
+            => TryDescribe(anchor,out var activity,out _) && (activity==HouseFurnitureActivity.PrepareSnack
+                || activity==HouseFurnitureActivity.SitAtTable || activity==HouseFurnitureActivity.Rest);
+
+        /// <summary>
+        /// Whether a click on the prop starts this at once, with no menu between the click and the
+        /// walk. The newer verbs do: one prop, one thing to do there. The first three keep the
+        /// House Activities menu they have always opened.
+        /// </summary>
+        public static bool StartsOnClick(HouseFurnitureActivity activity)
+            => activity==HouseFurnitureActivity.Sleep || activity==HouseFurnitureActivity.Swim || activity==HouseFurnitureActivity.Soak
+               || activity==HouseFurnitureActivity.Cook || activity==HouseFurnitureActivity.Dance;
+
+        /// <summary>
+        /// Whether this lasts until the player moves rather than for a set time: nobody wants to be
+        /// woken on a timer, or to be got out of the pool.
+        /// </summary>
+        public static bool UntilMoved(HouseFurnitureActivity activity)
+            => activity==HouseFurnitureActivity.Sleep || activity==HouseFurnitureActivity.Swim
+               || activity==HouseFurnitureActivity.Soak || activity==HouseFurnitureActivity.Dance;
+
+        /// <summary>The E prompt, and the status line, while the player is doing this.</summary>
+        public static string StopPrompt(HouseFurnitureActivity activity)
+        {
+            switch(activity)
+            {
+                case HouseFurnitureActivity.Sleep:return "E  ·  Get up";
+                case HouseFurnitureActivity.Swim:return "E  ·  Get out of the pool";
+                case HouseFurnitureActivity.Soak:return "E  ·  Get out of the hot tub";
+                case HouseFurnitureActivity.Cook:return "E  ·  Stop cooking";
+                case HouseFurnitureActivity.Dance:return "E  ·  Stop dancing";
+                default:return "E  ·  Finish activity";
+            }
+        }
 
         public static bool TryDescribe(HouseInteractionAnchor anchor,out HouseFurnitureActivity activity,out string caption)
         {
@@ -26,7 +77,15 @@ namespace Gamesim.House
                 case KitchenAnchor:activity=HouseFurnitureActivity.PrepareSnack;caption="Prepare a snack";return true;
                 case "kitchen-table-chat":activity=HouseFurnitureActivity.SitAtTable;caption="Sit at the dining table";return anchor.Seated;
                 case "yard-lounger-chat":activity=HouseFurnitureActivity.Rest;caption="Rest on a lounger";return anchor.Seated;
-                default:return false;
+                case StoveAnchor:activity=HouseFurnitureActivity.Cook;caption=CookCaption;return true;
+                case PoolAnchor:activity=HouseFurnitureActivity.Swim;caption=SwimCaption;return anchor.Pose==HouseAnchorPose.Float;
+                case HotTubAnchor:activity=HouseFurnitureActivity.Soak;caption=SoakCaption;return anchor.Seated;
+                case DanceAnchor:activity=HouseFurnitureActivity.Dance;caption=DanceCaption;return true;
+                default:
+                    if(anchor.VenueId!=null && anchor.VenueId.StartsWith(BedPrefix,System.StringComparison.Ordinal)
+                        && anchor.Pose==HouseAnchorPose.Lie)
+                    {activity=HouseFurnitureActivity.Sleep;caption=SleepCaption;return true;}
+                    return false;
             }
         }
 
@@ -66,6 +125,18 @@ namespace Gamesim.House
         public static HouseInteractionAnchor AtProp(Scene scene,Transform clicked)
             => HouseInteractionAnchors.InScene(scene).FirstOrDefault(anchor=>
                 TryClick(anchor,out _,out _) && anchor.transform.parent!=null && clicked.IsChildOf(anchor.transform.parent));
+
+        /// <summary>
+        /// The anchor on the clicked prop nearest where it was hit. One prop can carry several -
+        /// the kitchen run has the counter and the stove, the hot tub two seats - and a click on
+        /// the hob means the stove, not whichever anchor the hierarchy lists first.
+        /// </summary>
+        public static HouseInteractionAnchor AtProp(Scene scene,Transform clicked,Vector3 point)
+            => HouseInteractionAnchors.InScene(scene).Where(anchor=>
+                    TryClick(anchor,out _,out _) && anchor.transform.parent!=null && clicked.IsChildOf(anchor.transform.parent))
+                .OrderBy(anchor=>Flat(anchor.Position-point)).FirstOrDefault();
+
+        private static float Flat(Vector3 offset){offset.y=0;return offset.sqrMagnitude;}
 
         /// <summary>Explicit authoring repair of the old default, preserving custom approach edits.</summary>
         public static int AuthorLoungerApproaches(Scene scene)

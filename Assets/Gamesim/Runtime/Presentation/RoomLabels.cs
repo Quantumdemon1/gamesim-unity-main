@@ -12,7 +12,7 @@ namespace Gamesim.Presentation
     /// when the overview opens and destroyed when it ends, so nothing of it exists in an ordinary
     /// frame and nothing of it can drift into a capture that did not ask for it.
     /// </summary>
-    [DisallowMultipleComponent]
+    [DisallowMultipleComponent, DefaultExecutionOrder(1000)]
     public sealed class RoomLabels : MonoBehaviour
     {
         public const string RootName = "Room labels";
@@ -23,7 +23,14 @@ namespace Gamesim.Presentation
         private const float ChipHeight = 56f, WorldScale = 0.03f, MarkSide = 30f;
 
         private readonly List<RectTransform> chips = new List<RectTransform>();
+        private readonly List<RectTransform> hotspots = new List<RectTransform>();
         private Transform root;
+        private RectTransform hotspotLayer;
+        private Camera eyeCamera;
+
+        /// <summary>The overlay that takes the map's clicks, one hotspot a chip.</summary>
+        public const string HotspotLayerName = "Room map hotspots";
+        public const string HotspotPrefix = "Map · ";
 
         public static RoomLabels Attach(GameObject host)
         {
@@ -108,7 +115,12 @@ namespace Gamesim.Presentation
             }
         }
 
-        public void Show(IEnumerable<HouseRoomMarker> markers, float scale)
+        /// <summary>
+        /// Puts a chip over every room. With <paramref name="pick"/>, each chip is also a button
+        /// that says which room was clicked - the overview is a map, and a map you cannot point at
+        /// is a picture. The chip's name is its caption, as it is on the floor.
+        /// </summary>
+        public void Show(IEnumerable<HouseRoomMarker> markers, float scale, System.Action<string> pick = null, Camera eye = null)
         {
             Hide();
             root = new GameObject(RootName).transform;
@@ -151,19 +163,61 @@ namespace Gamesim.Presentation
                     mark.color = marker.RoomName == "HoH" ? UiTheme.Gold : UiTheme.Heading;
                 }
                 chips.Add(canvas);
+                if (pick != null) hotspots.Add(Hotspot(marker.RoomName, pick));
             }
+            eyeCamera = eye;
             Face();
+        }
+
+        /// <summary>
+        /// A screen-space button laid over one chip, the chip's own size wherever the camera puts
+        /// it. The chips cannot take the click themselves: the overview's lens is a blended
+        /// projection, and a world-space canvas is hit-tested by a camera ray that knows nothing of
+        /// it - a click on the kitchen's name landed on the living room's. The overlay is placed
+        /// from the same projection the frame is drawn with, so what is clicked is what is seen.
+        /// </summary>
+        private RectTransform Hotspot(string room, System.Action<string> pick)
+        {
+            if (hotspotLayer == null)
+            {
+                var layer = new GameObject(HotspotLayerName, typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster));
+                layer.transform.SetParent(root, false);
+                var canvas = layer.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                // Under the HUD, whose chrome stays over the map.
+                canvas.sortingOrder = 65;
+                hotspotLayer = (RectTransform)layer.transform;
+            }
+            var spot = new GameObject(HotspotPrefix + room, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            spot.SetParent(hotspotLayer, false);
+            spot.anchorMin = spot.anchorMax = Vector2.zero;
+            spot.pivot = Vector2.zero;
+            var face = spot.GetComponent<Image>();
+            face.color = new Color(0f, 0f, 0f, 0f);
+            face.raycastTarget = true;
+            var button = spot.gameObject.AddComponent<Button>();
+            button.targetGraphic = face;
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            // The chip's words, as the control's caption.
+            var caption = HudPrimitives.Label("Caption", spot, 12f, Color.clear, TextAlignmentOptions.Center);
+            caption.text = Title(room);
+            caption.raycastTarget = false;
+            button.onClick.AddListener(() => pick(room));
+            return spot;
         }
 
         public void Hide()
         {
             chips.Clear();
+            hotspots.Clear();
+            hotspotLayer = null;
             if (root == null) return;
             Destroy(root.gameObject);
             root = null;
         }
 
-        private void LateUpdate() => Face();
+        private void LateUpdate() { Face(); PlaceHotspots(); }
 
         private void Face()
         {
@@ -171,6 +225,32 @@ namespace Gamesim.Presentation
             if (camera == null) return;
             foreach (var chip in chips)
                 if (chip != null) chip.rotation = camera.transform.rotation;
+        }
+
+        private readonly Vector3[] corners = new Vector3[4];
+
+        /// <summary>Each hotspot over its chip's four corners, as the camera projects them this frame.</summary>
+        private void PlaceHotspots()
+        {
+            var eye = eyeCamera != null ? eyeCamera : Camera.main;
+            if (eye == null || hotspotLayer == null) return;
+            float fit = hotspotLayer.lossyScale.x > 0f ? 1f / hotspotLayer.lossyScale.x : 1f;
+            for (int i = 0; i < hotspots.Count && i < chips.Count; i++)
+            {
+                if (hotspots[i] == null || chips[i] == null) continue;
+                chips[i].GetWorldCorners(corners);
+                Vector2 low = new Vector2(float.MaxValue, float.MaxValue), high = new Vector2(float.MinValue, float.MinValue);
+                bool behind = false;
+                foreach (var corner in corners)
+                {
+                    var screen = eye.WorldToScreenPoint(corner);
+                    if (screen.z <= 0f) behind = true;
+                    low = Vector2.Min(low, screen); high = Vector2.Max(high, screen);
+                }
+                hotspots[i].gameObject.SetActive(!behind);
+                hotspots[i].anchoredPosition = low * fit;
+                hotspots[i].sizeDelta = (high - low) * fit;
+            }
         }
     }
 }

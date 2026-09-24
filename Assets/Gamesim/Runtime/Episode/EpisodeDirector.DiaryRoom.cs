@@ -79,9 +79,14 @@ namespace Gamesim.Episode
             CancelTravel();
             ClosePanels();
             EndDiaryVisit(true);CloseHouseActivities(true);
-            message = player.TryMoveTo(DiaryPosition)
-                ? "Walk to the private room, then press E to open your diary. No choice is committed by entering."
-                : "The diary room is not reachable from here. Your current episode is unchanged.";
+            // Watched, as the trip to the episode screen is. This one used to leave the camera
+            // wherever it was, and the player walked out of the frame towards a room the status
+            // line had just told them to walk to.
+            bool going = TryTravel(DiaryPosition);
+            message = !going ? "The diary room is not reachable from here. Your current episode is unchanged."
+                : LastTravel == TravelKind.Warp
+                    ? "At the private room: press E to open your diary. No choice is committed by entering."
+                    : "Walk to the private room, then press E to open your diary. No choice is committed by entering.";
             Render();
         }
 

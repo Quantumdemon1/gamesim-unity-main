@@ -20,5 +20,13 @@ namespace Gamesim.Episode
             }
             return anchor!=null && anchor.isActiveAndEnabled ? anchor.Approach : Vector3.positiveInfinity;
         }
+
+        /// <summary>The room the phase's screen stands in: the nomination room, or the yard for a competition.</summary>
+        private string StationRoomId()
+        {
+            ResolveStationPosition();
+            var anchor=EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social) ? competitionDestination : episodeDestination;
+            return anchor!=null && anchor.isActiveAndEnabled ? anchor.RoomId : null;
+        }
     }
 }

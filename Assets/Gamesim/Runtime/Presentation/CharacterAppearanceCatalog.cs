@@ -116,6 +116,35 @@ namespace Gamesim.Presentation
         /// </summary>
         public static readonly string[] CharacterSlots = { "Hair", "Eyebrows", "Beard" };
 
+        /// <summary>
+        /// The garments a fabric colour is offered for, whatever they are made of: the tint is laid
+        /// over the garment's own texture, so it needs no colour channel of the garment's. Saved in
+        /// the outfit's colours under <see cref="FabricChannel"/> - an entry in a list the save
+        /// already carries, not a new field.
+        /// </summary>
+        public static readonly string[] FabricSlots = { "Chest", "Legs", "Feet" };
+        public const string FabricPrefix = "Fabric-";
+        public static string FabricChannel(string slot) => FabricPrefix + slot;
+        public static bool IsFabricChannel(string id) => id != null && id.StartsWith(FabricPrefix, StringComparison.Ordinal);
+
+        /// <summary>Tints the active outfit's <paramref name="slot"/> garment, or clears the tint.</summary>
+        public static void SetFabric(CharacterAppearance appearance, string slot, Color? value)
+        {
+            var outfit = Outfit(appearance);
+            string id = FabricChannel(slot);
+            outfit.colors.RemoveAll(entry => entry.id == id);
+            if (value.HasValue)
+                outfit.colors.Add(new AppearanceColor { id = id, r = value.Value.r, g = value.Value.g, b = value.Value.b, a = 1f });
+        }
+
+        /// <summary>The tint on <paramref name="slot"/>'s garment in <paramref name="outfit"/>, if it has one.</summary>
+        public static bool TryFabric(CharacterOutfit outfit, string slot, out Color value)
+        {
+            var entry = outfit?.colors?.FirstOrDefault(item => item != null && item.id == FabricChannel(slot));
+            value = entry == null ? Color.white : new Color(entry.r, entry.g, entry.b, 1f);
+            return entry != null;
+        }
+
         public static bool IsCharacterSlot(string slot) => Array.IndexOf(CharacterSlots, slot) >= 0;
 
         public static void Wear(CharacterAppearance appearance, AppearanceItem item, ICharacterAppearanceCatalog catalog)

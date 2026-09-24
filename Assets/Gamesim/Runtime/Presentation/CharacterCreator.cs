@@ -15,25 +15,21 @@ namespace Gamesim.Presentation
     ///
     /// <para><see cref="CastSelect"/> answered "who are you playing as" with a grid of people who
     /// already existed. This answers the question the reference build asks next, and the one this
-    /// port has never asked at all — who are you, if you are nobody on the list. Name, age,
-    /// occupation, hometown, bio and pronouns; two personality traits; eight stats starting at five
-    /// with five spare points between them.</para>
+    /// port has never asked at all — who are you, if you are nobody on the list. Appearance; name,
+    /// age, occupation, hometown, bio and pronouns; two personality traits; eight stats starting at
+    /// five with five spare points between them; and a library of houseguests you have made.</para>
     ///
     /// <para>It decides nothing. Like the cast screen it collects a
     /// <see cref="SeasonBuilder.Choice"/> and hands it back, so a houseguest that cannot be saved
     /// fails where the slot logic already knows how to keep the current season intact.</para>
     ///
-    /// <para>Every stat row is a pair of real buttons whose labels name the stat — "Raise social",
-    /// "Lower social" — rather than a plus and a minus that read as "button, button" to a screen
-    /// reader. The same reason the cast cards spell out "Playing as" instead of relying on a gold
-    /// border.</para>
+    /// <para>Drawn as the four creator mockups draw it (<c>CharacterCreator.Chrome</c>): one page a
+    /// step, each on glass panels, the live preview standing on its lit platform wherever there is
+    /// room for it.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed partial class CharacterCreator : MonoBehaviour
     {
-        private const float Width = 1180f;
-        private const float Pad = 28f;
-
         /// <summary>Captions tests and the tour find these controls by.</summary>
         public const string StartCaption = "Start with this houseguest";
         public const string BackCaption = "Back to the cast";
@@ -47,10 +43,8 @@ namespace Gamesim.Presentation
         public static string RaiseCaption(string stat) => "Raise " + stat;
         public static string LowerCaption(string stat) => "Lower " + stat;
 
-        private RectTransform content;
         private CanvasGroup group;
         private CanvasScaler scaler;
-        private float cursor;
 
         private CharacterDraft draft = CharacterDraft.Blank();
         private SeasonBuilder.Choice pending;
@@ -67,6 +61,7 @@ namespace Gamesim.Presentation
                 if (scaler == null) return;
                 float scale = Mathf.Clamp(value, 0.5f, 2f);
                 scaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
+                if (IsShowing) Rebuild();
             }
         }
 
@@ -128,8 +123,10 @@ namespace Gamesim.Presentation
             appearanceUndo.Clear(); appearanceRedo.Clear();
             initialAppearance = draft.Appearance?.Clone();
             studioPage = "Appearance";
-            profileId = null;
+            profileId = focusedProfile = null;
+            confirmingNew = false;
             comparingOriginal = false;
+            appearanceNotice = pendingDeleteProfile = libraryMessage = null;
             resumeError = null;
             onStart = commit;
             onBack = back;
@@ -193,7 +190,9 @@ namespace Gamesim.Presentation
             {
                 rebuilding = false;
             }
-            if (keep == null || events == null) return;
+            // Not while the event system is mid-selection: a field losing focus to a press ends its edit
+            // there, and selecting again from inside that is refused and costs the press.
+            if (keep == null || events == null || events.alreadySelecting) return;
             var again = GetComponentsInChildren<Selectable>(true)
                 .FirstOrDefault(item => item.name == keep && item.IsActive() && item.IsInteractable());
             if (again != null) events.SetSelectedGameObject(again.gameObject);
@@ -206,6 +205,12 @@ namespace Gamesim.Presentation
                 child.gameObject.SetActive(false);
                 Destroy(child.gameObject);
             }
+            frame = Frame();
+            studioControls = null;
+            previewOnPage = false;
+            previewStatus = null; retryPreviewButton = null; cardSummary = bioCount = cardAge = null;
+            rebuildSoon = false;
+            undoAppearanceButton = redoAppearanceButton = null;
             var scrim = HudPrimitives.Fill("Scrim", transform, new Color(.02f, .04f, .06f, .98f), 1);
             Stretch(scrim);
             // The cast screen's ground: the pack's night navy, the studio it opens from.
@@ -215,99 +220,19 @@ namespace Gamesim.Presentation
                 var ground = scrim.GetComponent<Image>();
                 ground.sprite = night; ground.type = Image.Type.Simple; ground.color = Color.white;
             }
-            BuildNavigation(scrim);
-            if (studioPage == "Appearance") BuildAppearanceStudio(scrim);
-            else
+            BuildBackdrop(scrim);
+            BuildHeader(scrim);
+            switch (studioPage)
             {
-                if (studioPreview != null) studioPreview.gameObject.SetActive(false);
-                var viewport = HudPrimitives.Fill("Viewport", scrim, Color.clear, 1);
-                viewport.anchorMin = new Vector2(.5f, 0f);
-                viewport.anchorMax = new Vector2(.5f, 1f);
-                viewport.sizeDelta = new Vector2(Width, -290f);
-                viewport.anchoredPosition = new Vector2(0f, -5f);
-                viewport.gameObject.AddComponent<RectMask2D>();
-                content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
-                content.SetParent(viewport, false);
-                content.anchorMin = new Vector2(0f, 1f);
-                content.anchorMax = new Vector2(1f, 1f);
-                content.pivot = new Vector2(.5f, 1f);
-                var scroll = viewport.gameObject.AddComponent<ScrollRect>();
-                viewport.gameObject.AddComponent<SetupScrollFocus>();
-                scroll.content = content; scroll.viewport = viewport; scroll.horizontal = false;
-                scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 40f;
-                cursor = 0f;
-                if (studioPage == "Identity") Details();
-                else if (studioPage == "Personality") { TraitChips(); Stats(); }
-                else if (studioPage == "My Houseguests") BuildLibrary();
-                else BuildReview();
-                content.sizeDelta = new Vector2(0f, cursor + Pad);
+                case "Appearance": BuildAppearancePage(scrim); break;
+                case "Identity": BuildIdentityPage(scrim); break;
+                case "Personality": BuildPersonalityPage(scrim); break;
+                case "My Houseguests": BuildLibraryPage(scrim); break;
+                default: BuildReviewPage(scrim); break;
             }
-            var footer = new GameObject("Fixed footer", typeof(RectTransform)).GetComponent<RectTransform>();
-            footer.SetParent(scrim, false);
-            footer.anchorMin = footer.anchorMax = new Vector2(.5f, 0f);
-            footer.pivot = new Vector2(.5f, 0f);
-            footer.sizeDelta = new Vector2(Width, 135f);
-            content = footer; cursor = 0f;
-            Footer();
-        }
-        private void Header()
-        {
-            Space(Pad);
-            Text("BUILD YOUR HOUSEGUEST", 26f, UiTheme.Gold, 34f, TextAlignmentOptions.Center);
-            Text("Who the house meets on the first night. Everything here is yours; the rest of the cast is unchanged.",
-                15f, UiTheme.Muted, 24f, TextAlignmentOptions.Center);
-            Space(8f);
-        }
-
-        /// <summary>
-        /// The live preview.
-        ///
-        /// <para>A wardrobe colour and the generated silhouette, exactly as the cast cards show an
-        /// unbuilt houseguest — the same answer to "who is this" before a body exists to render. The
-        /// colour is the player's own, so the disc here is what they will actually be wearing.</para>
-        /// </summary>
-        private void Preview()
-        {
-            var row = Row(132f);
-            var wardrobe = CastPalette.For(ContentCatalog.PlayerId);
-
-            var rim = HudPrimitives.Disc("Ring", row, UiTheme.Gold);
-            rim.anchorMin = new Vector2(0.5f, 0.5f);
-            rim.anchorMax = new Vector2(0.5f, 0.5f);
-            rim.pivot = new Vector2(0.5f, 0.5f);
-            rim.sizeDelta = new Vector2(112f, 112f);
-            rim.anchoredPosition = new Vector2(-380f, 0f);
-
-            var face = HudPrimitives.Disc("Face", rim, wardrobe);
-            face.anchorMin = new Vector2(0.5f, 0.5f);
-            face.anchorMax = new Vector2(0.5f, 0.5f);
-            face.pivot = new Vector2(0.5f, 0.5f);
-            face.sizeDelta = new Vector2(104f, 104f);
-            face.anchoredPosition = Vector2.zero;
-
-            var silhouette = UiTheme.Icon("houseguest");
-            if (silhouette != null)
-            {
-                var art = new GameObject("Silhouette", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
-                art.SetParent(face, false);
-                art.anchorMin = new Vector2(0.5f, 0f);
-                art.anchorMax = new Vector2(0.5f, 0f);
-                art.pivot = new Vector2(0.5f, 0f);
-                art.sizeDelta = new Vector2(86f, 86f);
-                art.anchoredPosition = new Vector2(0f, 5f);
-                var portrait = art.GetComponent<Image>();
-                portrait.sprite = silhouette;
-                portrait.color = UiTheme.OnColor(wardrobe);
-                portrait.preserveAspect = true;
-                portrait.raycastTarget = false;
-            }
-
-            Caption(row, string.IsNullOrWhiteSpace(draft.Name) ? "Your houseguest" : draft.Name.Trim(),
-                20f, UiTheme.Paper, new Vector2(120f, 34f), 560f);
-            Caption(row, Summary(), 14f, UiTheme.Muted, new Vector2(120f, 6f), 560f);
-            Caption(row, draft.Traits.Count > 0 ? string.Join(" · ", draft.Traits) : "No traits yet",
-                13f, UiTheme.Positive, new Vector2(120f, -20f), 560f);
-            Space(6f);
+            // Pages without the live preview put it to sleep rather than render it for nobody.
+            if (studioPreview != null && !previewOnPage) studioPreview.gameObject.SetActive(false);
+            BuildFooter(scrim);
         }
 
         private string Summary()
@@ -319,343 +244,8 @@ namespace Gamesim.Presentation
             return string.Join(" · ", parts);
         }
 
-        private void Details()
-        {
-            Space(6f);
-            Text("WHO YOU ARE", 15f, UiTheme.Accent, 26f, TextAlignmentOptions.Left);
-
-            Field("Name", draft.Name, CharacterDraft.NameLimit, false,
-                value => draft.Name = value);
-            Field("Occupation", draft.Occupation, CharacterDraft.ShortLimit, false,
-                value => draft.Occupation = value);
-            Field("Hometown", draft.Hometown, CharacterDraft.ShortLimit, false,
-                value => draft.Hometown = value);
-            Field("Bio", draft.Bio, CharacterDraft.BioLimit, true,
-                value => draft.Bio = value);
-
-            // Age and pronouns are steppers and chips rather than free text: both have a small set
-            // of legal answers, and a form that lets you type an illegal one only to refuse it later
-            // is a worse form than one that does not offer it.
-            var ages = Row(52f);
-            var ageLabel = HudPrimitives.Label("Age", ages, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
-            ageLabel.text = "Age " + draft.Age;
-            ageLabel.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            ageLabel.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            ageLabel.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            ageLabel.rectTransform.sizeDelta = new Vector2(240f, 26f);
-            ageLabel.rectTransform.anchoredPosition = Vector2.zero;
-            Chip(ages, "Younger", -300f, 200f, false, () =>
-            {
-                draft.Age = Mathf.Max(CharacterDraft.MinimumAge, draft.Age - 1);
-                Rebuild();
-            });
-            Chip(ages, "Older", 300f, 200f, false, () =>
-            {
-                draft.Age = Mathf.Min(CharacterDraft.MaximumAge, draft.Age + 1);
-                Rebuild();
-            });
-
-            var pronouns = Row(48f);
-            float span = 200f;
-            float x = -(CharacterDraft.PronounOptions.Length - 1) * span / 2f;
-            foreach (var option in CharacterDraft.PronounOptions)
-            {
-                var pick = option;
-                Chip(pronouns, pick, x, span - 12f,
-                    string.Equals(draft.Pronouns, pick, StringComparison.Ordinal),
-                    () => { draft.Pronouns = pick; Rebuild(); });
-                x += span;
-            }
-        }
-
-        /// <summary>
-        /// The seventeen traits, two at a time.
-        ///
-        /// <para>Adding a third is refused rather than silently swapping one out, and the screen says
-        /// which two are held. A form that quietly drops a choice the player made a moment ago is
-        /// worse than one that tells them they are full.</para>
-        /// </summary>
-        private void TraitChips()
-        {
-            if (draft.PreserveStats)
-            {
-                Text("Existing gameplay build preserved: " + string.Join(" · ", draft.Traits),
-                    17f, UiTheme.Paper, 44f, TextAlignmentOptions.Left);
-                Text("Appearance and identity edits keep these stats and traits. Rebuild explicitly to allocate a fresh gameplay build.",
-                    14f, UiTheme.Muted, 44f, TextAlignmentOptions.Left);
-                var rebuild = Row(48f);
-                Chip(rebuild, "Rebuild personality and stats", 0f, 440f, false,
-                    () => { draft = draft.RebuildGameplay(); Rebuild(); });
-                return;
-            }
-            Space(10f);
-            Text("PERSONALITY — TWO AT MOST", 15f, UiTheme.Accent, 26f, TextAlignmentOptions.Left);
-            Text("Each trait raises two stats: two points on the first, one on the second. Removing it takes the boost back.",
-                12f, UiTheme.Muted, 20f, TextAlignmentOptions.Left);
-
-            var names = WebTraits.Boosts.Keys.ToList();
-            const int columns = 5;
-            const float gutter = 10f;
-            float chipWidth = (Width - Pad * 2f - gutter * (columns - 1)) / columns;
-
-            for (int index = 0; index < names.Count; index += columns)
-            {
-                var bar = Row(70f);
-                for (int column = 0; column < columns && index + column < names.Count; column++)
-                {
-                    var name = names[index + column];
-                    bool held = draft.HasTrait(name);
-                    float x = -Width / 2f + Pad + chipWidth / 2f + column * (chipWidth + gutter);
-                    var chip = Chip(bar, name, x, chipWidth, held, () =>
-                    {
-                        if (held) draft.RemoveTrait(name);
-                        else draft.AddTrait(name);
-                        Rebuild();
-                    });
-                    chip.GetComponent<RectTransform>().anchoredPosition += new Vector2(0f, 12f);
-                    var boost = WebTraits.Boosts[name];
-                    var effect = HudPrimitives.Label("Trait effect", bar, 11f, UiTheme.Muted, TextAlignmentOptions.Center);
-                    effect.text = "+2 " + boost.Primary + " · +1 " + boost.Secondary;
-                    effect.rectTransform.anchorMin = effect.rectTransform.anchorMax = new Vector2(.5f, .5f);
-                    effect.rectTransform.sizeDelta = new Vector2(chipWidth, 24f);
-                    effect.rectTransform.anchoredPosition = new Vector2(x, -19f);
-                }
-            }
-
-            string crowded = draft.Crowded;
-            Text(draft.Traits.Count == 0
-                    ? "No traits chosen. Your stats stay flat."
-                    : crowded != null
-                        ? "Holding " + string.Join(" and ", draft.Traits) + ". Remove one before adding another."
-                        : "Holding " + draft.Traits[0] + ". One more if you want it.",
-                12f, crowded != null ? UiTheme.Warning : UiTheme.Muted, 22f, TextAlignmentOptions.Left);
-        }
-
-        private void Stats()
-        {
-            Space(10f);
-            Text(draft.PreserveStats ? "PRESERVED STATS" : "STATS — " + draft.Remaining + " OF " + CharacterDraft.SparePoints + " SPARE POINTS LEFT",
-                15f, draft.Remaining > 0 ? UiTheme.Gold : UiTheme.Accent, 26f, TextAlignmentOptions.Left);
-            Text(draft.PreserveStats ? "These are this houseguest's saved gameplay values. Cosmetic edits leave them unchanged."
-                : "Everyone starts at five. Traits move these too, and nothing goes below one or above ten.",
-                12f, UiTheme.Muted, 20f, TextAlignmentOptions.Left);
-
-            foreach (var stat in WebTraits.StatNames)
-            {
-                var name = stat;
-                var row = Row(44f);
-                double value = WebTraits.Get(draft.Stats, name);
-
-                var label = HudPrimitives.Label(name, row, 15f, UiTheme.Paper, TextAlignmentOptions.Left);
-                label.text = Capitalised(name);
-                label.rectTransform.anchorMin = new Vector2(0f, 0.5f);
-                label.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-                label.rectTransform.pivot = new Vector2(0f, 0.5f);
-                label.rectTransform.sizeDelta = new Vector2(220f, 24f);
-                label.rectTransform.anchoredPosition = new Vector2(10f, 0f);
-
-                // The bar is decoration; the number beside it is the fact. A track on its own is not
-                // a value anybody can read out.
-                var track = HudPrimitives.Fill("Track", row, UiTheme.Surface, 6);
-                track.anchorMin = new Vector2(0f, 0.5f);
-                track.anchorMax = new Vector2(0f, 0.5f);
-                track.pivot = new Vector2(0f, 0.5f);
-                track.sizeDelta = new Vector2(360f, 12f);
-                track.anchoredPosition = new Vector2(240f, 0f);
-
-                var fill = HudPrimitives.Fill("Fill", track, UiTheme.Accent, 6);
-                fill.anchorMin = new Vector2(0f, 0f);
-                fill.anchorMax = new Vector2(0f, 1f);
-                fill.pivot = new Vector2(0f, 0.5f);
-                fill.sizeDelta = new Vector2(360f * (float)(value / WebTraits.Maximum), 0f);
-                fill.anchoredPosition = Vector2.zero;
-                fill.GetComponent<Image>().raycastTarget = false;
-
-                var number = HudPrimitives.Label("Value", row, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
-                number.text = value.ToString("0");
-                number.rectTransform.anchorMin = new Vector2(0f, 0.5f);
-                number.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-                number.rectTransform.pivot = new Vector2(0f, 0.5f);
-                number.rectTransform.sizeDelta = new Vector2(60f, 24f);
-                number.rectTransform.anchoredPosition = new Vector2(630f, 0f);
-
-                if (!draft.PreserveStats)
-                {
-                    Chip(row, LowerCaption(name), 330f, 170f, false, () => { draft.Lower(name); Rebuild(); }).interactable = draft.CanLower(name);
-                    Chip(row, RaiseCaption(name), 505f, 170f, false, () => { draft.Raise(name); Rebuild(); }).interactable = draft.CanRaise(name);
-                }
-            }
-        }
-
-        private void Footer()
-        {
-            Space(10f);
-            bool ready = draft.TryValidate(out var error);
-            Text(!string.IsNullOrEmpty(resumeError) ? resumeError : ready
-                    ? draft.Remaining > 0
-                        ? "Ready. " + draft.Remaining + " spare point" + (draft.Remaining == 1 ? "" : "s")
-                          + " left unspent, which is allowed."
-                        : "Ready."
-                    : error,
-                14f, ready && string.IsNullOrEmpty(resumeError) ? UiTheme.Positive : UiTheme.Warning, 32f, TextAlignmentOptions.Center);
-
-            var bar = Row(56f);
-            Chip(bar, editingCastSlot ? ApplySlotCaption : StartCaption, -150f, 300f, ready, () =>
-            {
-                if (!draft.TryValidate(out _)) { Rebuild(); return; }
-                resumeError = null;
-                pending.Authored = draft.Copy();
-                var start = onStart;
-                Hide();
-                start?.Invoke(pending);
-            });
-            Chip(bar, editingCastSlot ? CancelSlotCaption : BackCaption, 180f, 230f, false, Dismiss);
-            Space(Pad);
-        }
-
-        // ---------------------------------------------------------------- pieces
-
-        /// <summary>
-        /// A labelled text field.
-        ///
-        /// <para>Built on <see cref="EpisodeSpeechInputField"/> rather than a plain
-        /// <c>TMP_InputField</c> so Escape closes the screen instead of silently rolling the field
-        /// back, and Tab moves on instead of typing a tab — the same two keys the speech field had
-        /// to take back, for the same reason.</para>
-        ///
-        /// <para>The value is written on every keystroke rather than on submit, because the screen
-        /// rebuilds itself whenever anything else is touched and an uncommitted field would be lost.
-        /// </para>
-        /// </summary>
-        private void Field(string caption, string value, int limit, bool multiline, Action<string> write)
-        {
-            float height = multiline ? 92f : 52f;
-            var row = Row(height);
-
-            var label = HudPrimitives.Label(caption, row, 14f, UiTheme.Muted, TextAlignmentOptions.Left);
-            label.text = Localisation.Text(caption);
-            label.rectTransform.anchorMin = new Vector2(0f, 1f);
-            label.rectTransform.anchorMax = new Vector2(0f, 1f);
-            label.rectTransform.pivot = new Vector2(0f, 1f);
-            label.rectTransform.sizeDelta = new Vector2(220f, 20f);
-            label.rectTransform.anchoredPosition = new Vector2(10f, 0f);
-
-            var box = HudPrimitives.Fill(caption + " field", row, UiTheme.Surface, 8);
-            box.anchorMin = new Vector2(0f, 0f);
-            box.anchorMax = new Vector2(1f, 1f);
-            box.offsetMin = new Vector2(240f, 4f);
-            box.offsetMax = new Vector2(-10f, -4f);
-            UiTheme.AddBorder(box, 8, UiTheme.Outline);
-            box.GetComponent<Image>().raycastTarget = true;
-
-            var text = HudPrimitives.Label("Text", box, 16f, UiTheme.Paper, TextAlignmentOptions.TopLeft);
-            text.text = string.Empty;
-            StretchInto(text.rectTransform, 12f, 6f);
-
-            var hint = HudPrimitives.Label("Placeholder", box, 16f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
-            hint.text = caption;
-            StretchInto(hint.rectTransform, 12f, 6f);
-
-            var input = box.gameObject.AddComponent<EpisodeSpeechInputField>();
-            input.textViewport = box;
-            input.textComponent = text;
-            input.placeholder = hint;
-            input.characterLimit = limit;
-            input.lineType = multiline ? TMP_InputField.LineType.MultiLineNewline : TMP_InputField.LineType.SingleLine;
-            input.text = value ?? string.Empty;
-            input.onValueChanged.AddListener(written => write(written));
-            // The preview only catches up when the field is left. Rebuilding on every keystroke
-            // would destroy the field being typed into. And only while the field is alive: a
-            // focused field raises onEndEdit from its own OnDisable, which is also what a scene
-            // unload or a rebuild does to it, and a form rebuilt under a root being torn down is
-            // a scrim parented mid-deactivation.
-            input.onEndEdit.AddListener(_ => { if (input.isActiveAndEnabled && isActiveAndEnabled) Rebuild(); });
-        }
-
-        private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)
-        {
-            // The cast screen's pills (mockup-02): the one that is on in the action blue with white
-            // words, the rest glass with a hairline and the words in paper.
-            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.ActionBlue : new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .92f), 18);
-            pill.anchorMin = new Vector2(0.5f, 0.5f);
-            pill.anchorMax = new Vector2(0.5f, 0.5f);
-            pill.pivot = new Vector2(0.5f, 0.5f);
-            pill.sizeDelta = new Vector2(width, 36f);
-            pill.anchoredPosition = new Vector2(x, 0f);
-            UiTheme.AddBorder(pill, 18, active ? UiTheme.Glow : new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .5f));
-            if (active) UiTheme.AddGlow(pill, 18);
-
-            var image = pill.GetComponent<Image>();
-            image.raycastTarget = true;
-
-            var label = HudPrimitives.Label("Label", pill, 13f, active ? Color.white : UiTheme.Paper,
-                TextAlignmentOptions.Center);
-            var weight = UiTheme.Font(active ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
-            if (weight != null) label.font = weight;
-            label.text = Localisation.Text(text);
-            label.rectTransform.anchorMin = Vector2.zero;
-            label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = new Vector2(6f, 0f);
-            label.rectTransform.offsetMax = new Vector2(-6f, 0f);
-
-            var button = pill.gameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            button.onClick.AddListener(() => action());
-            return button;
-        }
-
-        private static void Caption(Transform parent, string value, float size, Color colour,
-            Vector2 offset, float width)
-        {
-            var label = HudPrimitives.Label("Caption", parent, size, colour, TextAlignmentOptions.Left);
-            label.text = Localisation.Text(value);
-            var rect = label.rectTransform;
-            rect.anchorMin = new Vector2(0f, 0.5f);
-            rect.anchorMax = new Vector2(0f, 0.5f);
-            rect.pivot = new Vector2(0f, 0.5f);
-            rect.sizeDelta = new Vector2(width, size + 8f);
-            rect.anchoredPosition = offset;
-        }
-
         private static string Capitalised(string value) =>
             string.IsNullOrEmpty(value) ? value : char.ToUpperInvariant(value[0]) + value.Substring(1);
-
-        // ---------------------------------------------------------------- layout
-
-        private RectTransform Row(float height)
-        {
-            var row = HudPrimitives.Fill("Row", content, new Color(0f, 0f, 0f, 0f), 1);
-            Place(row, Width - Pad * 2f, height, -cursor);
-            cursor += height + 6f;
-            return row;
-        }
-
-        private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
-        {
-            var label = HudPrimitives.Label("Text", content, size, colour, align);
-            label.text = Localisation.Text(value);
-            Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
-            cursor += height;
-        }
-
-        private void Space(float amount) => cursor += amount;
-
-        private static void Place(RectTransform rect, float width, float height, float y)
-        {
-            rect.anchorMin = new Vector2(0.5f, 1f);
-            rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.sizeDelta = new Vector2(width, height);
-            rect.anchoredPosition = new Vector2(0f, y);
-        }
-
-        private static void StretchInto(RectTransform rect, float x, float y)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(x, y);
-            rect.offsetMax = new Vector2(-x, -y);
-        }
 
         private static void Stretch(RectTransform rect)
         {

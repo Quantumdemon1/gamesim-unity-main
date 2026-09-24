@@ -9,6 +9,12 @@ using UnityEngine.UI;
 
 namespace Gamesim.Presentation
 {
+    /// <summary>
+    /// The appearance step (the creator's first mockup): the categories down the left, the live
+    /// preview on its lit platform in the middle, and the category's choices at the right - body
+    /// shapes and proportions, the starting looks and the face, hair styles, the wardrobe with a
+    /// colour for each garment, and the skin, hair and eye colours.
+    /// </summary>
     public sealed partial class CharacterCreator
     {
         private string studioPage = "Appearance", appearanceCategory = "Body", libraryMessage;
@@ -33,21 +39,30 @@ namespace Gamesim.Presentation
         private readonly System.Random cosmeticRandom = new System.Random();
         private ICharacterAppearanceCatalog Catalog => (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
         private RectTransform studioControls;
-        private float studioCursor;
+        private float studioCursor, studioWidth;
         private string appearanceNotice;
         private Button undoAppearanceButton, redoAppearanceButton;
         private Button retryPreviewButton;
         private float lastSliderEdit;
         private string lastSlider;
         private bool comparingOriginal;
-        private string expandedWardrobeSlot;
-        private readonly Dictionary<string, int> wardrobePages = new Dictionary<string, int>();
         private float studioScrollY;
         private string lastStudioCategory, pendingDeleteProfile;
-        private const float ControlsWidth = 640f;
+        private bool previewOnPage;
+        private bool? studioFace;
+
+        private static readonly string[] Categories = { "Body", "Face", "Hair", "Clothing", "Colors" };
+
+        // The swatches: skin light to deep; natural hair and two silvers; eyes dark to light.
+        private static readonly string[] SkinSwatches = { "F6D7C3", "EDC4A6", "E0AC89", "C99071", "B07A57", "93603F", "7A4B2F", "5E3822", "452818", "2E1B11" };
+        private static readonly string[] HairSwatches = { "15110F", "2B1D16", "3B281A", "58391F", "704B30", "6E2A10", "A24E24", "C98A55", "D8B26E", "EDE3CF", "B9BEC6", "7C8088" };
+        private static readonly string[] EyeSwatches = { "2E1C12", "4E3220", "6B5231", "8F6A2E", "4F6B3A", "3E6C8E", "6E8FA8", "7F8A92" };
+        private static readonly string[] FabricSwatches = { "F2F2EE", "1E2126", "5A5F69", "1E3A66", "3F78C8", "2F6B4A", "8A2F2F", "C8553A", "D9A441", "E7C9A6", "6B4A8C", "D86FA6" };
 
         private void Update()
         {
+            RefitToFrame();
+            RebuildIfAsked();
             if (previewStatus != null && studioPreview != null) previewStatus.text = studioPreview.Status;
             if (retryPreviewButton != null && studioPreview != null) retryPreviewButton.interactable = studioPreview.CanRetry;
         }
@@ -55,83 +70,211 @@ namespace Gamesim.Presentation
         private void OnDestroy()
         { if (studioPreview != null) Destroy(studioPreview.gameObject); }
 
-        private void BuildNavigation(RectTransform scrim)
+        // ---------------------------------------------------------------- the page
+
+        private void BuildAppearancePage(RectTransform scrim)
         {
-            var header = HudPrimitives.Label("Studio title", scrim, 30f, Color.white, TextAlignmentOptions.Center);
-            header.text = editingCastSlot ? "EDIT CAST HOUSEGUEST" : "CREATE A HOUSEGUEST";
-            // The cast screen's title, bold and lit from above: the studio is the same room.
-            var bold = UiTheme.Font(UiTheme.Weight.Bold);
-            if (bold != null) header.font = bold;
-            header.characterSpacing = 2f;
-            header.enableVertexGradient = true;
-            header.colorGradient = new VertexGradient(UiTheme.Paper, UiTheme.Paper, UiTheme.Glow, UiTheme.Glow);
-            Place(header.rectTransform, Width, 45f, -18f);
-            var navigation = HudPrimitives.Fill("Setup steps", scrim, Color.clear, 1);
-            Place(navigation, Width, 52f, -70f);
-            string[] pages = { "Appearance", "Identity", "Personality", "My Houseguests", "Review" };
-            for (int i = 0; i < pages.Length; i++)
+            lastStudioCategory = appearanceCategory;
+            draft.Appearance = draft.Appearance ?? new CharacterAppearance();
+            if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
+            var area = PageArea;
+            float sidebar = area.width >= 1640f ? 250f : 214f;
+            float panel = Mathf.Clamp(area.width * .46f, 600f, 880f);
+            float preview = area.width - sidebar - panel - 2f * Gap;
+            BuildCategories(scrim, new Rect(area.x, area.y, sidebar, area.height));
+            BuildPreviewStage(scrim, new Rect(area.x + sidebar + Gap, area.y, preview, area.height), true);
+            BuildAppearancePanel(scrim, new Rect(area.x + sidebar + Gap + preview + Gap, area.y, panel, area.height));
+        }
+
+        private void BuildCategories(RectTransform scrim, Rect r)
+        {
+            var side = Panel("Appearance categories", scrim, r);
+            Words(side, "CREATE YOUR", 14f, UiTheme.Accent, new Rect(22f, 22f, r.width - 44f, 20f)).characterSpacing = 3f;
+            var title = Words(side, "HOUSEGUEST", 24f, UiTheme.Paper, new Rect(22f, 42f, r.width - 44f, 32f));
+            var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) title.font = bold;
+            float y = 96f;
+            foreach (var category in Categories)
             {
-                string page = pages[i];
-                Chip(navigation, page, (i - 2) * 226f, 216f, studioPage == page,
-                    () => { studioPage = page; Rebuild(); });
+                string pick = category;
+                bool on = appearanceCategory == category;
+                var tile = HudPrimitives.Fill(category, side, new Color(0f, 0f, 0f, 0f), 10);
+                Place(tile, 10f, y, r.width - 20f, 60f);
+                var image = tile.GetComponent<Image>(); image.raycastTarget = true;
+                if (on)
+                {
+                    if (!UiTheme.PackSliced(image, PackArt.CreatorCategoryTile, 12f)) image.color = UiTheme.SurfaceRaised;
+                    else image.color = new Color(.45f, .7f, 1f, 1f);
+                    UiTheme.AddGlow(tile, 12);
+                    var stripe = HudPrimitives.Fill("Selected stripe", tile, UiTheme.Glow, 2);
+                    Place(stripe, 0f, 10f, 4f, 40f);
+                }
+                var label = HudPrimitives.Label("Label", tile, 19f, on ? Color.white : UiTheme.Paper, TextAlignmentOptions.MidlineLeft);
+                label.text = Localisation.Text(category);
+                var weight = UiTheme.Font(on ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium); if (weight != null) label.font = weight;
+                Place(label.rectTransform, 62f, 0f, r.width - 90f, 60f);
+                Glyph(tile, CategoryIcon(category), on ? UiTheme.Glow : UiTheme.Accent, new Rect(18f, 15f, 30f, 30f));
+                var button = tile.gameObject.AddComponent<Button>();
+                button.targetGraphic = image;
+                button.onClick.AddListener(() => { appearanceCategory = pick; Rebuild(); });
+                Seen(button, 10);
+                y += 68f;
+            }
+            if (r.height - y > 150f)
+            {
+                var quote = Words(side, "“Same house.\nDifferent stories.\nMake them yours.”", 17f, UiTheme.Paper,
+                    new Rect(22f, r.height - 150f, r.width - 40f, 90f));
+                quote.fontStyle = FontStyles.Italic;
+                Words(side, "— GAMESIM", 14f, UiTheme.Heading, new Rect(22f, r.height - 54f, r.width - 40f, 22f), TextAlignmentOptions.TopRight);
             }
         }
 
-        private void BuildAppearanceStudio(RectTransform scrim)
+        private static string CategoryIcon(string category)
         {
-            lastStudioCategory = appearanceCategory;
-            if (studioPreview == null) studioPreview = CharacterStudioPreview.Create();
-            studioPreview.gameObject.SetActive(true);
-            draft.Appearance = draft.Appearance ?? new CharacterAppearance();
-            if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
-            studioPreview.Show(comparingOriginal ? initialAppearance ?? new CharacterAppearance() : draft.Appearance);
-            var area = HudPrimitives.Fill("Appearance studio", scrim, Color.clear, 1);
-            area.anchorMin = new Vector2(.5f, 0f); area.anchorMax = new Vector2(.5f, 1f);
-            area.sizeDelta = new Vector2(Width, -290f);
-            area.anchoredPosition = new Vector2(0f, -5f);
+            switch (category)
+            {
+                case "Body": return "houseguest";
+                case "Face": return "mood-happy";
+                case "Hair": return "mood-confident";
+                case "Clothing": return PackArt.KitIconArchive;
+                default: return "star";
+            }
+        }
 
+        /// <summary>
+        /// The live preview on its platform: a pool of light, the lit ring the mockups stand the
+        /// houseguest on with the feet on its middle, the model over it, and the turntable on the
+        /// ring's front edge. <paramref name="full"/> adds the camera's other views and the
+        /// comparison with the look the edit began from.
+        /// </summary>
+        private void BuildPreviewStage(RectTransform scrim, Rect r, bool full)
+        {
+            EnsureStudio();
+            var stage = new GameObject("Preview stage", typeof(RectTransform)).GetComponent<RectTransform>();
+            stage.SetParent(scrim, false);
+            Place(stage, r.x, r.y, r.width, r.height);
+            float chipsY = r.height - 36f;
+            float turnY = full ? chipsY - 12f - 52f : r.height - 52f;
+            float ringWidth = Mathf.Min(r.width * .86f, 480f), ringHeight = Mathf.Min(ringWidth * .24f, 110f);
+            float floor = turnY - 6f;
+            float ringX = (r.width - ringWidth) * .5f, ringY = floor - ringHeight * .5f;
+
+            Backdrop("Platform light", stage, UiTheme.Pack(PackArt.GlowCyan) ?? UiTheme.Circle(),
+                new Color(UiTheme.Glow.r, UiTheme.Glow.g, UiTheme.Glow.b, .5f),
+                new Rect(ringX - ringWidth * .12f, ringY - ringHeight * .9f, ringWidth * 1.24f, ringHeight * 2.6f));
+            Backdrop("Platform floor", stage, UiTheme.Circle(), new Color(UiTheme.AccentDeep.r, UiTheme.AccentDeep.g, UiTheme.AccentDeep.b, .28f),
+                new Rect(ringX + 8f, ringY + 6f, ringWidth - 16f, ringHeight - 12f));
+            Backdrop("Platform ring", stage, UiTheme.Pack(PackArt.SelectionRing) ?? UiTheme.Ring(), UiTheme.Glow,
+                new Rect(ringX, ringY, ringWidth, ringHeight));
+            Backdrop("Platform edge", stage, UiTheme.Ring(), new Color(1f, 1f, 1f, .55f),
+                new Rect(ringX + ringWidth * .05f, ringY + ringHeight * .08f, ringWidth * .9f, ringHeight * .84f));
+
+            var region = new GameObject("Preview image region", typeof(RectTransform)).GetComponent<RectTransform>();
+            region.SetParent(stage, false);
+            Place(region, 0f, 0f, r.width, floor + 4f);
             var image = new GameObject("Live character preview", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
-            var previewRegion = new GameObject("Preview image region", typeof(RectTransform)).GetComponent<RectTransform>();
-            previewRegion.SetParent(area, false);
-            image.transform.SetParent(previewRegion, false);
-            image.texture = studioPreview.Texture;
-            image.raycastTarget = false;
-            var previewRect = previewRegion;
-            previewRect.anchorMin = new Vector2(0f, 0f); previewRect.anchorMax = new Vector2(0f, 1f);
-            previewRect.pivot = new Vector2(0f, .5f); previewRect.sizeDelta = new Vector2(480f, -185f);
-            previewRect.anchoredPosition = new Vector2(0f, 70f);
-            Stretch(image.rectTransform);
-            var aspect = image.gameObject.AddComponent<AspectRatioFitter>();
-            aspect.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-            aspect.aspectRatio = .8f;
+            image.transform.SetParent(region, false);
+            image.texture = studioPreview.Texture; image.raycastTarget = false;
+            // The studio's 4:5 picture, as tall as the region allows and standing on its floor:
+            // fitted and centred, it floated above the ring whenever the region was wider than it.
+            float pictureHeight = Mathf.Min(floor + 4f, r.width / .8f), pictureWidth = pictureHeight * .8f;
+            image.rectTransform.anchorMin = image.rectTransform.anchorMax = new Vector2(.5f, 0f);
+            image.rectTransform.pivot = new Vector2(.5f, 0f);
+            image.rectTransform.sizeDelta = new Vector2(pictureWidth, pictureHeight);
+            // The studio leaves a margin under the feet; take it back so they meet the ring.
+            image.rectTransform.anchoredPosition = new Vector2(0f, -pictureHeight * .05f);
 
-            var view = HudPrimitives.Fill("Preview controls", area, Color.clear, 1);
-            view.anchorMin = view.anchorMax = new Vector2(0f, 0f);
-            view.pivot = new Vector2(0f, 0f); view.sizeDelta = new Vector2(480f, 40f);
-            view.anchoredPosition = new Vector2(0f, 107f);
-            Chip(view, "Rotate left", -165f, 145f, false, () => studioPreview.Rotate(-30f));
-            Chip(view, "Front", 0f, 130f, false, () => studioPreview.View(0f));
-            Chip(view, "Rotate right", 165f, 145f, false, () => studioPreview.Rotate(30f));
-            var zoomRow = HudPrimitives.Fill("Zoom controls", area, Color.clear, 1);
-            zoomRow.anchorMin = zoomRow.anchorMax = new Vector2(0f, 0f);
-            zoomRow.pivot = new Vector2(0f, 0f); zoomRow.sizeDelta = new Vector2(480f, 40f);
-            zoomRow.anchoredPosition = new Vector2(0f, 66f);
-            Chip(zoomRow, "Zoom out", -165f, 145f, false, () => studioPreview.Zoom(-.1f));
-            Chip(zoomRow, "Side", 0f, 130f, false, () => studioPreview.View(90f));
-            Chip(zoomRow, "Zoom in", 165f, 145f, false, () => studioPreview.Zoom(.1f));
-            var statusRow = HudPrimitives.Fill("Preview recovery", area, Color.clear, 1);
-            statusRow.anchorMin = statusRow.anchorMax = new Vector2(0f, 0f);
-            statusRow.pivot = Vector2.zero; statusRow.sizeDelta = new Vector2(480f, 62f);
-            retryPreviewButton = Chip(statusRow, "Retry preview", 175f, 124f, false, () => studioPreview.Retry());
+            if (full && r.width >= 460f)
+            {
+                var side = Words(stage, "REAL\nPLAYERS\nBIGGER\nPOSSIBILITIES", 15f, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .8f),
+                    new Rect(8f, 70f, 200f, 120f));
+                side.characterSpacing = 4f; side.lineSpacing = 8f;
+                var neon = Words(stage, "Same House.\nDifferent Stories.", 30f, UiTheme.Hex("FF7AD9"),
+                    new Rect(r.width - 250f, 80f, 240f, 110f), TextAlignmentOptions.Center, "Preview neon");
+                neon.fontStyle = FontStyles.Italic; neon.lineSpacing = -20f;
+                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold); if (semibold != null) neon.font = semibold;
+                neon.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 8f);
+            }
+
+            // The turntable: the arrows either side of its name, on the ring's front edge.
+            var turntable = HudPrimitives.Fill("Turntable", stage, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .92f), 26);
+            Place(turntable, r.width * .5f - 150f, turnY, 300f, 52f);
+            UiTheme.AddBorder(turntable, 26, UiTheme.Edge(UiTheme.Emphasis.Interactive));
+            GlyphButton(turntable, "Rotate left", new Rect(4f, 4f, 44f, 44f), null, UiTheme.PlayMark(), () => studioPreview.Rotate(-30f))
+                .transform.Find("Glyph").localRotation = Quaternion.Euler(0f, 0f, 180f);
+            GlyphButton(turntable, "Rotate right", new Rect(252f, 4f, 44f, 44f), null, UiTheme.PlayMark(), () => studioPreview.Rotate(30f));
+            Words(turntable, "Rotate", 17f, UiTheme.Paper, new Rect(50f, 0f, 200f, 52f), TextAlignmentOptions.Center);
+            previewStatus = Words(stage, studioPreview.Status, 13f, UiTheme.Muted, new Rect(8f, 8f, r.width * .6f, 20f),
+                TextAlignmentOptions.TopLeft, "Preview status");
+            retryPreviewButton = Pill(stage, "Retry preview", new Rect(r.width - 132f, 2f, 132f, 30f), Tone.Quiet,
+                () => studioPreview.Retry(), size: 13f);
             retryPreviewButton.interactable = studioPreview.CanRetry;
-            previewStatus = HudPrimitives.Label("Preview status", statusRow, 12f, UiTheme.Muted, TextAlignmentOptions.Center);
-            previewStatus.rectTransform.anchorMin = previewStatus.rectTransform.anchorMax = new Vector2(0f, 0f);
-            previewStatus.rectTransform.pivot = new Vector2(0f, 0f);
-            previewStatus.rectTransform.sizeDelta = new Vector2(345f, 62f);
+            if (!full) return;
+            // The camera's other views, and the look the edit began from. Zoom is two glyphs whose
+            // captions are their names: as words the pair did not fit a narrow stage.
+            float zoom = 36f, chip = Mathf.Min(106f, (r.width - 16f - 2f * zoom - 4f * 6f) / 3.7f);
+            string compare = comparingOriginal ? "Return to edited look" : "Compare original";
+            float x = (r.width - (3.7f * chip + 2f * zoom + 4f * 6f)) * .5f;
+            Pill(stage, "Front", new Rect(x, chipsY, chip, 36f), Tone.Quiet, () => studioPreview.View(0f), size: 14f);
+            x += chip + 6f;
+            Pill(stage, "Side", new Rect(x, chipsY, chip, 36f), Tone.Quiet, () => studioPreview.View(90f), size: 14f);
+            x += chip + 6f;
+            GlyphButton(stage, "Zoom out", new Rect(x, chipsY, zoom, zoom), "\u2212", null, () => studioPreview.Zoom(-.1f));
+            x += zoom + 6f;
+            GlyphButton(stage, "Zoom in", new Rect(x, chipsY, zoom, zoom), "+", null, () => studioPreview.Zoom(.1f));
+            x += zoom + 6f;
+            Pill(stage, compare, new Rect(x, chipsY, chip * 1.7f, 36f), comparingOriginal ? Tone.Selected : Tone.Quiet,
+                () => { comparingOriginal = !comparingOriginal; Rebuild(); }, size: 14f);
+        }
 
-            var viewport = HudPrimitives.Fill("Appearance controls viewport", area, Color.clear, 1);
-            viewport.anchorMin = new Vector2(1f, 0f); viewport.anchorMax = Vector2.one;
-            viewport.pivot = new Vector2(1f, .5f); viewport.sizeDelta = new Vector2(ControlsWidth, 0f);
+        /// <summary>The live preview, awake and showing the look on the draft (or the original being compared).</summary>
+        private void EnsureStudio()
+        {
+            if (studioPreview == null) { studioPreview = CharacterStudioPreview.Create(); studioPreview.Transparent = true; studioFace = null; }
+            studioPreview.gameObject.SetActive(true);
+            previewOnPage = true;
+            // The close-up belongs to the face and hair, and the comparison with the original to the
+            // page that offers it: every other page shows the whole houseguest as they are now.
+            bool face = studioPage == "Appearance" && (appearanceCategory == "Face" || appearanceCategory == "Hair");
+            if (studioFace != face) { studioFace = face; studioPreview.FocusFace(face); }
+            bool original = comparingOriginal && studioPage == "Appearance";
+            studioPreview.Show(original ? initialAppearance ?? new CharacterAppearance() : draft.Appearance);
+        }
+
+        /// <summary>A picture laid behind the stage's other pieces, taking no clicks.</summary>
+        private static void Backdrop(string name, Transform parent, Sprite sprite, Color tint, Rect r)
+        {
+            var art = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            art.rectTransform.SetParent(parent, false);
+            art.sprite = sprite; art.color = tint; art.raycastTarget = false;
+            Place(art.rectTransform, r.x, r.y, r.width, r.height);
+        }
+
+        private void BuildAppearancePanel(RectTransform scrim, Rect r)
+        {
+            var box = Panel("Appearance panel", scrim, r, true);
+            float inner = r.width - 48f;
+            var heading = Words(box, "APPEARANCE", 24f, UiTheme.Glow, new Rect(24f, 20f, 200f, 34f));
+            var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) heading.font = bold;
+            heading.characterSpacing = 1.5f;
+            // Undo, Redo, Randomize and Reset, at the head of the panel as the mockup sets them.
+            float actionWidth = Mathf.Min(150f, (inner - 176f) / 4f - 8f), ax = r.width - 24f - 4f * (actionWidth + 8f) + 8f;
+            bool glyphs = actionWidth >= 132f;
+            undoAppearanceButton = Pill(box, "Undo", new Rect(ax, 18f, actionWidth, 40f), Tone.Secondary, UndoAppearance,
+                icon: glyphs ? PackArt.KitIconArrowBack : null, size: 15f);
+            redoAppearanceButton = Pill(box, "Redo", new Rect(ax + actionWidth + 8f, 18f, actionWidth, 40f), Tone.Secondary, RedoAppearance,
+                icon: glyphs ? PackArt.KitIconChevronRight : null, size: 15f);
+            Pill(box, "Randomize", new Rect(ax + 2f * (actionWidth + 8f), 18f, actionWidth, 40f), Tone.Secondary, RandomizeAppearance,
+                icon: glyphs ? PackArt.KitIconRefresh : null, size: 15f);
+            Pill(box, "Reset look", new Rect(ax + 3f * (actionWidth + 8f), 18f, actionWidth, 40f), Tone.Secondary,
+                () => ChangeAppearance(() => draft.Appearance = initialAppearance?.Clone() ?? new CharacterAppearance()),
+                icon: glyphs ? PackArt.KitIconRefresh : null, size: 15f);
+            undoAppearanceButton.interactable = appearanceUndo.Count > 0;
+            redoAppearanceButton.interactable = appearanceRedo.Count > 0;
+            Words(box, "Customize your look. Your appearance is independent of pronouns, personality and competition stats.", 15f, UiTheme.Muted,
+                new Rect(24f, 64f, inner, 42f)).textWrappingMode = TextWrappingModes.Normal;
+
+            var viewport = HudPrimitives.Fill("Appearance controls viewport", box, Color.clear, 1);
+            Place(viewport, 12f, 110f, r.width - 24f, r.height - 122f);
             viewport.gameObject.AddComponent<RectMask2D>();
             studioControls = new GameObject("Appearance controls", typeof(RectTransform)).GetComponent<RectTransform>();
             studioControls.SetParent(viewport, false);
@@ -141,82 +284,341 @@ namespace Gamesim.Presentation
             viewport.gameObject.AddComponent<SetupScrollFocus>();
             scroll.content = studioControls; scroll.viewport = viewport; scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 40f;
-            studioCursor = 0f;
+            studioCursor = 4f; studioWidth = r.width - 24f;
 
-            StudioText("Your appearance is independent of pronouns, personality and competition stats.", 46f);
-            var undoRow = StudioRow(42f);
-            undoAppearanceButton = Chip(undoRow, "Undo", -213f, 196f, false, UndoAppearance);
-            redoAppearanceButton = Chip(undoRow, "Redo", 0f, 196f, false, RedoAppearance);
-            undoAppearanceButton.interactable = appearanceUndo.Count > 0;
-            redoAppearanceButton.interactable = appearanceRedo.Count > 0;
-            Chip(undoRow, "Reset look", 213f, 196f, false,
-                () => ChangeAppearance(() => draft.Appearance = initialAppearance?.Clone() ?? new CharacterAppearance()));
-            var presets = StudioRow(44f);
-            Chip(presets, "Previous starting look", -160f, 306f, false, () => CyclePreset(-1));
-            Chip(presets, "Next starting look", 160f, 306f, false, () => CyclePreset(1));
-            var comparison = StudioRow(44f);
-            Chip(comparison, comparingOriginal ? "Return to edited look" : "Compare original", -160f, 306f, comparingOriginal,
-                () => { comparingOriginal = !comparingOriginal; Rebuild(); });
-            Chip(comparison, "Reset " + appearanceCategory.ToLowerInvariant(), 160f, 306f, false, ResetAppearanceCategory);
-
-            var categories = new[] { "Body", "Face", "Hair", "Clothing", "Colors" };
-            var categoriesRow = StudioRow(44f);
-            for (int i = 0; i < categories.Length; i++)
-            {
-                string category = categories[i];
-                Chip(categoriesRow, category, (i - 2) * 126f, 120f, appearanceCategory == category,
-                    () => { appearanceCategory = category; studioPreview.FocusFace(category == "Face" || category == "Hair"); Rebuild(); });
-            }
-            var random = StudioRow(44f);
-            Chip(random, randomLocks.Contains(appearanceCategory) ? "Unlock " + appearanceCategory : "Lock " + appearanceCategory,
-                -160f, 306f, randomLocks.Contains(appearanceCategory), () =>
-                { if (!randomLocks.Add(appearanceCategory)) randomLocks.Remove(appearanceCategory); Rebuild(); });
-            Chip(random, "Randomize unlocked", 160f, 306f, false, RandomizeAppearance);
             if (Catalog == null)
             {
-                StudioText("This installation supports complete preset bodies. Modular controls appear when compatible character content is available.", 72f);
-                studioControls.sizeDelta = new Vector2(0f, studioCursor);
-                studioControls.anchoredPosition = new Vector2(0f, studioScrollY);
+                StudioText("This installation supports complete preset bodies. Modular controls appear when compatible character content is available.", 60f);
+                StartingLooks();
+                FinishStudio();
                 return;
             }
-            if (!string.IsNullOrEmpty(appearanceNotice)) StudioText(appearanceNotice, 46f + appearanceNotice.Count(value => value == '\n') * 24f);
-            if (appearanceCategory == "Body")
+            if (!string.IsNullOrEmpty(appearanceNotice))
+                StudioText(appearanceNotice, 30f + appearanceNotice.Count(value => value == '\n') * 22f, UiTheme.Accent);
+            switch (appearanceCategory)
             {
-                var bodyRow = StudioRow(44f);
-                for (int i = 0; i < Catalog.Bodies.Count; i++)
+                case "Body":
+                    // The whole look first, as the studio opens on it: a cast member's, or yours.
+                    StartingLooks();
+                    BodyChoices();
+                    Sliders("Body");
+                    break;
+                case "Face":
+                    StartingLooks();
+                    Sliders("Face");
+                    break;
+                case "Hair":
+                    WardrobeStrip("Hair"); WardrobeStrip("Eyebrows"); WardrobeStrip("Beard");
+                    SwatchRow("HAIR COLOR", "Hair", HairSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear), SetHairColour);
+                    StudioText("The brows take the hair color. Give them one of their own under Colors.", 26f);
+                    break;
+                case "Clothing":
+                    OutfitSelector();
+                    var shown = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (var slot in AppearanceEditing.FabricSlots)
+                    {
+                        WardrobeStrip(slot);
+                        GarmentColour(slot, shown);
+                    }
+                    WardrobeStrip("TopUnderlayer"); WardrobeStrip("BottomUnderlayer");
+                    // Anything else worn with a colour of its own.
+                    foreach (string channel in AppearanceEditing.Outfit(draft.Appearance).wardrobe.SelectMany(worn => GarmentChannels(worn.itemId)).ToList())
+                        if (shown.Add(channel))
+                            SwatchRow(channel.ToUpperInvariant(), channel, FabricSwatches, OutfitChannel(channel), color => SetOutfitChannel(channel, color));
+                    break;
+                default:
+                    SwatchRow("SKIN TONE", "Skin", SkinSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Skin", Color.clear),
+                        color => AppearanceEditing.SetColor(draft.Appearance, "Skin", color));
+                    SwatchRow("HAIR COLOR", "Hair", HairSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear), SetHairColour);
+                    SwatchRow("BROW COLOR", "Brows", HairSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Brows", Color.clear),
+                        color => AppearanceEditing.SetColor(draft.Appearance, "Brows", color));
+                    StudioText("A hair color sets the brows to match; pick a brow color after it to set them apart. Some brow styles follow the hair whatever their own color.", 42f);
+                    SwatchRow("EYE COLOR", "Eyes", EyeSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Eyes", Color.clear),
+                        color => AppearanceEditing.SetColor(draft.Appearance, "Eyes", color));
+                    StudioText("Garment colors are under Clothing.", 22f);
+                    break;
+            }
+            CategoryTools();
+            FinishStudio();
+        }
+
+        /// <summary>
+        /// The category's own reset, and its lock: Randomize leaves a locked category as it is.
+        /// </summary>
+        private void CategoryTools()
+        {
+            string category = appearanceCategory.ToLowerInvariant();
+            bool locked = randomLocks.Contains(appearanceCategory);
+            float width = (studioWidth - 24f - 12f) * .5f;
+            studioCursor += 6f;
+            Pill(studioControls, "Reset " + category, new Rect(12f, studioCursor, width, 40f), Tone.Quiet, ResetAppearanceCategory,
+                icon: PackArt.KitIconRefresh, size: 14f);
+            // Named for what it is, not what it says: the caption flips, and keyboard focus is kept by name.
+            Pill(studioControls, (locked ? "Unlock " : "Lock ") + appearanceCategory, new Rect(24f + width, studioCursor, width, 40f),
+                locked ? Tone.Selected : Tone.Quiet, () =>
                 {
-                    var body = Catalog.Bodies[i];
-                    Chip(bodyRow, body.Label, (i - (Catalog.Bodies.Count - 1) * .5f) * 300f, 285f,
-                        Catalog.Materialize(draft.Appearance).bodyId == body.Id,
-                        () => ChangeAppearance(() =>
-                        {
-                            var changed = Catalog.ChangeBody(draft.Appearance, body.Id);
-                            appearanceNotice = AppearanceEditing.DescribeSubstitutions(draft.Appearance, changed, Catalog);
-                            draft.Appearance = changed;
-                        }));
-                }
-                StudioText("Changing body replaces clothes that do not fit. Undo restores your previous selections.", 44f);
-            }
-            if (appearanceCategory == "Body" || appearanceCategory == "Face")
-                foreach (var control in Catalog.Controls.Where(control => control.Category == appearanceCategory && control.Fits(draft.Appearance.bodyId))) ControlSlider(control);
-            else if (appearanceCategory == "Hair")
-            { WardrobeSelector("Hair"); WardrobeSelector("Eyebrows"); WardrobeSelector("Beard"); }
-            else if (appearanceCategory == "Clothing")
-            {
-                OutfitSelector();
-                WardrobeSelector("Chest"); WardrobeSelector("Legs"); WardrobeSelector("Feet");
-                WardrobeSelector("TopUnderlayer"); WardrobeSelector("BottomUnderlayer");
-                var appearance = Catalog.Materialize(draft.Appearance);
-                var outfit = AppearanceEditing.Outfit(appearance);
-                var channels = outfit.wardrobe.SelectMany(worn => AppearanceEditing.Find(Catalog, worn.itemId)?.ColorChannels
-                    ?? Array.Empty<string>()).Where(id => id != "Skin" && id != "Hair" && id != "Eyes" && id != "Brows").Distinct();
-                foreach (string channel in channels) ColorSelector(channel, true);
-                StudioText("Fabric colors are offered only for clothing with a working shared color channel.", 44f);
-            }
-            else { ColorSelector("Skin"); ColorSelector("Hair"); ColorSelector("Brows"); ColorSelector("Eyes"); }
+                    if (!randomLocks.Add(appearanceCategory)) randomLocks.Remove(appearanceCategory);
+                    Rebuild();
+                }, icon: PackArt.KitIconLock, size: 14f).name = "Category lock";
+            studioCursor += 46f;
+            StudioText(locked ? "Randomize keeps this category as it is." : "Lock a category to keep it when you Randomize.", 22f);
+        }
+
+        private void FinishStudio()
+        {
             studioControls.sizeDelta = new Vector2(0f, studioCursor + 16f);
             studioControls.anchoredPosition = new Vector2(0f, studioScrollY);
         }
+
+        /// <summary>A hair colour, and the brows with it: most brow styles follow the hair anyway, and
+        /// the rest would otherwise keep a starting look's colour nobody chose.</summary>
+        private void SetHairColour(Color color)
+        {
+            AppearanceEditing.SetColor(draft.Appearance, "Hair", color);
+            AppearanceEditing.SetColor(draft.Appearance, "Brows", color);
+        }
+
+        /// <summary>A garment's own shared colours - not the body's, which have their own rows.</summary>
+        private IEnumerable<string> GarmentChannels(string itemId) =>
+            (AppearanceEditing.Find(Catalog, itemId)?.ColorChannels ?? Array.Empty<string>())
+                .Where(id => id != "Skin" && id != "Hair" && id != "Eyes" && id != "Brows");
+
+        /// <summary>
+        /// The worn garment's colour, under its styles. A garment of the house's own fabric takes a
+        /// tint of its own; one built on shared colours offers those instead, because a fabric tint
+        /// would not reach it.
+        /// </summary>
+        private void GarmentColour(string slot, HashSet<string> shown)
+        {
+            var outfit = AppearanceEditing.Outfit(draft.Appearance);
+            var worn = outfit.wardrobe.FirstOrDefault(item => item.slot == slot);
+            if (worn == null) return;
+            string name = SlotLabel(slot);
+            var channels = GarmentChannels(worn.itemId).ToList();
+            if (channels.Count > 0)
+            {
+                for (int i = 0; i < channels.Count; i++)
+                {
+                    string channel = channels[i];
+                    if (!shown.Add(channel)) continue;
+                    SwatchRow(name.ToUpperInvariant() + " COLOR" + (channels.Count > 1 ? " " + (i + 1) : ""), channel, FabricSwatches,
+                        OutfitChannel(channel), color => SetOutfitChannel(channel, color));
+                }
+                return;
+            }
+            bool tinted = AppearanceEditing.TryFabric(outfit, slot, out var tint);
+            SwatchRow(name.ToUpperInvariant() + " COLOR", "Fabric " + slot, FabricSwatches, tinted ? tint : Color.clear,
+                color => AppearanceEditing.SetFabric(draft.Appearance, slot, color),
+                tinted ? (Action)(() => AppearanceEditing.SetFabric(draft.Appearance, slot, null)) : null,
+                "Original " + name.ToLowerInvariant() + " color");
+        }
+
+        private Color OutfitChannel(string channel)
+        {
+            var entry = AppearanceEditing.Outfit(draft.Appearance).colors.FirstOrDefault(item => item.id == channel);
+            return entry == null ? Color.clear : new Color(entry.r, entry.g, entry.b, 1f);
+        }
+
+        private void SetOutfitChannel(string channel, Color color)
+        {
+            var outfit = AppearanceEditing.Outfit(draft.Appearance);
+            outfit.colors.RemoveAll(entry => entry.id == channel);
+            outfit.colors.Add(new AppearanceColor { id = channel, r = color.r, g = color.g, b = color.b, a = 1f });
+        }
+
+        // ---------------------------------------------------------------- the category's choices
+
+        /// <summary>A sub-heading in the panel, the mockup's "BODY" / "HAIR" line.</summary>
+        private void StudioHeading(string title, string detail = null)
+        {
+            var label = Words(studioControls, title, 17f, UiTheme.Glow, new Rect(12f, studioCursor, studioWidth * .6f, 26f));
+            var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) label.font = bold;
+            label.characterSpacing = 2f;
+            if (detail != null)
+                Words(studioControls, detail, 14f, UiTheme.Muted, new Rect(studioWidth * .4f, studioCursor + 2f, studioWidth * .6f - 12f, 24f),
+                    TextAlignmentOptions.TopRight, "Heading detail").overflowMode = TextOverflowModes.Ellipsis;
+            studioCursor += 32f;
+        }
+
+        private void StudioText(string value, float height, Color? colour = null)
+        {
+            var label = Words(studioControls, value, 14f, colour ?? UiTheme.Muted, new Rect(12f, studioCursor, studioWidth - 24f, height), name: "Studio label");
+            label.textWrappingMode = TextWrappingModes.Normal;
+            studioCursor += height + 4f;
+        }
+
+        private void BodyChoices()
+        {
+            StudioHeading("BODY", "Changing body replaces clothes that do not fit");
+            var current = Catalog.Materialize(draft.Appearance).bodyId;
+            float size = 112f, x = 12f;
+            foreach (var body in Catalog.Bodies)
+            {
+                var option = body;
+                var card = Thumbnail(studioControls, option.Label, option.Label, new Rect(x, studioCursor, size, size + 18f), current == option.Id,
+                    null, null, "houseguest", () => ChangeAppearance(() =>
+                    {
+                        var changed = Catalog.ChangeBody(draft.Appearance, option.Id);
+                        appearanceNotice = AppearanceEditing.DescribeSubstitutions(draft.Appearance, changed, Catalog);
+                        draft.Appearance = changed;
+                    }));
+                x += size + 12f;
+            }
+            studioCursor += size + 30f;
+        }
+
+        /// <summary>The proportion or feature sliders for a category, two to a row as the mockup lays them.</summary>
+        private void Sliders(string category)
+        {
+            var controls = Catalog.Controls.Where(control => control.Category == category && control.Fits(draft.Appearance.bodyId)).ToList();
+            if (controls.Count == 0) return;
+            StudioHeading(category == "Body" ? "PROPORTIONS" : "FACE");
+            float column = (studioWidth - 24f - 28f) * .5f;
+            for (int i = 0; i < controls.Count; i++)
+            {
+                float x = 12f + (i % 2) * (column + 28f);
+                ControlSlider(controls[i], new Rect(x, studioCursor, column, 62f));
+                if (i % 2 == 1 || i == controls.Count - 1) studioCursor += 70f;
+            }
+        }
+
+        /// <summary>
+        /// The starting looks - every cast member's look, and the player's - as portraits to pick from,
+        /// the arrows stepping through them one at a time.
+        /// </summary>
+        private void StartingLooks()
+        {
+            var ids = PresetIds();
+            int current = Math.Max(0, ids.IndexOf(draft.Appearance?.presetId));
+            StudioHeading("STARTING LOOK", "Replaces the whole look; Undo restores it");
+            float arrow = 44f, face = 86f, gap = 10f;
+            int visible = Mathf.Max(1, Mathf.FloorToInt((studioWidth - 24f - 2f * (arrow + gap) + gap) / (face + gap)));
+            int first = Mathf.Clamp(current - visible / 2, 0, Mathf.Max(0, ids.Count - visible));
+            GlyphButton(studioControls, "Previous starting look", new Rect(12f, studioCursor + (face - arrow) * .5f, arrow, arrow), null, UiTheme.PlayMark(),
+                () => CyclePreset(-1)).transform.Find("Glyph").localRotation = Quaternion.Euler(0f, 0f, 180f);
+            float x = 12f + arrow + gap;
+            for (int i = first; i < Math.Min(ids.Count, first + visible); i++)
+            {
+                string id = ids[i];
+                var template = CastTemplates.Find(id);
+                string label = template != null ? template.Name.Split(' ')[0] : "You";
+                Thumbnail(studioControls, "Starting look " + label, label, new Rect(x, studioCursor, face, face + 18f), i == current, null,
+                    null, "houseguest", () => ChangeAppearance(() => draft.Appearance = Catalog?.Materialize(new CharacterAppearance { presetId = id })
+                        ?? new CharacterAppearance { presetId = id }), template != null ? CastTemplates.ToContestant(template, false) : null);
+                x += face + gap;
+            }
+            GlyphButton(studioControls, "Next starting look", new Rect(studioWidth - 12f - arrow, studioCursor + (face - arrow) * .5f, arrow, arrow), null,
+                UiTheme.PlayMark(), () => CyclePreset(1));
+            studioCursor += face + 34f;
+        }
+
+        private static List<string> PresetIds()
+        {
+            var ids = new List<string> { ContentCatalog.PlayerId };
+            foreach (CastTemplates.Roster roster in Enum.GetValues(typeof(CastTemplates.Roster)))
+                ids.AddRange(CastTemplates.In(roster).Select(template => template.Id));
+            return ids;
+        }
+
+        private static string SlotLabel(string slot) => slot == "TopUnderlayer" ? "Underwear top" : slot == "BottomUnderlayer" ? "Underwear bottoms"
+            : slot == "Chest" ? "Top" : slot == "Legs" ? "Bottoms" : slot == "Feet" ? "Shoes" : slot == "Beard" ? "Facial hair" : slot;
+
+        /// <summary>
+        /// A wardrobe slot as a strip of thumbnails around the one worn, the arrows wearing the style
+        /// before or after it; the name of what is worn, and Remove, above it.
+        /// </summary>
+        private void WardrobeStrip(string slot)
+        {
+            string slotLabel = SlotLabel(slot);
+            var appearance = Catalog.Materialize(draft.Appearance);
+            var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(appearance.bodyId)).ToList();
+            if (choices.Count == 0) return;
+            var selected = AppearanceEditing.Outfit(appearance).wardrobe.FirstOrDefault(item => item.slot == slot);
+            int index = choices.FindIndex(item => item.Matches(selected?.itemId));
+            string worn = index >= 0 ? choices[index].Label : selected == null ? "None" : "Saved item unavailable";
+            StudioHeading(slotLabel.ToUpperInvariant(), worn + "  ·  " + choices.Count + " styles");
+            bool compact = slot == "TopUnderlayer" || slot == "BottomUnderlayer" || slot == "Eyebrows" || slot == "Beard";
+            float arrow = 40f, thumb = compact ? 70f : 84f, gap = 8f, removeWidth = arrow;
+            int visible = Mathf.Max(1, Mathf.FloorToInt((studioWidth - 24f - removeWidth - 10f - 2f * (arrow + gap) + gap) / (thumb + gap)));
+            int first = Mathf.Clamp((index < 0 ? 0 : index) - visible / 2, 0, Mathf.Max(0, choices.Count - visible));
+            float rowY = studioCursor, centre = rowY + (thumb + 16f - arrow) * .5f;
+            var previous = GlyphButton(studioControls, "Previous " + slotLabel.ToLowerInvariant(), new Rect(12f, centre, arrow, arrow), null, UiTheme.PlayMark(),
+                () => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, choices[(index - 1 + choices.Count) % choices.Count], Catalog)));
+            previous.name = "Previous " + slot.ToLowerInvariant();
+            previous.transform.Find("Glyph").localRotation = Quaternion.Euler(0f, 0f, 180f);
+            float x = 12f + arrow + gap;
+            for (int i = first; i < Math.Min(choices.Count, first + visible); i++)
+            {
+                var item = choices[i];
+                Thumbnail(studioControls, "Wear " + item.Label, item.Label, new Rect(x, rowY, thumb, thumb + 16f), i == index, item.Thumbnail, null,
+                    slot == "Hair" || slot == "Eyebrows" || slot == "Beard" ? "mood-playful" : PackArt.KitIconArchive,
+                    () => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, item, Catalog)));
+                x += thumb + gap;
+            }
+            float nextX = 12f + arrow + gap + visible * (thumb + gap);
+            GlyphButton(studioControls, "Next " + slotLabel.ToLowerInvariant(), new Rect(nextX, centre, arrow, arrow), null, UiTheme.PlayMark(),
+                () => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, choices[(index + 1) % choices.Count], Catalog)))
+                .name = "Next " + slot.ToLowerInvariant();
+            var remove = GlyphButton(studioControls, "Remove " + slotLabel.ToLowerInvariant(), new Rect(studioWidth - 12f - removeWidth, centre, removeWidth, arrow),
+                null, UiTheme.Pack(PackArt.KitIconCross), () => ChangeAppearance(() => AppearanceEditing.Outfit(draft.Appearance).wardrobe.RemoveAll(item => item.slot == slot)));
+            remove.name = "Remove " + slot.ToLowerInvariant();
+            Enable(remove, selected != null);
+            studioCursor += thumb + 30f;
+        }
+
+        private void OutfitSelector()
+        {
+            StudioHeading("OUTFIT", "Editing: " + (draft.Appearance?.activeOutfit ?? "Everyday"));
+            var options = new[] { "Everyday", "Competition", "Formal", "Sleepwear", "Swimwear" };
+            float width = (studioWidth - 24f - 4f * 8f) / options.Length;
+            for (int i = 0; i < options.Length; i++)
+            {
+                string option = options[i];
+                Pill(studioControls, option, new Rect(12f + i * (width + 8f), studioCursor, width, 40f),
+                    draft.Appearance?.activeOutfit == option ? Tone.Selected : Tone.Secondary, () => ChangeAppearance(() =>
+                    {
+                        var current = AppearanceEditing.Outfit(draft.Appearance);
+                        if (!draft.Appearance.outfits.Any(outfit => outfit.id == option))
+                        {
+                            var copy = current.Clone(); copy.id = option; draft.Appearance.outfits.Add(copy);
+                        }
+                        draft.Appearance.activeOutfit = option;
+                    }), size: 15f);
+            }
+            studioCursor += 52f;
+        }
+
+        /// <summary>
+        /// A row of swatches for one colour, on the pack's swatch panel; the worn colour is ringed.
+        /// Each is named "<paramref name="prefix"/> N". A row with a <paramref name="clear"/> action
+        /// offers the garment's own colour back, at the right of its heading.
+        /// </summary>
+        private void SwatchRow(string title, string prefix, string[] palette, Color current, Action<Color> apply, Action clear = null,
+            string clearCaption = null)
+        {
+            float headingY = studioCursor;
+            StudioHeading(title);
+            if (clear != null)
+                Pill(studioControls, clearCaption ?? "Original color", new Rect(studioWidth - 12f - 200f, headingY - 4f, 200f, 30f), Tone.Quiet,
+                    () => ChangeAppearance(clear), icon: PackArt.KitIconRefresh, size: 13f);
+            var plate = HudPrimitives.Fill(prefix + " swatches", studioControls, UiTheme.Surface, 10);
+            Place(plate, 12f, studioCursor, studioWidth - 24f, 58f);
+            if (!UiTheme.PackSliced(plate.GetComponent<Image>(), PackArt.CreatorSwatchesPanel, 12f))
+                UiTheme.AddBorder(plate, 10, UiTheme.Outline);
+            float size = 38f, gap = Mathf.Min(14f, (studioWidth - 48f - palette.Length * size) / Math.Max(1, palette.Length - 1));
+            float x = 12f;
+            for (int i = 0; i < palette.Length; i++)
+            {
+                ColorUtility.TryParseHtmlString("#" + palette[i], out var colour);
+                bool chosen = current.a > 0f && Mathf.Abs(current.r - colour.r) < .02f && Mathf.Abs(current.g - colour.g) < .02f && Mathf.Abs(current.b - colour.b) < .02f;
+                var pick = colour;
+                Swatch(plate, prefix + " " + (i + 1), colour, chosen, new Rect(x, 10f, size, size), () => ChangeAppearance(() => apply(pick)));
+                x += size + gap;
+            }
+            studioCursor += 70f;
+        }
+
+        // ---------------------------------------------------------------- editing
 
         private void ChangeAppearance(Action change, bool rebuild = true)
         {
@@ -248,7 +650,7 @@ namespace Gamesim.Presentation
                 else if (appearanceCategory == "Colors") draft.Appearance.colors = original.colors.Select(color => color.Clone()).ToList();
                 else if (appearanceCategory == "Clothing")
                 {
-                    var hairSlots = new[] { "Hair", "Eyebrows", "Beard" };
+                    var hairSlots = AppearanceEditing.CharacterSlots;
                     foreach (var outfit in draft.Appearance.outfits)
                     {
                         var baseline = original.outfits.FirstOrDefault(item => item.id == outfit.id) ?? original.outfits.First();
@@ -273,11 +675,17 @@ namespace Gamesim.Presentation
                     // Off every outfit, because Wear puts them on every outfit.
                     foreach (var set in draft.Appearance.outfits)
                         set.wardrobe.RemoveAll(item => slots.Contains(item.slot));
-                    foreach (var worn in (baseline?.wardrobe ?? new System.Collections.Generic.List<AppearanceWardrobe>())
-                                 .Where(item => slots.Contains(item.slot)))
+                    foreach (var worn in (baseline?.wardrobe ?? new List<AppearanceWardrobe>()).Where(item => slots.Contains(item.slot)))
                     {
                         var item = Catalog.Items.FirstOrDefault(option => option.Matches(worn.itemId) && option.Fits(draft.Appearance.bodyId));
                         if (item != null) AppearanceEditing.Wear(draft.Appearance, item, Catalog);
+                    }
+                    // The hair's colour is on this page too, and the brows' goes with it.
+                    foreach (string id in new[] { "Hair", "Brows" })
+                    {
+                        draft.Appearance.colors.RemoveAll(color => color.id == id);
+                        var was = original.colors.FirstOrDefault(color => color.id == id);
+                        if (was != null) draft.Appearance.colors.Add(was.Clone());
                     }
                 }
                 appearanceNotice = "Reset " + appearanceCategory.ToLowerInvariant() + ". Undo restores the previous choices.";
@@ -300,9 +708,7 @@ namespace Gamesim.Presentation
 
         private void CyclePreset(int direction)
         {
-            var ids = new List<string> { ContentCatalog.PlayerId };
-            foreach (CastTemplates.Roster roster in Enum.GetValues(typeof(CastTemplates.Roster)))
-                ids.AddRange(CastTemplates.In(roster).Select(template => template.Id));
+            var ids = PresetIds();
             int current = Math.Max(0, ids.IndexOf(draft.Appearance?.presetId));
             string id = ids[(current + direction + ids.Count) % ids.Count];
             ChangeAppearance(() => draft.Appearance = Catalog?.Materialize(new CharacterAppearance { presetId = id })
@@ -320,46 +726,15 @@ namespace Gamesim.Presentation
             return area;
         }
 
-        private void ControlSlider(AppearanceControl control)
+        /// <summary>One proportion or feature: its name and value over the pack's slider.</summary>
+        private void ControlSlider(AppearanceControl control, Rect r)
         {
             var appearance = Catalog.Materialize(draft.Appearance);
             float value = appearance.dna.FirstOrDefault(item => item.id == control.Id)?.value ?? .5f;
-            var row = StudioRow(58f);
-            var caption = HudPrimitives.Label(control.Label, row, 15f, UiTheme.Paper, TextAlignmentOptions.TopLeft);
-            Stretch(caption.rectTransform); caption.text = control.Label + "  " + value.ToString("0.00");
-            // The track is the row's hit area; what shows is a thin line, the accent up to the
-            // value and a round handle, as the mockups draw a meter. The track used to be the
-            // raised surface colour, which on the studio's ground drew a handle on nothing.
-            var track = HudPrimitives.Fill(control.Label + " slider", row, new Color(0f, 0f, 0f, 0f), 6);
-            // Right under its own caption: at the foot of a taller row it stood nearer the next
-            // slider's caption than its own.
-            track.anchorMin = new Vector2(0f, 1f); track.anchorMax = new Vector2(1f, 1f);
-            track.pivot = new Vector2(.5f, 1f); track.sizeDelta = new Vector2(-28f, 24f); track.anchoredPosition = new Vector2(0f, -24f);
-            var line = HudPrimitives.Fill("Line", track, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .9f), 3);
-            line.anchorMin = new Vector2(0f, .5f); line.anchorMax = new Vector2(1f, .5f);
-            line.pivot = new Vector2(.5f, .5f); line.sizeDelta = new Vector2(0f, 6f); line.anchoredPosition = Vector2.zero;
-            // The fill and the handle each ride in an area of their own height. A Slider sets its
-            // fill's and handle's anchors to the full height of their parent every time it draws,
-            // so parented to the track the 6-unit fill stood 30 tall and the 22-unit handle 46 -
-            // a slab with an oval on it, reaching down over the next row's caption.
-            var fillArea = SliderArea("Fill area", track, 6f);
-            var fill = HudPrimitives.Fill("Fill", fillArea, UiTheme.Accent, 3);
-            fill.pivot = new Vector2(0f, .5f); fill.sizeDelta = Vector2.zero; fill.anchoredPosition = Vector2.zero;
-            var handleArea = SliderArea("Handle area", track, 22f);
-            var handle = HudPrimitives.Disc("Handle", handleArea, UiTheme.Paper);
-            handle.pivot = new Vector2(.5f, .5f); handle.sizeDelta = new Vector2(22f, 0f); handle.anchoredPosition = Vector2.zero;
-            var ring = HudPrimitives.Disc("Handle ring", handle, UiTheme.Accent);
-            ring.anchorMin = Vector2.zero; ring.anchorMax = Vector2.one; ring.offsetMin = new Vector2(-3f, -3f); ring.offsetMax = new Vector2(3f, 3f);
-            ring.SetAsFirstSibling();
-            ring.GetComponent<Image>().raycastTarget = false;
-            track.GetComponent<Image>().raycastTarget = true;
-            handle.GetComponent<Image>().raycastTarget = true;
-            line.GetComponent<Image>().raycastTarget = false;
-            fill.GetComponent<Image>().raycastTarget = false;
-            var slider = track.gameObject.AddComponent<Slider>();
-            slider.targetGraphic = handle.GetComponent<Image>(); slider.handleRect = handle; slider.fillRect = fill;
-            slider.direction = Slider.Direction.LeftToRight;
-            slider.minValue = control.Minimum; slider.maxValue = control.Maximum; slider.value = value;
+            Words(studioControls, control.Label, 16f, UiTheme.Paper, new Rect(r.x, r.y, r.width - 60f, 24f), name: control.Label);
+            var number = Words(studioControls, value.ToString("0.00"), 16f, UiTheme.Paper, new Rect(r.x + r.width - 60f, r.y, 60f, 24f),
+                TextAlignmentOptions.TopRight, "Slider value");
+            var slider = PackSlider(studioControls, control.Label + " slider", new Rect(r.x, r.y + 28f, r.width, 26f), control.Minimum, control.Maximum, value);
             slider.onValueChanged.AddListener(next =>
             {
                 if (lastSlider != control.Id || Time.unscaledTime - lastSliderEdit > .4f)
@@ -374,126 +749,8 @@ namespace Gamesim.Presentation
                 studioPreview?.Show(draft.Appearance);
                 if (undoAppearanceButton != null) undoAppearanceButton.interactable = true;
                 if (redoAppearanceButton != null) redoAppearanceButton.interactable = false;
-                caption.text = control.Label + "  " + next.ToString("0.00");
+                number.text = next.ToString("0.00");
             });
-        }
-
-        private void WardrobeSelector(string slot)
-        {
-            string slotLabel = slot == "TopUnderlayer" ? "Underwear top" : slot == "BottomUnderlayer" ? "Underwear bottoms"
-                : slot == "Chest" ? "Top" : slot == "Legs" ? "Bottoms" : slot == "Feet" ? "Shoes" : slot == "Beard" ? "Facial hair" : slot;
-            var appearance = Catalog.Materialize(draft.Appearance);
-            var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(appearance.bodyId)).ToList();
-            if (choices.Count == 0) return;
-            var selected = AppearanceEditing.Outfit(appearance).wardrobe.FirstOrDefault(item => item.slot == slot);
-            int index = choices.FindIndex(item => item.Matches(selected?.itemId));
-            string label = index >= 0 ? choices[index].Label : selected == null ? "None" : "Saved item unavailable";
-            StudioText(slotLabel + ": " + label, 38f);
-            var row = StudioRow(42f);
-            Chip(row, "Previous " + slotLabel.ToLowerInvariant(), -213f, 198f, false,
-                () => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, choices[(index - 1 + choices.Count) % choices.Count], Catalog)))
-                .name = "Previous " + slot.ToLowerInvariant();
-            Chip(row, "Next " + slotLabel.ToLowerInvariant(), 0f, 198f, false,
-                () => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, choices[(index + 1) % choices.Count], Catalog)))
-                .name = "Next " + slot.ToLowerInvariant();
-            Chip(row, "Remove " + slotLabel.ToLowerInvariant(), 213f, 198f, false,
-                () => ChangeAppearance(() => AppearanceEditing.Outfit(draft.Appearance).wardrobe.RemoveAll(item => item.slot == slot)))
-                .name = "Remove " + slot.ToLowerInvariant();
-            var browse = StudioRow(42f);
-            Chip(browse, expandedWardrobeSlot == slot ? "Close " + slotLabel.ToLowerInvariant() + " styles" : "Browse " + choices.Count + " " + slotLabel.ToLowerInvariant() + " styles",
-                0f, 580f, expandedWardrobeSlot == slot,
-                () => { expandedWardrobeSlot = expandedWardrobeSlot == slot ? null : slot; Rebuild(); });
-            if (expandedWardrobeSlot != slot) return;
-            int page = wardrobePages.TryGetValue(slot, out var savedPage) ? savedPage : Math.Max(0, index) / 6;
-            int pages = (choices.Count + 5) / 6;
-            page = Math.Min(page, pages - 1);
-            for (int r = 0; r < 2; r++)
-            {
-                var cards = StudioRow(132f);
-                for (int c = 0; c < 3; c++)
-                {
-                    int itemIndex = page * 6 + r * 3 + c;
-                    if (itemIndex >= choices.Count) break;
-                    var item = choices[itemIndex];
-                    var card = HudPrimitives.Fill("Wear " + item.Label, cards, item.Matches(selected?.itemId) ? UiTheme.AccentDeep : UiTheme.SurfaceRaised, 8);
-                    card.anchorMin = card.anchorMax = new Vector2(.5f, .5f);
-                    card.sizeDelta = new Vector2(198f, 128f);
-                    card.anchoredPosition = new Vector2((c - 1) * 211f, 0f);
-                    card.GetComponent<Image>().raycastTarget = true;
-                    var button = card.gameObject.AddComponent<Button>();
-                    button.targetGraphic = card.GetComponent<Image>();
-                    button.onClick.AddListener(() => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, item, Catalog)));
-                    var labelText = HudPrimitives.Label("Style name", card, 11f, UiTheme.Paper, TextAlignmentOptions.Center);
-                    labelText.text = item.Label;
-                    labelText.rectTransform.anchorMin = labelText.rectTransform.anchorMax = new Vector2(.5f, 0f);
-                    labelText.rectTransform.pivot = new Vector2(.5f, 0f);
-                    labelText.rectTransform.sizeDelta = new Vector2(188f, 32f);
-                    if (item.Thumbnail != null)
-                    {
-                        var art = new GameObject("Style thumbnail", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-                        art.transform.SetParent(card, false);
-                        art.sprite = item.Thumbnail; art.preserveAspect = true; art.raycastTarget = false;
-                        art.rectTransform.anchorMin = art.rectTransform.anchorMax = new Vector2(.5f, 1f);
-                        art.rectTransform.pivot = new Vector2(.5f, 1f);
-                        art.rectTransform.sizeDelta = new Vector2(184f, 90f);
-                        art.rectTransform.anchoredPosition = new Vector2(0f, -4f);
-                    }
-                }
-            }
-            if (pages > 1)
-            {
-                var paging = StudioRow(42f);
-                Chip(paging, "Previous styles", -213f, 198f, false, () => { wardrobePages[slot] = (page - 1 + pages) % pages; Rebuild(); });
-                var pageLabel = HudPrimitives.Label("Styles page", paging, 13f, UiTheme.Muted, TextAlignmentOptions.Center);
-                pageLabel.text = (page + 1) + " / " + pages;
-                pageLabel.rectTransform.sizeDelta = new Vector2(130f, 32f);
-                Chip(paging, "More styles", 213f, 198f, false, () => { wardrobePages[slot] = (page + 1) % pages; Rebuild(); });
-            }
-        }
-
-        private void OutfitSelector()
-        {
-            StudioText("Outfit: " + (draft.Appearance?.activeOutfit ?? "Everyday"), 32f);
-            var options = new[] { "Everyday", "Competition", "Formal", "Sleepwear", "Swimwear" };
-            var row = StudioRow(44f);
-            for (int i = 0; i < options.Length; i++)
-            {
-                string option = options[i];
-                Chip(row, option, (i - 2) * 126f, 120f, draft.Appearance?.activeOutfit == option, () => ChangeAppearance(() =>
-                {
-                    var current = AppearanceEditing.Outfit(draft.Appearance);
-                    if (!draft.Appearance.outfits.Any(outfit => outfit.id == option))
-                    {
-                        var copy = current.Clone(); copy.id = option; draft.Appearance.outfits.Add(copy);
-                    }
-                    draft.Appearance.activeOutfit = option;
-                }));
-            }
-        }
-
-        private static readonly string[] ColorSwatches = { "241B18", "62412F", "A5714A", "D0A078", "F0D3B0", "EEE4D7", "442E56", "386778", "526B39", "982F38", "CA8D36", "383D49" };
-
-        private void ColorSelector(string channel, bool outfitColor = false)
-        {
-            StudioText(channel + " color", 28f);
-            var row = StudioRow(44f);
-            for (int i = 0; i < ColorSwatches.Length; i++)
-            {
-                ColorUtility.TryParseHtmlString("#" + ColorSwatches[i], out var color);
-                var button = Chip(row, channel + " " + (i + 1), (i - 5.5f) * 52f, 46f, false, () => ChangeAppearance(() =>
-                {
-                    if (!outfitColor) AppearanceEditing.SetColor(draft.Appearance, channel, color);
-                    else
-                    {
-                        var outfit = AppearanceEditing.Outfit(draft.Appearance);
-                        outfit.colors.RemoveAll(entry => entry.id == channel);
-                        outfit.colors.Add(new AppearanceColor { id = channel, r = color.r, g = color.g, b = color.b, a = 1f });
-                    }
-                }));
-                button.GetComponent<Image>().color = color;
-                button.GetComponentInChildren<TMP_Text>().text = (i + 1).ToString();
-                button.GetComponentInChildren<TMP_Text>().color = UiTheme.OnColor(color);
-            }
         }
 
         private void RandomizeAppearance()
@@ -507,117 +764,23 @@ namespace Gamesim.Presentation
                             Mathf.Lerp(control.Minimum, control.Maximum, (float)cosmeticRandom.NextDouble()));
                 foreach (string slot in new[] { "Hair", "Eyebrows", "Beard", "Chest", "Legs", "Feet" })
                 {
-                    if (randomLocks.Contains(slot == "Hair" || slot == "Eyebrows" || slot == "Beard" ? "Hair" : "Clothing")) continue;
+                    if (randomLocks.Contains(AppearanceEditing.IsCharacterSlot(slot) ? "Hair" : "Clothing")) continue;
                     var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(draft.Appearance.bodyId)).ToList();
                     if (choices.Count > 0) AppearanceEditing.Wear(draft.Appearance, choices[cosmeticRandom.Next(choices.Count)], Catalog);
                 }
-                if (!randomLocks.Contains("Colors")) foreach (string id in new[] { "Skin", "Hair", "Brows", "Eyes" })
+                if (!randomLocks.Contains("Colors")) { Pick(SkinSwatches, "Skin"); Pick(EyeSwatches, "Eyes"); }
+                // The hair's colour is on the Hair page and the Colors page: either lock keeps it.
+                if (!randomLocks.Contains("Colors") && !randomLocks.Contains("Hair"))
                 {
-                    ColorUtility.TryParseHtmlString("#" + ColorSwatches[cosmeticRandom.Next(id == "Skin" ? 6 : ColorSwatches.Length)], out var color);
+                    Pick(HairSwatches, "Hair");
+                    SetHairColour(AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.black));
+                }
+                void Pick(string[] palette, string id)
+                {
+                    ColorUtility.TryParseHtmlString("#" + palette[cosmeticRandom.Next(palette.Length)], out var color);
                     AppearanceEditing.SetColor(draft.Appearance, id, color);
                 }
             });
-        }
-
-        private void BuildLibrary()
-        {
-            Text("MY HOUSEGUESTS", 22f, UiTheme.Paper, 40f, TextAlignmentOptions.Left);
-            Text("Saved profiles can be reused, renamed, duplicated or deleted. Existing seasons keep their own independent copy.", 15f, UiTheme.Muted, 44f, TextAlignmentOptions.Left);
-            var row = Row(48f);
-            Chip(row, "Save this houseguest", -200f, 350f, true, () => SaveProfile(false));
-            Chip(row, "Save a new copy", 200f, 350f, false, () => SaveProfile(true));
-            if (!string.IsNullOrEmpty(libraryMessage)) Text(libraryMessage, 15f, UiTheme.Accent, 45f, TextAlignmentOptions.Left);
-            var store = ProfileStore;
-            var profiles = store.List();
-            foreach (string error in store.ReadErrors) Text(error, 14f, UiTheme.Warning, 52f, TextAlignmentOptions.Left);
-            if (profiles.Count == 0) Text("Your saved houseguests will appear here.", 16f, UiTheme.Muted, 42f, TextAlignmentOptions.Left);
-            var visibleProfiles = profileBrowser.Draw(Row(48f), profiles, Rebuild);
-            if (profiles.Count > 0 && visibleProfiles.Count == 0)
-                Text("No saved houseguests match this name. Clear search to see everyone.", 16f, UiTheme.Muted, 42f, TextAlignmentOptions.Left);
-            foreach (var profile in visibleProfiles)
-            {
-                var entry = profile;
-                var profileRow = Row(56f);
-                CharacterProfileBrowser.Thumbnail(profileRow, entry, -518f);
-                Chip(profileRow, entry.name, -285f, 340f, false, () =>
-                {
-                    AdoptLibraryDraft(entry, false);
-                });
-                Chip(profileRow, "Duplicate " + entry.name, 65f, 300f, false, () =>
-                {
-                    AdoptLibraryDraft(entry, true);
-                });
-                Chip(profileRow, pendingDeleteProfile == entry.id ? "Confirm delete " + entry.name : "Delete " + entry.name,
-                    400f, 325f, pendingDeleteProfile == entry.id, () =>
-                    {
-                        if (pendingDeleteProfile != entry.id)
-                        { pendingDeleteProfile = entry.id; libraryMessage = "Delete removes the library profile. Existing seasons and the current draft are unaffected. Click Confirm delete to proceed."; }
-                        else
-                        {
-                            bool removed = store.Delete(entry.id, out var deleteError);
-                            libraryMessage = removed ? "Deleted " + entry.name + " from My Houseguests." : deleteError;
-                            if (removed && profileId == entry.id) profileId = null;
-                            pendingDeleteProfile = null;
-                        }
-                        Rebuild();
-                    });
-            }
-            if (pendingDeleteProfile != null)
-                Chip(Row(48f), "Cancel deletion", 0f, 420f, false, () => { pendingDeleteProfile = null; libraryMessage = null; Rebuild(); });
-        }
-
-        private void AdoptLibraryDraft(CharacterProfile profile, bool duplicate)
-        {
-            draft = profile.ToDraft();
-            if (duplicate) draft.Name += " (copy)";
-            profileId = duplicate ? null : profile.id;
-            draft.Appearance = draft.Appearance ?? new CharacterAppearance();
-            if (Catalog != null) draft.Appearance = Catalog.Materialize(draft.Appearance);
-            initialAppearance = draft.Appearance.Clone();
-            appearanceUndo.Clear(); appearanceRedo.Clear();
-            comparingOriginal = false;
-            appearanceNotice = lastSlider = null;
-            lastSliderEdit = 0f;
-            studioPage = duplicate ? "Identity" : "Appearance";
-            Rebuild();
-        }
-
-        private void SaveProfile(bool duplicate)
-        {
-            if (!draft.TryValidate(out var error)) { libraryMessage = error; Rebuild(); return; }
-            string id = duplicate || string.IsNullOrEmpty(profileId) ? Guid.NewGuid().ToString("N") : profileId;
-            if (ProfileStore.Save(CharacterProfile.FromDraft(id, draft), out error))
-            { profileId = id; libraryMessage = "Saved " + draft.Name + "."; }
-            else libraryMessage = error;
-            Rebuild();
-        }
-
-        private void BuildReview()
-        {
-            Text(string.IsNullOrWhiteSpace(draft.Name) ? "Your houseguest" : draft.Name, 26f, UiTheme.Paper, 44f, TextAlignmentOptions.Left);
-            Text(Summary(), 18f, UiTheme.Muted, 36f, TextAlignmentOptions.Left);
-            Text(string.Join(" · ", draft.Traits), 17f, UiTheme.Accent, 34f, TextAlignmentOptions.Left);
-            Text(draft.Bio, 16f, UiTheme.Paper, 110f, TextAlignmentOptions.Left);
-            Text(pending.HouseSize + " houseguests · " + CastTemplates.RosterName(pending.Roster), 18f, UiTheme.Gold, 42f, TextAlignmentOptions.Left);
-            Text("The season receives a snapshot of this character. Future edits in My Houseguests will not alter an ongoing season.",
-                16f, UiTheme.Muted, 60f, TextAlignmentOptions.Left);
-            Text("Everyday is your house look. Competition and Formal outfits are used for their activities when saved. The outfit selected in this preview does not choose your starting activity outfit.",
-                16f, UiTheme.Muted, 86f, TextAlignmentOptions.Left);
-        }
-
-        private RectTransform StudioRow(float height)
-        {
-            var row = HudPrimitives.Fill("Studio row", studioControls, Color.clear, 1);
-            Place(row, ControlsWidth - 8f, height, -studioCursor);
-            studioCursor += height + 6f;
-            return row;
-        }
-
-        private void StudioText(string value, float height)
-        {
-            var row = StudioRow(height);
-            var label = HudPrimitives.Label("Studio label", row, 14f, UiTheme.Paper, TextAlignmentOptions.Left);
-            Stretch(label.rectTransform); label.text = value;
         }
     }
 }

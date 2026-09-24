@@ -42,6 +42,7 @@ namespace Gamesim.Presentation
             var box = HudPrimitives.Fill("Profile name search", row, UiTheme.Surface, 8);
             Place(box, -310f, 440f);
             box.GetComponent<Image>().raycastTarget = true;
+            UiTheme.AddBorder(box, 8, UiTheme.Edge(UiTheme.Emphasis.Interactive));
             var text = HudPrimitives.Label("Search text", box, 15f, UiTheme.Paper, TextAlignmentOptions.MidlineLeft);
             var hint = HudPrimitives.Label("Search hint", box, 15f, UiTheme.Muted, TextAlignmentOptions.MidlineLeft);
             hint.text = "Search saved houseguests by name";
@@ -82,6 +83,7 @@ namespace Gamesim.Presentation
             var box = HudPrimitives.Fill(caption, row, UiTheme.SurfaceRaised, 8);
             Place(box, x, width);
             box.GetComponent<Image>().raycastTarget = true;
+            UiTheme.AddBorder(box, 8, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .55f));
             var label = HudPrimitives.Label("Label", box, 15f, UiTheme.Paper, TextAlignmentOptions.Center);
             label.text = caption; label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(3f, 0f); label.rectTransform.offsetMax = new Vector2(-3f, 0f);

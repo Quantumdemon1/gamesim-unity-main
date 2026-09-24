@@ -66,6 +66,21 @@ namespace Gamesim.Presentation
             lamp.intensity = intensity; lamp.shadows = LightShadows.None;
         }
 
+        /// <summary>
+        /// Clears to nothing rather than the studio's dark blue, so the houseguest stands on whatever
+        /// the picture is laid over - the creator's platform. Portraits keep their backdrop.
+        /// </summary>
+        public bool Transparent
+        {
+            set
+            {
+                var clear = cameraRig.backgroundColor;
+                clear.a = value ? 0f : 1f;
+                cameraRig.backgroundColor = clear;
+                RenderCompleted();
+            }
+        }
+
         public void Show(CharacterAppearance appearance)
         {
             appearance = appearance ?? new CharacterAppearance();

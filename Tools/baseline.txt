@@ -10,7 +10,9 @@
 #
 #   <assembly> <minimum tests>
 Gamesim.EditModeTests 1444
-Gamesim.PlayModeTests 357
+Gamesim.PlayModeTests 364
+# The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
+Gamesim.Uma.PlayModeTests 31
 # Tools/SimulationTests: the Unity-free subset CI runs on every push (.github/workflows/ci.yml).
 # Most of it is cases generated from the web fixtures - a fixture that stops loading drops
 # hundreds of tests and would otherwise still read green.

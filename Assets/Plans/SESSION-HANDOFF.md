@@ -8,6 +8,131 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 00000. The character creator, rebuilt to its mockups — and colours that reach the body (23 September, late night)
+
+The user sent four mockups (Appearance, Identity, Personality, My Houseguests) and reported that hair
+colour, clothing colour and so on could not be changed: every model had white hair.
+
+**Why the hair was white.** UMA 3's card-hair shader (`UMA3_HairShader_URP`) reads its colour from
+its own `_BaseColor`, `_RootColor` and `_Tip_Color` properties. A plain shared colour sets the
+channel mask and never those, so every houseguest's hair drew in the material's pale default.
+`UmaBodyProvider.HairColour` builds an `OverlayColorData` that carries the three properties.
+`SetRawColor(..., false)` keeps them; `SetColor` would drop the property block.
+- Eyebrows and lashes use the "Hair" shared colour. A separate brows colour changes nothing, so the
+  creator no longer offers one.
+
+**Why clothing had no colour.** The house's `bb_` garments have no shared colour at all: each overlay
+carries its own unshared colour. A fabric colour is now saved as an outfit colour named
+`Fabric-Chest`, `Fabric-Legs` or `Fabric-Feet` (`AppearanceEditing.SetFabric` / `TryFabric`). This
+reuses the existing `outfit.colors` list, so there is no schema change.
+- The provider maps each worn garment's recipe slots to its tint.
+- `UmaBodyTint.Bind(..., garmentTints)` hooks `OnCharacterBegun`, which fires before textures are
+  generated. There it replaces each unshared overlay colour in those slots with a tinted clone. It
+  never mutates the shared asset.
+
+**The creator** is now one page per step, in partials:
+- `CharacterCreator.Chrome`: frame, header, tabs, footer, and the Pill / GlyphButton / Swatch /
+  Thumbnail helpers.
+- `.Studio`: Appearance.
+- `.Identity`.
+- `.Personality`.
+- `.Library`: My Houseguests and Review.
+
+**How the page is laid out.**
+- **From the frame.** Layout comes from the frame the canvas is really drawn to: the screen, or the
+  camera a capture hands it to, through the scaler. When that frame changes, `RefitToFrame` rebuilds
+  on the next frame, so a window resize or a review capture gets its own layout.
+- **The live preview.** It clears to transparent (`CharacterStudioPreview.Transparent`, which only the
+  creator sets; portraits keep their backdrop). The houseguest stands on a lit ring with the
+  turntable on its front edge.
+
+**The pages.**
+- **Appearance.**
+  - The sidebar lists the categories.
+  - The panel has Undo, Redo, Randomize and Reset look.
+  - Body: the starting looks as portraits, the body cards, and the proportions two to a row.
+  - Hair: style strips with arrows and Remove, and hair colour.
+  - Clothing: the outfits, then each garment's style strip with **its own colour row** and "Original
+    … color".
+  - Colors: skin, hair and eye palettes.
+  - Each category keeps its Reset and its Lock; Randomize leaves locked categories alone.
+- **Identity.** The form (name, occupation, hometown, bio with a counter, age slider and steps,
+  pronouns), the preview, and a card showing the photo, bio and facts.
+- **Personality.** The 17 traits as cards showing their real boosts, then 8 tendencies with segment
+  bars and +/− steppers, then the summary (the draft's archetype, traits and strongest stats).
+- **My Houseguests.**
+  - The shared search row and "Create new houseguest", which takes two presses.
+  - Cards with bound portraits.
+  - A bar for the houseguest in focus: Play as, Edit, Duplicate, Rename, Delete (with confirm).
+- **Review.** Who they are, their stats, the season, and a readiness checklist.
+
+**The caption contract held.** Every caption the tests, the season walk and the cast screen use is
+still a control's first text. Glyph-only controls (arrows, swatches, +/−, Remove) carry theirs as a
+hidden first label, stretched to the control.
+
+**Traps:**
+- A TMP label left at its default rect is 200×50. On a 40-pixel glyph button it spilled 80 units
+  past the frame. The new page-fit test caught it.
+- The portrait queue renders through `CharacterStudioPreview` too. Clearing that class to transparent
+  would have put every portrait in the game on white, so transparency is opt-in.
+- The pack's slider track and fill are drawn for a thick bar; sliced 8 units thin they are all border
+  and read as nothing. The creator's sliders draw a plain line and fill under the pack's handle.
+- `AspectRatioFitter` (FitInParent) takes over the anchors. A picture that must stand on a floor is
+  sized by hand.
+
+**The review** (4 reviewers, each finding checked by a skeptic): 28 of 30 findings were confirmed,
+and all are fixed. The ones that mattered:
+- **Loading and looking are separate.** Pressing a card still loads its houseguest (the tests and the
+  season walk rely on that). A "Details for …" glyph on each card focuses it without loading, so
+  the bar's Delete and Duplicate reach any card without replacing the draft. Play as, Edit and Rename
+  on the houseguest already loaded go to their page and keep the edits.
+- **The first click after typing was lost.** A field's end-of-edit rebuilt the page under the press
+  that ended it; this was inherited from HEAD. The rebuild now waits a frame (`rebuildSoon`), and the
+  focus restore stands aside while the event system is mid-selection.
+- **What belongs to a page ends with it.** "Compare original", the head-shot framing, an armed Delete
+  and an armed new houseguest all end on a page change (`GoTo`). `Show` clears the last session's
+  notice, message and armed delete.
+- **Hair colour belongs to the Hair page too.** Lock Hair keeps it through Randomize, and Reset hair
+  restores it.
+- **Brows.** Five catalogue brow styles bind the "Brows" colour rather than "Hair". A hair pick now
+  sets both, and a BROW COLOR row on Colors sets them apart.
+- **Garments on shared colours** (the turquoise hoodie) offer their shared-colour row under the
+  garment, not a fabric tint that could not reach them.
+- **Substitutes.** A fabric tint lands on the substitute garment actually worn, not on the recipe
+  that could not be.
+- **Short frames.** The Identity fields and the tendency rows scroll rather than run under the
+  footer. The "Original … color" control moved to its heading row. Zoom became two glyphs.
+- **Focus you can see.** Every control lights a ring while the keyboard or the pad is on it
+  (`CreatorFocus`). A disabled glyph dims whole (`Enable`).
+- **Copy for a cast slot** speaks about the cast member, not you.
+
+The two refuted findings:
+- Card-press-loads is the contract.
+- Focus fallback is handled by the HUD's overlay scope.
+
+**Tests:** 7 new PlayMode tests and 1 new UMA test.
+- Every page fits the frame at standard and larger text, and each page is captured.
+- Re-layout for the frame the canvas is drawn to.
+- Swatches write the colour they show (fabric, hair, brows).
+- New-houseguest confirm.
+- Lock survives Randomize.
+- Looking does not load.
+- The comparison ends with its page.
+- The hair and fabric colours reach the materials that draw them.
+
+**Mutation testing:** 13 mutations, 12 caught.
+- The survivor was equivalent: removing only the hidden label's anchors leaves it zero-sized. The
+  real defect, the 200×50 default rect, was caught by the page-fit test before the fix.
+- The hair mutation (plain `SetColor`) failed with the material's pale 0.82 default: the white hair
+  exactly.
+
+**Untested on purpose:**
+- The deferred rebuild after a field edit needs a real pointer press through the input module.
+- The shared-colour garment row and the substitute-garment tint need a catalogue item the harness
+  does not wear.
+
+---
+
 ## 0000. The minigames redrawn, and new ones brainstormed (23 September, night)
 
 The user asked for more minigames in the games' tone and theme, and for better quality and styling

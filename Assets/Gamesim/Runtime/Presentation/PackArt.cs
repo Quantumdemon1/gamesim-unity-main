@@ -84,6 +84,26 @@ namespace Gamesim.Presentation
         public const string KitIconCross = "Kit6_Refinement/Icons/ic_cross";
         public const string KitIconClock = "Kit6_Refinement/Icons/ic_clock";
         public const string KitIconWarning = "Kit6_Refinement/Icons/ic_warning";
+        public const string KitIconHeart = "Kit6_Refinement/Icons/ic_heart";
+        public const string KitIconRefresh = "Kit6_Refinement/Icons/ic_refresh";
+        public const string KitIconSave = "Kit6_Refinement/Icons/ic_save";
+        public const string KitIconCalendar = "Kit6_Refinement/Icons/ic_calendar";
+        public const string KitIconMore = "Kit6_Refinement/Icons/ic_more";
+        public const string KitIconEye = "Kit6_Refinement/Icons/ic_eye";
+        public const string KitIconChat = "Kit6_Refinement/Icons/ic_chat";
+        public const string KitIconHome = "Kit6_Refinement/Icons/ic_home";
+        public const string KitIconStory = "Kit6_Refinement/Icons/ic_story";
+        public const string KitIconArchive = "Kit6_Refinement/Icons/ic_archive";
+        // The character creator's own pieces (Pack 2): steps, category tiles, sliders, swatches, thumbnails.
+        public const string CreatorStepActive = "Pack2_Gameplay/CharacterCreator/creator_step_active_9slice";
+        public const string CreatorStepInactive = "Pack2_Gameplay/CharacterCreator/creator_step_inactive_9slice";
+        public const string CreatorCategoryTile = "Pack2_Gameplay/CharacterCreator/creator_category_tile_9slice";
+        public const string CreatorSliderTrack = "Pack2_Gameplay/CharacterCreator/creator_slider_track_9slice";
+        public const string CreatorSliderFill = "Pack2_Gameplay/CharacterCreator/creator_slider_fill_9slice";
+        public const string CreatorSliderHandle = "Pack2_Gameplay/CharacterCreator/creator_slider_handle";
+        public const string CreatorSwatchesPanel = "Pack2_Gameplay/CharacterCreator/creator_swatches_panel_9slice";
+        public const string CreatorThumbnail = "Pack2_Gameplay/CharacterCreator/creator_thumbnail_frame_9slice";
+        public const string CreatorThumbnailSelected = "Pack2_Gameplay/CharacterCreator/creator_thumbnail_selected_9slice";
         // The competition art Pack 2 and Pack 3 drew for the games.
         public const string AnswerTile = "Pack2_Gameplay/Competition/answer_tile_9slice";
         public const string StaminaPanel = "Pack3_Systems/CompetitionHUD/endurance_stamina_panel_9slice";

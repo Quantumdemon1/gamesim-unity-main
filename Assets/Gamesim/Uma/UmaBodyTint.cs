@@ -35,16 +35,49 @@ namespace Gamesim.Uma
         private bool preserveFabric;
         private CharacterBodyBuildState buildState;
         private int readyAfterFrame = -1;
+        private IReadOnlyDictionary<string, Color> garmentTints;
 
         internal void Bind(DynamicCharacterAvatar target, Color wardrobe, IReadOnlyDictionary<string, float> dna,
-            bool preserveFabric = false, CharacterBodyBuildState buildState = null)
+            bool preserveFabric = false, CharacterBodyBuildState buildState = null,
+            IReadOnlyDictionary<string, Color> garmentTints = null)
         {
             avatar = target;
             fabric = wardrobe;
             proportions = dna;
             this.preserveFabric = preserveFabric;
             this.buildState = buildState;
-            if (avatar != null) avatar.OnCharacterUpdated += OnCharacterUpdated;
+            this.garmentTints = garmentTints;
+            if (avatar == null) return;
+            avatar.OnCharacterUpdated += OnCharacterUpdated;
+            if (garmentTints != null && garmentTints.Count > 0) avatar.OnCharacterBegun += TintGarments;
+        }
+
+        /// <summary>
+        /// Lays each tinted garment's colour on its own overlays, as UMA begins a build and before it
+        /// merges the textures that carry them. The house's clothes have no shared colour of their
+        /// own - their overlays each hold a private white - so a shared-colour name could never reach
+        /// them; the overlay's own colour does. Only a garment's private colours are touched: a
+        /// shared colour on a garment (skin showing through, say) is the character's, not the cloth's.
+        /// Each colour is replaced by a copy, never edited, so no other character reading the same
+        /// recipe is repainted.
+        /// </summary>
+        private void TintGarments(UMAData data)
+        {
+            if (data?.umaRecipe?.slotDataList == null || garmentTints == null) return;
+            foreach (var slot in data.umaRecipe.slotDataList)
+            {
+                if (slot == null || !garmentTints.TryGetValue(slot.slotName, out var tint)) continue;
+                var overlays = slot.GetOverlayList();
+                for (int i = 0; i < overlays.Count; i++)
+                {
+                    var overlay = overlays[i];
+                    if (overlay?.colorData == null || overlay.colorData.IsASharedColor) continue;
+                    var painted = overlay.colorData.Clone();
+                    if (painted.channelMask == null || painted.channelMask.Length == 0) painted = new OverlayColorData(3);
+                    painted.channelMask[0] = new Color(tint.r, tint.g, tint.b, painted.channelMask[0].a <= 0f ? 1f : painted.channelMask[0].a);
+                    overlay.colorData = painted;
+                }
+            }
         }
 
         /// <summary>
@@ -129,7 +162,7 @@ namespace Gamesim.Uma
 
         private void OnDestroy()
         {
-            if (avatar != null) avatar.OnCharacterUpdated -= OnCharacterUpdated;
+            if (avatar != null) { avatar.OnCharacterUpdated -= OnCharacterUpdated; avatar.OnCharacterBegun -= TintGarments; }
             avatar = null;
         }
     }

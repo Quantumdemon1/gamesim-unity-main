@@ -134,6 +134,10 @@ namespace Gamesim.Uma
             // would quietly re-dress them.
             avatar.preloadWardrobeRecipes.loadDefaultRecipes = false;
             avatar.preloadWardrobeRecipes.recipes.Clear();
+            // What each saved wardrobe slot actually put on the body - a substitute, when the saved
+            // garment could not be worn - so a fabric tint lands on what is drawn.
+            var dressed = new Dictionary<string, UMAWardrobeRecipe>(StringComparer.Ordinal);
+            var wornSet = appearance?.outfits.FirstOrDefault(item => item.id == appearance.activeOutfit)?.wardrobe;
             foreach (var recipeName in look.Wardrobe)
             {
                 var installedCatalog = (UmaAppearanceCatalog)Catalog;
@@ -152,26 +156,44 @@ namespace Gamesim.Uma
                     if (recipe == null) continue;
                 }
                 avatar.preloadWardrobeRecipes.recipes.Add(new DynamicCharacterAvatar.WardrobeRecipeListItem(recipe));
+                string wornSlot = wornSet?.FirstOrDefault(item => item.itemId == recipeName)?.slot;
+                if (wornSlot != null) dressed[wornSlot] = recipe;
             }
 
             avatar.SetColor(SkinColor, look.Skin);
-            avatar.SetColor(HairColor, look.Hair);
+            // Hair goes in raw, with the hair shader's own colours: see HairColour.
+            avatar.SetRawColor(HairColor, HairColour(look.Hair), false);
             avatar.SetColor(BrowsColor, look.Brows);
             avatar.SetColor(EyesColor, look.Eyes);
+            var fabric = new Dictionary<string, Color>(StringComparer.Ordinal);
             if (appearance != null)
             {
                 foreach (var color in appearance.colors)
-                    avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
+                    if (color.id != HairColor) avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
                 var outfit = appearance.outfits.FirstOrDefault(item => item.id == appearance.activeOutfit);
-                if (outfit != null) foreach (var color in outfit.colors)
-                    avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
+                if (outfit != null)
+                {
+                    foreach (var color in outfit.colors)
+                        if (!AppearanceEditing.IsFabricChannel(color.id))
+                            avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
+                    // A fabric tint belongs to one garment: the slots its recipe builds, found here
+                    // so the tint can be laid on those overlays and no others.
+                    foreach (string slot in AppearanceEditing.FabricSlots)
+                    {
+                        if (!AppearanceEditing.TryFabric(outfit, slot, out var tint)) continue;
+                        var packed = dressed.TryGetValue(slot, out var recipe) ? recipe.PackedLoad() : null;
+                        if (packed?.slotsV3 == null) continue;
+                        foreach (var part in packed.slotsV3)
+                            if (part != null && !string.IsNullOrEmpty(part.id)) fabric[part.id] = tint;
+                    }
+                }
             }
 
             // The stylize pass, the fabric tint and the house proportions all need the assembled
             // character, so they are handed to a component that lives on the body and waits for it.
             // House proportions first, then whatever this houseguest overrides.
             root.AddComponent<UmaBodyTint>().Bind(avatar, wardrobe, look.Dna,
-                preserveFabric: appearance != null, buildState: buildState);
+                preserveFabric: appearance != null, buildState: buildState, garmentTints: fabric);
 
             // The face. Added here rather than after the build because UMA hands the expression
             // player the race's pose set during the avatar's own Start, and only to a player that
@@ -180,6 +202,29 @@ namespace Gamesim.Uma
 
             body = new CharacterBody(root, animator, deferred: true);
             return true;
+        }
+
+        /// <summary>
+        /// A hair colour UMA 3's card hair can actually show.
+        ///
+        /// <para>That hair is drawn by <c>UMA3_HairShader_URP</c>, which takes its colour from three
+        /// material properties - base, root and tip - and ignores the overlay's tint that every other
+        /// shared colour works through. Setting "Hair" to a colour alone left those properties at the
+        /// material's own pale grey over a pale texture: every houseguest's hair was white, whatever
+        /// the library or the creator said. UMA's own hair presets carry the three as a property
+        /// block on the shared colour; so does this, the roots a shade deeper and the tips catching
+        /// a little light, as those presets do. Eyebrows and lashes share the colour and read the
+        /// tint, so they follow.</para>
+        /// </summary>
+        internal static OverlayColorData HairColour(Color colour)
+        {
+            colour.a = 1f;
+            var data = new OverlayColorData(3);
+            data.channelMask[0] = colour;
+            data.SetColorProperty("_BaseColor", colour);
+            data.SetColorProperty("_RootColor", new Color(colour.r * .82f, colour.g * .82f, colour.b * .82f, 1f));
+            data.SetColorProperty("_Tip_Color", Color.Lerp(colour, Color.white, .06f));
+            return data;
         }
 
         public void SetWardrobeColor(in CharacterBody body, Color wardrobe)

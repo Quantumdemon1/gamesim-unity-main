@@ -651,6 +651,15 @@ namespace Gamesim.Tests.PlayMode
             while (director.Snapshot.phase != EpisodePhase.Finished && count++ < 150)
             {
                 yield return ContinueCompetitionResults(byKeyboard: false);
+                yield return SkipReveals();
+                // A skipped eviction reveal hands over to the week's recap. This walk used to press
+                // on under the reveal, which the recap takes as the player moving on and drops.
+                if (director.IsWeeklyRecapOpen)
+                {
+                    ButtonWithCaption(WeeklyRecapScreen.ContinueCaption).onClick.Invoke();
+                    yield return Frames(2);
+                    Assert.That(director.IsWeeklyRecapOpen, Is.False, "The recap's Continue closes it.");
+                }
                 var before = director.Snapshot;
                 var next = NextCommand(before);
                 if (!director.IsPanelOpen)

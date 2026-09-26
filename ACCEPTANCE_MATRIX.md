@@ -300,13 +300,21 @@ it: `EpisodeHouse` has eight rooms and `HousePrototype` — the U02 reference sc
 NPC motion suite loads — still has five. Demanding all eight made the query work in the shipping
 scene and fail in the one the tests run against.
 
-Two things this pass changed that affect other sections:
+Three things this pass changed that affect other sections:
 
 - **The camera now ships at 24, not 48.** C and D figures taken at 48 are stale; the cast reads at
   roughly 2.7%–4.6% of frame height rather than 1.8%–2.2%. See `PLAYTEST_PROTOCOL.md`.
 - **The first-run tour changes what E2 measures.** It is the intervention that criterion exists to
   detect the absence of. Run E2 with it off, or record that it was on. It now plays at every
   season's opening, so "off" means skipping it on sight (see `PLAYTEST_PROTOCOL.md`).
+- **The key ceremony and the vote reveal now hold the house while they play (26 September).** B2
+  still passes as written: the cards themselves take no raycasts. But the chrome steps aside, and the
+  house's shortcuts and the UI's Submit wait, until the reveal ends or the player skips it. One press
+  jumps a reveal to its result and a second closes it. Reveals default to a suspenseful pace. The two
+  take 30 to 50 seconds in an early week, by house size, which is 20 to 30 seconds more than the
+  quick pace they had before.
+  E1 figures from before are not comparable. Record the pace setting, and whether the participant
+  skipped reveals (see `PLAYTEST_PROTOCOL.md`).
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

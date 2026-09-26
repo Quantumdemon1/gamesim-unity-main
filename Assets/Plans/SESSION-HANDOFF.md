@@ -8,6 +8,64 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 0000000000000. Ceremonies that keep their secret: a suspenseful pace you can skip or speed up, and the spoilers gone (26 September)
+
+The request: "Brainstorm improvements to minigames and other features of the game". After the brainstorm the owner decided:
+1. Keep stats, and weight the minigames more.
+2. Widen the competitions with luck and social (the web's five types).
+3. Throwing a competition should lose about 90% of the time. When it still wins, say the player got lucky, or explain how a throw can still win.
+4. Prize and punishment vetoes and have-nots: yes.
+5. Suspense and slower pacing for the ceremonies, with the option to skip or speed up.
+
+The plan is five batches, each tested, mutation-tested and committed before the next:
+1. Honest ceremonies and pacing (decision 5). **This entry.**
+2. Competition rules v4 (decisions 1–3).
+3. Prize and punishment vetoes and have-nots (decision 4; needs a schema bump).
+4. Strategy windows: lobbying the HoH and the veto holder, reply cards, deal fixes.
+5. The finale: jury reveal, jury present, and the evictee's walk out through the opening's front door. The walk-out moved here from batch 1.
+
+**Pacing** (new `Presentation/CeremonyPacing.cs`)
+- Two paces. **Suspenseful** is the default: a beat on every key and vote and a longer one before the last. **Quick** is the timings the cards had before.
+  - The reference build holds about seven seconds per key; the port had 0.62 s. Suspenseful sits between, and shortens for a big house.
+  - Key ceremony: 2.2 s a key, 1.8 at seven keys or more, 1.4 at ten or more. The last key waits another 1.8 s ("One key left"), and the block holds 3.6 s.
+  - Vote reveal: 1.8 s a vote, 1.4 at six or more. The last vote waits another 1.6 s, a tie gets a 2.4 s beat before the Head of Household breaks it, and the result holds 3.6 s.
+- **Speed up:** Space or the pad's X plays a reveal at 3×. **Skip:** a click, Enter, keypad Enter, Esc, or the pad's A or B jumps to the block or result, and a second press closes. Both wait out a 0.35 s read delay, and each card shows its controls.
+- **Settings:** a CEREMONIES section with "Make ceremonies quick" / "Make ceremonies suspenseful", kept in the `Gamesim.CeremonyPace` PlayerPrefs key (0 suspenseful, 1 quick). The key is neither read nor written under a test save root.
+- Reduced motion keeps the timings (they are reading time) and now cuts to the ceremony's room instead of skipping the framing.
+- The takeover card (the veto field, and any ceremony without a reveal) is dismissable by keyboard and pad, as the reveals are.
+
+**Honest ceremonies** (new `EpisodeDirector.CeremonyTruth.cs`)
+- **The keys are shuffled.** They came out in cast order, and the player is first in the cast, so the first key told a safe player their fate every week. `KeyOrder` is an FNV hash of seed, week and id: the same week of the same season deals the same way after a reload. It is presentation only and draws nothing from the season's generator.
+- **The chrome steps aside while a reveal plays.** The status line, house panel and cast strip were redrawn from the committed result while the reveal was still counting, so they named the nominees and the evictee first. `EpisodeHud.HoldForReveal` takes the HUD to alpha 0 with no raycasts. It comes back, redrawn, when the card ends or is skipped.
+- **A card owns its keys.** While any ceremony card is on screen:
+  - the UI's Submit and Cancel actions are disabled, so the press that moves a card on no longer presses the HUD control under it;
+  - the house's shortcuts and follow-cycling wait (the pad's X is both speed-up and Interact);
+  - Esc on a card no longer also closes the notebook or opens the settings.
+- **The evictee stays for their eviction.** The body was switched off at the commit, so the room turned to look at an empty spot. `departingId` keeps them in the room until the last card narrating the eviction is gone.
+- **The count is the house's.** The Head of Household's tie-break ballot is marked (`EvictionBallots` sets `TieBreak`), so a 1–1 tie no longer reads 2–1. The reveal calls the tie, then shows the HoH's vote with its own chip and pip.
+- **The host reads the result:** "By a vote of X to Y, NAME, you have been evicted.", a sole-voter line, or "By the Head of Household's tie-breaking vote, …". An evicted player is spoken to as "you", and a player HoH is asked to break the tie.
+- **The sound matches the beat.** The commit's cue came from its last event, which after an eviction is always a vote read out, so the eviction's sound never played. `CommitCue` takes the biggest beat among everything appended: winner, eviction, nomination, veto, competition. The reveals now raise their own cues: Save per key, Nomination at the block, Vote per ballot and Eviction at the result.
+- **The veto card tells the meeting's story.** Its badges read VETO (the holder, when not on the block), SAVED, REPLACEMENT and NOMINATED; every face used to say NOMINATED.
+- **The finale's jury line** counts the real jury and, for an even jury, names who a split goes to under the reference game's tie rule. It said "Four jurors" whatever the house; the default house seats six.
+
+**Harness**
+- Port verification runs at the quick pace.
+- So does the keyboard walk, which waits out every card on the wall clock.
+- The pointer season walk and the voting-bloc walk skip reveals the way a player would (`SkipReveals`). They used to press HUD controls under a reveal, which nobody could see.
+- The season walk now also presses the weekly recap's "Continue to next week". That recap never opened in the walk before: pressing on under the reveal made the recap drop itself as an interruption.
+
+**Tests.** EditMode added `CeremonyTruthTests` (4) and `CeremonyPacingTests` (3). PlayMode added `CeremonyRevealPlayModeTests` (18) and `EpisodePlayModeTests.CeremonyTruth` (7). 33 mutations across the pacing, the cards and the director, all caught at their target assertions. One was missed at first, and it exposed a test that had never switched reduced motion on: the fixture's reduced motion is the bodies' own, and the director reads the player's setting from preferences it leaves alone under a test save root. The test now switches it on in Settings and checks that the camera cut rather than panned.
+
+**Verified:** EditMode 1513, Uma 64 and Simulation 782, all passing. PlayMode 541 over two full runs, 537 and 540, with every test passing in at least one:
+- The first run lost four house-life tests together within 45 seconds (a body without an animator, a sleep take not playing). They passed 34/34 when re-run in suite order after the ceremony tests.
+- The second run lost one camera-framing test (`DefaultCamera_RetainsAutomaticConversationFraming`, a standalone rig in another fixture). It passed on its own.
+- No crashes.
+- Treat both as known flakes. Neither touches anything this batch changed.
+
+Floors raised from 1506 and 516 to 1513 and 541.
+
+**Next:** batch 2, competition rules 4 (decisions 1–3): five kinds dealt in each season's own order, luck and social scoring, full marks worth three points, a real throw calibrated to win about one time in ten at every field size, and the dice and word games. Then batches 3 to 5 as listed above.
+
 ## 000000000000. The opening, second pass: the GitHub web's opening, Gamesim: The House, a front door nobody walks through shut (26 September)
 
 The request: carry on with the opening's open items, then - "don't use the survivor version, use the web version from the GitHub repo going forward, brainstorm solutions for the open items". After the brainstorm the owner decided: **3D reveals** (keep the real-bodies front door); brand **"Gamesim: The House"**; palette and tour **my judgment**; **skip the whole show** (unchanged); the free first night after the meet **unchanged for now**; and implement **the music, the white flash and confetti, the dancing, and remove the lamp**.

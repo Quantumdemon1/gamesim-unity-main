@@ -65,6 +65,12 @@ Also note where time actually went. The automated season commits 56 decisions in
 of the real duration is reading, deliberating and moving. If the number is wrong, the fix follows from
 which of those three dominated.
 
+The ceremony reveals are part of that time. The key ceremony and the vote reveal default to a
+suspenseful pace. The two take 30 to 50 seconds in an early week, by house size, which is 20 to 30
+seconds more than the quick pace Settings offers. A click, Enter or Esc jumps a reveal to its result, and a second press
+closes it. Record the pace setting, and note whether the participant skipped reveals. A run where they
+did is not "without skipping".
+
 ## E2 — First-time comprehension
 
 **Threshold: at least three participants who have never seen the build reach the eviction unaided.**

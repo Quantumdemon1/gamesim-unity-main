@@ -1414,6 +1414,31 @@ namespace Gamesim.Episode
         /// <summary>Whether the HUD is stepped aside for a cinematic.</summary>
         public bool IsCinematic { get; private set; }
 
+        private bool revealHold, heldRaycasts = true;
+        private float heldAlpha = 1f;
+
+        /// <summary>
+        /// Steps the chrome aside for a ceremony reveal and puts it back as it was. The status line,
+        /// the house panel and the cast strip are drawn from the committed result, so while a key
+        /// ceremony or a live eviction counts towards it they named the outcome first.
+        /// </summary>
+        public void HoldForReveal(bool on)
+        {
+            if (canvas == null || on == revealHold) return;
+            var group = canvas.GetComponent<CanvasGroup>();
+            if (group == null) group = canvas.gameObject.AddComponent<CanvasGroup>();
+            revealHold = on;
+            if (on)
+            {
+                heldAlpha = group.alpha; heldRaycasts = group.blocksRaycasts;
+                group.alpha = 0f; group.blocksRaycasts = false;
+            }
+            else { group.alpha = heldAlpha; group.blocksRaycasts = heldRaycasts; }
+        }
+
+        /// <summary>Whether the chrome is stepped aside for a ceremony reveal.</summary>
+        public bool IsHeldForReveal => revealHold;
+
         /// <summary>The interaction prompt's fixed caption, beside the words that change with what E would do.</summary>
         public const string InteractCaption = "Interact [E]";
 

@@ -11,7 +11,7 @@ namespace Gamesim.Episode
     /// the camera goes to the room where that ceremony happens - the nomination room's table, the
     /// game room for the veto, the living room for an eviction and the winner, the yard for a
     /// competition - on the clock, and comes back to where it was once the card and the reveal
-    /// are done. Reduced motion keeps the shot the viewer has, as it does for conversations.
+    /// are done. Reduced motion cuts there and back instead of moving.
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -34,6 +34,8 @@ namespace Gamesim.Episode
         public const float CeremonyDistance = 11f;
         /// <summary>The move in, and the move back, each take this long.</summary>
         public const float CeremonyMoveSeconds = 1.2f;
+        /// <summary>Under reduced motion the camera cuts: a move this short reads as a cut, not a pan.</summary>
+        public const float CeremonyCutSeconds = 0.01f;
         /// <summary>A card's strip lasts a few seconds; the framing holds at least this long.</summary>
         public const float CeremonyHoldSeconds = 2.5f;
 
@@ -43,7 +45,7 @@ namespace Gamesim.Episode
         /// <summary>Frames the ceremony's room and returns when its card is done. Public for the tests.</summary>
         public void FrameCeremony(string kind)
         {
-            if (cameraRig == null || reducedMotion || !gameObject.activeInHierarchy) return;
+            if (cameraRig == null || !gameObject.activeInHierarchy) return;
             var room = CeremonyRoom(kind);
             if (room == null) return;
             var marker = gameObject.scene.GetRootGameObjects()
@@ -62,7 +64,10 @@ namespace Gamesim.Episode
             var distance = IsFramingCeremony ? ceremonyReturnDistance : cameraRig.DesiredDistance;
             ceremonyReturnFocus = focus; ceremonyReturnDistance = distance;
             IsFramingCeremony = true;
-            cameraRig.MoveTo(new Vector3(at.x, focus.y, at.z), CeremonyDistance, CeremonyMoveSeconds);
+            // Reduced motion cuts to the room rather than keeping the shot the viewer had: less
+            // motion, not less of the episode. The ceremony card's own rule, applied to the camera.
+            float move = reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds;
+            cameraRig.MoveTo(new Vector3(at.x, focus.y, at.z), CeremonyDistance, move);
             float until = Time.unscaledTime + CeremonyHoldSeconds;
             yield return null;
             // Held for as long as any card narrating the ceremony is up; the key reveal was left out
@@ -70,7 +75,7 @@ namespace Gamesim.Episode
             while (Time.unscaledTime < until || (takeover != null && takeover.IsPlaying)
                 || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying))
                 yield return null;
-            if (cameraRig != null) cameraRig.MoveTo(focus, distance, CeremonyMoveSeconds);
+            if (cameraRig != null) cameraRig.MoveTo(focus, distance, reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds);
             IsFramingCeremony = false;
             ceremonyFrame = null;
         }

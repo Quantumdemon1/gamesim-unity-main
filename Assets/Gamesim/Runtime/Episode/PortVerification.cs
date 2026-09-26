@@ -102,6 +102,9 @@ namespace Gamesim.Episode
             // as the director's own preference, because the workload toggles other preferences
             // and every toggle re-applies the lot.
             director.SetFrameCap(-1);
+            // Verification plays the reveals at the quick pace: the look sheet waits a fixed time
+            // for the key ceremony's block and a framing's end, and a suspenseful card outlasts both.
+            director.SetCeremonyPace(Presentation.CeremonyPace.Quick);
             director.SaveNow();
             bool graphical = SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null;
             if (graphical)

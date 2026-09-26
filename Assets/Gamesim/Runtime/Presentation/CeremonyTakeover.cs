@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
@@ -53,6 +54,67 @@ namespace Gamesim.Presentation
 
         /// <summary>What the card says it is waiting for, matching the web build's wording.</summary>
         public const string DismissCaption = "Click anywhere to continue";
+
+        /// <summary>
+        /// What the key ceremony and the live eviction say speeds them up and skips them, on a
+        /// keyboard. A caption other code and tests identify the line by, like <see cref="DismissCaption"/>.
+        /// </summary>
+        public const string ControlsCaption = "Space  Speed up   ·   Enter  Skip";
+
+        /// <summary>The same line for a player on a pad: X speeds a reveal up, A skips it.</summary>
+        public const string PadControlsCaption = "X  Speed up   ·   A  Skip";
+
+        /// <summary>What a reveal says in its corner while it is sped up.</summary>
+        public static string SpeedCaption =>
+            "Fast-forward ×" + CeremonyPacing.SpeedUp.ToString("0.#", CultureInfo.InvariantCulture);
+
+        /// <summary>The controls line for the device last used on a card.</summary>
+        public static string ControlsFor(bool pad) => pad ? PadControlsCaption : ControlsCaption;
+
+        /// <summary>
+        /// A press that moves a ceremony card on: a left click, Enter (either one), Escape, or the
+        /// pad's A or B. Read straight off the devices, never through the event system, so the rule
+        /// in the class notes holds for every card that uses it - a card cannot take a click, or a
+        /// Submit, that was meant for the house, and nothing can be stranded behind one.
+        /// </summary>
+        internal static bool SkipPressed()
+        {
+            var mouse = Mouse.current;
+            var keyboard = Keyboard.current;
+            var pad = Gamepad.current;
+            return (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                || (keyboard != null && (keyboard.enterKey.wasPressedThisFrame
+                    || keyboard.numpadEnterKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame))
+                || (pad != null && (pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame));
+        }
+
+        /// <summary>A press that speeds a reveal up, or back to its own pace: Space, or the pad's X.</summary>
+        internal static bool SpeedPressed()
+        {
+            var keyboard = Keyboard.current;
+            var pad = Gamepad.current;
+            return (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+                || (pad != null && pad.buttonWest.wasPressedThisFrame);
+        }
+
+        /// <summary>
+        /// Where this frame's press came from, for the key hints to follow: true for the pad, false
+        /// for a key or a click, null when nothing was pressed.
+        /// </summary>
+        internal static bool? PadUsed()
+        {
+            var pad = Gamepad.current;
+            if (pad != null && (pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame
+                || pad.buttonWest.wasPressedThisFrame || pad.buttonNorth.wasPressedThisFrame
+                || pad.startButton.wasPressedThisFrame || pad.selectButton.wasPressedThisFrame))
+                return true;
+            var keyboard = Keyboard.current;
+            var mouse = Mouse.current;
+            if ((keyboard != null && keyboard.anyKey.wasPressedThisFrame)
+                || (mouse != null && mouse.leftButton.wasPressedThisFrame))
+                return false;
+            return null;
+        }
 
         private RectTransform rule, glassGround;
         private TMP_Text dismiss;
@@ -203,9 +265,9 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// True once the card has been up long enough to have been read, after which a click ends
-        /// it. The delay matters: without it a click already in flight when the card appears
-        /// dismisses it before anyone has seen what it said.
+        /// True once the card has been up long enough to have been read, after which a press ends
+        /// it. The delay matters: without it a click - or the Enter that committed the beat - already
+        /// in flight when the card appears dismisses it before anyone has seen what it said.
         /// </summary>
         private bool Dismissable => elapsed >= FadeIn + 0.35f;
 
@@ -215,13 +277,12 @@ namespace Gamesim.Presentation
             CeremonyOverlays.Showing();
             elapsed += Time.unscaledDeltaTime;
 
-            // Read the device directly rather than through the event system. The card carries no
+            // Read the devices directly rather than through the event system. The card carries no
             // GraphicRaycaster and every graphic on it is non-raycasting — an acceptance criterion,
             // because a ceremony must never be able to swallow a click meant for the house. Polling
-            // the mouse keeps that true while still letting the card close on demand the way the
-            // web build's does.
-            if (Dismissable && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-            { Cancel(); return; }
+            // the devices keeps that true while still letting the card close on demand the way the
+            // web build's does: a click, Enter, Escape, or the pad's A or B.
+            if (Dismissable && SkipPressed()) { Cancel(); return; }
 
             if (reduced)
             {

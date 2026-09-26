@@ -5,14 +5,16 @@ namespace Gamesim.Presentation
     /// <summary>
     /// Whether a ceremony card is on the screen right now.
     ///
-    /// <para>The nomination and eviction cards deliberately take no input: no
-    /// <c>GraphicRaycaster</c>, every graphic non-raycasting, and a dismissal read straight off the
-    /// mouse device. That rule is load-bearing - it is why nothing can be stranded behind a card,
+    /// <para>The nomination and eviction cards deliberately take no input through the event system:
+    /// no <c>GraphicRaycaster</c>, every graphic non-raycasting, and their skip, speed-up and
+    /// dismissal read straight off the mouse, keyboard and pad devices. That rule is load-bearing -
+    /// it is why nothing can be stranded behind a card,
     /// neither a player mid-walk nor an automated season driving fifty-six decisions in under a
     /// minute - and it is not going to change.</para>
     ///
-    /// <para>The cost of it is that the click which dismisses a card is still an unclaimed click as
-    /// far as the rest of the game is concerned, and the house is directly underneath. Clicking a
+    /// <para>The cost of it is that the press which moves a card on is still an unclaimed press as
+    /// far as the rest of the game is concerned, and the house is directly underneath: the house's
+    /// click guard, its shortcuts and the UI's Submit and Cancel all ask this before acting. Clicking a
     /// near-opaque card you cannot see through dismissed it <em>and</em> walked the player to
     /// whatever floor happened to be behind it.</para>
     ///

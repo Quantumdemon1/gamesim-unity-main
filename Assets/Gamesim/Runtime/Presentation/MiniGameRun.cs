@@ -19,7 +19,7 @@ namespace Gamesim.Presentation
     /// <c>EpisodeState.randomState</c> on them would re-roll the rest of the season — the same
     /// reason <c>SeasonBuilder</c> takes the cast in table order rather than shuffling it.</para>
     /// </summary>
-    public sealed class MiniGameRun
+    public sealed partial class MiniGameRun
     {
         /// <summary>How long a target stays up, and the gap before the next. The reference's numbers.</summary>
         public const double TargetLife = 0.9, TargetGapLow = 0.1, TargetGapHigh = 0.3;
@@ -95,15 +95,18 @@ namespace Gamesim.Presentation
         public int SecondFlip { get; private set; } = -1;
         private double flipBackAt;
 
+        /// <param name="words">The houseguest scramble's names; the reference's words when null. Words only.</param>
         public MiniGameRun(CompetitionMiniGames.Kind kind, uint seed, int rulesVersion = CompetitionMiniGames.LegacyRules,
-            CompetitionDefinition definition = null)
+            CompetitionDefinition definition = null, IReadOnlyList<string> words = null)
         {
             Kind = kind;
             if (rulesVersion < CompetitionMiniGames.LegacyRules || rulesVersion > CompetitionMiniGames.CurrentRules)
                 throw new ArgumentOutOfRangeException(nameof(rulesVersion));
+            bool widenedGame = kind == CompetitionMiniGames.Kind.Dice || kind == CompetitionMiniGames.Kind.Words;
+            if (widenedGame && rulesVersion < CompetitionMiniGames.WidenedRules)
+                throw new ArgumentOutOfRangeException(nameof(rulesVersion), "The luck and social games are rules 4's.");
             RulesVersion = rulesVersion;
-            string category = kind == CompetitionMiniGames.Kind.Reaction ? "Skill" : kind == CompetitionMiniGames.Kind.Memory ? "Mental"
-                : kind == CompetitionMiniGames.Kind.Endurance ? "Endurance" : null;
+            string category = CompetitionMiniGames.CategoryOf(kind);
             if (definition != null && (rulesVersion < 3 || definition.Category != category))
                 throw new ArgumentException("The competition definition must match the game and rules version.", nameof(definition));
             Definition = rulesVersion >= 3 ? definition ?? CompetitionDefinitions.Standard(category) : null;
@@ -111,6 +114,8 @@ namespace Gamesim.Presentation
             random = new SeededRandom(seed);
             if (kind == CompetitionMiniGames.Kind.Memory) Deal();
             if (kind == CompetitionMiniGames.Kind.Reaction) nextTargetAt = FirstTargetDelay;
+            if (kind == CompetitionMiniGames.Kind.Dice) { DealDice(); Feedback = "Roll the dice"; }
+            if (kind == CompetitionMiniGames.Kind.Words) { DealWords(words); Feedback = "Spell the word"; }
         }
 
         // ---------------------------------------------------------------- the clock
@@ -125,7 +130,7 @@ namespace Gamesim.Presentation
         public void Tick(double delta)
         {
             if (Finished || delta <= 0 || double.IsNaN(delta) || double.IsInfinity(delta)) return;
-            if (Kind == CompetitionMiniGames.Kind.Reaction && RulesVersion >= CompetitionMiniGames.CurrentRules)
+            if (Kind == CompetitionMiniGames.Kind.Reaction && RulesVersion >= CompetitionMiniGames.ScheduledRules)
             { TickReaction(delta); return; }
             if (RulesVersion < CompetitionMiniGames.ImprovedRules) { Step(delta); return; }
             delta = TimeLimit > 0 ? Math.Min(delta, Remaining) : delta;
@@ -169,6 +174,9 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory:
                     if (SecondFlip >= 0 && Elapsed >= flipBackAt) TurnBack();
                     break;
+
+                case CompetitionMiniGames.Kind.Dice: StepDice(); if (Finished) return; break;
+                case CompetitionMiniGames.Kind.Words: StepWords(); break;
             }
 
             if (TimeLimit > 0 && Elapsed >= TimeLimit) Finish();
@@ -209,6 +217,8 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory:
                     Score = CompetitionMiniGames.MemoryScore(MatchedPairs, Pairs, WrongFlips, Remaining, TimeLimit, RulesVersion);
                     break;
+                case CompetitionMiniGames.Kind.Dice: Score = DiceScore(); break;
+                case CompetitionMiniGames.Kind.Words: Score = WordsScore(); break;
             }
         }
 
@@ -245,7 +255,7 @@ namespace Gamesim.Presentation
             if (RulesVersion < CompetitionMiniGames.ImprovedRules) return Tap();
             if (!TargetLive) { FalseStarts++; Feedback = "Too early: wait for a target"; return false; }
             TargetLive = false;
-            if (RulesVersion < CompetitionMiniGames.CurrentRules) nextTargetAt = Elapsed + Gap();
+            if (RulesVersion < CompetitionMiniGames.ScheduledRules) nextTargetAt = Elapsed + Gap();
             if (direction != TargetDirection)
             {
                 WrongDirections++; Feedback = "Missed: wrong direction"; return false;
@@ -256,7 +266,7 @@ namespace Gamesim.Presentation
         /// <summary>Version 3 pointer errors use exactly the same opportunity/early-input policy as directions.</summary>
         public void MissPointer()
         {
-            if (Finished || Kind != CompetitionMiniGames.Kind.Reaction || RulesVersion < CompetitionMiniGames.CurrentRules) return;
+            if (Finished || Kind != CompetitionMiniGames.Kind.Reaction || RulesVersion < CompetitionMiniGames.ScheduledRules) return;
             if (!TargetLive) { FalseStarts++; Feedback = "Too early: wait for a target"; return; }
             TargetLive = false; PointerMisses++; Feedback = "Missed: outside the target";
         }
@@ -323,7 +333,7 @@ namespace Gamesim.Presentation
             }
             TargetWindowSeconds = Definition?.ReactionWindow(Spawned) ?? TargetLife;
             targetExpiresAt = Elapsed + TargetWindowSeconds;
-            if (RulesVersion >= CompetitionMiniGames.CurrentRules) nextTargetAt = targetExpiresAt + Gap();
+            if (RulesVersion >= CompetitionMiniGames.ScheduledRules) nextTargetAt = targetExpiresAt + Gap();
         }
 
         /// <summary>

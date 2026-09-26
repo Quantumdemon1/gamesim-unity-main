@@ -8,6 +8,70 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 00000000000000. Competition rules 4: five kinds, the dice and the word game, a minigame worth three, and a throw that throws (26 September)
+
+Batch 2 of the minigames brainstorm, covering the owner's decisions 1 to 3:
+1. Keep stats and weight the minigames more.
+2. Widen the competitions with luck and social.
+3. A throw should lose about 90% of the time. When it still wins, say the player got lucky, or explain how a throw can still win.
+
+Everything here is **competition rules 4**, which new seasons play (`CompetitionRules.Current`, set by `SeasonBuilder.Create` and `EpisodeDirector.StartSeason`). Seasons saved under rules 1–3 are frozen: they keep their three kinds, their two-point weight, their throw and their reaction schedule. The PlayMode fixture's own season is a legacy one.
+
+**Five kinds, in each season's own order** (new `Simulation/CompetitionRules.cs`)
+- Skill, Mental, Endurance, Luck and Social: the reference's five player-facing types.
+- A season shuffles the five from its seed (no draw on the season's generator). The HoH takes the next kind each week and the veto the kind two on. A week's two competitions never share a kind, and each kind comes round once as each in every five weeks.
+- `EpisodeEngine.CompetitionCategory` takes the seed now. The result card passes it, so it names the kind the season dealt.
+- **Luck** is the reference's Crapshoot: a tenth mental, nine tenths luck, plus a second roll worth up to 3. The luck statistic is squeezed toward five, as the reference's dice game does (5 + (luck − 5) × 0.2), so a lucky houseguest is favoured, not crowned. Luck draws its second roll straight after each competitor's first.
+- **Social** uses this port's weights, since the reference has none: three fifths social, a fifth mental, a fifth luck.
+
+**The minigame counts for more.** Full marks are worth 3 points (they were 2); `CompetitionRules.PerformanceWeight`.
+- The accessible alternative is still half marks, now 1.5 points. Its caption is a contract: "Accessible alternative: steady 1.5-point bonus" in a rules-4 season (`EpisodeDirector.AccessibleCompetitionCaption`).
+- The briefing's copy says 0–3.
+- Simulated in a field of six and averaged over the five kinds, a balanced player wins 18% at no performance, 56% at half marks and 89% at full marks.
+
+**The throw** (its own command, `EpisodeCommandKind.ThrowCompetition`, appended)
+- Every bonus is given up, and only part of the player's score counts (`CompetitionRules.ThrowShare`): 0.82 in a field of three, 0.88 of four, 0.93 of five, 0.94 of six, 0.96 of seven, 0.98 of eight, 0.99 of nine, and all of it from ten up.
+- The shares were measured over 2,000 seasons per field size (the regular roster, the player as each of its houseguests, every kind) to leave a throw winning one time in ten.
+  - A first table from a simplified cast won only 4.5–8.8% on the real casts.
+  - The test checks the measured rate on real casts at fields of 3, 5, 6 and 11.
+- It never touches another score, so a throw can still win.
+- The explanation leads with the story:
+  - "You threw it. A throw gives up every bonus and counts 94% of your score in a field of 6. Yours came to 5.4, 4th of 6."
+  - "You threw it and won anyway: you got lucky. … It lowers only your own score, and yours came to 6.83 while the best of the rest scored 6.28."
+  - It names the runner-up's score, not the runner-up: the explanation stays the player's own account.
+- The standings mark the row "Threw". The card's attempt line reads "You threw it · 4 of 6" or "You threw it and won anyway: you got lucky".
+- The throw is recorded in a private `competition-throw` line, and the house is not told.
+- A rules-3 season throws as it always did, with a Compete at no performance.
+
+**The games** (`MiniGameRun.Dice.cs`, `MiniGameRun.Words.cs`, and the board partials `CompetitionGameScreen.Dice.cs` / `.Words.cs`)
+- **Roll the Dice** (luck): three dice, up to three rolls.
+  - The reference kept the best roll, so rolling three times was always right. Here each re-roll replaces the roll you have: "Roll again" gives up the roll showing, and "Keep this roll" ends on it. A third roll stands.
+  - The total out of ten is the reference's scale, (total − 3) / 15 × 10.
+  - The faces are dealt when the run is made, so a ranked attempt rolls the same dice after a cancel or reload.
+  - The dice land one after another. The tumble's faces are the screen's own flicker, never the dealt faces, and under reduced motion a tumbling die is blank.
+- **Word Scramble** (social): the reference's list, kept to five letters or more, and its points (2 for five or six letters, 2.5 for seven or eight, 3 for nine or more, 1.5 for a four-letter name).
+  - A finished spelling is judged at once. A wrong one clears after half a second, and skipping is free. The score is the points, capped at ten.
+  - A letter can be chosen by clicking its tile, typing it (read on the keyboard's own layout), or pressing the pad's A. Backspace or the pad's X takes one back.
+  - While the board is played every letter types, P included. It pauses with Start or the Pause button; paused, P resumes.
+  - The **Houseguest Scramble** variant spells the season's own first names: letters only, four to twelve letters, topped up from the list when the house's names run short.
+- A kind's game now changes every time the kind comes round, not once a season (`CompetitionDefinitions.Version4`; Luck has one game). The Final HoH keeps its authored rounds.
+- The house's shortcuts wait during a competition. Typing J in the word game opened the notebook underneath it.
+
+**Found on the way**
+- `CompetitionMiniGames.CurrentRules` meant "newest" in the range check and "rules 3's reaction schedule" in four places in `MiniGameRun`. Bumping it would have moved every rules-3 season off its schedule. `ScheduledRules = 3` now gates the schedule, and a mutation checks it (memory: a-current-version-constant-is-a-bound-not-a-gate).
+- A Selectable made non-interactable while the keyboard is on it drops the selection. Disabling Roll during a tumble, or a letter tile once chosen, left pad and keyboard players selecting nothing. Those controls now stay live but inert, and they look spent.
+- Port verification plays the dice and word games, reading the board as a player does, and uses the rules-aware caption.
+
+**Tests.** EditMode added `CompetitionRulesV4Tests` (16, which also run under `dotnet test`) and `LuckAndSocialGameTests` (17). PlayMode added `CompetitionSurfacePlayModeTests.LuckAndSocial` (6) and `EpisodePlayModeTests.CompetitionRules4` (7). Two tests changed with the contract: the catalogue count and new seasons' rules. The rules-3 surface test now builds the luck and social games under rules 4.
+- 59 mutations, all caught at their target assertions: 24 on the simulation rules, run against a scratch copy with `dotnet test` (`scratchpad/simmut/simmut.py`); 15 EditMode and 20 PlayMode through the D: harness (`rules4_mut.py`).
+- Two needed a stronger test first:
+  - The reroll test compared the kept total with the same accessor the mutation broke, so both moved together. It now checks against the dice showing.
+  - A missing card line threw from a lookup instead of failing an assertion.
+
+**Verified:** EditMode 1546, PlayMode 554, Uma 64 and Simulation 798, all passing in one full run, with no crashes. Floors raised from 1513, 541 and 782.
+
+**Next:** batch 3, prize and punishment vetoes and have-nots (decision 4). They need a save schema bump. Then strategy windows, then the finale.
+
 ## 0000000000000. Ceremonies that keep their secret: a suspenseful pace you can skip or speed up, and the spoilers gone (26 September)
 
 The request: "Brainstorm improvements to minigames and other features of the game". After the brainstorm the owner decided:

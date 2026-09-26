@@ -209,7 +209,7 @@ namespace Gamesim.Episode
                 }
                 string caption = state.competitionResolved ? "Continue to the next ceremony"
                     : EpisodeEngine.CompetitionPlayers(state).Any(actor => actor.isPlayer)
-                        ? "Accessible alternative: steady 1-point bonus" : "Watch eligible housemates compete";
+                        ? EpisodeDirector.AccessibleCompetitionCaption(state.competitionRulesVersion) : "Watch eligible housemates compete";
                 yield return ClickSeasonButton(caption); yield break;
             }
             if (state.phase == EpisodePhase.Nomination && state.nominees.Count == 0 && state.hohId == state.playerId)

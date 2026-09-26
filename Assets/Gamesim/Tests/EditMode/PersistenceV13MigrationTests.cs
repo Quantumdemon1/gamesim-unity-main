@@ -56,10 +56,10 @@ namespace Gamesim.Tests.EditMode
         public void CurrentSavesRejectInvalidRecipesAndUnsupportedRules()
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice(), 6);
-            Assert.That(state.competitionRulesVersion, Is.EqualTo(3));
+            Assert.That(state.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A new season plays the current competition rules.");
             state.contestants[1].appearance.dna.Add(new AppearanceValue { id = "height", value = float.NaN });
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False);
-            state.contestants[1].appearance.dna.Clear(); state.competitionRulesVersion = 4;
+            state.contestants[1].appearance.dna.Clear(); state.competitionRulesVersion = CompetitionRules.Current + 1;
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False);
         }
 

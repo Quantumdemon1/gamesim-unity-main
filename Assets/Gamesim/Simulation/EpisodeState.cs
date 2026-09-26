@@ -432,7 +432,13 @@ namespace Gamesim.Simulation
         /// houseguest and <c>secondTargetId</c> the approach, "warm", "calculated" or "bold".
         /// Free, and not a social action; the meet-and-greet is the one time the house comes to you.
         /// </summary>
-        Introduce
+        Introduce,
+        /// <summary>
+        /// Throwing a weekly competition on purpose, from competition rules 4: every bonus is given
+        /// up and only part of the player's score counts (<see cref="CompetitionRules.ThrowShare"/>).
+        /// Earlier seasons throw with a <see cref="Compete"/> at no performance, as they always did.
+        /// </summary>
+        ThrowCompetition
     }
 
     /// <summary>

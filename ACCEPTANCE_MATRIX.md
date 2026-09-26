@@ -300,7 +300,7 @@ it: `EpisodeHouse` has eight rooms and `HousePrototype` — the U02 reference sc
 NPC motion suite loads — still has five. Demanding all eight made the query work in the shipping
 scene and fail in the one the tests run against.
 
-Three things this pass changed that affect other sections:
+Four things this pass changed that affect other sections:
 
 - **The camera now ships at 24, not 48.** C and D figures taken at 48 are stale; the cast reads at
   roughly 2.7%–4.6% of frame height rather than 1.8%–2.2%. See `PLAYTEST_PROTOCOL.md`.
@@ -315,6 +315,10 @@ Three things this pass changed that affect other sections:
   quick pace they had before.
   E1 figures from before are not comparable. Record the pace setting, and whether the participant
   skipped reveals (see `PLAYTEST_PROTOCOL.md`).
+- **New seasons play competition rules 4 (26 September).** There are five kinds (skill, mental,
+  endurance, luck, social), with a dice game and a word game for the two new ones. Full marks are
+  worth three points, and a throw loses about nine times in ten. A season saved before, and the
+  pinned V7 build, play rules 1–3. Record which a participant played.
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

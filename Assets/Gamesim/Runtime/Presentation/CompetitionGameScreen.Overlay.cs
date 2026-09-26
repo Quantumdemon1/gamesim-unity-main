@@ -131,6 +131,7 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory: AdvanceMemoryBeats(delta); break;
                 case CompetitionMiniGames.Kind.Reaction: AdvanceReactionBeats(delta); break;
                 case CompetitionMiniGames.Kind.Endurance: AdvanceEnduranceBeats(delta); break;
+                case CompetitionMiniGames.Kind.Dice: AdvanceDiceBeats(delta); break;
             }
         }
     }

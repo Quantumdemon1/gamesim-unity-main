@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         {
             error = null;
             if (s == null || s.schemaVersion != 13) return Fail(out error, "Unsupported episode schema.");
-            if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > 3)
+            if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0

@@ -22,7 +22,12 @@ namespace Gamesim.Tests.EditMode
                 actual.Add(CompetitionDefinitions.Version3(17, week, EpisodePhase.Veto).Id);
             }
             CollectionAssert.AreEqual(expected, actual, "Adding definitions cannot change this published selector.");
-            Assert.That(CompetitionDefinitions.All.Select(definition => definition.Id).Distinct().Count(), Is.EqualTo(6));
+            // Rules 4 added the luck and social games; every published id stays, and each is distinct.
+            var ids = CompetitionDefinitions.All.Select(definition => definition.Id).ToList();
+            Assert.That(ids.Distinct().Count(), Is.EqualTo(9));
+            Assert.That(ids.Take(6), Is.EqualTo(new[] { "signal-sprint-v3", "switchback-signals-v3", "house-memory-v3",
+                "first-impressions-v3", "hold-your-ground-v3", "pressure-cooker-v3" }), "Published ids are never repurposed or reordered.");
+            Assert.That(ids.Skip(6), Is.EqualTo(new[] { "roll-the-dice-v4", "word-scramble-v4", "houseguest-scramble-v4" }));
             foreach (uint seed in new uint[] { 1, 17, 87, 440, uint.MaxValue })
             {
                 var previous = new Dictionary<string, string>();

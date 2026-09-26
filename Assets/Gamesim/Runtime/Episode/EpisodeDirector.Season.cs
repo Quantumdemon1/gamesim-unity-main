@@ -261,7 +261,7 @@ namespace Gamesim.Episode
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
                 var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
-                fresh.competitionRulesVersion = 3;
+                fresh.competitionRulesVersion = CompetitionRules.Current;
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

@@ -144,6 +144,16 @@ namespace Gamesim.Episode
                         { yield return TryClickCompetitionControl("Reaction target"); if (lastClickLanded) inputs++; }
                         else yield return null;
                         break;
+                    case CompetitionMiniGames.Kind.Dice:
+                        // One roll, then keep it: the same two buttons a player presses.
+                        if (VisibleSeasonButtons().Any(b=>b.name=="Keep roll")) yield return TryClickCompetitionControl("Keep roll");
+                        else yield return TryClickCompetitionControl("Roll dice");
+                        if (lastClickLanded) inputs++;
+                        break;
+                    case CompetitionMiniGames.Kind.Words:
+                        yield return SpellSeasonWord();
+                        if (lastClickLanded) inputs++;
+                        break;
                     default:
                         yield return FlipSeasonCards(faces);
                         if (lastClickLanded) inputs++;
@@ -337,6 +347,35 @@ namespace Gamesim.Episode
 
         private CompetitionGameScreen CompetitionSurface() => seasonDirector.gameObject.scene.GetRootGameObjects()
             .SelectMany(root=>root.GetComponentsInChildren<CompetitionGameScreen>()).FirstOrDefault(s=>s.IsShowing);
+
+        /// <summary>
+        /// One letter on the word board, read the way a player does: the tiles still open are the
+        /// letters left, and a word from the game's list - or a houseguest's name - that the letters
+        /// on the board spell is the answer. Chooses the next letter of it, or skips a word it cannot read.
+        /// </summary>
+        private IEnumerator SpellSeasonWord()
+        {
+            lastClickLanded = false;
+            var tiles = VisibleSeasonButtons().Where(b => b.name.StartsWith("Letter tile ", StringComparison.Ordinal))
+                .OrderBy(b => int.Parse(b.name.Substring(12))).ToList();
+            var surface = CompetitionSurface();
+            var all = surface != null ? surface.GetComponentsInChildren<Button>(true)
+                .Where(b => b.gameObject.activeInHierarchy && b.name.StartsWith("Letter tile ", StringComparison.Ordinal))
+                .OrderBy(b => int.Parse(b.name.Substring(12))).ToList() : new List<Button>();
+            if (tiles.Count == 0 || all.Count == 0) { yield return null; yield break; }
+            string board = new string(all.Select(b => b.GetComponentInChildren<TMPro.TMP_Text>().text.FirstOrDefault()).ToArray());
+            var spelled = surface.GetComponentsInChildren<TMPro.TMP_Text>().FirstOrDefault(t => t.name == "Spelled letters");
+            string sofar = spelled != null ? spelled.text : "";
+            var names = seasonDirector.Snapshot.contestants.Select(c => CompetitionMiniGames.ScrambleForm(c.name));
+            string answer = CompetitionMiniGames.BigBrotherWords.Concat(names)
+                .FirstOrDefault(word => word.Length == board.Length && word.StartsWith(sofar, StringComparison.Ordinal)
+                    && string.Concat(word.OrderBy(c => c)) == string.Concat(board.OrderBy(c => c)));
+            if (answer == null) { yield return TryClickCompetitionControl("Skip word"); yield break; }
+            char next = answer[sofar.Length];
+            var tile = tiles.FirstOrDefault(b => b.GetComponentInChildren<TMPro.TMP_Text>().text == next.ToString());
+            if (tile == null) { yield return null; yield break; }
+            yield return TryClickCompetitionControl(tile.name);
+        }
 
         private IEnumerator TryClickCompetitionControl(string name)
         {

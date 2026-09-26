@@ -137,6 +137,7 @@ namespace Gamesim.Simulation
                     break;
                 case EpisodeCommandKind.StudyHouse: StudyHouse(s, c); break;
                 case EpisodeCommandKind.SimulateCompetition: SimulateWeeklyCompetition(s, c); break;
+                case EpisodeCommandKind.ThrowCompetition: ThrowWeeklyCompetition(s, c); break;
                 case EpisodeCommandKind.ReflectDiary: ReflectDiary(s, c); break;
                 case EpisodeCommandKind.SkipDiary: ResolveDiary(s, c, false); break;
                 case EpisodeCommandKind.SwearLoyalty: ResolveOathOpportunity(s, c, true); break;
@@ -353,13 +354,15 @@ namespace Gamesim.Simulation
         /// card recomputes rather than reading the category back out of the event sentence.</para>
         /// </summary>
         public static string CompetitionCategory(EpisodeState state) =>
-            CompetitionCategory(state.phase, state.week, state.competitionRulesVersion);
+            CompetitionCategory(state.phase, state.week, state.competitionRulesVersion, state.seed);
 
-        public static string CompetitionCategory(EpisodePhase phase, int week, int rulesVersion = 1)
+        /// <param name="seed">The season's seed: from rules 4 the season deals its five kinds in an order of its own.</param>
+        public static string CompetitionCategory(EpisodePhase phase, int week, int rulesVersion = 1, uint seed = 0)
         {
             if (phase == EpisodePhase.FinalHoHPart1) return "Endurance";
             if (phase == EpisodePhase.FinalHoHPart2) return "Skill";
             if (phase == EpisodePhase.FinalHoHPart3) return "Mental";
+            if (rulesVersion >= CompetitionRules.Widened) return CompetitionRules.Category(phase, week, seed);
             int rotation = week + (rulesVersion >= 2 && phase == EpisodePhase.Veto ? 1 : 0);
             return rotation % 3 == 1 ? "Skill" : rotation % 3 == 2 ? "Mental" : "Endurance";
         }
@@ -374,7 +377,7 @@ namespace Gamesim.Simulation
         private static void LogCompetitionInput(EpisodeState state, double performance, bool simulated, string numericExplanation = null)
         {
             if (state.competitionRulesVersion < 3 || !CompetitionPlayers(state).Any(actor => actor.isPlayer)) return;
-            double manual = simulated ? 0 : performance * 2;
+            double manual = simulated ? 0 : performance * CompetitionRules.PerformanceWeight(state.competitionRulesVersion);
             double bonus = CommonCompetitionBonus(state) + manual;
             string detail = (simulated ? "Simulated: no performance bonus" : "Performance " + CompetitionNumber(performance * 100)
                 + "%: " + CompetitionSigned(manual))
@@ -400,21 +403,26 @@ namespace Gamesim.Simulation
                 + " · " + definition.Category + ". " + definition.Summary);
         }
 
-        private static void ResolveCompetition(EpisodeState s, double performance)
+        /// <param name="thrown">The player threw it (rules 4): no bonuses, and only part of their score counts.</param>
+        private static void ResolveCompetition(EpisodeState s, double performance, bool thrown = false)
         {
             var players = CompetitionPlayers(s).ToArray(); Require(players.Length > 0, "No eligible competitors.");
             string category = CompetitionCategory(s);
             s.competitionScores.Clear();
             string numericExplanation = null;
+            // Two points for full marks through rules 3, three from rules 4. The same multiplication
+            // either way, so a frozen season's arithmetic is unchanged to the last bit.
+            double weight = CompetitionRules.PerformanceWeight(s.competitionRulesVersion);
+            bool widened = s.competitionRulesVersion >= CompetitionRules.Widened;
             if (s.phase == EpisodePhase.FinalHoHPart1)
             {
-                // Native input adapter: precision earns up to two effective endurance points for
-                // this challenge only. This bonus policy is native; stored stats never change.
+                // Native input adapter: precision earns up to two effective endurance points (three
+                // from rules 4) for this challenge only. This bonus policy is native; stored stats never change.
                 var effectivePlayers = players.Select(contestant => contestant.Clone()).ToArray();
                 foreach (var contestant in effectivePlayers.Where(contestant => contestant.isPlayer))
                     contestant.stats.endurance = s.competitionRulesVersion >= 3
-                        ? Math.Max(0, Math.Min(10, contestant.stats.endurance + performance * 2 + CommonCompetitionBonus(s)))
-                        : Math.Min(10, contestant.stats.endurance + performance * 2 + Storylines.CompetitionBonus(s));
+                        ? Math.Max(0, Math.Min(10, contestant.stats.endurance + performance * weight + CommonCompetitionBonus(s)))
+                        : Math.Min(10, contestant.stats.endurance + performance * weight + Storylines.CompetitionBonus(s));
                 var rounds = s.competitionRulesVersion >= 3 ? new List<string>() : null;
                 var endurance = WebEnduranceCompetition.Run(effectivePlayers, () => Roll(s),
                     rounds == null ? null : (Action<double, string, double, double, bool>)((time, id, roll, chance, eliminated) =>
@@ -428,13 +436,13 @@ namespace Gamesim.Simulation
                     var original = players.First(c => c.isPlayer).stats;
                     var effective = effectivePlayers.First(c => c.isPlayer).stats;
                     var score = s.competitionScores.First(c => c.contestantId == s.playerId).score;
-                    double capAdjustment = effective.endurance - original.endurance - CommonCompetitionBonus(s) - performance * 2;
+                    double capAdjustment = effective.endurance - original.endurance - CommonCompetitionBonus(s) - performance * weight;
                     decimal enduranceRounding = DisplayedScore(effective.endurance) - (DisplayedScore(original.endurance)
                         + DisplayedScore(s.playerStudyBonus) + DisplayedScore(s.phaseEventCompBonus)
-                        + DisplayedScore(Storylines.CompetitionBonus(s)) + DisplayedScore(performance * 2) + DisplayedScore(capAdjustment));
+                        + DisplayedScore(Storylines.CompetitionBonus(s)) + DisplayedScore(performance * weight) + DisplayedScore(capAdjustment));
                     numericExplanation = "Final endurance · stored " + ScoreNumber(original.endurance)
                         + "; preparation " + CompetitionSigned(s.playerStudyBonus) + "; event " + CompetitionSigned(s.phaseEventCompBonus)
-                        + "; storyline " + CompetitionSigned(Storylines.CompetitionBonus(s)) + "; performance " + CompetitionSigned(performance * 2)
+                        + "; storyline " + CompetitionSigned(Storylines.CompetitionBonus(s)) + "; performance " + CompetitionSigned(performance * weight)
                         + "; cap adjustment " + ScoreNumber(capAdjustment) + "; rounding " + SignedScore(enduranceRounding)
                         + ". Effective endurance " + ScoreNumber(original.endurance) + " → " + ScoreNumber(effective.endurance)
                         + " (" + CompetitionSigned(effective.endurance - original.endurance) + " after the 0–10 cap). Physical contribution " + ScoreNumber(original.physical * .3)
@@ -446,19 +454,33 @@ namespace Gamesim.Simulation
             }
             else
             {
+                double playerRoll = 0, playerLuckRoll = 0, playerRaw = 0;
                 foreach (var contestant in players)
                 {
                     // Native precision challenge supplies a bounded player bonus to the web runner's existing bonus input.
                     // A storyline modifier rides on the same input, which is the one place a
                     // competition bonus is already read — a second path would be a second answer.
-                    double bonus = contestant.isPlayer
-                        ? performance * 2 + (s.competitionRulesVersion >= 3 ? CommonCompetitionBonus(s) : Storylines.CompetitionBonus(s)) : 0;
+                    // A throw gives every bonus up.
+                    bool throwing = thrown && contestant.isPlayer;
+                    double bonus = contestant.isPlayer && !throwing
+                        ? performance * weight + (s.competitionRulesVersion >= 3 ? CommonCompetitionBonus(s) : Storylines.CompetitionBonus(s)) : 0;
                     double roll = Roll(s);
-                    double score = WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, 0);
+                    // Rules 4's luck draws its second roll straight after the first, competitor by competitor.
+                    double luckRoll = widened && CompetitionRules.RollsTwice(category) ? Roll(s) : 0;
+                    double raw = widened
+                        ? CompetitionRules.Score(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, luckRoll)
+                        : WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, 0);
+                    double score = throwing ? raw * CompetitionRules.ThrowShare(players.Length) : raw;
                     s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
-                    if (s.competitionRulesVersion >= 3 && contestant.isPlayer)
+                    if (contestant.isPlayer) { playerRoll = roll; playerLuckRoll = luckRoll; playerRaw = raw; }
+                    if (s.competitionRulesVersion >= 3 && !widened && contestant.isPlayer)
                         numericExplanation = WeightedCompetitionExplanation(s, contestant, category, performance, false, roll, score);
                 }
+                // Rules 4 explains once every score is in: a throw's story is where it finished.
+                var you = players.FirstOrDefault(contestant => contestant.isPlayer);
+                if (widened && you != null)
+                    numericExplanation = WidenedCompetitionExplanation(s, you, category, performance, false, thrown,
+                        playerRoll, playerLuckRoll, playerRaw);
             }
             var winner = s.competitionScores.OrderByDescending(x => x.score).First().contestantId;
             if (s.phase == EpisodePhase.HoH) { s.hohId = winner; s.Find(winner).hohWins++; }
@@ -469,6 +491,9 @@ namespace Gamesim.Simulation
             s.competitionResolved = true;
             LogCompetitionDefinition(s);
             LogCompetitionStandings(s);
+            // The one line that says the player threw it, for them alone: the results card tags their
+            // row from it, and the house is not told.
+            if (thrown) Log(s, ThrowEventKind, "You threw the " + AwardName(s.phase) + " competition.", s.playerId);
             if (s.competitionRulesVersion >= 3) LogCompetitionInput(s, performance, false, numericExplanation);
             else if (s.competitionRulesVersion >= 2 && players.Any(c => c.isPlayer))
                 Log(s, "competition-performance", "Player performance input: " + Math.Round(performance * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "% · "

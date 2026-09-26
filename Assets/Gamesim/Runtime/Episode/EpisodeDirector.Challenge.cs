@@ -17,7 +17,7 @@ namespace Gamesim.Episode
     /// <summary>The competitions: the timing bar and the three mini-games, from the start of a challenge to the commit of its result.</summary>
     public sealed partial class EpisodeDirector
     {
-        /// <summary>The scored field, best first, straight from committed state.</summary>
+        /// <summary>The scored field, best first, straight from committed state. A thrown row says so.</summary>
         private static List<CompetitionResult.Standing> CompetitionStandings(EpisodeState state)
         {
             var standings = new List<CompetitionResult.Standing>();
@@ -28,16 +28,51 @@ namespace Gamesim.Episode
             foreach (var entry in state.competitionScores)
                 if (entry.score > best) { best = entry.score; winner = entry.contestantId; }
 
+            bool thrown = ThrewThisCompetition(state);
             foreach (var entry in state.competitionScores.OrderByDescending(x => x.score))
             {
                 var actor = state.Find(entry.contestantId);
                 if (actor == null) continue;
                 standings.Add(new CompetitionResult.Standing(
                     actor.name, entry.score, actor.id == winner, actor.id == state.playerId,
-                    CharacterPortraits.Get(actor), actor));
+                    CharacterPortraits.Get(actor), actor, thrown && actor.id == state.playerId ? ThrewNote : null));
             }
             return standings;
         }
+
+        /// <summary>What a thrown row carries beside the player's name on the standings.</summary>
+        public const string ThrewNote = "Threw";
+
+        /// <summary>Whether the player threw the competition this phase settled: its private line says so.</summary>
+        private static bool ThrewThisCompetition(EpisodeState state) =>
+            state?.events != null && state.events.Any(entry => entry.kind == EpisodeEngine.ThrowEventKind
+                && entry.week == state.week && entry.phase == state.phase);
+
+        /// <summary>
+        /// The throw's line on the standings card, where a played attempt says how it went: that it
+        /// won anyway - the player got lucky - or where it finished. The explanation behind Score
+        /// details says how a throw can still win.
+        /// </summary>
+        private static string ThrowAttemptLine(EpisodeState state)
+        {
+            if (!ThrewThisCompetition(state) || state.competitionScores == null) return null;
+            var ordered = state.competitionScores.OrderByDescending(entry => entry.score).ToList();
+            int place = ordered.FindIndex(entry => entry.contestantId == state.playerId) + 1;
+            if (place <= 0) return null;
+            return place == 1 ? "You threw it and won anyway: you got lucky"
+                : "You threw it  ·  " + place + " of " + ordered.Count;
+        }
+
+        /// <summary>
+        /// The accessible alternative's control. Its bonus is half marks, so its points follow the
+        /// season's rules: one point through rules 3, one and a half from rules 4. Captions are a contract.
+        /// </summary>
+        public static string AccessibleCompetitionCaption(int rulesVersion) =>
+            rulesVersion >= CompetitionRules.Widened ? "Accessible alternative: steady 1.5-point bonus" : "Accessible alternative: steady 1-point bonus";
+
+        /// <summary>"0–2" through rules 3, "0–3" from rules 4: what full marks are worth, for the copy that says so.</summary>
+        private static string PerformanceRange(EpisodeState state) =>
+            "0–" + CompetitionRules.PerformanceWeight(state.competitionRulesVersion).ToString("0", System.Globalization.CultureInfo.InvariantCulture);
 
         public void SimulateCompetition() => SimulateCompetition(projected);
 
@@ -50,12 +85,14 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Enters the competition at the floor.
+        /// Throws the competition.
         ///
-        /// <para>A throw is a <see cref="EpisodeCommandKind.Compete"/> with no precision rather than
-        /// a command of its own: the houseguest does compete, their stats still count, and the
-        /// result is as binding as any other. Modelling it as a refusal to enter would have made it
-        /// a way to opt out of a committed result, which is exactly what it is not.</para>
+        /// <para>From competition rules 4 a throw is its own command: every bonus is given up and
+        /// only part of the player's score counts, so it loses about nine times in ten. Before that
+        /// it was a <see cref="EpisodeCommandKind.Compete"/> with no precision - scored exactly as
+        /// Simulate is - and an earlier season still throws that way. Either way the houseguest does
+        /// compete, their stats still count, and the result is as binding as any other: a throw is
+        /// not a way out of a committed result.</para>
         /// </summary>
         public void ThrowCompetition() => ThrowCompetition(projected);
 
@@ -63,7 +100,8 @@ namespace Gamesim.Episode
         {
             if (!phaseOpen || challengeActive || !IsCurrentDiaryRevision(state) || state.competitionResolved
                 || !EpisodeEngine.CompetitionPlayers(state).Any(contestant => contestant.isPlayer)) return;
-            Commit(state, EpisodeCommandKind.Compete, performance: 0d);
+            if (state.competitionRulesVersion >= CompetitionRules.Widened) Commit(state, EpisodeCommandKind.ThrowCompetition);
+            else Commit(state, EpisodeCommandKind.Compete, performance: 0d);
         }
 
         private CompetitionGameScreen competitionScreen;
@@ -129,8 +167,8 @@ namespace Gamesim.Episode
                 "Rules " + state.competitionRulesVersion + ". Practice cannot alter your season. Ranked attempts use the same board after cancel or reload. "
                     + "Pause stops the clock, including when this window loses focus.",
                 state.phase == EpisodePhase.FinalHoHPart1
-                    ? "Performance adds 0–2 effective endurance points, capped at 10, for this competition only. Statistics and seeded survival rolls still matter; full marks do not guarantee a win."
-                    : "Performance adds a 0–2 point bonus. Character statistics and seeded rolls determine the remaining score; full marks do not guarantee a win.",
+                    ? "Performance adds " + PerformanceRange(state) + " effective endurance points, capped at 10, for this competition only. Statistics and seeded survival rolls still matter; full marks do not guarantee a win."
+                    : "Performance adds a " + PerformanceRange(state) + " point bonus. Character statistics and seeded rolls determine the remaining score; full marks do not guarantee a win.",
             };
             if (state.competitionRulesVersion >= 3)
                 rules.Add("Every entry route keeps the same earned bonuses: preparation " + state.playerStudyBonus
@@ -142,8 +180,10 @@ namespace Gamesim.Episode
             hud.OptionCard(CompetitionMiniGames.EnterCaption(game),
                 "Ranked. The same board after a cancel or a reload; pause stops the clock.", "trophy",
                 () => StartChallenge(state), compact: true);
-            hud.OptionCard("Accessible alternative: steady 1-point bonus",
-                "No timing needed: a steady 1-point performance bonus in place of the minigame.", "star",
+            bool widened = state.competitionRulesVersion >= CompetitionRules.Widened;
+            hud.OptionCard(AccessibleCompetitionCaption(state.competitionRulesVersion),
+                widened ? "No timing needed: a steady 1.5-point performance bonus - half marks - in place of the minigame."
+                    : "No timing needed: a steady 1-point performance bonus in place of the minigame.", "star",
                 () => Commit(state, EpisodeCommandKind.Compete, performance: .5), compact: true);
             if (state.phase == EpisodePhase.HoH || state.phase == EpisodePhase.Veto)
             {
@@ -152,8 +192,10 @@ namespace Gamesim.Episode
                         : "Weighted statistics plus preparation " + state.playerStudyBonus + "/5 and event bonus "
                             + state.phaseEventCompBonus + ". No minigame performance bonus; preparation is retained for later weeks.",
                     "dumbbell", () => SimulateCompetition(state), compact: true);
-                hud.OptionCard(EpisodeHud.ThrowCompetitionCaption,
-                    "Zero performance bonus. Your statistics and seeded rolls still count, so you may still win.", "exit",
+                hud.OptionCard(EpisodeHud.ThrowCompetitionCaption, widened
+                        ? "Every bonus given up and only part of your score counts, so you will lose about nine times in ten. "
+                            + "It lowers only your own score: if everyone else rolls lower still, you win anyway."
+                        : "Zero performance bonus. Your statistics and seeded rolls still count, so you may still win.", "exit",
                     () => ThrowCompetition(state), compact: true);
             }
         }
@@ -197,6 +239,8 @@ namespace Gamesim.Episode
                 facts.Add(new EpisodeHud.BriefingFact(target, "Changing windows", "0.65 or 1.15 seconds"));
             else if (definition != null && definition.Pattern == CompetitionPattern.PressureWaves)
                 facts.Add(new EpisodeHud.BriefingFact(UiTheme.Pack("Pack4_Presentation/Icons_PNG/fire"), "Pressure waves", "1.5 seconds, every 6"));
+            else if (definition != null && definition.Pattern == CompetitionPattern.HouseguestNames)
+                facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("houseguest"), "Houseguests' names", "The house you are in"));
             else switch (game)
             {
                 case CompetitionMiniGames.Kind.Memory:
@@ -205,6 +249,10 @@ namespace Gamesim.Episode
                     facts.Add(new EpisodeHud.BriefingFact(target, "Every target", "Hit it before it goes")); break;
                 case CompetitionMiniGames.Kind.Endurance:
                     facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("dumbbell"), "Grip and recover", "Hold to earn time")); break;
+                case CompetitionMiniGames.Kind.Dice:
+                    facts.Add(new EpisodeHud.BriefingFact(target, "Three rolls", "Each replaces the last")); break;
+                case CompetitionMiniGames.Kind.Words:
+                    facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("chat"), "Big Brother words", "Longer scores more")); break;
                 default:
                     facts.Add(new EpisodeHud.BriefingFact(target, "Three stops", "Near the centre")); break;
             }
@@ -213,6 +261,8 @@ namespace Gamesim.Episode
             {
                 string goal = game == CompetitionMiniGames.Kind.Memory ? "Match eight pairs"
                     : game == CompetitionMiniGames.Kind.Reaction ? "Hit the targets"
+                    : game == CompetitionMiniGames.Kind.Dice ? "Keep a high total"
+                    : game == CompetitionMiniGames.Kind.Words ? "Spell as many as you can"
                     : state.competitionRulesVersion >= CompetitionMiniGames.ImprovedRules
                         ? "Hold " + (seconds * .65).ToString("0.#") + " for full marks" : "Hold as long as you can";
                 facts.Add(new EpisodeHud.BriefingFact(clock, seconds.ToString("0") + " seconds", goal));
@@ -224,7 +274,7 @@ namespace Gamesim.Episode
                 facts.Add(EpisodeHud.BriefingFact.PauseMark("Escape cancels", "Nothing is committed"));
             }
             facts.Add(new EpisodeHud.BriefingFact(UiTheme.Icon("star"), "Performance bonus",
-                state.phase == EpisodePhase.FinalHoHPart1 ? "Adds 0–2 endurance" : "Adds 0–2 points"));
+                state.phase == EpisodePhase.FinalHoHPart1 ? "Adds " + PerformanceRange(state) + " endurance" : "Adds " + PerformanceRange(state) + " points"));
             return facts;
         }
 
@@ -244,7 +294,7 @@ namespace Gamesim.Episode
             var kind = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
                 CompetitionMiniGames.AttemptSeed(state.seed, state.week, (int)state.phase, state.competitionRulesVersion, practice),
-                state.competitionRulesVersion, CompetitionDefinitions.For(state));
+                state.competitionRulesVersion, CompetitionDefinitions.For(state), ScrambleWords(state));
             if (challengeRun != null)
             {
                 if (competitionScreen == null)
@@ -418,14 +468,23 @@ namespace Gamesim.Episode
             var result = state.events.LastOrDefault(e => e.week == state.week && e.phase == state.phase && e.kind == "competition");
             return result != null && result.text.Contains("(simulated)")
                 ? "Simulated result: weighted statistics, preparation and event bonuses, and seeded rolls. No minigame bonus was used."
-                : "Committed scores combine character statistics, competition modifiers and seeded rolls. Minigame performance adds up to two points; it does not guarantee a win.";
+                : "Committed scores combine character statistics, competition modifiers and seeded rolls. Minigame performance adds up to "
+                    + (state.competitionRulesVersion >= CompetitionRules.Widened ? "three" : "two") + " points; it does not guarantee a win.";
         }
+
+        /// <summary>
+        /// The houseguest scramble's words: the first names of everyone in the season, the player's
+        /// among them. Every other game - the word scramble included - brings its own.
+        /// </summary>
+        private static IReadOnlyList<string> ScrambleWords(EpisodeState state) =>
+            CompetitionDefinitions.For(state)?.Pattern == CompetitionPattern.HouseguestNames
+                ? state.contestants.Select(contestant => contestant.name).ToList() : null;
 
         private void ReviewCompetitionResult(EpisodeState state)
         {
             if (competitionCard == null || !state.competitionResolved) return;
             competitionCard.Play(CompetitionTitle(state), EpisodeEngine.CompetitionCategory(state), state.week,
-                CompetitionStandings(state), reducedMotion, CompetitionPerformanceExplanation(state));
+                CompetitionStandings(state), reducedMotion, CompetitionPerformanceExplanation(state), ThrowAttemptLine(state));
         }
         /// <summary>
         /// The competition wide (V5): the yard from the house's side, over the wall line, the

@@ -117,6 +117,9 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory: BuildMemory(flip); break;
                 case CompetitionMiniGames.Kind.Reaction: BuildReaction(tap, direction, missedTarget); break;
                 case CompetitionMiniGames.Kind.Endurance: BuildEndurance(toggleGrip); break;
+                // The luck and social boards play their attempt themselves and ask for sounds by cue.
+                case CompetitionMiniGames.Kind.Dice: BuildDice(); break;
+                case CompetitionMiniGames.Kind.Words: BuildWords(); break;
             }
             BuildOverlay();
             BuildFinishPlate();
@@ -220,8 +223,11 @@ namespace Gamesim.Presentation
             if ((keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
                 || (pad != null && pad.buttonEast.wasPressedThisFrame))
             { LeaveRequested(); return; }
-            if ((keyboard != null && keyboard.pKey.wasPressedThisFrame) || (pad != null && pad.startButton.wasPressedThisFrame))
+            // On the word board every letter spells while it is played, P among them.
+            if ((keyboard != null && keyboard.pKey.wasPressedThisFrame && !(WordsBoard && IsPlaying))
+                || (pad != null && pad.startButton.wasPressedThisFrame))
                 TogglePause();
+            else ReadWordKeys(keyboard, pad);
             if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
                 MoveControlFocus(keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
             else if (pad != null && pad.rightShoulder.wasPressedThisFrame) MoveControlFocus(false);
@@ -302,7 +308,10 @@ namespace Gamesim.Presentation
             { lastGameFocus = selectable; if (playing) WireFooter(); }
         }
 
-        private Selectable GameFocus => lastGameFocus != null ? lastGameFocus : DefaultGameFocus;
+        // The control the keyboard last had on the board - unless it can no longer take it, as a
+        // letter tile already chosen cannot - and the game's own first control otherwise.
+        private Selectable GameFocus => lastGameFocus != null && lastGameFocus.IsActive() && lastGameFocus.IsInteractable()
+            ? lastGameFocus : DefaultGameFocus;
 
         private void FocusGame() => Select(GameFocus);
 
@@ -335,6 +344,8 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory: RefreshMemory(); break;
                 case CompetitionMiniGames.Kind.Reaction: RefreshReaction(); break;
                 case CompetitionMiniGames.Kind.Endurance: RefreshEndurance(); break;
+                case CompetitionMiniGames.Kind.Dice: RefreshDice(); break;
+                case CompetitionMiniGames.Kind.Words: RefreshWords(); break;
             }
             RefreshBoardEdge();
         }

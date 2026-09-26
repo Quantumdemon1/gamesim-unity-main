@@ -1,5 +1,19 @@
 # Minigame ideas: the judged shortlist (23 September 2026)
 
+> **Decided 26 September: widen the rotation (a version of Option B), as competition rules 4.** The
+> owner chose "widen with luck and social". New seasons deal five kinds (skill, mental, endurance,
+> luck, social) in a seeded order per season. Seasons from before keep rules 1–3.
+> - Luck is Crapshoot with the luck statistic squeezed.
+> - Social uses the port's own weights. Physical was not added.
+> - Dice Roll Derby shipped as Roll the Dice with the real push-your-luck choice this page asked
+>   for: each re-roll replaces the roll you have.
+> - Word Scramble shipped with a houseguest-names variant.
+> - The Version4 selector below became rules 4's: a kind's game alternates every time the kind
+>   comes round.
+> - The feared test sweep came to two tests: a catalogue count and a rules pin.
+>
+> See `SESSION-HANDOFF.md`, entry 00000000000000.
+
 The owner asked for more minigames that fit the tone and theme of the ones already in the game. Four
 lanes brainstormed 24 concepts: web parity, reality-show formats, the season's own data, and the
 unused competition art in the UI packs. A judge then checked each concept's load-bearing claims

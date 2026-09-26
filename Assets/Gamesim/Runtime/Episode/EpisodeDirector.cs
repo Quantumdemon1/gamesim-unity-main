@@ -450,7 +450,9 @@ namespace Gamesim.Episode
             // Not while a ceremony card is up either: it reads the pad's face buttons itself - X
             // speeds a reveal up, and X is also Interact - so a press meant for the card went on to
             // act in the house underneath it.
-            if (shortcuts != null && !hud.IsTyping && !OpeningOwnsHouse && !TourIsUp && !CeremonyOverlays.OnScreen)
+            // Nor during a competition: the word game spells with every letter key, and J, E and
+            // the rest would have opened the house's panels under the game.
+            if (shortcuts != null && !hud.IsTyping && !OpeningOwnsHouse && !TourIsUp && !CeremonyOverlays.OnScreen && !challengeActive)
             {
                 if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
@@ -742,8 +744,8 @@ namespace Gamesim.Episode
                     EndCeremonyCards();
                     if (competitionCard != null)
                         competitionCard.Play(CompetitionTitle(result.state),
-                            EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion), result.state.week,
-                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine);
+                            EpisodeEngine.CompetitionCategory(wasPhase, wasWeek, result.state.competitionRulesVersion, result.state.seed), result.state.week,
+                            standings, reducedMotion, CompetitionPerformanceExplanation(result.state), pendingAttemptLine ?? ThrowAttemptLine(result.state));
                     React(CompetitionWinnerId(result.state, standings), CharacterPresentation.Reaction.Cheered);
                 }
 

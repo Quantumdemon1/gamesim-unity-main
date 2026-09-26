@@ -711,11 +711,13 @@ namespace Gamesim.Episode
         {
             if (seasonReport == null) return;
             var committed = Snapshot;
+            // Every way on from the top of the report; each closes it first. Close redraws the
+            // house behind it, whose music the report had silenced.
             seasonReport.Show(committed, id =>
             {
                 var actor = committed.Find(id);
                 return actor == null ? null : CharacterPortraits.Get(actor);
-            }, OpenJournal, CareerNow());
+            }, OpenJournal, CareerNow(), NewSeason, OpenMainMenu, Render);
         }
     }
 }

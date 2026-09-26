@@ -19,7 +19,7 @@ namespace Gamesim.Tests.PlayMode
         /// white shape through it.
         /// </summary>
         [UnityTest]
-        public IEnumerator NamePlates_AreThePlateAndTheFollowDiamondStandsOverIt()
+        public IEnumerator NamePlates_AreThePlateAndTheFollowSpotlightHangsOverIt()
         {
             yield return null;
             var npcs = SceneComponents<HouseNpc>().Where(npc => npc.gameObject.activeInHierarchy).ToArray();
@@ -42,14 +42,13 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(npc.Spotlit, Is.EqualTo(npc == chosen),
                     npc == chosen ? "The followed houseguest's plate stays up." : npc.Id + " is not the one you are with.");
 
-            var diamond = GameObject.Find(FollowRing.DiamondName);
-            Assert.That(diamond, Is.Not.Null, "The followed houseguest wears the diamond.");
+            var spot = GameObject.Find(FollowRing.SpotlightName);
+            Assert.That(spot, Is.Not.Null, "The followed houseguest stands in the spotlight.");
             var corners = new Vector3[4];
             Plate(chosen).GetWorldCorners(corners);
             float plateTop = corners.Max(corner => corner.y);
-            float diamondFoot = diamond.transform.position.y - FollowRing.DiamondHalfHeight;
-            Assert.That(diamondFoot, Is.GreaterThan(plateTop),
-                "The diamond's point stays over the plate's top edge, not across the name: " + diamondFoot + " against " + plateTop + ".");
+            Assert.That(spot.transform.position.y, Is.GreaterThan(plateTop + .5f),
+                "The light hangs well over the plate, never in front of the name: " + spot.transform.position.y + " against " + plateTop + ".");
 
             if (Application.isBatchMode) yield return CaptureFraming("followed");
             director.FollowHouseguest(chosen.Id);

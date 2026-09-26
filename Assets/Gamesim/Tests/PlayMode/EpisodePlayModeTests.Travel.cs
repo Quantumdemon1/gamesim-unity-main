@@ -66,12 +66,20 @@ namespace Gamesim.Tests.PlayMode
 
             // At a walk, the walk plays at the body's pace: 2.2 m/s over the take's 1.7.
             var visual = player.GetComponent<Gamesim.Presentation.CharacterPresentation>();
-            float pacing = Time.realtimeSinceStartup + 3f;
-            while (Time.realtimeSinceStartup < pacing && player.Agent.velocity.magnitude < 2f && !player.HasArrived) yield return null;
-            for (int frame = 0; frame < 30 && !player.HasArrived; frame++) yield return null;
-            if (!player.HasArrived)
-                Assert.That(visual.Pace, Is.EqualTo(2.2f / Gamesim.Presentation.CharacterPresentation.WalkTakeSpeed).Within(.12f),
-                    "The steps keep up with the floor.");
+            // The pace at the walk's height, over the whole walk: a reading taken a set number of
+            // frames in - fractions of a millisecond each in batchmode - caught the walker still
+            // speeding up, or on a short errand already slowing for the door. The pace follows the
+            // body's measured ground speed, which trails the agent's, so it is its own peak that counts.
+            float pacing = Time.realtimeSinceStartup + 3f, fastest = 0f, pace = 0f;
+            while (Time.realtimeSinceStartup < pacing && !player.HasArrived)
+            {
+                fastest = Mathf.Max(fastest, player.Agent.velocity.magnitude);
+                pace = Mathf.Max(pace, visual.Pace);
+                yield return null;
+            }
+            Assert.That(fastest, Is.GreaterThan(2f), "The walk reaches walking speed.");
+            Assert.That(pace, Is.EqualTo(2.2f / Gamesim.Presentation.CharacterPresentation.WalkTakeSpeed).Within(.12f),
+                "The steps keep up with the floor at " + fastest.ToString("0.00") + " m/s.");
         }
 
         /// <summary>

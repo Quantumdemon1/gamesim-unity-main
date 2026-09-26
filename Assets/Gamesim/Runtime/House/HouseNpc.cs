@@ -65,7 +65,7 @@ namespace Gamesim.House
 
         /// <summary>
         /// Whether this houseguest is the one the player is with - followed or talked to. Their
-        /// plate stays up at any distance, under the follow diamond (mockup-01): it is how the
+        /// plate stays up at any distance, under the follow spotlight: it is how the
         /// player finds who they picked from across the house.
         /// </summary>
         public bool Spotlit

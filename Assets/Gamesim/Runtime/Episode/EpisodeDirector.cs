@@ -87,7 +87,10 @@ namespace Gamesim.Episode
         public string WalkingToId => headingToNpcId;
 
         public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen
-                                   || journalOpen || diaryOpen || houseActivitiesOpen || IsWeeklyRecapOpen || (competitionCard != null && competitionCard.IsPlaying);
+                                   || journalOpen || diaryOpen || houseActivitiesOpen || IsWeeklyRecapOpen || IsSeasonReportOpen
+                                   || (competitionCard != null && competitionCard.IsPlaying);
+        /// <summary>Whether the season report is up: a full-screen card over the house, a panel by any reckoning.</summary>
+        public bool IsSeasonReportOpen => seasonReport != null && seasonReport.IsShowing;
         /// <summary>Whether the episode screen is the panel open, rather than a conversation or the notebook.</summary>
         public bool IsPhasePanelOpen => phaseOpen;
         /// <summary>Whether a conversation with a houseguest is the panel open.</summary>
@@ -398,6 +401,8 @@ namespace Gamesim.Episode
                 // the screen underneath would close out from under the form on top of it.
                 else if (characterCreator != null && characterCreator.IsShowing) characterCreator.Dismiss();
                 else if (castSelect != null && castSelect.IsShowing) castSelect.Dismiss();
+                // The report draws over the finale panel; Escape closes it and leaves the panel.
+                else if (IsSeasonReportOpen) seasonReport.Close();
                 else
                 {
                     // With nothing open, Escape does nothing - the keyboard has the HUD's own
@@ -592,6 +597,8 @@ namespace Gamesim.Episode
             // The recap is a panel by IsPanelOpen's reckoning, so closing panels has to close it —
             // otherwise the scrim stays up while everything behind it believes it is dismissed.
             if (weeklyRecap != null) weeklyRecap.Hide();
+            // So is the season report, for the same reason.
+            if (seasonReport != null) seasonReport.Hide();
             // Any panel opening ends the overview: the shot it took goes with it. A conversation's
             // two-shot ends with the conversation; the diary's chair shot is released here, which
             // covers Escape and the walk-away close alike.
@@ -1186,9 +1193,13 @@ namespace Gamesim.Episode
                     hud.Heading("HOW THE JURY VOTED");
                     foreach (var ballot in ballots) hud.Paragraph(ballot.Line);
                 }
-                hud.Paragraph("Your choices and votes are preserved in the notebook. Start another season from Settings; the old save is retained.");
+                hud.Paragraph("Your choices and votes are preserved in the notebook. Starting another season keeps this one's save.");
+                // Every way on, as buttons: this was a sentence pointing at Settings, and a
+                // finished season has nothing else to do.
                 hud.Action("Season report", ShowSeasonReport);
+                hud.Action(SeasonReport.NewSeasonCaption, NewSeason);
                 hud.Action("Review the season", OpenJournal);
+                hud.Action(SeasonReport.MainMenuCaption, OpenMainMenu);
                 return;
             }
             if (EpisodeEngine.IsCompetition(state.phase))

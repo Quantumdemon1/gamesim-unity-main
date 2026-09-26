@@ -38,16 +38,23 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ring, Is.Not.Null, "A ring marks who is followed.");
             Assert.That(Vector3.Distance(new Vector3(ring.transform.position.x, 0, ring.transform.position.z),
                 new Vector3(maya.transform.position.x, 0, maya.transform.position.z)), Is.LessThan(0.05f), "under their feet");
-            // The mockups mark the followed houseguest over the head as well as under the feet,
-            // because a floor ring is a small ellipse behind the furniture at the overview camera's
-            // height and a diamond at head height clears the sofa backs.
-            var diamond = GameObject.Find(FollowRing.DiamondName);
-            Assert.That(diamond, Is.Not.Null, "A diamond marks who is followed, over their head.");
-            Assert.That(diamond.transform.position.y - maya.transform.position.y, Is.GreaterThan(1.8f),
-                "and it floats clear of a houseguest's head rather than through it");
-            Assert.That(Vector3.Distance(new Vector3(diamond.transform.position.x, 0, diamond.transform.position.z),
+            // Marked from above as well as underfoot, because a floor ring is a small ellipse behind
+            // the furniture at the overview camera's height - by a studio spotlight on the person
+            // themselves, not a gem floating over them.
+            var spot = GameObject.Find(FollowRing.SpotlightName);
+            Assert.That(spot, Is.Not.Null, "A spotlight is on who is followed.");
+            var lamp = spot.GetComponent<Light>();
+            Assert.That(lamp, Is.Not.Null);
+            Assert.That(lamp.type, Is.EqualTo(LightType.Spot));
+            Assert.That(lamp.enabled && lamp.intensity > 0f, Is.True, "and it is lit");
+            Assert.That(Vector3.Dot(spot.transform.forward, Vector3.down), Is.GreaterThan(.99f), "shining straight down");
+            Assert.That(spot.transform.position.y - maya.transform.position.y, Is.GreaterThan(2.6f),
+                "from above their name plate, not through it");
+            Assert.That(lamp.range, Is.GreaterThan(spot.transform.position.y - maya.transform.position.y), "and reaching the floor they stand on");
+            Assert.That(Vector3.Distance(new Vector3(spot.transform.position.x, 0, spot.transform.position.z),
                 new Vector3(maya.transform.position.x, 0, maya.transform.position.z)), Is.LessThan(0.05f),
-                "and rides directly over them");
+                "directly over them");
+            Assert.That(GameObject.Find("Follow diamond"), Is.Null, "and no gem floats over anyone.");
 
             var chip = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(t => t.name == EpisodeHud.FollowChipName);
             Assert.That(chip, Is.Not.Null, "and a chip names them");
@@ -57,7 +64,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(cameraRig.FocusedSubject, Is.Null, "The same portrait again lets go.");
             Assert.That(GameObject.Find(FollowRing.RingName), Is.Null, "and the ring goes with it");
-            Assert.That(GameObject.Find(FollowRing.DiamondName), Is.Null, "and so does the diamond");
+            Assert.That(GameObject.Find(FollowRing.SpotlightName), Is.Null, "and so does the spotlight");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(t => t.name == EpisodeHud.FollowChipName), Is.False, "and so does the chip");
         }
 

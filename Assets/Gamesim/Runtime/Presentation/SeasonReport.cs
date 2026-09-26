@@ -6,6 +6,7 @@ using Gamesim.Persistence;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Gamesim.Presentation
@@ -21,12 +22,26 @@ namespace Gamesim.Presentation
     /// <para>It is built entirely from committed state and derives nothing the simulation does not
     /// already record, so it cannot disagree with the save. That also means it required no
     /// simulation change to add, and cannot regress a season.</para>
+    ///
+    /// <para>Every way on is at the top, under the title, and stays there while the season scrolls
+    /// beneath it - a new season, the main menu, the notebook, close - as the web game's game-over
+    /// screen puts them straight under its winner. They were once only at the very bottom, below
+    /// three screens of content that nothing on the report could scroll: no part of it caught the
+    /// mouse, so the wheel went nowhere and clicks fell through to the HUD behind it, and a player
+    /// who opened it had no way out but to quit. The whole report takes the mouse now, and a
+    /// scrollbar shows how much there is.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SeasonReport : MonoBehaviour
     {
         private const float Width = 1180f;
         private const float Pad = 28f;
+
+        /// <summary>The ways on, at the top of the report. Tests and screen readers find them by these words.</summary>
+        public const string NewSeasonCaption = "Start a new season";
+        public const string MainMenuCaption = "Main menu";
+        public const string ReviewCaption = "Review the season";
+        public const string CloseCaption = "Close";
 
         private RectTransform content;
         private RectTransform viewport;
@@ -86,6 +101,8 @@ namespace Gamesim.Presentation
         private Func<string, Texture> shownPortrait;
         private Action shownReview;
         private CareerSummary shownCareer;
+        private Action shownNewSeason, shownMainMenu, shownClose;
+        private ScrollRect scroller;
 
         /// <summary>
         /// The "larger text" accessibility setting, applied by scaling the whole screen rather than
@@ -147,13 +164,25 @@ namespace Gamesim.Presentation
         /// contestant id to a face; it may return null, and the portrait helper draws a hole.
         /// </summary>
         public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview,
-            CareerSummary career = null)
+            CareerSummary career = null) => Show(state, portrait, onReview, career, null, null, null);
+
+        /// <summary>
+        /// The same, with the ways on the report offers at its top: <paramref name="onNewSeason"/>,
+        /// <paramref name="onMainMenu"/> and <paramref name="onReview"/> each close the report and
+        /// go; <paramref name="onClose"/> runs after it closes, so the house behind can redraw. A
+        /// null action is simply not offered.
+        /// </summary>
+        public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview,
+            CareerSummary career, Action onNewSeason, Action onMainMenu, Action onClose)
         {
             if (state == null) return;
             shown = state;
             shownPortrait = portrait ?? (_ => null);
             shownReview = onReview;
             shownCareer = career;
+            shownNewSeason = onNewSeason;
+            shownMainMenu = onMainMenu;
+            shownClose = onClose;
             sortBy = CastSort.Placement;
             filter = CastFilter.Everyone;
             Rebuild(state, shownPortrait, onReview);
@@ -164,11 +193,13 @@ namespace Gamesim.Presentation
 
         private void Rebuild(EpisodeState state, Func<string, Texture> portrait, Action onReview)
         {
-            foreach (Transform child in transform) Destroy(child.gameObject);
+            foreach (Transform child in transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
 
             // The house dimmed behind the season rather than blacked out, and the season on a
-            // glass card, as the mockups set every summary over the room it is about.
+            // glass card, as the mockups set every summary over the room it is about. Both take
+            // the mouse: a modal that catches nothing lets every click through to the HUD behind.
             var scrim = HudPrimitives.Fill("Scrim", transform, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.88f), 1);
+            scrim.GetComponent<Image>().raycastTarget = true;
             Stretch(scrim);
             HudPrimitives.Vignette(scrim);
 
@@ -179,14 +210,38 @@ namespace Gamesim.Presentation
             sheet.sizeDelta = new Vector2(Width + 40f, -96f);
             sheet.anchoredPosition = Vector2.zero;
             UiTheme.Glass(sheet, UiTheme.GlassRadius);
+            sheet.GetComponent<Image>().raycastTarget = true;
+
+            // The title and the ways on, fixed at the top of the card.
+            content = new GameObject("Fixed header", typeof(RectTransform)).GetComponent<RectTransform>();
+            content.SetParent(sheet, false);
+            content.anchorMin = content.anchorMax = new Vector2(.5f, 1f);
+            content.pivot = new Vector2(.5f, 1f);
+            content.anchoredPosition = Vector2.zero;
+            cursor = 0f;
+            Header(state);
+            ActionBar(onReview);
+            float band = cursor + 6f;
+            content.sizeDelta = new Vector2(Width, band);
+            var divider = new GameObject("Header rule", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            divider.rectTransform.SetParent(sheet, false);
+            divider.rectTransform.anchorMin = divider.rectTransform.anchorMax = new Vector2(.5f, 1f);
+            divider.rectTransform.pivot = new Vector2(.5f, 1f);
+            divider.rectTransform.sizeDelta = new Vector2(Width - Pad * 2f, 1f);
+            divider.rectTransform.anchoredPosition = new Vector2(0f, -band);
+            divider.color = new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .3f);
+            divider.raycastTarget = false;
 
             viewport = HudPrimitives.Fill("Viewport", sheet, new Color(0f, 0f, 0f, 0f), 1);
             viewport.anchorMin = new Vector2(0.5f, 0f);
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, -8f);
-            viewport.anchoredPosition = new Vector2(0f, -4f);
+            viewport.sizeDelta = new Vector2(Width, -(band + 10f));
+            viewport.anchoredPosition = new Vector2(0f, -(band + 4f));
             viewport.gameObject.AddComponent<RectMask2D>();
+            // The wheel and a drag reach the scroll through whatever they land on; the viewport
+            // itself has to be something to land on, or the gaps between rows scroll nothing.
+            viewport.GetComponent<Image>().raycastTarget = true;
 
             content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
             content.SetParent(viewport, false);
@@ -201,9 +256,12 @@ namespace Gamesim.Presentation
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 40f;
+            scroll.verticalScrollbar = Scrollbar(sheet, band);
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            scroller = scroll;
 
             cursor = 0f;
-            Header(state);
+            Space(12f);
             Winner(state, portrait);
             WinnersJourney(state);
             YourJourney(state);
@@ -212,9 +270,89 @@ namespace Gamesim.Presentation
             Standings(state);
             WeekByWeek(state);
             Cast(state, portrait);
-            Buttons(onReview);
 
             content.sizeDelta = new Vector2(0f, cursor + Pad);
+        }
+
+        /// <summary>
+        /// A thin bar down the card's right edge, showing how much season there is below and where
+        /// the reader is in it; draggable, and out of the keyboard's way.
+        /// </summary>
+        private static Scrollbar Scrollbar(RectTransform sheet, float band)
+        {
+            var track = HudPrimitives.Fill("Scrollbar", sheet, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .14f), 4);
+            track.anchorMin = new Vector2(1f, 0f); track.anchorMax = new Vector2(1f, 1f);
+            track.pivot = new Vector2(1f, 1f);
+            track.sizeDelta = new Vector2(8f, -(band + 24f));
+            track.anchoredPosition = new Vector2(-8f, -(band + 10f));
+            track.GetComponent<Image>().raycastTarget = true;
+            var area = new GameObject("Sliding area", typeof(RectTransform)).GetComponent<RectTransform>();
+            area.SetParent(track, false);
+            area.anchorMin = Vector2.zero; area.anchorMax = Vector2.one;
+            area.offsetMin = Vector2.zero; area.offsetMax = Vector2.zero;
+            var handle = HudPrimitives.Fill("Handle", area, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .7f), 4);
+            handle.offsetMin = Vector2.zero; handle.offsetMax = Vector2.zero;
+            var handleImage = handle.GetComponent<Image>();
+            handleImage.raycastTarget = true;
+            var bar = track.gameObject.AddComponent<Scrollbar>();
+            bar.handleRect = handle;
+            bar.targetGraphic = handleImage;
+            bar.direction = UnityEngine.UI.Scrollbar.Direction.BottomToTop;
+            bar.navigation = new Navigation { mode = Navigation.Mode.None };
+            return bar;
+        }
+
+        /// <summary>
+        /// The ways on, under the title: a new season first, as the web game's primary action is,
+        /// then the notebook, the main menu, and close. Only the ones given are drawn.
+        /// </summary>
+        private void ActionBar(Action onReview)
+        {
+            Space(4f);
+            var bar = Panel(52f, new Color(0f, 0f, 0f, 0f));
+            var actions = new List<(string caption, Action act, bool primary)>();
+            if (shownNewSeason != null) actions.Add((NewSeasonCaption, () => { Hide(); shownNewSeason(); }, true));
+            if (onReview != null) actions.Add((ReviewCaption, () => { Hide(); onReview(); }, shownNewSeason == null));
+            if (shownMainMenu != null) actions.Add((MainMenuCaption, () => { Hide(); shownMainMenu(); }, false));
+            actions.Add((CloseCaption, Close, actions.Count == 0));
+            const float buttonWidth = 250f, gap = 16f;
+            float x = -(actions.Count * buttonWidth + (actions.Count - 1) * gap) * .5f + buttonWidth * .5f;
+            foreach (var action in actions)
+            {
+                Button(bar, action.caption, x, action.act, action.primary, buttonWidth);
+                x += buttonWidth + gap;
+            }
+        }
+
+        /// <summary>Closes the report, and lets the house behind it redraw.</summary>
+        public void Close()
+        {
+            if (!IsShowing) return;
+            Hide();
+            shownClose?.Invoke();
+        }
+
+        /// <summary>
+        /// Keeps whatever the keyboard has selected in the scrolling part in view: Tab onto the sort
+        /// chips at the foot of the house table and the report scrolls down to them.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (!IsShowing || scroller == null || content == null || viewport == null) return;
+            var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            if (selected == null || !selected.transform.IsChildOf(content)) return;
+            var rect = (RectTransform)selected.transform;
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            var view = new Vector3[4];
+            viewport.GetWorldCorners(view);
+            float below = view[0].y - corners[0].y, above = corners[1].y - view[1].y;
+            if (below <= 0f && above <= 0f) return;
+            float scale = viewport.lossyScale.y > 0f ? viewport.lossyScale.y : 1f;
+            var position = content.anchoredPosition;
+            position.y += (below > 0f ? below + 12f * scale : -(above + 12f * scale)) / scale;
+            position.y = Mathf.Clamp(position.y, 0f, Mathf.Max(0f, content.rect.height - viewport.rect.height));
+            content.anchoredPosition = position;
         }
 
         // ---------------------------------------------------------------- sections
@@ -717,15 +855,6 @@ namespace Gamesim.Presentation
             return button;
         }
 
-        private void Buttons(Action onReview)
-        {
-            Space(6f);
-            var bar = Panel(56f, new Color(0f, 0f, 0f, 0f));
-            if (onReview != null) Button(bar, "Review the season", -150f, onReview, true);
-            Button(bar, "Close", onReview != null ? 150f : 0f, Hide, onReview == null);
-            Space(Pad);
-        }
-
         // ---------------------------------------------------------------- derivation
 
         /// <summary>Contestant id to the week they were evicted, read from the event log.</summary>
@@ -888,13 +1017,13 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>The report's controls: the one the player most likely wants in the action blue.</summary>
-        private static void Button(Transform parent, string text, float x, Action action, bool primary)
+        private static void Button(Transform parent, string text, float x, Action action, bool primary, float width = 260f)
         {
             var panel = HudPrimitives.Fill(text, parent, primary ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 10);
             panel.anchorMin = new Vector2(0.5f, 0.5f);
             panel.anchorMax = new Vector2(0.5f, 0.5f);
             panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(260f, 48f);
+            panel.sizeDelta = new Vector2(width, 48f);
             panel.anchoredPosition = new Vector2(x, 0f);
             panel.GetComponent<Image>().raycastTarget = true;
             UiTheme.AddBorder(panel, 10, primary ? UiTheme.Glow : UiTheme.Outline);

@@ -161,6 +161,9 @@ namespace Gamesim.Episode
             state.pendingDiary != null
                 ? (director != null && director.IsDiaryOpen ? "Here: your private reflection" : "Next stop: private diary room")
             : EpisodeEngine.IsCompetition(state.phase) ? "Next stop: competition yard"
+            // A finished season sends nobody anywhere: the episode screen holds its report and the
+            // way to the next season.
+            : state.phase == EpisodePhase.Finished ? "Next stop: season report"
             : "Next stop: episode screen";
 
         /// <summary>

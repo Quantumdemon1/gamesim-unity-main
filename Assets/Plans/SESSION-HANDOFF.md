@@ -8,6 +8,78 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 00000000. The character screen, the cast screen, the cast's faces, a spotlight, and a finale with ways out (25 September)
+
+The request, in five parts:
+- make the creator AAA, with colours and options that work for Black and Asian houseguests;
+- redo the cast screen with the web game's glamour photos, details for the one clicked (as the Emma Brown card shows) and their live model only after the click;
+- make the models look like the photos;
+- replace the green gem over the followed houseguest, which reads as The Sims;
+- fix the finale, where a spectator was stuck until they quit.
+
+**The creator.**
+- **Skin is exact.** `UmaBodyProvider.SkinColour` divides the swatch by the skin albedo's measured mean (linear 0.581, 0.332, 0.248), and lifts additively where a fair tone is lighter than the texture. The drawn texture then averages to the swatch, within 0.005. Before this, deep tones drew a muddy red and everyone shared an orange cast. `UmaStylizer.Apply(root, skin)` brings the skin shader's gloss down and its subsurface toward brown as the tone deepens.
+- **Palettes.** `CharacterPalettes` holds 24 skin tones in four depths (Monk-scale anchored, golden, olive and rosy at each depth), 18 natural and 8 dyed hair shades, and 12 eye colours. All are named. `SwatchGrid` shows them in labelled rows and names the hovered swatch. The deep row keeps red at or below about 1.45 times green; past that a lit brown turns maroon.
+- **Brows** get their own colour. Most brow styles draw in the shared hair colour, so the Brows row did nothing until `UmaBodyTint.PaintBrows` gave them a private one.
+- **The bun** drew its hair card in a private white and stayed silver. `UmaBodyTint.ShareHairColour` hands every `CardHair*` overlay the shared hair colour.
+- **Hair highlights.** The UMA3 hair material's specular tint is orange-red (0.65, 0.27, 0), which put a maroon sheen on every dark head. `HairColour` now sets `_SpecularTint` from the hair (`HairHighlight`).
+- **Textured hair, grown from the head.** `ProceduralHair` offers buzz, taper fade, waves, short coils, afro, cornrows, locs and box braids. It reads the built body's head with `HeadScan`: every skin submesh, welded, in a head-bone frame with the eyes, ears, skull width, collar and an envelope of the hair. It lifts the scalp above a hairline, rounds an afro out, and drops strands clear of the head, neck and shoulders. The textures are drawn in code (`HairTextures`). Partings and faded sides are painted with the skin colour, so a fade shows scalp.
+- **Accessories.** `ProceduralAccessories` covers four slots: Eyewear (black frames, round wire frames, sunglasses, chrome visor), Headwear (trucker cap, beanie), Earrings (studs, gold and silver hoops, drops) and Neckwear (chain, statement collar, beaded necklace, red bow tie). Each is fitted to the scan, and a necklace hangs from the chest bone. A new "Accessories" creator page picks them per outfit; its reset touches only them.
+- **Built pieces** carry `GrownPiece` (it owns the mesh, and the stylizer skips it) and are refitted after every rebuild. `GrownThumbnails` draws each piece's creator picture.
+- **The face.** The jaw slider named `jawSize`; UMA's DNA is `jawsSize`, so the slider never appeared. `UmaAppearanceCatalog.DeclaredControls()` now lists 30 face controls, including eye tilt, nose bridge, cheekbones and jawline. A test holds every entry to real DNA. The face page groups them under headings.
+
+**The cast screen** (`CastSelect`, `CastSelectArt`).
+- Each card is the web game's portrait (`Resources/Portraits/Glamour/<id>.png`, square crops of `D:/gamesim-main/.../avatars`) in a gold ring, with a slate name plate, a nickname pill in the category's gradient, the traits, and a gold "PLAYING AS" badge when picked.
+- The details panel is the web game's CharacterDetailPanel in the Emma card's dress: the gold name, the live model turning in a pool of light (drag to turn; nothing until a click), occupation and nickname pills, age and home, the quoted bio, the traits, and the category with its web description. "Play as <first name>" commits; "Customize <first name>" opens the creator.
+- Filters and rosters share one row, with a line under it that explains the category.
+- The footer is one row where it fits.
+- The screen rebuilds when its frame changes shape. The details panel was laid out for a 4:3 frame and then photographed at 16:9.
+
+**The looks** (`UmaCastLibrary`).
+- All 24 are matched to their photos. Colours are named from the palettes, and garments are dyed by the new `UmaCastLook.Fabric`: saved with the outfit by `Materialize`, and applied to preset bodies by the provider.
+- Casey wears an afro, Danielle coils, Avery a fade, Derrick a buzz; Xavier is bald.
+- Riley has black frames and a moustache. Emma has the visor, the bow tie and a white coat. Vanessa has the cap; Maya and Chelsie hoops; Janelle beads; Rachel the collar; Jun drops.
+
+**The marker** (`FollowRing`). The green diamond is gone. Whoever is followed stands in a studio spotlight (a warm spot 4.2 m up, pooling light round them) over a camera focus reticle at the feet: a ring and four corner brackets. Both breathe gently, and hold still under reduced motion.
+
+**The finale** (`SeasonReport`, `EpisodeDirector`). The report could not be left:
+- nothing on it took a raycast, so the wheel scrolled nothing and clicks fell through to the HUD;
+- its only exit was at the foot of three screens;
+- Escape closed the panel beneath;
+- "Review" opened the notebook behind it.
+
+Now:
+- the scrim, card and viewport catch the mouse, and a scrollbar shows the length;
+- "Start a new season", "Review the season", "Main menu" and "Close" sit under the title and stay there;
+- Escape closes only the report, and closing panels closes it;
+- `IsPanelOpen` counts it;
+- Close redraws the house.
+
+The finale panel offers the same ways on as buttons, and the objective reads "Next stop: season report".
+
+**Traps.**
+- **UMA marks its combined mesh unreadable** (`UMAData.markNotReadable` defaults true), so a head scan read nothing. Bodies that wear built pieces set it false at CharacterBegun, before the combine. That costs about 2 MB each.
+- **`Mathf.SmoothStep(from, to, t)` eases between two values; it is not an edge function.** Used as one, every parting came out almost all scalp. `HairTextures.Edge` is the edge.
+- **`Pow(cos(π/2), x)` is NaN**, because the cosine is a hair below zero. A cap mesh full of NaNs imports with zero vertices and no error. Clamp first.
+- **A two-line meta on a PNG never imports** ("TextureImporter object at version 1"). Textures need the full `TextureImporter` block; scripts do not (memory: new-scripts-need-hand-written-metas-before-a-commit).
+- **UMA replaces the Animator** a body is created with. A test must read the live one (`GetComponentInChildren<Animator>()`), not `CharacterBody.Animator`.
+- **The harness lays the cast screen out at one aspect and captures at another.** Anything sized from the frame at rebuild has to anchor or rebuild.
+- **The head scan's frame turns with the head, by the eye line.** Scanning in the root's axes read the ears lopsided whenever the idle had the head a few degrees round, and one hoop hung off true. Carrying the root's axes through the head bone's bind pose put the hair across the face, because UMA's bind space is not upright. The line between the eye bones is the head's right; up is the body's, straightened against it.
+- **`Travel_AnErrandWalksNearRuns...` read the pace 30 frames after passing 2 m/s,** which in batchmode is a fraction of a millisecond, mid-acceleration. It failed intermittently (1.49 against 1.62) and passed alone. Waiting on the clock instead caught short errands already slowing for the door. The test now takes the pace's own peak over the whole walk; the pace follows the body's measured speed, which trails the agent's. It passed 3/3 and a pace mutation catches it.
+
+**Verified.**
+- Full suite: EditMode 1453/1453, Uma 43/43 (44 with the probe), Simulation 741/741.
+- PlayMode: the final full run was 410/412.
+  - The travel test, since fixed as above.
+  - `NotebookVotes_AnEmptyPageSaysWhyInBothTabs`: the season's revision moved by one while its capture settled, the house committing something in the background. It passed 3/3 on rerun; treat it as the known autonomy flake.
+- Floors raised to 1453, 412 and 43.
+- Mutation pass, `scratchpad/mutate_n` (24 mutations, one per feature). All caught. Three needed a second look:
+  - the afro's rounding and the stylizer's skip were missed at first, and their tests were sharpened: a rebuild before the chrome check, and fuller behind than over the brow;
+  - the hair highlight's second target compared against the mutated function itself, which the dedicated black-hair test covers.
+- **Not pinned:** the eye-line frame. Whether a test catches it depends on the head's pose at scan time.
+
+**Not done.** Face detail overlays (freckles, makeup, age) are on disk but still outside the catalog's slot allowlist.
+
 ## 0000000. House life built: forward-facing takes, travel, room icons, beds, pool, hot tub, stove, outfits (24 September)
 
 The request: implement `HOUSE-LIFE-PLAN.md` and keep improving. The owner's answers are recorded in its §6: warp far, run nearer, walk near; presentation only; no non-UMA work; UMA keeps its own idle and run; work out outfit swaps; leave Listen in alone.

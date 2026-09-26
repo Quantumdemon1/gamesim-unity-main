@@ -4,47 +4,52 @@ using UnityEngine;
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// The marker on whoever the camera is following: a neon ring at their feet and a green
-    /// diamond over their name plate, riding with them, and nothing when the camera is following
-    /// nobody.
-    /// Read off the rig every frame, so it agrees with every way a subject can be chosen - a click
-    /// on a body, a portrait on the cast rail, Tab - and with every way one can be dropped.
+    /// The marker on whoever the camera is following: the show's own language for "the cameras are
+    /// on you" - a studio spotlight over them, pooling light on the floor where they stand, and a
+    /// camera's focus reticle at their feet, a ring inside four brackets. Read off the rig every
+    /// frame, so it agrees with every way a subject can be chosen - a click on a body, a portrait on
+    /// the cast rail, Tab - and with every way one can be dropped. Nothing when the camera is
+    /// following nobody.
     ///
-    /// <para>The diamond is V2's (VISUAL-TARGET.md §5, mockup-01): the mockups mark the selected
-    /// houseguest three times over - a diamond above the head, a name chip beside it and a coloured
-    /// outline on the body - and a disc at the feet is the one of the three that reads worst. At the
-    /// overview camera's height a floor ring is a small ellipse behind furniture, while something
-    /// floating at head height clears the sofa backs and the kitchen island and says which of twelve
-    /// people is meant from across the room.</para>
+    /// <para>It replaces a green diamond floating over the name plate, which looked like nothing so
+    /// much as another game's marker. The web game marks its pick at the feet, never overhead; a
+    /// spotlight keeps the one thing the diamond was for - saying which of twelve people is meant
+    /// from across the room, over the sofa backs - because it lights the person themselves, head
+    /// and shoulders first, and throws a bright pool round them that the overview camera sees.</para>
     ///
-    /// <para>A marker, not motion: neither part pulses or spins, so reduced motion has nothing to
-    /// remove. The diamond is drawn rather than animated for the same reason the ring is.</para>
+    /// <para>The reticle turns slowly and the light breathes a little, as a live camera's frame
+    /// does; under reduced motion both hold still.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class FollowRing : MonoBehaviour
     {
         public const string RingName = "Follow ring";
-        /// <summary>The diamond's own name, so a test can find it without guessing.</summary>
-        public const string DiamondName = "Follow diamond";
+        /// <summary>The spotlight's own name, so a test can find it without guessing.</summary>
+        public const string SpotlightName = "Follow spotlight";
 
         private const float Radius = 0.55f;
-        /// <summary>The ring's width: a line on the floor, as mockup-01 draws it, not a disc.</summary>
-        private const float RingWidth = 0.07f;
+        /// <summary>The ring's width: a line on the floor, not a disc.</summary>
+        private const float RingWidth = 0.05f;
+        /// <summary>The brackets: four arcs outside the ring, a camera's focus corners.</summary>
+        private const float BracketInner = 0.64f, BracketOuter = 0.7f, BracketSweep = 34f;
+
         /// <summary>
-        /// How far over the feet the diamond floats: over the name plate, as mockup-01 stacks them.
-        /// The plate is centred at 2.4 m and reaches 0.13 m above it at full size; at 2.25 m the
-        /// diamond stood across it and read as a white shape through the name.
+        /// How high the light hangs over the feet: over the name plate (its top is about 2.53 m)
+        /// so it never stands in it, and near enough that the pool it throws is a body's width.
         /// </summary>
-        private const float DiamondHeight = 2.9f;
-        /// <summary>The same, over a seated body's focus, where the name rides 0.35 m up.</summary>
-        private const float SeatedDiamondLift = 0.85f;
-        /// <summary>The diamond's half height, so a test can say what it clears.</summary>
-        public const float DiamondHalfHeight = DiamondTall;
-        private const float DiamondWidth = 0.17f;
-        private const float DiamondTall = 0.26f;
+        public const float SpotlightHeight = 4.2f;
+        /// <summary>The same over a seated body's focus, which is lower.</summary>
+        private const float SeatedSpotlightLift = 3.1f;
+        private const float SpotAngle = 30f, InnerSpotAngle = 14f, SpotIntensity = 10f;
+        /// <summary>A warm stage white - the house's lamps are warm - so it reads as light, not as a colour.</summary>
+        private static readonly Color SpotColour = new Color(1f, .95f, .86f);
+
+        private const float TurnDegreesPerSecond = 14f;
 
         private HouseCameraRig rig;
-        private Transform marker, ring, diamond;
+        private Transform marker, ring, spotlight;
+        private Light lamp;
+        private Material ringMaterial;
 
         public static FollowRing Attach(HouseCameraRig rig)
         {
@@ -69,10 +74,20 @@ namespace Gamesim.Presentation
             }
             if (marker == null) Build();
             if (!marker.gameObject.activeSelf) marker.gameObject.SetActive(true);
-            var seat=subject.GetComponent<HouseSeatPresentation>();
-            marker.position = seat!=null && seat.Active ? seat.VisualFeet : subject.position;
-            if(diamond!=null)diamond.position=seat!=null && seat.Active ? seat.VisualFocus+Vector3.up*SeatedDiamondLift
-                : subject.position+Vector3.up*DiamondHeight;
+            var seat = subject.GetComponent<HouseSeatPresentation>();
+            bool seated = seat != null && seat.Active;
+            marker.position = seated ? seat.VisualFeet : subject.position;
+            if (spotlight != null)
+            {
+                spotlight.position = seated ? seat.VisualFocus + Vector3.up * SeatedSpotlightLift : subject.position + Vector3.up * SpotlightHeight;
+                spotlight.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
+            }
+
+            bool still = rig.ReducedMotion;
+            if (!still && ring != null) ring.Rotate(0f, TurnDegreesPerSecond * Time.deltaTime, 0f, Space.Self);
+            float wave = still ? 0f : Mathf.Sin(Time.time * 2f);
+            if (lamp != null) lamp.intensity = SpotIntensity * (1f + .08f * wave);
+            if (ringMaterial != null) ringMaterial.SetColor("_EmissionColor", UiTheme.Accent * (1f + .2f * wave));
         }
 
         private void Build()
@@ -82,84 +97,73 @@ namespace Gamesim.Presentation
             var disc = new GameObject(RingName, typeof(MeshFilter), typeof(MeshRenderer));
             disc.transform.SetParent(marker, false);
             disc.transform.localPosition = new Vector3(0f, 0.03f, 0f);
-            disc.GetComponent<MeshFilter>().sharedMesh = Ring();
-            // Following someone is navigation, not power. The ring and the diamond also used to
-            // disagree with each other - gold underfoot, green overhead, one marker. A filled disc
-            // at 2.2 times its colour bloomed to a white pool the size of a rug, and a band at 1.6
-            // to a white line: the blue survives the bloom at its own brightness.
-            Paint(disc.GetComponent<Renderer>(), UiTheme.Accent, 1.0f);
+            disc.GetComponent<MeshFilter>().sharedMesh = Reticle();
+            // The house's accent blue: following someone is navigation, not power. A filled disc
+            // bloomed to a white pool the size of a rug; thin lines keep their blue.
+            ringMaterial = Paint(disc.GetComponent<Renderer>(), UiTheme.Accent, 1.0f);
             ring = disc.transform;
 
-            var gem = new GameObject(DiamondName, typeof(MeshFilter), typeof(MeshRenderer));
-            gem.transform.SetParent(marker, false);
-            gem.transform.localPosition = new Vector3(0f, DiamondHeight, 0f);
-            diamond=gem.transform;
-            gem.GetComponent<MeshFilter>().sharedMesh = Diamond();
-            // Green: at 2.6 times its colour the bloom took it to white, and at 1.2 to a pale mint.
-            Paint(gem.GetComponent<Renderer>(), UiTheme.Positive, 0.7f);
-        }
-
-        /// <summary>A flat band on the floor, facing up, <see cref="RingWidth"/> wide.</summary>
-        private static Mesh Ring()
-        {
-            const int segments = 48;
-            var vertices = new Vector3[segments * 2];
-            var triangles = new int[segments * 6];
-            for (int i = 0; i < segments; i++)
-            {
-                float angle = i * Mathf.PI * 2f / segments;
-                var along = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
-                vertices[i * 2] = along * (Radius - RingWidth);
-                vertices[i * 2 + 1] = along * Radius;
-                int next = (i + 1) % segments;
-                // Clockwise seen from above, which Unity treats as facing up.
-                triangles[i * 6] = i * 2; triangles[i * 6 + 1] = i * 2 + 1; triangles[i * 6 + 2] = next * 2 + 1;
-                triangles[i * 6 + 3] = i * 2; triangles[i * 6 + 4] = next * 2 + 1; triangles[i * 6 + 5] = next * 2;
-            }
-            var mesh = new Mesh { name = RingName, vertices = vertices, triangles = triangles };
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            return mesh;
+            var light = new GameObject(SpotlightName, typeof(Light));
+            light.transform.SetParent(marker, false);
+            light.transform.localPosition = new Vector3(0f, SpotlightHeight, 0f);
+            light.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
+            lamp = light.GetComponent<Light>();
+            lamp.type = LightType.Spot;
+            lamp.spotAngle = SpotAngle;
+            lamp.innerSpotAngle = InnerSpotAngle;
+            lamp.range = SpotlightHeight + 2.5f;
+            lamp.intensity = SpotIntensity;
+            lamp.color = SpotColour;
+            lamp.shadows = LightShadows.None;
+            // Per pixel, or it is one of the lights a busy room drops first.
+            lamp.renderMode = LightRenderMode.ForcePixel;
+            spotlight = light.transform;
         }
 
         /// <summary>
-        /// An octahedron, point up and point down, built rather than scaled from a primitive because
-        /// Unity ships no cone and a squashed cube reads as a squashed cube.
-        ///
-        /// <para>The winding is clockwise seen from outside, which is what Unity treats as front
-        /// facing: the top ring runs +z to +x rather than +x to +z, and the bottom runs the other
-        /// way. Reversed, every face would point into the middle and the marker would be invisible
-        /// from everywhere that matters.</para>
+        /// The reticle on the floor, facing up: a thin ring, and outside it four short arcs at the
+        /// diagonals, as a camera draws its focus corners.
         /// </summary>
-        private static Mesh Diamond()
+        private static Mesh Reticle()
         {
-            float w = DiamondWidth, h = DiamondTall;
-            var mesh = new Mesh { name = DiamondName };
-            mesh.vertices = new[]
+            var vertices = new System.Collections.Generic.List<Vector3>();
+            var triangles = new System.Collections.Generic.List<int>();
+            void Band(float inner, float outer, float from, float sweep, int segments)
             {
-                new Vector3(0f, h, 0f),     // 0 top
-                new Vector3(0f, -h, 0f),    // 1 bottom
-                new Vector3(w, 0f, 0f),     // 2 +x
-                new Vector3(0f, 0f, w),     // 3 +z
-                new Vector3(-w, 0f, 0f),    // 4 -x
-                new Vector3(0f, 0f, -w),    // 5 -z
-            };
-            mesh.triangles = new[]
-            {
-                0, 3, 2,  0, 4, 3,  0, 5, 4,  0, 2, 5,
-                1, 2, 3,  1, 3, 4,  1, 4, 5,  1, 5, 2,
-            };
+                int start = vertices.Count;
+                for (int i = 0; i <= segments; i++)
+                {
+                    float angle = (from + sweep * i / segments) * Mathf.Deg2Rad;
+                    var along = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                    vertices.Add(along * inner);
+                    vertices.Add(along * outer);
+                }
+                for (int i = 0; i < segments; i++)
+                {
+                    int a = start + i * 2, b = a + 1, c = a + 3, d = a + 2;
+                    // Clockwise seen from above, which Unity treats as facing up.
+                    triangles.Add(a); triangles.Add(b); triangles.Add(c);
+                    triangles.Add(a); triangles.Add(c); triangles.Add(d);
+                }
+            }
+            Band(Radius - RingWidth, Radius, 0f, 360f, 64);
+            for (int corner = 0; corner < 4; corner++)
+                Band(BracketInner, BracketOuter, 45f + corner * 90f - BracketSweep * .5f, BracketSweep, 8);
+            var mesh = new Mesh { name = RingName };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;
         }
 
-        private static void Paint(Renderer renderer, Color colour, float glow)
+        private static Material Paint(Renderer renderer, Color colour, float glow)
         {
+            Material material = null;
             var shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader != null)
             {
-                var material = new Material(shader);
+                material = new Material(shader);
                 material.SetColor("_BaseColor", colour);
                 material.EnableKeyword("_EMISSION");
                 material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
@@ -168,11 +172,13 @@ namespace Gamesim.Presentation
             }
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
+            return material;
         }
 
         private void OnDestroy()
         {
             if (marker != null) Destroy(marker.gameObject);
+            if (ringMaterial != null) Destroy(ringMaterial);
         }
     }
 }

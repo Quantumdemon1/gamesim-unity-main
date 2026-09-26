@@ -252,7 +252,8 @@ namespace Gamesim.House
                 }
                 else if (actor.motion.State == HouseNpcMotionState.Failed)
                     return Fail(out reason, actor.motion.FailureReason ?? "NPC binding failed; explicit recovery is required.");
-                actor.motion.SetPaused(paused);
+                // The opening's cast walks while the house is paused around it.
+                actor.motion.SetPaused(paused && !OpeningHoldsActor(actor.id));
             }
             LastFailure = null;
             return true;
@@ -428,7 +429,7 @@ namespace Gamesim.House
         {
             if (disposed || paused == value) return;
             paused = value;
-            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value);
+            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id));
             foreach (var lease in leases.Values) lease.Status = value ? HouseMeetingStatus.Paused : HouseMeetingStatus.Travelling;
         }
         public bool Release(HouseMeetingLease lease) => Current(lease) && Retire(lease,HouseMeetingStatus.Released,null);
@@ -436,6 +437,7 @@ namespace Gamesim.House
         {
             ReleaseActivities();
             EndCompetitionStage();
+            EndOpeningStage();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer) Retire(lease,HouseMeetingStatus.Released,null);
         }
@@ -464,6 +466,7 @@ namespace Gamesim.House
         {
             if (ActivityOwnsMotion(motion)) return true;
             if (CompetitionOwnsMotion(motion)) return true;
+            if (OpeningOwnsMotion(motion)) return true;
             if (motion.LeaseId == null || !leases.TryGetValue(motion.LeaseId, out var lease)) return false;
             return actors.TryGetValue(lease.FirstId, out var first) && first.motion == motion
                 || actors.TryGetValue(lease.SecondId, out var second) && second.motion == motion;

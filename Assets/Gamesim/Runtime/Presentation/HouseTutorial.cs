@@ -25,7 +25,8 @@ namespace Gamesim.Presentation
     /// Section E2 of the acceptance matrix asks whether three first-time players reach the eviction
     /// unaided, and a guided tour is precisely the intervention that criterion exists to test the
     /// absence of. Run E2 with the tour off, or record that it was on. Do not run it both ways and
-    /// report the better number.</para>
+    /// report the better number. Record too whether "Skip Introductions" was used: the introductions
+    /// are gameplay rather than an aid, and they move how the house feels about the player.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HouseTutorial : MonoBehaviour
@@ -56,7 +57,7 @@ namespace Gamesim.Presentation
             new Step("Objective", "Your next step",
                 "This panel always names the one thing the house is waiting on. Follow it when you are unsure."),
             new Step("Exploration controls", "Moving around",
-                "Click the floor to walk. Stand near a houseguest and press E to talk to them."),
+                "Click the floor to walk. Press E near a houseguest to talk. In the opening, Space moves on; Esc skips."),
             new Step("Navigation", "Your notebook",
                 "Everything your character knows: who trusts you, what you promised, and how the house voted."),
             new Step("Status", "The episode",
@@ -88,7 +89,7 @@ namespace Gamesim.Presentation
         public static HouseTutorial Attach(GameObject owner)
         {
             var root = new GameObject("Gamesim Tutorial",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             if (owner != null && owner.scene.IsValid()) SceneManager.MoveGameObjectToScene(root, owner.scene);
 
             var canvas = root.GetComponent<Canvas>();
@@ -244,15 +245,17 @@ namespace Gamesim.Presentation
             body = HudPrimitives.Label("Body", card, 15f * scale, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .82f));
             Corner(body.rectTransform, new Vector2(16f, -62f), new Vector2(CardWidth - 32f, 66f), scale);
 
-            skip = TextButton("Skip tutorial", card, UiTheme.Muted, 14f * scale);
-            Corner(skip.GetComponent<RectTransform>(), new Vector2(12f, -(CardHeight - 40f)), new Vector2(120f, 30f), scale);
-            skip.onClick.AddListener(Skip);
-
+            // Next before Skip: the tour takes the keyboard while it is up, and the ring lands on the
+            // first control it finds - which put Enter on "Skip tutorial".
             next = TextButton("Next", card, Color.white, 15f * scale, UiTheme.ActionBlue);
             var nextLabel = next.GetComponentInChildren<TMP_Text>();
             if (nextLabel != null && semibold != null) nextLabel.font = semibold;
             Corner(next.GetComponent<RectTransform>(), new Vector2(CardWidth - 110f, -(CardHeight - 40f)), new Vector2(98f, 32f), scale);
             next.onClick.AddListener(Next);
+
+            skip = TextButton("Skip tutorial", card, UiTheme.Muted, 14f * scale);
+            Corner(skip.GetComponent<RectTransform>(), new Vector2(12f, -(CardHeight - 40f)), new Vector2(120f, 30f), scale);
+            skip.onClick.AddListener(Skip);
         }
 
         private static void Corner(RectTransform rect, Vector2 offset, Vector2 size, float scale)

@@ -75,6 +75,13 @@ namespace Gamesim.House
         }
 
         /// <summary>
+        /// Whether the plate is kept down whatever the distance: while the opening plays, the
+        /// houseguests are introduced by their cards, and a plate over each head would name them
+        /// before the show does.
+        /// </summary>
+        public bool PlateSuppressed { get; set; }
+
+        /// <summary>
         /// The name as the mockups draw it over a houseguest (01, 12): the given name in the HUD's
         /// face on the pack's name plate - dark glass with a blue edge. The TextMesh stays as the
         /// name's holder and its fade, and stops drawing: in the default font it was a large grey
@@ -166,7 +173,7 @@ namespace Gamesim.House
                     nameLabel.transform.localPosition = labelRestPosition - Vector3.up * Mathf.InverseLerp(1f, .5f, near) * NameTagCloseDrop;
                 var colour = nameLabel.color;
                 if (!Mathf.Approximately(colour.a, NameTagAlpha)) { colour.a = NameTagAlpha; nameLabel.color = colour; }
-                if (plateGroup != null) plateGroup.alpha = spotlit ? 1f : NameTagAlpha;
+                if (plateGroup != null) plateGroup.alpha = PlateSuppressed ? 0f : spotlit ? 1f : NameTagAlpha;
             }
         }
 

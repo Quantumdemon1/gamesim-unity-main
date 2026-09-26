@@ -8,6 +8,88 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 00000000000. The premiere and the introductions: the web's opening, walked through a real front door (26 September)
+
+The request: rework the intro animation when a house first starts, and the introductions where the player is first given options to meet each houseguest. "The web version had better setups for both, take those and build on them."
+
+**What the web actually has.** The web tree is now Survivor-only.
+- Its Big Brother opening survives only as unreachable code: `HouseEntrySequence`, `HouseWalkInSequence`, `MeetAndGreetPhase`, and the orphaned `IntroBBEyeLogo`.
+- The live intro is the Survivor `IntroSequence`: a title card, a tunnel-and-door reveal per castaway, and a group grid.
+- That dead Big Brother code and the live intro's shape are what this ports.
+- The design doc `GameSim-Game-Flow_v2.md` is no longer on disk. Two strings are reconstructions: "{n} Houseguests. 1 Winner." and "Meet the Houseguests".
+
+**The opening now** (same five saved beats; no schema change):
+- **intro:**
+  - The loading gate waits for the bodies, with real progress rather than the web's faked bar.
+  - Title card: the eye emblem, the "GAMESIM" wordmark, "{n} Houseguests. 1 Winner.".
+  - One reveal per houseguest, the player first: each walks through a front door with a lower third (face, name, age, job, hometown, "i of n").
+  - The house together on one card, then a fade to black.
+- **house-entry:** the web's card, "{n} Houseguests have entered", with the season's arrival line.
+- **house-walk-in:** everyone walks from the yard to where the season starts them while the camera cranes from inside the house to over the top (the web's three keys).
+- **tutorial:** the existing tour, unchanged apart from Next being focused and the controls line.
+- **meet-and-greet:** the web's introductions, one houseguest at a time in cast order. Each card shows their traits and their own line; the player picks Warm, Calculated or Bold; they reply. The camera frames them where they stand, with a key light, and they react with their body. Next / "Let's Play!", and "Skip Introductions" forfeits the rest.
+
+**The front door** (`OpeningDoorSet`, runtime; `EpisodeDirector.OpeningStage`):
+- **Where it is.** The yard's roped arch cannot be an entrance: it is the HoH competition gate, its backdrop is 0.8 m behind, and a podium stands on its centre line (probed). So the door is a runtime facade in the open west yard at x −3.3, facing east, with a vestibule closed by a wall of light.
+- **Placement.** The house queues behind the facade out of sight. Placement uses the load's own sequence (ResetNpcSocialForLoad, transforms, Project), once, under the title.
+- **Movement.** Everyone then walks. Guests are never hidden, because SetActive unbinds navigation, and never teleported mid-shot.
+- **The door beat.** It is the web's: a 0.3 s jitter, hinged leaves (the web rotated them about their centres and left a 0.7 m gap), a light burst, sparkles, and a push-in.
+- **After the reveal.** Guests walk off frame-left to gather behind the camera, then walk home at the walk-in.
+- **Skipping.** A skip puts everyone back under black with the same sequence.
+- **Fallback.** Reduced motion, batchmode, a cast that will not fit, or a world that will not bind all use the web's 2D card reveal.
+- **Staging the walkers.** `HouseMeetingCoordinator.BeginOpeningStage` borrows idle actors with tokens of their own; `TickNpcSocialRuntime` hands the stage the tick.
+
+**Introductions in the engine** (`EpisodeCommandKind.Introduce`, appended; `EpisodeEngine.Introductions.cs`; `WebIntroductions.cs`):
+- **Scoring.** +3 for a match, −3 for a clash, +1 for neutral, read from all of the guest's traits, as the web does.
+- **The write.** It goes through `ChangeWithRoll` with one injected draw, a hash of seed and id. You get the web's social scaling, the 80–120% reciprocal, notes and the arc, with `randomState` untouched and the recorded impact equal to the applied one (the web rolled twice).
+- **What it costs.** No interaction, and it never gates Advance.
+- **When it is allowed.** Only on the first night (`IsFirstNight` = Social, week 1, no HoH, no eviction).
+- **Progress.** Read from the ledger ("introduced" events), so no saved field.
+- **Unmet houseguests** get nothing.
+- **The flat +3** at the meet-and-greet mark is gone.
+- **Reaction voice.** Reactions speak in the voice of the trait that decided the outcome; the web used the first trait, so a warm hello to a Confrontational/Social guest got "Bring it on!".
+- **No numbers.** None is shown during the meet (web). The event line is "You introduced yourself to {name}.".
+
+**The house while it plays:**
+- The opening is a panel (`IsPanelOpen`) and a registered overlay.
+- No houseguest ticks, and the player neither walks nor opens anything underneath.
+- Space / Enter / South is Continue. Esc / Start skips the show and stops at the introductions; during them it only focuses "Skip Introductions".
+- The theme plays under the intro only (web); the season's bed plays after it.
+- The HUD steps aside by alpha (`EpisodeHud.SetCinematic`). Name plates stay down (`HouseNpc.PlateSuppressed`).
+- Beat marks make no sound.
+- No opening outside the first night: imports and migrated saves get the tour only.
+
+**Found on the way:**
+- **`??` on `GetComponent` is a trap.** Unity's fake null in the editor fools `??`, so no CanvasGroup was ever added and 11 tests threw MissingComponentException. Use an explicit `== null`.
+- **A fade group made non-interactable greys out and disables every control under it.** The meet card's choices were dead to real input; only `onClick.Invoke` worked.
+- **`HouseRoomQuery.HasCapsuleClearance` needs a real house actor as `self`.** With null it refuses every spot, so the stage was never placed.
+- **The fixture season's Taylor Kim stands on the competition course with her head inside the stack-top ball.** No camera angle frames her cleanly. It is an authored placement in the scene, which is not edited from here, so it is left as is.
+- **The four-lens adversarial review** (sequence and input, stage and world, engine and saves, fidelity and UX), each finding verified. Fixed:
+  - **The meet's buttons were live the instant a card appeared.** A double-click or a double Enter on Next committed the next houseguest's introduction unread. Choices and Next are now armed for 0.35 s (real input only), with the skip disarmed too so the ring cannot land on it. Next moved clear of the next card's rows.
+  - **Keyboard focus was invisible** (Unity's default darkens by 4%), and Esc put it on a transparent "Skip Introductions". Now there are brighter selected colours, `HudEmphasis` edges, and a visible skip.
+  - **Continue on the walk-in** started the cards with the house still walking. The meet now puts anybody not home back under black first.
+  - **A season resumed at the tour** hid the HUD under it (`StartOpening` overrode the beat's choice).
+  - **The HUD was clickable during the tour.** It is now drawn but not raycastable until the opening ends.
+  - **A walk refused by a mark's clearance check** (the last walker still on it) parked a houseguest in shot. Refused legs retry for 6 s.
+  - **A refused introduction** (a failed save) took the choices away; they stay now, with the reason. A resumed meet skipped only those before the first stranger.
+  - **Heads and facing** stayed on the lens after the opening; they are released.
+  - **The stage** is not placed on a house whose people cannot move (web imports).
+  - **The tour's controls line** claimed Space/Esc worked for every cutscene.
+
+**Tests:**
+- **EditMode:** `IntroductionTests` (18 cases), `WebIntroductionsTests` (+2), `OpeningBeatTests` (the flat +3 is gone; the mark moves nobody), `OpeningPresentationTests` (music rule, reveal timing), `LocalisationTests` (Format).
+- **PlayMode:** `EpisodePlayModeTests.Opening` (17 new sequence tests with a FakeStage), `.OpeningDirector` (11), `.OpeningStage` (2, with captures), `.OpeningReview` (5).
+- **Mutation-tested.** 35 of 36 engine mutations are killed; the survivor, "negatives scaled", is unobservable at ±3. 26 of 28 runtime mutations are killed; the two survivors are equivalent: the HUD ring selects Next anyway, and the coordinator is never paused during the stage. The 0.35 s arming is not pinned: it applies to real input only and is zero in batchmode.
+
+**Verified.** Full suite on D: - EditMode 1493, PlayMode 469, Uma 64, Simulation 775, all passing, no crashes (floors raised from 1456, 434 and 741). Captures of every beat, staged and on cards (`scratchpad/probe_opening`), reviewed.
+
+**Left:**
+- The runtime facade could become an authored `bb_set_entrance` set piece.
+- A wave take (`HumanoidReactionAuthoring`) for the reveal and greetings.
+- Music fades (the web fades 1.5 s in and out).
+- Taylor's fixture anchor.
+- A LookSheet frame in PortVerification.
+
 ## 0000000000. Hats that fit, hair held under them, Casey in Tyler's curls, and an afro without scalp showing (26 September)
 
 The request: hair came through hats; either change the hairstyle under a hat or fix the collision. The grown afro showed scalp; Casey Wilson should wear a black version of Tyler Crispen's hair until the afro is fixed.

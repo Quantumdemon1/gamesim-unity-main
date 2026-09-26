@@ -426,7 +426,13 @@ namespace Gamesim.Simulation
         /// <summary>Walking in on two houseguests in the same room.</summary>
         WitnessProximity,
         /// <summary>Answering the chapter of a storyline.</summary>
-        ProgressStoryline // Append: preserve every pre-v4 command ordinal.
+        ProgressStoryline, // Append: preserve every pre-v4 command ordinal.
+        /// <summary>
+        /// Introducing yourself to a houseguest on the first night: <c>targetId</c> is the
+        /// houseguest and <c>secondTargetId</c> the approach, "warm", "calculated" or "bold".
+        /// Free, and not a social action; the meet-and-greet is the one time the house comes to you.
+        /// </summary>
+        Introduce
     }
 
     /// <summary>

@@ -86,9 +86,11 @@ namespace Gamesim.Episode
         /// <summary>Who the player clicked and is walking towards, or null. A read, as above.</summary>
         public string WalkingToId => headingToNpcId;
 
+        // The opening counts too: it owns the house while it plays, so the player cannot walk, the
+        // houseguests do not tick and nothing underneath answers a key.
         public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen
                                    || journalOpen || diaryOpen || houseActivitiesOpen || IsWeeklyRecapOpen || IsSeasonReportOpen
-                                   || (competitionCard != null && competitionCard.IsPlaying);
+                                   || (competitionCard != null && competitionCard.IsPlaying) || OpeningOwnsHouse;
         /// <summary>Whether the season report is up: a full-screen card over the house, a panel by any reckoning.</summary>
         public bool IsSeasonReportOpen => seasonReport != null && seasonReport.IsShowing;
         /// <summary>Whether the episode screen is the panel open, rather than a conversation or the notebook.</summary>
@@ -159,6 +161,10 @@ namespace Gamesim.Episode
             tutorial = HouseTutorial.Attach(gameObject);
             tutorial.RememberCompletion = SaveRootOverride == null;
             opening = OpeningSequence.Attach(gameObject);
+            // Both take the keyboard while they are up: the opening's Continue and skip, and the
+            // tour's Next, rather than a HUD control hidden underneath them.
+            hud.RegisterOverlay(opening.GetComponent<CanvasGroup>());
+            hud.RegisterOverlay(tutorial.GetComponent<CanvasGroup>());
             seasonReport = SeasonReport.Attach(gameObject);
             weeklyRecap = WeeklyRecapScreen.Attach(gameObject);
             hud.RegisterOverlay(seasonReport.GetComponent<CanvasGroup>());
@@ -392,6 +398,9 @@ namespace Gamesim.Episode
                 // The game surface consumes Escape / Start itself, including the dismissal frame.
                 if (competitionScreen != null && competitionScreen.OwnsMenuInput) return;
                 if (challengeActive) { CancelChallenge(); return; }
+                // The opening before anything: it draws over every screen, and Escape underneath it
+                // used to close panels and release the shot it was holding.
+                if (OpeningOwnsHouse) { OpeningMenuPressed(); return; }
                 // Topmost first. The main menu sits above the cast screen, which sits above the
                 // HUD; closing a panel underneath either of them would leave a screen on top of the
                 // house with nothing behind it. The menu itself ignores Escape when there is no
@@ -414,7 +423,7 @@ namespace Gamesim.Episode
                 }
                 return;
             }
-            if (shortcuts != null && !hud.IsTyping)
+            if (shortcuts != null && !hud.IsTyping && !OpeningOwnsHouse)
             {
                 if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
@@ -603,8 +612,10 @@ namespace Gamesim.Episode
             // two-shot ends with the conversation; the diary's chair shot is released here, which
             // covers Escape and the walk-away close alike.
             if (overviewOpen) { LeaveOverview(); if (cameraRig != null) cameraRig.ReleaseShot(OverviewSeconds); }
-            if (cameraRig != null) { cameraRig.EndConversation(); cameraRig.ReleaseShot(DiaryShotSeconds); cameraRig.ControlsEnabled = !blockedRecovery; }
-            if (projected != null && player != null) player.SetInputEnabled(!blockedRecovery && projected.Find(projected.playerId).status == ContestantStatus.Active);
+            // Not while the opening plays: it is holding the camera and the player, and gives both
+            // back when it ends.
+            if (cameraRig != null && !OpeningOwnsHouse) { cameraRig.EndConversation(); cameraRig.ReleaseShot(DiaryShotSeconds); cameraRig.ControlsEnabled = !blockedRecovery; }
+            if (projected != null && player != null && !OpeningOwnsHouse) player.SetInputEnabled(!blockedRecovery && projected.Find(projected.playerId).status == ContestantStatus.Active);
             if (render && hud != null) Render();
         }
 
@@ -670,9 +681,12 @@ namespace Gamesim.Episode
                 RecordCareer(result.state);
                 if (phaseOpen && wasYard != EpisodeEngine.IsCompetition(result.state.phase)) ClosePanels();
                 var kind = result.state.events.LastOrDefault()?.kind;
-                audioBed.PlayCue(kind == "winner" ? HouseAudio.Cue.Finale : kind == "eviction" ? HouseAudio.Cue.Eviction :
-                    kind == "competition" ? HouseAudio.Cue.CompetitionWin : kind == "nomination" ? HouseAudio.Cue.Nomination :
-                    kind == "veto" ? HouseAudio.Cue.Veto : HouseAudio.Cue.Button);
+                // A beat of the opening being recorded is bookkeeping, not a decision: it clicked
+                // under every card of the titles.
+                if (command.kind != EpisodeCommandKind.MarkOpeningBeat)
+                    audioBed.PlayCue(kind == "winner" ? HouseAudio.Cue.Finale : kind == "eviction" ? HouseAudio.Cue.Eviction :
+                        kind == "competition" ? HouseAudio.Cue.CompetitionWin : kind == "nomination" ? HouseAudio.Cue.Nomination :
+                        kind == "veto" ? HouseAudio.Cue.Veto : HouseAudio.Cue.Button);
                 // The ceremony is not always the last thing a commit writes — an eviction is followed
                 // by the events that open the next week, which is why keying off the final line
                 // meant the eviction card never played at all. Search everything this command

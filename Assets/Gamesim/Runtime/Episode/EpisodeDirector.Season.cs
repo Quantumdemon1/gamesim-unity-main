@@ -32,17 +32,25 @@ namespace Gamesim.Episode
         private void ApplyMusic()
         {
             if (audioBed == null) return;
-            if (!musicOn) { audioBed.SetMusic(HouseAudio.Music.Silent); return; }
 
             bool setup = (mainMenu != null && mainMenu.IsShowing)
                          || (castSelect != null && castSelect.IsShowing)
                          || (characterCreator != null && characterCreator.IsShowing)
                          || (seasonReport != null && seasonReport.IsShowing);
-            if (setup) { audioBed.SetMusic(HouseAudio.Music.Silent); return; }
+            audioBed.SetMusic(MusicFor(musicOn, setup, opening != null && opening.IsPlaying, opening != null ? opening.CurrentBeat : null));
+        }
 
-            // The opening carries the theme, and the season takes over when it ends.
-            bool titles = opening != null && opening.IsPlaying;
-            audioBed.SetMusic(titles ? HouseAudio.Music.Theme : HouseAudio.Music.Season);
+        /// <summary>
+        /// The music rule as a question: silence with the music off or on a setup screen, the theme
+        /// under the intro, and the season's bed everywhere else - the house entry, the walk-in, the
+        /// tour and the introductions included. The reference build plays its theme under the intro
+        /// only and background music from the house entry on; played under all five beats, the
+        /// theme's sixteen-second fanfare looped for minutes under the introductions.
+        /// </summary>
+        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat)
+        {
+            if (!musicOn || setupShowing) return HouseAudio.Music.Silent;
+            return openingPlaying && beat == OpeningBeat.Intro ? HouseAudio.Music.Theme : HouseAudio.Music.Season;
         }
 
         private void Settings(EpisodeState state)
@@ -315,6 +323,9 @@ namespace Gamesim.Episode
 
         private void Install(EpisodeState state)
         {
+            // A season replaced under the opening ends it without recording anything: the beats
+            // belonged to the season that is going.
+            if (opening != null && opening.IsPlaying) opening.Cancel();
             ResetNpcSocialForLoad();
             ClosePanels(); engine = new EpisodeEngine(state); blockedRecovery = false;
             // A finished season arriving by load, recovery or import is still a finished season.

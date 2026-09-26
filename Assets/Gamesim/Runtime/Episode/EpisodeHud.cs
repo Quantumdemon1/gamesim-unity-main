@@ -1392,6 +1392,28 @@ namespace Gamesim.Episode
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 
+        /// <summary>
+        /// Steps the HUD aside for a cinematic - the opening's titles, reveals and introductions -
+        /// without switching it off. Only its alpha and its raycasts: an inactive canvas stops the
+        /// keyboard ring the opening's own controls are on, and a group made non-interactable bakes
+        /// the disabled tint into every control under it for good.
+        ///
+        /// <para>Shown again, it stays out of reach unless <paramref name="interactive"/>: the tour
+        /// points at the HUD while the opening still owns the house, and a panel opened from it
+        /// would run underneath the opening.</para>
+        public void SetCinematic(bool on, bool interactive = false)
+        {
+            if (canvas == null) return;
+            var group = canvas.GetComponent<CanvasGroup>();
+            if (group == null) group = canvas.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = on ? 0f : 1f;
+            group.blocksRaycasts = !on && interactive;
+            IsCinematic = on;
+        }
+
+        /// <summary>Whether the HUD is stepped aside for a cinematic.</summary>
+        public bool IsCinematic { get; private set; }
+
         /// <summary>The interaction prompt's fixed caption, beside the words that change with what E would do.</summary>
         public const string InteractCaption = "Interact [E]";
 

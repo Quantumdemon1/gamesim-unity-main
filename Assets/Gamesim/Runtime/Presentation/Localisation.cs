@@ -34,6 +34,13 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// A composed line as a format: the pattern is the key, so a table translates "{0} of {1}"
+        /// once rather than every count it will ever show, and the values go in afterwards.
+        /// </summary>
+        public static string Format(string english, params object[] values) =>
+            string.Format(System.Globalization.CultureInfo.InvariantCulture, Text(english) ?? string.Empty, values);
+
+        /// <summary>
         /// Loads the table for a language from Resources, or clears it for the default or for a
         /// language with no table. Returns whether a table was found.
         /// </summary>

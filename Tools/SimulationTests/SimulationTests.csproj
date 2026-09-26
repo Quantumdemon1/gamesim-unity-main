@@ -56,6 +56,7 @@
     <Compile Include="$(EditMode)HouseDialogueTests.cs" />
     <Compile Include="$(EditMode)HouseEventSourceTests.cs" />
     <Compile Include="$(EditMode)HouseEventTests.cs" />
+    <Compile Include="$(EditMode)IntroductionTests.cs" />
     <Compile Include="$(EditMode)JuryVotingTests.cs" />
     <Compile Include="$(EditMode)NpcAllianceTests.cs" />
     <Compile Include="$(EditMode)NpcDealTests.cs" />
@@ -69,6 +70,7 @@
     <Compile Include="$(EditMode)StorylineTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
+    <Compile Include="$(EditMode)WebIntroductionsTests.cs" />
     <Compile Include="$(EditMode)WebJurySentimentParityTests.cs" />
     <Compile Include="$(EditMode)WebLoyaltyOathParityTests.cs" />
     <Compile Include="$(EditMode)WebNpcActivityParityTests.cs" />

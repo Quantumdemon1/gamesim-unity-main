@@ -127,6 +127,9 @@ namespace Gamesim.Episode
                 npcNextBindingCheck = Time.unscaledTime + .1f;
                 ReconcileNpcSocialWorld(); // Surface failed asynchronous bindings, without retry/teleport.
             }
+            // The opening's front door has the house: its people walk where the show sends them, and
+            // nothing else ticks, as the arena's stage does below a competition.
+            if (openingStage != null && openingStage.Active) { openingStage.Tick(); npcCaption?.Hide(); return; }
             bool eligible = NpcCanAdvance && npcMeetings != null;
             SetNpcWorldPaused(!eligible);
             if (!eligible) { npcCaption?.Hide(); return; }

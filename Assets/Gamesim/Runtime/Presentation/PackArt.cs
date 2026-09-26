@@ -63,6 +63,7 @@ namespace Gamesim.Presentation
 
         // Presentation.
         public const string Vignette = "Pack4_Presentation/Transitions/cinematic_vignette";
+        public const string IconFire = "Pack4_Presentation/Icons_PNG/fire";
 
         // Refinement Kit 6: white, tintable parts. A fill, a resting edge and a focus edge share one
         // size and one border per family, so a state changes a tint or a layer, never a rect.

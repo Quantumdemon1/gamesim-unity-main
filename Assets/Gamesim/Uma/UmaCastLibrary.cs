@@ -167,12 +167,13 @@ namespace Gamesim.Uma
             },
 
             // The Party Animal. Deep brown skin, a full natural afro, stud earrings, a blue-striped shirt.
+            // Her afro is Tyler's full curls in black for now: the grown afro showed scalp through it.
             ["casey-wilson"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "gs-hair-afro",
+                    "Hair_Poofy",
                     "Eyebrows_Arched_Average",
                     "underwear_bra_white_Recipe",
                     "underwear_white_granit_bottom_Recipe",

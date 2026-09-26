@@ -65,7 +65,8 @@ namespace Gamesim.Uma.Tests
                 Assert.That(Luminance(Look(id).Skin), Is.LessThan(.42f), id + " has deep brown skin in their photo.");
             foreach (var id in new[] { "alex-chen", "taylor-kim", "jun-song" })
                 Assert.That(Luminance(Look(id).Skin), Is.GreaterThan(.7f), id + " has light skin in their photo.");
-            Assert.That(Look("casey-wilson").Wardrobe, Does.Contain("gs-hair-afro"), "Casey wears her natural afro.");
+            Assert.That(Look("casey-wilson").Wardrobe, Does.Contain("Hair_Poofy"), "Casey's full curls: Tyler's style, in black, until the grown afro is right.");
+            Assert.That(Look("casey-wilson").Hair, Is.EqualTo(CharacterPalettes.Named(CharacterPalettes.Hair, "Black")), "Her curls are black.");
             Assert.That(Look("danielle-reyes").Wardrobe, Does.Contain("Hair_Bob_Recipe"), "Danielle's shoulder-length hair, flipped out at the ends.");
             Assert.That(Look("casey-wilson").Wardrobe, Does.Contain("gs-acc-studs"), "Casey's stud earrings.");
             Assert.That(Look("xavier-prather").Wardrobe.Any(item => item.StartsWith("Hair") || item.StartsWith("gs-hair") || item.StartsWith("bb_")), Is.False, "Xavier's head is shaved.");

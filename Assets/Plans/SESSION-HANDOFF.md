@@ -8,6 +8,70 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 0000000000. Hats that fit, hair held under them, Casey in Tyler's curls, and an afro without scalp showing (26 September)
+
+The request: hair came through hats; either change the hairstyle under a hat or fix the collision. The grown afro showed scalp; Casey Wilson should wear a black version of Tyler Crispen's hair until the afro is fixed.
+
+**Casey.** She wears `Hair_Poofy` (Tyler's full curls, UMA; compatible with both bodies) in her own black. The grown afro stays in the creator. Her look comment, the photo-match test and the scratchpad `looks_table.py` generator all say so.
+
+**Hats fit the head and hold the hair under them** (`HatShape`, new).
+- **What was wrong.** A cap or beanie was fitted over the envelope of everything the hair carried. It stood off big hair like a mushroom (Tyler's curls, the afro, a bob, long hair), and hair still came through its back (Vanessa's cap).
+- **Sizing.** `ProceduralAccessories.Dome` now sizes the hat from a skin-only envelope (`HeadScan.SkinRadius`) plus 8 mm for hair pressed flat (`HairRoom`), when the head carries hair (`HairOnTop` over 2 mm). The full envelope and `EnvelopeRadius` are gone.
+- **Holding the hair.** `Dress` puts a `HatShape` on the hat, holding its dome in the head's space, and calls `HoldHairUnder(body)`:
+  - points above the band at their bearing are pulled radially to 10 mm inside the hat;
+  - below the band, hair is drawn in *across the head* (towards the vertical line through the head's middle), never up or down, to no further out than the rim − 10 mm + 0.7 × how far it has fallen below the rim (`Flare`), so it comes out close under the rim and fans out;
+  - a point below the band that shares a triangle with a point under the hat is **tethered**: held in far enough that the straight edge from the covered point passes the band 7 mm inside the rim (`Crossing`), never further in than the rim − 10 mm;
+  - every copy of a point (same position) shares one tether.
+- **What gets held.** Grown hair meshes (the afro, coils, the locs' strands, the last read as the head holds them), and UMA's own hair in the body's combined mesh: vertices of submeshes whose material is a hair material, moved through their bone matrices and written back with `SetVertices`. It runs after every fit, which comes after every UMA build, and a held point is a limit, so holding twice changes nothing.
+
+**Found on the way** (each measured with a probe before fixing):
+- **Hair cards are long triangles.** Held by their corners, a card held inside at its top and fanned out at its foot crossed the cloth just above the band. Checking vertices never saw it, but rendering the covered-touching triangles alone did. Hence the tether, and tests that sample points across every triangle.
+- **4 mm is not "inside" enough.** Hair held 4 mm under the cap showed through in patches. The cap's flat facets sit inside the curve between its rows, and the cards are wide. At 10 mm it is clean.
+- **The GPU follows the mesh edits.** Moving the hair 10 cm up moved it on screen, and a proxy built from `BakeMesh` drew the same patches as the skinned renderer. So the patches were geometry, not the transparent second pass or GPU skinning.
+- **Found by the adversarial review (three lenses, all verified):**
+  - The first below-band rule was a *radial* limit from the head's middle, capped at about 0.23 m because the arc below the band stops growing at −90°. Hair hanging straight down past the shoulders was pulled up into the neck: Vanessa's by about 10 cm, braids by about 20 cm. The portrait captures, framed at the shoulders, could not show it. Now the limit is horizontal, so below-band points never move vertically. `LongHair_HangsAsLongUnderAHatAsWithout` puts the cap on in the frame the hair is read in and asserts nothing hanging below the rim is lifted.
+  - A grown shell gives every triangle its own corners. Tethered by vertex index, one copy was held to the rim and its twin fanned out, tearing the shell open all round under the band. Now tethers are keyed by position. `HairHeldUnderAHat_StaysInOnePiece` covers this.
+  - `Blend` now renormalises the four bone weights.
+  - Refuted: "a buzz cut should not get the hair room". Inset (10 mm) is more than the bare-head room (6 mm), so with no room for hair, stubble would be held under the skin. Stability matters too: the HairOnTop threshold (2 mm) must stay under the pressed height (≈4 mm = 6 + 8 − 10), or a texture-only UMA refit (UpdateColors, same mesh) re-reads pressed hair as a bare head and shrinks the cap.
+**The afro no longer shows scalp** (the minimal fix, from a read-only diagnosis).
+- Its edge walls now face the way they are wound: out of the hair, since they are wound from the scalp's own outward-facing triangles. They used to be turned to face out from the head's middle, which faced them inwards at the temples, round the ears and at the nape.
+- The afro is drawn from both sides (`HairTextures.Material(twoSided)`, in the cache key), so the inside of its shell, seen from below the brow and past the ears, shows hair.
+- The walls go 4 mm under the skin (was 1.5 mm).
+- Before and after captures on two bodies: skin notches along the hairline before, none after.
+- **Left for the proper afro fix:**
+  - a soft hairline (triangles cut at the hairline, not whole-triangle selection);
+  - no front brim ridge;
+  - a closed inner layer;
+  - over the ears rather than notched round them;
+  - the nape skinned to the neck;
+  - normal-blended texture projection, the coil hash (it takes only two values) and a softer normal map;
+  - a fuzzy silhouette.
+
+**Tests** (Uma; each mutation-tested: 13 mutations in 7 groups, every one failed on its target assertion):
+- `Headwear_IsTheSizeOfTheHeadNotOfTheHairUnderIt` (curls against a buzz cut, both with the room)
+- `LongHair_HangsAsLongUnderAHatAsWithout` (Vanessa, box braids)
+- `HairHeldUnderAHat_StaysInOnePiece` (afro, coils)
+- `UmaHair_GoesUnderAHatAndComesOutBeneathIt` (Vanessa)
+- `GrownHair_GoesUnderAHatAndComesOutBeneathIt` (afro under a cap, locs under a beanie)
+- `GrownAfro_IsDrawnFromBothSidesSoNoOpeningShowsTheScalp`
+- Casey's hair in `EveryLook_IsOnThePalettesAndMatchesItsPhoto`
+- The shared tether is pinned only together with a binding tether: under the edge rule the tether seldom binds on the afro or coils, so dropping the sharing alone changes nothing there; with a tether held to the rim (the first rule), the afro tears 6.9 mm and the test fails.
+- **Not pinned by a test:** the edge walls' facing. Rays from all round found the same four grazing hits whether the old rule or the new one was in place, because the notches came from the shell's own back faces, which the two-sided material now draws. The capture is the evidence.
+
+**Traps.**
+- **Hold hair by its triangles, not its points.** A hair card's triangle can cross a surface both its corners are on the right side of.
+- **Keep one surface well behind another,** about 1 cm at house scale, or they fight over which is in front.
+- **Rendering vs geometry.** To tell rendering from geometry, draw a `BakeMesh` proxy in place of the skinned renderer, and move the vertices somewhere obvious.
+- **A measurement that doesn't separate the fix from the bug measures nothing.** Run the mutation before trusting the test.
+- **Frame captures to where the change reaches.** Portraits stop at the shoulders; hair shortened below them looked fine in every sheet. The probe now takes wide back views (`wide-*.png`).
+- **Known and left:** UMA gives some vertices more than four weights; the hold reads the four `mesh.boneWeights` returns (renormalised), exact for the PC quality level (FourBones) but not for Mobile (TwoBones). A style whose only hair above crown height sits away from the top could still drop the hair room on a texture-only refit (none found in the catalogue).
+
+**Verified.** Full suite on D: - EditMode 1456, PlayMode 434, Uma 64 (floor raised from 58), Simulation 741 - all passing, no crashes. Captures (`scratchpad/probe_hats`, 18 cases, close and wide): nothing through any cap or beanie; long hair, braids and locs as long under a hat as without; Casey in black curls.
+
+**Left.**
+- **The grown afro itself** (list above): under a cap it still bells out below the band, a skirt of hair round the rim.
+- **The player's side-part hair patch** (UMA asset, as before).
+
 ## 000000000. The review pass: thirty-five fixes, face details, a beard in the brows' colour, and strands that bend (25 September, night)
 
 After the first commit pair (`c8f1354`, `c4b2307`) the request was "Continue". A review workflow confirmed 35 defects in that work, a fix workflow repaired them in five file-disjoint groups, and verification found three more.

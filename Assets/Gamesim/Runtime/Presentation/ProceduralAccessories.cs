@@ -69,8 +69,8 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// Puts <paramref name="ids"/> on a built humanoid body, replacing what it wore. Returns how
-        /// many were fitted. Dressed after any hair is grown (see <see cref="ProceduralHair.Grow"/>),
-        /// a cap or a beanie goes over that hair.
+        /// many were fitted. Dressed after any hair is grown (see <see cref="ProceduralHair.Grow"/>):
+        /// a cap or a beanie is fitted to the head and holds that hair under it (see <see cref="HatShape"/>).
         /// </summary>
         public static int Dress(GameObject body, IEnumerable<string> ids)
         {
@@ -89,14 +89,19 @@ namespace Gamesim.Presentation
                 bool neck = item.Slot == "Neckwear" && scan.ChestBone != null;
                 var frame = neck ? scan.NeckInBodyAxes() : scan;
                 var parts = new MeshParts();
-                var materials = Build(frame, item, parts);
-                if (materials != null && GrownPiece.Attach(frame, neck ? scan.ChestBone : scan.Head, RootName, item.Id, parts, materials) != null) fitted++;
+                var materials = Build(frame, item, parts, out var dome);
+                var piece = materials != null ? GrownPiece.Attach(frame, neck ? scan.ChestBone : scan.Head, RootName, item.Id, parts, materials) : null;
+                if (piece == null) continue;
+                fitted++;
+                // The hair the hat covers goes under it, as it would under a real one.
+                if (dome != null) HatShape.Attach(piece, frame, dome)?.HoldHairUnder(body);
             }
             return fitted;
         }
 
-        private static Material[] Build(HeadScan scan, Item item, MeshParts parts)
+        private static Material[] Build(HeadScan scan, Item item, MeshParts parts, out Vector3[,] dome)
         {
+            dome = null;
             switch (item.Shape)
             {
                 case Shape.FramedGlasses:
@@ -125,10 +130,10 @@ namespace Gamesim.Presentation
                     BowTie(scan, parts);
                     return new[] { Solid(item.Main, .42f, 0f) };
                 case Shape.TruckerCap:
-                    Cap(scan, parts);
+                    dome = Cap(scan, parts);
                     return new[] { Solid(item.Main, .12f, 0f) };
                 case Shape.Beanie:
-                    Beanie(scan, parts);
+                    dome = Beanie(scan, parts);
                     return new[] { HairTextures.Material(ProceduralHair.Pattern.Knit, item.Main, smoothness: .08f) };
             }
             return null;
@@ -399,19 +404,27 @@ namespace Gamesim.Presentation
 
         // ---- Headwear -----------------------------------------------------------------------
 
+        /// <summary>How far off the scalp a hat sits to leave room for the hair pressed flat under it.</summary>
+        public const float HairRoom = .008f;
+
         /// <summary>
-        /// A dome over the head and everything on it, from a band that runs <paramref name="front"/>,
-        /// <paramref name="side"/> and <paramref name="back"/> (shares of eyes-to-crown above the
-        /// eyes) up to the crown, never closer than <paramref name="room"/> to the head or its hair -
-        /// grown hair included, which is fitted first (see <see cref="HeadScan.EnvelopeRadius"/>).
+        /// A dome over the head, from a band that runs <paramref name="front"/>, <paramref name="side"/>
+        /// and <paramref name="back"/> (shares of eyes-to-crown above the eyes) up to the crown, never
+        /// closer than <paramref name="room"/> to the head's skin, and a little further on a head that
+        /// carries hair (<see cref="HairRoom"/>). It fits the head, not the hair: fitted over the hair,
+        /// a hat stood off big hair like a mushroom. The hair it covers is held under it instead
+        /// (see <see cref="HatShape"/>).
         /// </summary>
         private static Vector3[,] Dome(HeadScan scan, float front, float side, float back, float room, int rows, int columns, out Vector2[,] uvs)
         {
             float h = scan.Height;
             var centre = scan.Centre;
-            // Over the highest thing on the head too: the envelope straight up is read between its
-            // directions, and an afro's peak behind the crown can stand a little proud of it.
-            float topY = Mathf.Max(centre.y + scan.EnvelopeRadius(Vector3.up), scan.CarriedTopY) + room;
+            // Hair pressed flat under a hat sits a few millimetres up, so a head refitted under its
+            // hat still counts as carrying hair and the hat keeps its size; a bare head carries none.
+            // A buzz cut counts too: a hat holds what it covers further inside itself than the room
+            // it leaves a bare head, and with none for hair the stubble would go under the skin.
+            if (scan.HairOnTop > .002f) room += HairRoom;
+            float topY = Mathf.Max(centre.y + scan.SkinRadius(Vector3.up), scan.CrownY) + room;
             var grid = new Vector3[rows, columns];
             uvs = new Vector2[rows, columns];
             for (int c = 0; c < columns; c++)
@@ -421,7 +434,7 @@ namespace Gamesim.Presentation
                 float rise = a <= 90f ? Mathf.Lerp(front, side, Mathf.SmoothStep(0f, 1f, a / 90f)) : Mathf.Lerp(side, back, Mathf.SmoothStep(0f, 1f, (a - 90f) / 90f));
                 float baseY = scan.EyeY + rise * h;
                 var bearing = new Vector3(Mathf.Sin(degrees * Mathf.Deg2Rad), 0f, Mathf.Cos(degrees * Mathf.Deg2Rad));
-                float baseRadius = Mathf.Max(scan.SkinReach(centre, baseY, degrees, .01f, 7f), HorizontalEnvelope(scan, baseY, bearing)) + room;
+                float baseRadius = Mathf.Max(scan.SkinReach(centre, baseY, degrees, .01f, 7f), HorizontalSkin(scan, baseY, bearing)) + room;
                 for (int r = 0; r < rows; r++)
                 {
                     float t = r / (float)(rows - 1);
@@ -429,9 +442,9 @@ namespace Gamesim.Presentation
                     // Clamped: at the crown the cosine comes out a hair below zero, and its power is NaN.
                     float horizontal = baseRadius * Mathf.Pow(Mathf.Max(0f, Mathf.Cos(t * Mathf.PI * .5f)), .75f);
                     var p = new Vector3(centre.x + bearing.x * horizontal, y, centre.z + bearing.z * horizontal);
-                    // Over the hair as well as the head: never inside what the head carries.
+                    // Never inside the head.
                     var dir = p - centre;
-                    float need = scan.EnvelopeRadius(dir) + room;
+                    float need = scan.SkinRadius(dir) + room;
                     if (dir.magnitude < need) p = centre + dir.normalized * need;
                     grid[r, c] = p;
                     uvs[r, c] = new Vector2(degrees / 360f * 2f * Mathf.PI * baseRadius, t * (topY - baseY) * 1.6f) * ProceduralHair.Density(ProceduralHair.Pattern.Knit);
@@ -448,7 +461,7 @@ namespace Gamesim.Presentation
                         int prev = c == 0 ? columns - 2 : c - 1, next = c == columns - 1 ? 1 : c + 1;
                         var soft = (ring[prev] + ring[c] * 2f + ring[next]) * .25f;
                         var dir = soft - centre;
-                        float need = scan.EnvelopeRadius(dir) + room;
+                        float need = scan.SkinRadius(dir) + room;
                         grid[r, c] = dir.magnitude < need ? centre + dir.normalized * need : soft;
                     }
                 }
@@ -460,19 +473,19 @@ namespace Gamesim.Presentation
             return grid;
         }
 
-        private static float HorizontalEnvelope(HeadScan scan, float y, Vector3 bearing)
+        private static float HorizontalSkin(HeadScan scan, float y, Vector3 bearing)
         {
-            // Walk out along the bearing at this height until past the envelope.
+            // Walk out along the bearing at this height until past the skin.
             float radius = .02f;
             for (int step = 0; step < 40; step++, radius += .004f)
             {
                 var p = new Vector3(bearing.x * radius, y - scan.Centre.y, bearing.z * radius);
-                if (p.magnitude > scan.EnvelopeRadius(p)) return radius;
+                if (p.magnitude > scan.SkinRadius(p)) return radius;
             }
             return radius;
         }
 
-        private static void Cap(HeadScan scan, MeshParts parts)
+        private static Vector3[,] Cap(HeadScan scan, MeshParts parts)
         {
             const int rows = 10, columns = 37;
             var grid = Dome(scan, .52f, .3f, .04f, .006f, rows, columns, out _);
@@ -502,9 +515,10 @@ namespace Gamesim.Presentation
             for (int c = 0; c < brimColumns; c++) rim[c] = brim[brimRows - 1, c];
             parts.Tube(0, rim, .0022f, 6);
             parts.Ellipsoid(0, grid[rows - 1, 0] + Vector3.up * .001f, new Vector3(.006f, .003f, .006f), 5, 10);
+            return grid;
         }
 
-        private static void Beanie(HeadScan scan, MeshParts parts)
+        private static Vector3[,] Beanie(HeadScan scan, MeshParts parts)
         {
             const int rows = 11, columns = 41;
             var grid = Dome(scan, .38f, .06f, -.14f, .01f, rows, columns, out var uvs);
@@ -517,6 +531,7 @@ namespace Gamesim.Presentation
                     grid[r, c] += dir * .005f;
                 }
             parts.Sheet(0, grid, centre, uvs);
+            return grid;
         }
 
         // ---- Shared -------------------------------------------------------------------------

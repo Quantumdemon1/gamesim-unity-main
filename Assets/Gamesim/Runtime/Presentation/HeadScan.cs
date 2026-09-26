@@ -33,13 +33,10 @@ namespace Gamesim.Presentation
 
         /// <summary>The head skin's bounds.</summary>
         public Vector3 Centre, Extent;
-        /// <summary>
-        /// Everything the head carries - skin, hair cards, brows, grown hair already fitted - by
-        /// direction from <see cref="Centre"/>: see <see cref="EnvelopeRadius"/>.
-        /// </summary>
-        private float[,] envelope;
+        /// <summary>The head's own skin by direction from <see cref="Centre"/>: see <see cref="SkinRadius"/>.</summary>
+        private float[,] skinEnvelope;
         private const int EnvelopeRows = 18, EnvelopeColumns = 36;
-        /// <summary>The height of the highest point of everything the head carries, which the envelope's directions can round down.</summary>
+        /// <summary>The height of the highest point of everything the head carries - skin, hair cards, brows, grown hair already fitted.</summary>
         public float CarriedTopY;
 
         public float EyeY, CrownY, ChinY;
@@ -131,8 +128,13 @@ namespace Gamesim.Presentation
             return new Vector3(Vector3.Dot(world, right), Vector3.Dot(world, up), Vector3.Dot(world, forward));
         }
 
-        /// <summary>How far out from <see cref="Centre"/> the head and all it carries reach in a direction.</summary>
-        public float EnvelopeRadius(Vector3 direction)
+        /// <summary>How far out from <see cref="Centre"/> the head's own skin reaches in a direction, with nothing it carries.</summary>
+        public float SkinRadius(Vector3 direction) => Sample(skinEnvelope, direction);
+
+        /// <summary>How much the head carries above its crown - its hair, standing up off the scalp - and nothing for a bare head.</summary>
+        public float HairOnTop => Mathf.Max(0f, CarriedTopY - CrownY);
+
+        private static float Sample(float[,] envelope, Vector3 direction)
         {
             direction.Normalize();
             float row = Mathf.Acos(Mathf.Clamp(direction.y, -1f, 1f)) / Mathf.PI * EnvelopeRows;
@@ -291,8 +293,8 @@ namespace Gamesim.Presentation
             }
             if (skinTriangles.Count == 0) { GrownPiece.Dispose(baked); return null; }
 
-            // Everything on the head, for the envelope: every submesh, not only the skin, and the
-            // grown hair the body already wears.
+            // Everything on the head, for how high it carries: every submesh, not only the skin, and
+            // the grown hair the body already wears.
             var envelopePoints = new List<Vector3>();
             for (int i = 0; i < raw.Length; i++) if (onHead[i]) envelopePoints.Add(frame[i]);
             AddGrownHair(body, scan, envelopePoints);
@@ -368,20 +370,9 @@ namespace Gamesim.Presentation
             scan.LeftEarTop = SnapToSide(scan, -1, scan.EyeY + .14f * h, earZ - .004f);
             scan.RightEarTop = SnapToSide(scan, 1, scan.EyeY + .14f * h, earZ - .004f);
 
-            scan.envelope = new float[EnvelopeRows, EnvelopeColumns];
             scan.CarriedTopY = scan.CrownY;
-            foreach (var p in envelopePoints)
-            {
-                scan.CarriedTopY = Mathf.Max(scan.CarriedTopY, p.y);
-                var d = p - scan.Centre;
-                float radius = d.magnitude;
-                if (radius < 1e-4f) continue;
-                d /= radius;
-                int r = Mathf.Clamp(Mathf.FloorToInt(Mathf.Acos(Mathf.Clamp(d.y, -1f, 1f)) / Mathf.PI * EnvelopeRows), 0, EnvelopeRows - 1);
-                int c = Mathf.Clamp(Mathf.FloorToInt((Mathf.Atan2(d.x, d.z) / (Mathf.PI * 2f) + .5f) * EnvelopeColumns), 0, EnvelopeColumns - 1);
-                scan.envelope[r, c] = Mathf.Max(scan.envelope[r, c], radius);
-            }
-            FillEnvelope(scan);
+            foreach (var p in envelopePoints) scan.CarriedTopY = Mathf.Max(scan.CarriedTopY, p.y);
+            scan.skinEnvelope = Envelope(scan, scan.Points);
 
             var chest = scan.ChestBone;
             var leftArm = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
@@ -422,14 +413,13 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// Adds the grown hair a body already wears to what its head carries. The hair is a mesh
-        /// of its own rather than part of the skinned body, so a cap or a beanie - fitted after
-        /// the hair - was fitted to the bare scalp and sat inside an afro, with coils and fades
-        /// poking through it. Only hair still worn counts: hair being replaced is switched off
-        /// before it goes. Of long strands, only what turns wholly with the head counts, as only
-        /// the skin wholly the head's does; below the chin they hang towards the neck. Told by the
-        /// piece's own switch rather than the hierarchy's, so a body fitted while it is switched
-        /// off still puts its cap over its hair.
+        /// Adds the grown hair a body already wears to what its head carries, so a head with grown
+        /// hair on it is known to carry hair (<see cref="HairOnTop"/>): the hair is a mesh of its own
+        /// rather than part of the skinned body. Only hair still worn counts: hair being replaced is
+        /// switched off before it goes. Of long strands, only what turns wholly with the head counts,
+        /// as only the skin wholly the head's does; below the chin they hang towards the neck. Told
+        /// by the piece's own switch rather than the hierarchy's, so a body fitted while it is
+        /// switched off still counts its hair.
         /// </summary>
         private static void AddGrownHair(GameObject body, HeadScan scan, List<Vector3> points)
         {
@@ -475,10 +465,27 @@ namespace Gamesim.Presentation
             return best;
         }
 
-        /// <summary>Fills directions the head sends nothing along from their neighbours, and softens the rest a little.</summary>
-        private static void FillEnvelope(HeadScan scan)
+        /// <summary>The farthest <paramref name="points"/> reach from the head's centre, by direction.</summary>
+        private static float[,] Envelope(HeadScan scan, IEnumerable<Vector3> points)
         {
-            var grid = scan.envelope;
+            var grid = new float[EnvelopeRows, EnvelopeColumns];
+            foreach (var p in points)
+            {
+                var d = p - scan.Centre;
+                float radius = d.magnitude;
+                if (radius < 1e-4f) continue;
+                d /= radius;
+                int r = Mathf.Clamp(Mathf.FloorToInt(Mathf.Acos(Mathf.Clamp(d.y, -1f, 1f)) / Mathf.PI * EnvelopeRows), 0, EnvelopeRows - 1);
+                int c = Mathf.Clamp(Mathf.FloorToInt((Mathf.Atan2(d.x, d.z) / (Mathf.PI * 2f) + .5f) * EnvelopeColumns), 0, EnvelopeColumns - 1);
+                grid[r, c] = Mathf.Max(grid[r, c], radius);
+            }
+            FillEnvelope(scan, grid);
+            return grid;
+        }
+
+        /// <summary>Fills directions the head sends nothing along from their neighbours, and softens the rest a little.</summary>
+        private static void FillEnvelope(HeadScan scan, float[,] grid)
+        {
             for (int pass = 0; pass < 6; pass++)
             {
                 bool empty = false;

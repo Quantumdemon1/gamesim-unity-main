@@ -114,7 +114,9 @@ namespace Gamesim.Presentation
             var basePattern = style.Kind == Kind.Strands ? Pattern.Parted : style.Pattern;
             var materials = new[]
             {
-                HairTextures.Material(basePattern, colour, skin, Bare(style, 0)),
+                // An afro is one surface round a hollow over the scalp: drawn from both sides, any
+                // opening left shows hair, not skin.
+                HairTextures.Material(basePattern, colour, skin, Bare(style, 0), twoSided: style.Kind == Kind.Afro),
                 HairTextures.Material(Pattern.Stubble, colour, skin, Bare(style, 1)),
                 HairTextures.Material(Pattern.Stubble, colour, skin, Bare(style, 2)),
                 HairTextures.Material(style.Pattern, colour),
@@ -235,7 +237,8 @@ namespace Gamesim.Presentation
             {
                 if (lip.TryGetValue(a, out int found)) return found;
                 found = vertices.Count;
-                vertices.Add(points[a] - normals[a] * .0015f);
+                // Well under the skin, so no slit opens under it where the skin dips between its points.
+                vertices.Add(points[a] - normals[a] * .004f);
                 fadedAll.Add(faded[a]);
                 lip.Add(a, found);
                 return found;
@@ -263,16 +266,13 @@ namespace Gamesim.Presentation
                 var face = Vector3.Cross(b - a, c - a);
                 float ax = Mathf.Abs(face.x), ay = Mathf.Abs(face.y), az = Mathf.Abs(face.z);
                 int axis = ay >= ax && ay >= az ? 1 : ax >= az ? 0 : 2;
-                // The lip faces out and down from the hairline, whatever its neighbours' normals say.
-                bool lipFace = faces[t] >= outer.Length || faces[t + 1] >= outer.Length || faces[t + 2] >= outer.Length;
-                var lipNormal = Vector3.zero;
-                if (lipFace)
-                {
-                    lipNormal = face.normalized;
-                    var middle = (a + b + c) / 3f - scan.Centre;
-                    middle.y = 0f;
-                    if (Vector3.Dot(lipNormal, middle) < 0f) lipNormal = -lipNormal;
-                }
+                // The lip faces the way it is wound: out of the hair across its edge, since it is wound
+                // from the scalp's own triangles, which all face out. Turned to face out from the head's
+                // middle instead, it faced inwards at the temples, round the ears and at the nape, where
+                // the scalp is not upright: culled, it left a window onto the bare scalp under the hair -
+                // on an afro, whose lip is two centimetres tall, a wide one.
+                bool lipFace = t >= triangles.Length;
+                var lipNormal = lipFace ? face.normalized : Vector3.zero;
                 for (int k = 0; k < 3; k++)
                 {
                     int index = faces[t + k];
@@ -520,12 +520,13 @@ namespace Gamesim.Presentation
         /// darken it, never show skin. The piece that wears it retains it (see
         /// <see cref="GrownPiece"/>); until then nothing holds it.
         /// </summary>
-        public static Material Material(ProceduralHair.Pattern pattern, Color colour, Color? skin = null, float bare = 0f, float smoothness = -1f)
+        public static Material Material(ProceduralHair.Pattern pattern, Color colour, Color? skin = null, float bare = 0f, float smoothness = -1f, bool twoSided = false)
         {
             bool parted = pattern == ProceduralHair.Pattern.Rows || pattern == ProceduralHair.Pattern.Parted;
             bool painted = skin.HasValue && (bare > 0f || parted);
             string key = pattern + "#" + ColorUtility.ToHtmlStringRGB(colour) + "#" + smoothness.ToString("0.00")
-                         + (painted ? "#" + ColorUtility.ToHtmlStringRGB(skin.Value) + "#" + bare.ToString("0.00") : "");
+                         + (painted ? "#" + ColorUtility.ToHtmlStringRGB(skin.Value) + "#" + bare.ToString("0.00") : "")
+                         + (twoSided ? "#both" : "");
             if (materials.TryGetValue(key, out var cached))
             {
                 idle.Remove(cached);
@@ -549,6 +550,7 @@ namespace Gamesim.Presentation
             material.EnableKeyword("_NORMALMAP");
             material.SetFloat("_Smoothness", gloss);
             material.SetFloat("_Glossiness", gloss);
+            if (twoSided) { material.SetFloat("_Cull", 0f); material.doubleSidedGI = true; }
             material.SetFloat("_Metallic", 0f);
             var worn = new Worn { Key = key, PaintingKey = paintingKey, Material = material };
             materials[key] = worn;

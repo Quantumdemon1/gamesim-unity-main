@@ -40,12 +40,18 @@ namespace Gamesim.Uma.Tests
 
         private sealed class Built { public CharacterBody Body; public CharacterAppearance Appearance; }
 
-        /// <summary>The player's look wearing <paramref name="wear"/> (catalog ids), built and settled.</summary>
-        private IEnumerator Build(Built into, string[] wear, Color? hair = null)
+        /// <summary>
+        /// The player's look - or <paramref name="preset"/>'s - wearing <paramref name="wear"/> (catalog
+        /// ids) and without <paramref name="takeOff"/>, built and settled.
+        /// </summary>
+        private IEnumerator Build(Built into, string[] wear, Color? hair = null, string preset = "player", string[] takeOff = null)
         {
             yield return null;
             var provider = (IModularCharacterBodyProvider)CharacterBodySource.Provider;
-            var appearance = provider.Catalog.Materialize(CharacterAppearance.Preset("player"));
+            var appearance = provider.Catalog.Materialize(CharacterAppearance.Preset(preset));
+            if (takeOff != null)
+                foreach (var outfit in appearance.outfits)
+                    outfit.wardrobe.RemoveAll(worn => takeOff.Contains(worn.itemId));
             foreach (string id in wear)
             {
                 var item = AppearanceEditing.Find(provider.Catalog, id);
@@ -296,9 +302,9 @@ namespace Gamesim.Uma.Tests
         }
 
         /// <summary>
-        /// A cap put on over grown hair goes over it. The hair is a mesh of its own, not part of
-        /// the body the head was read from, so the cap was fitted to the bare scalp and sat inside
-        /// an afro with only its brim showing.
+        /// A cap put on over grown hair goes over it. The hair is a mesh of its own, not part of the
+        /// body the head was read from, and once the cap sat inside an afro with only its brim
+        /// showing. Now the cap is fitted to the head and the afro is held under it.
         /// </summary>
         [UnityTest]
         public IEnumerator Headwear_GoesOverGrownHairNotInsideIt()
@@ -314,6 +320,229 @@ namespace Gamesim.Uma.Tests
             Assert.That(cap.max.y - hair.max.y, Is.GreaterThan(.002f),
                 "The cap's top is above the afro's, not under it: " + (cap.max.y - hair.max.y).ToString("0.000") + " m.");
             Assert.That(hair.Contains(crown), Is.False, "The cap's crown is outside the hair, not buried in it.");
+        }
+
+        /// <summary>
+        /// A grown afro is drawn from both sides. It is one surface round a hollow over the head,
+        /// closed at the hairline by a wall down to the skin: drawn from its outside only, the
+        /// inside of that shell - seen from below the brow line, round the temples, past the ears -
+        /// was never drawn, and the bare scalp showed through it in notches all along the hairline.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GrownAfro_IsDrawnFromBothSidesSoNoOpeningShowsTheScalp()
+        {
+            var built = new Built(); yield return Build(built, new[] { "gs-hair-afro" });
+            var afro = Piece(built.Body, "gs-hair-afro");
+            Assert.That(afro.GetComponent<MeshRenderer>().sharedMaterials.All(material => material.GetFloat("_Cull") == 0f), Is.True,
+                "The afro is drawn from both sides.");
+            var crop = new Built(); yield return Build(crop, new[] { "gs-hair-fade" });
+            Assert.That(Piece(crop.Body, "gs-hair-fade").GetComponent<MeshRenderer>().sharedMaterials.Any(material => material.GetFloat("_Cull") == 0f), Is.False,
+                "A close crop, which has no hollow to see into, is drawn from its outside as before.");
+        }
+
+        /// <summary>
+        /// A hat is the size of a hat whatever hair is under it. Fitted over everything the hair
+        /// carried, a cap stood off big curls like a mushroom, and long hair still came through its
+        /// back. It is fitted to the head, with room for hair pressed flat, so over Tyler's curls it
+        /// is the cap it is over a buzz cut. (Even stubble is given that room: a hat holds what it
+        /// covers a centimetre inside itself, and with no room for hair that is under the skin.)
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Headwear_IsTheSizeOfTheHeadNotOfTheHairUnderIt()
+        {
+            var curls = new Built(); yield return Build(curls, new[] { "Hair_Poofy", "gs-acc-cap" });
+            var crop = new Built(); yield return Build(crop, new[] { "gs-hair-buzz", "gs-acc-cap" });
+            var overCurls = Local(curls.Body, Piece(curls.Body, "gs-acc-cap").GetComponent<MeshRenderer>());
+            var overCrop = Local(crop.Body, Piece(crop.Body, "gs-acc-cap").GetComponent<MeshRenderer>());
+            Assert.That(Mathf.Abs(overCurls.size.x - overCrop.size.x), Is.LessThan(.004f),
+                "As wide over curls as over a buzz cut: " + overCurls.size.x.ToString("0.000") + " m against " + overCrop.size.x.ToString("0.000") + " m.");
+            Assert.That(Mathf.Abs(overCurls.max.y - overCrop.max.y), Is.LessThan(.004f),
+                "As tall over curls as over a buzz cut: " + (overCurls.max.y - overCrop.max.y).ToString("0.000") + " m higher.");
+        }
+
+        /// <summary>
+        /// Long hair goes under a cap and comes out beneath it, not through it. Every point of every
+        /// hair card the cap covers - a card crossing the band included, which held only by its
+        /// corners crossed the cloth just above the band - is held well inside it: nearer than half a
+        /// centimetre, the cap and the hair fought over which was in front and the hair showed
+        /// through in patches. The hair still falls below the cap, and right under the rim it lies close to
+        /// the head rather than flaring out over the cap's back.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator UmaHair_GoesUnderAHatAndComesOutBeneathIt()
+        {
+            var built = new Built(); yield return Build(built, new[] { "gs-acc-cap" }, preset: "vanessa-rousso");
+            var shape = built.Body.Root.GetComponentInChildren<HatShape>();
+            Assert.That(shape, Is.Not.Null, "The cap knows its own shape.");
+            var skin = built.Body.Root.GetComponentsInChildren<SkinnedMeshRenderer>().First(renderer => renderer.GetComponent<GrownPiece>() == null);
+            var points = Posed(skin);
+            var mesh = skin.sharedMesh;
+            var materials = skin.sharedMaterials;
+            var hair = Enumerable.Range(0, Mathf.Min(mesh.subMeshCount, materials.Length))
+                .Where(s => materials[s] != null && materials[s].name.Contains("Hair_1stPass"))
+                .SelectMany(s => mesh.GetTriangles(s)).ToArray();
+            Assert.That(hair, Is.Not.Empty, "Her hair is drawn.");
+            AssertUnder(shape, points, hair, "Vanessa's hair");
+            AssertCloseUnderTheRim(shape, points, hair, "Vanessa's hair");
+            int falling = hair.Distinct().Count(i => shape.UnderRim(points[i], out float below, out _) && below > .05f);
+            Assert.That(falling, Is.GreaterThan(100), "Her hair still falls well below the cap.");
+        }
+
+        /// <summary>
+        /// Grown hair goes under a hat too: an afro under a cap, locs under a beanie - every point of
+        /// it the hat covers held well inside, and the rest showing below the rim.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GrownHair_GoesUnderAHatAndComesOutBeneathIt()
+        {
+            foreach (var (style, hat) in new[] { ("gs-hair-afro", "gs-acc-cap"), ("gs-hair-locs", "gs-acc-beanie") })
+            {
+                var built = new Built(); yield return Build(built, new[] { style, hat });
+                var shape = built.Body.Root.GetComponentInChildren<HatShape>();
+                Assert.That(shape, Is.Not.Null, hat + " knows its own shape.");
+                int showing = 0;
+                foreach (var piece in built.Body.Root.GetComponentsInChildren<GrownPiece>().Where(piece => piece.ItemId == style))
+                {
+                    var skin = piece.GetComponent<SkinnedMeshRenderer>();
+                    var points = skin != null ? Posed(skin) : World(piece);
+                    var triangles = piece.Mesh.triangles;
+                    AssertUnder(shape, points, triangles, style + " (" + piece.name + ")");
+                    AssertCloseUnderTheRim(shape, points, triangles, style + " (" + piece.name + ")");
+                    showing += points.Count(point => shape.UnderRim(point, out _, out _));
+                }
+                Assert.That(showing, Is.GreaterThan(0), style + " shows below the " + hat + ".");
+            }
+        }
+
+        /// <summary>Every point across every triangle the hat covers is well inside it: corners, edges and middles.</summary>
+        private static void AssertUnder(HatShape shape, Vector3[] points, int[] triangles, string what)
+        {
+            int covered = 0;
+            float worst = float.PositiveInfinity;
+            for (int t = 0; t + 2 < triangles.Length; t += 3)
+            {
+                Vector3 a = points[triangles[t]], b = points[triangles[t + 1]], c = points[triangles[t + 2]];
+                for (int u = 0; u <= 4; u++)
+                    for (int w = 0; w <= 4 - u; w++)
+                    {
+                        float clearance = shape.Clearance(a + (b - a) * (u / 4f) + (c - a) * (w / 4f));
+                        if (float.IsPositiveInfinity(clearance)) continue;
+                        covered++;
+                        worst = Mathf.Min(worst, clearance);
+                    }
+            }
+            Assert.That(covered, Is.GreaterThan(0), what + ": some of it is under the hat.");
+            // Well inside: nearer than about half a centimetre, the hat and the hair fought over which
+            // was in front, and the hair showed through in patches.
+            Assert.That(worst, Is.GreaterThan(.005f),
+                what + ": everything under the hat is well inside it, not through it: the nearest is " + worst.ToString("0.0000") + " m inside.");
+        }
+
+        /// <summary>
+        /// Below the band, hair stands out across the head past the rim no faster than it falls - 0.7
+        /// of a metre per metre, fanning out from close under the rim - rather than flaring out over
+        /// the hat.
+        /// </summary>
+        private static void AssertCloseUnderTheRim(HatShape shape, Vector3[] points, int[] triangles, string what)
+        {
+            float worst = float.NegativeInfinity, worstBelow = 0f, worstPast = 0f;
+            foreach (int i in triangles.Distinct())
+            {
+                if (!shape.UnderRim(points[i], out float below, out float past) || below > .1f) continue;
+                float over = past - (.7f * below + .002f);
+                if (over > worst) { worst = over; worstBelow = below; worstPast = past; }
+            }
+            Assert.That(worst, Is.LessThan(0f),
+                what + ": below the rim it fans out no faster than it falls: " + worstPast.ToString("0.000") + " m past the rim, "
+                + worstBelow.ToString("0.000") + " m below it.");
+        }
+
+        /// <summary>
+        /// Long hair hangs as long under a hat as without one. Held within a set distance of the
+        /// head's middle, hair hanging straight down past the shoulders was out of reach however it
+        /// hung and was drawn up into the neck: Vanessa's under her cap by a hand's width, box braids
+        /// by twenty centimetres. Below the band hair is only ever drawn in across the head, so
+        /// nothing that hangs below the rim is lifted. The cap is put on in the frame the hair is
+        /// read in, so the hair is read in the same pose either way.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LongHair_HangsAsLongUnderAHatAsWithout()
+        {
+            // Vanessa keeps her studs, and with them a mesh the cap can hold her hair in.
+            foreach (var (preset, wear, what) in new[]
+            {
+                ("vanessa-rousso", new[] { "gs-acc-studs" }, "Vanessa's hair"),
+                (ContentCatalog.PlayerId, new[] { "gs-hair-braids" }, "Box braids"),
+            })
+            {
+                var built = new Built(); yield return Build(built, wear, preset: preset, takeOff: new[] { "gs-acc-cap" });
+                var body = built.Body;
+                Assert.That(body.Root.GetComponentInChildren<HatShape>(), Is.Null, what + ": no cap yet.");
+                var up = body.Root.transform.up;
+                var before = HairPoints(body);
+                ProceduralAccessories.Dress(body.Root, wear.Where(ProceduralAccessories.IsProcedural).Append("gs-acc-cap"));
+                var shape = body.Root.GetComponentInChildren<HatShape>();
+                Assert.That(shape, Is.Not.Null, what + ": the cap is on.");
+                var after = HairPoints(body);
+                Assert.That(after, Has.Length.EqualTo(before.Length), what + ": the same hair either way.");
+                Assert.That(Enumerable.Range(0, before.Length).Count(i => after[i] != before[i]), Is.GreaterThan(0), what + ": the cap holds some of it.");
+                int hanging = 0;
+                float lifted = 0f;
+                for (int i = 0; i < before.Length; i++)
+                {
+                    if (!shape.UnderRim(before[i], out float below, out _) || below < .02f) continue;
+                    hanging++;
+                    lifted = Mathf.Max(lifted, Vector3.Dot(after[i] - before[i], up));
+                }
+                Assert.That(hanging, Is.GreaterThan(100), what + " hangs well below the cap.");
+                Assert.That(lifted, Is.LessThan(.002f), what + ": nothing that hangs below the cap is lifted: " + lifted.ToString("0.000") + " m at most.");
+            }
+        }
+
+        /// <summary>
+        /// Hair held under a hat stays in one piece. A grown shell gives each of its triangles
+        /// corners of its own, so every point of it is there once for each triangle it is a corner
+        /// of; a copy held one way for one triangle and another way for the next tore the shell open
+        /// all round just under the band. Every copy of a point is held alike.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HairHeldUnderAHat_StaysInOnePiece()
+        {
+            foreach (string style in new[] { "gs-hair-afro", "gs-hair-coils" })
+            {
+                var built = new Built(); yield return Build(built, new[] { style });
+                var piece = Piece(built.Body, style);
+                var before = World(piece);
+                var copies = Enumerable.Range(0, before.Length).GroupBy(i => Vector3Int.RoundToInt(before[i] * 20000f))
+                    .Select(group => group.ToArray()).Where(group => group.Length > 1).ToArray();
+                Assert.That(copies, Is.Not.Empty, style + ": its points are shared by triangles, each with a copy of its own.");
+                ProceduralAccessories.Dress(built.Body.Root, new[] { "gs-acc-cap" });
+                var after = World(piece);
+                Assert.That(Enumerable.Range(0, before.Length).Count(i => after[i] != before[i]), Is.GreaterThan(0), style + ": the cap holds some of it.");
+                float torn = copies.Max(group => group.Max(i => Vector3.Distance(after[i], after[group[0]])));
+                Assert.That(torn, Is.LessThan(.0002f), style + ": every copy of a point is held alike: " + torn.ToString("0.0000") + " m apart at most.");
+            }
+        }
+
+        /// <summary>Where every point of the hair a body wears is now: UMA's hair cards, and hair grown on the head.</summary>
+        private static Vector3[] HairPoints(CharacterBody body)
+        {
+            var points = new List<Vector3>();
+            foreach (var skin in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                var piece = skin.GetComponent<GrownPiece>();
+                if (piece != null && piece.name != ProceduralHair.StrandsName) continue;
+                var posed = Posed(skin);
+                if (piece != null) { points.AddRange(posed); continue; }
+                var mesh = skin.sharedMesh;
+                var materials = skin.sharedMaterials;
+                points.AddRange(Enumerable.Range(0, Mathf.Min(mesh.subMeshCount, materials.Length))
+                    .Where(s => materials[s] != null && materials[s].name.Contains("Hair_1stPass"))
+                    .SelectMany(s => mesh.GetTriangles(s)).Distinct().OrderBy(i => i).Select(i => posed[i]));
+            }
+            foreach (var piece in body.Root.GetComponentsInChildren<GrownPiece>())
+                if (piece.name == ProceduralHair.RootName && piece.GetComponent<MeshFilter>() != null) points.AddRange(World(piece));
+            return points.ToArray();
         }
 
         /// <summary>

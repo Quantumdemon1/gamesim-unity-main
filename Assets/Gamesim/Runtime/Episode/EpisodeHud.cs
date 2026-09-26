@@ -1453,6 +1453,14 @@ namespace Gamesim.Episode
             // a new set of controls each time; rewire when the count moves.
             int controls = overlay != null ? overlay.GetComponentsInChildren<Selectable>().Length : 0;
             if (controls != overlayControls) { overlayControls = controls; if (overlay != null) restoreSelection = true; }
+            // A screen can also redraw itself with exactly as many controls as it had - the season
+            // report sorting its table does - and then the count says nothing while the ring still
+            // holds the controls it threw away. Tab walks the ring, finds the new selection nowhere
+            // in it and does nothing. A control in the ring that is gone or hidden is as good a
+            // reason to rewire as a count that moved. Not for a competition board, which keeps its
+            // own focus and walks its own controls; this ring is not the one it uses.
+            if (overlay != null && !restoreSelection && RingHoldsLeftovers()
+                && overlay.GetComponent<CompetitionGameScreen>() == null) restoreSelection = true;
             var scope = overlay != null ? overlay : modal;
             if (restoreSelection)
             {
@@ -1548,6 +1556,14 @@ namespace Gamesim.Episode
                 if (selected != null && content != null && modalScroll != null && selected.transform.IsChildOf(content))
                     RevealSelection(selected.transform);
             }
+        }
+
+        /// <summary>Whether the keyboard ring holds a control that has been destroyed or hidden since it was wired.</summary>
+        private bool RingHoldsLeftovers()
+        {
+            foreach (var item in tabOrder)
+                if (item == null || !item.gameObject.activeInHierarchy) return true;
+            return false;
         }
 
         private void RevealSelection(Transform selected)

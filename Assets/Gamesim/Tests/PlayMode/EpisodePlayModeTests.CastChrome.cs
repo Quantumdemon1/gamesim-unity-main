@@ -5,6 +5,7 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -221,6 +222,22 @@ namespace Gamesim.Tests.PlayMode
             spoken.ForceMeshUpdate();
             Assert.That(spoken.isTextOverflowing, Is.False,
                 "The word that carries the pick is clipped out of its box.");
+
+            // Nor covered. The name plate is drawn after the portrait the badge sits on, and a pick
+            // made with the mouse leaves the pointer on the card, which lifts the portrait 6% about
+            // its top: that used to slide the lower half of "PLAYING AS" under the plate.
+            var portrait = (RectTransform)card.Find("Portrait");
+            var badge = portrait.GetComponentsInChildren<RectTransform>(true).Single(rect => rect.name == "Playing badge");
+            var plate = (RectTransform)card.Find("Name plate");
+            Assert.That(plate, Is.Not.Null);
+            Assert.That(ScreenRect(badge).Overlaps(ScreenRect(plate)), Is.False,
+                "The name plate " + ScreenRect(plate) + " covers the badge " + ScreenRect(badge) + ".");
+            ExecuteEvents.Execute(card.gameObject, new PointerEventData(EventSystem.current), ExecuteEvents.pointerEnterHandler);
+            Assert.That(portrait.localScale.y, Is.EqualTo(1.06f).Within(.001f),
+                "The pointer lifts the portrait, so what follows measures the lifted badge.");
+            Assert.That(ScreenRect(badge).Overlaps(ScreenRect(plate)), Is.False,
+                "With the portrait lifted, the name plate " + ScreenRect(plate) + " covers the badge " + ScreenRect(badge) + ".");
+            ExecuteEvents.Execute(card.gameObject, new PointerEventData(EventSystem.current), ExecuteEvents.pointerExitHandler);
 
             // And the chosen card keeps its ground. UiTheme.Glass repaints whatever it is given to
             // GlassFill, and it runs on this card and no other - so the one card the player picked

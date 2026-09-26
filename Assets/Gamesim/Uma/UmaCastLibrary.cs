@@ -166,7 +166,7 @@ namespace Gamesim.Uma
                 Dna = new Dictionary<string, float> { ["height"] = .21f, ["upperMuscle"] = .64f, ["mouthSize"] = .6f, ["jawsSize"] = .58f },
             },
 
-            // The Party Animal. Deep brown skin, a full natural afro, a blue-striped shirt.
+            // The Party Animal. Deep brown skin, a full natural afro, stud earrings, a blue-striped shirt.
             ["casey-wilson"] = new UmaCastLook
             {
                 Race = FemaleRace,
@@ -179,6 +179,7 @@ namespace Gamesim.Uma
                     "tshirt_turquoise_Recipe",
                     "tights_gray_Recipe",
                     "shoe_low_white_Recipe",
+                    "gs-acc-studs",
                 },
                 Skin = Skin("Mahogany"),
                 Hair = Hair("Black"),
@@ -286,6 +287,7 @@ namespace Gamesim.Uma
                 {
                     "HairPonytail_Recipe",
                     "Eyebrows_Average_Average",
+                    "underwear_bra_white_Recipe",
                     "sports_underwear_bottoms_Recipe",
                     "sportswear_top_Recipe",
                     "sportwear_pants_granit_Recipe",
@@ -474,13 +476,14 @@ namespace Gamesim.Uma
                 Dna = new Dictionary<string, float> { ["height"] = .24f, ["upperMuscle"] = .72f, ["waist"] = .4f, ["jawsSize"] = .6f },
             },
 
-            // The Black Widow. Medium-deep brown skin, short dark curls, gold studs, a cream sleeveless top.
+            // The Black Widow. Medium-deep brown skin, shoulder-length dark hair flipped out at the ends, studs, a
+            // cream sleeveless top.
             ["danielle-reyes"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "gs-hair-coils",
+                    "Hair_Bob_Recipe",
                     "Eyebrows_Thin_Average",
                     "underwear_bra_white_Recipe",
                     "underwear_white_granit_bottom_Recipe",

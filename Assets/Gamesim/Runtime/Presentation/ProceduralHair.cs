@@ -12,8 +12,10 @@ namespace Gamesim.Presentation
     /// the head's own skin above a hairline, lifted off it by the style's thickness, thinned down
     /// the sides for a fade, rounded out for an afro, or seeded with strands that fall from it for
     /// locs and braids. Grown from the head rather than modelled beside one, it fits every face and
-    /// every proportion slider on both bodies, and it follows the head because it hangs from it.
-    /// The surfaces are drawn once, in code, and shared (<see cref="HairTextures"/>).</para>
+    /// every proportion slider on both bodies, and it follows the head because it hangs from it -
+    /// all but long strands below the chin, which hang from the neck, so a head turned to face
+    /// someone does not swing them through the shoulders. The surfaces are drawn in code and
+    /// shared while they are worn (<see cref="HairTextures"/>).</para>
     ///
     /// <para>Presentation only: a style is an item in the wardrobe's Hair slot like any other, saved
     /// by its id, and nothing here draws on the season's randomness.</para>
@@ -22,6 +24,15 @@ namespace Gamesim.Presentation
     {
         public const string Prefix = "gs-hair-";
         public const string RootName = "Gamesim hair";
+        /// <summary>
+        /// Long strands, whole: shared between the head and the neck, wholly the head's down to the
+        /// chin and wholly the neck's a hand below it, so a head turned in conversation bends them
+        /// between the two rather than swinging them through the shoulders or parting them at the jaw.
+        /// </summary>
+        public const string StrandsName = "Gamesim hair (strands)";
+
+        /// <summary>How far below the chin long strands stop turning with the head.</summary>
+        public const float StrandBend = .15f;
 
         public enum Kind { Shell, Afro, Strands }
         public enum Pattern { Stubble, Crop, Waves, Coils, Rows, Parted, Locs, Braid, Knit }
@@ -70,12 +81,17 @@ namespace Gamesim.Presentation
             return null;
         }
 
-        /// <summary>Takes grown hair off a body.</summary>
-        public static void Remove(GameObject body) => GrownPiece.RemoveAll(body, RootName);
+        /// <summary>Takes grown hair off a body, its long strands included.</summary>
+        public static void Remove(GameObject body)
+        {
+            GrownPiece.RemoveAll(body, RootName);
+            GrownPiece.RemoveAll(body, StrandsName);
+        }
 
         /// <summary>
         /// Grows a style on a built humanoid body, replacing any it had. Null when the body has no
-        /// humanoid head, or no readable skin to grow from.
+        /// humanoid head, or no readable skin to grow from. The piece returned is the part on the
+        /// head; long strands are a second piece, shared between the head and the neck.
         /// </summary>
         public static GameObject Grow(GameObject body, string styleId, Color colour, Color? skin = null)
         {
@@ -86,7 +102,13 @@ namespace Gamesim.Presentation
             if (scan == null) return null;
             var parts = new MeshParts();
             if (!Shell(scan, style, parts)) return null;
-            if (style.Kind == Kind.Strands) Strands(scan, style, parts, StrandSubmesh);
+            // Long strands are built for the head at rest, facing the way the body does, and the
+            // head holds them as it is now: fitted mid-look - a rebuild for a colour, a change of
+            // clothes - they were built swung round with it, and their ends stayed swung once the
+            // head came back.
+            var straight = style.Kind == Kind.Strands ? scan.Straightened() : null;
+            var strands = new MeshParts();
+            if (straight != null) Strands(straight, style, strands);
             // The shell in three bands - full, thinned, close - the thinner showing more scalp through
             // it, as a buzz cut or the sides of a fade do; then the strands.
             var basePattern = style.Kind == Kind.Strands ? Pattern.Parted : style.Pattern;
@@ -98,10 +120,27 @@ namespace Gamesim.Presentation
                 HairTextures.Material(style.Pattern, colour),
             };
             var piece = GrownPiece.Attach(scan, scan.Head, RootName, style.Id, parts, materials);
-            return piece == null ? null : piece.gameObject;
+            if (piece == null) return null;
+            if (strands.Vertices.Count > 0)
+            {
+                var strandMaterials = new[] { materials[StrandSubmesh] };
+                var neck = scan.NeckBone ?? scan.ChestBone;
+                if (neck != null && neck != scan.Head)
+                    GrownPiece.AttachSkinned(straight, scan.Head, neck, StrandsName, style.Id, strands, strandMaterials,
+                        point => HeadShare(straight, point), scan.FrameToWorld * straight.FrameToWorld.inverse);
+                else GrownPiece.Attach(scan, scan.Head, StrandsName, style.Id, strands, strandMaterials);
+            }
+            return piece.gameObject;
         }
 
         private const int StrandSubmesh = 3;
+
+        /// <summary>
+        /// How much of a strand at <paramref name="point"/> (in the scan's frame) turns with the head:
+        /// all of it down to the chin, none of it <see cref="StrandBend"/> below, eased between.
+        /// </summary>
+        internal static float HeadShare(HeadScan scan, Vector3 point)
+            => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(scan.ChinY - StrandBend, scan.ChinY, point.y));
 
         /// <summary>How much scalp shows through a band of the shell: none on full hair, a little through a buzz cut, most low on a fade.</summary>
         private static float Bare(Style style, int band)
@@ -300,22 +339,37 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// Locs or braids falling from the base: out from their roots, then down and back, kept
-        /// clear of the face, the head and the shoulders they hang past.
+        /// clear of the face, the head and the shoulders they hang past. Each a whole tube in
+        /// <paramref name="strands"/>'s first submesh.
         /// </summary>
-        private static void Strands(HeadScan scan, Style style, MeshParts parts, int submesh)
+        private static void Strands(HeadScan scan, Style style, MeshParts strands)
         {
-            scan.Region(p => OnScalp(scan, style, p), out var roots, out var normals, out _);
-            if (roots.Length == 0) return;
+            scan.Region(p => OnScalp(scan, style, p), out var scalp, out var scalpNormals, out var scalpTriangles, out var scalpShares);
+            if (scalpTriangles.Length == 0) return;
             float h = scan.Height;
             const int segments = 14;
             var random = new System.Random(20260925);
             var path = new Vector3[segments + 1];
+            var body = scan.HasTorso ? scan.NeckInBodyAxes() : null;
             int placed = 0;
             for (int attempt = 0; attempt < style.StrandCount * 8 && placed < style.StrandCount; attempt++)
             {
-                int index = random.Next(roots.Length);
-                var root = roots[index];
-                var normal = normals[index];
+                // Each strand roots where a ray from the head's centre, in a direction drawn from the
+                // seed, leaves the scalp - not at a point drawn by index. A head read again, for a
+                // rebuild or a colour tried, welds a few of its points differently, and an index drawn
+                // from a different count dealt every strand somewhere new: the style reshuffled. The
+                // direction is the head bone's own, so a root is one place on the head however the
+                // head was held; and every draw is made whether or not the strand grows, so one that
+                // misses changes no other.
+                float y = (float)random.NextDouble() * 2f - 1f, around = (float)random.NextDouble() * Mathf.PI * 2f, across = Mathf.Sqrt(1f - y * y);
+                float stretch = .85f + .3f * (float)random.NextDouble();
+                var drawn = new Vector3(across * Mathf.Cos(around), y, across * Mathf.Sin(around));
+                var ray = scan.Head != null ? scan.ToMeasuredDirection(scan.Head.rotation * drawn).normalized : drawn;
+                if (!LeavesScalp(scan.Centre, ray, scalp, scalpNormals, scalpShares, scalpTriangles, out var root, out var normal, out float share)) continue;
+                // Rooted only on skin wholly the head's: at the nape the skin is shared with the neck
+                // and moves as the head turns, so a strand rooted there on a turned head came out
+                // somewhere else - round the other side of the neck, once.
+                if (share < RootShare) continue;
                 float degrees = scan.Around(root);
                 // Nothing rooted over the face falls across it: the front is swept back from the crown.
                 if (Mathf.Abs(degrees) < 50f && root.y < scan.CrownY - h * .2f) continue;
@@ -325,68 +379,146 @@ namespace Gamesim.Presentation
                 // Along the scalp, back and outward, barely off it: the head keeps them on its surface.
                 var along = Vector3.ProjectOnPlane(outward * .55f + Vector3.back * .8f + Vector3.down * .25f, normal);
                 var direction = (along.normalized * .9f + normal * .1f).normalized;
-                float step = style.StrandLength / segments * (.85f + .3f * (float)random.NextDouble());
+                float step = style.StrandLength / segments * stretch;
                 path[0] = point;
                 for (int s = 1; s <= segments; s++)
                 {
                     direction = (direction + Vector3.down * .42f).normalized;
                     point += direction * step;
-                    point = ClearOf(scan, point, style.StrandRadius + .004f);
+                    point = ClearOf(scan, body, point, style.StrandRadius + .004f);
                     path[s] = point;
                 }
-                parts.Tube(submesh, path, style.StrandRadius, 6, tipScale: .75f, uvAlong: 40f);
+                strands.Tube(0, path, style.StrandRadius, 6, tipScale: .75f, uvAlong: 40f);
             }
         }
 
-        /// <summary>A point pushed out of the head, the neck and the shoulders, with <paramref name="room"/> to spare.</summary>
-        private static Vector3 ClearOf(HeadScan scan, Vector3 point, float room)
+        /// <summary>How much of the skin a long strand roots in must be the head's own.</summary>
+        private const float RootShare = .98f;
+
+        /// <summary>
+        /// Where a ray from <paramref name="origin"/> leaves the scalp - its outermost crossing of
+        /// the scalp's triangles - and the scalp's normal and head share there, blended from its
+        /// corners. False when the ray misses the scalp.
+        /// </summary>
+        private static bool LeavesScalp(Vector3 origin, Vector3 ray, Vector3[] points, Vector3[] normals, float[] shares, int[] triangles,
+            out Vector3 point, out Vector3 normal, out float share)
+        {
+            point = normal = Vector3.zero;
+            share = 0f;
+            float farthest = 0f;
+            for (int t = 0; t + 2 < triangles.Length; t += 3)
+            {
+                int ia = triangles[t], ib = triangles[t + 1], ic = triangles[t + 2];
+                var a = points[ia];
+                Vector3 e1 = points[ib] - a, e2 = points[ic] - a;
+                var p = Vector3.Cross(ray, e2);
+                float det = Vector3.Dot(e1, p);
+                if (Mathf.Abs(det) < 1e-12f) continue;
+                float inverse = 1f / det;
+                var s = origin - a;
+                float u = Vector3.Dot(s, p) * inverse;
+                if (u < 0f || u > 1f) continue;
+                var q = Vector3.Cross(s, e1);
+                float v = Vector3.Dot(ray, q) * inverse;
+                if (v < 0f || u + v > 1f) continue;
+                float distance = Vector3.Dot(e2, q) * inverse;
+                if (distance <= farthest) continue;
+                farthest = distance;
+                point = origin + ray * distance;
+                normal = (normals[ia] * (1f - u - v) + normals[ib] * u + normals[ic] * v).normalized;
+                share = Mathf.Min(shares[ia], Mathf.Min(shares[ib], shares[ic]));
+            }
+            return farthest > 0f;
+        }
+
+        /// <summary>
+        /// A point pushed out of the head, the neck and the shoulders, with <paramref name="room"/>
+        /// to spare: the head in its own axes, the neck and shoulders in the body's
+        /// (<paramref name="body"/>, null for a body without them), which a head turned when the
+        /// scan was taken does not turn.
+        /// </summary>
+        private static Vector3 ClearOf(HeadScan scan, HeadScan body, Vector3 point, float room)
         {
             var radii = scan.Extent + Vector3.one * room;
             var off = point - scan.Centre;
             var scaled = new Vector3(off.x / radii.x, off.y / radii.y, off.z / radii.z);
             if (scaled.sqrMagnitude < 1f) point = scan.Centre + Vector3.Scale(scaled.normalized, radii);
-            if (!scan.HasTorso) return point;
-            // The neck, as an upright cylinder from the head bone down to the chest.
-            var neck = scan.Neck;
+            if (body == null || !body.HasTorso) return point;
+            var p = body.ToFrame(scan.ToWorld(point));
+            // The neck, as an upright cylinder from the chin down to the chest.
+            var neck = body.Neck;
             float neckRadius = .065f + room;
-            if (point.y < scan.ChinY && point.y > scan.Chest.y)
+            if (p.y < body.ChinY && p.y > body.Chest.y)
             {
-                var flat = new Vector2(point.x - neck.x, point.z - neck.z);
+                var flat = new Vector2(p.x - neck.x, p.z - neck.z);
                 if (flat.magnitude < neckRadius)
                 {
                     flat = flat.sqrMagnitude > 1e-8f ? flat.normalized * neckRadius : new Vector2(0f, -neckRadius);
-                    point = new Vector3(neck.x + flat.x, point.y, neck.z + flat.y);
+                    p = new Vector3(neck.x + flat.x, p.y, neck.z + flat.y);
                 }
             }
             // The shoulders and upper back, as an ellipsoid round the chest.
-            var chest = scan.Chest;
-            float halfWidth = Mathf.Abs(scan.RightShoulder.x - scan.LeftShoulder.x) * .5f + .06f + room;
+            var chest = body.Chest;
+            float halfWidth = Mathf.Abs(body.RightShoulder.x - body.LeftShoulder.x) * .5f + .06f + room;
             var torso = new Vector3(halfWidth, Mathf.Max(.1f, neck.y - chest.y) + .04f + room, .14f + room);
-            var fromChest = point - chest;
+            var fromChest = p - chest;
             var inTorso = new Vector3(fromChest.x / torso.x, fromChest.y / torso.y, fromChest.z / torso.z);
-            if (inTorso.sqrMagnitude < 1f) point = chest + Vector3.Scale(inTorso.normalized, torso);
-            return point;
+            if (inTorso.sqrMagnitude < 1f) p = chest + Vector3.Scale(inTorso.normalized, torso);
+            return scan.ToFrame(body.ToWorld(p));
         }
     }
 
     /// <summary>
     /// The hair's surface, drawn in code: a detail texture the chosen colour multiplies and a normal
     /// map that gives it relief. One pair a pattern, made once and shared by every head; one
-    /// material a pattern and colour, which the palettes keep to a small number.
+    /// material a pattern and colour, shared by every piece wearing it.
+    ///
+    /// <para>A material, and a texture painted for one hair colour over one skin, lasts while some
+    /// piece wears it (<see cref="Retain"/>, <see cref="Release"/>), and then only among the few
+    /// let go most recently. A player trying hair colours and skin tones in the creator paints new
+    /// ones with every pick; kept for good, they piled up for the rest of the session, a third of a
+    /// megabyte a texture.</para>
     /// </summary>
     internal static class HairTextures
     {
         private const int Size = 256;
         private static readonly Dictionary<ProceduralHair.Pattern, (Texture2D albedo, Texture2D normal)> made
             = new Dictionary<ProceduralHair.Pattern, (Texture2D, Texture2D)>();
-        private static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
+
+        /// <summary>A material made here: its key, the painted texture it draws with if any, and how many pieces wear it.</summary>
+        private sealed class Worn
+        {
+            public string Key, PaintingKey;
+            public Material Material;
+            public int Wearers;
+        }
+
+        /// <summary>A texture painted for one hair colour over one skin, and how many materials draw with it.</summary>
+        private sealed class Painting
+        {
+            public Texture2D Texture;
+            public int Users;
+        }
+
+        private static readonly Dictionary<string, Worn> materials = new Dictionary<string, Worn>();
+        private static readonly Dictionary<Material, Worn> byMaterial = new Dictionary<Material, Worn>();
+        private static readonly Dictionary<string, Painting> paintings = new Dictionary<string, Painting>();
         private static Shader lit;
+
+        /// <summary>
+        /// Materials no piece wears any more, oldest first, kept a little while before they go. The
+        /// creator's preview drops its body before building the next, for every change, so the
+        /// look on screen would otherwise paint its textures afresh each time it was rebuilt.
+        /// </summary>
+        private static readonly List<Worn> idle = new List<Worn>();
+        private const int IdleKept = 8;
 
         /// <summary>
         /// A material for a pattern in a colour. Given the skin and how <paramref name="bare"/> the
         /// hair is, the texture itself is painted - scalp in the partings of braids and rows, and
         /// showing through a buzz cut or a fade - since a colour laid over a grey texture can only
-        /// darken it, never show skin.
+        /// darken it, never show skin. The piece that wears it retains it (see
+        /// <see cref="GrownPiece"/>); until then nothing holds it.
         /// </summary>
         public static Material Material(ProceduralHair.Pattern pattern, Color colour, Color? skin = null, float bare = 0f, float smoothness = -1f)
         {
@@ -394,10 +526,16 @@ namespace Gamesim.Presentation
             bool painted = skin.HasValue && (bare > 0f || parted);
             string key = pattern + "#" + ColorUtility.ToHtmlStringRGB(colour) + "#" + smoothness.ToString("0.00")
                          + (painted ? "#" + ColorUtility.ToHtmlStringRGB(skin.Value) + "#" + bare.ToString("0.00") : "");
-            if (materials.TryGetValue(key, out var cached) && cached != null) return cached;
+            if (materials.TryGetValue(key, out var cached))
+            {
+                idle.Remove(cached);
+                if (cached.Material != null) return cached.Material;
+                Forget(cached);
+            }
             if (lit == null) lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             var (albedo, normal) = Textures(pattern);
-            if (painted) albedo = Painted(pattern, colour, skin.Value, bare);
+            string paintingKey = null;
+            if (painted) albedo = Painted(pattern, colour, skin.Value, bare, out paintingKey);
             var material = new Material(lit) { name = "Gamesim " + pattern + " " + ColorUtility.ToHtmlStringRGB(colour) };
             colour.a = 1f;
             if (painted) colour = Color.white;
@@ -412,17 +550,73 @@ namespace Gamesim.Presentation
             material.SetFloat("_Smoothness", gloss);
             material.SetFloat("_Glossiness", gloss);
             material.SetFloat("_Metallic", 0f);
-            materials[key] = material;
+            var worn = new Worn { Key = key, PaintingKey = paintingKey, Material = material };
+            materials[key] = worn;
+            byMaterial[material] = worn;
             return material;
         }
 
-        private static readonly Dictionary<string, Texture2D> painted = new Dictionary<string, Texture2D>();
+        /// <summary>Counts a piece wearing each of these materials. Materials made anywhere else are not counted here.</summary>
+        public static void Retain(IEnumerable<Material> wearing)
+        {
+            if (wearing == null) return;
+            foreach (var material in wearing)
+            {
+                if (ReferenceEquals(material, null) || !byMaterial.TryGetValue(material, out var worn)) continue;
+                if (worn.Wearers++ == 0) idle.Remove(worn);
+            }
+        }
+
+        /// <summary>
+        /// Counts a piece no longer wearing each of these. A material nobody wears is let go, and
+        /// its painted texture with it, once more than a few others have been let go since.
+        /// </summary>
+        public static void Release(IEnumerable<Material> wearing)
+        {
+            if (wearing == null) return;
+            foreach (var material in wearing)
+            {
+                if (ReferenceEquals(material, null) || !byMaterial.TryGetValue(material, out var worn) || --worn.Wearers > 0) continue;
+                worn.Wearers = 0;
+                LetGo(worn);
+            }
+        }
+
+        /// <summary>Lets go of any of these that no piece has come to wear: made for a piece that was never fitted.</summary>
+        public static void ReleaseUnworn(IEnumerable<Material> unfitted)
+        {
+            if (unfitted == null) return;
+            foreach (var material in unfitted)
+                if (!ReferenceEquals(material, null) && byMaterial.TryGetValue(material, out var worn) && worn.Wearers <= 0) LetGo(worn);
+        }
+
+        private static void LetGo(Worn worn)
+        {
+            if (idle.Contains(worn)) return;
+            idle.Add(worn);
+            while (idle.Count > IdleKept) Forget(idle[0]);
+        }
+
+        private static void Forget(Worn worn)
+        {
+            idle.Remove(worn);
+            if (materials.TryGetValue(worn.Key, out var current) && current == worn) materials.Remove(worn.Key);
+            byMaterial.Remove(worn.Material);
+            GrownPiece.Dispose(worn.Material);
+            if (worn.PaintingKey == null || !paintings.TryGetValue(worn.PaintingKey, out var painting) || --painting.Users > 0) return;
+            paintings.Remove(worn.PaintingKey);
+            GrownPiece.Dispose(painting.Texture);
+        }
 
         /// <summary>The pattern painted in hair over skin: hair where the relief is high, scalp in the gaps and where the cut is close.</summary>
-        private static Texture2D Painted(ProceduralHair.Pattern pattern, Color hair, Color skin, float bare)
+        private static Texture2D Painted(ProceduralHair.Pattern pattern, Color hair, Color skin, float bare, out string key)
         {
-            string key = pattern + "#" + ColorUtility.ToHtmlStringRGB(hair) + "#" + ColorUtility.ToHtmlStringRGB(skin) + "#" + bare.ToString("0.00");
-            if (painted.TryGetValue(key, out var found) && found != null) return found;
+            key = pattern + "#" + ColorUtility.ToHtmlStringRGB(hair) + "#" + ColorUtility.ToHtmlStringRGB(skin) + "#" + bare.ToString("0.00");
+            if (paintings.TryGetValue(key, out var found) && found.Texture != null)
+            {
+                found.Users++;
+                return found.Texture;
+            }
             bool parted = pattern == ProceduralHair.Pattern.Rows || pattern == ProceduralHair.Pattern.Parted;
             var colours = new Color32[Size * Size];
             // The scalp a shade deeper than the face, as it is under hair.
@@ -440,7 +634,7 @@ namespace Gamesim.Presentation
             var texture = new Texture2D(Size, Size, TextureFormat.RGBA32, true, false) { name = "Gamesim hair " + key, wrapMode = TextureWrapMode.Repeat };
             texture.SetPixels32(colours);
             texture.Apply(true, true);
-            painted[key] = texture;
+            paintings[key] = new Painting { Texture = texture, Users = 1 };
             return texture;
         }
 

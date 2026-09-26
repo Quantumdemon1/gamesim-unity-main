@@ -67,7 +67,11 @@ namespace Gamesim.Presentation
         /// <summary>Takes every accessory off a body.</summary>
         public static void Remove(GameObject body) => GrownPiece.RemoveAll(body, RootName);
 
-        /// <summary>Puts <paramref name="ids"/> on a built humanoid body, replacing what it wore. Returns how many were fitted.</summary>
+        /// <summary>
+        /// Puts <paramref name="ids"/> on a built humanoid body, replacing what it wore. Returns how
+        /// many were fitted. Dressed after any hair is grown (see <see cref="ProceduralHair.Grow"/>),
+        /// a cap or a beanie goes over that hair.
+        /// </summary>
         public static int Dress(GameObject body, IEnumerable<string> ids)
         {
             Remove(body);
@@ -80,10 +84,13 @@ namespace Gamesim.Presentation
                 if (item == null) continue;
                 scan = scan ?? HeadScan.Read(body);
                 if (scan == null) return fitted;
-                var parts = new MeshParts();
-                var materials = Build(scan, item, parts);
+                // Neckwear hangs from the chest, so it is built in the body's axes rather than the
+                // head's: a head turned when the scan was taken would otherwise turn it too.
                 bool neck = item.Slot == "Neckwear" && scan.ChestBone != null;
-                if (materials != null && GrownPiece.Attach(scan, neck ? scan.ChestBone : scan.Head, RootName, item.Id, parts, materials) != null) fitted++;
+                var frame = neck ? scan.NeckInBodyAxes() : scan;
+                var parts = new MeshParts();
+                var materials = Build(frame, item, parts);
+                if (materials != null && GrownPiece.Attach(frame, neck ? scan.ChestBone : scan.Head, RootName, item.Id, parts, materials) != null) fitted++;
             }
             return fitted;
         }
@@ -291,6 +298,7 @@ namespace Gamesim.Presentation
         }
 
         // ---- Neckwear -----------------------------------------------------------------------
+        // Built in the body's axes (see HeadScan.NeckInBodyAxes): only the neck is read here.
 
         /// <summary>
         /// A closed loop round the neck, high at the back and draped lower at the front by
@@ -394,13 +402,16 @@ namespace Gamesim.Presentation
         /// <summary>
         /// A dome over the head and everything on it, from a band that runs <paramref name="front"/>,
         /// <paramref name="side"/> and <paramref name="back"/> (shares of eyes-to-crown above the
-        /// eyes) up to the crown, never closer than <paramref name="room"/> to the head or its hair.
+        /// eyes) up to the crown, never closer than <paramref name="room"/> to the head or its hair -
+        /// grown hair included, which is fitted first (see <see cref="HeadScan.EnvelopeRadius"/>).
         /// </summary>
         private static Vector3[,] Dome(HeadScan scan, float front, float side, float back, float room, int rows, int columns, out Vector2[,] uvs)
         {
             float h = scan.Height;
             var centre = scan.Centre;
-            float topY = centre.y + scan.EnvelopeRadius(Vector3.up) + room;
+            // Over the highest thing on the head too: the envelope straight up is read between its
+            // directions, and an afro's peak behind the crown can stand a little proud of it.
+            float topY = Mathf.Max(centre.y + scan.EnvelopeRadius(Vector3.up), scan.CarriedTopY) + room;
             var grid = new Vector3[rows, columns];
             uvs = new Vector2[rows, columns];
             for (int c = 0; c < columns; c++)

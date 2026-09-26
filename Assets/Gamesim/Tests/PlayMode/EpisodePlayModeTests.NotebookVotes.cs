@@ -23,10 +23,13 @@ namespace Gamesim.Tests.PlayMode
             yield return SettleCast();
             var book = VoteRecords.Read(director.Snapshot);
             Assume.That(book.NoEvictionYet && !book.VoteInProgress, "The fixture season opens before any eviction.");
-            int revision = director.Snapshot.revision;
 
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes);
             yield return null;
+            // Taken with the page open: opening any panel banks the house's elapsed free time as an
+            // NPC clock tick (PauseNpcSocialForPanel), a commit of its own whenever a second or more
+            // has built up since the last one. Reading the page is what must commit nothing.
+            int revision = director.Snapshot.revision;
             Canvas.ForceUpdateCanvases();
             Assert.That(ActiveRect(EpisodeHud.NotebookHeaderName).GetComponentsInChildren<TMP_Text>().Select(t => t.text),
                 Does.Contain("The vote"));

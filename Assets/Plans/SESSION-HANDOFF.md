@@ -8,6 +8,79 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 000000000. The review pass: thirty-five fixes, face details, a beard in the brows' colour, and strands that bend (25 September, night)
+
+After the first commit pair (`c8f1354`, `c4b2307`) the request was "Continue". A review workflow confirmed 35 defects in that work, a fix workflow repaired them in five file-disjoint groups, and verification found three more.
+
+**What the review found, by area.**
+- **UMA body tint.**
+  - Grown hair and glasses survive a change of clothes. The new body is built at no size; its fit now waits for `LateUpdate`, and `UmaBodyTint` runs after `CharacterPresentation` (execution order 100), so the pieces are fitted on the swap frame.
+  - HD brows keep their recipe's additive colour: a private brow colour is repainted, not replaced.
+  - Skin colour is measured on the generated texture, not only in arithmetic.
+- **Grown pieces.**
+  - A cap goes over grown hair: the head's envelope includes it.
+  - Neckwear is built in the body's axes.
+  - Painted hair textures are reference-counted, with an idle list of 8.
+- **The cast screen.**
+  - "Play as" plays the houseguest it names, and "Customize" reopens that houseguest's own edits.
+  - A failed start comes back to the screen, and the live model is let go after a start or a cancel.
+  - The layout holds on short wide frames, the grid keeps its scroll, and a pick hands the keyboard to Play as.
+  - Reduced motion holds the model, halo and portraits still. The report and the cast screen are silent.
+- **The creator.**
+  - Deep and tan skin rows have undertones.
+  - A random look draws its hair and eyes to suit its skin, and rolls accessories unless they are locked.
+  - The brow heading says "Matches hair". The tiles fit wide screens, and the focused swatch is named.
+  - A starting look's garment colour stays pickable.
+  - **Face details**: freckles, makeup and age, from 11 UMA wardrobe entries. They are worn on every outfit, swim and sleep included. A body change takes off makeup the other body cannot wear rather than turning it into an older face.
+- **Report, spotlight and finale.**
+  - Sorting keeps the reader's place and focus. Page keys and the right stick scroll.
+  - The spotlight is a 14.9° cone with hard low-tier shadows and a 2.1 m near plane, and it holds still under reduced motion.
+  - The objective names "episode screen · season report".
+- **Looks**: Danielle's bob, Casey's studs, Taylor's bra (so she has a swimwear set).
+
+**Found in verification.**
+- **The beard was painted the brows' colour.** UMA's `MergeMatchingOverlays` hands slots whose overlays match one overlay list between them. The trimmed beard and the brows are both a single CardWhiskers on the shared hair colour, so `PaintBrows` painted both. A brow slot sharing its list now gets its own copy first; shared colours inside it stay shared.
+- **The Notebook "flake" was the test.** Opening any panel banks the house's elapsed free time as an NPC clock tick (`PauseNpcSocialForPanel` → `FlushNpcWholeTicks`), which is a commit. The test read the revision before opening the page. It now reads it after. The previous entry's "known autonomy flake" was wrong.
+- **Locs and braids parted at the jaw when a head turned.** A look turns the head bone alone, up to 60°. The split made in the fix pass (strands above the chin on the head, below it on the neck) left the part on the head ending at the jaw like a curtain cut straight across. Now:
+  - Every strand is one skinned piece (`ProceduralHair.StrandsName`) between the head and the neck bones. It is wholly the head's down to the chin and wholly the neck's 15 cm below (`StrandBend`), eased between, so it bends.
+  - Strands are built for a head facing the way the body does (`HeadScan.Straightened`). The head's present turn goes into its bind pose, so a refit with the head turned comes out as a straight one.
+  - **Every fit is made with the body standing** (`UmaBodyTint.StandingPose`). It saves every layer's state and moment and every parameter, then `Rebind` and `Update(0)` put the body in the controller's first frame; after the fit, the saved state is played back. A review found that a change into sleepwear finishing after the houseguest lay down fitted the hair to a head lying on its side. The humanoid root stays upright while the sleep take lays the skeleton down, and the scan takes its up from the root. The same goes for floating, sitting, a look's nod and the talk nod. Fits are now identical whenever they land. (An earlier version took only the look off, from `CharacterPresentation`; the standing pose replaced it.)
+  - **Strands root where a seeded ray leaves the scalp**, drawn in the head bone's own space, instead of at a point drawn by index. A re-read head welds a few points differently, and an index into a different count re-dealt every strand, so the style reshuffled on every rebuild. Every random draw for a strand is made whether or not it grows, so one that misses moves no other.
+  - **Strands root only on skin wholly the head's** (`HeadScan.HeadShares`, at least 0.98). At the nape the skin is shared with the neck and moves with a turn. A strand rooted there once came out round the other side of the neck.
+  - `HeadScan.Read` skips the strands piece. `AddGrownHair` reads its wholly-head vertices through the head's bind pose, so a cap goes over the roots.
+  - Bounds stay upright in the holder's space, so portraits' crown framing does not move.
+  - **Left:** only the head's turn is straightened. A neck turned by the idle's standing frame stays in the lower strands; that is a few millimetres.
+
+**Investigated, left.**
+- **The player's side-part hair shows a blue-grey patch on its side cards** under the studio light. None of our colours cause it. Both hair passes carry the hair colour, and the patch stays with each of these: the highlight at 0, root and tip set to the base colour, the gradient off, and either pass alone. It is how UMA's `Hair_LeftPart` side cards take that light.
+- **Face details on Emma cannot be judged** under her visor (her card's look). On the male body they read clearly.
+
+**Traps.**
+- **UMA shares overlay lists** between slots whose overlays match (`MergeMatchingOverlays`). Repainting one slot's overlay repaints the other slot's.
+- **Opening a panel commits** (the NPC tick flush). Read a revision after the panel is open.
+- **Skinned meshes are skinned once a frame, after `LateUpdate`.** Turn a bone and render in the same frame, and rigid children move while the skin does not. For a capture, switch the animator off, turn the bone, wait a frame. `BakeMesh` reads the bones as they are now.
+- **`SkinnedMeshRenderer.localBounds` is in the root bone's space**, or the renderer's own when it has none. UMA's bones are not upright, so bounds kept in a bone's axes reach above the head.
+- **`CharacterStudioPreview` in a probe**: several looks shown in one studio kept saving the first body's frame; one test per look worked.
+- **Mutation groups share result files by kind.** A later group overwrites an earlier one's XML. Copy each before the next.
+- **A "fit again and compare" test needs the same body both times.** Hold the idle still (`animator.speed = 0`) or refit in one frame. Compare against a later rebuild, not the first fit: the first lands as UMA finishes, possibly before the animator has posed the body. Judge a grown style by where nearly all its points are (95th percentile) and how far the worst is, not by every vertex.
+- **Seeded layouts must not index into scanned geometry.** Draw directions or parameters and look them up in the scan continuously.
+
+**Verified.**
+- **Full suite:** EditMode 1456/1456, PlayMode 434/434, Uma 58/58, Simulation 741/741, with no crashes. Floors raised to 1456, 434 and 58.
+- **Mutations** (`scratchpad/mutate_n`):
+  - The review pass's 40 new tests each have a revert-the-fix mutation, run in groups Q1–Q4. All 40 were caught, and every failure message was read against its test's target assertion.
+  - The strands and fitting have 8 more: S1–S6, plus N1 rechecked against the afro test's new pose. All 8 were caught.
+  - S7 (a root draw depending on the scalp's point count) is equivalent: every fit now reads the body standing, so the count is the same each time.
+- **Captures:** the 24 skin tones, each face detail, and locs and braids with the head turned 0°, 35° and 60°.
+- **Adversarial reviews** of the strand design ran twice, with three lenses and then two, and each finding was checked by a refuter.
+  - Confirmed and fixed: the roots read in the wrong space, a look baked into a refit, the reshuffle, and the fit to a body lying down.
+  - A third review of the standing pose (triggers, cross-fades, UMA's own save and restore, every gameplay flow) refuted all its findings.
+
+**Left.**
+- **Only the head's turn is straightened.** A neck turned in the idle's first frame stays in the lower strands, by a few millimetres.
+- **The talk nod.** It is taken off only because the body stands; a refit with no controller keeps it.
+- **The player's side-part hair patch** (above).
+
 ## 00000000. The character screen, the cast screen, the cast's faces, a spotlight, and a finale with ways out (25 September)
 
 The request, in five parts:
@@ -65,13 +138,14 @@ The finale panel offers the same ways on as buttons, and the objective reads "Ne
 - **UMA replaces the Animator** a body is created with. A test must read the live one (`GetComponentInChildren<Animator>()`), not `CharacterBody.Animator`.
 - **The harness lays the cast screen out at one aspect and captures at another.** Anything sized from the frame at rebuild has to anchor or rebuild.
 - **The head scan's frame turns with the head, by the eye line.** Scanning in the root's axes read the ears lopsided whenever the idle had the head a few degrees round, and one hoop hung off true. Carrying the root's axes through the head bone's bind pose put the hair across the face, because UMA's bind space is not upright. The line between the eye bones is the head's right; up is the body's, straightened against it.
+- **Fair skin is flat by construction, not clipped.** A probe measured no clipped pixels at any tone under the studio lights, with or without tonemapping. Tones lighter than the skin texture take an additive lift, which flattens the texture's relative contrast. Lifting multiplicatively through the skin shader's `_Base_Color` instead made light tones grey and golden tones green: the graph also feeds `_Base_Color` through a luminance dot product and a lerp, so it is not a plain multiply. The cast's fair looks were warmed a step instead.
 - **`Travel_AnErrandWalksNearRuns...` read the pace 30 frames after passing 2 m/s,** which in batchmode is a fraction of a millisecond, mid-acceleration. It failed intermittently (1.49 against 1.62) and passed alone. Waiting on the clock instead caught short errands already slowing for the door. The test now takes the pace's own peak over the whole walk; the pace follows the body's measured speed, which trails the agent's. It passed 3/3 and a pace mutation catches it.
 
 **Verified.**
 - Full suite: EditMode 1453/1453, Uma 43/43 (44 with the probe), Simulation 741/741.
 - PlayMode: the final full run was 410/412.
   - The travel test, since fixed as above.
-  - `NotebookVotes_AnEmptyPageSaysWhyInBothTabs`: the season's revision moved by one while its capture settled, the house committing something in the background. It passed 3/3 on rerun; treat it as the known autonomy flake.
+  - `NotebookVotes_AnEmptyPageSaysWhyInBothTabs`: the season's revision moved by one while its capture settled, the house committing something in the background. It passed 3/3 on rerun. (It was not a flake: opening a panel commits, and the test read the revision too early - see the entry above.)
 - Floors raised to 1453, 412 and 43.
 - Mutation pass, `scratchpad/mutate_n` (24 mutations, one per feature). All caught. Three needed a second look:
   - the afro's rounding and the stylizer's skip were missed at first, and their tests were sharpened: a rebuild before the chrome check, and fuller behind than over the brow;

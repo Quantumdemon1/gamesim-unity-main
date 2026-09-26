@@ -10,6 +10,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -66,6 +67,97 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(GameObject.Find(FollowRing.RingName), Is.Null, "and the ring goes with it");
             Assert.That(GameObject.Find(FollowRing.SpotlightName), Is.Null, "and so does the spotlight");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(t => t.name == EpisodeHud.FollowChipName), Is.False, "and so does the chip");
+        }
+
+        /// <summary>
+        /// The spotlight stays on the person. Its pool on the floor is no wider than the reticle
+        /// round their feet, and it casts shadows, so the house's 1.1 m cutaway walls stop it: a
+        /// 30 degree cone with no shadows threw a pool 2.3 m across and lit the next room through
+        /// the wall whenever the one followed sat on a sofa or stood at a counter against it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Follow_TheSpotlightStaysOnThePersonAndTheWallsStopIt()
+        {
+            var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
+            director.FollowHouseguest(maya.Id);
+            yield return null; yield return null;
+            var spot = GameObject.Find(FollowRing.SpotlightName);
+            Assert.That(spot, Is.Not.Null, "The followed houseguest stands in the spotlight.");
+            var lamp = spot.GetComponent<Light>();
+            float drop = spot.transform.position.y - maya.transform.position.y;
+            float pool = drop * Mathf.Tan(lamp.spotAngle * .5f * Mathf.Deg2Rad);
+            Assert.That(pool, Is.LessThanOrEqualTo(.6f),
+                "The pool on the floor is " + pool.ToString("0.00") + " m from its centre to its edge: no wider than the reticle, or it reaches past a wall beside them.");
+            Assert.That(lamp.range, Is.GreaterThan(drop), "and it still reaches the floor they stand on.");
+            Assert.That(lamp.shadows, Is.Not.EqualTo(LightShadows.None), "A wall between the lamp and the next room stops it.");
+            Assert.That(lamp.shadowNearPlane, Is.LessThan(drop - 1.1f),
+                "The walls stand 1.1 m, so they are past the near plane and cast in it.");
+            Assert.That(lamp.GetUniversalAdditionalLightData().additionalLightsShadowResolutionTier,
+                Is.EqualTo(UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierLow),
+                "A wall is all it has to see, at the pipeline's lowest tier.");
+            director.FollowHouseguest(maya.Id);
+            yield return null;
+        }
+
+        /// <summary>
+        /// Under reduced motion the reticle holds still and the light stops breathing, as the
+        /// marker's own summary promises; with motion on, both move - which is what shows the
+        /// still half is measured rather than assumed. Waited on the clock: a batchmode frame is
+        /// well under a millisecond, and a few frames of it is no time for anything to turn.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Follow_UnderReducedMotionTheReticleAndTheLightHoldStill()
+        {
+            // A second of watching is long enough for a houseguest to walk up and start a
+            // conversation, which puts the camera on the player and takes the marker away.
+            director.SuspendNpcAutonomyForDiagnostics();
+            bool wasStill = cameraRig.ReducedMotion;
+            var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
+            try
+            {
+                cameraRig.SetReducedMotion(true);
+                director.FollowHouseguest(maya.Id);
+                yield return null; yield return null;
+                var ring = GameObject.Find(FollowRing.RingName);
+                var spot = GameObject.Find(FollowRing.SpotlightName);
+                Assert.That(ring, Is.Not.Null, "The reticle is under the one followed.");
+                Assert.That(spot, Is.Not.Null, "and the spotlight over them.");
+                var lamp = spot.GetComponent<Light>();
+
+                var turn = ring.transform.localRotation;
+                float glow = lamp.intensity, turned = 0f, drift = 0f;
+                float until = Time.realtimeSinceStartup + .5f;
+                while (Time.realtimeSinceStartup < until)
+                {
+                    yield return null;
+                    turned = Mathf.Max(turned, Quaternion.Angle(turn, ring.transform.localRotation));
+                    drift = Mathf.Max(drift, Mathf.Abs(lamp.intensity - glow));
+                }
+                Assert.That(ring.activeInHierarchy, Is.True, "The camera is still following, or holding still proves nothing.");
+                Assert.That(turned, Is.LessThan(.01f), "Under reduced motion the reticle does not turn.");
+                Assert.That(drift, Is.LessThan(.0001f), "and the light does not breathe.");
+
+                cameraRig.SetReducedMotion(false);
+                yield return null;
+                turn = ring.transform.localRotation;
+                float least = lamp.intensity, most = lamp.intensity;
+                until = Time.realtimeSinceStartup + .5f;
+                while (Time.realtimeSinceStartup < until)
+                {
+                    yield return null;
+                    least = Mathf.Min(least, lamp.intensity);
+                    most = Mathf.Max(most, lamp.intensity);
+                }
+                Assert.That(ring.activeInHierarchy, Is.True, "The camera is still following.");
+                Assert.That(Quaternion.Angle(turn, ring.transform.localRotation), Is.GreaterThan(1f),
+                    "With motion on the reticle turns - so the still reading above could have failed.");
+                Assert.That(most - least, Is.GreaterThan(.005f), "and the light breathes.");
+            }
+            finally
+            {
+                cameraRig.SetReducedMotion(wasStill);
+                if (cameraRig.FocusedSubject != null) cameraRig.ClearSubject();
+            }
         }
 
         /// <summary>

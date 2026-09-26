@@ -7,6 +7,7 @@ using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Gamesim.Presentation
@@ -30,6 +31,10 @@ namespace Gamesim.Presentation
     /// mouse, so the wheel went nowhere and clicks fell through to the HUD behind it, and a player
     /// who opened it had no way out but to quit. The whole report takes the mouse now, and a
     /// scrollbar shows how much there is.</para>
+    ///
+    /// <para>The mouse is not the only way through it. The keyboard's ring holds the ways on at the
+    /// top and the table's chips at the foot, and nothing between, so Page Up and Page Down, Home
+    /// and End, and a pad's right stick scroll the season itself.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SeasonReport : MonoBehaviour
@@ -42,6 +47,16 @@ namespace Gamesim.Presentation
         public const string MainMenuCaption = "Main menu";
         public const string ReviewCaption = "Review the season";
         public const string CloseCaption = "Close";
+
+        /// <summary>The line at the head of the season saying how to move through it without a mouse.</summary>
+        public const string ScrollHint = "Page Up and Page Down, or a pad's right stick, scroll the season";
+
+        /// <summary>How far the right stick leans before it scrolls: past the drift of a stick at rest.</summary>
+        private const float StickDeadZone = .2f;
+        /// <summary>A full lean of the right stick, in reference units a second - about a screen a second.</summary>
+        private const float StickSpeed = 1200f;
+        /// <summary>What a page key keeps of the page it leaves, so the reader does not lose their line.</summary>
+        private const float PageOverlap = 60f;
 
         private RectTransform content;
         private RectTransform viewport;
@@ -103,6 +118,15 @@ namespace Gamesim.Presentation
         private CareerSummary shownCareer;
         private Action shownNewSeason, shownMainMenu, shownClose;
         private ScrollRect scroller;
+
+        // The selection the report last brought into view, so it brings each one into view once;
+        // and the corners it measures with, kept rather than made again on every reveal.
+        private GameObject revealed;
+        private readonly Vector3[] selectedCorners = new Vector3[4], viewCorners = new Vector3[4];
+
+        /// <summary>How far the season can scroll: its height past the window it is read through.</summary>
+        private float Travel => content != null && viewport != null
+            ? Mathf.Max(0f, content.rect.height - viewport.rect.height) : 0f;
 
         /// <summary>
         /// The "larger text" accessibility setting, applied by scaling the whole screen rather than
@@ -185,6 +209,7 @@ namespace Gamesim.Presentation
             shownClose = onClose;
             sortBy = CastSort.Placement;
             filter = CastFilter.Everyone;
+            revealed = null;
             Rebuild(state, shownPortrait, onReview);
             group.alpha = 1f;
             group.blocksRaycasts = true;
@@ -262,6 +287,10 @@ namespace Gamesim.Presentation
 
             cursor = 0f;
             Space(12f);
+            // Said once, at the head of the season: the scrollbar tells a mouse there is more, and
+            // nothing else would tell a keyboard or a pad how to reach it.
+            Text(ScrollHint, 13f, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
+            Space(6f);
             Winner(state, portrait);
             WinnersJourney(state);
             YourJourney(state);
@@ -333,25 +362,90 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// Keeps whatever the keyboard has selected in the scrolling part in view: Tab onto the sort
-        /// chips at the foot of the house table and the report scrolls down to them.
+        /// The right stick's lean, up positive, once it is past the dead zone; nothing otherwise.
+        /// </summary>
+        internal static float StickLean()
+        {
+            var pad = Gamepad.current;
+            if (pad == null) return 0f;
+            float lean = pad.rightStick.ReadValue().y;
+            return Mathf.Abs(lean) > StickDeadZone ? lean : 0f;
+        }
+
+        /// <summary>
+        /// Whether the right stick is scrolling the report with nothing that walks the ring held
+        /// alongside it. The report's controls take no step from a stick that is scrolling: see
+        /// <see cref="SeasonReportControl"/>.
+        /// </summary>
+        internal static bool StickIsScrolling()
+        {
+            var pad = Gamepad.current;
+            return pad != null && StickLean() != 0f && !pad.dpad.IsActuated() && pad.leftStick.ReadValue().magnitude < .5f;
+        }
+
+        /// <summary>
+        /// Page Up and Page Down, Home and End, and the right stick, scroll the season.
+        ///
+        /// <para>The keyboard's ring has the ways on at the top and the table's chips at the foot,
+        /// and nothing in between: the winner's road, the jury's ballots, the standings and the
+        /// weeks sat between the first screen and the last, where a player without a mouse could
+        /// not get. None of these keys is anything else's while the report is up, and the stick
+        /// only scrolls - it takes no step round the ring while it does.</para>
+        /// </summary>
+        private void Update()
+        {
+            if (!IsShowing || scroller == null || content == null || viewport == null) return;
+            float travel = Travel;
+            if (travel <= 0f) return;
+            float from = content.anchoredPosition.y, to = from;
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                float page = Mathf.Max(viewport.rect.height - PageOverlap, viewport.rect.height * .5f);
+                if (keyboard.pageDownKey.wasPressedThisFrame) to += page;
+                if (keyboard.pageUpKey.wasPressedThisFrame) to -= page;
+                if (keyboard.homeKey.wasPressedThisFrame) to = 0f;
+                if (keyboard.endKey.wasPressedThisFrame) to = travel;
+            }
+            // Leaning up reads back up the season, as a wheel turned away from you does. A hitch in
+            // the frame rate is not a leap down the page.
+            to -= StickLean() * StickSpeed * Mathf.Min(Time.unscaledDeltaTime, .1f);
+            to = Mathf.Clamp(to, 0f, travel);
+            if (Mathf.Abs(to - from) < .01f) return;
+            scroller.StopMovement();
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, to);
+        }
+
+        /// <summary>
+        /// Brings the keyboard's selection into view when it moves: Tab onto the sort chips at the
+        /// foot of the house table and the report scrolls down to them.
+        ///
+        /// <para>Once per selection, not every frame. It used to run every frame for as long as a
+        /// chip was selected, and a chip stays selected after a click or a press-and-drag, so the
+        /// wheel, a drag or the page keys could not take the reader away from it: each frame the
+        /// report snapped back to the chip, until something else was clicked.</para>
         /// </summary>
         private void LateUpdate()
         {
             if (!IsShowing || scroller == null || content == null || viewport == null) return;
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
-            if (selected == null || !selected.transform.IsChildOf(content)) return;
-            var rect = (RectTransform)selected.transform;
-            var corners = new Vector3[4];
-            rect.GetWorldCorners(corners);
-            var view = new Vector3[4];
-            viewport.GetWorldCorners(view);
-            float below = view[0].y - corners[0].y, above = corners[1].y - view[1].y;
+            if (selected == revealed) return;
+            revealed = selected;
+            if (selected == null || !selected.activeInHierarchy || !selected.transform.IsChildOf(content)) return;
+            Reveal((RectTransform)selected.transform);
+        }
+
+        private void Reveal(RectTransform rect)
+        {
+            rect.GetWorldCorners(selectedCorners);
+            viewport.GetWorldCorners(viewCorners);
+            float below = viewCorners[0].y - selectedCorners[0].y, above = selectedCorners[1].y - viewCorners[1].y;
             if (below <= 0f && above <= 0f) return;
             float scale = viewport.lossyScale.y > 0f ? viewport.lossyScale.y : 1f;
             var position = content.anchoredPosition;
             position.y += (below > 0f ? below + 12f * scale : -(above + 12f * scale)) / scale;
-            position.y = Mathf.Clamp(position.y, 0f, Mathf.Max(0f, content.rect.height - viewport.rect.height));
+            position.y = Mathf.Clamp(position.y, 0f, Travel);
+            scroller.StopMovement();
             content.anchoredPosition = position;
         }
 
@@ -753,7 +847,7 @@ namespace Gamesim.Presentation
                 Chip(sortBar, SortCaption(pick), x, span - 8f, sortBy == pick, () =>
                 {
                     sortBy = pick;
-                    Rebuild(shown, shownPortrait, shownReview);
+                    Redraw();
                 });
                 x += span;
             }
@@ -768,10 +862,40 @@ namespace Gamesim.Presentation
                 Chip(filterBar, FilterCaption(pick), x, span - 8f, filter == pick, () =>
                 {
                     filter = pick;
-                    Rebuild(shown, shownPortrait, shownReview);
+                    Redraw();
                 });
                 x += span;
             }
+        }
+
+        /// <summary>
+        /// Draws the report again for a new sort or filter, with the reader still where they were.
+        ///
+        /// <para>A redraw is a new report, whose scroll starts at the top. Sorting the table three
+        /// screens down used to put the reader back at the winner, with the table three screens
+        /// under them, and the chip they had pressed thrown away: the keyboard fell to the first
+        /// control on the screen, "Start a new season", so a second Enter to sort again opened the
+        /// cast screen instead. The sections above the table do not change with it, so the same
+        /// reading position shows the same part of the season, and the keyboard goes back to the
+        /// control with the words it was on.</para>
+        /// </summary>
+        private void Redraw()
+        {
+            float reading = content != null ? content.anchoredPosition.y : 0f;
+            var events = EventSystem.current;
+            var selected = events != null ? events.currentSelectedGameObject : null;
+            string focus = selected != null && selected.transform.IsChildOf(transform) ? selected.name : null;
+
+            Rebuild(shown, shownPortrait, shownReview);
+            Canvas.ForceUpdateCanvases();
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, Mathf.Clamp(reading, 0f, Travel));
+            scroller.StopMovement();
+
+            if (events == null || focus == null) return;
+            // The report thrown away is inactive already and only destroyed at the frame's end, so
+            // an active control of that name is the new one.
+            var again = GetComponentsInChildren<Selectable>().FirstOrDefault(control => control.name == focus);
+            if (again != null) events.SetSelectedGameObject(again.gameObject);
         }
 
         private IEnumerable<ContestantState> Filtered(EpisodeState state)
@@ -849,7 +973,7 @@ namespace Gamesim.Presentation
             label.rectTransform.offsetMin = new Vector2(5f, 0f);
             label.rectTransform.offsetMax = new Vector2(-5f, 0f);
 
-            var button = pill.gameObject.AddComponent<Button>();
+            var button = pill.gameObject.AddComponent<SeasonReportControl>();
             button.targetGraphic = image;
             button.onClick.AddListener(() => action());
             return button;
@@ -1038,7 +1162,7 @@ namespace Gamesim.Presentation
             label.rectTransform.sizeDelta = Vector2.zero;
             label.rectTransform.anchoredPosition = Vector2.zero;
 
-            var button = panel.gameObject.AddComponent<Button>();
+            var button = panel.gameObject.AddComponent<SeasonReportControl>();
             button.targetGraphic = panel.GetComponent<Image>();
             button.onClick.AddListener(() => action());
         }

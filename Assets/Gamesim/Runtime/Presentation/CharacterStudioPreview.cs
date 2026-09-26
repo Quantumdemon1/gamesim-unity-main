@@ -25,6 +25,8 @@ namespace Gamesim.Presentation
         public bool IsBuilding => dirty || building;
         public string Status { get; private set; }
         public string CompletedKey => shownKey;
+        /// <summary>How far round the body is turned, in degrees: what a drag or a slow turn has done to it.</summary>
+        public float Turn => turn;
         public double LastBuildMilliseconds { get; private set; }
 
         public static CharacterStudioPreview Create(string name = "Character studio")

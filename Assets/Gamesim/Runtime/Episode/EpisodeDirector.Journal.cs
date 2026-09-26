@@ -613,14 +613,6 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// Opens the season report on the committed season.
-        ///
-        /// <para>It reads <see cref="Snapshot"/> rather than the projection, for the reason every
-        /// other presentation surface here does: a projected result is not a fact, and the last
-        /// screen of a season is the worst possible place to show an outcome the save does not
-        /// hold.</para>
-        /// </summary>
-        /// <summary>
         /// Opens the week's recap once the eviction has finished being narrated.
         ///
         /// <para>A season that has just ended does not get one: the finale plays, and
@@ -707,6 +699,14 @@ namespace Gamesim.Episode
                 fromNotebook ? () => OpenNotebookAt(section) : (Action)ClosePanels));
         }
 
+        /// <summary>
+        /// Opens the season report on the committed season.
+        ///
+        /// <para>It reads <see cref="Snapshot"/> rather than the projection, for the reason every
+        /// other presentation surface here does: a projected result is not a fact, and the last
+        /// screen of a season is the worst possible place to show an outcome the save does not
+        /// hold.</para>
+        /// </summary>
         public void ShowSeasonReport()
         {
             if (seasonReport == null) return;
@@ -718,6 +718,10 @@ namespace Gamesim.Episode
                 var actor = committed.Find(id);
                 return actor == null ? null : CharacterPortraits.Get(actor);
             }, OpenJournal, CareerNow(), NewSeason, OpenMainMenu, Render);
+            // The final stats are one of the screens the music rule silences, and nothing repaints
+            // when the report opens: a HUD button only runs its action, and the panel left under
+            // the report keeps the house paused. Asked here, or the season's track plays on.
+            ApplyMusic();
         }
     }
 }

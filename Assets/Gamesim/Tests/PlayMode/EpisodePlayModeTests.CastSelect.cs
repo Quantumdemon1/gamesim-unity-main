@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Gamesim.Persistence;
@@ -6,6 +7,7 @@ using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
@@ -428,12 +430,25 @@ namespace Gamesim.Tests.PlayMode
             float built = Time.realtimeSinceStartup + 25f;
             while (!CastScreen().PreviewReady && Time.realtimeSinceStartup < built) yield return null;
             Assert.That(CastScreen().PreviewReady, Is.True, "Her model is built and drawn.");
-            Assert.That(Model().texture, Is.Not.Null);
+            // What the studio actually finished building, not the id the screen set when she was
+            // picked: a screen that never asked the studio for her, or asked for the wrong look,
+            // passed everything above. And a real body where one can be built - ready is also what
+            // a timed-out build that swapped in a stand-in reports.
+            Assert.That(CastScreen().StudioPreview.CompletedKey, Is.EqualTo(CharacterAppearance.Preset(emma.Id).ContentKey()),
+                "The model built is Emma's own look.");
+            if (CharacterBodySource.Provider != null)
+                Assert.That(CastScreen().StudioPreview.CanRetry, Is.False, "Emma's model is her body, not a fallback: "
+                    + CastScreen().StudioPreview.Status);
 
             var casey = CastTemplates.Find("casey-wilson");
             CastButtons(casey.Name)[0].onClick.Invoke();
             yield return null;
             Assert.That(CastScreen().PreviewedId, Is.EqualTo(casey.Id), "Picking someone else shows their model.");
+            built = Time.realtimeSinceStartup + 25f;
+            while (!CastScreen().PreviewReady && Time.realtimeSinceStartup < built) yield return null;
+            Assert.That(CastScreen().PreviewReady, Is.True, "Casey's model is built and drawn.");
+            Assert.That(CastScreen().StudioPreview.CompletedKey, Is.EqualTo(CharacterAppearance.Preset(casey.Id).ContentKey()),
+                "and the studio rebuilt it as Casey, rather than going on showing Emma.");
             CastButtons(casey.Name)[0].onClick.Invoke();
             yield return null;
             Assert.That(Model(), Is.Null, "Picking them again puts the details away.");
@@ -459,6 +474,483 @@ namespace Gamesim.Tests.PlayMode
             var fresh = director.Snapshot;
             Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo(will.Name));
             Assert.That(fresh.contestants.Count(person => person.name == will.Name), Is.EqualTo(1));
+        }
+
+        /// <summary>
+        /// "Play as Emma" plays as Emma, whoever else the player built on the way. Building Robin
+        /// in the creator and coming back leaves Robin retained - the footer says so, and Start
+        /// commits Robin - but it used to be what Play as committed too, so the season started with
+        /// Robin as the player and Emma cast as one of the others.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_PlayAsPlaysTheHouseguestItNamesNotADraftOfSomeoneElse()
+        {
+            yield return OpenCastScreen();
+            var emma = CastTemplates.Find("emma-brown");
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            CastButtons(CharacterCreator.CreateCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Creator().IsShowing, Is.True);
+            Creator().Draft.Name = "Robin";
+            CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.True);
+            Assert.That(CastScreen().GetComponentsInChildren<TMPro.TMP_Text>().Any(label => label.text.Contains("You will play as Robin")), Is.True,
+                "Robin is retained and named in the footer - the case this is about.");
+
+            var play = CastButtons("Play as Emma");
+            Assert.That(play, Has.Length.EqualTo(1), "The details still offer Emma, under her own name.");
+            play[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+
+            Assert.That(CastScreen().IsShowing, Is.False, "The season started.");
+            var fresh = director.Snapshot;
+            Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo(emma.Name), "Play as Emma plays as Emma.");
+            Assert.That(fresh.contestants.Count(person => person.name == emma.Name), Is.EqualTo(1), "and she is not also an NPC.");
+            Assert.That(fresh.contestants.Any(person => person.name == "Robin"), Is.False, "Robin was never committed.");
+        }
+
+        /// <summary>
+        /// Edits to a houseguest brought back from the creator stay theirs: the live model wears
+        /// them, "Customize Emma" reopens them rather than starting again from her card - which
+        /// used to throw the edits away at the next Back - and "Play as Emma" plays her in them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_CustomizeReopensTheEditsBroughtBackForThatHouseguest()
+        {
+            yield return OpenCastScreen();
+            var emma = CastTemplates.Find("emma-brown");
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            CastButtons("Customize Emma")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Creator().IsShowing, Is.True);
+            CastButtons("Next starting look")[0].onClick.Invoke();
+            yield return null;
+            string edited = Creator().Draft.Appearance.ContentKey();
+            string editedPreset = Creator().Draft.Appearance.presetId;
+            Assert.That(edited, Is.Not.EqualTo(CharacterAppearance.Preset(emma.Id).ContentKey()), "The look really changed.");
+            Assert.That(editedPreset, Is.Not.EqualTo(emma.Id));
+            CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.True);
+
+            float built = Time.realtimeSinceStartup + 25f;
+            while (!CastScreen().PreviewReady && Time.realtimeSinceStartup < built) yield return null;
+            Assert.That(CastScreen().PreviewReady, Is.True);
+            Assert.That(CastScreen().StudioPreview.CompletedKey, Is.EqualTo(edited),
+                "The live model shows Emma as the player left her, not her card's look.");
+
+            CastButtons("Customize Emma")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Creator().IsShowing, Is.True);
+            Assert.That(Creator().Draft.Appearance.ContentKey(), Is.EqualTo(edited), "Customize reopens the edits.");
+            CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
+            yield return null;
+
+            CastButtons("Play as Emma")[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.False, "The season started.");
+            var fresh = director.Snapshot;
+            var you = fresh.Find(fresh.playerId);
+            Assert.That(you.name, Is.EqualTo(emma.Name));
+            Assert.That(you.appearance.presetId, Is.EqualTo(editedPreset), "Play as Emma plays her in the edited look.");
+            Assert.That(fresh.contestants.Count(person => person.name == emma.Name), Is.EqualTo(1));
+        }
+
+        /// <summary>
+        /// A "Play as" that cannot be saved comes back to the cast screen, with the reason beside
+        /// retry. Every card the screen starts carries a built houseguest, so the director used to
+        /// guess the creator: never opened, that left the player on no screen at all; opened
+        /// earlier, it came back with its own stale choice, whose Start would commit a season the
+        /// player had moved on from. Both are checked.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_AFailedPlayAsComesBackToTheCastScreen()
+        {
+            yield return OpenCastScreen();
+            var emma = CastTemplates.Find("emma-brown");
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            yield return PlayAsWithTheSaveRootBlocked("Play as Emma");
+
+            // Now with the creator opened and backed out of first, on another houseguest.
+            CastButtons("Customize Emma")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Creator().IsShowing, Is.True);
+            CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
+            yield return null;
+            var casey = CastTemplates.Find("casey-wilson");
+            CastButtons(casey.Name)[0].onClick.Invoke();
+            yield return null;
+            yield return PlayAsWithTheSaveRootBlocked("Play as Casey");
+
+            // And retry, with the disk back, starts the season it says.
+            CastButtons("Play as Casey")[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.False);
+            Assert.That(Creator().IsShowing, Is.False);
+            var fresh = director.Snapshot;
+            Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo(casey.Name));
+        }
+
+        private IEnumerator PlayAsWithTheSaveRootBlocked(string caption)
+        {
+            var before = director.Snapshot;
+            string previousPath = director.SavePath;
+            string blockedRoot = Path.Combine(temporaryDirectory, "blocked-play-as-" + System.Guid.NewGuid().ToString("N"));
+            File.WriteAllText(blockedRoot, "test-owned file prevents creating a save directory");
+            var rootField = director.GetType().GetField("saveRoot",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(rootField, Is.Not.Null);
+            rootField.SetValue(director, blockedRoot);
+            try
+            {
+                var play = CastButtons(caption);
+                Assert.That(play, Has.Length.EqualTo(1), caption + " is offered.");
+                play[0].onClick.Invoke();
+                yield return null;
+                yield return null;
+
+                Assert.That(director.StatusMessage, Does.StartWith("New season could not be saved."));
+                Assert.That(CastScreen().IsShowing, Is.True, "A failed " + caption + " comes back to the cast screen.");
+                Assert.That(Creator().IsShowing, Is.False, "and not to the creator, which did not commit it.");
+                var visibleError = CastScreen().GetComponentsInChildren<TMPro.TMP_Text>()
+                    .Single(label => label.gameObject.activeInHierarchy && label.text == director.StatusMessage);
+                Assert.That(visibleError.transform.parent.name, Is.EqualTo("Fixed season footer"),
+                    "The reason is in the footer, beside retry.");
+                Assert.That(CastButtons(caption), Has.Length.EqualTo(1), "Retry is where it was.");
+                Assert.That(director.SavePath, Is.EqualTo(previousPath));
+                Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId), "The running season is untouched.");
+            }
+            finally
+            {
+                rootField.SetValue(director, temporaryDirectory);
+            }
+        }
+
+        /// <summary>
+        /// Starting or cancelling lets the live model go: the studio, its built body and its
+        /// multisampled target. Hiding only put the studio to sleep, and nothing else destroyed it,
+        /// so the last houseguest previewed stayed resident for the whole season - from a start on
+        /// this screen, and from a start in the creator it opened, which leaves it asleep behind.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_ClosingTheScreenLetsTheLiveModelGo()
+        {
+            // Counted against what was there before, since a studio lives at the scene root and
+            // outlasts a scene load unless something destroys it.
+            int Studios() => Resources.FindObjectsOfTypeAll<CharacterStudioPreview>()
+                .Count(item => item != null && item.name == CastSelect.StudioName);
+            int already = Studios();
+            yield return OpenCastScreen();
+            var emma = CastTemplates.Find("emma-brown");
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Studios(), Is.EqualTo(already + 1), "Picking a houseguest stands their model in a studio.");
+            CastButtons(CastSelect.CancelCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.False);
+            Assert.That(Studios(), Is.EqualTo(already), "Cancel lets the model go.");
+
+            director.NewSeason();
+            yield return null;
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Studios(), Is.EqualTo(already + 1));
+            CastButtons("Play as Emma")[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.False, "The season started.");
+            Assert.That(Studios(), Is.EqualTo(already), "Starting lets the model go too.");
+
+            // And a start from the creator, which hides this screen rather than closing it: nothing
+            // brings the screen back to the houseguest it was showing.
+            director.NewSeason();
+            yield return null;
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Studios(), Is.EqualTo(already + 1));
+            CastButtons("Customize Emma")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Creator().IsShowing, Is.True);
+            CastButtons(CharacterCreator.StartCaption)[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+            Assert.That(Creator().IsShowing, Is.False, "The season started from the creator.");
+            Assert.That(CastScreen().IsShowing, Is.False);
+            Assert.That(Studios(), Is.EqualTo(already), "and the model the cast screen was showing went with it.");
+        }
+
+        /// <summary>
+        /// Play as and Customize stay inside the details, clear of Start and Cancel, on the short
+        /// wide frames that broke them. The details needed a fixed 448 at least, so at 21:9 with
+        /// the larger text (a 375 panel) and at 32:9 with the standard text both buttons sat on the
+        /// footer, which drew and took clicks over them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_PlayAsAndCustomizeStayInsideTheDetailsOnShortWideFrames()
+        {
+            yield return OpenCastScreen();
+            var emma = CastTemplates.Find("emma-brown");
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            var canvas = CastScreen().GetComponent<Canvas>();
+            try
+            {
+                var shapes = new[]
+                {
+                    (wide: 2560, high: 1080, text: 1.2f, shape: "21:9 at the larger text size"),
+                    (wide: 5120, high: 1440, text: 1f, shape: "32:9 at the standard text size"),
+                    (wide: 1920, high: 1080, text: 1.2f, shape: "16:9 at the larger text size"),
+                };
+                foreach (var frame in shapes)
+                {
+                    yield return LayCastScreenOutAt(frame.wide, frame.high, frame.text);
+                    var panel = ScreenRect(ActiveCastRect(CastSelect.DetailPanelName));
+                    var start = ScreenRect((RectTransform)CastButtons(CastSelect.StartCaption).Single().transform);
+                    var cancel = ScreenRect((RectTransform)CastButtons(CastSelect.CancelCaption).Single().transform);
+                    foreach (string caption in new[] { "Play as Emma", "Customize Emma" })
+                    {
+                        var buttons = CastButtons(caption);
+                        Assert.That(buttons, Has.Length.EqualTo(1), caption + " on " + frame.shape);
+                        var button = ScreenRect((RectTransform)buttons[0].transform);
+                        Assert.That(Encloses(panel, button), Is.True,
+                            caption + " at " + button + " spills out of the details at " + panel + " on " + frame.shape + ".");
+                        Assert.That(button.Overlaps(start), Is.False, caption + " lies on Start on " + frame.shape + ".");
+                        Assert.That(button.Overlaps(cancel), Is.False, caption + " lies on Cancel on " + frame.shape + ".");
+                    }
+                    // Room was made without taking her away: the model is still standing there.
+                    var model = ActiveCastRect(CastSelect.LiveModelName);
+                    Assert.That(Encloses(panel, ScreenRect(model)), Is.True, "The model is inside the details on " + frame.shape + ".");
+                    Assert.That(model.rect.height, Is.GreaterThanOrEqualTo(79f), "and tall enough to be somebody on " + frame.shape + ".");
+                }
+            }
+            finally
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            }
+            CastScreen().Dismiss();
+            yield return null;
+        }
+
+        /// <summary>
+        /// At the larger text size on 16:9 the third row of cards is under the fold. A scrollbar
+        /// says so, and picking a card down there leaves the grid where it was: every press
+        /// rebuilds the screen, and the grid used to come back at the top, taking the card just
+        /// picked - and its PLAYING AS - out of sight. A new screen starts at the top again, and at
+        /// the standard size, where the whole roster fits, there is no scrollbar at all.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_PickingACardBelowTheFoldKeepsTheGridWhereItWas()
+        {
+            yield return OpenCastScreen();
+            var canvas = CastScreen().GetComponent<Canvas>();
+            try
+            {
+                yield return LayCastScreenOutAt(1920, 1080, 1.2f);
+                yield return null;
+                var scroll = CastGridScroll();
+                float most = scroll.content.rect.height - scroll.viewport.rect.height;
+                Assert.That(most, Is.GreaterThan(100f), "The third row is below the fold here - the case this is about.");
+                Assert.That(scroll.verticalScrollbar, Is.Not.Null, "Something says there is more.");
+                Assert.That(scroll.verticalScrollbar.gameObject.activeInHierarchy, Is.True, "and it is showing.");
+
+                scroll.content.anchoredPosition = new Vector2(0f, most);
+                yield return null;
+                var third = CastTemplates.Filter(CastTemplates.Roster.Regular, CastTemplates.AllCategories).ElementAt(8);
+                CastButtons(third.Name)[0].onClick.Invoke();
+                yield return null;
+
+                scroll = CastGridScroll();
+                Assert.That(scroll.content.anchoredPosition.y, Is.EqualTo(most).Within(1f), "The grid stays where the player scrolled it.");
+                var card = (RectTransform)scroll.content.Find(third.Name);
+                Assert.That(card, Is.Not.Null);
+                Assert.That(Encloses(ScreenRect(scroll.viewport), ScreenRect(card)), Is.True,
+                    third.Name + ", just picked, is still in view.");
+
+                CastScreen().Dismiss();
+                yield return null;
+                director.NewSeason();
+                yield return null;
+                Assert.That(CastGridScroll().content.anchoredPosition.y, Is.EqualTo(0f).Within(.5f),
+                    "Opening the screen again starts at the top row.");
+
+                // And on the frame the grid is drawn for - 16:9 at the standard size - all twelve
+                // fit, so nothing scrolls and no bar says there is more. The grid used to end on a
+                // gutter and the page's pad, which took it twelve past the viewport.
+                yield return LayCastScreenOutAt(1920, 1080, 1f);
+                scroll = CastGridScroll();
+                float settled = Time.realtimeSinceStartup + 2f;
+                while (scroll.verticalScrollbar.gameObject.activeSelf && Time.realtimeSinceStartup < settled) yield return null;
+                Assert.That(scroll.content.rect.height, Is.LessThanOrEqualTo(scroll.viewport.rect.height),
+                    "The whole roster fits the grid at 16:9.");
+                Assert.That(scroll.verticalScrollbar.gameObject.activeSelf, Is.False, "and no scrollbar says otherwise.");
+            }
+            finally
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            }
+            CastScreen().Dismiss();
+            yield return null;
+        }
+
+        /// <summary>
+        /// A card submitted from the keyboard or a pad hands the focus to Play as, the next thing
+        /// to press, and clearing the pick leaves it on that card. The press destroys the card it
+        /// was made on, and the HUD's ring used to fall back to its first control - the top nav
+        /// chip, 25 presses from Play as.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_SubmittingACardPutsTheKeyboardOnPlayAs()
+        {
+            yield return OpenCastScreen();
+            var events = EventSystem.current;
+            Assert.That(events, Is.Not.Null, "The house has an event system to submit through.");
+            var emma = CastTemplates.Find("emma-brown");
+            var card = CastButtons(emma.Name)[0];
+            events.SetSelectedGameObject(card.gameObject);
+            yield return null;
+            Assert.That(events.currentSelectedGameObject, Is.SameAs(card.gameObject), "Emma's card has the focus.");
+
+            ExecuteEvents.Execute(card.gameObject, new BaseEventData(events), ExecuteEvents.submitHandler);
+            yield return null;
+            yield return null;
+            var selected = events.currentSelectedGameObject;
+            Assert.That(selected, Is.Not.Null, "Something has the focus after the pick.");
+            Assert.That(selected.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(label => label.text == "Play as Emma"), Is.True,
+                "The pick hands the focus to Play as, not to " + selected.name + ".");
+
+            card = CastButtons(emma.Name)[0];
+            events.SetSelectedGameObject(card.gameObject);
+            yield return null;
+            ExecuteEvents.Execute(card.gameObject, new BaseEventData(events), ExecuteEvents.submitHandler);
+            yield return null;
+            yield return null;
+            selected = events.currentSelectedGameObject;
+            Assert.That(CastButtons("Play as Emma"), Is.Empty, "The pick is cleared.");
+            Assert.That(selected, Is.Not.Null);
+            Assert.That(selected.name, Is.EqualTo(emma.Name), "Clearing the pick leaves the focus on her card, not on " + selected.name + ".");
+            Assert.That(selected.activeInHierarchy, Is.True, "the card as drawn again, not the one the press destroyed.");
+        }
+
+        /// <summary>
+        /// Under "Reduce character motion" the cast screen holds still: the live model does not
+        /// turn by itself, the picked card's halo does not pulse, and a portrait does not lift
+        /// under the pointer. The setting reaches the screen from Settings, where the player sets it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_ReducedMotionHoldsTheModelTheHaloAndThePortraitsStill()
+        {
+            director.OpenSettings();
+            yield return null;
+            ButtonWithCaption("Reduce character motion").onClick.Invoke();
+            yield return null;
+            director.NewSeason();
+            yield return null;
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.True);
+            Assert.That(CastScreen().ReducedMotion, Is.True, "The setting reaches the cast screen.");
+
+            var emma = CastTemplates.Find("emma-brown");
+            float picked = Time.realtimeSinceStartup;
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            float built = picked + 25f;
+            while (!CastScreen().PreviewReady && Time.realtimeSinceStartup < built) yield return null;
+            Assert.That(CastScreen().PreviewReady, Is.True);
+
+            // The slow turn starts 2.5 s after the last touch and runs at 14 degrees a second, and
+            // the halo pulses once every two seconds: watch past the one and through most of the other.
+            var card = CastScreen().GetComponentsInChildren<RectTransform>().Single(rect => rect.name == emma.Name);
+            var halo = card.GetComponentsInChildren<Image>().Single(image => image.name == "Ring halo");
+            float turn = CastScreen().StudioPreview.Turn;
+            var alphas = new List<float>();
+            float until = Mathf.Max(picked + 4f, Time.realtimeSinceStartup + 1.5f);
+            while (Time.realtimeSinceStartup < until) { alphas.Add(halo.color.a); yield return null; }
+            Assert.That(CastScreen().StudioPreview.Turn, Is.EqualTo(turn).Within(.01f), "The model stays as it was left.");
+            Assert.That(alphas.Max() - alphas.Min(), Is.LessThan(.001f), "The halo holds still.");
+
+            var portrait = (RectTransform)card.Find("Portrait");
+            ExecuteEvents.Execute(card.gameObject, new PointerEventData(EventSystem.current), ExecuteEvents.pointerEnterHandler);
+            Assert.That(portrait.localScale, Is.EqualTo(Vector3.one), "The portrait does not lift under the pointer.");
+            CastScreen().Dismiss();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The music rule's silent screens are silent however they are reached: the season report
+        /// from its button, and the cast screen from the settings panel - neither is a render, and
+        /// the rule used to run only on one, so the season's track played on under both.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_TheReportAndTheCastScreenAreSilent()
+        {
+            var audio = director.GetComponent<HouseAudio>();
+            director.OpenSettings();
+            yield return null;
+            Assert.That(audio.CurrentMusic, Is.Not.EqualTo(HouseAudio.Music.Silent), "The house has its music - the case this is about.");
+
+            director.ShowSeasonReport();
+            yield return null;
+            Assert.That(director.IsSeasonReportOpen, Is.True);
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Silent), "The final stats are silent.");
+            ReportButtons(SeasonReport.CloseCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(audio.CurrentMusic, Is.Not.EqualTo(HouseAudio.Music.Silent), "Closing the report gives the house its music back.");
+
+            director.NewSeason();
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.True);
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Silent), "Setup is silent, from settings as from the menu.");
+            CastButtons(CastSelect.CancelCaption)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(audio.CurrentMusic, Is.Not.EqualTo(HouseAudio.Music.Silent), "and cancelling it gives the music back.");
+        }
+
+        /// <summary>The cast screen's one live element of this name.</summary>
+        private RectTransform ActiveCastRect(string name) =>
+            CastScreen().GetComponentsInChildren<RectTransform>().Single(rect => rect.name == name);
+
+        /// <summary>The grid's scroll, as drawn now: a rebuild replaces it.</summary>
+        private ScrollRect CastGridScroll() => CastScreen().GetComponentsInChildren<ScrollRect>().Single();
+
+        /// <summary>Whether <paramref name="inner"/> lies within <paramref name="outer"/>, to a pixel.</summary>
+        private static bool Encloses(Rect outer, Rect inner) =>
+            inner.xMin >= outer.xMin - 1f && inner.yMin >= outer.yMin - 1f && inner.xMax <= outer.xMax + 1f && inner.yMax <= outer.yMax + 1f;
+
+        /// <summary>
+        /// Lays the cast screen out as a display this many pixels across would, at this text size.
+        ///
+        /// <para>A batchmode screen is one shape, and the layouts that break are the ones it is not:
+        /// short, wide frames. The screen measures its own canvas at every rebuild, so the canvas
+        /// is taken out of the screen's hands (world space, where nothing drives its size) and
+        /// given the size the scaler would have given it there. The scaler matches width and height
+        /// equally against 1920x1080 over the text size, so a W by H display comes to W/k by H/k
+        /// with k = sqrt(W*s/1920 * H*s/1080): 21:9 at the larger size is 1848 by 779. The caller
+        /// puts the canvas back in overlay.</para>
+        /// </summary>
+        private IEnumerator LayCastScreenOutAt(int pixelsWide, int pixelsHigh, float textScale)
+        {
+            var canvas = CastScreen().GetComponent<Canvas>();
+            float k = Mathf.Sqrt(pixelsWide * textScale / 1920f * (pixelsHigh * textScale / 1080f));
+            var frame = new Vector2(pixelsWide / k, pixelsHigh / k);
+            var before = ActiveCastRect(CastSelect.DetailPanelName);
+            canvas.renderMode = RenderMode.WorldSpace;
+            ((RectTransform)canvas.transform).sizeDelta = frame;
+            // The screen sees a new frame in its own Update and lays itself out again; that is the
+            // state to wait for, not a number of frames.
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (Time.realtimeSinceStartup < deadline
+                   && CastScreen().GetComponentsInChildren<RectTransform>().FirstOrDefault(rect => rect.name == CastSelect.DetailPanelName) == before)
+                yield return null;
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ActiveCastRect(CastSelect.DetailPanelName), Is.Not.SameAs(before),
+                "The screen laid itself out again for " + pixelsWide + "x" + pixelsHigh + " (" + frame + ").");
+            Assert.That(((RectTransform)canvas.transform).rect.size.y, Is.EqualTo(frame.y).Within(.5f));
         }
 
         /// <summary>A category chip says what that kind of player is, in the web game's words.</summary>

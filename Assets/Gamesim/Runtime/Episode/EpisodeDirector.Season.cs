@@ -186,19 +186,36 @@ namespace Gamesim.Episode
             bool fromMenu = mainMenu != null && mainMenu.IsShowing;
             if (fromMenu) mainMenu.Hide();
             Action back = fromMenu ? (Action)OpenMainMenu : Render;
-            castSelect.Show(StartSeason, back, characterCreator == null ? (Action<SeasonBuilder.Choice, CharacterDraft>)null
-                : (choice, draft) => characterCreator.Show(choice, draft, StartSeason, () =>
+            // Each screen that can commit is named as the way back from a failed start, so the
+            // player lands where they pressed it: see StartSeason(choice, failed).
+            castSelect.Show(choice => StartSeason(choice, castSelect.Resume), back,
+                characterCreator == null ? (Action<SeasonBuilder.Choice, CharacterDraft>)null
+                : (choice, draft) => characterCreator.Show(choice, draft, built => StartSeason(built, characterCreator.Resume), () =>
                 {
                     castSelect.SetDraft(characterCreator.Draft);
                     castSelect.Resume();
                 }));
+            // Setup is one of the screens the music rule silences, and putting one up is not a
+            // render: from the finale's panel, the report or settings the season's track played
+            // on under the cast screen until something else happened to repaint.
+            ApplyMusic();
         }
 
         /// <summary>
         /// Stages and installs a season. A null choice builds the authored six-person scenario,
         /// which is what a headless caller and the pre-cast-screen behaviour both get.
+        ///
+        /// <para>A choice that cannot be staged goes back to whichever screen this guesses made
+        /// it. The screens themselves call the overload that says so instead.</para>
         /// </summary>
-        public void StartSeason(SeasonBuilder.Choice choice)
+        public void StartSeason(SeasonBuilder.Choice choice) => StartSeason(choice, ScreenThatCommitted(choice));
+
+        /// <summary>
+        /// The same, naming the way back: <paramref name="failed"/> receives the reason when the
+        /// season cannot be staged, and is the screen the player committed on, shown again with
+        /// that reason and everything they had set on it intact. Nothing is shown when it is null.
+        /// </summary>
+        public void StartSeason(SeasonBuilder.Choice choice, Action<string> failed)
         {
             if (durableCommitInProgress) return;
             SuspendNpcWorldWithoutSaving();
@@ -221,10 +238,13 @@ namespace Gamesim.Episode
             {
                 message = "New season could not be saved. Your current session and slot were preserved. "
                     + SaveJson.Explain(error);
-                if (choice?.Authored != null && characterCreator != null) characterCreator.Resume(message);
-                else if (choice != null && castSelect != null) castSelect.Resume(message);
+                failed?.Invoke(message);
             }
             Render();
+            // Setup is over however the season was started. The cast screen lets its live model go
+            // when it starts one itself; a start from the creator leaves it asleep behind, holding
+            // the last houseguest it showed - body, textures and target - for the whole season.
+            if (installed && castSelect != null) castSelect.ReleasePreview();
             // The opening sequence, on the only path that reaches it.
             //
             // It has five authored beats, it owns the tutorial, and it is where a season's first
@@ -241,6 +261,23 @@ namespace Gamesim.Episode
             // returned to. PlayOpening is a no-op in batchmode, so the headless suite - which calls
             // StartSeason directly from nine fixtures - is untouched.
             if (installed) PlayOpening();
+        }
+
+        /// <summary>
+        /// The guess at who committed a choice, for callers that do not say: the creator when the
+        /// choice carries a built houseguest, the cast screen otherwise.
+        ///
+        /// <para>It is only a guess, and for the cast screen's own starts it was wrong: every card
+        /// that screen starts carries a built houseguest, so a failed "Play as" went to the creator
+        /// - which was either never opened, leaving the player on no screen at all, or opened
+        /// earlier and still holding a pending choice of its own, whose Start would then commit a
+        /// season the player had moved on from. Both screens name themselves now.</para>
+        /// </summary>
+        private Action<string> ScreenThatCommitted(SeasonBuilder.Choice choice)
+        {
+            if (choice?.Authored != null && characterCreator != null) return characterCreator.Resume;
+            if (choice != null && castSelect != null) return castSelect.Resume;
+            return null;
         }
 
         private static string SeasonMessage(EpisodeState fresh, SeasonBuilder.Choice choice)
@@ -321,7 +358,7 @@ namespace Gamesim.Episode
             if (tutorial != null) tutorial.FontScale = largeText ? 1.2f : 1;
             if (opening != null) opening.FontScale = largeText ? 1.2f : 1;
             if (seasonReport != null) seasonReport.FontScale = largeText ? 1.2f : 1;
-            if (castSelect != null) castSelect.FontScale = largeText ? 1.2f : 1;
+            if (castSelect != null) { castSelect.FontScale = largeText ? 1.2f : 1; castSelect.ReducedMotion = reducedMotion; }
             if (characterCreator != null) characterCreator.FontScale = largeText ? 1.2f : 1;
             if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);

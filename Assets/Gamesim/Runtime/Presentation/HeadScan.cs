@@ -17,16 +17,30 @@ namespace Gamesim.Presentation
     {
         public Transform Root, Head, NeckBone, ChestBone;
         public Vector3 Origin, Right, Up, Forward;
+        /// <summary>The body's own axes when the scan was taken, which the head's may be turned or tilted from.</summary>
+        public Vector3 BodyRight, BodyUp, BodyForward;
+        private HeadScan neckInBodyAxes;
 
         /// <summary>The head's skin, welded where texture seams split it: points, smooth outward normals, triangles.</summary>
         public Vector3[] Points, Normals;
         public int[] Triangles;
+        /// <summary>
+        /// How much of each point is the head's own rather than the neck's - the least, where the
+        /// skin welded at a point disagrees. Skin shared with the neck, low at the nape, moves as
+        /// the head turns, so it is read where it is only for the head as it was.
+        /// </summary>
+        public float[] HeadShares;
 
         /// <summary>The head skin's bounds.</summary>
         public Vector3 Centre, Extent;
-        /// <summary>Everything the head carries - skin, hair cards, brows - by direction from <see cref="Centre"/>: see <see cref="EnvelopeRadius"/>.</summary>
+        /// <summary>
+        /// Everything the head carries - skin, hair cards, brows, grown hair already fitted - by
+        /// direction from <see cref="Centre"/>: see <see cref="EnvelopeRadius"/>.
+        /// </summary>
         private float[,] envelope;
         private const int EnvelopeRows = 18, EnvelopeColumns = 36;
+        /// <summary>The height of the highest point of everything the head carries, which the envelope's directions can round down.</summary>
+        public float CarriedTopY;
 
         public float EyeY, CrownY, ChinY;
         public Vector3 LeftEye, RightEye;
@@ -42,6 +56,8 @@ namespace Gamesim.Presentation
 
         public float Height => CrownY - EyeY;
         public Vector3 ToWorld(Vector3 p) => Origin + Right * p.x + Up * p.y + Forward * p.z;
+        /// <summary>The frame as a matrix: frame coordinates in, world positions out.</summary>
+        public Matrix4x4 FrameToWorld => new Matrix4x4(Right, Up, Forward, new Vector4(Origin.x, Origin.y, Origin.z, 1f));
         public Vector3 ToWorldDirection(Vector3 d) => Right * d.x + Up * d.y + Forward * d.z;
 
         public Vector3 ToFrame(Vector3 world)
@@ -52,6 +68,68 @@ namespace Gamesim.Presentation
 
         /// <summary>Degrees round the head from straight ahead, positive to the body's right.</summary>
         public float Around(Vector3 p) => Mathf.Atan2(p.x - Centre.x, p.z - Centre.z) * Mathf.Rad2Deg;
+
+        /// <summary>
+        /// The neck and shoulders of this scan in the body's own axes rather than the head's, for
+        /// what hangs from the neck or the chest: a necklace, a bow tie, the lower part of long
+        /// strands. Built in the head's axes, a bow tie scanned while the head was turned stayed
+        /// turned on the collar for good, and a necklace's lowest point hung off to one side.
+        ///
+        /// <para>Only the neck is carried over - the collar, the neck, the chest, the shoulders and
+        /// the chin line - with the same origin; the head's own points are left behind, since
+        /// nothing built in this frame reads them.</para>
+        /// </summary>
+        public HeadScan NeckInBodyAxes()
+        {
+            if (neckInBodyAxes != null) return neckInBodyAxes;
+            var body = new HeadScan
+            {
+                Root = Root, Head = Head, NeckBone = NeckBone, ChestBone = ChestBone, HasTorso = HasTorso,
+                Origin = Origin, Right = BodyRight, Up = BodyUp, Forward = BodyForward,
+                BodyRight = BodyRight, BodyUp = BodyUp, BodyForward = BodyForward,
+            };
+            body.Collar = new Vector3[Collar != null ? Collar.Length : 0];
+            for (int i = 0; i < body.Collar.Length; i++) body.Collar[i] = body.ToFrame(ToWorld(Collar[i]));
+            body.Neck = body.ToFrame(ToWorld(Neck));
+            body.Chest = body.ToFrame(ToWorld(Chest));
+            body.LeftShoulder = body.ToFrame(ToWorld(LeftShoulder));
+            body.RightShoulder = body.ToFrame(ToWorld(RightShoulder));
+            body.ChinY = body.ToFrame(ToWorld(new Vector3(Centre.x, ChinY, Centre.z))).y;
+            body.neckInBodyAxes = body;
+            neckInBodyAxes = body;
+            return body;
+        }
+
+        /// <summary>
+        /// The same head, in the same frame coordinates, set upright on the body: as if it faced the
+        /// way the body does rather than wherever it was turned when the scan was taken. What is
+        /// built in it is built for a head facing forward, falling as it would fall from there;
+        /// <see cref="FrameToWorld"/> of this scan times the inverse of the straightened one's
+        /// carries it onto the head as it is now. The scan's frame follows the head's turn and tilt,
+        /// by the eye line, but takes its up from the body, so a nod stays in the head's
+        /// coordinates: a houseguest's fits are made with the body standing (UmaBodyTint), nods
+        /// and all taken off.
+        /// The neck and shoulders do not turn with the head, so they are the body's own, as they are.
+        /// </summary>
+        public HeadScan Straightened()
+        {
+            var straight = (HeadScan)MemberwiseClone();
+            straight.measured = measured ?? new[] { Right, Up, Forward };
+            straight.Right = BodyRight; straight.Up = BodyUp; straight.Forward = BodyForward;
+            straight.neckInBodyAxes = NeckInBodyAxes();
+            return straight;
+        }
+
+        // The axes the head's points were read along, which a straightened scan keeps; null while
+        // they are the frame's own.
+        private Vector3[] measured;
+
+        /// <summary>A direction in the world, in the coordinates the head's points are measured in: the frame's own, or the scan's it was straightened from.</summary>
+        public Vector3 ToMeasuredDirection(Vector3 world)
+        {
+            Vector3 right = measured != null ? measured[0] : Right, up = measured != null ? measured[1] : Up, forward = measured != null ? measured[2] : Forward;
+            return new Vector3(Vector3.Dot(world, right), Vector3.Dot(world, up), Vector3.Dot(world, forward));
+        }
 
         /// <summary>How far out from <see cref="Centre"/> the head and all it carries reach in a direction.</summary>
         public float EnvelopeRadius(Vector3 direction)
@@ -70,10 +148,15 @@ namespace Gamesim.Presentation
         /// the triangles whose three corners are all kept.
         /// </summary>
         public void Region(Func<Vector3, bool> keep, out Vector3[] points, out Vector3[] normals, out int[] triangles)
+            => Region(keep, out points, out normals, out triangles, out _);
+
+        /// <summary>As <see cref="Region(Func{Vector3, bool}, out Vector3[], out Vector3[], out int[])"/>, with each kept point's <see cref="HeadShares"/>.</summary>
+        public void Region(Func<Vector3, bool> keep, out Vector3[] points, out Vector3[] normals, out int[] triangles, out float[] shares)
         {
             var remap = new int[Points.Length];
             var kept = new List<Vector3>();
             var keptNormals = new List<Vector3>();
+            var keptShares = new List<float>();
             for (int i = 0; i < Points.Length; i++)
             {
                 remap[i] = -1;
@@ -81,7 +164,9 @@ namespace Gamesim.Presentation
                 remap[i] = kept.Count;
                 kept.Add(Points[i]);
                 keptNormals.Add(Normals[i]);
+                keptShares.Add(HeadShares != null && i < HeadShares.Length ? HeadShares[i] : 1f);
             }
+            shares = keptShares.ToArray();
             var tris = new List<int>();
             for (int t = 0; t + 2 < Triangles.Length; t += 3)
             {
@@ -135,6 +220,8 @@ namespace Gamesim.Presentation
             foreach (var candidate in body.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
                 var candidateMesh = candidate.sharedMesh;
+                // Long grown strands are skinned to the head too; they are not the head.
+                if (candidate.GetComponent<GrownPiece>() != null) continue;
                 if (candidateMesh == null || !candidateMesh.isReadable || Array.IndexOf(candidate.bones, head) < 0) continue;
                 if (renderer == null || candidateMesh.vertexCount > renderer.sharedMesh.vertexCount) renderer = candidate;
             }
@@ -144,6 +231,7 @@ namespace Gamesim.Presentation
             var scan = new HeadScan
             {
                 Root = root, Head = head, Origin = head.position, Right = root.right, Up = root.up, Forward = root.forward,
+                BodyRight = root.right, BodyUp = root.up, BodyForward = root.forward,
                 NeckBone = animator.GetBoneTransform(HumanBodyBones.Neck),
                 ChestBone = animator.GetBoneTransform(HumanBodyBones.UpperChest) ?? animator.GetBoneTransform(HumanBodyBones.Chest)
                             ?? animator.GetBoneTransform(HumanBodyBones.Spine),
@@ -166,6 +254,7 @@ namespace Gamesim.Presentation
 
             var frame = new Vector3[raw.Length];
             var onHead = new bool[raw.Length];
+            var shares = new float[raw.Length];
             var collar = new List<Vector3>();
             var neckWorld = scan.NeckBone != null ? scan.NeckBone.position : head.position;
             var neckFrame = scan.ToFrame(neckWorld);
@@ -173,6 +262,7 @@ namespace Gamesim.Presentation
             {
                 var w = weights[i];
                 float share = Share(headBone, w);
+                shares[i] = share;
                 frame[i] = scan.ToFrame(toWorld.MultiplyPoint3x4(raw[i]));
                 onHead[i] = share >= .6f;
                 // The collar: whatever is near the neck and the top of the chest, in any material.
@@ -201,20 +291,27 @@ namespace Gamesim.Presentation
             }
             if (skinTriangles.Count == 0) { GrownPiece.Dispose(baked); return null; }
 
-            // Everything on the head, for the envelope: every submesh, not only the skin.
+            // Everything on the head, for the envelope: every submesh, not only the skin, and the
+            // grown hair the body already wears.
             var envelopePoints = new List<Vector3>();
             for (int i = 0; i < raw.Length; i++) if (onHead[i]) envelopePoints.Add(frame[i]);
+            AddGrownHair(body, scan, envelopePoints);
 
             var triangles = skinTriangles;
             GrownPiece.Dispose(baked);
             var welded = new Dictionary<Vector3Int, int>();
             var remap = new Dictionary<int, int>();
             var points = new List<Vector3>();
+            var pointShares = new List<float>();
             int Weld(int index)
             {
                 if (remap.TryGetValue(index, out int found)) return found;
                 var key = Vector3Int.RoundToInt(frame[index] * 2000f);
-                if (!welded.TryGetValue(key, out found)) { found = points.Count; points.Add(frame[index]); welded.Add(key, found); }
+                if (!welded.TryGetValue(key, out found))
+                {
+                    found = points.Count; points.Add(frame[index]); pointShares.Add(shares[index]); welded.Add(key, found);
+                }
+                else pointShares[found] = Mathf.Min(pointShares[found], shares[index]);
                 remap.Add(index, found);
                 return found;
             }
@@ -229,6 +326,7 @@ namespace Gamesim.Presentation
             }
             if (tris.Count < 90) return null;
             scan.Points = points.ToArray();
+            scan.HeadShares = pointShares.ToArray();
             scan.Triangles = tris.ToArray();
 
             var min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
@@ -271,8 +369,10 @@ namespace Gamesim.Presentation
             scan.RightEarTop = SnapToSide(scan, 1, scan.EyeY + .14f * h, earZ - .004f);
 
             scan.envelope = new float[EnvelopeRows, EnvelopeColumns];
+            scan.CarriedTopY = scan.CrownY;
             foreach (var p in envelopePoints)
             {
+                scan.CarriedTopY = Mathf.Max(scan.CarriedTopY, p.y);
                 var d = p - scan.Centre;
                 float radius = d.magnitude;
                 if (radius < 1e-4f) continue;
@@ -301,7 +401,8 @@ namespace Gamesim.Presentation
         /// The frame's axes, turned as the head is turned: right along the line through the eyes,
         /// whose bones ride on the head, and up the body's own up straightened against it. A scan
         /// taken mid-idle, the head a few degrees round, would otherwise read one ear further
-        /// forward than the other and hang one earring out of true.
+        /// forward than the other and hang one earring out of true. What hangs from the neck or
+        /// the chest is built in the body's own axes instead (see <see cref="NeckInBodyAxes"/>).
         /// </summary>
         private static void HeadAxes(HeadScan scan, Animator animator)
         {
@@ -318,6 +419,42 @@ namespace Gamesim.Presentation
             scan.Right = across;
             scan.Up = up.normalized;
             scan.Forward = Vector3.Cross(scan.Right, scan.Up);
+        }
+
+        /// <summary>
+        /// Adds the grown hair a body already wears to what its head carries. The hair is a mesh
+        /// of its own rather than part of the skinned body, so a cap or a beanie - fitted after
+        /// the hair - was fitted to the bare scalp and sat inside an afro, with coils and fades
+        /// poking through it. Only hair still worn counts: hair being replaced is switched off
+        /// before it goes. Of long strands, only what turns wholly with the head counts, as only
+        /// the skin wholly the head's does; below the chin they hang towards the neck. Told by the
+        /// piece's own switch rather than the hierarchy's, so a body fitted while it is switched
+        /// off still puts its cap over its hair.
+        /// </summary>
+        private static void AddGrownHair(GameObject body, HeadScan scan, List<Vector3> points)
+        {
+            foreach (var piece in body.GetComponentsInChildren<GrownPiece>(true))
+            {
+                bool strands = piece.name == ProceduralHair.StrandsName;
+                if ((piece.name != ProceduralHair.RootName && !strands) || !piece.gameObject.activeSelf) continue;
+                var mesh = piece.Mesh;
+                if (mesh == null || !mesh.isReadable) continue;
+                var toWorld = piece.transform.localToWorldMatrix;
+                var vertices = mesh.vertices;
+                // A skinned piece's mesh is as it was built; its first bone is the head, which holds
+                // what is wholly its own where the head is now, through its bind pose.
+                var skin = strands ? piece.GetComponent<SkinnedMeshRenderer>() : null;
+                var bindposes = skin != null ? mesh.bindposes : null;
+                if (bindposes != null && bindposes.Length > 0 && skin.bones.Length > 0 && skin.bones[0] != null)
+                    toWorld = skin.bones[0].localToWorldMatrix * bindposes[0];
+                var weights = strands ? mesh.boneWeights : null;
+                bool shared = weights != null && weights.Length == vertices.Length;
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    if (shared && !(weights[i].boneIndex0 == 0 && weights[i].weight0 >= .999f)) continue;
+                    points.Add(scan.ToFrame(toWorld.MultiplyPoint3x4(vertices[i])));
+                }
+            }
         }
 
         private static float Share(bool[] bones, BoneWeight w)

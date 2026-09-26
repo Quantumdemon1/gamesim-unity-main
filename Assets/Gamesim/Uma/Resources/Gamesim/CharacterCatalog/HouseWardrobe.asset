@@ -1360,3 +1360,102 @@ MonoBehaviour:
     - striped
     fallbackPriority: 10
     available: 1
+  - id: uma-b0cb9af6c5e21814dbeb1af811a988bb
+    recipeName: 'Freckled_Light_U_Wardrobe'
+    aliases:
+    - 'Freckled_Light_U_Wardrobe'
+    label: 'Light freckles'
+    styleGroup: face.freckles
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-83a5ae1a7f6b8e741bc2991c55073c92
+    recipeName: 'Freckled_More_U_Wardrobe'
+    aliases:
+    - 'Freckled_More_U_Wardrobe'
+    label: 'Freckles'
+    styleGroup: face.freckles
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-7daec71129dd6ed488539cd6d4ca0d17
+    recipeName: 'LightMakeup_F_Wardrobe'
+    aliases:
+    - 'LightMakeup_F_Wardrobe'
+    label: 'Light makeup'
+    styleGroup: face.makeup
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-3dba63cdc7f2e81459cae480c6768511
+    recipeName: 'LightMakeup2_F_Wardrobe'
+    aliases:
+    - 'LightMakeup2_F_Wardrobe'
+    label: 'Soft makeup'
+    styleGroup: face.makeup
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-c01254a48a8245e429fd7357e20c3680
+    recipeName: 'MoreMakeup_F_Wardrobe'
+    aliases:
+    - 'MoreMakeup_F_Wardrobe'
+    label: 'Evening makeup'
+    styleGroup: face.makeup
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-a83fb903e928c2a418bbc86cb7b03716
+    recipeName: 'MoreMakeup2_F_Wardrobe'
+    aliases:
+    - 'MoreMakeup2_F_Wardrobe'
+    label: 'Bold makeup'
+    styleGroup: face.makeup
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-8de555d5644ed0d40a7b29a889a02ccd
+    recipeName: 'Adult_F_Wardrobe'
+    aliases:
+    - 'Adult_F_Wardrobe'
+    label: 'Mature'
+    styleGroup: face.age
+    tags: []
+    fallbackPriority: 90
+    available: 1
+  - id: uma-9196b80baf5c5de438600c5b151402ea
+    recipeName: 'Adult_M_Wardrobe'
+    aliases:
+    - 'Adult_M_Wardrobe'
+    label: 'Mature'
+    styleGroup: face.age
+    tags: []
+    fallbackPriority: 90
+    available: 1
+  - id: uma-69f72b74735e45045bfdfacbd9851ede
+    recipeName: 'Aged_U_Wardrobe'
+    aliases:
+    - 'Aged_U_Wardrobe'
+    label: 'Lined'
+    styleGroup: face.age
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-6f7166e180bd283418d608d1536556db
+    recipeName: 'Aged_U2_Wardrobe'
+    aliases:
+    - 'Aged_U2_Wardrobe'
+    label: 'Weathered'
+    styleGroup: face.age
+    tags: []
+    fallbackPriority: 100
+    available: 1
+  - id: uma-9c0734d8760785b4a9bb20e74ccc30df
+    recipeName: 'Senior_U_Wardrobe'
+    aliases:
+    - 'Senior_U_Wardrobe'
+    label: 'Senior'
+    styleGroup: face.age
+    tags: []
+    fallbackPriority: 100
+    available: 1

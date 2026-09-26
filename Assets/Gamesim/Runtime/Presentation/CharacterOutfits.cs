@@ -42,10 +42,10 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// What a houseguest wears to swim or to sleep: their own set for it if they made one, and
-        /// otherwise their everyday set with the outer layers off - hair, brows and beard kept, and
-        /// what they wear underneath, which in the water reads as swimwear and in bed as nightwear
-        /// (a shirt stays on for bed). Only derived when there is underwear to keep: a look with
-        /// none goes in what it is wearing rather than in nothing.
+        /// otherwise their everyday set with the outer layers off - hair, brows, beard and the face's
+        /// details kept, and what they wear underneath, which in the water reads as swimwear and in
+        /// bed as nightwear (a shirt stays on for bed). Only derived when there is underwear to keep:
+        /// a look with none goes in what it is wearing rather than in nothing.
         ///
         /// <para>Presentation only, like every outfit: a copy of the saved look, never saved back.</para>
         /// </summary>
@@ -69,8 +69,8 @@ namespace Gamesim.Presentation
             return resolved;
         }
 
-        private static readonly string[] SwimSlots = { "Hair", "Beard", "Eyebrows", "TopUnderlayer", "BottomUnderlayer" };
-        private static readonly string[] SleepSlots = { "Hair", "Beard", "Eyebrows", "TopUnderlayer", "BottomUnderlayer", "Chest" };
+        private static readonly string[] SwimSlots = { "Hair", "Beard", "Eyebrows", "Face", "TopUnderlayer", "BottomUnderlayer" };
+        private static readonly string[] SleepSlots = { "Hair", "Beard", "Eyebrows", "Face", "TopUnderlayer", "BottomUnderlayer", "Chest" };
 
         /// <summary>A copy of the houseguest dressed for <paramref name="context"/>: a phase's set, or an activity's.</summary>
         public static ContestantState ForContext(ContestantState source, string context)

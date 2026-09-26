@@ -66,7 +66,8 @@ namespace Gamesim.Uma.Tests
             foreach (var id in new[] { "alex-chen", "taylor-kim", "jun-song" })
                 Assert.That(Luminance(Look(id).Skin), Is.GreaterThan(.7f), id + " has light skin in their photo.");
             Assert.That(Look("casey-wilson").Wardrobe, Does.Contain("gs-hair-afro"), "Casey wears her natural afro.");
-            Assert.That(Look("danielle-reyes").Wardrobe, Does.Contain("gs-hair-coils"), "Danielle's short curls.");
+            Assert.That(Look("danielle-reyes").Wardrobe, Does.Contain("Hair_Bob_Recipe"), "Danielle's shoulder-length hair, flipped out at the ends.");
+            Assert.That(Look("casey-wilson").Wardrobe, Does.Contain("gs-acc-studs"), "Casey's stud earrings.");
             Assert.That(Look("xavier-prather").Wardrobe.Any(item => item.StartsWith("Hair") || item.StartsWith("gs-hair") || item.StartsWith("bb_")), Is.False, "Xavier's head is shaved.");
             Assert.That(Look("riley-johnson").Wardrobe, Does.Contain("gs-acc-glasses"), "Riley's black frames.");
             Assert.That(Look("emma-brown").Wardrobe, Does.Contain("gs-acc-visor").And.Contain("gs-acc-bowtie"), "Emma's visor and bow tie.");
@@ -122,6 +123,29 @@ namespace Gamesim.Uma.Tests
         /// One piece per wardrobe slot. UMA keeps the last recipe applied to a slot, so a second
         /// shirt is not a layered look — it is the first shirt not being worn.
         /// </summary>
+        /// <summary>
+        /// Every look can change for the pool and for bed. A swim or sleep set is derived from the
+        /// everyday one by keeping its underwear, so a look without it - Taylor's, once - goes into
+        /// the water in trainers.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EveryLook_CanChangeForThePoolAndForBed()
+        {
+            yield return null;
+            var catalog = new UmaAppearanceCatalog();
+            foreach (var appearanceId in UmaCastLibrary.AppearanceIds)
+            {
+                var everyday = catalog.Materialize(CharacterAppearance.Preset(appearanceId));
+                foreach (string context in new[] { CharacterOutfits.Swimwear, CharacterOutfits.Sleepwear })
+                {
+                    var changed = CharacterOutfits.ForActivity(everyday, context);
+                    Assert.That(changed.activeOutfit, Is.EqualTo(context), appearanceId + " has a " + context.ToLowerInvariant() + " set.");
+                    var worn = changed.outfits.Single(outfit => outfit.id == context).wardrobe;
+                    Assert.That(worn.Any(item => item.slot == "Feet"), Is.False, appearanceId + " takes their shoes off for " + context.ToLowerInvariant() + ".");
+                }
+            }
+        }
+
         [UnityTest]
         public IEnumerator EveryLook_WearsAtMostOnePieceInEachWardrobeSlot()
         {

@@ -36,7 +36,13 @@ namespace Gamesim.Presentation
         private readonly Stack<CharacterAppearance> appearanceUndo = new Stack<CharacterAppearance>();
         private readonly Stack<CharacterAppearance> appearanceRedo = new Stack<CharacterAppearance>();
         private readonly HashSet<string> randomLocks = new HashSet<string>();
-        private readonly System.Random cosmeticRandom = new System.Random();
+        private System.Random cosmeticRandom = new System.Random();
+
+        /// <summary>
+        /// Seeds Randomize, for a test that has to roll the same houseguests every run. Cosmetic
+        /// only: nothing in a season draws from it.
+        /// </summary>
+        public int RandomSeed { set => cosmeticRandom = new System.Random(value); }
         private ICharacterAppearanceCatalog Catalog => (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
         private RectTransform studioControls;
         private float studioCursor, studioWidth;
@@ -68,6 +74,9 @@ namespace Gamesim.Presentation
 
         // Skin, hair, brows and eyes come from CharacterPalettes; garments keep their own.
         private static readonly string[] FabricSwatches = { "F2F2EE", "1E2126", "5A5F69", "1E3A66", "3F78C8", "2F6B4A", "8A2F2F", "C8553A", "D9A441", "E7C9A6", "6B4A8C", "D86FA6" };
+
+        /// <summary>How often Randomize puts something in each accessory slot: about one roll in three.</summary>
+        private const double AccessoryOdds = .3;
 
         private void Update()
         {
@@ -102,13 +111,15 @@ namespace Gamesim.Presentation
             Words(side, "CREATE YOUR", 14f, UiTheme.Accent, new Rect(22f, 22f, r.width - 44f, 20f)).characterSpacing = 3f;
             var title = Words(side, "HOUSEGUEST", 24f, UiTheme.Paper, new Rect(22f, 42f, r.width - 44f, 32f));
             var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) title.font = bold;
-            float y = 96f;
+            // The tiles share what height the panel has: at a fixed 68 apart the sixth hung past the
+            // panel's foot on a short wide screen (21:9 with larger text, 32:9 at any size).
+            float y = 96f, pitch = Mathf.Min(68f, (r.height - y - 8f) / Categories.Length), tileHeight = pitch - 8f;
             foreach (var category in Categories)
             {
                 string pick = category;
                 bool on = appearanceCategory == category;
                 var tile = HudPrimitives.Fill(category, side, new Color(0f, 0f, 0f, 0f), 10);
-                Place(tile, 10f, y, r.width - 20f, 60f);
+                Place(tile, 10f, y, r.width - 20f, tileHeight);
                 var image = tile.GetComponent<Image>(); image.raycastTarget = true;
                 if (on)
                 {
@@ -116,18 +127,19 @@ namespace Gamesim.Presentation
                     else image.color = new Color(.45f, .7f, 1f, 1f);
                     UiTheme.AddGlow(tile, 12);
                     var stripe = HudPrimitives.Fill("Selected stripe", tile, UiTheme.Glow, 2);
-                    Place(stripe, 0f, 10f, 4f, 40f);
+                    float stripeHeight = Mathf.Max(0f, tileHeight - 20f);
+                    Place(stripe, 0f, (tileHeight - stripeHeight) * .5f, 4f, stripeHeight);
                 }
                 var label = HudPrimitives.Label("Label", tile, 19f, on ? Color.white : UiTheme.Paper, TextAlignmentOptions.MidlineLeft);
                 label.text = Localisation.Text(category);
                 var weight = UiTheme.Font(on ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium); if (weight != null) label.font = weight;
-                Place(label.rectTransform, 62f, 0f, r.width - 90f, 60f);
-                Glyph(tile, CategoryIcon(category), on ? UiTheme.Glow : UiTheme.Accent, new Rect(18f, 15f, 30f, 30f));
+                Place(label.rectTransform, 62f, 0f, r.width - 90f, tileHeight);
+                Glyph(tile, CategoryIcon(category), on ? UiTheme.Glow : UiTheme.Accent, new Rect(18f, (tileHeight - 30f) * .5f, 30f, 30f));
                 var button = tile.gameObject.AddComponent<Button>();
                 button.targetGraphic = image;
                 button.onClick.AddListener(() => { appearanceCategory = pick; Rebuild(); });
                 Seen(button, 10);
-                y += 68f;
+                y += pitch;
             }
             if (r.height - y > 150f)
             {
@@ -316,6 +328,8 @@ namespace Gamesim.Presentation
                     break;
                 case "Face":
                     StartingLooks();
+                    // Freckles, makeup, an older face: the face's own texture, worn on every outfit.
+                    WardrobeStrip("Face");
                     FaceSliders();
                     break;
                 case "Accessories":
@@ -345,11 +359,17 @@ namespace Gamesim.Presentation
                 default:
                     SwatchGrid("SKIN TONE", "Skin", CharacterPalettes.Skin, AppearanceEditing.ColorValue(draft.Appearance, "Skin", Color.clear),
                         color => AppearanceEditing.SetColor(draft.Appearance, "Skin", color));
-                    StudioText("Four depths, with golden, olive and rosy undertones at each: pick the depth, then the undertone.", 26f);
+                    // Two lines at the narrowest panel: the rows' own labels already say which depth is which.
+                    StudioText("A row per depth, each mixing undertones: golden, neutral, olive, rosy or red. "
+                        + "Point at a tone, or move to it, to see its name.", 40f);
                     SwatchGrid("HAIR COLOR", "Hair", CharacterPalettes.Hair, AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear), SetHairColour);
+                    // Only the natural shades to pick from, but named from every hair colour: a dyed
+                    // colour the hair handed on is a swatch, not a custom colour nobody chose.
+                    var hair = AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear);
                     SwatchGrid("BROW COLOR", "Brows", new[] { CharacterPalettes.Hair[0] }, AppearanceEditing.ColorValue(draft.Appearance, "Brows", Color.clear),
                         color => AppearanceEditing.SetColor(draft.Appearance, "Brows", color), MatchHairCaption,
-                        () => AppearanceEditing.SetColor(draft.Appearance, "Brows", AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.black)));
+                        () => AppearanceEditing.SetColor(draft.Appearance, "Brows", AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.black)),
+                        brows => hair.a > 0f && SameColour(brows, hair) ? "Matches hair" : CharacterPalettes.NameOf(CharacterPalettes.Hair, brows));
                     StudioText("A hair color sets the brows to match; pick a brow color after it to set them apart.", 26f);
                     SwatchGrid("EYE COLOR", "Eyes", CharacterPalettes.Eyes, AppearanceEditing.ColorValue(draft.Appearance, "Eyes", Color.clear),
                         color => AppearanceEditing.SetColor(draft.Appearance, "Eyes", color));
@@ -425,10 +445,36 @@ namespace Gamesim.Presentation
                 return;
             }
             bool tinted = AppearanceEditing.TryFabric(outfit, slot, out var tint);
-            SwatchRow(name.ToUpperInvariant() + " COLOR", "Fabric " + slot, FabricSwatches, tinted ? tint : Color.clear,
+            // A starting look's garment is dyed the colour in its photo, which is seldom one of the
+            // swatches. That colour joins the end of the row, and so does a worn one off the palette:
+            // the row rings what is worn, and the photo's colour can be picked again after trying
+            // another rather than only by Undo or by resetting the clothes.
+            var palette = FabricSwatches.ToList();
+            void Offer(Color colour)
+            {
+                if (!palette.Any(hex => SameColour(Hex(hex), colour))) palette.Add(ColorUtility.ToHtmlStringRGB(colour));
+            }
+            if (StartingFabric(slot, out var photo)) Offer(photo);
+            if (tinted) Offer(tint);
+            SwatchRow(name.ToUpperInvariant() + " COLOR", "Fabric " + slot, palette.ToArray(), tinted ? tint : Color.clear,
                 color => AppearanceEditing.SetFabric(draft.Appearance, slot, color),
                 tinted ? (Action)(() => AppearanceEditing.SetFabric(draft.Appearance, slot, null)) : null,
                 "Original " + name.ToLowerInvariant() + " color");
+        }
+
+        /// <summary>
+        /// The tint the look began with on <paramref name="slot"/>'s garment, in the outfit being
+        /// edited - or, for an outfit made since, in the one the look began in.
+        /// </summary>
+        private bool StartingFabric(string slot, out Color tint)
+        {
+            tint = Color.clear;
+            if (initialAppearance == null || Catalog == null) return false;
+            var original = Catalog.Materialize(initialAppearance);
+            string editing = draft.Appearance?.activeOutfit;
+            var set = original.outfits.FirstOrDefault(item => item.id == editing)
+                ?? original.outfits.FirstOrDefault(item => item.id == original.activeOutfit);
+            return AppearanceEditing.TryFabric(set, slot, out tint);
         }
 
         private Color OutfitChannel(string channel)
@@ -476,13 +522,33 @@ namespace Gamesim.Presentation
                 var card = Thumbnail(studioControls, option.Label, option.Label, new Rect(x, studioCursor, size, size + 18f), current == option.Id,
                     null, null, "houseguest", () => ChangeAppearance(() =>
                     {
-                        var changed = Catalog.ChangeBody(draft.Appearance, option.Id);
+                        var changed = ChangeBody(draft.Appearance, option.Id);
                         appearanceNotice = AppearanceEditing.DescribeSubstitutions(draft.Appearance, changed, Catalog);
                         draft.Appearance = changed;
                     }));
                 x += size + 12f;
             }
             studioCursor += size + 30f;
+        }
+
+        /// <summary>
+        /// The catalog's change of body, except that a face detail the new body has nothing of the
+        /// kind for comes off rather than turning into another. Makeup is drawn for the female body
+        /// alone, and the catalog's nearest to it on the male body was an older face nobody chose;
+        /// an older face still becomes the other body's older face.
+        /// </summary>
+        private CharacterAppearance ChangeBody(CharacterAppearance appearance, string bodyId)
+        {
+            var changed = Catalog.ChangeBody(appearance, bodyId);
+            foreach (var outfit in changed.outfits)
+            {
+                var now = outfit.wardrobe.FirstOrDefault(worn => worn.slot == "Face");
+                var was = appearance.outfits.FirstOrDefault(set => set.id == outfit.id)?.wardrobe.FirstOrDefault(worn => worn.slot == "Face");
+                if (now == null || was == null || now.itemId == was.itemId) continue;
+                if (AppearanceEditing.Find(Catalog, now.itemId)?.StyleGroup != AppearanceEditing.Find(Catalog, was.itemId)?.StyleGroup)
+                    outfit.wardrobe.Remove(now);
+            }
+            return changed;
         }
 
         /// <summary>The proportion or feature sliders for a category, two to a row as the mockup lays them.</summary>
@@ -563,7 +629,8 @@ namespace Gamesim.Presentation
         }
 
         private static string SlotLabel(string slot) => slot == "TopUnderlayer" ? "Underwear top" : slot == "BottomUnderlayer" ? "Underwear bottoms"
-            : slot == "Chest" ? "Top" : slot == "Legs" ? "Bottoms" : slot == "Feet" ? "Shoes" : slot == "Beard" ? "Facial hair" : slot;
+            : slot == "Chest" ? "Top" : slot == "Legs" ? "Bottoms" : slot == "Feet" ? "Shoes" : slot == "Beard" ? "Facial hair"
+            : slot == "Face" ? "Face details" : slot;
 
         /// <summary>
         /// A wardrobe slot as a strip of thumbnails around the one worn, the arrows wearing the style
@@ -579,7 +646,7 @@ namespace Gamesim.Presentation
             int index = choices.FindIndex(item => item.Matches(selected?.itemId));
             string worn = index >= 0 ? choices[index].Label : selected == null ? "None" : "Saved item unavailable";
             StudioHeading(slotLabel.ToUpperInvariant(), worn + "  ·  " + choices.Count + " styles");
-            bool compact = slot == "TopUnderlayer" || slot == "BottomUnderlayer" || slot == "Eyebrows" || slot == "Beard";
+            bool compact = slot == "TopUnderlayer" || slot == "BottomUnderlayer" || slot == "Eyebrows" || slot == "Beard" || slot == "Face";
             float arrow = 40f, thumb = compact ? 70f : 84f, gap = 8f, removeWidth = arrow;
             int visible = Mathf.Max(1, Mathf.FloorToInt((studioWidth - 24f - removeWidth - 10f - 2f * (arrow + gap) + gap) / (thumb + gap)));
             int first = Mathf.Clamp((index < 0 ? 0 : index) - visible / 2, 0, Mathf.Max(0, choices.Count - visible));
@@ -593,7 +660,7 @@ namespace Gamesim.Presentation
             {
                 var item = choices[i];
                 Thumbnail(studioControls, "Wear " + item.Label, item.Label, new Rect(x, rowY, thumb, thumb + 16f), i == index, item.Thumbnail, null,
-                    slot == "Hair" || slot == "Eyebrows" || slot == "Beard" ? "mood-playful" : PackArt.KitIconArchive,
+                    slot == "Hair" || slot == "Eyebrows" || slot == "Beard" || slot == "Face" ? "mood-playful" : PackArt.KitIconArchive,
                     () => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, item, Catalog)));
                 x += thumb + gap;
             }
@@ -602,7 +669,14 @@ namespace Gamesim.Presentation
                 () => ChangeAppearance(() => AppearanceEditing.Wear(draft.Appearance, choices[(index + 1) % choices.Count], Catalog)))
                 .name = "Next " + slot.ToLowerInvariant();
             var remove = GlyphButton(studioControls, "Remove " + slotLabel.ToLowerInvariant(), new Rect(studioWidth - 12f - removeWidth, centre, removeWidth, arrow),
-                null, UiTheme.Pack(PackArt.KitIconCross), () => ChangeAppearance(() => AppearanceEditing.Outfit(draft.Appearance).wardrobe.RemoveAll(item => item.slot == slot)));
+                null, UiTheme.Pack(PackArt.KitIconCross), () => ChangeAppearance(() =>
+                {
+                    // What belongs to the person comes off every outfit, as Wear puts it on every
+                    // outfit: off one alone, changing clothes would put the freckles back.
+                    var sets = AppearanceEditing.IsCharacterSlot(slot) ? draft.Appearance.outfits
+                        : new List<CharacterOutfit> { AppearanceEditing.Outfit(draft.Appearance) };
+                    foreach (var set in sets) set.wardrobe.RemoveAll(item => item.slot == slot);
+                }));
             remove.name = "Remove " + slot.ToLowerInvariant();
             Enable(remove, selected != null);
             studioCursor += thumb + 30f;
@@ -651,8 +725,8 @@ namespace Gamesim.Presentation
             float x = 12f;
             for (int i = 0; i < palette.Length; i++)
             {
-                ColorUtility.TryParseHtmlString("#" + palette[i], out var colour);
-                bool chosen = current.a > 0f && Mathf.Abs(current.r - colour.r) < .02f && Mathf.Abs(current.g - colour.g) < .02f && Mathf.Abs(current.b - colour.b) < .02f;
+                var colour = Hex(palette[i]);
+                bool chosen = current.a > 0f && SameColour(current, colour);
                 var pick = colour;
                 Swatch(plate, prefix + " " + (i + 1), colour, chosen, new Rect(x, 10f, size, size), () => ChangeAppearance(() => apply(pick)));
                 x += size + gap;
@@ -662,15 +736,18 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// A palette in its named rows - Fair &amp; light, Medium, Tan &amp; brown, Deep - on the pack's
-        /// swatch panel, the worn colour ringed and named in the heading, the one under the pointer
-        /// named there while it is. Swatches keep the "<paramref name="prefix"/> N" numbering straight
-        /// across the rows. An <paramref name="extra"/> action takes a pill at the heading's right.
+        /// swatch panel, the worn colour ringed and named in the heading, the one under the pointer or
+        /// the keyboard's focus named there while it is. Swatches keep the "<paramref name="prefix"/> N"
+        /// numbering straight across the rows. An <paramref name="extra"/> action takes a pill at the
+        /// heading's right. A <paramref name="describe"/> function names the worn colour instead of
+        /// the rows shown, for a grid that offers fewer colours than can be worn; a colour it cannot
+        /// name is "Custom".
         /// </summary>
         private void SwatchGrid(string title, string prefix, CharacterPalettes.Group[] groups, Color current, Action<Color> apply,
-            string extraCaption = null, Action extra = null)
+            string extraCaption = null, Action extra = null, Func<Color, string> describe = null)
         {
             float headingY = studioCursor;
-            string worn = current.a > 0f ? CharacterPalettes.NameOf(groups, current) ?? "Custom" : null;
+            string worn = current.a > 0f ? (describe != null ? describe(current) : CharacterPalettes.NameOf(groups, current)) ?? "Custom" : null;
             string heading = title + (worn != null ? "  ·  " + worn.ToUpperInvariant() : "");
             var label = Words(studioControls, heading, 17f, UiTheme.Glow, new Rect(12f, studioCursor, studioWidth - 24f - (extra != null ? 212f : 0f), 26f),
                 name: prefix + " heading");
@@ -704,7 +781,7 @@ namespace Gamesim.Presentation
                     if (i > 0 && i % perRow == 0) y += rowStep;
                     var swatch = group.Swatches[i];
                     var colour = swatch.Colour;
-                    bool chosen = current.a > 0f && Mathf.Abs(current.r - colour.r) < .02f && Mathf.Abs(current.g - colour.g) < .02f && Mathf.Abs(current.b - colour.b) < .02f;
+                    bool chosen = current.a > 0f && SameColour(current, colour);
                     var button = Swatch(plate, prefix + " " + (++number), colour, chosen,
                         new Rect(pad + labelWidth + (i % perRow) * (size + gap), y, size, size), () => ChangeAppearance(() => apply(colour)));
                     var hover = button.gameObject.AddComponent<SwatchName>();
@@ -715,13 +792,37 @@ namespace Gamesim.Presentation
             studioCursor += plateHeight + 12f;
         }
 
-        /// <summary>Names a swatch in its row's heading while the pointer is over it.</summary>
-        private sealed class SwatchName : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+        /// <summary>
+        /// Names a swatch in its row's heading while the pointer is over it, or the keyboard or the
+        /// pad is on it: a swatch's own caption is its number ("Skin 5"), which told a pad player
+        /// nothing of Espresso from Cocoa.
+        /// </summary>
+        private sealed class SwatchName : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler,
+            UnityEngine.EventSystems.ISelectHandler, UnityEngine.EventSystems.IDeselectHandler
         {
             public TMP_Text Label;
             public string Resting, Named;
-            public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData data) { if (Label != null) Label.text = Localisation.Text(Named); }
-            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData data) { if (Label != null) Label.text = Localisation.Text(Resting); }
+            public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData data) => Show(true);
+            // The pointer leaving a swatch the focus is still on leaves its name up.
+            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData data) => Show(Focused);
+            public void OnSelect(UnityEngine.EventSystems.BaseEventData data) => Show(true);
+            public void OnDeselect(UnityEngine.EventSystems.BaseEventData data) => Show(false);
+
+            private bool Focused => UnityEngine.EventSystems.EventSystem.current != null
+                && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject == gameObject;
+
+            private void Show(bool named) { if (Label != null) Label.text = Localisation.Text(named ? Named : Resting); }
+        }
+
+        /// <summary>The same colour to an 8-bit step, as a swatch is matched to what is worn.</summary>
+        private static bool SameColour(Color a, Color b) =>
+            Mathf.Abs(a.r - b.r) < .02f && Mathf.Abs(a.g - b.g) < .02f && Mathf.Abs(a.b - b.b) < .02f;
+
+        private static Color Hex(string hex)
+        {
+            ColorUtility.TryParseHtmlString("#" + hex, out var colour);
+            colour.a = 1f;
+            return colour;
         }
 
         // ---------------------------------------------------------------- editing
@@ -746,7 +847,17 @@ namespace Gamesim.Presentation
                 var original = Catalog.Materialize(initialAppearance);
                 if (appearanceCategory == "Body" || appearanceCategory == "Face")
                 {
-                    if (appearanceCategory == "Body") draft.Appearance = Catalog.ChangeBody(draft.Appearance, original.bodyId);
+                    if (appearanceCategory == "Body") draft.Appearance = ChangeBody(draft.Appearance, original.bodyId);
+                    if (appearanceCategory == "Face")
+                    {
+                        // The face's details too, off every outfit and back on every outfit, as Wear puts them.
+                        foreach (var set in draft.Appearance.outfits) set.wardrobe.RemoveAll(worn => worn.slot == "Face");
+                        var was = original.outfits.FirstOrDefault(outfit => outfit.id == original.activeOutfit) ?? original.outfits.FirstOrDefault();
+                        var detail = was?.wardrobe.FirstOrDefault(worn => worn.slot == "Face");
+                        var face = detail == null ? null
+                            : Catalog.Items.FirstOrDefault(option => option.Matches(detail.itemId) && option.Fits(draft.Appearance.bodyId));
+                        if (face != null) AppearanceEditing.Wear(draft.Appearance, face, Catalog);
+                    }
                     foreach (var control in Catalog.Controls.Where(control => control.Category == appearanceCategory && control.Fits(draft.Appearance.bodyId)))
                     {
                         var value = original.dna.FirstOrDefault(item => item.id == control.Id);
@@ -756,7 +867,7 @@ namespace Gamesim.Presentation
                 else if (appearanceCategory == "Colors") draft.Appearance.colors = original.colors.Select(color => color.Clone()).ToList();
                 else if (appearanceCategory == "Clothing")
                 {
-                    // Everything but the hair and the accessories, which have pages of their own.
+                    // Everything but the hair, the face's details and the accessories, which have pages of their own.
                     bool Garment(string slot) => !AppearanceEditing.CharacterSlots.Contains(slot) && !ProceduralAccessories.Slots.Contains(slot);
                     foreach (var outfit in draft.Appearance.outfits)
                     {
@@ -788,7 +899,8 @@ namespace Gamesim.Presentation
                     var baseline = original.outfits.FirstOrDefault(item => item.id == outfit.id)
                         ?? original.outfits.FirstOrDefault(item => item.id == original.activeOutfit)
                         ?? original.outfits.FirstOrDefault();
-                    var slots = AppearanceEditing.CharacterSlots;
+                    // The Hair page's own slots - the face's details are the Face page's to reset.
+                    var slots = AppearanceEditing.HairSlots;
                     // Off every outfit, because Wear puts them on every outfit.
                     foreach (var set in draft.Appearance.outfits)
                         set.wardrobe.RemoveAll(item => slots.Contains(item.slot));
@@ -885,18 +997,26 @@ namespace Gamesim.Presentation
                     var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(draft.Appearance.bodyId)).ToList();
                     if (choices.Count > 0) AppearanceEditing.Wear(draft.Appearance, choices[cosmeticRandom.Next(choices.Count)], Catalog);
                 }
-                if (!randomLocks.Contains("Colors")) { Pick(CharacterPalettes.Skin, "Skin"); Pick(CharacterPalettes.Eyes, "Eyes"); }
-                // The hair's colour is on the Hair page and the Colors page: either lock keeps it.
-                // Natural shades only: a random houseguest is somebody, not a dye chart.
-                if (!randomLocks.Contains("Colors") && !randomLocks.Contains("Hair"))
+                // Accessories as well, on the outfit being edited - and most often none: a random
+                // houseguest is somebody, not the jewellery counter. Their page's lock keeps them.
+                if (!randomLocks.Contains("Accessories"))
+                    foreach (string slot in ProceduralAccessories.Slots)
+                    {
+                        var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(draft.Appearance.bodyId)).ToList();
+                        if (choices.Count > 0 && cosmeticRandom.NextDouble() < AccessoryOdds)
+                            AppearanceEditing.Wear(draft.Appearance, choices[cosmeticRandom.Next(choices.Count)], Catalog);
+                        else AppearanceEditing.Outfit(draft.Appearance).wardrobe.RemoveAll(item => item.slot == slot);
+                    }
+                // Skin first, then the eyes and hair that go with it, weighted by its depth: drawn
+                // apart, half the deep-skinned houseguests had blue or grey eyes and most had blonde,
+                // red or white hair.
+                if (!randomLocks.Contains("Colors"))
                 {
-                    Pick(new[] { CharacterPalettes.Hair[0] }, "Hair");
-                    SetHairColour(AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.black));
-                }
-                void Pick(CharacterPalettes.Group[] palette, string id)
-                {
-                    var all = CharacterPalettes.All(palette).ToList();
-                    AppearanceEditing.SetColor(draft.Appearance, id, all[cosmeticRandom.Next(all.Count)].Colour);
+                    var skin = CharacterPalettes.RandomSkin(cosmeticRandom).Colour;
+                    AppearanceEditing.SetColor(draft.Appearance, "Skin", skin);
+                    AppearanceEditing.SetColor(draft.Appearance, "Eyes", CharacterPalettes.RandomEyes(skin, cosmeticRandom).Colour);
+                    // The hair's colour is on the Hair page and the Colors page: either lock keeps it.
+                    if (!randomLocks.Contains("Hair")) SetHairColour(CharacterPalettes.RandomHair(skin, cosmeticRandom).Colour);
                 }
             });
         }

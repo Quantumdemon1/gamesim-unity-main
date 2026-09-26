@@ -96,6 +96,10 @@ namespace Gamesim.Uma.Tests
             var colour = new Color(.63f, .3f, .14f);
             var afro = new Built(); yield return Build(afro, new[] { "gs-hair-afro" }, colour);
             var buzz = new Built(); yield return Build(buzz, new[] { "gs-hair-buzz" }, colour);
+            // Measured in the pose both were fitted in - standing, as the controller starts - so the
+            // two bodies' moments in the idle, each turning its head a little, do not tilt one
+            // against the other.
+            foreach (var body in new[] { afro.Body, buzz.Body }) { var rig = Rig(body); rig.Rebind(); rig.Update(0f); }
 
             var afroPiece = Piece(afro.Body, "gs-hair-afro");
             var buzzPiece = Piece(buzz.Body, "gs-hair-buzz");
@@ -280,6 +284,360 @@ namespace Gamesim.Uma.Tests
                     Assert.That(drawn, Is.EqualTo(target).Within(.005f), swatch.Name + " channel " + channel);
                 }
             }
+        }
+
+        /// <summary>A piece's vertices where they are in the world now.</summary>
+        private static Vector3[] World(GrownPiece piece)
+        {
+            var vertices = piece.GetComponent<MeshFilter>().sharedMesh.vertices;
+            var toWorld = piece.transform.localToWorldMatrix;
+            for (int i = 0; i < vertices.Length; i++) vertices[i] = toWorld.MultiplyPoint3x4(vertices[i]);
+            return vertices;
+        }
+
+        /// <summary>
+        /// A cap put on over grown hair goes over it. The hair is a mesh of its own, not part of
+        /// the body the head was read from, so the cap was fitted to the bare scalp and sat inside
+        /// an afro with only its brim showing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Headwear_GoesOverGrownHairNotInsideIt()
+        {
+            var built = new Built();
+            yield return Build(built, new[] { "gs-hair-afro", "gs-acc-cap" });
+            var root = built.Body.Root.transform;
+            var hair = Local(built.Body, Piece(built.Body, "gs-hair-afro").GetComponent<MeshRenderer>());
+            var capPiece = Piece(built.Body, "gs-acc-cap");
+            var cap = Local(built.Body, capPiece.GetComponent<MeshRenderer>());
+            var crown = World(capPiece).Select(vertex => root.InverseTransformPoint(vertex)).OrderByDescending(vertex => vertex.y).First();
+
+            Assert.That(cap.max.y - hair.max.y, Is.GreaterThan(.002f),
+                "The cap's top is above the afro's, not under it: " + (cap.max.y - hair.max.y).ToString("0.000") + " m.");
+            Assert.That(hair.Contains(crown), Is.False, "The cap's crown is outside the hair, not buried in it.");
+        }
+
+        /// <summary>
+        /// A cap over locs goes over their roots too. The strands are a piece of their own, shared
+        /// with the neck, and only the part that turns wholly with the head is what a cap has to
+        /// clear; left out, the cap was fitted to the base under them and the roots came through it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Headwear_GoesOverTheRootsOfLongStrands()
+        {
+            var built = new Built();
+            yield return Build(built, new[] { "gs-hair-locs", "gs-acc-cap" });
+            var root = built.Body.Root.transform;
+            var strands = built.Body.Root.GetComponentsInChildren<GrownPiece>().Single(piece => piece.name == ProceduralHair.StrandsName);
+            float roots = Posed(strands.GetComponent<SkinnedMeshRenderer>()).Max(vertex => root.InverseTransformPoint(vertex).y);
+            var cap = Local(built.Body, Piece(built.Body, "gs-acc-cap").GetComponent<MeshRenderer>());
+            Assert.That(cap.max.y - roots, Is.GreaterThan(.002f),
+                "The cap's top is above the locs' roots, not under them: " + (cap.max.y - roots).ToString("0.000") + " m.");
+        }
+
+        /// <summary>
+        /// A rebuild grows the same locs in the same places. Every rebuild refits them - a colour
+        /// tried in the creator, a slider moved - and the head it reads again welds a few of its
+        /// points differently each time: strands rooted by index into those points were dealt
+        /// somewhere new each time, and the style reshuffled under the player's eyes. Read in the
+        /// head's own space, where the body's pose cannot move it, what is wholly the head's of the
+        /// strands comes back where it was - each point matched to the nearest again, so a strand
+        /// rooted at the very edge of the scalp that grows one time and not the next moves no other.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ARebuildGrowsTheSameLocsInTheSamePlaces()
+        {
+            var built = new Built();
+            yield return Build(built, new[] { "gs-hair-locs" });
+            GrownPiece Strands() => built.Body.Root.GetComponentsInChildren<GrownPiece>().Single(piece => piece.name == ProceduralHair.StrandsName);
+            // The part of every strand that is wholly the head's, where the head holds it.
+            Vector3[] OnTheHead(GrownPiece piece)
+            {
+                var mesh = piece.Mesh;
+                var weights = mesh.boneWeights;
+                var vertices = mesh.vertices;
+                var toHead = mesh.bindposes[0];
+                return Enumerable.Range(0, weights.Length)
+                    .Where(i => weights[i].boneIndex0 == 0 && weights[i].weight0 > .999f)
+                    .Select(i => toHead.MultiplyPoint3x4(vertices[i])).ToArray();
+            }
+            var first = Strands();
+            var before = OnTheHead(first);
+            Assert.That(before, Is.Not.Empty, "The strands have roots on the head.");
+
+            built.Body.Root.GetComponent<DynamicCharacterAvatar>().UpdateColors(true);
+            double deadline = Time.realtimeSinceStartupAsDouble + 20;
+            while (Time.realtimeSinceStartupAsDouble < deadline && Strands() == first) yield return null;
+            var refitted = Strands();
+            Assert.That(refitted, Is.Not.SameAs(first), "The rebuild refits the locs.");
+            var after = OnTheHead(refitted);
+
+            Assert.That(after, Is.Not.Empty, "The strands grow again.");
+            var offsets = before.Select(point => after.Min(other => Vector3.Distance(point, other))).OrderBy(d => d).ToArray();
+            float typical = offsets[(int)(offsets.Length * .95f)];
+            Assert.That(typical, Is.LessThan(.002f), "Each strand roots where it rooted before: 5% of the points are more than " + typical.ToString("0.0000") + " m from any grown again.");
+        }
+
+        /// <summary>
+        /// Locs and a cap refitted with the head turned come out as they would have fitted straight
+        /// on. A body is refitted after every rebuild - a colour tried, a change of clothes - and its
+        /// head may be turned when it happens: the strands were built swung round with it, and their
+        /// ends stayed swung once it came back; the cap was fitted to where the strands' roots would
+        /// be had the head not turned. (A houseguest's own refits are made with the body standing,
+        /// which takes a look's nod off with the rest of the pose:
+        /// UmaBodyTintPlayModeTests.ARebuildMidLookFitsLocsToTheHeadAsItRests.)
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LongStrandsAndACapRefittedWithTheHeadTurnedFitAsTheyWouldStraightOn()
+        {
+            var built = new Built();
+            yield return Build(built, new[] { "gs-hair-locs", "gs-acc-cap" });
+            var body = built.Body;
+            var root = body.Root.transform;
+            var head = Rig(body).GetBoneTransform(HumanBodyBones.Head);
+            var rest = head.localRotation;
+            var colour = CharacterPalettes.Named(CharacterPalettes.Hair, "Soft black");
+            void Refit()
+            {
+                // As UmaBodyTint refits after a rebuild: the hair, then what goes over it.
+                ProceduralHair.Grow(body.Root, "gs-hair-locs", colour);
+                ProceduralAccessories.Dress(body.Root, new[] { "gs-acc-cap" });
+            }
+            Vector3[] Strands() => Posed(body.Root.GetComponentsInChildren<GrownPiece>()
+                .Single(piece => piece.name == ProceduralHair.StrandsName).GetComponent<SkinnedMeshRenderer>());
+            Vector3[] Cap()
+            {
+                var cap = Piece(body, "gs-acc-cap");
+                return cap.Mesh.vertices.Select(vertex => head.InverseTransformPoint(cap.transform.TransformPoint(vertex))).ToArray();
+            }
+            float Farthest(Vector3[] a, Vector3[] b) => Enumerable.Range(0, a.Length).Max(i => Vector3.Distance(a[i], b[i]));
+
+            // Both fits in one frame, so the two read the same body but for the turn.
+            Refit();
+            var straightStrands = Strands();
+            var straightCap = Cap();
+            head.rotation = Quaternion.AngleAxis(CharacterPresentation.LookYawLimit, root.up) * head.rotation;
+            Refit();
+            head.localRotation = rest;
+            var lookStrands = Strands();
+            var lookCap = Cap();
+
+            Assert.That(lookStrands, Has.Length.EqualTo(straightStrands.Length), "The same strands are grown either way.");
+            Assert.That(lookCap, Has.Length.EqualTo(straightCap.Length), "The same cap is made either way.");
+            // The style comes back as it was: all but a few points where they were, and none far off.
+            // Skin with a trace of the neck in it shifts a little under a turned head, and a strand
+            // rooted there may drift; a style swung round, nodded or reshuffled moves nearly all of them.
+            var strandOffsets = Enumerable.Range(0, straightStrands.Length).Select(i => Vector3.Distance(straightStrands[i], lookStrands[i])).OrderBy(d => d).ToArray();
+            float typical = strandOffsets[(int)(strandOffsets.Length * .95f)], strandsOff = strandOffsets[strandOffsets.Length - 1];
+            Assert.That(typical, Is.LessThan(.002f),
+                "Refitted with the head turned and the head brought back, the strands hang as they would fitted straight on: 5% are more than " + typical.ToString("0.0000") + " m off.");
+            Assert.That(strandsOff, Is.LessThan(.03f), "and none is far off: " + strandsOff.ToString("0.000") + " m.");
+            float capOff = Farthest(straightCap, lookCap);
+            Assert.That(capOff, Is.LessThan(.003f),
+                "Refitted with the head turned, the cap sits on the head as it would fitted straight on: " + capOff.ToString("0.000") + " m off.");
+        }
+
+        /// <summary>
+        /// Locs and box braids are whole strands shared between the head and the neck. All on the
+        /// head, a head turned to face someone swung them round through the shoulders; hung from the
+        /// neck below the chin, the same turn parted them there, the part on the head ending at the
+        /// jaw like a curtain cut straight across. Turned as far as a look turns the head, their
+        /// roots turn with it, what rests on the shoulders stays there, and in between they bend
+        /// rather than part. Built whole - every vertex a number - and lying over the shoulders and back at
+        /// rest, not through them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LongStrands_BendFromTheHeadToTheNeckSoATurnedHeadNeitherSwingsNorPartsThem()
+        {
+            foreach (string id in new[] { "gs-hair-locs", "gs-hair-braids" })
+            {
+                var built = new Built();
+                yield return Build(built, new[] { id });
+                var body = built.Body;
+                var root = body.Root.transform;
+                var rig = Rig(body);
+                var head = rig.GetBoneTransform(HumanBodyBones.Head);
+                var chestBone = rig.GetBoneTransform(HumanBodyBones.UpperChest) ?? rig.GetBoneTransform(HumanBodyBones.Chest);
+                var neckBone = rig.GetBoneTransform(HumanBodyBones.Neck) ?? chestBone;
+                var pieces = body.Root.GetComponentsInChildren<GrownPiece>().Where(piece => piece.ItemId == id).ToArray();
+                var onHead = pieces.Where(piece => piece.name == ProceduralHair.RootName).ToArray();
+                var strands = pieces.Where(piece => piece.name == ProceduralHair.StrandsName).ToArray();
+                Assert.That(onHead, Has.Length.EqualTo(1), id + ": one piece on the head.");
+                Assert.That(strands, Has.Length.EqualTo(1), id + ": one piece of strands.");
+                Assert.That(onHead[0].transform.parent, Is.SameAs(head), id + ": the base rides on the head.");
+                var skin = strands[0].GetComponent<SkinnedMeshRenderer>();
+                Assert.That(skin, Is.Not.Null, id + ": the strands are skinned, not carried by one bone.");
+                Assert.That(skin.bones, Has.Length.EqualTo(2), id + ": between two bones.");
+                Assert.That(skin.bones[0], Is.SameAs(head), id + ": the head,");
+                Assert.That(skin.bones[1], Is.SameAs(neckBone), id + ": and the neck.");
+                foreach (var piece in pieces)
+                    Assert.That(piece.Mesh.vertices.All(Finite), Is.True, id + ": every vertex of " + piece.name + " is a number.");
+
+                // The shoulders and upper back, drawn tighter than the body itself: a strand inside
+                // this is in the body.
+                var chest = root.InverseTransformPoint(chestBone.position);
+                float shoulders = Mathf.Abs(Bone(body, HumanBodyBones.RightUpperArm).x - Bone(body, HumanBodyBones.LeftUpperArm).x) * .5f;
+                var torso = new Vector3(shoulders, .1f, .1f);
+                var rest = Posed(skin);
+                int inside = rest.Count(vertex =>
+                {
+                    var d = root.InverseTransformPoint(vertex) - chest;
+                    return (d.x / torso.x) * (d.x / torso.x) + (d.y / torso.y) * (d.y / torso.y) + (d.z / torso.z) * (d.z / torso.z) < 1f;
+                });
+                Assert.That(inside, Is.EqualTo(0), id + ": at rest the strands lie over the shoulders and back, not through them.");
+
+                var weights = strands[0].Mesh.boneWeights;
+                Assert.That(weights, Has.Length.EqualTo(rest.Length), id + ": every vertex is weighted.");
+                float HeadShare(BoneWeight w) => w.boneIndex0 == 0 ? w.weight0 : w.boneIndex1 == 0 ? w.weight1 : 0f;
+                var roots = Enumerable.Range(0, rest.Length).Where(i => HeadShare(weights[i]) > .999f).ToArray();
+                var necks = Enumerable.Range(0, rest.Length).Where(i => HeadShare(weights[i]) < .001f).ToArray();
+                // What lies down the back and over the shoulders, a hand below the shoulder line.
+                // Hair turns with the head it grows from - short locs, ending about the shoulders,
+                // follow it in part - and only what rests on the body should hang on; long braids
+                // always reach that far.
+                float shoulderY = (Bone(body, HumanBodyBones.LeftUpperArm).y + Bone(body, HumanBodyBones.RightUpperArm).y) * .5f - .05f;
+                var resting = Enumerable.Range(0, rest.Length).Where(i => root.InverseTransformPoint(rest[i]).y < shoulderY).ToArray();
+                Assert.That(roots, Is.Not.Empty, id + ": the strands' roots are the head's.");
+                if (id == "gs-hair-braids") Assert.That(resting, Is.Not.Empty, id + ": long braids reach down the back.");
+
+                // Turned to face someone, as far as a look turns the head.
+                head.rotation = Quaternion.AngleAxis(CharacterPresentation.LookYawLimit, root.up) * head.rotation;
+                var turned = Posed(skin);
+                float rootsMoved = roots.Max(i => Vector3.Distance(rest[i], turned[i]));
+                Assert.That(rootsMoved, Is.GreaterThan(.03f), id + ": the head turned, and the roots with it.");
+                if (resting.Length > 0)
+                {
+                    float restingMoved = resting.Max(i => Vector3.Distance(rest[i], turned[i]));
+                    Assert.That(restingMoved, Is.LessThan(rootsMoved / 4f), id + ": what rests on the shoulders and back stays there rather than swinging round with the head: "
+                        + restingMoved.ToString("0.000") + " m against the roots' " + rootsMoved.ToString("0.000") + " m.");
+                }
+                if (necks.Length > 0)
+                {
+                    float necksMoved = necks.Max(i => Vector3.Distance(rest[i], turned[i]));
+                    Assert.That(necksMoved, Is.LessThan(.001f), id + ": what is wholly the neck's stays where it hangs: " + necksMoved.ToString("0.000") + " m moved.");
+                }
+
+                // Bent, not parted: no edge of any strand drawn out to three times its length at rest.
+                var triangles = strands[0].Mesh.triangles;
+                float stretch = 0f;
+                for (int t = 0; t + 2 < triangles.Length; t += 3)
+                    for (int e = 0; e < 3; e++)
+                    {
+                        int a = triangles[t + e], b = triangles[t + (e + 1) % 3];
+                        float before = Vector3.Distance(rest[a], rest[b]);
+                        if (before > 1e-5f) stretch = Mathf.Max(stretch, Vector3.Distance(turned[a], turned[b]) / before);
+                    }
+                Assert.That(stretch, Is.LessThan(3f), id + ": the strands bend between head and neck rather than part: an edge drawn out " + stretch.ToString("0.0") + " times.");
+            }
+        }
+
+        /// <summary>A skinned piece's vertices where the bones hold them now, in the world.</summary>
+        private static Vector3[] Posed(SkinnedMeshRenderer skin)
+        {
+            var baked = new Mesh();
+            skin.BakeMesh(baked, true);
+            var vertices = baked.vertices;
+            Object.Destroy(baked);
+            var toWorld = skin.transform.localToWorldMatrix;
+            for (int i = 0; i < vertices.Length; i++) vertices[i] = toWorld.MultiplyPoint3x4(vertices[i]);
+            return vertices;
+        }
+
+        private static bool Finite(Vector3 v)
+            => !float.IsNaN(v.x) && !float.IsNaN(v.y) && !float.IsNaN(v.z)
+               && !float.IsInfinity(v.x) && !float.IsInfinity(v.y) && !float.IsInfinity(v.z);
+
+        /// <summary>
+        /// A bow tie sits in the middle of the chest whatever the head was doing when it was fitted.
+        /// Built in the head's axes, a refit with the head turned - a colour change mid-conversation -
+        /// left it turned on the collar and off to one side for good.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ABowTie_SitsOnTheChestsMidlineWhenFittedWithTheHeadTurned()
+        {
+            var built = new Built();
+            yield return Build(built, new[] { "gs-acc-bowtie" });
+            var body = built.Body;
+            var root = body.Root.transform;
+            var head = Rig(body).GetBoneTransform(HumanBodyBones.Head);
+            head.rotation = Quaternion.AngleAxis(20f, root.up) * head.rotation;
+            Assert.That(ProceduralAccessories.Dress(body.Root, new[] { "gs-acc-bowtie" }), Is.EqualTo(1), "The bow tie is refitted.");
+
+            var piece = Piece(body, "gs-acc-bowtie");
+            var chest = Rig(body).GetBoneTransform(HumanBodyBones.UpperChest) ?? Rig(body).GetBoneTransform(HumanBodyBones.Chest);
+            Assert.That(piece.transform.parent, Is.SameAs(chest), "A bow tie moves with the chest, not the head.");
+            var bow = Local(body, piece.GetComponent<MeshRenderer>());
+            var midline = (Bone(body, HumanBodyBones.LeftUpperArm) + Bone(body, HumanBodyBones.RightUpperArm)) * .5f;
+            float offCentre = bow.center.x - midline.x;
+            Assert.That(Mathf.Abs(offCentre), Is.LessThan(.01f),
+                "The bow sits on the middle of the chest, between the shoulders: " + offCentre.ToString("0.000") + " m off centre.");
+        }
+
+        /// <summary>
+        /// Hair painted for one colour over one skin goes once no head wears it: trying colours in
+        /// the creator painted new textures with every pick, and none were ever let go. Only the
+        /// last few let go are kept, for a look changed back; colours tried a dozen picks ago are
+        /// gone. What is still worn stays - through a refit in the same colour, too.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PaintedHair_IsLetGoWhenNoHeadWearsItAnyMore()
+        {
+            var built = new Built();
+            yield return Build(built, new[] { "gs-hair-buzz" });
+            var body = built.Body.Root;
+            var skin = new Color(.55f, .38f, .27f);
+            const int picks = 12;
+            var tried = new List<Material>();
+            var painted = new List<Texture>();
+            GameObject worn = null;
+            Color colour = Color.black;
+            for (int i = 0; i < picks; i++)
+            {
+                var previous = worn;
+                colour = Color.HSVToRGB(i / (float)picks, .55f, .45f);
+                worn = ProceduralHair.Grow(body, "gs-hair-buzz", colour, skin);
+                Assert.That(worn, Is.Not.Null, "The buzz cut grows in colour " + i + ".");
+                // A buzz cut is one band, drawn with a texture painted for its colour. Its texture is
+                // read now: by the end a colour tried early on is gone, and a material that is gone
+                // cannot be asked what it drew with - nor told apart from another that is gone.
+                var band = worn.GetComponent<MeshRenderer>().sharedMaterials[0];
+                var paint = band.GetTexture("_BaseMap");
+                Assert.That(paint != null && !painted.Any(earlier => ReferenceEquals(earlier, paint)), Is.True,
+                    "Colour " + i + " painted a texture of its own.");
+                tried.Add(band);
+                painted.Add(paint);
+                // One pick at a time, as a player makes them: the hair replaced goes before the next.
+                double settle = Time.realtimeSinceStartupAsDouble + 5;
+                while (previous != null && Time.realtimeSinceStartupAsDouble < settle) yield return null;
+                Assert.That(previous == null, Is.True, "The hair replaced by colour " + i + " has gone.");
+            }
+            var current = worn.GetComponent<MeshRenderer>().sharedMaterials;
+            // The first half of the picks: long enough ago that nothing should keep them.
+            var staleMaterials = tried.Take(picks / 2).ToList();
+            var staleTextures = painted.Take(picks / 2).ToList();
+            Assert.That(staleMaterials.Any(material => current.Contains(material)), Is.False);
+            // The pick just before is still kept, textures and all, for a look changed back.
+            Assert.That(tried[picks - 2] != null && painted[picks - 2] != null, Is.True,
+                "The colour picked last before this one is kept a little while.");
+
+            double deadline = Time.realtimeSinceStartupAsDouble + 5;
+            while ((staleMaterials.Any(material => material != null) || staleTextures.Any(texture => texture != null))
+                   && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+            Assert.That(staleTextures.Count(texture => texture != null), Is.EqualTo(0), "Textures painted for colours tried long ago are let go.");
+            Assert.That(staleMaterials.Count(material => material != null), Is.EqualTo(0), "And their materials.");
+            Assert.That(current.All(material => material != null && material.GetTexture("_BaseMap") != null), Is.True,
+                "The hair still worn keeps its materials and textures.");
+
+            // Refitted in the colour it wears, as every rebuild does: the old piece goes as the new
+            // one takes the same materials up, and they stay.
+            var replaced = worn;
+            worn = ProceduralHair.Grow(body, "gs-hair-buzz", colour, skin);
+            deadline = Time.realtimeSinceStartupAsDouble + 5;
+            while (replaced != null && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+            Assert.That(replaced == null, Is.True, "The old head of hair has gone.");
+            var refitted = worn.GetComponent<MeshRenderer>().sharedMaterials;
+            Assert.That(refitted.All(material => current.Contains(material)), Is.True, "The refit wears the same materials.");
+            Assert.That(refitted.All(material => material != null && material.GetTexture("_BaseMap") != null), Is.True,
+                "A refit in the same colour keeps them, textures and all.");
         }
     }
 }

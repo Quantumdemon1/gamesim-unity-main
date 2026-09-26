@@ -161,9 +161,11 @@ namespace Gamesim.Episode
             state.pendingDiary != null
                 ? (director != null && director.IsDiaryOpen ? "Here: your private reflection" : "Next stop: private diary room")
             : EpisodeEngine.IsCompetition(state.phase) ? "Next stop: competition yard"
-            // A finished season sends nobody anywhere: the episode screen holds its report and the
-            // way to the next season.
-            : state.phase == EpisodePhase.Finished ? "Next stop: season report"
+            // A finished season still sends the player to the episode screen - the rail's button
+            // and the station's icon both call it that - and then says what waits there. "Next
+            // stop: season report" named a place no control, icon or beacon in the house is called:
+            // the report is a button inside the episode screen, and only once it is open.
+            : state.phase == EpisodePhase.Finished ? "Next stop: episode screen · season report"
             : "Next stop: episode screen";
 
         /// <summary>

@@ -5,8 +5,10 @@ namespace Gamesim.Presentation
 {
     /// <summary>
     /// A piece built in code and fitted to one body - grown hair, glasses, earrings, a cap - carrying
-    /// the mesh it was built with, so the mesh goes when the piece does. Marks the piece, too: the
-    /// UMA stylizer flattens every generated material on a body, and these are authored already.
+    /// the mesh it was built with, so the mesh goes when the piece does, and holding the hair
+    /// materials it was given, so a painted texture goes when the last piece wearing it does. Marks
+    /// the piece, too: the UMA stylizer flattens every generated material on a body, and these are
+    /// authored already.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class GrownPiece : MonoBehaviour
@@ -14,26 +16,102 @@ namespace Gamesim.Presentation
         /// <summary>The wardrobe item this piece is, by id.</summary>
         public string ItemId { get; private set; }
         private Mesh mesh;
+        private Material[] held;
+
+        /// <summary>The mesh the piece was built with, in the piece's own space: for a piece shared between two bones, as it was at rest.</summary>
+        public Mesh Mesh => mesh;
 
         /// <summary>
         /// Hangs a built mesh on <paramref name="parent"/>. The geometry arrives in the head scan's
-        /// frame and is carried into the parent's own space, so the piece follows that bone.
+        /// frame and is carried into the parent's own space, so the piece follows that bone. The
+        /// piece holds every one of <paramref name="materials"/>, worn or not, until it goes; made
+        /// for a piece that is not fitted, they are let go at once.
         /// </summary>
         internal static GrownPiece Attach(HeadScan scan, Transform parent, string name, string itemId, MeshParts parts, Material[] materials)
         {
-            if (parts == null || parts.Vertices.Count == 0 || parent == null) return null;
-            parts.Orient();
+            if (parts == null || parts.Vertices.Count == 0 || parent == null)
+            {
+                HairTextures.ReleaseUnworn(materials);
+                return null;
+            }
+            var holder = Holder(parent, name);
+            var mesh = Build(scan, holder.transform, itemId, parts, materials, out var worn);
+            holder.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = holder.AddComponent<MeshRenderer>();
+            renderer.sharedMaterials = worn;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            return Finish(holder, mesh, itemId, materials);
+        }
+
+        /// <summary>
+        /// Hangs a built mesh between two bones, as <see cref="Attach"/> hangs one on a bone, each
+        /// vertex shared between them by <paramref name="firstShare"/> - 1 wholly the first bone's,
+        /// 0 wholly the second's - so the piece bends where the share changes rather than parting.
+        /// Held on the second bone, upright as the body stood when it was fitted: the mesh is built
+        /// in that space and bounded in it, and UMA's bones are not upright, so bounds kept in a
+        /// bone's own axes would reach above the head and push out anything framed by them.
+        /// <para><paramref name="firstPose"/> carries the parts from where they are built to where
+        /// the first bone holds them now, for parts built for that bone at rest: a head that was
+        /// turned when they were fitted then holds them turned, and lets them go straight when it
+        /// comes back. Without it the first bone holds them where they are built.</para>
+        /// </summary>
+        internal static GrownPiece AttachSkinned(HeadScan scan, Transform first, Transform second, string name, string itemId,
+            MeshParts parts, Material[] materials, System.Func<Vector3, float> firstShare, Matrix4x4? firstPose = null)
+        {
+            if (parts == null || parts.Vertices.Count == 0 || first == null || second == null || firstShare == null)
+            {
+                HairTextures.ReleaseUnworn(materials);
+                return null;
+            }
+            var holder = Holder(second, name);
+            if (scan.Root != null) holder.transform.rotation = scan.Root.rotation;
+            var mesh = Build(scan, holder.transform, itemId, parts, materials, out var worn);
+            var weights = new BoneWeight[parts.Vertices.Count];
+            for (int i = 0; i < weights.Length; i++)
+            {
+                float share = Mathf.Clamp01(firstShare(parts.Vertices[i]));
+                // The larger share first, as the skinning expects.
+                weights[i] = share >= .5f
+                    ? new BoneWeight { boneIndex0 = 0, weight0 = share, boneIndex1 = 1, weight1 = 1f - share }
+                    : new BoneWeight { boneIndex0 = 1, weight0 = 1f - share, boneIndex1 = 0, weight1 = share };
+            }
+            mesh.boneWeights = weights;
+            var meshToWorld = holder.transform.localToWorldMatrix;
+            mesh.bindposes = new[] { first.worldToLocalMatrix * (firstPose ?? Matrix4x4.identity) * meshToWorld, second.worldToLocalMatrix * meshToWorld };
+            var renderer = holder.AddComponent<SkinnedMeshRenderer>();
+            renderer.sharedMesh = mesh;
+            renderer.bones = new[] { first, second };
+            renderer.quality = SkinQuality.Bone2;
+            renderer.sharedMaterials = worn;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            // Bounds in the holder's upright space, with room across for the first bone to turn the
+            // part it carries, and next to none above: the crown is the head's.
+            var bounds = mesh.bounds;
+            bounds.Expand(new Vector3(.3f, .02f, .3f));
+            renderer.localBounds = bounds;
+            return Finish(holder, mesh, itemId, materials);
+        }
+
+        private static GameObject Holder(Transform parent, string name)
+        {
             var holder = new GameObject(name) { layer = parent.gameObject.layer };
             holder.transform.SetParent(parent, false);
             holder.transform.localPosition = Vector3.zero;
             holder.transform.localRotation = Quaternion.identity;
             holder.transform.localScale = Vector3.one;
+            return holder;
+        }
+
+        /// <summary>The parts as a mesh in <paramref name="space"/>, and the materials its submeshes wear.</summary>
+        private static Mesh Build(HeadScan scan, Transform space, string itemId, MeshParts parts, Material[] materials, out Material[] worn)
+        {
+            parts.Orient();
             var vertices = new List<Vector3>(parts.Vertices.Count);
             var normals = new List<Vector3>(parts.Normals.Count);
             for (int i = 0; i < parts.Vertices.Count; i++)
             {
-                vertices.Add(parent.InverseTransformPoint(scan.ToWorld(parts.Vertices[i])));
-                normals.Add(parent.InverseTransformDirection(scan.ToWorldDirection(parts.Normals[i])).normalized);
+                vertices.Add(space.InverseTransformPoint(scan.ToWorld(parts.Vertices[i])));
+                normals.Add(space.InverseTransformDirection(scan.ToWorldDirection(parts.Normals[i])).normalized);
             }
             var mesh = new Mesh
             {
@@ -46,23 +124,27 @@ namespace Gamesim.Presentation
             int used = 0;
             foreach (var list in parts.Submeshes) if (list.Count > 0) used++;
             mesh.subMeshCount = used;
-            var worn = new List<Material>();
+            var wearing = new List<Material>();
             int index = 0;
             for (int s = 0; s < parts.Submeshes.Count; s++)
             {
                 if (parts.Submeshes[s].Count == 0) continue;
                 mesh.SetTriangles(parts.Submeshes[s], index++, false);
-                worn.Add(materials[Mathf.Min(s, materials.Length - 1)]);
+                wearing.Add(materials[Mathf.Min(s, materials.Length - 1)]);
             }
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();
-            holder.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var renderer = holder.AddComponent<MeshRenderer>();
-            renderer.sharedMaterials = worn.ToArray();
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            worn = wearing.ToArray();
+            return mesh;
+        }
+
+        private static GrownPiece Finish(GameObject holder, Mesh mesh, string itemId, Material[] materials)
+        {
             var piece = holder.AddComponent<GrownPiece>();
             piece.mesh = mesh;
             piece.ItemId = itemId;
+            piece.held = (Material[])materials.Clone();
+            HairTextures.Retain(piece.held);
             return piece;
         }
 
@@ -84,7 +166,12 @@ namespace Gamesim.Presentation
             if (Application.isPlaying) Destroy(value); else DestroyImmediate(value);
         }
 
-        private void OnDestroy() => Dispose(mesh);
+        private void OnDestroy()
+        {
+            Dispose(mesh);
+            HairTextures.Release(held);
+            held = null;
+        }
     }
 
     /// <summary>
@@ -134,10 +221,11 @@ namespace Gamesim.Presentation
         /// <summary>
         /// A tube along a path, its radius tapering to <paramref name="tipScale"/> of itself at the
         /// end; a closed path joins its end to its start. The ring frame is carried along the path
-        /// rather than rebuilt at each point, so the tube never twists.
+        /// rather than rebuilt at each point, so the tube never twists. <paramref name="alongStart"/>
+        /// is how far along the texture starts, for a tube that carries on from another.
         /// </summary>
         public void Tube(int submesh, IList<Vector3> path, float radius, int sides = 8, bool closed = false, float tipScale = 1f,
-            float uvAlong = 40f, Vector3? up = null)
+            float uvAlong = 40f, Vector3? up = null, float alongStart = 0f)
         {
             int count = path.Count;
             if (count < 2) return;
@@ -154,7 +242,7 @@ namespace Gamesim.Presentation
             var side = Vector3.Cross(forward0, reference);
             if (side.sqrMagnitude < 1e-6f) side = Vector3.Cross(forward0, Vector3.right);
             side.Normalize();
-            float along = 0f;
+            float along = alongStart;
             int start = Vertices.Count;
             for (int r = 0; r < rings; r++)
             {

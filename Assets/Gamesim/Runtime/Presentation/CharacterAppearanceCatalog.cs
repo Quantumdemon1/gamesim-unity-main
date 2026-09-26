@@ -105,16 +105,20 @@ namespace Gamesim.Presentation
 
         /// <summary>Conflicting choices are resolved in the draft, before any avatar is rebuilt.</summary>
         /// <summary>
-        /// The slots that belong to the person rather than to the clothes: hair, brows and a beard.
+        /// The slots that belong to the person rather than to the clothes: hair, brows, a beard, and
+        /// the face's details - freckles, makeup, an older face.
         ///
         /// <para>They are stored per outfit like everything else, because an outfit is just a
         /// wardrobe list, but they are <em>written</em> to every outfit at once. Without that a
         /// houseguest changed hairstyle by changing clothes, and the Hair panel silently edited
         /// whichever set happened to be active without saying which one that was. The reset path
-        /// already assumed this - it preserves these three slots when it resets clothing - so this
+        /// already assumed this - it preserves these slots when it resets clothing - so this
         /// makes the write agree with the reset rather than introducing a new idea.</para>
         /// </summary>
-        public static readonly string[] CharacterSlots = { "Hair", "Eyebrows", "Beard" };
+        public static readonly string[] CharacterSlots = { "Hair", "Eyebrows", "Beard", "Face" };
+
+        /// <summary>The Hair page's slots: the character slots but the face's details, which the Face page owns.</summary>
+        public static readonly string[] HairSlots = { "Hair", "Eyebrows", "Beard" };
 
         /// <summary>
         /// The garments a fabric colour is offered for, whatever they are made of: the tint is laid

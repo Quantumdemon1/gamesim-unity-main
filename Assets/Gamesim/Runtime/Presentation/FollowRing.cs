@@ -1,5 +1,6 @@
 using Gamesim.House;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace Gamesim.Presentation
 {
@@ -16,6 +17,10 @@ namespace Gamesim.Presentation
     /// spotlight keeps the one thing the diamond was for - saying which of twelve people is meant
     /// from across the room, over the sofa backs - because it lights the person themselves, head
     /// and shoulders first, and throws a bright pool round them that the overview camera sees.</para>
+    ///
+    /// <para>The light stays on the person. Its pool is no wider than the reticle, and it casts
+    /// shadows, so the house's low cutaway walls stop it: a wider, unshadowed cone lit the next
+    /// room through them whenever the one followed stood near a wall.</para>
     ///
     /// <para>The reticle turns slowly and the light breathes a little, as a live camera's frame
     /// does; under reduced motion both hold still.</para>
@@ -40,7 +45,28 @@ namespace Gamesim.Presentation
         public const float SpotlightHeight = 4.2f;
         /// <summary>The same over a seated body's focus, which is lower.</summary>
         private const float SeatedSpotlightLift = 3.1f;
-        private const float SpotAngle = 30f, InnerSpotAngle = 14f, SpotIntensity = 10f;
+        private const float SpotIntensity = 10f;
+
+        /// <summary>
+        /// The cone, cut so the pool it throws on the floor is the reticle's own size, with the soft
+        /// edge inside it.
+        ///
+        /// <para>It was 30 degrees: a pool 2.3 m across from this height. The house's walls are 1.1 m
+        /// cutaways, so anyone followed within a stride of one - on a sofa or a bed against it, at a
+        /// counter - put a warm patch on the floor, the wall's far face and the furniture of the room
+        /// behind it, moving with somebody that side of the wall could not see. At the reticle's
+        /// radius the pool stays under the person, and still takes in their head and shoulders on
+        /// the way down.</para>
+        /// </summary>
+        private static readonly float SpotAngle = 2f * Mathf.Atan(Radius / SpotlightHeight) * Mathf.Rad2Deg;
+        private static readonly float InnerSpotAngle = SpotAngle * .6f;
+
+        /// <summary>
+        /// How near the lamp a thing can be and still cast a shadow in its light: nothing hung above
+        /// head height - a pendant, an umbrella - may put the one it is on in the dark, while the
+        /// walls, which stand 1.1 m, are well past it and still stop the light.
+        /// </summary>
+        private const float ShadowNearPlane = SpotlightHeight - 2.1f;
         /// <summary>A warm stage white - the house's lamps are warm - so it reads as light, not as a colour.</summary>
         private static readonly Color SpotColour = new Color(1f, .95f, .86f);
 
@@ -114,7 +140,13 @@ namespace Gamesim.Presentation
             lamp.range = SpotlightHeight + 2.5f;
             lamp.intensity = SpotIntensity;
             lamp.color = SpotColour;
-            lamp.shadows = LightShadows.None;
+            // Hard shadows at the pipeline's lowest tier: a wall between the lamp and the floor
+            // beyond it is all this has to see, and a stage light's edge is hard anyway. A pipeline
+            // without shadowed additional lights (the mobile asset) still has the narrow cone.
+            lamp.shadows = LightShadows.Hard;
+            lamp.shadowNearPlane = ShadowNearPlane;
+            lamp.GetUniversalAdditionalLightData().additionalLightsShadowResolutionTier =
+                UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierLow;
             // Per pixel, or it is one of the lights a busy room drops first.
             lamp.renderMode = LightRenderMode.ForcePixel;
             spotlight = light.transform;

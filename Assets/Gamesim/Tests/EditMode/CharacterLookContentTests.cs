@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
+using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -8,7 +9,9 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// The colours a houseguest is made of, and the hair and accessories built in code: named and
-    /// distinct, covering every complexion, each with a picture for the creator.
+    /// distinct, covering every complexion and undertone, each with a picture for the creator; a
+    /// random houseguest coloured as their skin makes likely; and the face's details worn as the
+    /// person's own.
     /// </summary>
     public sealed class CharacterLookContentTests
     {
@@ -53,6 +56,122 @@ namespace Gamesim.Tests.EditMode
             // Past about 1.45 times the green, a lit deep brown reads as maroon.
             foreach (var swatch in CharacterPalettes.Skin.Last().Swatches)
                 Assert.That(swatch.Colour.r / swatch.Colour.g, Is.LessThanOrEqualTo(1.47f), swatch.Name);
+        }
+
+        /// <summary>
+        /// The tan and deep rows offer an undertone as the fair ones do, not only a darker brown: a
+        /// golden tone, a red one up against the maroon cap, and a neutral one, told apart by hue and
+        /// saturation rather than by more red. Both rows used to be one hue getting darker, while the
+        /// page promised golden, olive and rosy at every depth.
+        /// </summary>
+        [Test]
+        public void TheDeepRowsOfferUndertonesNotOnlyDepth()
+        {
+            float Hue(Color c) { Color.RGBToHSV(c, out var hue, out _, out _); return hue * 360f; }
+            float Red(Color c) => c.r / c.g;
+            foreach (var row in CharacterPalettes.Skin.Skip(2))
+            {
+                var tones = row.Swatches.ToDictionary(swatch => swatch.Name, swatch => swatch.Colour);
+                foreach (var tone in tones)
+                    Assert.That(Red(tone.Value), Is.LessThanOrEqualTo(1.47f), row.Label + " / " + tone.Key + " stays out of maroon.");
+                Assert.That(tones.Values.Any(c => Hue(c) >= 28f), Is.True, row.Label + " has a golden tone.");
+                Assert.That(tones.Values.Any(c => Hue(c) <= 19f && Red(c) >= 1.4f), Is.True, row.Label + " has a red tone.");
+                Assert.That(tones.Values.Any(c => Red(c) <= 1.3f), Is.True, row.Label + " has a neutral tone.");
+                Assert.That(tones.Values.Max(Hue) - tones.Values.Min(Hue), Is.GreaterThan(10f), row.Label + " varies in undertone, not only in depth.");
+            }
+        }
+
+        /// <summary>
+        /// A random houseguest takes hair and eyes from their skin. On tan and deep skin: black to
+        /// dark brown hair and brown eyes nearly always, blonde or red hair and light eyes rarely.
+        /// Grey and white hair rarely at any depth, and never a dyed colour. Drawn apart, half the
+        /// deep-skinned houseguests Randomize made had light eyes and most had blonde, red or white
+        /// hair.
+        /// </summary>
+        [Test]
+        public void ARandomHouseguestsHairAndEyesFollowTheirSkin()
+        {
+            var random = new System.Random(20260925);
+            var lightEyes = new[] { "Green", "Grey-green", "Blue", "Light blue", "Grey-blue", "Grey" };
+            var brownEyes = new[] { "Black-brown", "Dark brown", "Brown", "Light brown" };
+            var darkHair = new[] { "Jet black", "Black", "Soft black", "Dark brown" };
+            var blondeOrRed = new[] { "Auburn", "Copper", "Strawberry", "Dark blonde", "Honey blonde", "Golden blonde", "Platinum" };
+            var grey = new[] { "Silver", "White", "Salt and pepper" };
+            var natural = CharacterPalettes.Hair[0].Swatches.Select(swatch => swatch.Name).ToList();
+            float Share(List<string> drawn, string[] names) => drawn.Count(name => names.Contains(name)) / (float)drawn.Count;
+            for (int depth = 0; depth < CharacterPalettes.Skin.Length; depth++)
+            {
+                string row = CharacterPalettes.Skin[depth].Label;
+                var hair = new List<string>();
+                var eyes = new List<string>();
+                foreach (var tone in CharacterPalettes.Skin[depth].Swatches)
+                {
+                    Assert.That(CharacterPalettes.DepthOf(tone.Colour), Is.EqualTo(depth), tone.Name + " is its row's depth.");
+                    for (int draw = 0; draw < 500; draw++)
+                    {
+                        hair.Add(CharacterPalettes.RandomHair(tone.Colour, random).Name);
+                        eyes.Add(CharacterPalettes.RandomEyes(tone.Colour, random).Name);
+                    }
+                }
+                Assert.That(hair.All(name => natural.Contains(name)), Is.True, row + ": natural hair only, never a dye.");
+                Assert.That(Share(hair, grey), Is.LessThan(.04f), row + ": grey or white hair is rare.");
+                if (depth == 0)
+                {
+                    // Everything can come up somewhere, so a swatch added without a weight is noticed.
+                    Assert.That(natural.Except(hair), Is.Empty, "Every natural shade is drawn.");
+                    Assert.That(CharacterPalettes.Eyes[0].Swatches.Select(swatch => swatch.Name).Except(eyes), Is.Empty, "Every eye colour is drawn.");
+                }
+                if (depth < 2) continue;
+                Assert.That(Share(eyes, lightEyes), Is.LessThan(.06f), row + ": light eyes are rare.");
+                Assert.That(Share(eyes, brownEyes), Is.GreaterThan(.85f), row + ": brown eyes nearly always.");
+                Assert.That(Share(hair, blondeOrRed), Is.LessThan(.06f), row + ": blonde or red hair is rare.");
+                Assert.That(Share(hair, darkHair), Is.GreaterThan(.75f), row + ": black to dark brown hair mostly.");
+            }
+            // The skin itself is drawn evenly, the deep as often as the fair.
+            var depths = Enumerable.Range(0, 4000).Select(_ => CharacterPalettes.DepthOf(CharacterPalettes.RandomSkin(random).Colour)).ToList();
+            for (int depth = 0; depth < CharacterPalettes.Skin.Length; depth++)
+                Assert.That(depths.Count(value => value == depth) / 4000f, Is.InRange(.2f, .3f), CharacterPalettes.Skin[depth].Label);
+        }
+
+        /// <summary>
+        /// A face detail - freckles, makeup, an older face - is the person's, not the outfit's: worn
+        /// on every outfit at once, and kept on in the water and in bed when the outer layers come off.
+        /// </summary>
+        [Test]
+        public void FaceDetailsAreThePersonsOnEveryOutfitInTheWaterAndInBed()
+        {
+            var freckles = new AppearanceItem { Id = "uma-freckles", Label = "Freckles", Slot = "Face" };
+            var catalog = new ItemCatalog(freckles);
+            var appearance = new CharacterAppearance { provider = "uma", bodyId = "HumanMaleDCS" };
+            foreach (string id in new[] { CharacterOutfits.Everyday, CharacterOutfits.Competition })
+                appearance.outfits.Add(new CharacterOutfit
+                {
+                    id = id,
+                    wardrobe = new[] { "Hair", "BottomUnderlayer", "Chest", "Legs" }
+                        .Select(slot => new AppearanceWardrobe { slot = slot, itemId = slot.ToLowerInvariant() }).ToList(),
+                });
+            AppearanceEditing.Wear(appearance, freckles, catalog);
+            foreach (var outfit in appearance.outfits)
+                Assert.That(outfit.wardrobe.Count(item => item.slot == "Face" && item.itemId == freckles.Id), Is.EqualTo(1), outfit.id + " wears the freckles.");
+            foreach (string context in new[] { CharacterOutfits.Swimwear, CharacterOutfits.Sleepwear })
+            {
+                var dressed = CharacterOutfits.ForActivity(appearance, context);
+                Assert.That(dressed.activeOutfit, Is.EqualTo(context), context + " is derived from the everyday set.");
+                var slots = dressed.outfits.Single(outfit => outfit.id == context).wardrobe.Select(item => item.slot).ToList();
+                Assert.That(slots, Does.Contain("Face"), context + " keeps the face's details.");
+                Assert.That(slots, Does.Not.Contain("Legs"), context + " takes the outer layers off.");
+            }
+        }
+
+        private sealed class ItemCatalog : ICharacterAppearanceCatalog
+        {
+            private readonly List<AppearanceItem> items;
+            public ItemCatalog(params AppearanceItem[] items) { this.items = items.ToList(); }
+            public IReadOnlyList<AppearanceBodyOption> Bodies { get; } = new AppearanceBodyOption[0];
+            public IReadOnlyList<AppearanceControl> Controls { get; } = new AppearanceControl[0];
+            public IReadOnlyList<AppearanceItem> Items => items;
+            public CharacterAppearance Materialize(CharacterAppearance appearance) => appearance.Clone();
+            public CharacterAppearance ChangeBody(CharacterAppearance appearance, string bodyId) => appearance.Clone();
         }
 
         [Test]

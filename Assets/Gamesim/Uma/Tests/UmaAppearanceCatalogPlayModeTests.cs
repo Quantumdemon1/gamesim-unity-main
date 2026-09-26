@@ -275,5 +275,45 @@ namespace Gamesim.Uma.Tests
             finally { Object.Destroy(actor); Object.Destroy(cast); }
             yield return null;
         }
+
+        /// <summary>
+        /// UMA's alternate faces are offered as face details: freckles and older faces for both
+        /// bodies, and makeup - whose recipes are drawn for the female body only - for that body
+        /// alone. An older face changing body becomes the other body's older face, not whichever
+        /// face detail happens to sort first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FaceDetailsAreOfferedForBothBodiesAndMakeupOnlyForTheFemaleBody()
+        {
+            yield return null;
+            var catalog = new UmaAppearanceCatalog();
+            Assert.That(catalog.Diagnostics, Is.Empty);
+            var details = catalog.Items.Where(item => item.Slot == "Face").ToList();
+            Assert.That(details, Has.Count.EqualTo(11), "Every face detail in the house wardrobe is offered.");
+            foreach (var detail in details)
+            {
+                Assert.That(detail.Id, Does.StartWith("uma-"), detail.Label);
+                Assert.That(detail.StyleGroup, Does.StartWith("face."), detail.Label);
+                Assert.That(AppearanceEditing.IsCharacterSlot(detail.Slot), Is.True, "A face detail is the person's, worn on every outfit.");
+            }
+            foreach (var body in catalog.Bodies)
+            {
+                Assert.That(details.Count(item => item.StyleGroup == "face.freckles" && item.Fits(body.Id)), Is.EqualTo(2), body.Label + " can wear freckles.");
+                Assert.That(details.Count(item => item.StyleGroup == "face.age" && item.Fits(body.Id)), Is.EqualTo(4), body.Label + " can wear an older face.");
+            }
+            var makeup = details.Where(item => item.StyleGroup == "face.makeup").ToList();
+            Assert.That(makeup, Has.Count.EqualTo(4));
+            foreach (var item in makeup)
+                Assert.That(item.CompatibleBodies, Is.EqualTo(new[] { UmaCastLibrary.FemaleRace }), item.Label + " is offered to the female body alone.");
+
+            var look = catalog.ChangeBody(catalog.Materialize(CharacterAppearance.Preset("player")), UmaCastLibrary.FemaleRace);
+            var mature = details.Single(item => item.Label == "Mature" && item.Fits(UmaCastLibrary.FemaleRace));
+            AppearanceEditing.Wear(look, mature, catalog);
+            Assert.That(look.TryValidate(out var error), Is.True, error);
+            var changed = catalog.ChangeBody(look, UmaCastLibrary.MaleRace);
+            var face = AppearanceEditing.Find(catalog, changed.outfits.Single().wardrobe.Single(item => item.slot == "Face").itemId);
+            Assert.That(face.Label, Is.EqualTo("Mature"), "The older face finds its match on the other body.");
+            Assert.That(face.Fits(UmaCastLibrary.MaleRace), Is.True);
+        }
     }
 }

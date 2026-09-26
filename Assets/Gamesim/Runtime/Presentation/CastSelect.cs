@@ -55,8 +55,10 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// A card: the ring, the name plate, the nickname and the traits, stacked. Three rows of
-        /// these and their gutters come to 640, inside the grid's height at 16:9 and the standard
-        /// text size, so the whole roster is on screen without a scroll.
+        /// these and their gutters come to 640, and with six above them and a glow's room below
+        /// 656, inside the grid's 676 at 16:9 and the standard text size, so the whole roster is on
+        /// screen without a scroll. A shorter grid - the larger text on 16:9, or any 21:9 - leaves
+        /// the third row under the fold, and a scrollbar beside the grid says so.
         /// </summary>
         private const float CardHeight = 204f;
         /// <summary>The glamour ring's outer diameter; the photo sits five pixels inside it.</summary>
@@ -94,10 +96,18 @@ namespace Gamesim.Presentation
         public const string GlamourPhotoName = "Glamour photo";
         public const string LiveModelName = "Live model";
         public const string DetailPanelName = "Detail panel";
+        /// <summary>The live model's studio, which lives outside the canvas at the scene root.</summary>
+        public const string StudioName = "Cast select studio";
 
         private RectTransform content;
         private CanvasGroup group;
         private float cursor;
+        /// <summary>The grid's scrolling content, kept past a rebuild so the next one can start where it was.</summary>
+        private RectTransform gridContent;
+        /// <summary>Set by whatever shows a different list - a new screen, roster, category or page.</summary>
+        private bool scrollToTop = true;
+        /// <summary>The details' Play as, when there is one: where the keyboard goes after a pick.</summary>
+        private Button playButton;
 
         private CastTemplates.Roster roster = CastTemplates.Roster.Regular;
         private string category = CastTemplates.AllCategories;
@@ -130,6 +140,19 @@ namespace Gamesim.Presentation
         public string PreviewedId { get; private set; }
         /// <summary>True once the picked houseguest's model has been built and drawn.</summary>
         public bool PreviewReady => studio != null && studio.gameObject.activeSelf && PreviewedId != null && !studio.IsBuilding;
+        /// <summary>
+        /// The live model's studio, for tests and the tour, as the creator offers its own: which look
+        /// it last finished building, and whether that is a fallback. Null once the screen has
+        /// closed with a start or a cancel.
+        /// </summary>
+        public CharacterStudioPreview StudioPreview => studio;
+
+        /// <summary>
+        /// The "Reduce character motion" setting. Under it the live model stands as it was left
+        /// instead of turning by itself - a drag still turns it - the picked card's halo holds
+        /// still instead of pulsing, and a portrait does not lift under the pointer.
+        /// </summary>
+        public bool ReducedMotion { get; set; }
 
         public void ConfigureCreator(CharacterCreator value) => creator = value;
         public void ConfigureProfiles(CharacterProfileStore store)
@@ -161,15 +184,16 @@ namespace Gamesim.Presentation
             if (studio != null && studio.gameObject.activeSelf && liveModel != null)
             {
                 if (liveModel.texture != studio.Texture) liveModel.texture = studio.Texture;
-                // A slow turn while nobody is turning it, so the whole figure is seen.
-                if (!studio.IsBuilding && Time.unscaledTime - lastTurn > 2.5f) studio.Rotate(Time.unscaledDeltaTime * 14f);
+                // A slow turn while nobody is turning it, so the whole figure is seen - but not
+                // under reduced motion, where the figure stays as the player left it.
+                if (!ReducedMotion && !studio.IsBuilding && Time.unscaledTime - lastTurn > 2.5f) studio.Rotate(Time.unscaledDeltaTime * 14f);
                 if (previewStatus != null) previewStatus.text = studio.IsBuilding ? Localisation.Text(studio.Status ?? string.Empty) : string.Empty;
             }
             if (pickedGlow != null)
             {
                 float pulse = .5f + .5f * Mathf.Sin(Time.unscaledTime * Mathf.PI);
                 var gold = CastSelectArt.Gold;
-                pickedGlow.color = new Color(gold.r, gold.g, gold.b, Mathf.Lerp(.3f, .7f, pulse));
+                pickedGlow.color = new Color(gold.r, gold.g, gold.b, ReducedMotion ? .5f : Mathf.Lerp(.3f, .7f, pulse));
             }
         }
 
@@ -262,6 +286,7 @@ namespace Gamesim.Presentation
             profileBrowser.Reset();
             retainedDraft = null;
             resumeError = null;
+            scrollToTop = true;
             houseSize = SeasonBuilder.ClampHouseSize(roster, SeasonBuilder.DefaultHouseSize);
             Rebuild();
             group.alpha = 1f;
@@ -275,17 +300,50 @@ namespace Gamesim.Presentation
             if (!IsShowing) return;
             var cancel = onCancel;
             Hide();
+            ReleaseStudio();
             cancel?.Invoke();
+        }
+
+        /// <summary>
+        /// Lets the live model go when the screen closes for good - a start or a cancel, not a trip
+        /// to the creator, which comes straight back to the same houseguest. Hiding only puts the
+        /// studio to sleep, and a sleeping studio keeps its built body, that body's generated
+        /// textures, its lights and its multisampled target: for the whole season, until now,
+        /// because nothing else ever destroyed it. The creator's studio has always gone this way.
+        /// </summary>
+        private void ReleaseStudio()
+        {
+            if (studio != null) { Destroy(studio.gameObject); studio = null; }
+            PreviewedId = null;
+        }
+
+        /// <summary>
+        /// The same, once a season has started from the creator this screen handed a houseguest to.
+        /// The screen is asleep behind the creator then rather than closed, so neither of its own
+        /// ways out ran, and nothing brings it back to the houseguest it was showing: the next New
+        /// season opens it afresh. Nothing is let go while the screen is up.
+        /// </summary>
+        public void ReleasePreview()
+        {
+            if (IsShowing) return;
+            ReleaseStudio();
         }
 
         // ---------------------------------------------------------------- build
 
         private void Rebuild()
         {
+            // Where the grid was scrolled to, read before the teardown. Every press rebuilds the
+            // screen, and a grid rebuilt at the top threw the player back to the first row: a card
+            // picked on the third row vanished under the fold with its PLAYING AS badge. A new
+            // screen, roster, category or page is a different list and starts at the top.
+            float keepY = !scrollToTop && gridContent != null ? gridContent.anchoredPosition.y : 0f;
+            scrollToTop = false;
             portraits.Clear();
             liveModel = null;
             previewStatus = null;
             pickedGlow = null;
+            playButton = null;
             // Deactivated before Destroy, which is deferred to the end of the frame: the screen
             // rebuilds itself on every click, so for one frame the old controls would otherwise
             // still be live alongside the new ones and "the Start button" would match twice.
@@ -350,6 +408,7 @@ namespace Gamesim.Presentation
             content.anchorMax = new Vector2(1f, 1f);
             content.pivot = new Vector2(0.5f, 1f);
             content.anchoredPosition = Vector2.zero;
+            gridContent = content;
 
             var scroll = viewport.gameObject.AddComponent<ScrollRect>();
             viewport.gameObject.AddComponent<SetupScrollFocus>();
@@ -358,12 +417,17 @@ namespace Gamesim.Presentation
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 40f;
+            scroll.verticalScrollbar = GridScrollbar(scrim, viewport);
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
 
             cursor = 0f;
             if (castSlotsMode) CastSlots(); else if (libraryMode) LibraryCards(); else Grid();
-            content.sizeDelta = new Vector2(0f, cursor + Pad);
+            // The grid measures its own foot (see Grid); the saved-houseguest pages end on the pad.
+            content.sizeDelta = new Vector2(0f, cursor + (Detailed ? 0f : Pad));
+            // Back where it was, as far as the new list reaches.
+            content.anchoredPosition = new Vector2(0f, Mathf.Clamp(keepY, 0f, Mathf.Max(0f, content.sizeDelta.y - bodyHeight)));
 
-            if (Detailed) DetailPanel(scrim, Width * .5f - PanelWidth * .5f, HeaderHeight, PanelWidth, Mathf.Max(260f, bodyHeight),
+            if (Detailed) DetailPanel(scrim, Width * .5f - PanelWidth * .5f, HeaderHeight, PanelWidth, bodyHeight,
                 HeaderHeight + FooterHeight + 10f + errorHeight);
             else if (studio != null) studio.gameObject.SetActive(false);
 
@@ -376,11 +440,43 @@ namespace Gamesim.Presentation
             Footer();
         }
 
+        /// <summary>
+        /// A thin bar in the gap beside the grid, there only while the grid holds more than it
+        /// shows. Without it a short frame cut the third row to the tops of its rings, and nothing
+        /// said that four more houseguests were below. Outside the viewport, whose mask would clip
+        /// it, and out of the keyboard's way: the grid already scrolls to whatever is selected.
+        /// </summary>
+        private Scrollbar GridScrollbar(RectTransform scrim, RectTransform viewport)
+        {
+            var track = HudPrimitives.Fill("Scrollbar", scrim, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .14f), 3);
+            track.anchorMin = new Vector2(.5f, 0f);
+            track.anchorMax = new Vector2(.5f, 1f);
+            track.pivot = new Vector2(.5f, 1f);
+            track.sizeDelta = new Vector2(6f, viewport.sizeDelta.y);
+            float gap = Detailed ? PanelGap * .5f : 10f;
+            track.anchoredPosition = new Vector2(-Width * .5f + GridWidth + gap, viewport.anchoredPosition.y);
+            track.GetComponent<Image>().raycastTarget = true;
+            var area = new GameObject("Sliding area", typeof(RectTransform)).GetComponent<RectTransform>();
+            area.SetParent(track, false);
+            area.anchorMin = Vector2.zero; area.anchorMax = Vector2.one;
+            area.offsetMin = Vector2.zero; area.offsetMax = Vector2.zero;
+            var handle = HudPrimitives.Fill("Handle", area, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .7f), 3);
+            handle.offsetMin = Vector2.zero; handle.offsetMax = Vector2.zero;
+            var handleImage = handle.GetComponent<Image>();
+            handleImage.raycastTarget = true;
+            var bar = track.gameObject.AddComponent<Scrollbar>();
+            bar.handleRect = handle;
+            bar.targetGraphic = handleImage;
+            bar.direction = Scrollbar.Direction.BottomToTop;
+            bar.navigation = new Navigation { mode = Navigation.Mode.None };
+            return bar;
+        }
+
         private void SetupNavigation()
         {
             if (onCustomise == null) return;
             var row = Row(44f);
-            Chip(row, "Choose a houseguest", -448f, 216f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; Rebuild(); });
+            Chip(row, "Choose a houseguest", -448f, 216f, !libraryMode && !castSlotsMode, () => { libraryMode = false; castSlotsMode = false; scrollToTop = true; Rebuild(); });
             Chip(row, CharacterCreator.CreateCaption, -224f, 216f, false, () => OpenCreator(CharacterDraft.Blank()));
             Chip(row, retainedDraft == null ? CharacterCreator.CustomiseCaption : "Resume setup", 0f, 216f, false, () =>
             {
@@ -388,8 +484,8 @@ namespace Gamesim.Presentation
                 var chosen = CastTemplates.Find(selectedId);
                 OpenCreator(chosen == null ? CharacterDraft.Blank() : CharacterDraft.FromAppearance(chosen));
             });
-            Chip(row, "My Houseguests", 224f, 216f, libraryMode, () => { libraryMode = true; castSlotsMode = false; Rebuild(); });
-            Chip(row, "Cast slots", 448f, 216f, castSlotsMode, () => { castSlotsMode = true; libraryMode = false; Rebuild(); });
+            Chip(row, "My Houseguests", 224f, 216f, libraryMode, () => { libraryMode = true; castSlotsMode = false; scrollToTop = true; Rebuild(); });
+            Chip(row, "Cast slots", 448f, 216f, castSlotsMode, () => { castSlotsMode = true; libraryMode = false; scrollToTop = true; Rebuild(); });
         }
 
         private void CastSlots()
@@ -499,6 +595,7 @@ namespace Gamesim.Presentation
                     // the switch — better to clear it than to start a season with a stale persona.
                     selectedId = null;
                     houseSize = SeasonBuilder.ClampHouseSize(roster, houseSize);
+                    scrollToTop = true;
                     Rebuild();
                 });
                 ((RectTransform)tab.transform).sizeDelta = new Vector2(tabWidth, 42f);
@@ -514,7 +611,7 @@ namespace Gamesim.Presentation
             {
                 var pick = chips[i];
                 Chip(bar, pick, chipsLeft + span * (i + .5f), span - 10f, string.Equals(category, pick, StringComparison.OrdinalIgnoreCase),
-                    () => { category = pick; Rebuild(); });
+                    () => { category = pick; scrollToTop = true; Rebuild(); });
             }
 
             string description = CastTemplates.CategoryDescription(category);
@@ -552,7 +649,10 @@ namespace Gamesim.Presentation
                 if (column == 0 && index > 0) cursor += CardHeight + Gutter;
                 Card(shown[index], column, -cursor);
             }
-            cursor += CardHeight + Gutter;
+            // Room under the last row for a picked card's glow, and no more - not a gutter and the
+            // page's pad as well. Those came to 42, which took the roster twelve past a 16:9 grid's
+            // 676: a scroll of nothing, and a scrollbar beside the grid saying there was more.
+            cursor += CardHeight + UiTheme.GlowWidth;
         }
 
         /// <summary>
@@ -590,11 +690,13 @@ namespace Gamesim.Presentation
             var button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             var pick = template.Id;
+            var cardName = template.Name;
             button.onClick.AddListener(() =>
             {
                 retainedDraft = null;
                 selectedId = string.Equals(selectedId, pick, StringComparison.Ordinal) ? null : pick;
                 Rebuild();
+                FocusAfterPick(cardName);
             });
 
             // The portrait: a glow behind a picked one, the gold ring, the photo inside it.
@@ -604,7 +706,9 @@ namespace Gamesim.Presentation
             portrait.pivot = new Vector2(.5f, 1f);
             portrait.sizeDelta = new Vector2(RingSize, RingSize);
             portrait.anchoredPosition = new Vector2(0f, -10f);
-            card.gameObject.AddComponent<CardHover>().Target = portrait;
+            var hover = card.gameObject.AddComponent<CardHover>();
+            hover.Target = portrait;
+            hover.Owner = this;
             if (chosen)
             {
                 var halo = new GameObject("Ring halo", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
@@ -660,11 +764,15 @@ namespace Gamesim.Presentation
             {
                 // The pick stated in words on a gold badge across the foot of the ring, as the web
                 // game's check badge sits on its ring: the word is what a screen reader reads.
+                // Twelve up from the foot, not two: the name plate starts four under the ring and
+                // is drawn after it, and a pick made with the mouse leaves the pointer on the card,
+                // whose portrait then stands 6% taller about its top - which slid the lower half
+                // of "PLAYING AS" under the plate. From here it clears the plate lifted or not.
                 var badge = HudPrimitives.Fill("Playing badge", portrait, CastSelectArt.Gold, 8);
                 badge.anchorMin = badge.anchorMax = new Vector2(.5f, 0f);
                 badge.pivot = new Vector2(.5f, .5f);
                 badge.sizeDelta = new Vector2(86f, 17f);
-                badge.anchoredPosition = new Vector2(0f, 2f);
+                badge.anchoredPosition = new Vector2(0f, 12f);
                 var playing = Line(badge, "PLAYING AS", 10f, UiTheme.Ink, 0f, 17f, 4f, 78f, TextAlignmentOptions.Center);
                 if (playing != null && semibold != null) playing.font = semibold;
             }
@@ -732,6 +840,10 @@ namespace Gamesim.Presentation
         /// nickname on pills, their age and home, their words, their traits and their kind of
         /// player - and the two ways on: play as them, or dress them first. With nobody picked, it
         /// says how to pick.
+        ///
+        /// <para>Edits the player made to this same houseguest in the creator and brought back are
+        /// what both ways on use, and what the model shows. A draft of anybody else is not: it is
+        /// named in the footer, where Start commits it, and "Play as Emma" never plays as Robin.</para>
         /// </summary>
         private void DetailPanel(RectTransform scrim, float x, float top, float panelWidth, float panelHeight, float reserved)
         {
@@ -750,12 +862,13 @@ namespace Gamesim.Presentation
             {
                 if (studio != null) studio.gameObject.SetActive(false);
                 PreviewedId = null;
-                EmptyDetails(panel, panelWidth, panelHeight);
+                EmptyDetails(panel, panelWidth, Mathf.Max(260f, panelHeight));
                 return;
             }
 
+            var retained = RetainedFor(chosen);
             float inner = panelWidth - 40f;
-            float stage = Mathf.Clamp(panelHeight - 342f, 140f, 360f);
+            var (stage, quoteBlock) = DetailFit(panelHeight);
             float y = 16f;
 
             var name = Line(panel, chosen.Name, 30f, Color.white, -y, 40f, 20f, inner, TextAlignmentOptions.Center);
@@ -789,7 +902,7 @@ namespace Gamesim.Presentation
             floor.rectTransform.anchoredPosition = new Vector2(0f, stage * .06f);
             floor.sprite = UiTheme.Ring(); floor.color = new Color(CastSelectArt.Gold.r, CastSelectArt.Gold.g, CastSelectArt.Gold.b, .8f); floor.raycastTarget = false;
 
-            EnsureStudio(chosen);
+            EnsureStudio(chosen, retained?.Appearance);
             liveModel = new GameObject(LiveModelName, typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
             liveModel.rectTransform.SetParent(stageRect, false);
             liveModel.rectTransform.anchorMin = liveModel.rectTransform.anchorMax = new Vector2(.5f, 0f);
@@ -827,7 +940,7 @@ namespace Gamesim.Presentation
 
             if (!string.IsNullOrEmpty(chosen.Bio))
             {
-                var quote = Line(panel, "“" + Localisation.Text(chosen.Bio) + "”", 14f, UiTheme.Paper, -y, 66f, 24f, inner - 8f, TextAlignmentOptions.Top);
+                var quote = Line(panel, "“" + Localisation.Text(chosen.Bio) + "”", 14f, UiTheme.Paper, -y, quoteBlock - 4f, 24f, inner - 8f, TextAlignmentOptions.Top);
                 if (quote != null)
                 {
                     quote.gameObject.name = "Detail quote";
@@ -836,7 +949,7 @@ namespace Gamesim.Presentation
                     quote.fontSizeMin = 11f;
                 }
             }
-            y += 70f;
+            y += quoteBlock;
 
             var traitRow = new GameObject("Detail traits", typeof(RectTransform)).GetComponent<RectTransform>();
             traitRow.SetParent(panel, false);
@@ -860,15 +973,66 @@ namespace Gamesim.Presentation
                 Line(panel, Localisation.Text(meaning), 13f, UiTheme.Muted, -y, 22f, 30f + kindWidth, inner - kindWidth - 10f, TextAlignmentOptions.Left);
             y += 32f;
 
-            // Play as them - the same commit as Start - or dress them in the creator first.
-            string first = FirstName(chosen.Name);
+            // Play as them - the same commit as Start - or dress them in the creator first: as the
+            // player left them when they have been in the creator, as their card has them if not.
+            // Named by the name they will play under, which a trip through the creator can change.
+            string first = FirstName(retained != null && !string.IsNullOrWhiteSpace(retained.Name) ? retained.Name : chosen.Name);
             bool customise = onCustomise != null;
             float playWidth = customise ? inner * .6f : inner;
-            var play = PanelButton(panel, "Play as " + first, 20f, -y, playWidth, 46f, true, StartSeason);
+            // Never under the panel's foot. The fit above keeps them in on every shape this screen
+            // is laid out for; on a frame shorter still they cover the category line, not the footer.
+            float buttonsY = Mathf.Min(y, Mathf.Max(0f, panelHeight - 46f - 12f));
+            var play = PanelButton(panel, "Play as " + first, 20f, -buttonsY, playWidth, 46f, true, PlayAsChosen);
             HudPrimitives.Chevron(play.transform, Color.white, 12f).anchoredPosition = new Vector2(-18f, 0f);
+            playButton = play;
             if (customise)
-                PanelButton(panel, "Customize " + first, 20f + playWidth + 10f, -y, inner - playWidth - 10f, 46f, false,
-                    () => OpenCreator(CharacterDraft.FromAppearance(chosen)));
+                PanelButton(panel, "Customize " + first, 20f + playWidth + 10f, -buttonsY, inner - playWidth - 10f, 46f, false,
+                    () => OpenCreator(retained != null ? retained.Copy() : CharacterDraft.FromAppearance(chosen)));
+        }
+
+        /// <summary>
+        /// How tall the model's stage and the quote are in a details panel this tall.
+        ///
+        /// <para>Everything else in the details is a fixed 238, and Play as has to end inside the
+        /// panel on every frame shape. It used to take a fixed 448 at least, so on 21:9 at the
+        /// larger text size - a 375 panel - and on 32:9 at the standard size, both buttons sat on
+        /// top of Start and Cancel, which drew and took clicks over them. A short panel now gives
+        /// the room back in order: the margin under the buttons, then the quote down to its first
+        /// line, then the stage, which keeps at least 80 so there is still somebody standing on
+        /// it.</para>
+        /// </summary>
+        private static (float stage, float quote) DetailFit(float panelHeight)
+        {
+            const float rest = 238f, quote = 70f, line = 26f, least = 140f;
+            float stage = panelHeight - rest - quote - 34f;
+            if (stage >= least) return (Mathf.Min(stage, 360f), quote);
+            float room = panelHeight - rest - 12f;
+            if (room - quote >= least) return (least, quote);
+            if (room - least >= line) return (least, room - least);
+            return (Mathf.Max(80f, room - line), line);
+        }
+
+        /// <summary>The retained draft when it is this houseguest's own - edited, brought back from the creator - and null otherwise.</summary>
+        private CharacterDraft RetainedFor(CastTemplates.Template template) =>
+            retainedDraft != null && template != null && string.Equals(retainedDraft.SourceTemplateId, template.Id, StringComparison.Ordinal)
+                ? retainedDraft : null;
+
+        /// <summary>
+        /// Puts the keyboard back where the player was after a card press rebuilt the screen.
+        ///
+        /// <para>The press destroys the card it was made on, and when the selection dies the HUD's
+        /// ring falls back to its first control, the top nav chip - after every pick, Play as was
+        /// then 25 presses away and the player's place in the grid was lost. After a pick the next
+        /// thing to press is Play as; after clearing one it is the same card, drawn again. The HUD
+        /// keeps any selection that is still eligible when it rewires, so this one holds.</para>
+        /// </summary>
+        private void FocusAfterPick(string cardName)
+        {
+            var events = EventSystem.current;
+            if (events == null || events.alreadySelecting) return;
+            var card = playButton == null && gridContent != null ? gridContent.Find(cardName) : null;
+            var next = playButton != null ? playButton.gameObject : card != null ? card.gameObject : null;
+            if (next != null) events.SetSelectedGameObject(next);
         }
 
         /// <summary>The details before anyone is picked: an empty disc and how to fill it.</summary>
@@ -896,19 +1060,24 @@ namespace Gamesim.Presentation
             Line(panel, "Choose from the cast to see their details", 15f, UiTheme.Muted, -(middle + 118f), 22f, 20f, panelWidth - 40f, TextAlignmentOptions.Center);
         }
 
-        /// <summary>The studio, awake and showing <paramref name="template"/>'s look; built once per houseguest picked.</summary>
-        private void EnsureStudio(CastTemplates.Template template)
+        /// <summary>
+        /// The studio, awake and showing <paramref name="template"/> - in <paramref name="look"/>
+        /// when the player has dressed them, in their card's look when not. The studio ignores a
+        /// look it is already showing, so a rebuild does not rebuild the body; the view is turned
+        /// back to the front only for a different person.
+        /// </summary>
+        private void EnsureStudio(CastTemplates.Template template, CharacterAppearance look)
         {
             if (studio == null)
             {
-                studio = CharacterStudioPreview.Create("Cast select studio");
+                studio = CharacterStudioPreview.Create(StudioName);
                 studio.Transparent = true;
                 studio.FocusFace(false);
             }
             studio.gameObject.SetActive(true);
+            studio.Show(look ?? CharacterAppearance.Preset(template.Id));
             if (PreviewedId == template.Id) return;
             PreviewedId = template.Id;
-            studio.Show(CharacterAppearance.Preset(template.Id));
             studio.View(-20f);
             lastTurn = Time.unscaledTime;
         }
@@ -942,11 +1111,15 @@ namespace Gamesim.Presentation
             public void OnDrag(PointerEventData eventData) => Turn?.Invoke(-eventData.delta.x * .6f);
         }
 
-        /// <summary>Lifts a card's portrait under the pointer, as the web game's grid does.</summary>
+        /// <summary>Lifts a card's portrait under the pointer, as the web game's grid does, unless motion is reduced.</summary>
         private sealed class CardHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         {
             public RectTransform Target;
-            public void OnPointerEnter(PointerEventData eventData) { if (Target != null) Target.localScale = Vector3.one * 1.06f; }
+            public CastSelect Owner;
+            public void OnPointerEnter(PointerEventData eventData)
+            {
+                if (Target != null && (Owner == null || !Owner.ReducedMotion)) Target.localScale = Vector3.one * 1.06f;
+            }
             public void OnPointerExit(PointerEventData eventData) { if (Target != null) Target.localScale = Vector3.one; }
         }
 
@@ -1080,8 +1253,21 @@ namespace Gamesim.Presentation
             ((RectTransform)cancel.transform).sizeDelta = new Vector2(cancelWidth, 46f);
         }
 
-        /// <summary>Commits: the roster, the size, the pick or the retained draft, and the custom slots, handed back.</summary>
-        private void StartSeason()
+        /// <summary>
+        /// The footer's commit: the roster, the size, the pick or the retained draft, and the custom
+        /// slots, handed back. The retained draft wins whoever it is, as the line above Start says.
+        /// </summary>
+        private void StartSeason() => Commit(retainedDraft);
+
+        /// <summary>
+        /// The details' commit: the same, as the houseguest the Play as button names - their own
+        /// retained edits if the player brought some back from the creator, their card if not.
+        /// A draft of somebody else used to win here too, so "Play as Emma" after building Robin
+        /// started the season as Robin, with Emma cast as one of the others.
+        /// </summary>
+        private void PlayAsChosen() => Commit(RetainedFor(string.IsNullOrEmpty(selectedId) ? null : CastTemplates.Find(selectedId)));
+
+        private void Commit(CharacterDraft authored)
         {
             var chosen = string.IsNullOrEmpty(selectedId) ? null : CastTemplates.Find(selectedId);
             var choice = new SeasonBuilder.Choice
@@ -1091,15 +1277,17 @@ namespace Gamesim.Presentation
                 HouseSize = SeasonBuilder.ClampHouseSize(roster, houseSize),
                 CustomHouseguests = customHouseguests.Select(profile => profile.Clone()).ToList(),
             };
-            if (chosen != null)
+            if (authored != null) choice.Authored = authored.Copy();
+            else if (chosen != null)
             {
                 choice.Authored = CharacterDraft.FromAppearance(chosen);
                 var catalog = (CharacterBodySource.Provider as IModularCharacterBodyProvider)?.Catalog;
                 if (catalog != null) choice.Authored.Appearance = catalog.Materialize(choice.Authored.Appearance);
             }
-            if (retainedDraft != null) choice.Authored = retainedDraft.Copy();
             var start = onStart;
             Hide();
+            // Closing for good: a failed start comes back through Resume, which builds a new studio.
+            ReleaseStudio();
             start?.Invoke(choice);
         }
 

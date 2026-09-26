@@ -97,7 +97,8 @@ namespace Gamesim.Editor
         /// <para>The first pass copied only subtrees whose every renderer used a dressing material,
         /// so a lamp shade came across without its cord and a frame not at all. This copies the
         /// subtree whole and then retires the earlier partial copies it now duplicates, matched by
-        /// name and world position.</para>
+        /// name and world position. One lamp stays behind: the pendant over the competition
+        /// course's centre lane (<see cref="IsCompetitionLamp"/>).</para>
         ///
         /// <para>The volume is the single largest visual difference between the two scenes: the
         /// prototype has bloom, tonemapping, colour adjustments and a vignette from
@@ -166,6 +167,8 @@ namespace Gamesim.Editor
                 UnityEngine.Object.DestroyImmediate(collider);
 
             // The first pass copied lamp shades and plants on their own; the subtree carries them now.
+            // Matched before the competition pendant is taken out below, so an older scene's lone
+            // copy of its shade is retired with the rest rather than left hanging on its own.
             var placed = copy.GetComponentsInChildren<Transform>(true);
             foreach (var earlier in root.Cast<Transform>().Where(t => t != copy.transform).ToList())
             {
@@ -176,7 +179,47 @@ namespace Gamesim.Editor
                 retired++;
             }
 
+            foreach (var lamp in copy.GetComponentsInChildren<Transform>(true).Where(IsCompetitionLamp).ToList())
+            {
+                UnityEngine.Object.DestroyImmediate(lamp.gameObject);
+                Debug.Log("[Gamesim] dressing · the competition pendant stays in the prototype.");
+            }
+
             return copy.GetComponentsInChildren<Renderer>(true).Length;
+        }
+
+        /// <summary>
+        /// The prototype's pendant over the competition course's centre lane, which the episode
+        /// house does not carry.
+        ///
+        /// <para>It hung its shade at 1.54 to 1.90 m over the anchor the setup pass stood a houseguest
+        /// on, with the course's stacking prop half a metre behind, so that houseguest began every
+        /// season with their head in it and anyone walking the lane put theirs through it. The product
+        /// owner's call was to remove it. The runtime takes it down from the scene that is already
+        /// saved (<c>EpisodeDirector.Seating.cs</c>); this keeps a regenerated scene from bringing it
+        /// back. Every other piece of decor is carried as it was.</para>
+        ///
+        /// <para>Matched by name and by where its parts hang - the lamp's own transform sits at the
+        /// origin and its shade and cord carry the placement - so a renamed or moved lamp is left
+        /// alone.</para>
+        /// </summary>
+        private const string CompetitionLamp = "Lamp - Competition";
+        private static readonly Vector3 CompetitionLampAt = new Vector3(0f, 0f, 15f);
+
+        private static bool IsCompetitionLamp(Transform node)
+        {
+            if (node == null || node.name != CompetitionLamp) return false;
+            var parts = node.GetComponentsInChildren<Renderer>(true);
+            return parts.Length > 0 && parts.All(part =>
+                new Vector2(part.transform.position.x - CompetitionLampAt.x, part.transform.position.z - CompetitionLampAt.z).magnitude <= 0.3f);
+        }
+
+        /// <summary>Whether a node is the competition pendant or one of its parts.</summary>
+        private static bool InsideCompetitionLamp(Transform node)
+        {
+            for (var at = node; at != null; at = at.parent)
+                if (IsCompetitionLamp(at)) return true;
+            return false;
         }
 
         private static bool EnsureVolume(Scene scene)
@@ -269,6 +312,8 @@ namespace Gamesim.Editor
             foreach (var candidate in source.GetComponentsInChildren<Transform>(true))
             {
                 if (candidate == source) continue;
+                // Its shade glows with Lamp Glow, so this pass would carry it on its own.
+                if (InsideCompetitionLamp(candidate)) continue;
                 if (!IsDressing(candidate, wanted)) continue;
                 if (taken.Any(already => candidate.IsChildOf(already))) continue;
                 taken.Add(candidate);

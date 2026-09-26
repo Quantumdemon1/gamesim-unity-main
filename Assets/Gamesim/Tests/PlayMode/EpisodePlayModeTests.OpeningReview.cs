@@ -55,6 +55,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(calls, Has.Count.EqualTo(2), "The second try is committed.");
             Assert.That(SequenceButtons(sequence, OpeningSequence.NextCaption), Has.Length.EqualTo(1), "and the card moves on as usual.");
+            Assert.That(SequenceTexts(sequence, "Prompt"), Is.Empty, "The reason goes with the question once the introduction is accepted.");
             sequence.SkipIntroductions();
             yield return SequenceWait(() => !sequence.IsPlaying);
         }

@@ -71,6 +71,9 @@ namespace Gamesim.Episode
             private Vector3 deck, door, mark, exit;
             private OpeningDoorSet set;
             private bool begun, ended;
+            // Who is waiting for the leaves to clear before walking through, and how open that is.
+            private string throughWhenClear;
+            private const float DoorClearOpenness = 0.35f;
 
             public bool Placed { get; private set; }
 
@@ -278,6 +281,7 @@ namespace Gamesim.Episode
                 if (director.npcMeetings != null) director.npcMeetings.EndOpeningStage();
                 if (director.player != null) director.player.ReleaseActivityMove(playerOwner);
                 legs.Clear();
+                throughWhenClear = null;
                 heading.Clear();
                 retrying.Clear();
                 begun = false;
@@ -285,10 +289,12 @@ namespace Gamesim.Episode
                 {
                     var visual = npc.GetComponent<CharacterPresentation>();
                     if (visual != null) { visual.SetFacing(float.NaN); visual.LookAt(null, 0f); }
+                    StopDancing(visual);
                 }
                 // The player too: a skip during their own moment on the mark left them facing the lens.
                 var own = Visual(director.projected.playerId);
                 if (own != null) { own.SetFacing(float.NaN); own.LookAt(null, 0f); }
+                StopDancing(own);
             }
 
             // ------------------------------------------------------------ walking
@@ -296,7 +302,20 @@ namespace Gamesim.Episode
             public bool OnDeck(string id) => Send(id, deck);
             public bool ToDoor(string id) => Send(id, door);
             public bool AtDoor(string id) => Arrived(id, door);
-            public bool ThroughDoor(string id) => Send(id, mark);
+            /// <summary>
+            /// Walks them through once the leaves are out of their way. The leaves shut flush and rattle
+            /// shut for 0.3 s before they swing, and a walk begun with the door was through a closed
+            /// leaf before it moved - the reference's leaves stand ajar with a slot down the middle, so
+            /// its walker could go at once. Held here, the walk starts a third of the way into the
+            /// swing, and the leaves are three quarters open by the time anybody reaches them.
+            /// </summary>
+            public bool ThroughDoor(string id)
+            {
+                if (!Placed || ended) return false;
+                if (set != null && set.Openness < DoorClearOpenness) { throughWhenClear = id; return true; }
+                throughWhenClear = null;
+                return Send(id, mark);
+            }
             public bool OnMark(string id) => Arrived(id, mark);
 
             public void OpenDoor() { if (set != null) set.Open(director.reducedMotion); }
@@ -309,8 +328,17 @@ namespace Gamesim.Episode
                 if (visual == null) return;
                 visual.SetFacing(90f);
                 if (director.cameraRig != null && director.cameraRig.ViewCamera != null) visual.LookAt(director.cameraRig.ViewCamera.transform, 2f);
-                if (id != director.projected.playerId) director.React(id, CharacterPresentation.Reaction.Cheered);
+                // A little dance on the mark while the name comes up; a body with no dance cheers.
+                if (visual.CanAct(CharacterPresentation.BodyActivity.Dancing)) visual.SetActivity(CharacterPresentation.BodyActivity.Dancing);
+                else if (id != director.projected.playerId) director.React(id, CharacterPresentation.Reaction.Cheered);
                 else visual.React(CharacterPresentation.Reaction.Cheered);
+            }
+
+            /// <summary>Stops a dance on the mark, and only a dance: whatever else the body is doing is not the stage's.</summary>
+            private static void StopDancing(CharacterPresentation visual)
+            {
+                if (visual != null && visual.Activity == CharacterPresentation.BodyActivity.Dancing)
+                    visual.SetActivity(CharacterPresentation.BodyActivity.None);
             }
 
             /// <summary>Off to the left, out of shot, and on to a place behind the camera where the house gathers.</summary>
@@ -318,6 +346,8 @@ namespace Gamesim.Episode
             {
                 var visual = Visual(id);
                 if (visual != null) visual.SetFacing(float.NaN);
+                StopDancing(visual);
+                if (throughWhenClear == id) throughWhenClear = null;
                 if (!gatherFor.TryGetValue(id, out var place))
                 {
                     place = gather[Mathf.Min(gatherFor.Count, gather.Count - 1)];
@@ -387,6 +417,12 @@ namespace Gamesim.Episode
             {
                 if (!Active) return;
                 if (begun && director.npcMeetings != null) director.npcMeetings.ResumeOpeningActors();
+                if (throughWhenClear != null && (set == null || set.Openness >= DoorClearOpenness))
+                {
+                    var id = throughWhenClear;
+                    throughWhenClear = null;
+                    Send(id, mark);
+                }
                 foreach (var id in retrying.Keys.ToList())
                 {
                     if (Time.unscaledTime > retrying[id]) { retrying.Remove(id); continue; }

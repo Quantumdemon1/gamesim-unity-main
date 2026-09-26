@@ -292,7 +292,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.InputEnabled, Is.True);
         }
 
-        /// <summary>The tour takes the keyboard on "Next": with "Skip tutorial" first, Enter left the tour.</summary>
+        /// <summary>The tour takes the keyboard on "Next": with "Skip Tutorial" first, Enter left the tour.</summary>
         [UnityTest]
         public IEnumerator Tutorial_KeyboardFocusLandsOnNext()
         {
@@ -303,6 +303,7 @@ namespace Gamesim.Tests.PlayMode
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             Assert.That(selected, Is.Not.Null);
             Assert.That(selected.name, Is.EqualTo("Next"));
+            Assert.That(selected.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("Next"), "The control that says Next, not the skip.");
             tutorial.Skip();
             yield return null;
         }

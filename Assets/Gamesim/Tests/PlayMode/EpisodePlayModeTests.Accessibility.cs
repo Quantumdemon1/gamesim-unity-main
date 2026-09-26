@@ -318,7 +318,19 @@ namespace Gamesim.Tests.PlayMode
             return Mathf.Abs(crown.y - feet.y) / camera.pixelHeight;
         }
 
-        private IEnumerator CaptureFraming(string name, bool settle = true)
+        /// <summary>
+        /// Photographs what the player would see - the view camera with every overlay canvas drawn
+        /// through it - into <c>{name}.png</c> beside the project, and fails a frame that did not
+        /// render.
+        ///
+        /// <para><paramref name="inspect"/>, when given, is handed the frame before it is thrown
+        /// away, while the overlays are still drawn through the camera: a
+        /// <see cref="RectTransform"/>'s world corners projected by the view camera are then its
+        /// pixels in the frame, which is how a caller asks whether a portrait or a card actually drew
+        /// where it stands (<see cref="AssertRegionHasContent"/>). A whole-frame check cannot tell a
+        /// face from the empty disc it lands in.</para>
+        /// </summary>
+        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null)
         {
             const int width = 1600, height = 900;
             var camera = cameraRig.ViewCamera;
@@ -373,6 +385,8 @@ namespace Gamesim.Tests.PlayMode
                 // dead camera, a culled canvas or a batchmode ScreenCapture produces, and all three
                 // have been mistaken for evidence on this project.
                 AssertNotBlank(readback, name);
+                // Before the finally: the frame is destroyed there and the canvases go back to overlays.
+                inspect?.Invoke(readback);
             }
             finally
             {

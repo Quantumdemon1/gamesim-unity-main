@@ -24,6 +24,14 @@ namespace Gamesim.Presentation
     /// walking in, and then the player introducing themselves to every houseguest in turn and
     /// reading each one's traits to pick the right approach. That is what this now plays.</para>
     ///
+    /// <para>The reference build is the GitHub web game (Quantumdemon1/gamesim, cloned at
+    /// D:/gamesim-web), whose Big Brother opening is live code there: <c>IntroSequence.tsx</c> and
+    /// <c>IntroBBEyeLogo.tsx</c> for the premiere, <c>tunnel/EntranceDoor.tsx</c> and
+    /// <c>tunnel/CameraEffects.tsx</c> for the door, then <c>HouseEntrySequence.tsx</c>,
+    /// <c>HouseWalkInSequence.tsx</c> and <c>MeetAndGreetPhase.tsx</c>, all under
+    /// src/components/game-phases. D:/gamesim-main is a Survivor conversion of it and is not the
+    /// reference for any of this.</para>
+    ///
     /// <para><b>Everything is skippable and every beat is recorded.</b> A sequence that replays on
     /// every load is the single worst thing a cinematic can do, so each beat commits
     /// <see cref="EpisodeCommandKind.MarkOpeningBeat"/> as it finishes and a season that has seen a
@@ -158,7 +166,29 @@ namespace Gamesim.Presentation
 
             /// <summary>Plays how a houseguest took the player's introduction.</summary>
             public Action<string, WebIntroductions.Outcome> GuestReacts;
+
+            /// <summary>Plays the house's click for a committed introduction, as the reference build clicks on a choice.</summary>
+            public Action Click;
+
+            /// <summary>
+            /// How long the introductions' new controls stay disarmed, in real seconds. Null is the
+            /// rule for play: 0.35 s for real input and none in batchmode. A test sets it to drive
+            /// the arming on purpose, or to 0 to take it out of the way.
+            /// </summary>
+            public float? ArmSeconds;
+
+            /// <summary>Which season of the show this is, for the title card's "Season N": 1 for a first season.</summary>
+            public int SeasonNumber = 1;
         }
+
+        /// <summary>
+        /// Whether the theme should wait: the house is still assembling behind the loading screen,
+        /// and the reference build starts its theme only once everything is ready.
+        /// </summary>
+        public bool MusicHeld { get; private set; }
+
+        /// <summary>Whether the intro's closing fade has begun, which the theme fades out under.</summary>
+        public bool MusicClosing { get; private set; }
 
         private CanvasGroup group;
         private CanvasScaler scaler;
@@ -266,6 +296,8 @@ namespace Gamesim.Presentation
             if (running != null) return;
             settings = plan ?? new Settings();
             WasSkipped = false;
+            MusicHeld = false;
+            MusicClosing = false;
 
             var seen = new HashSet<string>(alreadySeen ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
             remaining.Clear();
@@ -306,6 +338,9 @@ namespace Gamesim.Presentation
             if (running == null) return;
             if (CurrentBeat == OpeningBeat.MeetAndGreet || !IntroductionsPending) { Skip(); return; }
             StopAllCoroutines();
+            // The loading gate and the closing fade were stopped with everything else, and neither
+            // clears its own music cue once stopped.
+            ReleaseMusicCues();
             if (CurrentBeat == OpeningBeat.Tutorial) settings.CancelTutorial?.Invoke();
             WasSkipped = true;
             foreach (var beat in remaining.ToList())
@@ -369,6 +404,8 @@ namespace Gamesim.Presentation
             CurrentBeat = beat;
             CurrentGuestId = null;
             advancePending = false;
+            // A new beat is past the intro's loading and its closing fade, whichever one it follows.
+            ReleaseMusicCues();
             settings.BeatStarted?.Invoke(beat);
             switch (beat)
             {
@@ -412,8 +449,20 @@ namespace Gamesim.Presentation
             settings.MarkBeat?.Invoke(beat);
         }
 
+        /// <summary>
+        /// Lets go of both music cues: whatever reads them next hears the house, not a loading
+        /// screen or a fade that a skip, a cancel or the next beat has already ended.
+        /// </summary>
+        private void ReleaseMusicCues()
+        {
+            MusicHeld = false;
+            MusicClosing = false;
+        }
+
         private void Finish()
         {
+            // Before the caller is told, so the music it picks on hearing it is the house's.
+            ReleaseMusicCues();
             Clear();
             Hide();
             var rig = settings?.Rig;
@@ -542,6 +591,15 @@ namespace Gamesim.Presentation
 
         /// <summary>The reference build's title ease, a fast start that settles: its cubic-bezier(0.16, 1, 0.3, 1).</summary>
         private static float Settle(float t) => t >= 1f ? 1f : 1f - Mathf.Pow(2f, -10f * t);
+
+        /// <summary>
+        /// The reference build's "easeOut", near enough: quick off the mark and slowing into place,
+        /// which its lower third slides and scales on.
+        /// </summary>
+        private static float OutEase(float t) => 1f - (1f - t) * (1f - t);
+
+        /// <summary>Straight through: for what counts rather than moves - letters typed, a flash's envelope.</summary>
+        private static float Straight(float t) => t;
 
         // ---------------------------------------------------------------- pieces
 

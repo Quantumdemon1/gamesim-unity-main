@@ -153,9 +153,14 @@ namespace Gamesim.Editor
             };
             var cast = ContentCatalog.Create(1u);
             var npcs = new List<HouseNpc> { maya };
+            // taylor-kim's spot was (0, 0, 15): on the competition course's centre lane, heels in the
+            // stacking prop's plinth and head under the prototype's pendant. It stands beside the lane
+            // now. The saved EpisodeHouse scene still has the old anchor and is never re-saved to fix
+            // it, so the runtime moves that slot to this same spot (EpisodeDirector.Seating.cs,
+            // CourseAnchorMovedTo); keep the two in step.
             var spawnPositions = new Dictionary<string, Vector3>
             {
-                { "taylor-kim", new Vector3(0f, 0f, 15f) },
+                { "taylor-kim", new Vector3(1.1f, 0f, 14.8f) },
                 { "jamie-roberts", new Vector3(4f, 0f, -7f) },
                 { "casey-wilson", new Vector3(-8f, 0f, -7f) },
                 { "riley-johnson", new Vector3(-7f, 0f, 2f) }

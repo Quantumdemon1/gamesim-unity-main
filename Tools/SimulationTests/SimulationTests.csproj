@@ -84,6 +84,14 @@
     <Compile Include="$(EditMode)WritingPassTests.cs" />
 
     <!--
+      One file from outside the simulation, because it is as Unity-free as the simulation is: the
+      music's fade arithmetic, which Gamesim.Runtime compiles and uses nothing but System.Math. Only
+      a file with no `using UnityEngine` belongs here; a presentation file that grows one leaves.
+    -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
+    <Compile Include="$(EditMode)MusicFadeTests.cs" />
+
+    <!--
       Several parity tests already carry an #else branch for running outside the editor: without
       UNITY_EDITOR they read their fixture from beside the test binary. Put them there.
     -->

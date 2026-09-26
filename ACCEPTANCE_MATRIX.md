@@ -305,7 +305,8 @@ Two things this pass changed that affect other sections:
 - **The camera now ships at 24, not 48.** C and D figures taken at 48 are stale; the cast reads at
   roughly 2.7%–4.6% of frame height rather than 1.8%–2.2%. See `PLAYTEST_PROTOCOL.md`.
 - **The first-run tour changes what E2 measures.** It is the intervention that criterion exists to
-  detect the absence of. Run E2 with it off, or record that it was on.
+  detect the absence of. Run E2 with it off, or record that it was on. It now plays at every
+  season's opening, so "off" means skipping it on sight (see `PLAYTEST_PROTOCOL.md`).
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

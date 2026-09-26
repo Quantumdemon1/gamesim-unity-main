@@ -124,6 +124,32 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// A take that walks keeps its travel off the body: its horizontal motion is root motion,
+        /// which nothing applies, so the body stays where the agent stands. Baked into the pose like
+        /// every other take's, the stop take carried each houseguest 0.8 m past where they had
+        /// stopped - through the opening's front door while it was still shut - held them there,
+        /// then snapped them back as it gave way to idle. Held two ways: the rule the importer
+        /// applies, and the metas it wrote.
+        /// </summary>
+        [Test]
+        public void ATakeThatWalksKeepsItsTravelOffTheBody()
+        {
+            Assert.That(AuthoredAssetImporter.TravellingTakes, Does.Contain("WalkStop"), "the stop take walks two steps as it stops");
+            foreach (var take in HumanoidClipWiring.Takes)
+            {
+                bool walks = AuthoredAssetImporter.TravellingTakes.Contains(take);
+                var rule = new ModelImporterClipAnimation { name = take, lockRootPositionXZ = walks };
+                AuthoredAssetImporter.ApplyTakeRules(rule, true);
+                Assert.That(rule.lockRootPositionXZ, Is.EqualTo(!walks), take + (walks
+                    ? " walks, so its travel is root motion rather than baked into where the body is drawn"
+                    : " stays over its root, so its motion is baked into the pose"));
+                var written = ((ModelImporter)AssetImporter.GetAtPath(HumanoidClipWiring.Path(take))).clipAnimations;
+                Assert.That(written[0].lockRootPositionXZ, Is.EqualTo(rule.lockRootPositionXZ),
+                    take + "'s meta was written by an older rule - force-reimport it");
+            }
+        }
+
+        /// <summary>
         /// The library's clips arrive cut from their takes under the same rule as the mocap, and
         /// the activities they play start from anywhere and stop when their cue goes.
         /// </summary>

@@ -138,7 +138,9 @@ namespace Gamesim.Episode
             }
             // After the save is loaded, because the cast size is a property of the season being
             // played rather than of the scene, and a restored save may hold a different house from
-            // the one a fresh season would create.
+            // the one a fresh season would create. The competition pendant comes down first: it hung
+            // at head height over the anchor body slot 1 was authored on (EpisodeDirector.Seating.cs).
+            StrikeCompetitionLamp();
             SeatCast(engine.Snapshot);
 
             audioBed = HouseAudio.Attach(gameObject);
@@ -160,6 +162,8 @@ namespace Gamesim.Episode
             keyCeremony = KeyCeremony.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
             tutorial.RememberCompletion = SaveRootOverride == null;
+            // The reference build's rising blip on every step of the tour.
+            tutorial.StepSound = () => { if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.TutorialStep); };
             opening = OpeningSequence.Attach(gameObject);
             // Both take the keyboard while they are up: the opening's Continue and skip, and the
             // tour's Next, rather than a HUD control hidden underneath them.
@@ -274,6 +278,9 @@ namespace Gamesim.Episode
                 positions[i] = authored ? initialNpcPositions[i] : housemates[i].transform.position;
                 rotations[i] = authored ? initialNpcRotations[i] : housemates[i].transform.rotation;
             }
+            // The one anchor the scene put on the competition course moves beside it, before anything
+            // reads the anchors: a load, the opening's put-back and the introductions' framing all agree.
+            SeatOffTheCourse(positions, rotations);
             initialNpcPositions = positions;
             initialNpcRotations = rotations;
         }
@@ -325,6 +332,10 @@ namespace Gamesim.Episode
             TickTravelDip();
             TickTravelBeacons();
             TickSleepLight();
+            // The music follows what is on screen every frame, before anything can return early:
+            // the opening's loading gate and its closing fade change in the middle of a beat, with
+            // nothing rendering. A state the bed is already in costs a comparison.
+            if (IsReady) ApplyMusic();
             if (IsReady) { TickCompanion(); TickActivityEffects(); TickRoomArrival(); }
             // The houseguest the player is with keeps their plate up at any distance.
             if (housemates != null)
@@ -339,7 +350,7 @@ namespace Gamesim.Episode
             // open. Tab does the same only when no HUD control is focused - a mouse player who
             // clicked the house - because with one focused, Tab is the keyboard ring's, and the HUD
             // keeps a control focused whenever it can.
-            if (IsReady && !IsPanelOpen && !challengeActive && cameraRig != null)
+            if (IsReady && !IsPanelOpen && !challengeActive && cameraRig != null && !TourIsUp)
             {
                 var actions = cameraRig.Actions;
                 bool nothingFocused = EventSystem.current == null || EventSystem.current.currentSelectedGameObject == null;
@@ -401,6 +412,9 @@ namespace Gamesim.Episode
                 // The opening before anything: it draws over every screen, and Escape underneath it
                 // used to close panels and release the shot it was holding.
                 if (OpeningOwnsHouse) { OpeningMenuPressed(); return; }
+                // The tour offered outside the opening - an imported season - dims the house and
+                // takes the pointer; Escape closes it, as the tour's own card says.
+                if (TourIsUp) { tutorial.Skip(); return; }
                 // Topmost first. The main menu sits above the cast screen, which sits above the
                 // HUD; closing a panel underneath either of them would leave a screen on top of the
                 // house with nothing behind it. The menu itself ignores Escape when there is no
@@ -423,7 +437,7 @@ namespace Gamesim.Episode
                 }
                 return;
             }
-            if (shortcuts != null && !hud.IsTyping && !OpeningOwnsHouse)
+            if (shortcuts != null && !hud.IsTyping && !OpeningOwnsHouse && !TourIsUp)
             {
                 if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
@@ -682,8 +696,10 @@ namespace Gamesim.Episode
                 if (phaseOpen && wasYard != EpisodeEngine.IsCompetition(result.state.phase)) ClosePanels();
                 var kind = result.state.events.LastOrDefault()?.kind;
                 // A beat of the opening being recorded is bookkeeping, not a decision: it clicked
-                // under every card of the titles.
-                if (command.kind != EpisodeCommandKind.MarkOpeningBeat)
+                // under every card of the titles. An introduction clicks through the opening's own
+                // hook, once, as the reference clicks on the choice; clicking here too played the
+                // same click twice in one frame.
+                if (command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
                     audioBed.PlayCue(kind == "winner" ? HouseAudio.Cue.Finale : kind == "eviction" ? HouseAudio.Cue.Eviction :
                         kind == "competition" ? HouseAudio.Cue.CompetitionWin : kind == "nomination" ? HouseAudio.Cue.Nomination :
                         kind == "veto" ? HouseAudio.Cue.Veto : HouseAudio.Cue.Button);

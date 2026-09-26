@@ -72,14 +72,17 @@ which of those three dominated.
 "Unaided" means no hints, no answering questions about controls or what to do next. Sit where you can
 see the screen and stay quiet.
 
-**Decide the tutorial before the first participant, and record it.** The build now carries a
-seven-step first-run tour that names the cast rail, the week, the objective panel, movement, the
-notebook and the episode screen. It is exactly the intervention this criterion exists to detect the
-absence of, so it changes what E2 measures rather than how well the build does on it:
+**Decide the tutorial before the first participant, and record it.** The build carries the
+reference build's seven-step tour - the welcome and controls, the top bar, the side rail, the episode
+screen, the cast strip, the phase panels, and a closing card - with a dimmed spotlight on each. Like
+the reference, it plays at every new season's opening, seen before or not. It is exactly the
+intervention this criterion exists to detect the absence of, so it changes what E2 measures rather
+than how well the build does on it:
 
-- **Tour off** — the honest reading of "unaided", and the number comparable to the V6 record. Clear
-  it with `PlayerPrefs.DeleteKey("Gamesim.TutorialSeen")` per participant to guarantee a first run,
-  then skip it on sight, or run a build with it disabled.
+- **Tour off** — the honest reading of "unaided", and the number comparable to the V6 record. Press
+  "Skip Tutorial" (or Esc) the moment it appears, before the participant reads it. The
+  `Gamesim.TutorialSeen` preference no longer holds it back at the opening; it only records a finished
+  tour for the one offered to a season imported mid-way.
 - **Tour on** — a fair question about the shipping product, but a different one. If you run it this
   way, write "tour on" beside the number.
 

@@ -27,7 +27,10 @@ namespace Gamesim.Episode
         /// screens to disagree about what is playing.</para>
         ///
         /// <para>Safe to call from anywhere and often: <see cref="HouseAudio.SetMusic"/> ignores a
-        /// state it is already in, so this does not restart the track on every render.</para>
+        /// state it is already in, so this does not restart the track on every render. The director
+        /// asks it every frame as well (Update), because two of its inputs - the opening's loading
+        /// gate and its closing fade - change in the middle of a beat, with nothing rendering; the
+        /// question costs a handful of reads and a comparison.</para>
         /// </summary>
         private void ApplyMusic()
         {
@@ -37,7 +40,11 @@ namespace Gamesim.Episode
                          || (castSelect != null && castSelect.IsShowing)
                          || (characterCreator != null && characterCreator.IsShowing)
                          || (seasonReport != null && seasonReport.IsShowing);
-            audioBed.SetMusic(MusicFor(musicOn, setup, opening != null && opening.IsPlaying, opening != null ? opening.CurrentBeat : null));
+            // A skipped show has no theme left to play: the skip hands over to the season's bed at
+            // the press, not after the house has been put back behind black.
+            bool show = opening != null && opening.IsPlaying && !opening.WasSkipped;
+            audioBed.SetMusic(MusicFor(musicOn, setup, show, opening != null ? opening.CurrentBeat : null,
+                opening != null && opening.MusicHeld, opening != null && opening.MusicClosing));
         }
 
         /// <summary>
@@ -47,10 +54,23 @@ namespace Gamesim.Episode
         /// only and background music from the house entry on; played under all five beats, the
         /// theme's sixteen-second fanfare looped for minutes under the introductions.
         /// </summary>
-        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat)
+        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat) =>
+            MusicFor(musicOn, setupShowing, openingPlaying, beat, themeHeld: false, themeClosing: false);
+
+        /// <summary>
+        /// The same rule with the intro's two moments of silence in it, the reference build's:
+        /// nothing while the loading gate waits for the house to be built (it starts its theme only
+        /// once everything is ready), and the theme let go - a 1.5 s fade - once the intro's closing
+        /// fade to black begins (its theme "fades on transition"). Both mean something only under the
+        /// intro; the season's bed that follows cuts whatever is left of the theme and rises from
+        /// silence.
+        /// </summary>
+        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat,
+            bool themeHeld, bool themeClosing)
         {
             if (!musicOn || setupShowing) return HouseAudio.Music.Silent;
-            return openingPlaying && beat == OpeningBeat.Intro ? HouseAudio.Music.Theme : HouseAudio.Music.Season;
+            if (!openingPlaying || beat != OpeningBeat.Intro) return HouseAudio.Music.Season;
+            return themeHeld || themeClosing ? HouseAudio.Music.Silent : HouseAudio.Music.Theme;
         }
 
         private void Settings(EpisodeState state)
@@ -366,7 +386,7 @@ namespace Gamesim.Episode
             if (voteReveal != null) voteReveal.FontScale = largeText ? 1.2f : 1;
             if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
             if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
-            if (tutorial != null) tutorial.FontScale = largeText ? 1.2f : 1;
+            if (tutorial != null) { tutorial.FontScale = largeText ? 1.2f : 1; tutorial.ReducedMotion = reducedMotion; }
             if (opening != null) opening.FontScale = largeText ? 1.2f : 1;
             if (seasonReport != null) seasonReport.FontScale = largeText ? 1.2f : 1;
             if (castSelect != null) { castSelect.FontScale = largeText ? 1.2f : 1; castSelect.ReducedMotion = reducedMotion; }

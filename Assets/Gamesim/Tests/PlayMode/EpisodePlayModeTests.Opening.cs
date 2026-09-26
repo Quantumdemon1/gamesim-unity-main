@@ -65,6 +65,9 @@ namespace Gamesim.Tests.PlayMode
                 // click nobody can make would hang the run.
                 RunTutorial = done => done(),
                 ReducedMotion = reducedMotion,
+                // No arming either: the introductions' controls are live on the frame after they
+                // are built, in the editor as in batchmode. The tests of the arming set it themselves.
+                ArmSeconds = 0f,
             };
 
         private static IEnumerator Until(OpeningSequence sequence)
@@ -590,9 +593,10 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The house-entry card counts the house in and reads the season's own opening line. The
-        /// reference build's "...competition starting soon" is gone: three beats follow this card
-        /// now, and promising a competition that is several minutes away is a promise the show breaks.
+        /// The house-entry card is the reference build's - "Welcome to the House", and the house
+        /// counted in under it - and the season's own opening line is read out with it. The
+        /// reference's "...competition starting soon" is gone: three beats follow this card now, and
+        /// promising a competition that is several minutes away is a promise the show breaks.
         /// </summary>
         [UnityTest]
         public IEnumerator Opening_TheHouseEntryCardReadsTheSeasonsArrivalLine()
@@ -607,11 +611,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(sequence.CurrentBeat, Is.EqualTo(OpeningBeat.HouseEntry));
 
             var texts = SequenceLabels(sequence).Select(label => label.text ?? string.Empty).ToArray();
+            Assert.That(texts, Does.Contain("Welcome to the House"), "The reference's welcome heads the card.");
             Assert.That(texts, Does.Contain("8 Houseguests have entered"));
-            Assert.That(texts, Does.Contain(plan.ArrivalLine), "The card reads the season's arrival line word for word.");
+            Assert.That(texts, Does.Contain(plan.ArrivalLine), "The season's arrival line is read out word for word.");
             Assert.That(texts.Where(text => text.IndexOf("starting soon", StringComparison.OrdinalIgnoreCase) >= 0), Is.Empty,
                 "Nothing promises a competition that is three beats away.");
-            Assert.That(texts, Does.Not.Contain("Welcome to the House"), "The group card said that seven seconds ago.");
 
             sequence.Skip();
             yield return null;
@@ -649,8 +653,8 @@ namespace Gamesim.Tests.PlayMode
                 .Select(label => label.text).ToList();
             CollectionAssert.AreEqual(alex.traits, chips, "Every trait is on the card: reading them is how the player chooses.");
             CollectionAssert.AreEqual(
-                new[] { "“" + WebIntroductions.IntroLine(plan.Seed, alex.id, alex.name, alex.traits) + "”" },
-                SequenceTexts(card, "Quote"), "The houseguest's own line, in quote marks.");
+                new[] { "\"" + WebIntroductions.IntroLine(plan.Seed, alex.id, alex.name, alex.traits) + "\"" },
+                SequenceTexts(card, "Quote"), "The houseguest's own line, in straight quote marks as the reference build prints it.");
             CollectionAssert.AreEqual(new[] { WebIntroductions.Prompt }, SequenceTexts(card, "Prompt"));
 
             var slot = SequenceNode(card, "Choices");
@@ -705,7 +709,7 @@ namespace Gamesim.Tests.PlayMode
                 "The introduction is committed once, however many times it is pressed.");
             string reaction = WebIntroductions.Reaction(plan.Seed, alex.id, alex.name, alex.traits,
                 WebIntroductions.Find(WebIntroductions.Calculated));
-            Assert.That(SequenceLabels(sequence).Select(label => label.text), Does.Contain(alex.name + ": “" + reaction + "”"),
+            Assert.That(SequenceLabels(sequence).Select(label => label.text), Does.Contain(alex.name + ": \"" + reaction + "\""),
                 "The houseguest answers in their own words.");
             var everything = sequence.GetComponentsInChildren<TMP_Text>(true).Select(label => label.text ?? string.Empty).ToArray();
             Assert.That(everything.Where(text => text.Contains("+3")), Is.Empty, "No number says how it went.");

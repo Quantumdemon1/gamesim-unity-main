@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.House;
+using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using UnityEngine;
@@ -13,13 +14,18 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         /// <summary>
-        /// The walk-in's crane, the reference build's three keys: inside the house looking out at the
-        /// yard door, up over the bedrooms, and over the top of the whole house, held. The first is
-        /// turned fifteen degrees off the doorway so its boom clears the bedroom wall.
+        /// The walk-in's camera, the reference build's four keys (D:/gamesim-web
+        /// HouseWalkInSequence.tsx:81-135), each one's seconds the move onto it: pulled back inside the
+        /// house looking out at the yard door, pushed in toward the doorway over a second - the
+        /// reference's door-opening zoom, two metres nearer and a fifth of a metre lower - then up
+        /// over the bedrooms over three, and over the top of the whole house over seven, held. The
+        /// first two are turned fifteen degrees off the doorway so the boom clears the bedroom wall.
+        /// <see cref="OpeningSequence.WalkInSchedule"/> times them.
         /// </summary>
         public static readonly HouseCameraRig.Shot[] WalkInKeys =
         {
-            new HouseCameraRig.Shot { Focus = new Vector3(0f, 1.2f, 10f), Distance = 5f, Pitch = 10f, Yaw = 15f, FieldOfView = 45f, Seconds = 0.01f },
+            new HouseCameraRig.Shot { Focus = new Vector3(0f, 1.2f, 10f), Distance = 7f, Pitch = 9f, Yaw = 15f, FieldOfView = 45f, Seconds = 0.01f },
+            new HouseCameraRig.Shot { Focus = new Vector3(0f, 1.2f, 10f), Distance = 5f, Pitch = 10f, Yaw = 15f, FieldOfView = 45f, Seconds = 1f },
             new HouseCameraRig.Shot { Focus = new Vector3(-1.5f, 1f, 5f), Distance = 11f, Pitch = 38f, Yaw = 15f, FieldOfView = 45f, Seconds = 3f },
             new HouseCameraRig.Shot { Focus = new Vector3(0.075f, 0f, 0f), Distance = 32f, Pitch = 62f, Yaw = 0f, FieldOfView = 45f, Seconds = 7f },
         };
@@ -31,6 +37,9 @@ namespace Gamesim.Episode
 
         /// <summary>Whether the opening has the house: panels, shortcuts and the camera are its until it ends.</summary>
         private bool OpeningOwnsHouse => opening != null && opening.IsPlaying;
+
+        /// <summary>Whether the tour is up: it dims the house, and the house's keys wait until it is closed.</summary>
+        private bool TourIsUp => tutorial != null && tutorial.IsShowing;
 
         /// <summary>
         /// Starts the first-run tour, once, for a player who has never seen it.
@@ -65,8 +74,8 @@ namespace Gamesim.Episode
         /// staged only when asked, and with every card held until <see cref="OpeningSequence.Advance"/>
         /// when asked, so a frame can be photographed.
         /// </summary>
-        public void PlayOpeningForVerification(bool holdUntilAdvanced = false, bool stage = false, bool holdHeadless = false) =>
-            StartOpening(stage, holdUntilAdvanced, verification: true, holdHeadless);
+        public void PlayOpeningForVerification(bool holdUntilAdvanced = false, bool stage = false, bool holdHeadless = false, float? armSeconds = null) =>
+            StartOpening(stage, holdUntilAdvanced, verification: true, holdHeadless, armSeconds);
 
         /// <summary>Whether the opening's front door is up with the house placed behind it. A read, for tests.</summary>
         public bool IsOpeningStaged => openingStage != null && openingStage.Active;
@@ -77,7 +86,7 @@ namespace Gamesim.Episode
         /// <summary>The opening sequence, for tests and the verification tools.</summary>
         public OpeningSequence Opening => opening;
 
-        private void StartOpening(bool stage, bool holdUntilAdvanced, bool verification, bool holdHeadless = false)
+        private void StartOpening(bool stage, bool holdUntilAdvanced, bool verification, bool holdHeadless = false, float? armSeconds = null)
         {
             if (opening == null || (Application.isBatchMode && !verification)) { OfferTutorial(); return; }
             if (opening.IsPlaying) return;
@@ -90,6 +99,7 @@ namespace Gamesim.Episode
             openingFramedGuest = false;
             var plan = OpeningPlan(stage, holdUntilAdvanced, verification);
             plan.HoldHeadless = holdHeadless;
+            plan.ArmSeconds = armSeconds;
             opening.Play(projected.openingBeatsSeen, plan);
             if (!opening.IsPlaying) return;
             SetPlatesSuppressed(true);
@@ -112,9 +122,12 @@ namespace Gamesim.Episode
                 Rig = cameraRig,
                 WalkInKeys = WalkInKeys,
                 Stage = openingStage,
+                // The tour at every season's opening, as the reference build shows it in every new
+                // game's first week - seen before or not; its skip is one press away. Never in
+                // batchmode, for the reason OfferTutorial gives.
                 RunTutorial = done =>
                 {
-                    OfferTutorial();
+                    if (tutorial != null && !Application.isBatchMode && !tutorial.IsShowing) tutorial.Show(FindChrome);
                     if (tutorial == null || !tutorial.IsShowing) { done(); return; }
                     StartCoroutine(WaitForTutorial(done));
                 },
@@ -134,7 +147,25 @@ namespace Gamesim.Episode
                 Introduced = id => projected != null && EpisodeEngine.HasIntroduced(projected, id),
                 FrameGuest = FrameForIntroduction,
                 GuestReacts = ReactToIntroduction,
+                Click = () => { if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.Button); },
+                SeasonNumber = SeasonNumberFor(state),
             };
+        }
+
+        /// <summary>
+        /// Which season of the show this is for the player: the finished seasons in their career
+        /// record, this one aside, plus one. Presentation only - it reads the career file, never the
+        /// season - and a record that cannot be read counts as none.
+        /// </summary>
+        private int SeasonNumberFor(EpisodeState state)
+        {
+            if (career == null || state == null) return 1;
+            try
+            {
+                var record = career.Load();
+                return 1 + (record?.seasons?.Count(season => season != null && season.sessionId != state.sessionId) ?? 0);
+            }
+            catch (Exception error) when (SaveJson.IsExpected(error)) { return 1; }
         }
 
         private IEnumerator WaitForTutorial(Action done)
@@ -171,6 +202,9 @@ namespace Gamesim.Episode
                 {
                     var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                     if (visual != null) { visual.SetFacing(float.NaN); visual.LookAt(null, 0f); }
+                    // A dance for an introduction that landed ends with the opening, not in free time.
+                    if (visual != null && visual.Activity == CharacterPresentation.BodyActivity.Dancing)
+                        visual.SetActivity(CharacterPresentation.BodyActivity.None);
                 }
             var own = player != null ? player.GetComponentInChildren<CharacterPresentation>() : null;
             if (own != null) { own.SetFacing(float.NaN); own.LookAt(null, 0f); }
@@ -345,29 +379,62 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// How a houseguest takes the player's introduction, in the body: a cheer for one that
-        /// landed, a word for a polite one, a flash of temper for one that clashed. The card says the
-        /// rest; the reference build's meet had no bodies to do this with.
+        /// How a houseguest takes the player's introduction, in the body: a little dance for one
+        /// that landed, a word for a polite one, a flash of temper for one that clashed. The card
+        /// says the rest; the reference build's meet had no bodies to do this with. A body whose
+        /// controller has no dance, or who is sitting down, cheers instead.
         /// </summary>
         private void ReactToIntroduction(string id, WebIntroductions.Outcome outcome)
         {
-            if (outcome == WebIntroductions.Outcome.Match) { React(id, CharacterPresentation.Reaction.Cheered); return; }
             var body = BodyFor(id);
             var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
-            if (visual != null) StartCoroutine(ReactFor(visual, outcome == WebIntroductions.Outcome.Clash));
+            if (outcome == WebIntroductions.Outcome.Match && (visual == null || visual.IsSeated || !visual.CanAct(CharacterPresentation.BodyActivity.Dancing)))
+            {
+                React(id, CharacterPresentation.Reaction.Cheered);
+                return;
+            }
+            if (visual != null) StartCoroutine(ReactFor(visual, outcome));
         }
 
-        private static IEnumerator ReactFor(CharacterPresentation visual, bool tense)
+        private static IEnumerator ReactFor(CharacterPresentation visual, WebIntroductions.Outcome outcome)
         {
-            if (tense) visual.SetArguing(true); else visual.SetTalking(true);
+            Set(visual, outcome, true);
             float waited = 0f;
             while (waited < IntroductionReaction && visual != null) { waited += Time.unscaledDeltaTime; yield return null; }
-            if (visual == null) yield break;
-            if (tense) visual.SetArguing(false); else visual.SetTalking(false);
+            if (visual != null) Set(visual, outcome, false);
         }
 
+        private static void Set(CharacterPresentation visual, WebIntroductions.Outcome outcome, bool on)
+        {
+            switch (outcome)
+            {
+                case WebIntroductions.Outcome.Match:
+                    // Let go only if it is still this dance: something else may have taken the body since.
+                    if (on) visual.SetActivity(CharacterPresentation.BodyActivity.Dancing);
+                    else if (visual.Activity == CharacterPresentation.BodyActivity.Dancing) visual.SetActivity(CharacterPresentation.BodyActivity.None);
+                    break;
+                case WebIntroductions.Outcome.Clash: visual.SetArguing(on); break;
+                default: visual.SetTalking(on); break;
+            }
+        }
+
+        /// <summary>The player's selection disc, named as the scene builds it under the player.</summary>
+        public const string PlayerMarkerName = "Selected player marker";
+
+        /// <summary>
+        /// The house's labels down for the show and up again after it: the houseguests' name plates,
+        /// and the disc under the player, which stood in the doorway under a shut front door and
+        /// rode through every reveal at the player's feet.
+        /// </summary>
         private void SetPlatesSuppressed(bool suppressed)
         {
+            if (player != null)
+                foreach (var part in player.GetComponentsInChildren<Transform>(true))
+                    if (part.name == PlayerMarkerName)
+                    {
+                        var disc = part.GetComponent<Renderer>();
+                        if (disc != null) disc.enabled = !suppressed;
+                    }
             if (housemates == null) return;
             foreach (var npc in housemates)
                 if (npc != null) npc.PlateSuppressed = suppressed;

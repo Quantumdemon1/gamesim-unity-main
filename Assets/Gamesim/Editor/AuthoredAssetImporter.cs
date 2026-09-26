@@ -310,7 +310,10 @@ namespace Gamesim.Editor
             clip.loopPose = loop;
             clip.lockRootRotation = true;
             clip.lockRootHeightY = true;
-            clip.lockRootPositionXZ = true;
+            // Baked into the pose, a take's travel moves the body away from its root; a take that
+            // walks keeps it as root motion instead, which nothing applies - the agent is where a
+            // body stands. See TravellingTakes.
+            clip.lockRootPositionXZ = !TravellingTakes.Contains(clip.name);
             // A mocap take is turned to face the way its body faces. "Original" kept the heading
             // stored in the file, and the Mixamo files store one about 180 degrees from Unity's
             // forward: every walk, talk, sit and reaction played facing away from the way the
@@ -323,6 +326,18 @@ namespace Gamesim.Editor
             clip.keepOriginalPositionY = true;
             clip.keepOriginalPositionXZ = true;
         }
+
+        /// <summary>
+        /// Takes whose body walks somewhere as they play. Every other take stays over its root,
+        /// so baking its horizontal motion into the pose is harmless and keeps a talk's sway. A take
+        /// that walks, baked the same way, carries the visible body ahead of the root while the
+        /// agent stands still: the stop take walked every houseguest 0.8 m past where they stopped
+        /// and held them there, then snapped them back as it gave way to idle - through the front
+        /// door while it was still shut, and into whatever stood 0.8 m ahead in the house.
+        /// Measured on a UMA body at the opening's door mark: hips at x -3.04 with the root at -3.85.
+        /// </summary>
+        public static readonly System.Collections.Generic.ISet<string> TravellingTakes =
+            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal) { "WalkStop", "WalkTurn180" };
 
         /// <summary>
         /// Humanoid takes whose body lies or swims, where "Based Upon: Body Orientation" means

@@ -9,7 +9,8 @@ namespace Gamesim.Presentation
     /// The front door the houseguests come through on the first night: a facade, a pair of doors and
     /// the light behind them, standing in the west yard for the length of the intro and struck after it.
     ///
-    /// <para>It ports the reference build's <c>EntranceDoor</c> - the rattle before the doors give, the
+    /// <para>It ports the reference build's <c>EntranceDoor</c> (D:/gamesim-web
+    /// src/components/game-phases/tunnel/EntranceDoor.tsx) - the rattle before the doors give, the
     /// swing, the flood of light over the threshold, the sparkles falling past the frame and the eye
     /// pulsing over it - into the real house, so each reveal happens in the yard the guest is about to
     /// live in rather than in a tunnel that exists for twenty seconds. The stage decides who walks
@@ -72,7 +73,8 @@ namespace Gamesim.Presentation
         private const float LeafWidth = 1.1f;
         private const float LeafHeight = 2.6f;
         private const float LeafThickness = 0.08f;
-        private const float SignCapHeight = 0.22f;
+        private const float SignCapHeight = 0.18f;
+        private const float SignLineCapHeight = 0.075f;
 
         private const float OpenYaw = 80f;
         private const float JitterDegrees = 1.7f;
@@ -404,7 +406,14 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// The wordmark over the door, in 3D text: the reference's sign was a blank white bar.
+        /// The show's name over the door, in 3D text, as the title card and the menu draw it: the
+        /// lockup "GAMESIM" over a letterspaced "THE HOUSE" - Gamesim: The House. The reference's sign
+        /// was a blank white bar.
+        ///
+        /// <para>Fitted between the crown and the eye: Midline centres the letters themselves, so the
+        /// word's capitals span 3.01-3.19 m and the line's 2.88-2.95 m - clear of the crown's top at
+        /// 2.8 m and the eye's quad at 3.25 m - and each runs well inside the 2.3 m between the jambs.
+        /// A single word at 0.4 m ran 3.4 m, wider than the frame, and covered the eye.</para>
         ///
         /// <para>Turned to yaw 270 - the door camera's own yaw - because text reads from its local -z,
         /// so a sign reads left to right for a camera sharing its rotation. At yaw 90 it would face into
@@ -412,34 +421,42 @@ namespace Gamesim.Presentation
         /// </summary>
         private void BuildSign()
         {
-            var sign = new GameObject("Sign", typeof(TextMeshPro));
+            var word = SignText("Sign", Localisation.Text("GAMESIM"), 3.10f, SignCapHeight, 8f, UiTheme.Weight.Bold, 0.8f);
+            word.enableVertexGradient = true;
+            var top = UiTheme.Hex("6CC0FF");
+            var bottom = UiTheme.Hex("3A86FF");
+            word.colorGradient = new VertexGradient(top, top, bottom, bottom);
+
+            var line = SignText("Sign line", Localisation.Text("THE HOUSE"), 2.915f, SignLineCapHeight, 60f, UiTheme.Weight.SemiBold, 0.3f);
+            line.color = UiTheme.Accent;
+        }
+
+        /// <summary>One line of the sign, its capitals <paramref name="capHeight"/> metres tall and centred at <paramref name="height"/>.</summary>
+        private TextMeshPro SignText(string name, string text, float height, float capHeight, float spacing, UiTheme.Weight weight, float boxHeight)
+        {
+            var sign = new GameObject(name, typeof(TextMeshPro));
             sign.layer = 0;
             sign.transform.SetParent(transform, false);
-            sign.transform.localPosition = new Vector3(-3.18f, 3.02f, DoorCentre.z);
+            sign.transform.localPosition = new Vector3(-3.18f, height, DoorCentre.z);
             sign.transform.localRotation = FacingYard;
             sign.transform.localScale = Vector3.one;
 
             var label = sign.GetComponent<TextMeshPro>();
-            var bold = UiTheme.Font(UiTheme.Weight.Bold);
-            if (bold != null) label.font = bold;
+            var font = UiTheme.Font(weight);
+            if (font != null) label.font = font;
             label.richText = false;
             label.textWrappingMode = TextWrappingModes.NoWrap;
             label.overflowMode = TextOverflowModes.Overflow;
-            // Midline centres the letters themselves, so the capitals span 2.91-3.13 m: on the crown,
-            // under the eye, and no wider than the door frame. At 0.4 m the word ran 3.4 m, wider than
-            // the frame, and covered the eye.
             label.alignment = TextAlignmentOptions.Midline;
-            label.fontSize = FontSizeFor(label.font, SignCapHeight);
-            label.characterSpacing = 8f;
+            label.fontSize = FontSizeFor(label.font, capHeight);
+            label.characterSpacing = spacing;
             label.color = Color.white;
-            label.enableVertexGradient = true;
-            var top = UiTheme.Hex("6CC0FF");
-            var bottom = UiTheme.Hex("3A86FF");
-            label.colorGradient = new VertexGradient(top, top, bottom, bottom);
-            label.rectTransform.sizeDelta = new Vector2(4f, 0.8f);
-            label.text = Localisation.Text("GAMESIM");
+            // Well over the 1.21 of a line Inter needs, so a box never truncates the line away.
+            label.rectTransform.sizeDelta = new Vector2(4f, boxHeight);
+            label.text = text;
             var renderer = sign.GetComponent<MeshRenderer>();
             if (renderer != null) renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return label;
         }
 
         /// <summary>

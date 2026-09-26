@@ -194,6 +194,21 @@ namespace Gamesim.Presentation
             word.rectTransform.anchoredPosition = new Vector2(left + markSide + gap, 0f);
             cursor += 104f;
 
+            // The show is Gamesim: The House, and its name is a lockup wherever it stands - here, on
+            // the opening's title card and over its front door: "THE HOUSE" letterspaced under the
+            // word and centred on it. The word's own label is untouched; things find it by its text.
+            var houseLine = HudPrimitives.Label("Brand line", column, 26f, UiTheme.Accent, TextAlignmentOptions.Center);
+            houseLine.text = Localisation.Text("THE HOUSE");
+            var lineFont = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (lineFont != null) houseLine.font = lineFont;
+            houseLine.characterSpacing = 60f;
+            houseLine.textWrappingMode = TextWrappingModes.NoWrap;
+            float lineWidth = Mathf.Max(wordWidth, Mathf.Ceil(houseLine.GetPreferredValues(houseLine.text).x) + 8f);
+            // Tucked 10 px up into the gap under the brand's box, so its capitals sit close under the word's.
+            Place(houseLine.rectTransform, lineWidth, 36f, -(cursor - 10f));
+            houseLine.rectTransform.anchoredPosition = new Vector2(left + markSide + gap + wordWidth * .5f, -(cursor - 10f));
+            cursor += 30f;
+
             // The show's line, letterspaced as the HUD's tagline is, and the promise under it.
             var strap = Text(column, "GOOD PEOPLE  \u00b7  BIGGER STORIES", 15f, UiTheme.Heading, 26f, ref cursor);
             strap.characterSpacing = 10f;

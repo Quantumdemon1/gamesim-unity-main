@@ -24,6 +24,54 @@ namespace Gamesim.Uma
         public IReadOnlyList<AppearanceItem> Items => items;
         public IReadOnlyList<AppearanceControl> Controls => controls;
 
+        /// <summary>
+        /// Every control the creator offers, by the DNA name it drives, fresh each call. A name a body
+        /// does not have is dropped for that body, silently - which is how a misspelt jaw control went
+        /// missing - so a test holds every entry here to the DNA of at least one body.
+        /// </summary>
+        public static AppearanceControl[] DeclaredControls() => new[]
+        {
+            new AppearanceControl("height", "Height", "Body", .08f, .34f),
+            new AppearanceControl("headSize", "Head size", "Body", .5f, .8f),
+            new AppearanceControl("upperWeight", "Upper body fullness", "Body"),
+            new AppearanceControl("lowerWeight", "Lower body fullness", "Body"),
+            new AppearanceControl("upperMuscle", "Upper body definition", "Body"),
+            new AppearanceControl("lowerMuscle", "Lower body definition", "Body"),
+            new AppearanceControl("waist", "Waist", "Body"),
+            new AppearanceControl("armWidth", "Arm width", "Body"),
+            new AppearanceControl("legsSize", "Leg width", "Body"),
+            new AppearanceControl("neckThickness", "Neck", "Body"),
+            new AppearanceControl("headWidth", "Face width", "Face"),
+            new AppearanceControl("foreheadSize", "Forehead height", "Face"),
+            new AppearanceControl("foreheadPosition", "Forehead slope", "Face"),
+            new AppearanceControl("jawsSize", "Jaw width", "Face"),
+            new AppearanceControl("jawsPosition", "Jaw position", "Face"),
+            new AppearanceControl("mandibleSize", "Jawline", "Face"),
+            new AppearanceControl("chinSize", "Chin", "Face"),
+            new AppearanceControl("chinPronounced", "Chin depth", "Face"),
+            new AppearanceControl("chinPosition", "Chin height", "Face"),
+            new AppearanceControl("cheekSize", "Cheeks", "Face"),
+            new AppearanceControl("cheekPosition", "Cheek height", "Face"),
+            new AppearanceControl("cheekPronounced", "Cheekbones", "Face"),
+            new AppearanceControl("lowCheekPronounced", "Cheek fullness", "Face"),
+            new AppearanceControl("eyeSize", "Eye size", "Face"),
+            new AppearanceControl("eyeSpacing", "Eye spacing", "Face"),
+            new AppearanceControl("eyeRotation", "Eye tilt", "Face"),
+            new AppearanceControl("EyePosition", "Eye height", "Face"),
+            new AppearanceControl("BrowPosition", "Brow height", "Face"),
+            new AppearanceControl("noseSize", "Nose size", "Face"),
+            new AppearanceControl("noseWidth", "Nose width", "Face"),
+            new AppearanceControl("noseCurve", "Nose profile", "Face"),
+            new AppearanceControl("noseFlatten", "Nose bridge", "Face"),
+            new AppearanceControl("nosePronounced", "Nose projection", "Face"),
+            new AppearanceControl("nosePosition", "Nose height", "Face"),
+            new AppearanceControl("noseInclination", "Nose tip", "Face"),
+            new AppearanceControl("mouthSize", "Mouth width", "Face"),
+            new AppearanceControl("lipsSize", "Lip fullness", "Face"),
+            new AppearanceControl("earsSize", "Ear size", "Face"),
+            new AppearanceControl("earsRotation", "Ear angle", "Face"),
+        };
+
         public UmaAppearanceCatalog(IEnumerable<UmaWardrobeCatalog> content = null)
         {
             var index = UMAAssetIndexer.Instance;
@@ -31,31 +79,7 @@ namespace Gamesim.Uma
             AddBody(index, UmaCastLibrary.FemaleRace, "Body A");
             AddBody(index, UmaCastLibrary.MaleRace, "Body B");
             foreach (var body in bodies) dnaByBody[body.Id] = index.GetRace(body.Id).GetDNANames().Distinct().ToArray();
-            foreach (var control in new[]
-            {
-                new AppearanceControl("height", "Height", "Body", .08f, .34f),
-                new AppearanceControl("headSize", "Head size", "Body", .5f, .8f),
-                new AppearanceControl("upperWeight", "Upper body fullness", "Body"),
-                new AppearanceControl("lowerWeight", "Lower body fullness", "Body"),
-                new AppearanceControl("upperMuscle", "Upper body definition", "Body"),
-                new AppearanceControl("lowerMuscle", "Lower body definition", "Body"),
-                new AppearanceControl("waist", "Waist", "Body"),
-                new AppearanceControl("armWidth", "Arm width", "Body"),
-                new AppearanceControl("legsSize", "Leg width", "Body"),
-                new AppearanceControl("headWidth", "Face width", "Face"),
-                new AppearanceControl("jawSize", "Jaw", "Face"),
-                new AppearanceControl("chinSize", "Chin", "Face"),
-                new AppearanceControl("cheekSize", "Cheeks", "Face"),
-                new AppearanceControl("cheekPosition", "Cheek height", "Face"),
-                new AppearanceControl("noseSize", "Nose size", "Face"),
-                new AppearanceControl("noseWidth", "Nose width", "Face"),
-                new AppearanceControl("noseCurve", "Nose profile", "Face"),
-                new AppearanceControl("eyeSize", "Eye size", "Face"),
-                new AppearanceControl("eyeSpacing", "Eye spacing", "Face"),
-                new AppearanceControl("mouthSize", "Mouth width", "Face"),
-                new AppearanceControl("lipsSize", "Lip fullness", "Face"),
-                new AppearanceControl("earsSize", "Ear size", "Face"),
-            })
+            foreach (var control in DeclaredControls())
             {
                 control.CompatibleBodies = bodies.Where(body => dnaByBody[body.Id].Contains(control.Id)).Select(body => body.Id).ToArray();
                 if (control.CompatibleBodies.Length > 0) controls.Add(control);
@@ -111,6 +135,26 @@ namespace Gamesim.Uma
                     Thumbnail = recipe.GetWardrobeRecipeThumbFor(compatible[0]),
                 });
             }
+
+            // What UMA's library has none of, built in code and fitted to the body: textured hair
+            // (see ProceduralHair) and accessories (see ProceduralAccessories). Both bodies wear all of it.
+            if (bodies.Count == 0) return;
+            var everyone = bodies.Select(body => body.Id).ToArray();
+            foreach (var style in ProceduralHair.Styles)
+                items.Add(new AppearanceItem
+                {
+                    Id = style.Id, Slot = "Hair", Label = style.Label, StyleGroup = "textured",
+                    Tags = new[] { "textured", style.Kind == ProceduralHair.Kind.Strands ? "long" : "short" },
+                    FallbackPriority = 200, CompatibleBodies = everyone, ColorChannels = new[] { "Hair" },
+                    Thumbnail = GrownThumbnails.For(style.Id),
+                });
+            foreach (var accessory in ProceduralAccessories.Items)
+                items.Add(new AppearanceItem
+                {
+                    Id = accessory.Id, Slot = accessory.Slot, Label = accessory.Label,
+                    FallbackPriority = 200, CompatibleBodies = everyone,
+                    Thumbnail = GrownThumbnails.For(accessory.Id),
+                });
         }
 
         private void AddBody(UMAAssetIndexer index, string id, string label)
@@ -121,6 +165,9 @@ namespace Gamesim.Uma
             && id.IndexOfAny(new[] { '/', '\\', ':' }) < 0 && !id.Any(char.IsControl);
 
         public string ResolveRecipeName(string id) => id != null && recipeNames.TryGetValue(id, out var recipe) ? recipe : id;
+
+        /// <summary>An item built in code rather than a UMA recipe: grown hair or an accessory.</summary>
+        public static bool IsGrown(string id) => ProceduralHair.IsProcedural(id) || ProceduralAccessories.IsProcedural(id);
 
         public AppearanceItem FindEquivalent(string itemId, string slot, string bodyId)
         {
@@ -160,11 +207,17 @@ namespace Gamesim.Uma
             if (outfit.wardrobe.Count == 0)
                 foreach (string id in look.Wardrobe)
                 {
+                    var grown = IsGrown(id) ? AppearanceEditing.Find(this, id) : null;
+                    if (grown != null) { outfit.wardrobe.Add(new AppearanceWardrobe { slot = grown.Slot, itemId = grown.Id }); continue; }
                     var recipe = index?.GetAsset<UMAWardrobeRecipe>(id);
                     if (recipe != null) outfit.wardrobe.Add(new AppearanceWardrobe { slot = recipe.wardrobeSlot, itemId = AppearanceEditing.Find(this, id)?.Id ?? id });
                     // Missing selections retain their ID too; installing the content later restores them.
                     else outfit.wardrobe.Add(new AppearanceWardrobe { slot = "Missing-" + outfit.wardrobe.Count, itemId = id });
                 }
+            // The look's garment colours, saved with the outfit as any dye is.
+            if (outfit.colors.Count == 0 && look.Fabric != null)
+                foreach (var tint in look.Fabric)
+                    if (outfit.wardrobe.Any(worn => worn.slot == tint.Key)) AppearanceEditing.SetFabric(appearance, tint.Key, tint.Value);
             return appearance;
         }
 

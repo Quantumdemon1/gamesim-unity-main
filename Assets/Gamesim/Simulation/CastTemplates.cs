@@ -40,6 +40,23 @@ namespace Gamesim.Simulation
         public static readonly string[] Categories =
             { "Strategist", "Competitor", "Socialite", "Wildcard", "Underdog" };
 
+        /// <summary>
+        /// What each kind of player is, in the web game's words (its <c>archetypeInfo</c>): shown
+        /// with the filter and on a houseguest's details. Null for anything else.
+        /// </summary>
+        public static string CategoryDescription(string category)
+        {
+            switch ((category ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "strategist": return "Calculating and always planning ahead";
+                case "competitor": return "Physical threat who wins competitions";
+                case "socialite": return "Charms everyone and builds alliances";
+                case "wildcard": return "Unpredictable and makes big moves";
+                case "underdog": return "Quiet threat who flies under the radar";
+                default: return null;
+            }
+        }
+
         public sealed class Template
         {
             public string Id, Name, Archetype, Category, Occupation, Pronouns, HomeRoom, Motive;

@@ -80,9 +80,10 @@ namespace Gamesim.Tests.PlayMode
             CastButtons(chosen.Name)[0].onClick.Invoke();
             yield return null;
             yield return null;
-            // Again. A pick rebuilds every card, and the new cards start with empty discs that
-            // Update refills as the renders come back.
+            // Again, and the picked houseguest's model: a frame taken while it builds shows an empty stage.
             yield return WaitForCastFaces("cast-select-picked");
+            float built = Time.realtimeSinceStartup + 25f;
+            while (!CastScreen().PreviewReady && Time.realtimeSinceStartup < built) yield return null;
 
             Canvas.ForceUpdateCanvases();
             yield return null;
@@ -92,10 +93,9 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Waits for the faces. The cards carry a RawImage that CastSelect.Update fills from
-        /// CharacterPortraits as each render lands, so a frame taken on open photographs twelve
-        /// empty discs and reads as proof the screen has no portraits - which is exactly the wrong
-        /// conclusion to draw about the thing being judged.
+        /// Waits for the faces. A card with no glamour photo carries a RawImage that CastSelect.Update
+        /// fills from CharacterPortraits as its render lands, so a frame taken on open would
+        /// photograph an empty disc and read as proof the screen has no portrait.
         /// </summary>
         private IEnumerator WaitForCastFaces(string frame)
         {
@@ -373,6 +373,107 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(fresh.contestants.Count(c => c.name == chosen.Name), Is.EqualTo(1),
                 "The picked houseguest must not also be cast as an NPC.");
             Assert.That(EpisodeValidation.TryValidate(fresh, out var error), Is.True, error);
+        }
+
+        /// <summary>
+        /// Every card shows that houseguest's own glamour photo - the web game's portrait - in its ring,
+        /// on both rosters: not a render, not a stand-in, and nobody else's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_EveryCardShowsThatHouseguestsGlamourPhoto()
+        {
+            yield return OpenCastScreen();
+            foreach (var roster in new[] { CastTemplates.Roster.Regular, CastTemplates.Roster.AllStars })
+            {
+                CastButtons(CastTemplates.RosterName(roster))[0].onClick.Invoke();
+                yield return null;
+                foreach (var template in CastTemplates.In(roster))
+                {
+                    var card = CastScreen().GetComponentsInChildren<RectTransform>().Single(rect => rect.name == template.Name);
+                    var photo = card.GetComponentsInChildren<RawImage>().SingleOrDefault(image => image.name == CastSelect.GlamourPhotoName);
+                    Assert.That(photo, Is.Not.Null, template.Name + " has a glamour photo on their card.");
+                    Assert.That(photo.texture, Is.Not.Null);
+                    Assert.That(photo.texture.name, Is.EqualTo(template.Id), template.Name + " wears their own photo.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// The details wait for a pick, then show that houseguest - their nickname, home and words -
+        /// and their live model, which appears nowhere else on the screen. Picking someone else
+        /// changes the model; picking them again puts the details away.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastSelect_PickingAPortraitShowsTheirDetailsAndTheirModel()
+        {
+            yield return OpenCastScreen();
+            RawImage Model() => CastScreen().GetComponentsInChildren<RawImage>().SingleOrDefault(image => image.name == CastSelect.LiveModelName);
+            string[] Words() => CastScreen().GetComponentsInChildren<RectTransform>().Single(rect => rect.name == CastSelect.DetailPanelName)
+                .GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text).ToArray();
+            Assert.That(Model(), Is.Null, "No model until a houseguest is picked.");
+            Assert.That(Words(), Does.Contain("Select a houseguest"));
+
+            var emma = CastTemplates.Find("emma-brown");
+            CastButtons(emma.Name)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Words(), Does.Contain(emma.Archetype), "Her nickname.");
+            Assert.That(Words(), Does.Contain(emma.Occupation));
+            Assert.That(Words().Any(word => word.Contains(emma.Hometown)), Is.True, "Where she is from.");
+            Assert.That(Words().Any(word => word.Contains(emma.Bio)), Is.True, "Her words, quoted.");
+            Assert.That(Words(), Does.Contain(CastTemplates.CategoryDescription(emma.Category)), "What her kind of player is.");
+            Assert.That(CastButtons("Play as Emma"), Has.Length.EqualTo(1));
+            Assert.That(CastButtons(emma.Name), Has.Length.EqualTo(1), "The details add no second control with her name.");
+            Assert.That(Model(), Is.Not.Null, "Her model stands in the details.");
+            Assert.That(CastScreen().PreviewedId, Is.EqualTo(emma.Id));
+            float built = Time.realtimeSinceStartup + 25f;
+            while (!CastScreen().PreviewReady && Time.realtimeSinceStartup < built) yield return null;
+            Assert.That(CastScreen().PreviewReady, Is.True, "Her model is built and drawn.");
+            Assert.That(Model().texture, Is.Not.Null);
+
+            var casey = CastTemplates.Find("casey-wilson");
+            CastButtons(casey.Name)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(CastScreen().PreviewedId, Is.EqualTo(casey.Id), "Picking someone else shows their model.");
+            CastButtons(casey.Name)[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Model(), Is.Null, "Picking them again puts the details away.");
+            Assert.That(CastScreen().PreviewedId, Is.Null);
+        }
+
+        /// <summary>Play as - the details' commit - starts the season as that houseguest, like Start.</summary>
+        [UnityTest]
+        public IEnumerator CastSelect_PlayAsStartsTheSeasonAsThatHouseguest()
+        {
+            yield return OpenCastScreen();
+            var will = CastTemplates.Find("dr-will-kirby");
+            CastButtons(CastTemplates.RosterName(CastTemplates.Roster.AllStars))[0].onClick.Invoke();
+            yield return null;
+            CastButtons(will.Name)[0].onClick.Invoke();
+            yield return null;
+            var play = CastButtons("Play as Will");
+            Assert.That(play, Has.Length.EqualTo(1), "An honorific is not a first name.");
+            play[0].onClick.Invoke();
+            yield return null;
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.False);
+            var fresh = director.Snapshot;
+            Assert.That(fresh.Find(fresh.playerId).name, Is.EqualTo(will.Name));
+            Assert.That(fresh.contestants.Count(person => person.name == will.Name), Is.EqualTo(1));
+        }
+
+        /// <summary>A category chip says what that kind of player is, in the web game's words.</summary>
+        [UnityTest]
+        public IEnumerator CastSelect_ACategoryChipExplainsItsKindOfPlayer()
+        {
+            yield return OpenCastScreen();
+            string Line() => CastScreen().GetComponentsInChildren<TMPro.TMP_Text>().Single(label => label.name == "Category line").text;
+            Assert.That(Line(), Does.StartWith("12 houseguests"), "With no filter, how the roster divides.");
+            foreach (string kind in CastTemplates.Categories)
+            {
+                CastButtons(kind)[0].onClick.Invoke();
+                yield return null;
+                Assert.That(Line(), Does.Contain(CastTemplates.CategoryDescription(kind)), kind);
+            }
         }
 
         /// <summary>

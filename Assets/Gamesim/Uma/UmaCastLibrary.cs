@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Gamesim.Presentation;
 using UnityEngine;
 
 namespace Gamesim.Uma
@@ -27,6 +28,12 @@ namespace Gamesim.Uma
         /// 0 to 1 with 0.5 as the race default.
         /// </summary>
         public Dictionary<string, float> Dna = new Dictionary<string, float>();
+
+        /// <summary>
+        /// The colour each garment is dyed, by wardrobe slot ("Chest", "Legs", "Feet"): the house's
+        /// clothes are few, and the same tee in the colour a photo shows is most of a likeness.
+        /// </summary>
+        public Dictionary<string, Color> Fabric = new Dictionary<string, Color>();
     }
 
     /// <summary>
@@ -42,10 +49,12 @@ namespace Gamesim.Uma
     /// houseguest with no entry of their own still falls back to the appearance the trait mapping
     /// picked, so an imported identity is still dressed.</para>
     ///
-    /// <para>The eight of the mockups' cards — Alex, Emma, Jordan, Casey, Riley, Jamie, Taylor and
-    /// Maya (ArtSource/reference/mockups/mockup-02, mockup-09) — are matched to their cards: hair
-    /// shape and colour, skin, and an outfit in the silhouette the card shows. The rest are built
-    /// from their archetype and their table row, which is all the direction there is for them.</para>
+    /// <para>Every look is matched to that houseguest's glamour photo - the web game's portrait, the
+    /// one the cast screen shows: skin from the shared palette's depth and undertone, hair in its
+    /// shape and shade (grown hair where UMA has none: an afro, coils, a fade, a buzz), brows, eyes,
+    /// beards, the glasses, earrings, cap and necklace the photo shows, and the clothes it shows in
+    /// its colours. Colours are named from <see cref="CharacterPalettes"/>, so a look cannot drift
+    /// off the palette the creator offers.</para>
     /// </summary>
     public static class UmaCastLibrary
     {
@@ -80,45 +89,16 @@ namespace Gamesim.Uma
             ["feetSize"] = 0.66f,
         };
 
-        // Kenney's palette is bright and low-saturation; skin tones are lifted to sit beside it
-        // rather than against it. These are the primitive rig's tones raised into that range, with
-        // four more added so twenty-four people are not five tones repeated.
-        private static readonly Color Ebony = Hex("9A6A4C");
-        private static readonly Color Deep = Hex("B8855E");
-        private static readonly Color Umber = Hex("C9A079");
-        private static readonly Color Sienna = Hex("D6AE86");
-        private static readonly Color Olive = Hex("DEBE94");
-        private static readonly Color Tan = Hex("E8C4A0");
-        private static readonly Color Fair = Hex("FFDCBE");
-        private static readonly Color Porcelain = Hex("FFECD2");
-
-        // Hair, likewise: one row of the house's hair palette, named so a look reads as a sentence.
-        private static readonly Color Ink = Hex("1A130F");
-        private static readonly Color Jet = Hex("241B16");
-        private static readonly Color Espresso = Hex("2A1D17");
-        private static readonly Color Coffee = Hex("3B2A1E");
-        private static readonly Color Chestnut = Hex("5D4226");
-        private static readonly Color Auburn = Hex("6E3A24");
-        private static readonly Color Honey = Hex("8A6239");
-        private static readonly Color Wheat = Hex("B08A55");
-        private static readonly Color Flax = Hex("D8B87A");
-        private static readonly Color Ash = Hex("6E6A63");
-        private static readonly Color Silver = Hex("B9B3A8");
-
-        private static readonly Color BrownEye = Hex("4A3524");
-        private static readonly Color DarkEye = Hex("3A2C22");
-        private static readonly Color HazelEye = Hex("6B5433");
-        private static readonly Color GreenEye = Hex("42603F");
-        private static readonly Color BlueEye = Hex("3B4A5C");
-        private static readonly Color SlateEye = Hex("4A5A66");
-        private static readonly Color AmberEye = Hex("7A5A2E");
+        /// <summary>A skin tone, hair colour or eye colour from the shared palettes, by its name there.</summary>
+        private static Color Skin(string name) => CharacterPalettes.Named(CharacterPalettes.Skin, name);
+        private static Color Hair(string name) => CharacterPalettes.Named(CharacterPalettes.Hair, name);
+        private static Color Eyes(string name) => CharacterPalettes.Named(CharacterPalettes.Eyes, name);
 
         private static readonly Dictionary<string, UmaCastLook> Looks = new Dictionary<string, UmaCastLook>
         {
             // ------------------------------------------------------------------ regular season
 
-            // The Mastermind. The card's dark jacket over a dark tee: the only houseguest who
-            // arrives dressed to be photographed.
+            // The Mastermind. East Asian, light skin, black hair swept to the side, a black tee.
             ["alex-chen"] = new UmaCastLook
             {
                 Race = MaleRace,
@@ -127,106 +107,21 @@ namespace Gamesim.Uma
                     "Hair_LeftPart_Recipe",
                     "Eyebrows_Average_Average",
                     "male_underwear_tighty_Recipe",
-                    "male_jacket_hive_Recipe",
+                    "male_tshirt_white_Recipe",
                     "male_sportpants_alt_black_Recipe",
                     "male_shoes_tall_Recipe",
                 },
-                Skin = Umber,
-                Hair = Ink,
-                Brows = Ink,
-                Eyes = DarkEye,
-                // Composed and square: build rather than height does the talking.
-                Dna = new Dictionary<string, float> { ["height"] = 0.18f, ["upperMuscle"] = 0.64f, ["jawsSize"] = 0.58f },
+                Skin = Skin("Golden"),
+                Hair = Hair("Jet black"),
+                Brows = Hair("Jet black"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
+                Dna = new Dictionary<string, float> { ["height"] = .18f, ["upperMuscle"] = .64f, ["jawsSize"] = .56f, ["eyeRotation"] = .56f, ["noseFlatten"] = .56f, ["cheekPronounced"] = .55f },
             },
 
-            // The Scientist. Long light hair and a plain top, exactly as the card has her.
+            // The Scientist. Her card: warm brown skin, long straight silver hair, the chrome visor and the red
+            // bow tie, and a white lab coat over it all.
             ["emma-brown"] = new UmaCastLook
-            {
-                Race = FemaleRace,
-                Wardrobe = new[]
-                {
-                    "Hair_LongSwept_Recipe",
-                    "Eyebrows_Thin_Average",
-                    "underwear_bra_white_Recipe",
-                    "underwear_white_granit_bottom_Recipe",
-                    "colors_top_Recipe",
-                    "tights_gray_Recipe",
-                    "shoe_low_white_Recipe",
-                },
-                Skin = Porcelain,
-                Hair = Flax,
-                Brows = Wheat,
-                Eyes = GreenEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.16f, ["upperMuscle"] = 0.50f, ["cheekSize"] = 0.56f },
-            },
-
-            // The Charmer. Short curls and a cream tee; the warmest smile on the grid.
-            ["jordan-taylor"] = new UmaCastLook
-            {
-                Race = MaleRace,
-                Wardrobe = new[]
-                {
-                    "Hair_Poofy",
-                    "Eyebrows_Average_Average",
-                    "male_underwear_whiteBlue_Recipe",
-                    "male_tshirt_white_Recipe",
-                    "male_shorts_black_cotton_Recipe",
-                    "male_shoe_low_white.001_Recipe",
-                },
-                Skin = Deep,
-                Hair = Auburn,
-                Brows = Espresso,
-                Eyes = BrownEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.21f, ["upperMuscle"] = 0.64f, ["mouthSize"] = 0.60f },
-            },
-
-            // The Party Animal. She is she/her in every table this project keeps and a woman on her
-            // card; the first UMA pass built her on the male race, which was simply wrong.
-            ["casey-wilson"] = new UmaCastLook
-            {
-                Race = FemaleRace,
-                Wardrobe = new[]
-                {
-                    "Hair_CurveUnder_Recipe",
-                    "Eyebrows_Arched_Average",
-                    "underwear_bra_purple_Recipe",
-                    "underwear_purple_Recipe",
-                    "tanktop_zebra_Recipe",
-                    "shorts_turquoise_Recipe",
-                    "shoe_low_white_Recipe",
-                },
-                Skin = Sienna,
-                Hair = Espresso,
-                Brows = Espresso,
-                Eyes = BrownEye,
-                // The loudest silhouette in the house, and the shortest of the women.
-                Dna = new Dictionary<string, float> { ["height"] = 0.08f, ["headSize"] = 0.78f, ["waist"] = 0.44f },
-            },
-
-            // The Brainiac: side part, hoodie, sweatpants.
-            ["riley-johnson"] = new UmaCastLook
-            {
-                Race = MaleRace,
-                Wardrobe = new[]
-                {
-                    "Hair_MessyRightPart_Recipe",
-                    "Eyebrows_Average_Average",
-                    "male_underwear_tighty_Recipe",
-                    "male_hoodie_grey_Recipe",
-                    "male_sweatpants_black_Recipe",
-                    "male_shoes_tall_Recipe",
-                },
-                Skin = Porcelain,
-                Hair = Jet,
-                Brows = Jet,
-                Eyes = BlueEye,
-                // Tallest and leanest, so the cast is not one body six times.
-                Dna = new Dictionary<string, float> { ["height"] = 0.26f, ["upperMuscle"] = 0.46f, ["legsSize"] = 0.56f },
-            },
-
-            // The Caregiver. The card gives her long dark hair rather than the bob the first pass
-            // guessed at; everything else about her was already right.
-            ["jamie-roberts"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
@@ -235,19 +130,111 @@ namespace Gamesim.Uma
                     "Eyebrows_Thin_Average",
                     "underwear_bra_white_Recipe",
                     "underwear_white_granit_bottom_Recipe",
+                    "jacket_hive.001_Recipe",
+                    "tights_gray_Recipe",
+                    "shoe_low_white_Recipe",
+                    "gs-acc-visor",
+                    "gs-acc-bowtie",
+                },
+                Skin = Skin("Tan"),
+                Hair = Hair("Silver"),
+                Brows = Hair("Dark brown"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("F2F2EE") },
+                Dna = new Dictionary<string, float> { ["height"] = .16f, ["upperMuscle"] = .5f, ["cheekSize"] = .56f, ["lipsSize"] = .58f },
+            },
+
+            // The Charmer. A brown quiff, a short full beard, a grey tee.
+            ["jordan-taylor"] = new UmaCastLook
+            {
+                Race = MaleRace,
+                Wardrobe = new[]
+                {
+                    "Hair_MessyPomp_Recipe",
+                    "Eyebrows_Average_Average",
+                    "Beard_Trimmed",
+                    "male_underwear_whiteBlue_Recipe",
+                    "male_tshirt_white_Recipe",
+                    "male_sportpants_alt_black_Recipe",
+                    "male_shoe_low_white.001_Recipe",
+                },
+                Skin = Skin("Light beige"),
+                Hair = Hair("Medium brown"),
+                Brows = Hair("Dark brown"),
+                Eyes = Eyes("Brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("5A5F69") },
+                Dna = new Dictionary<string, float> { ["height"] = .21f, ["upperMuscle"] = .64f, ["mouthSize"] = .6f, ["jawsSize"] = .58f },
+            },
+
+            // The Party Animal. Deep brown skin, a full natural afro, a blue-striped shirt.
+            ["casey-wilson"] = new UmaCastLook
+            {
+                Race = FemaleRace,
+                Wardrobe = new[]
+                {
+                    "gs-hair-afro",
+                    "Eyebrows_Arched_Average",
+                    "underwear_bra_white_Recipe",
+                    "underwear_white_granit_bottom_Recipe",
                     "tshirt_turquoise_Recipe",
                     "tights_gray_Recipe",
                     "shoe_low_white_Recipe",
                 },
-                Skin = Tan,
-                Hair = Coffee,
-                Brows = Chestnut,
-                Eyes = HazelEye,
-                // Softer and shorter; the warmest silhouette in the house.
-                Dna = new Dictionary<string, float> { ["height"] = 0.06f, ["headSize"] = 0.76f, ["upperWeight"] = 0.60f },
+                Skin = Skin("Mahogany"),
+                Hair = Hair("Black"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("A9C8EA") },
+                Dna = new Dictionary<string, float> { ["height"] = .08f, ["headSize"] = .78f, ["waist"] = .44f, ["lipsSize"] = .62f, ["noseWidth"] = .58f },
             },
 
-            // The Influencer: hair up, a jacket, and the only heels on the grid.
+            // The Brainiac. South Asian, medium-brown skin, neat black hair, black frames, a thin
+            // moustache and a charcoal tee.
+            ["riley-johnson"] = new UmaCastLook
+            {
+                Race = MaleRace,
+                Wardrobe = new[]
+                {
+                    "Hair_MessyRightPart_Recipe",
+                    "Eyebrows_Average_Bushy",
+                    "Mustache_Small",
+                    "male_underwear_tighty_Recipe",
+                    "male_tshirt_white_Recipe",
+                    "male_sweatpants_black_Recipe",
+                    "male_shoes_tall_Recipe",
+                    "gs-acc-glasses",
+                },
+                Skin = Skin("Bronze"),
+                Hair = Hair("Jet black"),
+                Brows = Hair("Jet black"),
+                Eyes = Eyes("Black-brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("2E3238") },
+                Dna = new Dictionary<string, float> { ["height"] = .26f, ["upperMuscle"] = .46f, ["legsSize"] = .56f, ["noseSize"] = .56f },
+            },
+
+            // The Caregiver. Fair, copper hair to the shoulders, a grey knit.
+            ["jamie-roberts"] = new UmaCastLook
+            {
+                Race = FemaleRace,
+                Wardrobe = new[]
+                {
+                    "Hair_CurveUnder_Recipe",
+                    "Eyebrows_Thin_Average",
+                    "underwear_bra_white_Recipe",
+                    "underwear_white_granit_bottom_Recipe",
+                    "sportswear_sweater_granit_Recipe",
+                    "tights_gray_Recipe",
+                    "shoe_low_white_Recipe",
+                },
+                Skin = Skin("Warm ivory"),
+                Hair = Hair("Copper"),
+                Brows = Hair("Auburn"),
+                Eyes = Eyes("Hazel"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("8A8F99") },
+                Dna = new Dictionary<string, float> { ["height"] = .06f, ["headSize"] = .76f, ["upperWeight"] = .6f },
+            },
+
+            // The Influencer. Latina, a dark messy updo, a burgundy turtleneck.
             ["quinn-martinez"] = new UmaCastLook
             {
                 Race = FemaleRace,
@@ -255,44 +242,43 @@ namespace Gamesim.Uma
                 {
                     "Hair_UpwardBun_Recipe",
                     "Eyebrows_Arched_Bushy",
-                    "underwear_bra_yellow_Recipe",
-                    "underwear_whiteStriped_Recipe",
-                    "jacket_hive.001_Recipe",
-                    "skirt_turquoise_Recipe",
-                    "shoes_tall_turquoise.001_Recipe",
+                    "underwear_bra_white_Recipe",
+                    "underwear_white_granit_bottom_Recipe",
+                    "sportswear_sweater_granit_Recipe",
+                    "tights_gray_Recipe",
+                    "shoes_tall_white_Recipe",
                 },
-                Skin = Olive,
-                Hair = Jet,
-                Brows = Jet,
-                Eyes = DarkEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.17f, ["eyeSize"] = 0.68f, ["lipsSize"] = 0.62f },
+                Skin = Skin("Honey"),
+                Hair = Hair("Dark brown"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("6E1E2A") },
+                Dna = new Dictionary<string, float> { ["height"] = .17f, ["eyeSize"] = .68f, ["lipsSize"] = .62f },
             },
 
-            // The Protector: cropped hair, a trimmed beard, and the broadest build in the house.
+            // The Protector. Deep brown skin, a close crop, a goatee, a navy polo.
             ["avery-thompson"] = new UmaCastLook
             {
                 Race = MaleRace,
                 Wardrobe = new[]
                 {
-                    "bb_Male_Military_Hair_Recipe",
+                    "gs-hair-fade",
                     "Eyebrows_Bushy_Average",
-                    "Beard_Trimmed",
-                    "male_underpants_blue_Recipe",
-                    "male_tanktop_yellow_Recipe",
-                    "male_sportpants_blueWhite_Recipe",
+                    "Beard_Goatee",
+                    "male_underwear_tighty_Recipe",
+                    "male_tshirt_white_Recipe",
+                    "male_sportpants_alt_black_Recipe",
                     "male_shoes_tall_Recipe",
                 },
-                Skin = Deep,
-                Hair = Ink,
-                Brows = Ink,
-                Eyes = DarkEye,
-                Dna = new Dictionary<string, float>
-                {
-                    ["height"] = 0.24f, ["armWidth"] = 0.74f, ["upperMuscle"] = 0.78f, ["lowerMuscle"] = 0.72f,
-                },
+                Skin = Skin("Cocoa"),
+                Hair = Hair("Black"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Black-brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2A44") },
+                Dna = new Dictionary<string, float> { ["height"] = .24f, ["armWidth"] = .74f, ["upperMuscle"] = .78f, ["lowerMuscle"] = .72f, ["noseWidth"] = .58f, ["lipsSize"] = .58f },
             },
 
-            // The Firebrand: ponytail, training kit, low trainers.
+            // The Firebrand. East Asian, a high black ponytail, a charcoal racer tank.
             ["taylor-kim"] = new UmaCastLook
             {
                 Race = FemaleRace,
@@ -300,41 +286,42 @@ namespace Gamesim.Uma
                 {
                     "HairPonytail_Recipe",
                     "Eyebrows_Average_Average",
-                    "underwear_bra_white_Recipe",
-                    "underwear_white_granit_bottom_Recipe",
+                    "sports_underwear_bottoms_Recipe",
                     "sportswear_top_Recipe",
                     "sportwear_pants_granit_Recipe",
                     "shoe_low_white_Recipe",
                 },
-                Skin = Tan,
-                Hair = Hex("1B1512"),
-                Brows = Hex("1B1512"),
-                Eyes = DarkEye,
-                // The athlete reads through build rather than height.
-                Dna = new Dictionary<string, float> { ["upperMuscle"] = 0.70f, ["lowerMuscle"] = 0.70f, ["waist"] = 0.42f },
+                Skin = Skin("Light beige"),
+                Hair = Hair("Jet black"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
+                Dna = new Dictionary<string, float> { ["upperMuscle"] = .7f, ["lowerMuscle"] = .7f, ["waist"] = .42f, ["eyeRotation"] = .57f, ["noseFlatten"] = .56f },
             },
 
-            // The Leader: a wave of light hair over a tank; the card's easiest face to pick out.
+            // The Leader. Latino, tan, black hair in a side part, a short beard, a light-blue shirt.
             ["sam-williams"] = new UmaCastLook
             {
                 Race = MaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_MessyPomp_Recipe",
+                    "Hair_LeftPart_Recipe",
                     "Eyebrows_Average_Bushy",
-                    "male_underwear_hive_Recipe",
-                    "male_tanktop_yellow_Recipe",
+                    "Beard_Trimmed",
+                    "male_underwear_tighty_Recipe",
+                    "male_tshirt_white_Recipe",
                     "male_sportpants_grey_Recipe",
                     "male_shoe_low_white.001_Recipe",
                 },
-                Skin = Fair,
-                Hair = Wheat,
-                Brows = Honey,
-                Eyes = BlueEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.22f, ["upperMuscle"] = 0.66f, ["chinSize"] = 0.58f },
+                Skin = Skin("Caramel"),
+                Hair = Hair("Black"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("A9C8EA") },
+                Dna = new Dictionary<string, float> { ["height"] = .22f, ["upperMuscle"] = .66f, ["chinSize"] = .58f },
             },
 
-            // The Shadow: dark hair pushed up, stubble, and nothing on him you would describe later.
+            // The Shadow. Swept dark hair, green eyes, a charcoal tee.
             ["blake-peterson"] = new UmaCastLook
             {
                 Race = MaleRace,
@@ -342,125 +329,131 @@ namespace Gamesim.Uma
                 {
                     "HairMessyUp_Recipe",
                     "Eyebrows_Average_Average",
-                    "Beard_Trimmed_Bushy",
-                    "male_underpants_granit_Recipe",
-                    "male_hoodie_blue_Recipe",
-                    "male_tights_black_Recipe",
-                    "male_shoes_tall_turquoise_Recipe",
+                    "male_underwear_tighty_Recipe",
+                    "male_tshirt_white_Recipe",
+                    "male_sportpants_alt_black_Recipe",
+                    "male_shoes_tall_Recipe",
                 },
-                Skin = Fair,
-                Hair = Espresso,
-                Brows = Espresso,
-                Eyes = SlateEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.19f, ["upperMuscle"] = 0.52f, ["noseSize"] = 0.56f },
+                Skin = Skin("Sand"),
+                Hair = Hair("Dark brown"),
+                Brows = Hair("Dark brown"),
+                Eyes = Eyes("Grey-green"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("2E3238") },
+                Dna = new Dictionary<string, float> { ["height"] = .19f, ["upperMuscle"] = .52f, ["noseSize"] = .56f, ["cheekPronounced"] = .58f },
             },
 
-            // The Diplomat: pulled-back hair, layered knit, tall boots.
+            // The Diplomat. Light olive skin, black hair slicked back from a centre part, gold hoops, a
+            // black V-neck.
             ["maya-hassan"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_Bun_Recipe",
+                    "Hair_PulledBack_Recipe",
                     "Eyebrows_Arched_Average",
                     "underwear_bra_white_Recipe",
                     "underwear_white_granit_bottom_Recipe",
-                    "sportswear_sweater_granit_Recipe",
+                    "tshirt_turquoise_Recipe",
                     "tights_gray_Recipe",
                     "shoes_tall_white_Recipe",
+                    "gs-acc-hoops",
                 },
-                Skin = Umber,
-                Hair = Espresso,
-                Brows = Espresso,
-                Eyes = BrownEye,
-                // Poised and upright: the tallest of the women, least exaggerated.
-                Dna = new Dictionary<string, float> { ["height"] = 0.20f, ["upperMuscle"] = 0.52f },
+                Skin = Skin("Olive"),
+                Hair = Hair("Jet black"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
+                Dna = new Dictionary<string, float> { ["height"] = .2f, ["upperMuscle"] = .52f, ["cheekPronounced"] = .58f },
             },
 
             // ------------------------------------------------------------------ all-stars
 
-            // The Funeral Director: a coach's crop and the house's plainest grey, which is the point.
+            // The Funeral Director. Spiky gelled dark hair, a black shirt.
             ["dan-gheesling"] = new UmaCastLook
             {
                 Race = MaleRace,
                 Wardrobe = new[]
                 {
-                    "bb_male_haircut_Recipe",
+                    "Hair_Pointy_Recipe",
                     "Eyebrows_Average_Average",
                     "male_underwear_tighty_Recipe",
-                    "male_hoodie_grey_Recipe",
+                    "male_tshirt_white_Recipe",
                     "male_sportpants_grey_Recipe",
                     "male_shoe_low_white.001_Recipe",
                 },
-                Skin = Fair,
-                Hair = Coffee,
-                Brows = Coffee,
-                Eyes = HazelEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.20f, ["upperWeight"] = 0.58f, ["jawsSize"] = 0.60f },
+                Skin = Skin("Golden"),
+                Hair = Hair("Dark brown"),
+                Brows = Hair("Dark brown"),
+                Eyes = Eyes("Brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
+                Dna = new Dictionary<string, float> { ["height"] = .2f, ["upperWeight"] = .58f, ["jawsSize"] = .6f },
             },
 
-            // The Puppet Master: the oldest silhouette in the house, and the best dressed of the men.
+            // The Puppet Master. Fair, dark hair swept back, a brown shirt.
             ["dr-will-kirby"] = new UmaCastLook
             {
                 Race = MaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_Pointy_Recipe",
+                    "Hair_StraigntPulledBack_Recipe",
                     "Eyebrows_Arched_Average",
-                    "male_underwear_fishes_Recipe",
-                    "male_jacket_hive_Recipe",
-                    "male_sportpants_grey_Recipe",
+                    "male_underwear_tighty_Recipe",
+                    "male_tshirt_white_Recipe",
+                    "male_sportpants_alt_black_Recipe",
                     "male_shoes_tall_Recipe",
                 },
-                Skin = Tan,
-                Hair = Ink,
-                Brows = Ink,
-                Eyes = DarkEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.21f, ["cheekPronounced"] = 0.62f, ["noseCurve"] = 0.56f },
+                Skin = Skin("Sand"),
+                Hair = Hair("Soft black"),
+                Brows = Hair("Soft black"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("5A4636") },
+                Dna = new Dictionary<string, float> { ["height"] = .21f, ["cheekPronounced"] = .62f, ["noseCurve"] = .56f, ["jawsSize"] = .6f },
             },
 
-            // The Undercover Boss: cropped, unremarkable, and never the first person you look at.
+            // The Undercover Boss. Fair, a sandy buzz cut, blue eyes, stocky, a blue plaid shirt.
             ["derrick-levasseur"] = new UmaCastLook
             {
                 Race = MaleRace,
                 Wardrobe = new[]
                 {
-                    "bb_Male_Military_Hair_Recipe",
+                    "gs-hair-buzz",
                     "Eyebrows_Bushy_Average",
-                    "male_underwear_whiteBlue_Recipe",
+                    "male_underwear_tighty_Recipe",
                     "male_hoodie_blueWhite_Recipe",
-                    "male_shorts_white_Recipe",
+                    "male_sportpants_blueWhite_Recipe",
                     "male_shoe_low_white.001_Recipe",
                 },
-                Skin = Ebony,
-                Hair = Ink,
-                Brows = Ink,
-                Eyes = DarkEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.18f, ["armWidth"] = 0.70f, ["upperMuscle"] = 0.68f },
+                Skin = Skin("Rose"),
+                Hair = Hair("Dark blonde"),
+                Brows = Hair("Dark blonde"),
+                Eyes = Eyes("Blue"),
+                Dna = new Dictionary<string, float> { ["height"] = .18f, ["armWidth"] = .7f, ["upperMuscle"] = .68f, ["upperWeight"] = .62f, ["headWidth"] = .62f },
             },
 
-            // The Comp Queen: blonde, pulled back for a competition she intends to win.
+            // The Comp Queen. Platinum hair worn long and down, a coral top, a beaded necklace.
             ["janelle-pierzina"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_StraigntPulledBack_Recipe",
+                    "bb_female_hair_Recipe",
                     "Eyebrows_Arched_Average",
                     "underwear_bra_white_Recipe",
-                    "sports_underwear_bottoms_Recipe",
-                    "sportswear_top_granit_Recipe",
-                    "tights_stripe_Recipe",
+                    "underwear_white_granit_bottom_Recipe",
+                    "tanktop_yellow_Recipe",
+                    "tights_gray_Recipe",
                     "shoe_low_white_Recipe",
+                    "gs-acc-beads",
                 },
-                Skin = Fair,
-                Hair = Flax,
-                Brows = Wheat,
-                Eyes = BlueEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.23f, ["upperMuscle"] = 0.68f, ["lowerMuscle"] = 0.66f },
+                Skin = Skin("Warm ivory"),
+                Hair = Hair("Platinum"),
+                Brows = Hair("Honey blonde"),
+                Eyes = Eyes("Blue"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("F08A80") },
+                Dna = new Dictionary<string, float> { ["height"] = .23f, ["upperMuscle"] = .68f, ["lowerMuscle"] = .66f },
             },
 
-            // The Hitman's Partner: a swimmer's shoulders and a haircut that took some deciding.
+            // The Hitman's Partner. Tousled brown hair, a blue V-neck.
             ["cody-calafiore"] = new UmaCastLook
             {
                 Race = MaleRace,
@@ -468,40 +461,43 @@ namespace Gamesim.Uma
                 {
                     "HairAnimeMessy_Recipe",
                     "Eyebrows_Average_Bushy",
-                    "male_underwear_hive_Recipe",
+                    "male_underwear_tighty_Recipe",
                     "male_tshirt_white_Recipe",
                     "male_shorts_hive_Recipe",
                     "male_shoe_low_white.001_Recipe",
                 },
-                Skin = Olive,
-                Hair = Coffee,
-                Brows = Coffee,
-                Eyes = HazelEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.24f, ["upperMuscle"] = 0.72f, ["waist"] = 0.40f },
+                Skin = Skin("Light beige"),
+                Hair = Hair("Medium brown"),
+                Brows = Hair("Medium brown"),
+                Eyes = Eyes("Hazel"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("3F78C8") },
+                Dna = new Dictionary<string, float> { ["height"] = .24f, ["upperMuscle"] = .72f, ["waist"] = .4f, ["jawsSize"] = .6f },
             },
 
-            // The Black Widow: a bob, dark and exact, and a face that gives nothing back.
+            // The Black Widow. Medium-deep brown skin, short dark curls, gold studs, a cream sleeveless top.
             ["danielle-reyes"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_Bob_Recipe",
+                    "gs-hair-coils",
                     "Eyebrows_Thin_Average",
-                    "underwear_Bra_white_granit_top_Recipe",
+                    "underwear_bra_white_Recipe",
                     "underwear_white_granit_bottom_Recipe",
-                    "Hoodie_turquoise_Recipe",
-                    "tights_purple_Recipe",
+                    "tanktop_whiteBlackStraps_Recipe",
+                    "tights_gray_Recipe",
                     "shoes_tall_white_Recipe",
+                    "gs-acc-studs",
                 },
-                Skin = Umber,
-                Hair = Jet,
-                Brows = Jet,
-                Eyes = BrownEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.13f, ["cheekSize"] = 0.58f, ["eyeSpacing"] = 0.56f },
+                Skin = Skin("Sienna"),
+                Hair = Hair("Soft black"),
+                Brows = Hair("Soft black"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("E7D9C0") },
+                Dna = new Dictionary<string, float> { ["height"] = .13f, ["cheekSize"] = .58f, ["eyeSpacing"] = .56f, ["lipsSize"] = .6f },
             },
 
-            // The Poker Player: hair down, nothing that moves, nothing that tells.
+            // The Poker Player. Long straight blonde hair under a black trucker cap, a black blazer.
             ["vanessa-rousso"] = new UmaCastLook
             {
                 Race = FemaleRace,
@@ -509,121 +505,129 @@ namespace Gamesim.Uma
                 {
                     "bb_female_hair_Recipe",
                     "Eyebrows_Average_Average",
-                    "underwear_bra_green_Recipe",
-                    "underwear_greenPalettes_Recipe",
-                    "tanktop_whiteBlackStraps_Recipe",
-                    "green_tights_Recipe",
+                    "underwear_bra_white_Recipe",
+                    "underwear_white_granit_bottom_Recipe",
+                    "jacket_hive.001_Recipe",
+                    "tights_gray_Recipe",
                     "shoes_tall_white_Recipe",
+                    "gs-acc-cap",
                 },
-                Skin = Fair,
-                Hair = Chestnut,
-                Brows = Chestnut,
-                Eyes = GreenEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.15f, ["lipsSize"] = 0.44f, ["foreheadSize"] = 0.58f },
+                Skin = Skin("Warm ivory"),
+                Hair = Hair("Golden blonde"),
+                Brows = Hair("Light brown"),
+                Eyes = Eyes("Brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
+                Dna = new Dictionary<string, float> { ["height"] = .15f, ["lipsSize"] = .44f, ["foreheadSize"] = .58f },
             },
 
-            // The Surfer Strategist: sun-bleached, barely dressed, and the least threatening man here.
+            // The Surfer Strategist. Sun-bleached curls, a white island shirt.
             ["tyler-crispen"] = new UmaCastLook
             {
                 Race = MaleRace,
                 Wardrobe = new[]
                 {
-                    "HairTornado_Recipe",
+                    "Hair_Poofy",
                     "Eyebrows_Thin_Average",
-                    "male_underpants_blue_Recipe",
-                    "male_tanktop_yellow_Recipe",
+                    "male_underwear_tighty_Recipe",
+                    "male_tshirt_white_Recipe",
                     "male_swimwear_granit_Recipe",
                     "male_shoe_low_white.001_Recipe",
                 },
-                Skin = Olive,
-                Hair = Wheat,
-                Brows = Honey,
-                Eyes = SlateEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.22f, ["upperMuscle"] = 0.64f, ["belly"] = 0.38f },
+                Skin = Skin("Golden"),
+                Hair = Hair("Honey blonde"),
+                Brows = Hair("Light brown"),
+                Eyes = Eyes("Blue"),
+                Dna = new Dictionary<string, float> { ["height"] = .22f, ["upperMuscle"] = .64f, ["belly"] = .38f },
             },
 
-            // The Assassin: hair back, a quiet top, and no edge on show until there is one.
+            // The Assassin. Deep brown skin, long dark waves worn down, gold hoops, a hot-pink tank.
             ["chelsie-baham"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_PulledBack_Recipe",
+                    "Hair_LongSwept_Recipe",
                     "Eyebrows_Average_Average",
                     "underwear_bra_white_Recipe",
-                    "underwear_whiteLace_Recipe",
+                    "underwear_white_granit_bottom_Recipe",
                     "tanktop_yellow_Recipe",
-                    "colors_top_bottom_Recipe",
+                    "tights_gray_Recipe",
                     "shoe_low_white_Recipe",
+                    "gs-acc-hoops",
                 },
-                Skin = Deep,
-                Hair = Ink,
-                Brows = Ink,
-                Eyes = DarkEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.14f, ["headSize"] = 0.74f, ["mouthSize"] = 0.54f },
+                Skin = Skin("Umber"),
+                Hair = Hair("Soft black"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("E23D8A") },
+                Dna = new Dictionary<string, float> { ["height"] = .14f, ["headSize"] = .74f, ["mouthSize"] = .54f, ["lipsSize"] = .6f },
             },
 
-            // The Vegas Showgirl: the biggest hair in the house, in the reddest colour it comes in.
+            // The Vegas Showgirl. Deep auburn waves, blue eyes, a red dress, a gold collar.
             ["rachel-reilly"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_Poofy",
+                    "Hair_CurveUnder_Recipe",
                     "Eyebrows_Arched_Bushy",
-                    "underwear_bra_purple_Recipe",
-                    "underwear_purple_Recipe",
+                    "underwear_bra_white_Recipe",
+                    "underwear_white_granit_bottom_Recipe",
                     "dress_tennis_granit_Recipe",
-                    "tights_purple_Recipe",
+                    "tights_gray_Recipe",
                     "shoes_tall_turquoise.001_Recipe",
+                    "gs-acc-collar",
                 },
-                Skin = Fair,
-                Hair = Auburn,
-                Brows = Chestnut,
-                Eyes = AmberEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.18f, ["eyeSize"] = 0.70f, ["lipsSize"] = 0.64f },
+                Skin = Skin("Ivory"),
+                Hair = Hair("Auburn"),
+                Brows = Hair("Auburn"),
+                Eyes = Eyes("Blue"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("B0201E") },
+                Dna = new Dictionary<string, float> { ["height"] = .18f, ["eyeSize"] = .7f, ["lipsSize"] = .64f },
             },
 
-            // The Cookout Captain: tall, level, and never the loudest person in a room he is running.
+            // The Cookout Captain. Deep brown skin, a shaved head, a full short beard, an orange polo.
             ["xavier-prather"] = new UmaCastLook
             {
                 Race = MaleRace,
                 Wardrobe = new[]
                 {
-                    "bb_male_haircut_Recipe",
                     "Eyebrows_Average_Average",
-                    "Beard_Goatee",
+                    "Beard_Trimmed",
                     "male_underwear_tighty_Recipe",
-                    "male_hoodie_blue_Recipe",
+                    "male_tshirt_white_Recipe",
                     "male_sportpants_alt_black_Recipe",
                     "male_shoes_tall_Recipe",
                 },
-                Skin = Ebony,
-                Hair = Ink,
-                Brows = Ink,
-                Eyes = DarkEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.25f, ["armWidth"] = 0.68f, ["upperMuscle"] = 0.62f },
+                Skin = Skin("Espresso"),
+                Hair = Hair("Black"),
+                Brows = Hair("Black"),
+                Eyes = Eyes("Black-brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("E8892B") },
+                Dna = new Dictionary<string, float> { ["height"] = .25f, ["armWidth"] = .68f, ["upperMuscle"] = .62f, ["noseWidth"] = .58f },
             },
 
-            // The Floater Queen: the oldest woman in the house, greying on purpose, dressed to cook.
+            // The Floater Queen. East Asian, long reddish-brown hair, drop earrings, a black halter.
             ["jun-song"] = new UmaCastLook
             {
                 Race = FemaleRace,
                 Wardrobe = new[]
                 {
-                    "Hair_Bob_Recipe",
+                    "Hair_Straight_Recipe",
                     "Eyebrows_Thin_Bushy",
-                    "underwear_bra_green_Recipe",
+                    "underwear_bra_white_Recipe",
                     "underwear_white_granit_bottom_Recipe",
-                    "tanktop_zebra_Recipe",
-                    "F_Wrapped Pants_Recipe",
+                    "tanktop_whiteBlackStraps_Recipe",
+                    "sportwear_pants_granit_Recipe",
                     "shoe_low_white_Recipe",
+                    "gs-acc-drops",
                 },
-                Skin = Olive,
-                Hair = Silver,
-                Brows = Ash,
-                Eyes = DarkEye,
-                Dna = new Dictionary<string, float> { ["height"] = 0.09f, ["upperWeight"] = 0.58f, ["cheekPosition"] = 0.44f },
+                Skin = Skin("Light beige"),
+                Hair = Hair("Chestnut"),
+                Brows = Hair("Dark brown"),
+                Eyes = Eyes("Dark brown"),
+                Fabric = new Dictionary<string, Color> { ["Chest"] = Hex("1E2126") },
+                Dna = new Dictionary<string, float> { ["height"] = .09f, ["upperWeight"] = .58f, ["cheekPosition"] = .44f, ["eyeRotation"] = .56f, ["noseFlatten"] = .56f },
             },
 
             // The player. Deliberately the plainest look in the house: it is the one the
@@ -640,10 +644,10 @@ namespace Gamesim.Uma
                     "male_sportpants_grey_Recipe",
                     "male_shoe_low_white.001_Recipe",
                 },
-                Skin = Deep,
-                Hair = Ink,
-                Brows = Ink,
-                Eyes = Hex("30251C"),
+                Skin = Skin("Caramel"),
+                Hair = Hair("Jet black"),
+                Brows = Hair("Jet black"),
+                Eyes = Eyes("Dark brown"),
             },
         };
 

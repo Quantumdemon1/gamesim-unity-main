@@ -37,9 +37,15 @@ namespace Gamesim.Uma
         private int readyAfterFrame = -1;
         private IReadOnlyDictionary<string, Color> garmentTints;
 
+        private Color skin = new Color(.85f, .68f, .55f), brows, hair;
+        private bool hasBrows;
+        private string grownHair;
+        private IReadOnlyList<string> accessories;
+
         internal void Bind(DynamicCharacterAvatar target, Color wardrobe, IReadOnlyDictionary<string, float> dna,
             bool preserveFabric = false, CharacterBodyBuildState buildState = null,
-            IReadOnlyDictionary<string, Color> garmentTints = null)
+            IReadOnlyDictionary<string, Color> garmentTints = null, Color? skin = null, Color? brows = null,
+            string grownHair = null, Color? hair = null, IReadOnlyList<string> accessories = null)
         {
             avatar = target;
             fabric = wardrobe;
@@ -47,10 +53,88 @@ namespace Gamesim.Uma
             this.preserveFabric = preserveFabric;
             this.buildState = buildState;
             this.garmentTints = garmentTints;
+            if (skin.HasValue) this.skin = skin.Value;
+            if (brows.HasValue) { this.brows = brows.Value; hasBrows = true; }
+            this.grownHair = grownHair;
+            this.hair = hair ?? new Color(.2f, .14f, .1f);
+            this.accessories = accessories;
             if (avatar == null) return;
             avatar.OnCharacterUpdated += OnCharacterUpdated;
-            if (garmentTints != null && garmentTints.Count > 0) avatar.OnCharacterBegun += TintGarments;
+            avatar.OnCharacterBegun += OnCharacterBegun;
         }
+
+        private void OnCharacterBegun(UMAData data)
+        {
+            // Grown hair and accessories are fitted to the built mesh, and UMA otherwise hands that
+            // mesh back with no copy the scan can read. Only bodies that wear them keep one.
+            if (grownHair != null || (accessories != null && accessories.Count > 0)) data.markNotReadable = false;
+            ShareHairColour(data);
+            if (garmentTints != null && garmentTints.Count > 0) TintGarments(data);
+            if (hasBrows) PaintBrows(data);
+        }
+
+        /// <summary>
+        /// Puts every hair card on the shared hair colour. One of UMA's styles, the bun, points its
+        /// card at a private white of its own rather than at "Hair", so it stayed silver whatever
+        /// colour was picked. Handing it the recipe's shared instance - not a copy - means a colour
+        /// changed later reaches it as it reaches every other style. Returns how many were moved.
+        /// </summary>
+        internal static int ShareHairColour(UMAData data)
+        {
+            var recipe = data?.umaRecipe;
+            if (recipe?.sharedColors == null || recipe.slotDataList == null) return 0;
+            OverlayColorData hair = null;
+            foreach (var colour in recipe.sharedColors)
+                if (colour != null && colour.name == "Hair") { hair = colour; break; }
+            if (hair == null) return 0;
+            int moved = 0;
+            foreach (var slot in recipe.slotDataList)
+            {
+                if (slot == null) continue;
+                var overlays = slot.GetOverlayList();
+                for (int i = 0; i < overlays.Count; i++)
+                {
+                    var overlay = overlays[i];
+                    if (overlay?.colorData == null || overlay.colorData.IsASharedColor || !IsHairCard(overlay)) continue;
+                    overlay.colorData = hair;
+                    moved++;
+                }
+            }
+            return moved;
+        }
+
+        private static bool IsHairCard(OverlayData overlay)
+            => overlay.overlayName != null && overlay.overlayName.StartsWith("CardHair", System.StringComparison.Ordinal);
+
+        /// <summary>
+        /// Gives the brows their own colour. Most of UMA's brow styles are drawn in the shared hair
+        /// colour, not the brow colour the creator offers, so the Brows row changed nothing on them:
+        /// a brunette's brows could never be darker than her hair, or a platinum blonde's any
+        /// darker at all. Each such brow overlay is handed a private copy painted the brow colour, as
+        /// the garments are; the hair itself, and beards, keep the hair colour.
+        /// </summary>
+        private void PaintBrows(UMAData data)
+        {
+            if (data?.umaRecipe?.slotDataList == null) return;
+            foreach (var slot in data.umaRecipe.slotDataList)
+            {
+                if (slot == null) continue;
+                var overlays = slot.GetOverlayList();
+                for (int i = 0; i < overlays.Count; i++)
+                {
+                    var overlay = overlays[i];
+                    if (overlay?.colorData == null || !IsBrow(slot, overlay)) continue;
+                    if (overlay.colorData.IsASharedColor && overlay.colorData.name != "Hair") continue;
+                    var painted = new OverlayColorData(3);
+                    painted.channelMask[0] = new Color(brows.r, brows.g, brows.b, 1f);
+                    overlay.colorData = painted;
+                }
+            }
+        }
+
+        private static bool IsBrow(SlotData slot, OverlayData overlay)
+            => (overlay.overlayName != null && overlay.overlayName.IndexOf("brow", System.StringComparison.OrdinalIgnoreCase) >= 0)
+               || (slot.slotName != null && slot.slotName.IndexOf("brow", System.StringComparison.OrdinalIgnoreCase) >= 0);
 
         /// <summary>
         /// Lays each tinted garment's colour on its own overlays, as UMA begins a build and before it
@@ -119,9 +203,21 @@ namespace Gamesim.Uma
         private void OnCharacterUpdated(UMAData data)
         {
             bool rebuilding = ApplyProportions();
-            UmaStylizer.Apply(gameObject);
+            UmaStylizer.Apply(gameObject, skin);
             Apply();
+            if (!rebuilding) FitGrownPieces();
             if (!rebuilding) readyAfterFrame = Time.frameCount + 2;
+        }
+
+        /// <summary>
+        /// Grows the hair and fits the accessories built in code, on the finished body: both are
+        /// read off its head, so they wait for the build, and are refitted after every rebuild in
+        /// case a proportion slider moved the face they sit on.
+        /// </summary>
+        private void FitGrownPieces()
+        {
+            if (grownHair != null) ProceduralHair.Grow(gameObject, grownHair, hair, skin);
+            if (accessories != null && accessories.Count > 0) ProceduralAccessories.Dress(gameObject, accessories);
         }
 
         private void LateUpdate()
@@ -162,7 +258,7 @@ namespace Gamesim.Uma
 
         private void OnDestroy()
         {
-            if (avatar != null) { avatar.OnCharacterUpdated -= OnCharacterUpdated; avatar.OnCharacterBegun -= TintGarments; }
+            if (avatar != null) { avatar.OnCharacterUpdated -= OnCharacterUpdated; avatar.OnCharacterBegun -= OnCharacterBegun; }
             avatar = null;
         }
     }

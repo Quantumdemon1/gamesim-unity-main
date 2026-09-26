@@ -46,6 +46,8 @@ namespace Gamesim.Uma.Tests
                 {
                     AssertColour(material.GetColor("_BaseColor"), Red, material.name + " base");
                     AssertColour(material.GetColor("_RootColor"), Red * .82f, material.name + " root");
+                    // And its highlight is a shade of the hair, not the material's orange-red.
+                    AssertColour(material.GetColor("_SpecularTint"), UmaBodyProvider.HairHighlight(Red), material.name + " highlight");
                 }
 
                 // The shirt's overlays carry the fabric tint; the trousers keep their own white.

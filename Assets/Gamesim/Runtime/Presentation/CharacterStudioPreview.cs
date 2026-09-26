@@ -51,9 +51,14 @@ namespace Gamesim.Presentation
             { name = "Character studio preview", antiAliasing = 2, hideFlags = HideFlags.DontSave };
             texture.Create();
             cameraRig.targetTexture = texture;
-            AddLight("Key", new Vector3(-2f, 3f, 3f), new Color(1f, .91f, .82f), 7f);
-            AddLight("Fill", new Vector3(2f, 1.7f, 2f), new Color(.72f, .83f, 1f), 4f);
-            AddLight("Rim", new Vector3(0f, 2f, -2f), new Color(.6f, .87f, 1f), 5f);
+            // A portrait studio's lights: a warm-white key, a neutral fill and a soft bounce from
+            // below, with the house's cool colour kept to the rim. The fill used to be blue and
+            // nearly as strong as the key, and blue light on a brown face goes grey: deep skin
+            // came out of the studio ashen whatever its colour.
+            AddLight("Key", new Vector3(-2f, 3f, 3f), new Color(1f, .95f, .9f), 6.5f);
+            AddLight("Fill", new Vector3(2.2f, 1.6f, 2.4f), new Color(1f, .97f, .94f), 3.2f);
+            AddLight("Bounce", new Vector3(0f, -.4f, 2.2f), new Color(1f, .9f, .82f), 1.3f);
+            AddLight("Rim", new Vector3(0f, 2.2f, -2.2f), new Color(.72f, .87f, 1f), 4f);
         }
 
         private void AddLight(string name, Vector3 position, Color color, float intensity)

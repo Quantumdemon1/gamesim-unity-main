@@ -17,7 +17,7 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         private static readonly string[] CreatorPages = { "Appearance", "Identity", "Personality", "My Houseguests", "Review" };
-        private static readonly string[] CreatorCategories = { "Body", "Face", "Hair", "Clothing", "Colors" };
+        private static readonly string[] CreatorCategories = { "Body", "Face", "Hair", "Clothing", "Accessories", "Colors" };
 
         [UnityTest]
         public IEnumerator Creator_EveryPageFitsTheFrameAndIsCapturedForReview()
@@ -132,6 +132,49 @@ namespace Gamesim.Tests.PlayMode
             brow.onClick.Invoke();
             yield return null;
             AssertSameColour(AppearanceEditing.ColorValue(creator.Draft.Appearance, "Brows", Color.clear), shown, "brows set apart");
+        }
+
+        /// <summary>
+        /// Accessories are picked from their own page, worn with the outfit being edited, and put
+        /// back as they were by that page's reset.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Creator_AccessoriesAreWornFromTheirPageAndResetWithIt()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            CastButtons("Accessories")[0].onClick.Invoke();
+            yield return null;
+            string Worn(string slot) => AppearanceEditing.Outfit(creator.Draft.Appearance).wardrobe.FirstOrDefault(item => item.slot == slot)?.itemId;
+            Assert.That(Worn("Eyewear"), Is.Null, "The starting look wears no glasses.");
+            CastButtons("Black frames").Single().onClick.Invoke();
+            yield return null;
+            CastButtons("Gold hoops").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.EqualTo(ProceduralAccessories.Prefix + "glasses"));
+            Assert.That(Worn("Earrings"), Is.EqualTo(ProceduralAccessories.Prefix + "hoops"));
+            var outfits = creator.Draft.Appearance.outfits.Where(outfit => outfit.id != creator.Draft.Appearance.activeOutfit);
+            Assert.That(outfits.All(outfit => outfit.wardrobe.All(item => item.slot != "Eyewear")), Is.True, "Worn with this outfit only.");
+            CastButtons("Reset accessories").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(Worn("Eyewear"), Is.Null, "Reset takes them off again.");
+            Assert.That(Worn("Earrings"), Is.Null);
+            Assert.That(Worn("Chest"), Is.Not.Null, "And leaves the clothes alone.");
+        }
+
+        /// <summary>The face page offers its features under headings, the jaw among them.</summary>
+        [UnityTest]
+        public IEnumerator Creator_TheFaceGroupsItsFeaturesUnderHeadings()
+        {
+            yield return OpenCreator();
+            var creator = Creator();
+            CastButtons("Face")[0].onClick.Invoke();
+            yield return null;
+            var texts = creator.GetComponentsInChildren<TMPro.TMP_Text>().Where(text => text.isActiveAndEnabled).Select(text => text.text).ToList();
+            foreach (string heading in new[] { "FACE SHAPE", "CHEEKS", "EYES & BROWS", "NOSE", "MOUTH & EARS" })
+                Assert.That(texts, Does.Contain(heading), heading);
+            foreach (string feature in new[] { "Jaw width", "Cheekbones", "Eye tilt", "Nose bridge" })
+                Assert.That(creator.GetComponentsInChildren<Slider>().Any(slider => slider.name == feature + " slider"), Is.True, feature);
         }
 
         /// <summary>

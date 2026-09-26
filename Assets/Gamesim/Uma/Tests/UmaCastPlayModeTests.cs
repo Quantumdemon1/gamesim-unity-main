@@ -66,8 +66,17 @@ namespace Gamesim.Uma.Tests
                     "Races are keyed by race name, not by asset file name.");
 
                 foreach (var recipeName in look.Wardrobe)
+                {
+                    // Hair and accessories built in code are catalog items, not recipes.
+                    if (UmaAppearanceCatalog.IsGrown(recipeName))
+                    {
+                        Assert.That(ProceduralHair.Find(recipeName) != null || ProceduralAccessories.Find(recipeName) != null, Is.True,
+                            appearanceId + " wears '" + recipeName + "', which nothing builds.");
+                        continue;
+                    }
                     Assert.That(indexer.GetAsset<UMAWardrobeRecipe>(recipeName), Is.Not.Null,
                         appearanceId + " wears '" + recipeName + "', which is not in the Global Library.");
+                }
             }
         }
 

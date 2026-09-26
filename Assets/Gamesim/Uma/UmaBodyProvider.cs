@@ -138,8 +138,13 @@ namespace Gamesim.Uma
             // garment could not be worn - so a fabric tint lands on what is drawn.
             var dressed = new Dictionary<string, UMAWardrobeRecipe>(StringComparer.Ordinal);
             var wornSet = appearance?.outfits.FirstOrDefault(item => item.id == appearance.activeOutfit)?.wardrobe;
+            // Pieces built in code are not UMA recipes: they are fitted once the body is built.
+            string grownHair = null;
+            var accessories = new List<string>();
             foreach (var recipeName in look.Wardrobe)
             {
+                if (ProceduralHair.IsProcedural(recipeName)) { grownHair = recipeName; continue; }
+                if (ProceduralAccessories.IsProcedural(recipeName)) { accessories.Add(recipeName); continue; }
                 var installedCatalog = (UmaAppearanceCatalog)Catalog;
                 var recipe = indexer.GetAsset<UMAWardrobeRecipe>(installedCatalog.ResolveRecipeName(recipeName));
                 if (recipe == null || (recipe.compatibleRaces.Count > 0 && !recipe.compatibleRaces.Contains(look.Race)))
@@ -156,36 +161,41 @@ namespace Gamesim.Uma
                     if (recipe == null) continue;
                 }
                 avatar.preloadWardrobeRecipes.recipes.Add(new DynamicCharacterAvatar.WardrobeRecipeListItem(recipe));
-                string wornSlot = wornSet?.FirstOrDefault(item => item.itemId == recipeName)?.slot;
+                // A saved outfit names its slots; a look straight from the library wears each recipe in its own.
+                string wornSlot = wornSet != null ? wornSet.FirstOrDefault(item => item.itemId == recipeName)?.slot : recipe.wardrobeSlot;
                 if (wornSlot != null) dressed[wornSlot] = recipe;
             }
 
-            avatar.SetColor(SkinColor, look.Skin);
-            // Hair goes in raw, with the hair shader's own colours: see HairColour.
+            // Skin and hair go in raw: see SkinColour and HairColour.
+            avatar.SetRawColor(SkinColor, SkinColour(look.Skin), false);
             avatar.SetRawColor(HairColor, HairColour(look.Hair), false);
             avatar.SetColor(BrowsColor, look.Brows);
             avatar.SetColor(EyesColor, look.Eyes);
             var fabric = new Dictionary<string, Color>(StringComparer.Ordinal);
+            // A fabric tint belongs to one garment: the slots its recipe builds, found here so the
+            // tint can be laid on those overlays and no others.
+            void Dye(string slot, Color tint)
+            {
+                var packed = dressed.TryGetValue(slot, out var recipe) ? recipe.PackedLoad() : null;
+                if (packed?.slotsV3 == null) return;
+                foreach (var part in packed.slotsV3)
+                    if (part != null && !string.IsNullOrEmpty(part.id)) fabric[part.id] = tint;
+            }
+            // A look straight from the library - no saved outfit - wears the library's dyes.
+            if (wornSet == null && preset.Fabric != null)
+                foreach (var tint in preset.Fabric) Dye(tint.Key, tint.Value);
             if (appearance != null)
             {
                 foreach (var color in appearance.colors)
-                    if (color.id != HairColor) avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
+                    if (color.id != HairColor && color.id != SkinColor) avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
                 var outfit = appearance.outfits.FirstOrDefault(item => item.id == appearance.activeOutfit);
                 if (outfit != null)
                 {
                     foreach (var color in outfit.colors)
                         if (!AppearanceEditing.IsFabricChannel(color.id))
                             avatar.SetColor(color.id, new Color(color.r, color.g, color.b, color.a));
-                    // A fabric tint belongs to one garment: the slots its recipe builds, found here
-                    // so the tint can be laid on those overlays and no others.
                     foreach (string slot in AppearanceEditing.FabricSlots)
-                    {
-                        if (!AppearanceEditing.TryFabric(outfit, slot, out var tint)) continue;
-                        var packed = dressed.TryGetValue(slot, out var recipe) ? recipe.PackedLoad() : null;
-                        if (packed?.slotsV3 == null) continue;
-                        foreach (var part in packed.slotsV3)
-                            if (part != null && !string.IsNullOrEmpty(part.id)) fabric[part.id] = tint;
-                    }
+                        if (AppearanceEditing.TryFabric(outfit, slot, out var tint)) Dye(slot, tint);
                 }
             }
 
@@ -193,7 +203,8 @@ namespace Gamesim.Uma
             // character, so they are handed to a component that lives on the body and waits for it.
             // House proportions first, then whatever this houseguest overrides.
             root.AddComponent<UmaBodyTint>().Bind(avatar, wardrobe, look.Dna,
-                preserveFabric: appearance != null, buildState: buildState, garmentTints: fabric);
+                preserveFabric: appearance != null, buildState: buildState, garmentTints: fabric,
+                skin: look.Skin, brows: look.Brows, grownHair: grownHair, hair: look.Hair, accessories: accessories);
 
             // The face. Added here rather than after the build because UMA hands the expression
             // player the race's pose set during the avatar's own Start, and only to a player that
@@ -202,6 +213,45 @@ namespace Gamesim.Uma
 
             body = new CharacterBody(root, animator, deferred: true);
             return true;
+        }
+
+        /// <summary>
+        /// The skin's own albedo, averaged in linear light: <c>UMA_F_Diffuse.100x</c>, the one skin
+        /// texture both bodies are drawn with, read back from a generated body (a light, pinkish
+        /// #C89B87).
+        /// </summary>
+        public static readonly Color SkinAlbedoMean = new Color(0.581f, 0.332f, 0.248f);
+
+        /// <summary>
+        /// A skin colour that renders as the colour chosen.
+        ///
+        /// <para>UMA draws skin by multiplying the chosen colour over that albedo, in linear light:
+        /// drawn = albedo × linear(multiply) + linear(additive), per channel, as measured on the
+        /// generated texture. A swatch passed in as the multiply alone came out darker and redder
+        /// than itself - the texture's own pink under every tone - so a deep brown rendered a muddy
+        /// red and every houseguest shared the same orange cast. Here the multiply is the swatch
+        /// divided by the albedo's average, channel by channel: the average then lands on the
+        /// swatch, and the texture keeps only its detail - pores, lips, shading - relative to it.
+        /// A channel the albedo cannot reach by multiplying (the fairest tones are lighter than
+        /// the texture) takes the remainder as an additive lift.</para>
+        /// </summary>
+        public static OverlayColorData SkinColour(Color colour)
+        {
+            var multiply = Color.white;
+            var add = new Color(0f, 0f, 0f, 0f);
+            for (int channel = 0; channel < 3; channel++)
+            {
+                float target = Mathf.GammaToLinearSpace(Mathf.Clamp01(colour[channel]));
+                float albedo = SkinAlbedoMean[channel];
+                float ratio = target / albedo;
+                if (ratio <= 1f) multiply[channel] = Mathf.LinearToGammaSpace(ratio);
+                else add[channel] = Mathf.LinearToGammaSpace(target - albedo);
+            }
+            multiply.a = 1f;
+            var data = new OverlayColorData(3);
+            data.channelMask[0] = multiply;
+            data.channelAdditiveMask[0] = add;
+            return data;
         }
 
         /// <summary>
@@ -215,8 +265,13 @@ namespace Gamesim.Uma
         /// block on the shared colour; so does this, the roots a shade deeper and the tips catching
         /// a little light, as those presets do. Eyebrows and lashes share the colour and read the
         /// tint, so they follow.</para>
+        ///
+        /// <para>The highlight is the hair's own too. The material's specular tint is an orange-red
+        /// (0.65, 0.27, 0), which on black hair under the studio's key light drew a maroon sheen
+        /// across every dark head in the cast. Real hair shines in a paler shade of itself: a soft
+        /// grey on black, gold on blonde, copper on red.</para>
         /// </summary>
-        internal static OverlayColorData HairColour(Color colour)
+        public static OverlayColorData HairColour(Color colour)
         {
             colour.a = 1f;
             var data = new OverlayColorData(3);
@@ -224,7 +279,16 @@ namespace Gamesim.Uma
             data.SetColorProperty("_BaseColor", colour);
             data.SetColorProperty("_RootColor", new Color(colour.r * .82f, colour.g * .82f, colour.b * .82f, 1f));
             data.SetColorProperty("_Tip_Color", Color.Lerp(colour, Color.white, .06f));
+            data.SetColorProperty("_SpecularTint", HairHighlight(colour));
             return data;
+        }
+
+        /// <summary>The colour a head of hair shines in: a paler, softer shade of itself.</summary>
+        public static Color HairHighlight(Color colour)
+        {
+            var sheen = Color.Lerp(colour, Color.white, .45f) * .6f;
+            sheen.a = 1f;
+            return sheen;
         }
 
         public void SetWardrobeColor(in CharacterBody body, Color wardrobe)

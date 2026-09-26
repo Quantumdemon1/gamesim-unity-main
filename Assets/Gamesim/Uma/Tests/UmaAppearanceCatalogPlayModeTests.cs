@@ -27,6 +27,14 @@ namespace Gamesim.Uma.Tests
                 Assert.That(snapshot.dna.Count, Is.GreaterThan(15), "Persist actual DNA, not just a seed.");
                 Assert.That(snapshot.colors.Count, Is.GreaterThanOrEqualTo(4));
                 Assert.That(snapshot.outfits.Single().wardrobe.Count, Is.GreaterThan(3));
+                // The look's dyes are saved with the outfit, as a dye picked in the creator is.
+                UmaCastLibrary.TryGet(id, out var look);
+                foreach (var tint in look.Fabric)
+                {
+                    Assert.That(AppearanceEditing.TryFabric(snapshot.outfits.Single(), tint.Key, out var saved), Is.True, id + " " + tint.Key);
+                    Assert.That(Mathf.Abs(saved.r - tint.Value.r) + Mathf.Abs(saved.g - tint.Value.g) + Mathf.Abs(saved.b - tint.Value.b),
+                        Is.LessThan(.01f), id + "'s " + tint.Key + " is the colour in their photo.");
+                }
                 var again = catalog.Materialize(snapshot);
                 Assert.That(again.ContentKey(), Is.EqualTo(snapshot.ContentKey()), "Resolving cannot mutate a saved recipe.");
                 again.dna[0].value = .991f;
@@ -65,6 +73,15 @@ namespace Gamesim.Uma.Tests
             }
             foreach (var item in catalog.Items)
             {
+                if (UmaAppearanceCatalog.IsGrown(item.Id))
+                {
+                    // Hair and accessories built in code: their own ids, never a recipe's, each with a picture.
+                    Assert.That(item.Id, Does.StartWith("gs-"), item.Id);
+                    Assert.That(UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(item.Id), Is.Null, item.Id + " shadows a recipe.");
+                    Assert.That(item.Thumbnail, Is.Not.Null, item.Id + " has a picture in the creator.");
+                    Assert.That(item.CompatibleBodies, Is.EquivalentTo(catalog.Bodies.Select(body => body.Id)), item.Id + " fits both bodies.");
+                    continue;
+                }
                 Assert.That(item.Id, Does.StartWith("uma-"), "Authored save IDs must not depend on asset names.");
                 string recipe = catalog.ResolveRecipeName(item.Id);
                 Assert.That(UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(recipe), Is.Not.Null, item.Id);
@@ -80,6 +97,24 @@ namespace Gamesim.Uma.Tests
             AppearanceEditing.Wear(resolved, selected, catalog);
             Assert.That(resolved.outfits.Single().wardrobe.Single(value => value.slot == selected.Slot).itemId, Is.EqualTo(selected.Id));
             Assert.That(appearance.ContentKey(), Is.EqualTo(legacyKey));
+        }
+
+        /// <summary>
+        /// A control naming DNA no body has is dropped without a word: the creator's jaw slider named
+        /// "jawSize" where UMA's DNA is "jawsSize", and was never shown. Every declared control must
+        /// drive DNA at least one body has.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EveryDeclaredControlDrivesDnaABodyHas()
+        {
+            yield return null;
+            var catalog = new UmaAppearanceCatalog();
+            var advertised = catalog.Controls.Select(control => control.Id).ToList();
+            foreach (var control in UmaAppearanceCatalog.DeclaredControls())
+                Assert.That(advertised, Does.Contain(control.Id),
+                    control.Label + " drives DNA '" + control.Id + "', which neither body has: its slider would never appear.");
+            Assert.That(catalog.Controls.Count(control => control.Category == "Face"), Is.GreaterThanOrEqualTo(25),
+                "The face offers the features faces differ by: jaw, cheekbones, eye tilt, nose bridge.");
         }
 
         [UnityTest]

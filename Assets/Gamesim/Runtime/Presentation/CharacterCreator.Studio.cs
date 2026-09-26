@@ -51,12 +51,22 @@ namespace Gamesim.Presentation
         private bool previewOnPage;
         private bool? studioFace;
 
-        private static readonly string[] Categories = { "Body", "Face", "Hair", "Clothing", "Colors" };
+        private static readonly string[] Categories = { "Body", "Face", "Hair", "Clothing", "Accessories", "Colors" };
 
-        // The swatches: skin light to deep; natural hair and two silvers; eyes dark to light.
-        private static readonly string[] SkinSwatches = { "F6D7C3", "EDC4A6", "E0AC89", "C99071", "B07A57", "93603F", "7A4B2F", "5E3822", "452818", "2E1B11" };
-        private static readonly string[] HairSwatches = { "15110F", "2B1D16", "3B281A", "58391F", "704B30", "6E2A10", "A24E24", "C98A55", "D8B26E", "EDE3CF", "B9BEC6", "7C8088" };
-        private static readonly string[] EyeSwatches = { "2E1C12", "4E3220", "6B5231", "8F6A2E", "4F6B3A", "3E6C8E", "6E8FA8", "7F8A92" };
+        /// <summary>The face's sliders in the groups the page shows them under; anything the catalog adds later goes under the last.</summary>
+        private static readonly (string title, string[] ids)[] FaceGroups =
+        {
+            ("FACE SHAPE", new[] { "headWidth", "foreheadSize", "foreheadPosition", "jawsSize", "jawsPosition", "mandibleSize", "chinSize", "chinPronounced", "chinPosition" }),
+            ("CHEEKS", new[] { "cheekSize", "cheekPosition", "cheekPronounced", "lowCheekPronounced" }),
+            ("EYES & BROWS", new[] { "eyeSize", "eyeSpacing", "eyeRotation", "EyePosition", "BrowPosition" }),
+            ("NOSE", new[] { "noseSize", "noseWidth", "noseCurve", "noseFlatten", "nosePronounced", "nosePosition", "noseInclination" }),
+            ("MOUTH & EARS", new[] { "mouthSize", "lipsSize", "earsSize", "earsRotation" }),
+        };
+
+        /// <summary>The brow row's way back to the hair's colour.</summary>
+        public const string MatchHairCaption = "Match hair color";
+
+        // Skin, hair, brows and eyes come from CharacterPalettes; garments keep their own.
         private static readonly string[] FabricSwatches = { "F2F2EE", "1E2126", "5A5F69", "1E3A66", "3F78C8", "2F6B4A", "8A2F2F", "C8553A", "D9A441", "E7C9A6", "6B4A8C", "D86FA6" };
 
         private void Update()
@@ -136,6 +146,7 @@ namespace Gamesim.Presentation
                 case "Face": return "mood-happy";
                 case "Hair": return "mood-confident";
                 case "Clothing": return PackArt.KitIconArchive;
+                case "Accessories": return "mood-playful";
                 default: return "star";
             }
         }
@@ -234,7 +245,7 @@ namespace Gamesim.Presentation
             previewOnPage = true;
             // The close-up belongs to the face and hair, and the comparison with the original to the
             // page that offers it: every other page shows the whole houseguest as they are now.
-            bool face = studioPage == "Appearance" && (appearanceCategory == "Face" || appearanceCategory == "Hair");
+            bool face = studioPage == "Appearance" && (appearanceCategory == "Face" || appearanceCategory == "Hair" || appearanceCategory == "Accessories");
             if (studioFace != face) { studioFace = face; studioPreview.FocusFace(face); }
             bool original = comparingOriginal && studioPage == "Appearance";
             studioPreview.Show(original ? initialAppearance ?? new CharacterAppearance() : draft.Appearance);
@@ -305,11 +316,16 @@ namespace Gamesim.Presentation
                     break;
                 case "Face":
                     StartingLooks();
-                    Sliders("Face");
+                    FaceSliders();
+                    break;
+                case "Accessories":
+                    OutfitSelector();
+                    foreach (var slot in ProceduralAccessories.Slots) WardrobeStrip(slot);
+                    StudioText("Each piece is fitted to the face and build you have made, and worn with this outfit.", 26f);
                     break;
                 case "Hair":
                     WardrobeStrip("Hair"); WardrobeStrip("Eyebrows"); WardrobeStrip("Beard");
-                    SwatchRow("HAIR COLOR", "Hair", HairSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear), SetHairColour);
+                    SwatchGrid("HAIR COLOR", "Hair", CharacterPalettes.Hair, AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear), SetHairColour);
                     StudioText("The brows take the hair color. Give them one of their own under Colors.", 26f);
                     break;
                 case "Clothing":
@@ -327,13 +343,15 @@ namespace Gamesim.Presentation
                             SwatchRow(channel.ToUpperInvariant(), channel, FabricSwatches, OutfitChannel(channel), color => SetOutfitChannel(channel, color));
                     break;
                 default:
-                    SwatchRow("SKIN TONE", "Skin", SkinSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Skin", Color.clear),
+                    SwatchGrid("SKIN TONE", "Skin", CharacterPalettes.Skin, AppearanceEditing.ColorValue(draft.Appearance, "Skin", Color.clear),
                         color => AppearanceEditing.SetColor(draft.Appearance, "Skin", color));
-                    SwatchRow("HAIR COLOR", "Hair", HairSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear), SetHairColour);
-                    SwatchRow("BROW COLOR", "Brows", HairSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Brows", Color.clear),
-                        color => AppearanceEditing.SetColor(draft.Appearance, "Brows", color));
-                    StudioText("A hair color sets the brows to match; pick a brow color after it to set them apart. Some brow styles follow the hair whatever their own color.", 42f);
-                    SwatchRow("EYE COLOR", "Eyes", EyeSwatches, AppearanceEditing.ColorValue(draft.Appearance, "Eyes", Color.clear),
+                    StudioText("Four depths, with golden, olive and rosy undertones at each: pick the depth, then the undertone.", 26f);
+                    SwatchGrid("HAIR COLOR", "Hair", CharacterPalettes.Hair, AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.clear), SetHairColour);
+                    SwatchGrid("BROW COLOR", "Brows", new[] { CharacterPalettes.Hair[0] }, AppearanceEditing.ColorValue(draft.Appearance, "Brows", Color.clear),
+                        color => AppearanceEditing.SetColor(draft.Appearance, "Brows", color), MatchHairCaption,
+                        () => AppearanceEditing.SetColor(draft.Appearance, "Brows", AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.black)));
+                    StudioText("A hair color sets the brows to match; pick a brow color after it to set them apart.", 26f);
+                    SwatchGrid("EYE COLOR", "Eyes", CharacterPalettes.Eyes, AppearanceEditing.ColorValue(draft.Appearance, "Eyes", Color.clear),
                         color => AppearanceEditing.SetColor(draft.Appearance, "Eyes", color));
                     StudioText("Garment colors are under Clothing.", 22f);
                     break;
@@ -482,6 +500,30 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>The face's sliders, grouped under headings: shape, cheeks, eyes and brows, nose, mouth and ears.</summary>
+        private void FaceSliders()
+        {
+            var controls = Catalog.Controls.Where(control => control.Category == "Face" && control.Fits(draft.Appearance.bodyId)).ToList();
+            var placed = new HashSet<string>(StringComparer.Ordinal);
+            float column = (studioWidth - 24f - 28f) * .5f;
+            for (int g = 0; g < FaceGroups.Length; g++)
+            {
+                var group = FaceGroups[g].ids.Select(id => controls.FirstOrDefault(control => control.Id == id)).Where(control => control != null).ToList();
+                if (g == FaceGroups.Length - 1) group.AddRange(controls.Where(control => !placed.Contains(control.Id) && !group.Contains(control)
+                    && !FaceGroups.Any(other => other.ids.Contains(control.Id))));
+                if (group.Count == 0) continue;
+                StudioHeading(FaceGroups[g].title);
+                for (int i = 0; i < group.Count; i++)
+                {
+                    placed.Add(group[i].Id);
+                    float x = 12f + (i % 2) * (column + 28f);
+                    ControlSlider(group[i], new Rect(x, studioCursor, column, 62f));
+                    if (i % 2 == 1 || i == group.Count - 1) studioCursor += 70f;
+                }
+                studioCursor += 4f;
+            }
+        }
+
         /// <summary>
         /// The starting looks - every cast member's look, and the player's - as portraits to pick from,
         /// the arrows stepping through them one at a time.
@@ -618,6 +660,70 @@ namespace Gamesim.Presentation
             studioCursor += 70f;
         }
 
+        /// <summary>
+        /// A palette in its named rows - Fair &amp; light, Medium, Tan &amp; brown, Deep - on the pack's
+        /// swatch panel, the worn colour ringed and named in the heading, the one under the pointer
+        /// named there while it is. Swatches keep the "<paramref name="prefix"/> N" numbering straight
+        /// across the rows. An <paramref name="extra"/> action takes a pill at the heading's right.
+        /// </summary>
+        private void SwatchGrid(string title, string prefix, CharacterPalettes.Group[] groups, Color current, Action<Color> apply,
+            string extraCaption = null, Action extra = null)
+        {
+            float headingY = studioCursor;
+            string worn = current.a > 0f ? CharacterPalettes.NameOf(groups, current) ?? "Custom" : null;
+            string heading = title + (worn != null ? "  ·  " + worn.ToUpperInvariant() : "");
+            var label = Words(studioControls, heading, 17f, UiTheme.Glow, new Rect(12f, studioCursor, studioWidth - 24f - (extra != null ? 212f : 0f), 26f),
+                name: prefix + " heading");
+            var bold = UiTheme.Font(UiTheme.Weight.Bold); if (bold != null) label.font = bold;
+            label.characterSpacing = 2f; label.overflowMode = TextOverflowModes.Ellipsis;
+            if (extra != null)
+                Pill(studioControls, extraCaption, new Rect(studioWidth - 12f - 200f, headingY - 4f, 200f, 30f), Tone.Quiet,
+                    () => ChangeAppearance(extra), icon: PackArt.KitIconRefresh, size: 13f);
+            studioCursor += 32f;
+
+            const float size = 34f, gap = 10f, pad = 12f, rowStep = size + 10f;
+            float plateWidth = studioWidth - 24f;
+            float labelWidth = groups.Length > 1 ? 116f : 0f;
+            int perRow = Mathf.Max(1, Mathf.FloorToInt((plateWidth - 2f * pad - labelWidth + gap) / (size + gap)));
+            int rows = groups.Sum(group => Mathf.CeilToInt(group.Swatches.Length / (float)perRow));
+            float plateHeight = 2f * pad + rows * rowStep - 10f;
+            var plate = HudPrimitives.Fill(prefix + " swatches", studioControls, UiTheme.Surface, 10);
+            Place(plate, 12f, studioCursor, plateWidth, plateHeight);
+            if (!UiTheme.PackSliced(plate.GetComponent<Image>(), PackArt.CreatorSwatchesPanel, 12f))
+                UiTheme.AddBorder(plate, 10, UiTheme.Outline);
+
+            int number = 0;
+            float y = pad;
+            foreach (var group in groups)
+            {
+                if (labelWidth > 0f)
+                    Words(plate, group.Label, 13f, UiTheme.Muted, new Rect(pad, y, labelWidth - 8f, size), TextAlignmentOptions.MidlineLeft, "Row label")
+                        .overflowMode = TextOverflowModes.Ellipsis;
+                for (int i = 0; i < group.Swatches.Length; i++)
+                {
+                    if (i > 0 && i % perRow == 0) y += rowStep;
+                    var swatch = group.Swatches[i];
+                    var colour = swatch.Colour;
+                    bool chosen = current.a > 0f && Mathf.Abs(current.r - colour.r) < .02f && Mathf.Abs(current.g - colour.g) < .02f && Mathf.Abs(current.b - colour.b) < .02f;
+                    var button = Swatch(plate, prefix + " " + (++number), colour, chosen,
+                        new Rect(pad + labelWidth + (i % perRow) * (size + gap), y, size, size), () => ChangeAppearance(() => apply(colour)));
+                    var hover = button.gameObject.AddComponent<SwatchName>();
+                    hover.Label = label; hover.Resting = heading; hover.Named = title + "  ·  " + swatch.Name.ToUpperInvariant();
+                }
+                y += rowStep;
+            }
+            studioCursor += plateHeight + 12f;
+        }
+
+        /// <summary>Names a swatch in its row's heading while the pointer is over it.</summary>
+        private sealed class SwatchName : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+        {
+            public TMP_Text Label;
+            public string Resting, Named;
+            public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData data) { if (Label != null) Label.text = Localisation.Text(Named); }
+            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData data) { if (Label != null) Label.text = Localisation.Text(Resting); }
+        }
+
         // ---------------------------------------------------------------- editing
 
         private void ChangeAppearance(Action change, bool rebuild = true)
@@ -650,15 +756,26 @@ namespace Gamesim.Presentation
                 else if (appearanceCategory == "Colors") draft.Appearance.colors = original.colors.Select(color => color.Clone()).ToList();
                 else if (appearanceCategory == "Clothing")
                 {
-                    var hairSlots = AppearanceEditing.CharacterSlots;
+                    // Everything but the hair and the accessories, which have pages of their own.
+                    bool Garment(string slot) => !AppearanceEditing.CharacterSlots.Contains(slot) && !ProceduralAccessories.Slots.Contains(slot);
                     foreach (var outfit in draft.Appearance.outfits)
                     {
                         var baseline = original.outfits.FirstOrDefault(item => item.id == outfit.id) ?? original.outfits.First();
-                        outfit.wardrobe.RemoveAll(item => !hairSlots.Contains(item.slot));
-                        outfit.wardrobe.AddRange(baseline.wardrobe.Where(item => !hairSlots.Contains(item.slot)).Select(item => item.Clone()));
+                        outfit.wardrobe.RemoveAll(item => Garment(item.slot));
+                        outfit.wardrobe.AddRange(baseline.wardrobe.Where(item => Garment(item.slot)).Select(item => item.Clone()));
                         outfit.colors = baseline.colors.Select(color => color.Clone()).ToList();
                     }
                     draft.Appearance = Catalog.ChangeBody(draft.Appearance, draft.Appearance.bodyId);
+                }
+                else if (appearanceCategory == "Accessories")
+                {
+                    // The outfit being edited, back to what it wore of them when the edit began.
+                    var outfit = AppearanceEditing.Outfit(draft.Appearance);
+                    var baseline = original.outfits.FirstOrDefault(item => item.id == outfit.id)
+                        ?? original.outfits.FirstOrDefault(item => item.id == original.activeOutfit) ?? original.outfits.FirstOrDefault();
+                    outfit.wardrobe.RemoveAll(item => ProceduralAccessories.Slots.Contains(item.slot));
+                    if (baseline != null)
+                        outfit.wardrobe.AddRange(baseline.wardrobe.Where(item => ProceduralAccessories.Slots.Contains(item.slot)).Select(item => item.Clone()));
                 }
                 else
                 {
@@ -768,17 +885,18 @@ namespace Gamesim.Presentation
                     var choices = Catalog.Items.Where(item => item.Slot == slot && item.Fits(draft.Appearance.bodyId)).ToList();
                     if (choices.Count > 0) AppearanceEditing.Wear(draft.Appearance, choices[cosmeticRandom.Next(choices.Count)], Catalog);
                 }
-                if (!randomLocks.Contains("Colors")) { Pick(SkinSwatches, "Skin"); Pick(EyeSwatches, "Eyes"); }
+                if (!randomLocks.Contains("Colors")) { Pick(CharacterPalettes.Skin, "Skin"); Pick(CharacterPalettes.Eyes, "Eyes"); }
                 // The hair's colour is on the Hair page and the Colors page: either lock keeps it.
+                // Natural shades only: a random houseguest is somebody, not a dye chart.
                 if (!randomLocks.Contains("Colors") && !randomLocks.Contains("Hair"))
                 {
-                    Pick(HairSwatches, "Hair");
+                    Pick(new[] { CharacterPalettes.Hair[0] }, "Hair");
                     SetHairColour(AppearanceEditing.ColorValue(draft.Appearance, "Hair", Color.black));
                 }
-                void Pick(string[] palette, string id)
+                void Pick(CharacterPalettes.Group[] palette, string id)
                 {
-                    ColorUtility.TryParseHtmlString("#" + palette[cosmeticRandom.Next(palette.Length)], out var color);
-                    AppearanceEditing.SetColor(draft.Appearance, id, color);
+                    var all = CharacterPalettes.All(palette).ToList();
+                    AppearanceEditing.SetColor(draft.Appearance, id, all[cosmeticRandom.Next(all.Count)].Colour);
                 }
             });
         }

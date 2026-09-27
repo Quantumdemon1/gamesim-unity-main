@@ -88,6 +88,23 @@ namespace Gamesim.Episode
         {
             if (npcMeetings != null || npcWorldFailed || npcDiagnosticsSuspended || projected == null
                 || !NpcSocialState.IsEligible(projected) || blockedRecovery) return;
+            CreateNpcSocialWorld();
+        }
+
+        /// <summary>
+        /// Editor-only: builds the house's world now, as a season's first social phase does and a
+        /// played season then keeps. A fixture installed past that phase has none, and the walk out
+        /// borrows its people from it.
+        /// </summary>
+        public void BuildNpcWorldForDiagnostics()
+        {
+            if (!Application.isEditor) throw new InvalidOperationException("World diagnostics are Editor-only.");
+            if (npcMeetings == null && !npcWorldFailed && !npcDiagnosticsSuspended && projected != null && !blockedRecovery)
+                CreateNpcSocialWorld();
+        }
+
+        private void CreateNpcSocialWorld()
+        {
             if (!HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out var reason)
                 || !HouseMeetingCoordinator.TryCreate(rooms, new NavMeshQueryFilter
                     { agentTypeID = player.Agent.agentTypeID, areaMask = player.Agent.areaMask }, out npcMeetings, out reason))
@@ -101,7 +118,7 @@ namespace Gamesim.Episode
             if (npcMeetings == null || projected == null) return;
             var cast = projected.contestants.Where(actor => !actor.isPlayer).ToArray();
             if (!npcMeetings.Reconcile(NpcWorldGeneration, housemates, cast.Select(actor => actor.id).ToArray(),
-                cast.Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id), out var reason))
+                cast.Where(actor => actor.status == ContestantStatus.Active || actor.id == walkingOutId).Select(actor => actor.id), out var reason))
             { StopNpcWorld(reason); return; }
             foreach (long sequence in npcPendingWorld.Keys.ToArray())
                 if (!projected.npcSocial.pending.Any(row => row.sequence == sequence))

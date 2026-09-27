@@ -4,6 +4,7 @@ using Gamesim.Episode;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Gamesim.Tests.EditMode
 {
@@ -70,6 +71,83 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CeremonyPacing.WinnerHold(CeremonyPace.Quick), Is.EqualTo(3.2f));
             Assert.That(CeremonyPacing.WinnerHold(CeremonyPace.Quick), Is.GreaterThanOrEqualTo(ConfettiBurst.Seconds),
                 "The winner holds the stage for as long as the confetti is in the air.");
+        }
+
+        [Test]
+        public void TheJuryStandsInTheLivingRoomClearOfFurnitureAndEachOther()
+        {
+            // A living room 5.2 m square with the kitchen beyond it, a sofa east of its middle, and
+            // the player standing north of it.
+            var centre = new Vector3(2f, 0f, -3f);
+            bool InLiving(Vector3 spot) => Mathf.Abs(spot.x - centre.x) <= 2.6f && Mathf.Abs(spot.z - centre.z) <= 2.6f;
+            EpisodeDirector.FloorSampler floor = (Vector3 wanted, out Vector3 sampled, out string room) =>
+            {
+                sampled = wanted;
+                room = InLiving(wanted) ? "Living" : "Kitchen";
+                return true;
+            };
+            var sofa = centre + new Vector3(1.6f, 0f, 0f);
+            var player = centre + new Vector3(0f, 0f, 1.6f);
+            var places = EpisodeDirector.JuryPlaces(centre, 30, new[] { player }, floor, spot => (spot - sofa).magnitude > 0.5f);
+
+            Assert.That(places.Count, Is.InRange(8, 29), "A room that cannot hold thirty jurors holds what fits,");
+            Assert.That(places.All(InLiving), Is.True, "every place in the living room, even where its rings reach the kitchen,");
+            Assert.That(places.All(spot => (spot - sofa).magnitude > 0.5f), Is.True, "none on the sofa,");
+            Assert.That(places.All(spot => (spot - player).magnitude >= 1f), Is.True, "none on the player,");
+            for (int i = 0; i < places.Count; i++)
+                for (int j = i + 1; j < places.Count; j++)
+                    Assert.That((places[i] - places[j]).magnitude, Is.GreaterThanOrEqualTo(1f), "and a metre between jurors.");
+            Assert.That((places[0] - centre).magnitude, Is.EqualTo(1.6f).Within(1e-4f), "Nearest the middle first.");
+            Assert.That(EpisodeDirector.JuryPlaces(centre, 5, new[] { player }, floor, spot => true).Count, Is.EqualTo(5),
+                "A jury the room can hold is placed whole.");
+        }
+
+        [Test]
+        public void TheGoodbyeAtTheDoorIsHowTheyLeaveThingsWithYou()
+        {
+            var state = ContentCatalog.Create(5);
+            var leaving = state.contestants.First(c => !c.isPlayer && c.name.Contains(" "));
+            string first = leaving.name.Split(' ')[0];
+            const string after = " They'll be waiting in the jury house.";
+            void Feels(double score)
+            {
+                var edge = state.relationships.FirstOrDefault(r => r.fromId == leaving.id && r.toId == state.playerId);
+                if (edge == null) state.relationships.Add(edge = new RelationshipState { fromId = leaving.id, toId = state.playerId });
+                edge.score = score;
+            }
+            // The player's own view of them does not decide it: how the evicted feels leaving does.
+            var mine = state.relationships.FirstOrDefault(r => r.fromId == state.playerId && r.toId == leaving.id);
+            if (mine == null) state.relationships.Add(mine = new RelationshipState { fromId = state.playerId, toId = leaving.id });
+            mine.score = 80;
+
+            Feels(19);
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " walks to the door without looking back." + after));
+            Feels(20);
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " gives you one last look before walking out the door." + after),
+                "Warmth toward you is a last look,");
+            Feels(-20);
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after), "and a grudge a glare.");
+            Feels(-19);
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " walks to the door without looking back." + after));
+
+            Feels(-60);
+            var deal = new DealState { id = "d", type = DealKind.FinalTwo, proposerId = leaving.id, recipientId = state.playerId,
+                status = DealStatus.Proposed, week = 1 };
+            state.deals.Add(deal);
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after),
+                "An offer never taken up is not a deal between you,");
+            deal.status = DealStatus.Active;
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " pauses at the door and turns to you…" + after),
+                "but a deal is, whatever they feel, whoever proposed it.");
+            deal.proposerId = state.playerId; deal.recipientId = leaving.id;
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " pauses at the door and turns to you…" + after));
+            deal.status = DealStatus.Broken;
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after), "A broken one is not.");
+            deal.status = DealStatus.Active; deal.recipientId = state.contestants.First(c => !c.isPlayer && c.id != leaving.id).id;
+            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after),
+                "Nor is a deal you made with somebody else.");
+
+            Assert.That(EpisodeDirector.GoodbyeLine(state, "nobody"), Is.Empty);
         }
 
         private static EpisodeState Finale(int jurors, bool playerSecond)

@@ -334,6 +334,12 @@ Four things this pass changed that affect other sections:
   winner. At the suspenseful pace a six-juror finale takes about 20 seconds, 25 with its pauses;
   it can be sped up or skipped like the other reveals. Cards now mark the final three and the final
   Head of Household's choice. Record the pace setting for any finale timing.
+- **The evicted walk out through the front door (26 September).** Once an eviction's cards end,
+  the evicted walks across the yard and out through the opening's door, about 15 to 20 seconds,
+  with a goodbye line on the strip. The week's recap opens after it. A press skips it, and reduced
+  motion never plays it.
+  - Tasks timed across an eviction (E1) include the walk unless it was skipped: record which.
+  - On finale night the jurors stand in the living room.
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

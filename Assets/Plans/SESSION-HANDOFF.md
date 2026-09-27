@@ -8,6 +8,67 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 000000000000000000. The finale, second part: the evicted walk out through the front door, and the jury in the living room on finale night (26 September)
+
+The second half of batch 5 of the minigames brainstorm's plan. The first half (the jury read one juror at a time, private ballots, the final-three and final-two cards) is the entry below.
+
+**What the reference does** (D:/gamesim-web):
+- It wrote a goodbye for the evictee, with a line for how they leave things with the player (`PostEvictionGoodbyeDialog.tsx`), and never shows it: the dialog listens for an event type spelled differently from the one its writer emits.
+- It has no walk out, and its jury is a panel of faces.
+
+**The walk out** (new `Episode/EpisodeDirector.WalkOut.cs`, `House/HouseMeetingCoordinator.Departure.cs`)
+- Once the cards about an eviction are done, the evicted walks across the yard to the opening's front door, which opens for them, then through it and off the deck behind the facade. They used to vanish on the frame the last card ended.
+- The strip says GOODBYE with the reference's line, chosen by how the evicted leaves things with the player:
+  - A deal between them: "… pauses at the door and turns to you…".
+  - Warmth of 20 or more: a last look.
+  - -20 or less: a glare from the doorway.
+  - Otherwise: "… walks to the door without looking back".
+  - Every line ends "They'll be waiting in the jury house."
+  - It reads the evicted's view of the player, not the player's of them. An offer never taken up is not a deal, nor is a broken one.
+- The camera follows them out and comes back to the player.
+- **How the house lends them.** The house lends them for the walk as it lends the opening its cast: a reservation of its own, exempt from the house's pause, one at a time.
+- **When it stops early.**
+  - A press (Enter, Escape, a click or the pad) lets them go. The press that closed the last card does not count.
+  - Starting a competition ends it: the arena takes the yard they would cross.
+  - Anything that goes wrong lets them go as they used to: no route, a walk over 40 s, or the house's world stopping.
+  - Reduced motion never plays it, and a batch run does not unless a test asks, as with the opening's stage.
+- **A body that cannot walk.** If the house cannot give the evicted's body its navigation back (a failed binding), the coordinator lets that one person go instead of stopping the house's world. It knows who they are: the director names them as the departure candidate. Anyone else's failed binding still stops the world for explicit recovery, as before.
+- **The week goes on around the walk.** Commits made meanwhile keep them in the house until they reach the deck. A panel pausing the house, or a decision made under it, does not stop them.
+- **No house world, no walk.** The house's world is created in the first social or campaign phase. A season loaded straight into an eviction has no world yet, so its evictee goes as they used to.
+- **The final eviction** has no walk out. It opens finale night, and the new juror joins the jury.
+
+**The jury on finale night**
+- From jury questioning to the end of the season, the jurors are back in the living room. They stand around its middle, facing it, at least a metre apart, and clear of the furniture, the finalists, the player and the episode station.
+  - Places are chosen once for the finale, nearest the middle first (`JuryPlaces`, a pure function of the floor and the room's clearance).
+  - A room that cannot hold the whole jury gives the places it has. A juror with no place is not shown, rather than shown somewhere wrong.
+- They are placed while the house does not route them: the house moves only the people it routes, and a juror is not one of them.
+- The new juror stays where they stood while the Final Two card is about them, and joins the others when it ends.
+
+**Tests**
+- PlayMode:
+  - `EpisodePlayModeTests.WalkOut` (10):
+    - The walk to the door, through it and off the deck, with the strip's goodbye.
+    - A press lets them go; presses on the walk's first frames do not.
+    - A competition started mid-walk.
+    - The week going on around the walk: the house's world running, a panel, and a decision under it.
+    - A body that cannot walk.
+    - A batch run.
+    - A whole season: every weekly eviction walks out, and the final one joins the jury.
+    - The jury in the living room, and no jury before finale night.
+  - `HouseMeetingCoordinatorPlayModeTests` (1): the coordinator lets a departure candidate go from each binding path, and nobody else.
+  - The final-two card test now checks that the new juror is not moved during the card and joins the jury afterwards.
+- EditMode (`CeremonyTruthTests`): the goodbye line, and the jury's places against a small fake room with a sofa and a kitchen beyond it.
+- 43 mutations, all caught at their target assertions (`walkout_mut.py`). The groups pair only mutations whose tests cannot see each other.
+- Eight needed new or sharper tests:
+  - **The press guard.** Its test now presses on the walk's first frames. In this build's execution order, the press that closes a card is spent a frame before the walk starts, so closing the card by keyboard never reached the guard.
+  - **The walker's pause exemption and lease ownership** only matter once the week moves on. An eviction is already paused, and its world does not reconcile. The new week test walks into the social week, opens a panel and commits under it.
+  - **The jury's places** became a pure function with its own test. The scene's living room always had room on the inner rings, and the NavMesh kept the places off the furniture anyway.
+  - **The finale-night rule** was invisible in the fixture. A season installed at the final eviction has no house world, so nobody could walk out either way. The final-two test now builds the world a played season carries (`BuildNpcWorldForDiagnostics`, editor-only).
+  - **The recap's wait for the walk**: the season walk found the recap opening after a walk nobody interrupted. That is the design, and the plain season walk never sees it because its next command commits first.
+- The season walk leaves the final eviction to the final-two test. Its outcome is not fixed: the house's world ticks in real time, and one run's final Head of Household evicted the player.
+
+**Verified:** EditMode 1630, PlayMode 584, Uma 64 and Simulation 857, all passing in one full run, with no crashes. Floors raised from 1628 and 573.
+
 ## 00000000000000000. The finale, first part: the jury read one juror at a time, ballots kept private, and cards for the final three and the final two (26 September)
 
 Batch 5 of the minigames brainstorm's plan, the finale, in two parts. This entry is the first; the jury seated in the house on finale night and the evictee's walk out through the front door follow.

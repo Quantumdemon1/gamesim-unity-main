@@ -111,11 +111,20 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallDiaryFixture(state => state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId,
                 "the player as final Head of Household");
             yield return OpenFinalePanel();
+            // The world a played season carries by now, which the walk out borrows its people from:
+            // a fixture installed at the final eviction has none of its own.
+            director.BuildNpcWorldForDiagnostics();
+            director.WalkOutsInBatchRuns = true;
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
             var state = director.Snapshot;
             var cut = state.Active.First(actor => !actor.isPlayer);
             var kept = state.Active.Single(actor => !actor.isPlayer && actor.id != cut.id);
+            var cutBody = SceneComponents<HouseNpc>().Single(npc => npc.Id == cut.id);
+            var stoodAt = cutBody.transform.position;
             ButtonWithCaption("Evict " + cut.name).onClick.Invoke();
             yield return Frames(2);
+            Assert.That(Flat(cutBody.transform.position, stoodAt), Is.LessThan(0.3f),
+                "The new juror is not taken to the jury while the card is about them.");
             var takeover = SceneComponents<CeremonyTakeover>().Single();
             Assert.That(takeover.IsPlaying, Is.True, "The choice gets a card: it used to pass without one.");
             var texts = takeover.GetComponentsInChildren<TMP_Text>(true).Select(label => label.text).ToList();
@@ -127,7 +136,12 @@ namespace Gamesim.Tests.PlayMode
             takeover.Cancel();
             foreach (var sting in SceneComponents<CeremonySting>()) sting.Cancel();
             yield return Frames(3);
-            Assert.That(director.DepartingId, Is.Null, "and goes when the card does.");
+            Assert.That(director.DepartingId, Is.Null, "and goes when the card does:");
+            Assert.That(director.WalkingOutId, Is.Null, "not out of the door, since this eviction opens finale night,");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+            Assert.That(cutBody.gameObject.activeInHierarchy, Is.True, "but to the jury in the living room.");
+            Assert.That(HouseRoomQuery.TryCreate(director.gameObject.scene, out var rooms, out var why), Is.True, why);
+            Assert.That(rooms.TryLocate(cutBody.transform.position, 0.35f, out var room) ? room : "nowhere", Is.EqualTo("Living"));
         }
     }
 }

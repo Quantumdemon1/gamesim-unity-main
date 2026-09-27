@@ -961,6 +961,8 @@ namespace Gamesim.Episode
             projected = state;
             playerIsActive = state.Find(state.playerId).status == ContestantStatus.Active;
             promptNpc = null; npcPrompt = null;
+            // Finale night brings the jury back into the living room; their places are chosen once.
+            BenchTheJury(state);
             var npcStates = state.contestants.Where(c => !c.isPlayer).ToArray();
             for (int i = 0; i < housemates.Length; i++)
             {
@@ -969,7 +971,8 @@ namespace Gamesim.Episode
                 var model = npcStates[i];
                 npc.Configure(model.id, model.name);
                 npc.gameObject.SetActive(model.status == ContestantStatus.Active || model.status == ContestantStatus.Winner
-                    || model.status == ContestantStatus.RunnerUp || model.id == departingId);
+                    || model.status == ContestantStatus.RunnerUp || model.id == departingId || model.id == walkingOutId
+                    || OnJuryBench(state, model));
                 // The phase's clothes - or, for the player's company in the hot tub, swimwear, kept
                 // through a render and changed back behind the body when they get out.
                 DressHousemate(model.id);
@@ -979,6 +982,8 @@ namespace Gamesim.Episode
             player.SetInputEnabled(!IsPanelOpen && state.Find(state.playerId).status == ContestantStatus.Active);
             cameraRig.ControlsEnabled = !IsPanelOpen;
             ReconcileNpcSocialWorld();
+            // After the house's world has let the jurors go: nobody it routes is ever placed.
+            StandTheJury(state);
         }
 
 

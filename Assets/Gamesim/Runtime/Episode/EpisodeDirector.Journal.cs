@@ -651,7 +651,7 @@ namespace Gamesim.Episode
             // Nothing here is timed. It waits on the cards' own state, so reduced motion and
             // batchmode — where those beats collapse to nothing — cost exactly one frame.
             yield return null;
-            while ((voteReveal != null && voteReveal.IsPlaying) || JuryRevealPlaying
+            while ((voteReveal != null && voteReveal.IsPlaying) || JuryRevealPlaying || walkingOutId != null
                    || (takeover != null && takeover.IsPlaying))
                 yield return null;
 

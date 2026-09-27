@@ -35,6 +35,8 @@ namespace Gamesim.Presentation
         public const string WinnerKind = "winner";
         /// <summary>The final Head of Household choosing who sits beside them: the engine's own line for it.</summary>
         public const string FinalEvictionKind = "final-eviction";
+        /// <summary>The evicted walking out through the front door: not a logged ceremony, the house's goodbye.</summary>
+        public const string WalkOutKind = "walk-out";
 
         private const float FadeIn = 0.22f;
         private const float Hold = 2.0f;
@@ -100,7 +102,7 @@ namespace Gamesim.Presentation
 
         /// <summary>Returns true when this kind of committed event deserves a card.</summary>
         public static bool IsCeremony(string kind) =>
-            kind == NominationKind || kind == VetoKind || kind == EvictionKind || kind == WinnerKind || kind == FinalEvictionKind;
+            kind == NominationKind || kind == VetoKind || kind == EvictionKind || kind == WinnerKind || kind == FinalEvictionKind || kind == WalkOutKind;
 
         /// <summary>
         /// Plays the card for a committed event. <paramref name="detail"/> must already be
@@ -148,6 +150,7 @@ namespace Gamesim.Presentation
                 case EvictionKind: return "EVICTION";
                 case WinnerKind: return "THE WINNER";
                 case FinalEvictionKind: return "THE FINAL TWO";
+                case WalkOutKind: return "GOODBYE";
                 default: return string.Empty;
             }
         }

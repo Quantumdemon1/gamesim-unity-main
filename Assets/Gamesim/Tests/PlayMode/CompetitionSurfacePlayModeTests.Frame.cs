@@ -297,7 +297,10 @@ namespace Gamesim.Tests.PlayMode
             foreach (var definition in CompetitionDefinitions.All)
             {
                 screen.FontScale = scale;
-                var run = new MiniGameRun(CompetitionMiniGames.For(definition.Category), 5, 3, definition);
+                // The luck and social games are rules 4's; the rest play the rules they were published in.
+                var kind = CompetitionMiniGames.For(definition.Category);
+                bool widened = kind == CompetitionMiniGames.Kind.Dice || kind == CompetitionMiniGames.Kind.Words;
+                var run = new MiniGameRun(kind, 5, widened ? CompetitionMiniGames.WidenedRules : 3, definition);
                 screen.Show(run, "Head of Household · " + definition.Title, "Player", true, i => {}, () => {}, d => {}, () => {}, () => {});
                 yield return null;
                 Canvas.ForceUpdateCanvases();
@@ -306,7 +309,9 @@ namespace Gamesim.Tests.PlayMode
                 var rules = Text("Rules");
                 Assert.That(rules.text, Does.Contain(definition.Summary));
                 Assert.That(rules.text, Does.Contain(run.Kind == CompetitionMiniGames.Kind.Memory ? "0.15"
-                    : run.Kind == CompetitionMiniGames.Kind.Endurance ? "empty grip ends the attempt" : "arrow keys"),
+                    : run.Kind == CompetitionMiniGames.Kind.Endurance ? "empty grip ends the attempt"
+                    : run.Kind == CompetitionMiniGames.Kind.Dice ? "choose Roll or Keep"
+                    : run.Kind == CompetitionMiniGames.Kind.Words ? "Backspace / X takes one back" : "arrow keys"),
                     "The rules say the controls and the costs.");
                 rules.ForceMeshUpdate();
                 Assert.That(rules.fontSize, Is.GreaterThanOrEqualTo(12f), definition.Id + " at " + scale);

@@ -93,7 +93,9 @@ namespace Gamesim.Simulation
             {
                 sessionId = "gamesim-" + seed.ToString("x8"),
                 seed = seed,
-                competitionRulesVersion = 3,
+                competitionRulesVersion = CompetitionRules.Current,
+                haveNotRulesStartWeek = 1,
+                strategyRulesStartWeek = 1,
                 npcSocial = NpcSocialState.Create(seed),
                 randomState = seed == 0 ? 0x6D2B79F5u : seed,
                 playerId = ContentCatalog.PlayerId,

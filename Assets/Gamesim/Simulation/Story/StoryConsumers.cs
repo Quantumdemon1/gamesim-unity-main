@@ -29,7 +29,9 @@ namespace Gamesim.Simulation
             if (v >= StoryRules.Grudges)
             {
                 value -= 0.3 * Grudges.Severity(s, hohId, candidateId);
-                if (TheirWord(s, hohId, candidateId)) value += 30;
+                // From the strategy windows a safety agreement is weighed with the other deals
+                // (StrategyRules.NominationReluctance); only a promise is the story's to count then.
+                if (StrategyRules.Apply(s) ? PromisedSafety(s, hohId, candidateId) : TheirWord(s, hohId, candidateId)) value += 30;
             }
             if (v >= StoryRules.Bonds)
             {
@@ -49,6 +51,10 @@ namespace Gamesim.Simulation
         /// active safety pact between them. NPC HoHs honour it here rather than ignoring it until the
         /// nomination breaks it - a real behaviour change, measured by the season sweep.
         /// </summary>
+        /// <summary>Whether the Head of Household has promised this houseguest safety, and the promise stands.</summary>
+        public static bool PromisedSafety(EpisodeState s, string hohId, string candidateId) =>
+            s.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Safety && p.fromId == hohId && p.toId == candidateId);
+
         public static bool TheirWord(EpisodeState s, string hohId, string candidateId) =>
             s.promises.Any(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.Safety && p.fromId == hohId && p.toId == candidateId)
             || s.deals.Any(d => d.status == DealStatus.Active && d.type == DealKind.SafetyAgreement
@@ -68,7 +74,8 @@ namespace Gamesim.Simulation
             if (v >= StoryRules.Grudges)
             {
                 value -= 0.3 * Grudges.Severity(s, holderId, candidateId);
-                if (s.deals.Any(d => d.status == DealStatus.Active && d.type == DealKind.VetoUse
+                // A veto commitment: the strategy windows weigh it themselves (StrategyRules.VetoWillingness).
+                if (!StrategyRules.Apply(s) && s.deals.Any(d => d.status == DealStatus.Active && d.type == DealKind.VetoUse
                                      && ((d.proposerId == holderId && d.recipientId == candidateId) || (d.proposerId == candidateId && d.recipientId == holderId))))
                     value += 30;
             }

@@ -197,7 +197,8 @@ namespace Gamesim.Simulation
                 {
                     EpisodeEngine.Log(state, "campaign",
                         npc.name + " came to you asking to stay this week.", state.playerId);
-                    // Past the story boundary the plea is a moment you answer, with the web's menu.
+                    ReplyCards.Offer(state, ReplyCards.Plea, npc.id, state.nominees.FirstOrDefault(id => id != npc.id));
+                    // Where the reply cards do not play, past the story boundary the plea is a story moment.
                     EpisodeEngine.StoryCampaignedTo(state, npc.id);
                 }
             }
@@ -301,7 +302,15 @@ namespace Gamesim.Simulation
             if (listener.isPlayer)
                 EpisodeEngine.Log(state, "information",
                     npc.name + " told you something about " + subject.name + ".", state.playerId);
-            // Talk about the player gets back to the player, past the story boundary.
+            // A rumour about the player reaches them three times in ten, from the strategy windows -
+            // the reference's roll, drawn only when it could matter, so an older season spends nothing.
+            if (subject.isPlayer && StrategyRules.Apply(state) && EpisodeEngine.Roll(state) < ReplyCards.GossipDiscoveryChance)
+            {
+                EpisodeEngine.Log(state, "gossip", "You found out " + npc.name + " has been talking about you to "
+                    + listener.name + ".", state.playerId);
+                ReplyCards.Offer(state, ReplyCards.Gossip, npc.id, listener.id);
+            }
+            // Where the reply cards do not play, talk about the player gets back to them as a story moment.
             if (subject.isPlayer) EpisodeEngine.StoryGossipedAbout(state, npc.id, listener.id);
             return true;
         }
@@ -334,7 +343,8 @@ namespace Gamesim.Simulation
             {
                 EpisodeEngine.Log(state, "confrontation",
                     npc.name + " confronted you in front of the house.", state.playerId);
-                // Past the story boundary you get to answer it: the web's confront menu.
+                ReplyCards.Offer(state, ReplyCards.Confrontation, npc.id, null);
+                // Where the reply cards do not play, past the story boundary it is a story moment to answer.
                 EpisodeEngine.StoryConfronted(state, npc.id);
             }
             return true;

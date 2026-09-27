@@ -193,6 +193,9 @@ namespace Gamesim.Episode
 
         private IEnumerator PerformSeasonDecision(EpisodeState state,bool graphical)
         {
+            // Somebody who came to the player is answered first, as the panel draws them first.
+            if ((state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign) && ReplyCards.Pending(state) != null)
+            { yield return AnswerSeasonReplyCard(state); yield break; }
             if (state.phase == EpisodePhase.Social && HouseEvents.Pending(state) != null)
             { yield return ResolveSeasonHouseEvent(state,graphical); yield break; }
             if (EpisodeEngine.IsCompetition(state.phase))
@@ -209,7 +212,7 @@ namespace Gamesim.Episode
                 }
                 string caption = state.competitionResolved ? "Continue to the next ceremony"
                     : EpisodeEngine.CompetitionPlayers(state).Any(actor => actor.isPlayer)
-                        ? "Accessible alternative: steady 1-point bonus" : "Watch eligible housemates compete";
+                        ? EpisodeDirector.AccessibleCompetitionCaption(state.competitionRulesVersion) : "Watch eligible housemates compete";
                 yield return ClickSeasonButton(caption); yield break;
             }
             if (state.phase == EpisodePhase.Nomination && state.nominees.Count == 0 && state.hohId == state.playerId)
@@ -547,6 +550,7 @@ namespace Gamesim.Episode
             public float navigationSpeed;
             public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks, blockSpeeches;
             public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
+            public int replyCardsAnswered;
             public string minigameKind, dealKind, dealOutcome, dealNote;
             public double minigameScore;
             public List<string> houseEventKinds = new List<string>();

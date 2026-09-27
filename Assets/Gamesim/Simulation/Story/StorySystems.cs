@@ -292,8 +292,8 @@ namespace Gamesim.Simulation
 
         public static int Strikes(EpisodeState state, string id) => For(state, id, false)?.strikes ?? 0;
 
-        public static bool IsHaveNot(EpisodeState state, string id) =>
-            state?.story?.haveNots != null && state.story.haveNots.Contains(id);
+        /// <summary>Whether somebody is one of this week's Have-Nots: the house's own list (<see cref="HaveNots"/>), the only one.</summary>
+        public static bool IsHaveNot(EpisodeState state, string id) => HaveNots.Is(state, id);
 
         /// <summary>Whether somebody sits out this week's HoH competition as a penalty.</summary>
         public static bool SitsOut(EpisodeState state, string id) =>
@@ -330,34 +330,34 @@ namespace Gamesim.Simulation
             return 1;
         }
 
-        /// <summary>The penalty rung: a Have-Not week and sitting out the next HoH, unless the field would fall to two.</summary>
+        /// <summary>
+        /// The penalty rung: a Have-Not week and sitting out the next HoH, unless the field would fall
+        /// to two. The Have-Not week is the house's own: the next Head of Household competition names
+        /// them whatever it says, as the veto's punishment does, so the week they sit out is the week
+        /// they spend on slop. A season that plays without Have-Nots keeps the sit-out alone.
+        /// </summary>
         public static void Penalise(EpisodeState state, string id)
         {
-            MakeHaveNot(state, id);
+            if (HaveNots.Apply(state) && state.Find(id)?.status == ContestantStatus.Active
+                && !state.punishedHaveNots.Contains(id) && state.punishedHaveNots.Count < 16)
+                state.punishedHaveNots.Add(id);
             var row = For(state, id, true);
             // The next HoH competition is next week's; at four or fewer the field would be too small.
             if (state.Active.Count() > 4) row.sitsOutWeek = Math.Min(state.week + 1, 101);
         }
 
+        /// <summary>
+        /// Puts somebody on slop now, through the house's own list: this week's, until the next Head
+        /// of Household names new ones. What a Have-Not costs is the house's (<see cref="HaveNots"/>):
+        /// the veto's point, and a player's conversation. Nothing in a season without Have-Nots.
+        /// </summary>
         public static void MakeHaveNot(EpisodeState state, string id)
         {
             var who = state?.Find(id);
-            if (who == null || who.status != ContestantStatus.Active || IsHaveNot(state, id)) return;
-            if (state.story.haveNots.Count >= state.contestants.Count) return;
-            state.story.haveNots.Add(id);
+            if (who == null || who.status != ContestantStatus.Active || !HaveNots.Apply(state) || IsHaveNot(state, id)) return;
+            if (state.haveNots.Count >= 16) return;
+            state.haveNots.Add(id);
             Personality.AdjustStress(who, 1);
-            if (who.isPlayer)
-            {
-                state.activeModifiers.RemoveAll(m => m.id == "have-not" && string.IsNullOrEmpty(m.ownerId));
-                if (state.activeModifiers.Count < 40)
-                    state.activeModifiers.Add(new StoryModifierState
-                    {
-                        // Two, because modifiers age on eviction night and the Have-Not week runs on
-                        // through that week's social window. Age() below ends it when the week turns.
-                        id = "have-not", name = "Have-Not", description = "Slop, cold showers and a cot. One fewer action this week.",
-                        weeksLeft = 2, socialBonus = -10, ownerId = string.Empty,
-                    });
-            }
         }
 
         public static void Pending(EpisodeState state, string id)
@@ -367,14 +367,8 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// Who a Head of Household puts on slop at the week's start. One at five or six in the house,
-        /// two at seven to nine, three at ten or more.
-        /// </summary>
-        public static int HaveNotCount(int active) => active >= 10 ? 3 : active >= 7 ? 2 : active >= 5 ? 1 : 0;
-
-        /// <summary>
         /// A week older: three clean weeks clear a strike (four after pushing back in the Diary
-        /// Room), and the Have-Not week ends.
+        /// Room). The Have-Not week is the house's, and ends when it names the next.
         /// </summary>
         public static void Age(EpisodeState state)
         {
@@ -384,8 +378,6 @@ namespace Gamesim.Simulation
                 if (row.lastStrikeWeek < state.week - 1) row.cleanWeeks = Math.Min(100, row.cleanWeeks + 1);
                 if (row.cleanWeeks >= 3 + row.pushedBack && row.strikes > 0) { row.strikes--; row.cleanWeeks = 0; row.pushedBack = 0; }
             }
-            state.story.haveNots.Clear();
-            state.activeModifiers.RemoveAll(m => m.id == "have-not");
         }
     }
 }

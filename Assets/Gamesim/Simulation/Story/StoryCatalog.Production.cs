@@ -16,63 +16,12 @@ namespace Gamesim.Simulation
     {
         private static IEnumerable<ArcTemplate> ProductionArcs()
         {
-            yield return HaveNotDraw();
             yield return SlopWeek();
             yield return OnNotice();
             yield return DiaryRoomCalls();
             yield return BreakingPoint();
             yield return BreakingPointNpc();
         }
-
-        // ---------------------------------------------------------------- have-not-draw
-
-        /// <summary>The player's coldest houseguests, as many as the week's Have-Not count.</summary>
-        private static IEnumerable<string> ColdestNpcs(StoryContext c, int count, params string[] except) =>
-            Npcs(c).Where(x => !except.Contains(x.id)).OrderBy(x => c.Score(P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal)
-                .Take(count).Select(x => x.id);
-
-        private static int HaveNotCount(StoryContext c) => Production.HaveNotCount(c.state.Active.Count());
-
-        private static ArcTemplate HaveNotDraw() => new ArcTemplate
-        {
-            id = "have-not-draw", lane = StoryLanes.Production, eyebrow = "Head of Household", title = "The Have-Nots",
-            origin = "web:have_not; the Head of Household's pick native (20 §3.6)",
-            rulesVersion = StoryRules.Production, minWeek = 2, minActive = 5, oncePerHeadliner = false, cooldownWeeks = 1,
-            cast = c => PlayerIsHoh(c) && HaveNotCount(c) > 0 ? Bind() : null,
-            beats = new[]
-            {
-                new BeatTemplate
-                {
-                    id = "name-them", surface = StorySurfaces.Scene, venue = Kitchen, closes = StoryAnchors.NomsSet,
-                    title = "The Have-Nots", summary = "As Head of Household you name this week's Have-Nots.",
-                    text = "As Head of Household, you name this week's Have-Nots: slop, cold showers and a cot, for a week. The house is gathered in the kitchen, waiting.",
-                    lapse = "draw",
-                    options = new[]
-                    {
-                        Opt("coldest", "Name the ones you trust least", Medium, Hardball, "Put the people you trust least on slop.",
-                            "You named the people you trust least. They know exactly why.")
-                            .Extra((c, y) => ColdestNpcs(c, HaveNotCount(c)).SelectMany(id => new[] { HaveNot("@" + id), View("@" + id, Player, -4) })),
-                        Opt("draw", "Draw names", Low, Calculated, "Leave it to chance.", "You drew names from a hat. Nobody can say it was personal.")
-                            .Extra((c, y) =>
-                            {
-                                var pool = Npcs(c).ToList();
-                                var picked = new List<string>();
-                                for (int i = 0; i < HaveNotCount(c) && pool.Count > 0; i++)
-                                {
-                                    var one = Keyed(c, "have-not-" + i, pool);
-                                    picked.Add(one.id);
-                                    pool.Remove(one);
-                                }
-                                return picked.SelectMany(id => new[] { HaveNot("@" + id), View("@" + id, Player, -1) });
-                            }),
-                        Opt("volunteer", "Volunteer yourself", Low, Warm, "Go on slop yourself. The house will notice.",
-                            "You put yourself on slop. The house noticed, and liked you for it.", HaveNot(Player))
-                            .Extra((c, y) => ColdestNpcs(c, HaveNotCount(c) - 1).Select(id => HaveNot("@" + id))
-                                .Concat(Npcs(c).Select(x => View("@" + x.id, Player, 2)))),
-                    },
-                },
-            },
-        };
 
         // ---------------------------------------------------------------- slop-week
 

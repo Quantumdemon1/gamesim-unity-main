@@ -206,7 +206,10 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Production.Strike(s, npc, "same week"), Is.Zero, "One strike a person a week.");
             Production.For(s, npc, false).lastStrikeWeek = 0;
             Assert.That(Production.Strike(s, npc, "two"), Is.EqualTo(2));
-            Assert.That(Production.IsHaveNot(s, npc), Is.True);
+            // The penalty's Have-Not week is the house's own: the next Head of Household competition,
+            // the one they sit out, names them whatever it says.
+            Assert.That(HaveNots.Apply(s), Is.True, "A story season plays the Have-Nots.");
+            Assert.That(s.punishedHaveNots, Does.Contain(npc));
             Assert.That(Production.For(s, npc, false).sitsOutWeek, Is.EqualTo(s.week + 1));
             Production.For(s, npc, false).lastStrikeWeek = 0;
             Assert.That(Production.Strike(s, npc, "three"), Is.EqualTo(3));
@@ -278,6 +281,77 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(engine.Apply(StorySeasonTests.StoryNext(s, size)).accepted, Is.True);
             }
             Assert.That(windows, Is.GreaterThan(0), "Size " + size + " has at least one legal window.");
+        }
+
+        // ---------------------------------------------------------------- beside the strategy windows
+
+        /// <summary>A houseguest who dislikes the player and likes everybody else: someone who will confront them.</summary>
+        private static string Confronter(EpisodeState s, int index)
+        {
+            var npc = Npcs(s)[index].id;
+            foreach (var edge in s.relationships.Where(e => e.fromId == npc)) edge.score = edge.toId == s.playerId ? -30 : 50;
+            return npc;
+        }
+
+        [Test]
+        public void WhereTheReplyCardsPlayTheyOwnTheHousesApproaches()
+        {
+            var s = Season(41, 8);
+            Assert.That(StrategyRules.Apply(s), Is.True, "A story season plays the strategy windows.");
+            s.week = 2; s.phase = EpisodePhase.Social; s.evictionResolved = true;
+            for (int i = 0; i < 4; i++)
+            {
+                var npc = Confronter(s, i);
+                Assert.That(NpcSocialActions.Perform(s, npc, NpcActionKind.Confront), Is.True);
+            }
+            Assert.That(s.replyCards.Count(r => r.kind == ReplyCards.Confrontation), Is.GreaterThan(0), "The reply cards came.");
+            Assert.That(s.storylines.Any(x => x.templateId == "confronted"), Is.False, "And no story tells the same confrontation twice.");
+        }
+
+        [Test]
+        public void WithoutTheWindowsTheStoryTellsTheConfrontation()
+        {
+            var s = Season(41, 8);
+            s.strategyRulesStartWeek = 0;
+            s.week = 2; s.phase = EpisodePhase.Social; s.evictionResolved = true;
+            for (int i = 0; i < Npcs(s).Count && !s.storylines.Any(x => x.templateId == "confronted"); i++)
+                NpcSocialActions.Perform(s, Confronter(s, i), NpcActionKind.Confront);
+            Assert.That(s.storylines.Any(x => x.templateId == "confronted"), Is.True, "The story system stands in for the cards.");
+            Assert.That(s.replyCards, Is.Empty);
+        }
+
+        [Test]
+        public void ADecisionWeighsTheWindowsAndTheStoryOnceEach()
+        {
+            var s = Season(43, 8);
+            var npcs = Npcs(s);
+            string hoh = npcs[0].id, target = npcs[1].id;
+            double score = s.Score(hoh, target);
+            Assert.That(EpisodeEngine.NominationWeight(s, hoh, target), Is.EqualTo(score).Within(1e-9), "Nothing written, nothing weighed.");
+            s.alliances.Add(new AllianceState { id = "alliance-w", name = "W", members = new List<string> { hoh, target }, active = true });
+            Grudges.Add(s, hoh, target, 60, GrudgeCauses.Story);
+            Assert.That(EpisodeEngine.NominationWeight(s, hoh, target),
+                Is.EqualTo(score + StrategyRules.AllyShield - 18).Within(1e-9), "The windows' ally shield and the story's grudge, each once.");
+            // A safety agreement is the windows' to weigh; the story counts only a promise then.
+            s.deals.Add(new DealState { id = "deal-w", proposerId = hoh, recipientId = target, type = DealKind.SafetyAgreement,
+                status = DealStatus.Active, week = s.week });
+            double withDeal = EpisodeEngine.NominationWeight(s, hoh, target);
+            Assert.That(withDeal, Is.EqualTo(StrategyRules.NominationReluctance(s, hoh, target) - 18).Within(1e-9),
+                "The agreement is not counted by the story as well.");
+        }
+
+        [Test]
+        public void WithoutHaveNotsAPenaltyIsTheSitOutAlone()
+        {
+            var s = Season(5, 10);
+            s.haveNotRulesStartWeek = 0;
+            var npc = Npcs(s)[0].id;
+            s.phase = EpisodePhase.Social; s.evictionResolved = true;
+            Production.Strike(s, npc, "one"); Production.For(s, npc, false).lastStrikeWeek = 0;
+            Assert.That(Production.Strike(s, npc, "two"), Is.EqualTo(2));
+            Assert.That(s.punishedHaveNots, Is.Empty);
+            Assert.That(Production.For(s, npc, false).sitsOutWeek, Is.EqualTo(s.week + 1));
+            Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.True, error);
         }
 
         // ---------------------------------------------------------------- the season's stream

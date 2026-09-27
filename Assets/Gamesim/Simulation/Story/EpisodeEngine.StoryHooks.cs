@@ -318,7 +318,6 @@ namespace Gamesim.Simulation
             Bonds.EndAll(s, id);
             Hooks.Void(s, id);
             Grudges.Forget(s, id);
-            s.story.haveNots.Remove(id);
             s.story.reckonings.RemoveAll(r => r.npcId == id);
             foreach (var cycle in RunningCycles(s).Where(x => x.cast.Any(r => r.contestantId == id)).ToList())
                 EndCycle(s, cycle, "left-house");
@@ -345,8 +344,6 @@ namespace Gamesim.Simulation
         /// <summary>The systems that run at particular anchors, before any cycle pulses.</summary>
         private static void StorySystemsAt(EpisodeState s, string anchor)
         {
-            if (anchor == StoryAnchors.HohCrowned && StoryAt(s, StoryRules.Production)) SelectHaveNots(s);
-            if (anchor == StoryAnchors.VetoWon && StoryAt(s, StoryRules.Production)) VetoPunishment(s);
             if (anchor == StoryAnchors.EvictionNight && StoryAt(s, StoryRules.Bonds)) NpcShowmancePass(s);
             if (StoryAt(s, StoryRules.Bonds) && anchor != StoryAnchors.Conversation)
                 foreach (var (fact, listener) in Knowledge.Spread(s, anchor))
@@ -365,56 +362,6 @@ namespace Gamesim.Simulation
                 case FactKinds.Strike: return "Word in the house: " + actor + " was called to the Diary Room and came back quiet.";
                 default: return "Something is going round the house about " + actor + ".";
             }
-        }
-
-        /// <summary>
-        /// At the week's start the Head of Household names the Have-Nots: from week two, with five or
-        /// more in the house. An NPC Head of Household picks the people they like least who are not
-        /// their allies; a player Head of Household gets the card.
-        /// </summary>
-        private static void SelectHaveNots(EpisodeState s)
-        {
-            int count = Production.HaveNotCount(s.Active.Count());
-            if (s.week < 2 || count == 0 || s.story.haveNots.Count > 0) return;
-            var hoh = s.Find(s.hohId);
-            if (hoh == null || hoh.status != ContestantStatus.Active) return;
-            if (hoh.isPlayer)
-            {
-                var arc = StoryCatalog.Find("have-not-draw");
-                var ctx = new StoryContext(s, StoryAnchors.HohCrowned);
-                var binding = Castable(s, ctx, arc);
-                if (binding != null) { StartCycle(s, arc, binding, StoryAnchors.HohCrowned); return; }
-                // No room on screen for the choice this week: the names are drawn for the player,
-                // the ones they are coldest with, exactly as the card's first option would have it.
-            }
-            var picks = s.Active.Where(c => c.id != hoh.id && !s.Allied(hoh.id, c.id))
-                .OrderBy(c => s.Score(hoh.id, c.id)).ThenBy(c => c.id, StringComparer.Ordinal).Take(count).ToList();
-            foreach (var who in picks)
-            {
-                Production.MakeHaveNot(s, who.id);
-                WriteScore(s, who.id, hoh.id, -4);
-            }
-            if (picks.Count > 0)
-                Log(s, "have-nots", hoh.name + " named this week's Have-Nots: " + string.Join(", ", picks.Select(p => p.isPlayer ? "you" : p.name)) + ".");
-        }
-
-        /// <summary>
-        /// The veto's punishment (a Ringer, plan §4.3): whoever finished last in the veto
-        /// competition joins the Have-Nots for the rest of the week. From week two, with five or
-        /// more in the house. The standings are committed, so it costs no roll; the winner is never
-        /// last, and somebody already on slop is not put on it twice.
-        /// </summary>
-        private static void VetoPunishment(EpisodeState s)
-        {
-            if (s.week < 2 || s.Active.Count() < 5 || s.competitionScores.Count < 2) return;
-            var last = s.competitionScores
-                .Where(x => x.contestantId != s.vetoHolderId && s.Find(x.contestantId)?.status == ContestantStatus.Active)
-                .OrderBy(x => x.score).ThenBy(x => x.contestantId, StringComparer.Ordinal).FirstOrDefault();
-            if (last == null || Production.IsHaveNot(s, last.contestantId)) return;
-            var who = s.Find(last.contestantId);
-            Production.MakeHaveNot(s, who.id);
-            Log(s, "have-nots", (who.isPlayer ? "You" : who.name) + " finished last in the veto competition, and "
-                + (who.isPlayer ? "join" : "joins") + " the Have-Nots for the rest of the week.");
         }
 
         /// <summary>
@@ -588,6 +535,8 @@ namespace Gamesim.Simulation
         /// <summary>A houseguest confronted the player: half the time, the web's confront menu as a beat to answer.</summary>
         internal static void StoryConfronted(EpisodeState s, string npcId)
         {
+            // The strategy windows' reply cards own the house's approaches wherever they play.
+            if (StrategyRules.Apply(s)) return;
             if (StoryOn(s) && StoryRandom.Chance(s, "w" + s.week + ":confronted:" + npcId, 0.5))
                 StartAimed(s, "confronted", npcId, StoryAnchors.EvictionNight);
         }
@@ -595,6 +544,7 @@ namespace Gamesim.Simulation
         /// <summary>A nominee campaigned to the player: half the time, the web's campaign menu as a beat to answer.</summary>
         internal static void StoryCampaignedTo(EpisodeState s, string npcId)
         {
+            if (StrategyRules.Apply(s)) return;
             if (StoryOn(s) && StoryRandom.Chance(s, "w" + s.week + ":campaign:" + npcId, 0.5))
                 StartAimed(s, "campaign-pitch", npcId, StoryAnchors.BlockSet);
         }
@@ -605,7 +555,7 @@ namespace Gamesim.Simulation
         /// </summary>
         internal static void StoryGossipedAbout(EpisodeState s, string gossipId, string listenerId)
         {
-            if (!StoryAt(s, StoryRules.Grudges)) return;
+            if (!StoryAt(s, StoryRules.Grudges) || StrategyRules.Apply(s)) return;
             string teller = listenerId != null && s.Score(listenerId, s.playerId) >= 20 ? listenerId : null;
             double chance = teller != null ? 0.5 : 0.25;
             if (StoryRandom.Chance(s, "w" + s.week + ":gossip:" + gossipId + ":" + listenerId, chance))

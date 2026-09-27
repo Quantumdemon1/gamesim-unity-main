@@ -101,7 +101,7 @@ namespace Gamesim.Simulation
             var a = Of(who);
             int value = a.Bold + a.Vengeful - a.Steady + StressStep(who);
             if (state.nominees.Contains(id)) value += 1;
-            if (state.story?.haveNots != null && state.story.haveNots.Contains(id)) value += 1;
+            if (HaveNots.Is(state, id)) value += 1;
             if (againstId != null && Grudges.Severity(state, id, againstId) >= 60) value += 1;
             return value;
         }

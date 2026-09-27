@@ -354,7 +354,6 @@ namespace Gamesim.Simulation
         {
             new Spec { id = "rattled", name = "Rattled", description = "A scene went wrong and it is still in your head.", competition = -1 },
             new Spec { id = "fired-up", name = "Fired Up", description = "Somebody gave you a reason to win this week.", competition = 1 },
-            new Spec { id = "have-not", name = "Have-Not", description = "Slop, cold showers and a cot. One fewer action this week.", social = -10 },
             new Spec { id = "comp-practice", name = "Practised", description = "Hours in the backyard going over the layout.", competition = 1 },
             new Spec { id = "power_move", name = "Power Move", description = "You showed the house you will not be pushed around.", competition = 2 },
             new Spec { id = "alliance_builder", name = "Alliance Builder", description = "Your social game is strengthening.", social = 10 },

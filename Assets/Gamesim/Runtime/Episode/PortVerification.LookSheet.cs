@@ -448,6 +448,9 @@ namespace Gamesim.Episode
             }
             if (HouseEvents.Pending(seasonDirector.Snapshot) == null) throw new InvalidOperationException("No house event was offered during this capture route.");
             yield return OpenSeasonStation();
+            // A reply card is drawn before the week's situation: answer it, so the shot is the event.
+            for (var card = ReplyCards.Pending(seasonDirector.Snapshot); card != null; card = ReplyCards.Pending(seasonDirector.Snapshot))
+                yield return ClickSeasonButton(EpisodeHud.ReplyCaption(ReplyCards.Replies(card.kind)[1].Label));
             shot.reason = "The event shows its involved houseguests and counts of known events. "
                 + "Those counts describe activity, commitments and game stakes, not private NPC feelings.";
         }

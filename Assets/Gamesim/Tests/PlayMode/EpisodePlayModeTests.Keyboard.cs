@@ -106,6 +106,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EventSystem.current.currentInputModule, Is.TypeOf<InputSystemUIInputModule>(),
                 "Enter reaches a control as Submit only through the input-system UI module.");
             player.Agent.speed = 25; player.Agent.acceleration = 100;
+            // The walk is about the keyboard, not the ceremonies' pace, and it waits out every card on
+            // the wall clock (SettleReveal). At the suspenseful pace a season's keys and votes add most
+            // of a minute to a test the runner stops at three; quick is the settings' own brisk tempo,
+            // the timings the cards had before the suspenseful one.
+            director.SetCeremonyPace(CeremonyPace.Quick);
 
             // The world chrome, then the three panels that are not ceremonies.
             yield return KeyboardSubmit("Notebook [J]");

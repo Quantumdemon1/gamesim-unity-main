@@ -43,8 +43,13 @@ namespace Gamesim.Tests.PlayMode
                 }
             }
             Assert.That(fixture, Is.Not.Null, "No bounded legal fixture with a Head of Household's word found.");
+            // The house's own clock must neither write over the fixture nor commit under the test: the
+            // outgoing director can autosave an NPC tick over a file just written, and a tick mid-test
+            // rebuilds the chrome the keyboard is walking. Neither is what these tests are about.
+            director.SuspendNpcAutonomyForDiagnostics();
             new EpisodeSaveStore(director.SavePath).Save(fixture);
             yield return ReloadEpisode();
+            director.SuspendNpcAutonomyForDiagnostics();
             AssertEquivalent(fixture, director.Snapshot);
             yield return null; yield return null;
         }
@@ -82,20 +87,28 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ActiveRect(EpisodeHud.HouseVibeCardName), Is.Not.Null, "The week card comes back.");
         }
 
-        /// <summary>Every new control is on the ring (plan §5.6): Tab reaches the Pull, and Enter answers it.</summary>
+        /// <summary>
+        /// Every new control is on the ring (plan §5.6): Tab reaches the Pull, and Enter answers it.
+        /// The press goes through <see cref="KeyboardSubmit"/>, as every keyboard test's does: a body
+        /// finishing its assembly rebuilds the HUD, and a synthetic Enter sent to the control it
+        /// replaced is delivered to nothing. The walk finds the control on screen after every press
+        /// for the same reason.
+        /// </summary>
         [UnityTest]
         public IEnumerator StoryPull_TheKeyboardReachesItAndEnterAnswersIt()
         {
             yield return InstallStoryPullFixture();
             var answer = FindButton(EpisodeHud.HearThemOutCaption);
             for (int presses = 0; presses < 60 && EventSystem.current.currentSelectedGameObject != answer.gameObject; presses++)
+            {
                 yield return PressKey(Key.Tab);
+                answer = FindButton(EpisodeHud.HearThemOutCaption);
+            }
             Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(answer.gameObject), "Tab reaches the Pull.");
             var before = director.Snapshot;
-            yield return PressKey(Key.Enter);
-            yield return null;
-            Assert.That(director.IsSceneCardOpen, Is.True, "Enter answers it.");
-            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
+            yield return KeyboardSubmit(EpisodeHud.HearThemOutCaption);
+            Assert.That(director.IsSceneCardOpen, Is.True, "Enter answers it: " + lastSubmit);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "Opening the card writes nothing.");
         }
 
         [UnityTest]

@@ -103,6 +103,8 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory: PlaceMemory(); break;
                 case CompetitionMiniGames.Kind.Reaction: PlaceReaction(); break;
                 case CompetitionMiniGames.Kind.Endurance: PlaceEndurance(); break;
+                case CompetitionMiniGames.Kind.Dice: PlaceDice(); break;
+                case CompetitionMiniGames.Kind.Words: PlaceWords(); break;
             }
             LayoutOverlay();
             LayoutFinishPlate();

@@ -21,41 +21,27 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
-            if (version == 14) return (JObject)original.DeepClone();
-            if (version < 1 || version > 13) throw new InvalidDataException("Unsupported simulation schema version.");
-            var result = UpgradeV13ToV14(version == 13 ? original : PrepareV13Payload(original, out _));
-            migrated = true;
-            return result;
-        }
-
-        /// <summary>Frozen v1-v12-to-v13 dispatch; do not retarget its historical defaults.</summary>
-        public static JObject PrepareV13Payload(JObject original, out bool migrated)
-        {
-            migrated = false;
-            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
-                throw new InvalidDataException("Simulation schema version must be an integer.");
-            long version = (long)original["schemaVersion"];
-            if (version == 13) return (JObject)original.DeepClone();
-            if (version < 1 || version > 12) throw new InvalidDataException("Unsupported simulation schema version.");
-            var result = UpgradeV12ToV13(version == 12 ? original : PrepareV12Payload(original, out _));
+            if (version == 16) return (JObject)original.DeepClone();
+            if (version < 1 || version > 15) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV15ToV16(version == 15 ? original : PrepareV15Payload(original, out _));
             migrated = true;
             return result;
         }
 
         /// <summary>
-        /// Opens the story system, from the week after the save's: the seventh use of the rule
-        /// boundary, for the reason the other six give. A season restored mid-week carries on under
-        /// the rules it was played under until the week turns, and then the house starts to remember.
+        /// Opens the story system, from the week after the save's: the rule boundary once more, for
+        /// the reason the others give. A season restored mid-week carries on under the rules it was
+        /// played under until the week turns, and then the house starts to remember.
         ///
-        /// <para>Everything the bundle holds arrives empty - there is nothing in a v13 save to infer
-        /// a grudge or a secret from - except the lore, which is cast now from each houseguest's
+        /// <para>Everything the bundle holds arrives empty - there is nothing in an older save to
+        /// infer a grudge or a secret from - except the lore, which is cast now from each houseguest's
         /// saved card, exactly as a new season casts it. Every house event, storyline and modifier
         /// gains its story fields at their legacy values: a legacy event carries no beat state, a
         /// legacy storyline no cycle state, and every existing modifier is the player's.</para>
         /// </summary>
-        public static JObject UpgradeV13ToV14(JObject original)
+        public static JObject UpgradeV15ToV16(JObject original)
         {
-            FrozenEpisodeV13.Validate(original);
+            FrozenEpisodeV15.Validate(original);
             int week = (int)original["week"];
             var result = (JObject)original.DeepClone();
 
@@ -91,7 +77,84 @@ namespace Gamesim.Persistence
             cast.story = new StoryWorldState();
             EpisodeEngine.EnableStory(cast, checked(week + 1));
             result.Add("story", JObject.FromObject(cast.story, serializer));
+            result["schemaVersion"] = 16;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v14-to-v15 dispatch.</summary>
+        public static JObject PrepareV15Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 15) return (JObject)original.DeepClone();
+            if (version < 1 || version > 14) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV14ToV15(version == 14 ? original : PrepareV14Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Opens the strategy fields, switched off. A season saved before them keeps playing as it
+        /// was - no lobbying, decisions that do not weigh deals or pleas, no reply cards - as it keeps
+        /// its competition rules and its Have-Nots: they are a new season's, not a change to one
+        /// under way.
+        /// </summary>
+        public static JObject UpgradeV14ToV15(JObject original)
+        {
+            FrozenEpisodeV14.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("strategyRulesStartWeek", 0);
+            result.Add("lobbies", new JArray());
+            result.Add("replyCards", new JArray());
+            result["schemaVersion"] = 15;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v13-to-v14 dispatch.</summary>
+        public static JObject PrepareV14Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 14) return (JObject)original.DeepClone();
+            if (version < 1 || version > 13) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV13ToV14(version == 13 ? original : PrepareV13Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Opens the Have-Not fields, switched off. A season saved before them keeps playing as it
+        /// was - no Have-Nots and no veto prizes - as a season keeps the competition rules it
+        /// started with: they are a new season's, not a change to one under way.
+        /// </summary>
+        public static JObject UpgradeV13ToV14(JObject original)
+        {
+            FrozenEpisodeV13.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("haveNotRulesStartWeek", 0);
+            result.Add("haveNots", new JArray());
+            result.Add("haveNotPasses", new JArray());
+            result.Add("punishedHaveNots", new JArray());
+            result.Add("vetoPrizes", new JArray());
             result["schemaVersion"] = 14;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v12-to-v13 dispatch.</summary>
+        public static JObject PrepareV13Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
+            if (version == 13) return (JObject)original.DeepClone();
+            if (version < 1 || version > 12) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV12ToV13(version == 12 ? original : PrepareV12Payload(original, out _));
+            migrated = true;
             return result;
         }
 

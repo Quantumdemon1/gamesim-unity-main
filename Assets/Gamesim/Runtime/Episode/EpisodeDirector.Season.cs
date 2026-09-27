@@ -102,6 +102,14 @@ namespace Gamesim.Episode
             hud.Action(reducedMotion ? "Enable character motion" : "Reduce character motion", () => { reducedMotion = !reducedMotion; ApplyPreferences(); Render(); });
             hud.Action(reducedAudio ? "Full sound" : "Reduce sound", () => { reducedAudio = !reducedAudio; ApplyPreferences(); Render(); });
             hud.Action(largeText ? "Use standard text" : "Use larger text", () => SetLargeText(!largeText));
+            hud.Section("CEREMONIES");
+            // The key ceremony and the live eviction reveal one name at a time; suspenseful holds a
+            // beat on each, quick keeps them brisk. Either can be sped up or skipped while it plays.
+            hud.Paragraph(ceremonyPace == CeremonyPace.Suspenseful
+                ? "Keys and votes are revealed one at a time, with a pause before the last. Press Space to speed a reveal up, or Enter to skip to the result."
+                : "Keys and votes are revealed quickly. Press Space to speed a reveal up, or Enter to skip to the result.");
+            hud.Action(ceremonyPace == CeremonyPace.Suspenseful ? QuickCeremoniesCaption : SuspensefulCeremoniesCaption,
+                () => { SetCeremonyPace(ceremonyPace == CeremonyPace.Suspenseful ? CeremonyPace.Quick : CeremonyPace.Suspenseful); Render(); });
             DisplaySettings();
             CareerSettings();
             hud.Paragraph("All dialogue and ceremony information is captioned. Mouse buttons and keyboard alternatives are available; precision competitions have an untimed assisted option.");
@@ -253,7 +261,9 @@ namespace Gamesim.Episode
                 var seed = unchecked((uint)DateTime.UtcNow.Ticks);
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
                 var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
-                fresh.competitionRulesVersion = 3;
+                fresh.competitionRulesVersion = CompetitionRules.Current;
+                fresh.haveNotRulesStartWeek = 1;
+                fresh.strategyRulesStartWeek = 1;
                 // Every season the director starts plays under the story system from week one:
                 // arcs, grudges, lore, bonds and production. Seasons built directly by tests and
                 // the default scene engine stay off unless they switch it on themselves.
@@ -350,6 +360,7 @@ namespace Gamesim.Episode
             // A season replaced under the opening ends it without recording anything: the beats
             // belonged to the season that is going.
             if (opening != null && opening.IsPlaying) opening.Cancel();
+            ResetCeremonyTruth();
             ResetNpcSocialForLoad();
             ClosePanels(); engine = new EpisodeEngine(state); blockedRecovery = false;
             // A finished season arriving by load, recovery or import is still a finished season.
@@ -399,7 +410,7 @@ namespace Gamesim.Episode
             foreach (var visual in FindObjectsByType<CharacterPresentation>()) visual.SetReducedMotion(reducedMotion);
             ApplyDisplayPreferences();
             if (SaveRootOverride == null)
-            { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedAudio", reducedAudio ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.SetInt("Gamesim.Volume", volumePercent); PlayerPrefs.SetInt("Gamesim.Music", musicOn ? 1 : 0); PlayerPrefs.Save(); }
+            { PlayerPrefs.SetInt("Gamesim.Muted", muted ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedMotion", reducedMotion ? 1 : 0); PlayerPrefs.SetInt("Gamesim.ReducedAudio", reducedAudio ? 1 : 0); PlayerPrefs.SetInt("Gamesim.LargeText", largeText ? 1 : 0); PlayerPrefs.SetInt("Gamesim.Volume", volumePercent); PlayerPrefs.SetInt("Gamesim.Music", musicOn ? 1 : 0); PlayerPrefs.SetInt("Gamesim.CeremonyPace", ceremonyPace == CeremonyPace.Quick ? 1 : 0); PlayerPrefs.Save(); }
         }
     }
 }

@@ -101,6 +101,9 @@ namespace Gamesim.Simulation
             new[] { Role("HOLDER") },
             c =>
             {
+                // Where the strategy windows play, lobbying the veto holder is their plea - with its
+                // approaches, odds and answers - and a second card asking the same would be noise.
+                if (StrategyRules.Apply(c.state)) return null;
                 string holder = NpcVetoHolder(c);
                 return holder == null ? null : Bind().With("HOLDER", holder).Headlining(holder);
             },

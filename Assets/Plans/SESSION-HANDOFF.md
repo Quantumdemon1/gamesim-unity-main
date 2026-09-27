@@ -8,6 +8,274 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 0000000000000000. The strategy windows: a word with whoever decides, decisions that listen, reply cards, and two deal fixes (26 September)
+
+Batch 4 of the minigames brainstorm's plan: "Strategy windows: lobbying the HoH and the veto holder, reply cards, deal fixes." The rules are `Simulation/StrategyRules.cs` and `Simulation/ReplyCards.cs`; the engine's side is `EpisodeEngine.Strategy.cs`, and the screens are `EpisodeDirector.Strategy.cs`.
+
+**What the reference actually does** (a research pass over D:/gamesim-web):
+- Its veto lobbying is real on screen but reaches the decision only for guests. The signed-in server's veto never reads the player's influence.
+- Its NPC Head of Household ignores lobbying entirely.
+- Its confrontation, plea and gossip replies write to the legacy relationship store, which nothing reads.
+- So this batch copies the reference's cards, numbers and words, and gives them consequences.
+
+**The windows**
+- Before nominations the player can reach the Head of Household. Before the veto meeting they can reach the veto holder (while the veto can be used and the holder is not nominated) and the Head of Household (about a replacement). Everybody else gets the old notice card, with a line pointing at who is deciding.
+- What a window allows: any conversation aimed at the decider, and a deal. Not allowed: listening in, rumours told to the house, scheming, and vote promises.
+- A word costs one of the week's conversations, on the out-of-phase counter campaigning already uses.
+- The station says who is deciding and how many conversations are left.
+- Whoever is deciding greets the player with a line of their own, instead of "the ceremony comes first".
+
+**Pleas**
+- Two steps: what to ask, then how to put it. What to ask:
+  - The Head of Household: to keep the player off the block (or out of a saved nominee's place), or to put a named houseguest up.
+  - The veto holder: to use the veto on a named nominee, the player included, or to keep the nominations the same.
+- One plea per decider per window.
+- How to put it is one of the reference's four cards, in its words ("Desperate plea" / "Emotional plea" and so on).
+- **The chance:**
+  - The card's base: 55, 50, 60 or 35.
+  - +15 for each trait it suits, −10 for each it grates on.
+  - A fifth of the relationship, rounded as JavaScript rounds it.
+  - +10 from the block, and +10 for a deal already between them.
+  - Clamped to 5–95.
+  - **Two changes:**
+    - The relationship is the decider's view of the player. The reference reads the player's own.
+    - What is asked is weighed as the deal it resembles, so pushing somebody at a friend is a harder sell.
+- **The answer** is the reference's roll:
+  - Receptive, under six tenths of the chance: 40–60 points, +5.
+  - Open: 15, +3.
+  - Skeptical, the next twenty: −5.
+  - Hostile: −30 to −50, −8.
+- A plea made with a deal that lands writes a safety agreement through next week: the card's "real obligations".
+- **Not ported:** the reference's negotiation step after a counter-proposal.
+
+**Decisions that listen** (all read warmth alone in a season without the windows)
+- **Nominations and replacements:**
+  - Warmth.
+  - Plus the reference server's deal weights, read as points: safety 35, final two 50, veto commitment 40, and so on.
+  - −35 for a broken deal, +30 for an ally, −40 for the target of their own target agreement.
+  - Plus this week's pleas: a hostile answer pushes the other way.
+- **The veto:**
+  - Warmth, +20 for an ally, +40 for a veto commitment, plus pleas.
+  - Against the port's line of 30, which a plea to keep things as they are raises.
+  - A houseguest who gave their word used to break it and be blamed; now they mostly keep it.
+
+**Deal fixes**
+- Nobody offers or accepts a veto commitment once the veto is decided. NPCs used to ask at the campaign, which is after it.
+- A nominee warm enough to bargain now asks the player veto holder as soon as the competition is over. The question is answered on the veto decision itself, and one left unanswered lapses at the decision.
+- An accepted alliance invitation, asked either way, now forms an alliance:
+  - The inviter's own, if nobody in it is below −10 with the player and the player reads nobody in it as sour.
+  - Otherwise a new pact.
+  - It used to be a deal and nothing more, so the voting blocs and the jury never saw it.
+
+**Reply cards**
+- Three kinds, each with the reference's three answers and numbers:
+  - A confrontation: Apologize +10, Deflect −2, Escalate −15.
+  - Gossip the player finds out about, three times in ten: Confront them −15, Let it slide −5, Gossip back −10.
+  - A nominee's plea: Promise support +8, Stay noncommittal 0, Refuse −5.
+- What the answers do:
+  - They move the relationship, and the houseguest remembers them.
+  - Gossiping back costs the gossip 5 with the listener.
+  - Promising support is a vote promise against the other nominee.
+- A card is free to answer and lasts only its phase. It is drawn on the house-event card, above the week's situation, under "SOMEBODY CAME TO YOU".
+
+**Saves: schema 15** (`strategyRulesStartWeek`, `lobbies`, `replyCards`)
+- New seasons set 1. A migrated save and the fixture seasons get 0.
+- `FrozenEpisodeV14` freezes schema 14's Have-Not contract, prize ids included.
+- **Validation:**
+  - Pleas and cards are this week's.
+  - Cards exist only in free time or the campaign.
+  - A season at 0 holds neither.
+- **Test sweep:**
+  - 40 "schema 14" assertions became 15.
+  - Three field inventories learned the three fields, and `StripSchema15` joins the helpers.
+  - The v14 tests now check the frozen step (`PrepareV14Payload`).
+  - The v4 "future schema" damage case moved to 16. It was left at 14 when 14 became current, so it had been testing a current schema number.
+
+**Tests.**
+- EditMode added `StrategyRulesTests` (43, which also run under `dotnet test`) and `PersistenceV15MigrationTests` (14).
+- PlayMode added `EpisodePlayModeTests.Strategy` (4), and the new-season test checks the windows.
+- 103 mutations, all caught at their target assertions: 80 on the rules under `dotnet test` (`simmut_b4.py`) and 23 on persistence and the screens through the harness (`strategy_mut.py`).
+  - Two of the harness's mutations edited the same line of the frozen validator and did not compose, so one was narrowed.
+  - A boolean week turned out to be refused by the serializer itself, so the case that proves the frozen shape check writes the week as text, which only the shape check refuses.
+- Three rules mutations missed at first, all on the tests' side:
+  - An alliance case clamped to 5 either way.
+  - The Eavesdrop label is redundant beside the decider check, so the test now reads the refusal's words.
+  - The gossip test saw too few rumours told to the player, so it now runs until it has seen twenty.
+
+**Verified:** EditMode 1625, PlayMode 561, Uma 64 and Simulation 856, all passing in one full run, with no crashes. Floors raised from 1568, 557 and 813. Port verification's season walk now answers reply cards (the middle answer) and the look sheet answers them before its house-event shot; neither standalone run was made this batch.
+
+**Next:** batch 5, the finale. Follow-ups seen on the way:
+- Pending offers on the cast strip.
+- Deals in the nominee comparison, with a warning before a nomination breaks one.
+- The reference's lobbying negotiation step.
+
+## 000000000000000. Have-Nots, and a veto played for a prize and a punishment (26 September)
+
+Batch 3 of the minigames brainstorm, the owner's decision 4: "prize or punishment vetoes and have-not competitions... Yes they sounds good". Neither build of the reference has them, so the design is this port's (`Simulation/HaveNots.cs`).
+
+**Have-Nots**
+- The last out of each Head of Household competition are the week's Have-Nots: three in a house of nine or more, two in six to eight, one in five, and none from the final four. The finale clears them.
+- The new HoH is never one. A pass from the veto keeps its holder off the list, and the place passes to the next-lowest. A punishment from the veto puts its taker on, whatever they scored.
+- Being a Have-Not costs a point off the week's veto score, and a player among them has one fewer conversation. The status lasts until the next HoH.
+- Finishing low now has a cost, and a throw is a gamble with it.
+- The Have-Nots come from committed standings, so nothing draws on the season's generator.
+- **Shown:**
+  - A `HAVE-NOT` badge on the cast rail, below HOH, VETO and NOM and above YOU.
+  - A note on the HoH's standings rows.
+  - A stakes line on the HoH briefing ("The last two out are this week's Have-Nots.").
+  - The house's story line.
+  - For a player among them, a line beside the interactions meter.
+- The veto explanation carries a "have-not −1" term, so its terms still add up.
+
+**The veto's prize and punishment**
+- The veto's runner-up wins a prize (in a field of three or more) and its last finisher takes a punishment (four or more). Each week's pair is picked from the season's seed and the week, not the generator.
+  - **Prizes:** $5,000 (story only); a Have-Not pass for next week; a luxury night (one more conversation until the end of next week).
+  - **Punishments:** a Have-Not next week; the alarm (one fewer conversation until the end of next week); a banana suit until the eviction (story only).
+- The luxury and the alarm are story modifiers on the player (weeks left 2). Conversations are the player's currency, so for anyone else they are the house's story.
+- **Shown:** notes on the veto's standings ("Prize: $5,000", "Punishment: The alarm"), a stakes line on the veto briefing, and the house's story lines ("You finished last in the veto: an alarm every hour of the night.").
+
+**Saves: schema 14** (`haveNotRulesStartWeek`, `haveNots`, `haveNotPasses`, `punishedHaveNots`, `vetoPrizes`)
+- A season started now plays them from week 1 (`SeasonBuilder`, `StartSeason`).
+- **Everything else has 0 and plays without them:**
+  - A migrated save, as it keeps its competition rules: they are a new season's, not a change to one under way.
+  - The default cast's fixture seasons (`ContentCatalog.Create`), so no pinned history re-rolls. The voting-bloc witness is one.
+- **The frozen v13 contract:** `FrozenEpisodeV13` freezes schema 13 as "schema 12 plus competition rules 1–4, a source template and an appearance". The appearance's shape and checks are copied as they stood, and it delegates to the frozen v12 validator.
+- **Validation:** Have-Not lists hold distinct houseguests; a season at 0 holds none; prizes name the lists' own ids.
+- **Test sweep:** 31 "schema 13" assertions became 14. Two field-inventory tests and the v3 dispatch test learned the five fields. `StripSchema14` joins the downgrade helpers.
+
+**Tests.**
+- EditMode added `HaveNotTests` (15, which also run under `dotnet test`) and `PersistenceV14MigrationTests` (7).
+- PlayMode added `EpisodePlayModeTests.HaveNots` (3), and the new-season test now also checks the Have-Not rules and a season started without a roster choice.
+- 35 mutations, all caught at their target assertions: 23 on the rules under `dotnet test` (`simmut_b3.py`) and 12 on persistence and presentation through the harness (`havenot_mut.py`).
+  - One needed a run of its own. The frozen validator's rules bound, mutated, refuses every rules-4 payload, and so it masked the template-length mutation grouped beside it.
+- `simmut.py` now matches test names by contains, so parameterised cases run, and counts a mutation caught if any case fails.
+
+**Verified:** EditMode 1568, PlayMode 557, Uma 64 and Simulation 813, all passing in one full run, with no crashes. Floors raised from 1546, 554 and 798.
+
+**Next:** batch 4, strategy windows: lobbying the HoH and the veto holder, reply cards, and the deal fixes. Then the finale.
+
+## 00000000000000. Competition rules 4: five kinds, the dice and the word game, a minigame worth three, and a throw that throws (26 September)
+
+Batch 2 of the minigames brainstorm, covering the owner's decisions 1 to 3:
+1. Keep stats and weight the minigames more.
+2. Widen the competitions with luck and social.
+3. A throw should lose about 90% of the time. When it still wins, say the player got lucky, or explain how a throw can still win.
+
+Everything here is **competition rules 4**, which new seasons play (`CompetitionRules.Current`, set by `SeasonBuilder.Create` and `EpisodeDirector.StartSeason`). Seasons saved under rules 1–3 are frozen: they keep their three kinds, their two-point weight, their throw and their reaction schedule. The PlayMode fixture's own season is a legacy one.
+
+**Five kinds, in each season's own order** (new `Simulation/CompetitionRules.cs`)
+- Skill, Mental, Endurance, Luck and Social: the reference's five player-facing types.
+- A season shuffles the five from its seed (no draw on the season's generator). The HoH takes the next kind each week and the veto the kind two on. A week's two competitions never share a kind, and each kind comes round once as each in every five weeks.
+- `EpisodeEngine.CompetitionCategory` takes the seed now. The result card passes it, so it names the kind the season dealt.
+- **Luck** is the reference's Crapshoot: a tenth mental, nine tenths luck, plus a second roll worth up to 3. The luck statistic is squeezed toward five, as the reference's dice game does (5 + (luck − 5) × 0.2), so a lucky houseguest is favoured, not crowned. Luck draws its second roll straight after each competitor's first.
+- **Social** uses this port's weights, since the reference has none: three fifths social, a fifth mental, a fifth luck.
+
+**The minigame counts for more.** Full marks are worth 3 points (they were 2); `CompetitionRules.PerformanceWeight`.
+- The accessible alternative is still half marks, now 1.5 points. Its caption is a contract: "Accessible alternative: steady 1.5-point bonus" in a rules-4 season (`EpisodeDirector.AccessibleCompetitionCaption`).
+- The briefing's copy says 0–3.
+- Simulated in a field of six and averaged over the five kinds, a balanced player wins 18% at no performance, 56% at half marks and 89% at full marks.
+
+**The throw** (its own command, `EpisodeCommandKind.ThrowCompetition`, appended)
+- Every bonus is given up, and only part of the player's score counts (`CompetitionRules.ThrowShare`): 0.82 in a field of three, 0.88 of four, 0.93 of five, 0.94 of six, 0.96 of seven, 0.98 of eight, 0.99 of nine, and all of it from ten up.
+- The shares were measured over 2,000 seasons per field size (the regular roster, the player as each of its houseguests, every kind) to leave a throw winning one time in ten.
+  - A first table from a simplified cast won only 4.5–8.8% on the real casts.
+  - The test checks the measured rate on real casts at fields of 3, 5, 6 and 11.
+- It never touches another score, so a throw can still win.
+- The explanation leads with the story:
+  - "You threw it. A throw gives up every bonus and counts 94% of your score in a field of 6. Yours came to 5.4, 4th of 6."
+  - "You threw it and won anyway: you got lucky. … It lowers only your own score, and yours came to 6.83 while the best of the rest scored 6.28."
+  - It names the runner-up's score, not the runner-up: the explanation stays the player's own account.
+- The standings mark the row "Threw". The card's attempt line reads "You threw it · 4 of 6" or "You threw it and won anyway: you got lucky".
+- The throw is recorded in a private `competition-throw` line, and the house is not told.
+- A rules-3 season throws as it always did, with a Compete at no performance.
+
+**The games** (`MiniGameRun.Dice.cs`, `MiniGameRun.Words.cs`, and the board partials `CompetitionGameScreen.Dice.cs` / `.Words.cs`)
+- **Roll the Dice** (luck): three dice, up to three rolls.
+  - The reference kept the best roll, so rolling three times was always right. Here each re-roll replaces the roll you have: "Roll again" gives up the roll showing, and "Keep this roll" ends on it. A third roll stands.
+  - The total out of ten is the reference's scale, (total − 3) / 15 × 10.
+  - The faces are dealt when the run is made, so a ranked attempt rolls the same dice after a cancel or reload.
+  - The dice land one after another. The tumble's faces are the screen's own flicker, never the dealt faces, and under reduced motion a tumbling die is blank.
+- **Word Scramble** (social): the reference's list, kept to five letters or more, and its points (2 for five or six letters, 2.5 for seven or eight, 3 for nine or more, 1.5 for a four-letter name).
+  - A finished spelling is judged at once. A wrong one clears after half a second, and skipping is free. The score is the points, capped at ten.
+  - A letter can be chosen by clicking its tile, typing it (read on the keyboard's own layout), or pressing the pad's A. Backspace or the pad's X takes one back.
+  - While the board is played every letter types, P included. It pauses with Start or the Pause button; paused, P resumes.
+  - The **Houseguest Scramble** variant spells the season's own first names: letters only, four to twelve letters, topped up from the list when the house's names run short.
+- A kind's game now changes every time the kind comes round, not once a season (`CompetitionDefinitions.Version4`; Luck has one game). The Final HoH keeps its authored rounds.
+- The house's shortcuts wait during a competition. Typing J in the word game opened the notebook underneath it.
+
+**Found on the way**
+- `CompetitionMiniGames.CurrentRules` meant "newest" in the range check and "rules 3's reaction schedule" in four places in `MiniGameRun`. Bumping it would have moved every rules-3 season off its schedule. `ScheduledRules = 3` now gates the schedule, and a mutation checks it (memory: a-current-version-constant-is-a-bound-not-a-gate).
+- A Selectable made non-interactable while the keyboard is on it drops the selection. Disabling Roll during a tumble, or a letter tile once chosen, left pad and keyboard players selecting nothing. Those controls now stay live but inert, and they look spent.
+- Port verification plays the dice and word games, reading the board as a player does, and uses the rules-aware caption.
+
+**Tests.** EditMode added `CompetitionRulesV4Tests` (16, which also run under `dotnet test`) and `LuckAndSocialGameTests` (17). PlayMode added `CompetitionSurfacePlayModeTests.LuckAndSocial` (6) and `EpisodePlayModeTests.CompetitionRules4` (7). Two tests changed with the contract: the catalogue count and new seasons' rules. The rules-3 surface test now builds the luck and social games under rules 4.
+- 59 mutations, all caught at their target assertions: 24 on the simulation rules, run against a scratch copy with `dotnet test` (`scratchpad/simmut/simmut.py`); 15 EditMode and 20 PlayMode through the D: harness (`rules4_mut.py`).
+- Two needed a stronger test first:
+  - The reroll test compared the kept total with the same accessor the mutation broke, so both moved together. It now checks against the dice showing.
+  - A missing card line threw from a lookup instead of failing an assertion.
+
+**Verified:** EditMode 1546, PlayMode 554, Uma 64 and Simulation 798, all passing in one full run, with no crashes. Floors raised from 1513, 541 and 782.
+
+**Next:** batch 3, prize and punishment vetoes and have-nots (decision 4). They need a save schema bump. Then strategy windows, then the finale.
+
+## 0000000000000. Ceremonies that keep their secret: a suspenseful pace you can skip or speed up, and the spoilers gone (26 September)
+
+The request: "Brainstorm improvements to minigames and other features of the game". After the brainstorm the owner decided:
+1. Keep stats, and weight the minigames more.
+2. Widen the competitions with luck and social (the web's five types).
+3. Throwing a competition should lose about 90% of the time. When it still wins, say the player got lucky, or explain how a throw can still win.
+4. Prize and punishment vetoes and have-nots: yes.
+5. Suspense and slower pacing for the ceremonies, with the option to skip or speed up.
+
+The plan is five batches, each tested, mutation-tested and committed before the next:
+1. Honest ceremonies and pacing (decision 5). **This entry.**
+2. Competition rules v4 (decisions 1–3).
+3. Prize and punishment vetoes and have-nots (decision 4; needs a schema bump).
+4. Strategy windows: lobbying the HoH and the veto holder, reply cards, deal fixes.
+5. The finale: jury reveal, jury present, and the evictee's walk out through the opening's front door. The walk-out moved here from batch 1.
+
+**Pacing** (new `Presentation/CeremonyPacing.cs`)
+- Two paces. **Suspenseful** is the default: a beat on every key and vote and a longer one before the last. **Quick** is the timings the cards had before.
+  - The reference build holds about seven seconds per key; the port had 0.62 s. Suspenseful sits between, and shortens for a big house.
+  - Key ceremony: 2.2 s a key, 1.8 at seven keys or more, 1.4 at ten or more. The last key waits another 1.8 s ("One key left"), and the block holds 3.6 s.
+  - Vote reveal: 1.8 s a vote, 1.4 at six or more. The last vote waits another 1.6 s, a tie gets a 2.4 s beat before the Head of Household breaks it, and the result holds 3.6 s.
+- **Speed up:** Space or the pad's X plays a reveal at 3×. **Skip:** a click, Enter, keypad Enter, Esc, or the pad's A or B jumps to the block or result, and a second press closes. Both wait out a 0.35 s read delay, and each card shows its controls.
+- **Settings:** a CEREMONIES section with "Make ceremonies quick" / "Make ceremonies suspenseful", kept in the `Gamesim.CeremonyPace` PlayerPrefs key (0 suspenseful, 1 quick). The key is neither read nor written under a test save root.
+- Reduced motion keeps the timings (they are reading time) and now cuts to the ceremony's room instead of skipping the framing.
+- The takeover card (the veto field, and any ceremony without a reveal) is dismissable by keyboard and pad, as the reveals are.
+
+**Honest ceremonies** (new `EpisodeDirector.CeremonyTruth.cs`)
+- **The keys are shuffled.** They came out in cast order, and the player is first in the cast, so the first key told a safe player their fate every week. `KeyOrder` is an FNV hash of seed, week and id: the same week of the same season deals the same way after a reload. It is presentation only and draws nothing from the season's generator.
+- **The chrome steps aside while a reveal plays.** The status line, house panel and cast strip were redrawn from the committed result while the reveal was still counting, so they named the nominees and the evictee first. `EpisodeHud.HoldForReveal` takes the HUD to alpha 0 with no raycasts. It comes back, redrawn, when the card ends or is skipped.
+- **A card owns its keys.** While any ceremony card is on screen:
+  - the UI's Submit and Cancel actions are disabled, so the press that moves a card on no longer presses the HUD control under it;
+  - the house's shortcuts and follow-cycling wait (the pad's X is both speed-up and Interact);
+  - Esc on a card no longer also closes the notebook or opens the settings.
+- **The evictee stays for their eviction.** The body was switched off at the commit, so the room turned to look at an empty spot. `departingId` keeps them in the room until the last card narrating the eviction is gone.
+- **The count is the house's.** The Head of Household's tie-break ballot is marked (`EvictionBallots` sets `TieBreak`), so a 1–1 tie no longer reads 2–1. The reveal calls the tie, then shows the HoH's vote with its own chip and pip.
+- **The host reads the result:** "By a vote of X to Y, NAME, you have been evicted.", a sole-voter line, or "By the Head of Household's tie-breaking vote, …". An evicted player is spoken to as "you", and a player HoH is asked to break the tie.
+- **The sound matches the beat.** The commit's cue came from its last event, which after an eviction is always a vote read out, so the eviction's sound never played. `CommitCue` takes the biggest beat among everything appended: winner, eviction, nomination, veto, competition. The reveals now raise their own cues: Save per key, Nomination at the block, Vote per ballot and Eviction at the result.
+- **The veto card tells the meeting's story.** Its badges read VETO (the holder, when not on the block), SAVED, REPLACEMENT and NOMINATED; every face used to say NOMINATED.
+- **The finale's jury line** counts the real jury and, for an even jury, names who a split goes to under the reference game's tie rule. It said "Four jurors" whatever the house; the default house seats six.
+
+**Harness**
+- Port verification runs at the quick pace.
+- So does the keyboard walk, which waits out every card on the wall clock.
+- The pointer season walk and the voting-bloc walk skip reveals the way a player would (`SkipReveals`). They used to press HUD controls under a reveal, which nobody could see.
+- The season walk now also presses the weekly recap's "Continue to next week". That recap never opened in the walk before: pressing on under the reveal made the recap drop itself as an interruption.
+
+**Tests.** EditMode added `CeremonyTruthTests` (4) and `CeremonyPacingTests` (3). PlayMode added `CeremonyRevealPlayModeTests` (18) and `EpisodePlayModeTests.CeremonyTruth` (7). 33 mutations across the pacing, the cards and the director, all caught at their target assertions. One was missed at first, and it exposed a test that had never switched reduced motion on: the fixture's reduced motion is the bodies' own, and the director reads the player's setting from preferences it leaves alone under a test save root. The test now switches it on in Settings and checks that the camera cut rather than panned.
+
+**Verified:** EditMode 1513, Uma 64 and Simulation 782, all passing. PlayMode 541 over two full runs, 537 and 540, with every test passing in at least one:
+- The first run lost four house-life tests together within 45 seconds (a body without an animator, a sleep take not playing). They passed 34/34 when re-run in suite order after the ceremony tests.
+- The second run lost one camera-framing test (`DefaultCamera_RetainsAutomaticConversationFraming`, a standalone rig in another fixture). It passed on its own.
+- No crashes.
+- Treat both as known flakes. Neither touches anything this batch changed.
+
+Floors raised from 1506 and 516 to 1513 and 541.
+
+**Next:** batch 2, competition rules 4 (decisions 1–3): five kinds dealt in each season's own order, luck and social scoring, full marks worth three points, a real throw calibrated to win about one time in ten at every field size, and the dice and word games. Then batches 3 to 5 as listed above.
+
 ## 000000000000. The opening, second pass: the GitHub web's opening, Gamesim: The House, a front door nobody walks through shut (26 September)
 
 The request: carry on with the opening's open items, then - "don't use the survivor version, use the web version from the GitHub repo going forward, brainstorm solutions for the open items". After the brainstorm the owner decided: **3D reveals** (keep the real-bodies front door); brand **"Gamesim: The House"**; palette and tour **my judgment**; **skip the whole show** (unchanged); the free first night after the meet **unchanged for now**; and implement **the music, the white flash and confetti, the dancing, and remove the lamp**.

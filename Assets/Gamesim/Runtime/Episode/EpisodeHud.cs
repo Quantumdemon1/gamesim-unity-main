@@ -69,6 +69,44 @@ namespace Gamesim.Episode
         private static string Article(string title) =>
             !string.IsNullOrEmpty(title) && "aeiou".IndexOf(char.ToLowerInvariant(title[0])) >= 0
                 ? "an " : "a ";
+        /// <summary>
+        /// The words on a plea to whoever is deciding. Built here once, like the deal captions, so a
+        /// test and a screen reader look for exactly what the button says; the chance rides beside it.
+        /// </summary>
+        public static string LobbyAskCaption(EpisodeState state, string decider, string ask, string subjectId)
+        {
+            string about = state?.Find(subjectId)?.name ?? "them";
+            bool naming = state != null && state.phase == EpisodePhase.Nomination;
+            switch (ask)
+            {
+                case LobbyAsk.Spare: return naming ? "Ask " + decider + " to keep you off the block" : "Ask " + decider + " not to name you as the replacement";
+                case LobbyAsk.Target: return naming ? "Ask " + decider + " to nominate " + about : "Ask " + decider + " to name " + about + " as the replacement";
+                case LobbyAsk.Save: return subjectId == state?.playerId ? "Ask " + decider + " to use the veto on you" : "Ask " + decider + " to use the veto on " + about;
+                default: return "Ask " + decider + " to keep the nominations the same";
+            }
+        }
+
+        /// <summary>The four ways of putting a plea, in the reference's words: a plea for yourself has its own.</summary>
+        public static string LobbyApproachCaption(string approach, bool forYourself)
+        {
+            switch (approach)
+            {
+                case LobbyApproach.Emotional: return forYourself ? "Desperate plea" : "Emotional plea";
+                case LobbyApproach.Strategic: return forYourself ? "Shield pitch" : "Strategic pitch";
+                case LobbyApproach.Deal: return forYourself ? "All-in deal" : "Make a deal";
+                default: return forYourself ? "Veiled threat" : "Apply pressure";
+            }
+        }
+
+        /// <summary>Back from choosing how to put a plea to choosing what to ask.</summary>
+        public const string LobbyBackCaption = "Ask something else";
+
+        /// <summary>The words on one answer to a houseguest who came to you: the answer's own label.</summary>
+        public static string ReplyCaption(string label) => label;
+
+        /// <summary>What a reply card is, above its heading: the house came to the player this time.</summary>
+        public const string ReplyCardEyebrow = "SOMEBODY CAME TO YOU";
+
         /// <summary>The words on a week-review control, one per week the notebook lists.</summary>
         public static string ReviewWeekCaption(int week) => "Read the week " + week + " recap";
         /// <summary>
@@ -1440,6 +1478,31 @@ namespace Gamesim.Episode
 
         /// <summary>Whether the HUD is stepped aside for a cinematic.</summary>
         public bool IsCinematic { get; private set; }
+
+        private bool revealHold, heldRaycasts = true;
+        private float heldAlpha = 1f;
+
+        /// <summary>
+        /// Steps the chrome aside for a ceremony reveal and puts it back as it was. The status line,
+        /// the house panel and the cast strip are drawn from the committed result, so while a key
+        /// ceremony or a live eviction counts towards it they named the outcome first.
+        /// </summary>
+        public void HoldForReveal(bool on)
+        {
+            if (canvas == null || on == revealHold) return;
+            var group = canvas.GetComponent<CanvasGroup>();
+            if (group == null) group = canvas.gameObject.AddComponent<CanvasGroup>();
+            revealHold = on;
+            if (on)
+            {
+                heldAlpha = group.alpha; heldRaycasts = group.blocksRaycasts;
+                group.alpha = 0f; group.blocksRaycasts = false;
+            }
+            else { group.alpha = heldAlpha; group.blocksRaycasts = heldRaycasts; }
+        }
+
+        /// <summary>Whether the chrome is stepped aside for a ceremony reveal.</summary>
+        public bool IsHeldForReveal => revealHold;
 
         /// <summary>The interaction prompt's fixed caption, beside the words that change with what E would do.</summary>
         public const string InteractCaption = "Interact [E]";

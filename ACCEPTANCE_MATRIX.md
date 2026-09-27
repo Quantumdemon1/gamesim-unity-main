@@ -300,13 +300,36 @@ it: `EpisodeHouse` has eight rooms and `HousePrototype` — the U02 reference sc
 NPC motion suite loads — still has five. Demanding all eight made the query work in the shipping
 scene and fail in the one the tests run against.
 
-Two things this pass changed that affect other sections:
+Four things this pass changed that affect other sections:
 
 - **The camera now ships at 24, not 48.** C and D figures taken at 48 are stale; the cast reads at
   roughly 2.7%–4.6% of frame height rather than 1.8%–2.2%. See `PLAYTEST_PROTOCOL.md`.
 - **The first-run tour changes what E2 measures.** It is the intervention that criterion exists to
   detect the absence of. Run E2 with it off, or record that it was on. It now plays at every
   season's opening, so "off" means skipping it on sight (see `PLAYTEST_PROTOCOL.md`).
+- **The key ceremony and the vote reveal now hold the house while they play (26 September).** B2
+  still passes as written: the cards themselves take no raycasts. But the chrome steps aside, and the
+  house's shortcuts and the UI's Submit wait, until the reveal ends or the player skips it. One press
+  jumps a reveal to its result and a second closes it. Reveals default to a suspenseful pace. The two
+  take 30 to 50 seconds in an early week, by house size, which is 20 to 30 seconds more than the
+  quick pace they had before.
+  E1 figures from before are not comparable. Record the pace setting, and whether the participant
+  skipped reveals (see `PLAYTEST_PROTOCOL.md`).
+- **New seasons play competition rules 4 (26 September).** There are five kinds (skill, mental,
+  endurance, luck, social), with a dice game and a word game for the two new ones. Full marks are
+  worth three points, and a throw loses about nine times in ten.
+  - They also name Have-Nots, the last out of each Head of Household competition, and play the veto
+    for a prize and a punishment.
+  - A season saved before, and the pinned V7 build, play rules 1–3 with neither.
+  - Record which a participant played.
+- **New seasons open the strategy windows (26 September).** The Head of Household can be talked to
+  before nominations, and the veto holder and the Head of Household before the veto meeting. A plea
+  costs a conversation, and the decisions now weigh deals, alliances and pleas. A houseguest who
+  confronts the player or pleads with them, or is found out gossiping about them, puts a reply card
+  on the free-time or campaign panel.
+  - This adds decisions to the week. Tasks timed across a Nomination or Veto phase (E1) are not
+    comparable with earlier runs. Record whether the participant lobbied.
+  - A season saved before, and the V7 build, play without them.
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

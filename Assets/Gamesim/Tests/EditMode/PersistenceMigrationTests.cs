@@ -44,11 +44,11 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// Removes schema 14's story bundle and the story fields it gave house events, their choices,
-        /// storylines and modifiers, turning a capture of the current runtime state into a schema 13
-        /// payload.
+        /// Removes schema 16's story bundle and the story fields it gave house events, their choices,
+        /// storylines and modifiers, turning a capture of the current runtime state into a schema 15
+        /// payload. Every older helper composes it.
         /// </summary>
-        public static JObject StripSchema14(JObject payload)
+        public static JObject StripSchema16(JObject payload)
         {
             if (payload == null) return null;
             payload.Remove("story");
@@ -67,6 +67,32 @@ namespace Gamesim.Tests.EditMode
                     story.Remove(field);
             foreach (var modifier in (payload["activeModifiers"] as JArray ?? new JArray()).OfType<JObject>())
                 modifier.Remove("ownerId");
+            return payload;
+        }
+
+        /// <summary>
+        /// Removes schema 15's strategy windows as well, turning a capture of the current runtime
+        /// state into a schema 14 payload.
+        /// </summary>
+        public static JObject StripSchema15(JObject payload)
+        {
+            if (payload == null) return null;
+            StripSchema16(payload);
+            foreach (var field in new[] { "strategyRulesStartWeek", "lobbies", "replyCards" })
+                payload.Remove(field);
+            return payload;
+        }
+
+        /// <summary>
+        /// Removes schema 14's Have-Nots and veto prizes as well, turning a capture of the current
+        /// runtime state into a schema 13 payload.
+        /// </summary>
+        public static JObject StripSchema14(JObject payload)
+        {
+            if (payload == null) return null;
+            StripSchema15(payload);
+            foreach (var field in new[] { "haveNotRulesStartWeek", "haveNots", "haveNotPasses", "punishedHaveNots", "vetoPrizes" })
+                payload.Remove(field);
             return payload;
         }
 
@@ -260,13 +286,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(14));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(16));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(14));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(16));
         }
 
         [Test]
@@ -292,7 +318,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(14));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(16));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -355,7 +381,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(14));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(16));
             Assert.That((int)loaded.phase, Is.EqualTo(phase));
             Assert.That(loaded.juryExchanges, Is.Empty);
             Assert.That(loaded.finalSpeeches, Is.Empty);

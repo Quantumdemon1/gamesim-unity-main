@@ -129,30 +129,6 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void TheLastVetoFinisherJoinsTheHaveNots()
-        {
-            for (uint seed = 1; seed <= 20; seed++)
-            {
-                var engine = new EpisodeEngine(StorySeasonTests.StorySeason(seed, 8));
-                for (int i = 0; i < 400; i++)
-                {
-                    var s = engine.Snapshot;
-                    if (s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved && s.week >= 2)
-                    {
-                        var last = s.competitionScores.Where(x => x.contestantId != s.vetoHolderId)
-                            .OrderBy(x => x.score).ThenBy(x => x.contestantId, System.StringComparer.Ordinal).First();
-                        Assert.That(Production.IsHaveNot(s, last.contestantId), Is.True, "Seed " + seed + ": the last veto finisher is on slop.");
-                        Assert.That(s.events.Any(e => e.kind == "have-nots" && e.text.Contains("veto")), Is.True);
-                        return;
-                    }
-                    if (s.phase == EpisodePhase.Finished) break;
-                    Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(s)).accepted, Is.True);
-                }
-            }
-            Assert.Fail("No season reached a week-two veto meeting.");
-        }
-
-        [Test]
         public void EveryStagedBeatNamesAKnownVenue()
         {
             foreach (var arc in StoryCatalog.All)

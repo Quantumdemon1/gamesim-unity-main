@@ -71,13 +71,7 @@ namespace Gamesim.Presentation
         private string CategoryOf()
         {
             if (run.Definition != null) return run.Definition.Category;
-            switch (run.Kind)
-            {
-                case CompetitionMiniGames.Kind.Reaction: return "Skill";
-                case CompetitionMiniGames.Kind.Memory: return "Mental";
-                case CompetitionMiniGames.Kind.Endurance: return "Endurance";
-                default: return "Skill";
-            }
+            return CompetitionMiniGames.CategoryOf(run.Kind) ?? "Skill";
         }
 
         /// <summary>
@@ -97,6 +91,11 @@ namespace Gamesim.Presentation
                     return rules + " Holding spends grip; releasing recovers it. An empty grip ends the attempt. Space / right trigger hold; the button toggles.";
                 case CompetitionMiniGames.Kind.Reaction:
                     return rules + " Click the target, or press its direction (arrow keys, WASD, D-pad or left stick). Early input and incorrect aim cost accuracy.";
+                case CompetitionMiniGames.Kind.Dice:
+                    return rules + " Arrows / D-pad choose Roll or Keep; Enter / A presses it. The dice land one after another.";
+                case CompetitionMiniGames.Kind.Words:
+                    return rules + " Click, type or press A on a letter; Backspace / X takes one back; a wrong spelling clears. "
+                        + "Typing spells, so P is a letter here: Start or the Pause button pauses.";
                 default: return rules;
             }
         }
@@ -300,8 +299,10 @@ namespace Gamesim.Presentation
 
         private static Color ToneOf(string text)
         {
-            if (text.StartsWith("Hit", StringComparison.Ordinal) || text.StartsWith("Pair found", StringComparison.Ordinal)) return UiTheme.Positive;
-            if (text.StartsWith("Missed", StringComparison.Ordinal) || text.StartsWith("No match", StringComparison.Ordinal)) return UiTheme.Danger;
+            if (text.StartsWith("Hit", StringComparison.Ordinal) || text.StartsWith("Pair found", StringComparison.Ordinal)
+                || text.StartsWith("Solved", StringComparison.Ordinal)) return UiTheme.Positive;
+            if (text.StartsWith("Missed", StringComparison.Ordinal) || text.StartsWith("No match", StringComparison.Ordinal)
+                || text.StartsWith("Not quite", StringComparison.Ordinal)) return UiTheme.Danger;
             if (text.StartsWith("Too early", StringComparison.Ordinal)) return UiTheme.Warning;
             return UiTheme.Paper;
         }
@@ -351,9 +352,18 @@ namespace Gamesim.Presentation
                     yield return usingPad ? ("RT", "Hold") : ("Space", "Hold");
                     yield return usingPad ? ("A", "Toggle grip") : ("Enter", "Toggle grip");
                     break;
+                case CompetitionMiniGames.Kind.Dice:
+                    yield return usingPad ? ("D-pad", "Roll / Keep") : ("Arrows", "Roll / Keep");
+                    yield return usingPad ? ("A", "Press") : ("Enter", "Press");
+                    break;
+                case CompetitionMiniGames.Kind.Words:
+                    yield return usingPad ? ("A", "Choose letter") : ("A–Z", "Spell");
+                    yield return usingPad ? ("X", "Take back") : ("Backspace", "Take back");
+                    break;
             }
             yield return usingPad ? ("LB / RB", "Controls") : ("Tab", "Controls");
-            yield return (LegendKey(LegendAction.Pause), "Pause");
+            // Typing spells on the word board, so its keyboard pause is the Pause button alone.
+            if (!(WordsBoard && !usingPad)) yield return (LegendKey(LegendAction.Pause), "Pause");
             yield return (LegendKey(LegendAction.Leave), LeavingAsks ? "Briefing (asks first)" : "Briefing");
         }
 

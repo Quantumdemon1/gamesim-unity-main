@@ -121,6 +121,8 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Endurance:
                     return run.Meter <= CompetitionMiniGames.MeterEmpty && run.Remaining > 0
                         ? "GRIP GAVE OUT AT " + run.Elapsed.ToString("0.0") + " s" : "TIME";
+                case CompetitionMiniGames.Kind.Dice:
+                    return run.KeptTotal == 0 ? "TIME" : run.Remaining > 0 ? "KEPT " + run.KeptTotal : "TIME  ·  " + run.KeptTotal + " STANDS";
                 default: return run.Remaining > 0 ? "ATTEMPT OVER" : "TIME";
             }
         }
@@ -135,6 +137,10 @@ namespace Gamesim.Presentation
                     return "Held " + run.Held.ToString("0.0") + " s of " + EnduranceTarget.ToString("0.0") + " s for full marks";
                 case CompetitionMiniGames.Kind.Reaction:
                     return run.Hits + " / " + run.Spawned + " targets hit  ·  " + Plural(run.FalseStarts, "early press", "early presses");
+                case CompetitionMiniGames.Kind.Dice:
+                    return run.KeptTotal == 0 ? "No roll kept" : "Total " + run.KeptTotal + " of 18  ·  roll " + run.RollsUsed + " of " + MiniGameRun.MaxRolls;
+                case CompetitionMiniGames.Kind.Words:
+                    return Plural(run.WordsSolved, "word") + " spelled  ·  " + run.WordPoints.ToString("0.#") + " points";
                 default: return "";
             }
         }
@@ -154,6 +160,10 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory: measure = run.MatchedPairs + " / " + run.Pairs + " pairs"; break;
                 case CompetitionMiniGames.Kind.Reaction: measure = run.Hits + " / " + run.Spawned + " targets hit"; break;
                 case CompetitionMiniGames.Kind.Endurance: measure = "held " + run.Held.ToString("0.0") + " s"; break;
+                case CompetitionMiniGames.Kind.Dice:
+                    measure = run.KeptTotal == 0 ? "no roll kept" : "kept " + run.KeptTotal + " on roll " + run.RollsUsed + " of " + MiniGameRun.MaxRolls; break;
+                case CompetitionMiniGames.Kind.Words:
+                    measure = Plural(run.WordsSolved, "word") + " spelled"; break;
                 default: return null;
             }
             return "Your attempt  ·  " + measure + "  ·  performance " + (run.Performance * 100).ToString("0") + "%";
@@ -167,6 +177,8 @@ namespace Gamesim.Presentation
             Array.Clear(cards, 0, cards.Length);
             Array.Clear(pairShown, 0, pairShown.Length);
             target = null; reactionFocus = null; effortControl = null;
+            rollButton = null; keepButton = null; clearButton = null; skipButton = null;
+            Array.Clear(tiles, 0, tiles.Length);
             marks.Clear();
             directionGuides[0] = directionGuides[1] = null;
             Array.Clear(legendMarks, 0, legendMarks.Length);
@@ -175,9 +187,22 @@ namespace Gamesim.Presentation
         }
 
         private bool IsGameControl(Selectable selectable) =>
-            selectable == reactionFocus || selectable == effortControl || run.Kind == CompetitionMiniGames.Kind.Memory;
+            selectable == reactionFocus || selectable == effortControl || run.Kind == CompetitionMiniGames.Kind.Memory
+            || run.Kind == CompetitionMiniGames.Kind.Dice || run.Kind == CompetitionMiniGames.Kind.Words;
 
-        private Selectable DefaultGameFocus => run.Kind == CompetitionMiniGames.Kind.Memory ? cards[0]
-            : run.Kind == CompetitionMiniGames.Kind.Reaction ? (Selectable)reactionFocus : effortControl;
+        private Selectable DefaultGameFocus
+        {
+            get
+            {
+                switch (run.Kind)
+                {
+                    case CompetitionMiniGames.Kind.Memory: return cards[0];
+                    case CompetitionMiniGames.Kind.Reaction: return reactionFocus;
+                    case CompetitionMiniGames.Kind.Dice: return run.RollsUsed < MiniGameRun.MaxRolls ? (Selectable)rollButton : keepButton;
+                    case CompetitionMiniGames.Kind.Words: return tiles[0] != null ? NextOpenTile(-1) : null;
+                    default: return effortControl;
+                }
+            }
+        }
     }
 }

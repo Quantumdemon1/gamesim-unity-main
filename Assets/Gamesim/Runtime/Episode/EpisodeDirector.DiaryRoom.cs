@@ -729,6 +729,8 @@ namespace Gamesim.Episode
             {
                 if (state.vetoHolderId == state.playerId)
                 {
+                    // Nominees who asked for it, answered where the decision is made.
+                    if (!privateRoom) VetoOffers(state);
                     hud.Action("Do not use the veto", () => OfferPlayerDecision(state, privateRoom,
                         EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
                     if (EpisodeEngine.VetoIsLockedAtFinalFour(state))

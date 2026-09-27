@@ -124,6 +124,7 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(revealed, director.Snapshot);
             Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytesAfterReveal));
 
+            yield return SkipReveals();
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
@@ -310,6 +311,7 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator OpenBlocEpisodeStation()
         {
+            yield return SkipReveals();
             director.ClosePanels();
             WarpPlayer(director.StationPosition);
             Assert.That(director.TryOpenPhasePanel(), Is.True);

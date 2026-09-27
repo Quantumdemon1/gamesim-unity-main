@@ -27,7 +27,7 @@ namespace Gamesim.Episode
         /// entitled to know.</para>
         /// </summary>
         private List<CeremonyTakeover.Subject> CeremonySubjects(
-            EpisodeState state, string kind, HashSet<string> wasActive)
+            EpisodeState state, string kind, HashSet<string> wasActive, HashSet<string> wasNominated = null)
         {
             var subjects = new List<CeremonyTakeover.Subject>();
             if (state == null) return subjects;
@@ -43,9 +43,21 @@ namespace Gamesim.Episode
             switch (kind)
             {
                 case CeremonySting.NominationKind:
-                case CeremonySting.VetoKind:
                     if (state.nominees != null)
                         foreach (var id in state.nominees) Add(id, "NOMINATED");
+                    break;
+                case CeremonySting.VetoKind:
+                    // The veto meeting's own story: who held it, who came off the block, who went up
+                    // in their place, and who stayed. Every face was badged "NOMINATED", which left the
+                    // one beat the meeting exists for - somebody saved, somebody replacing them -
+                    // unmarked, and the holder absent from their own ceremony.
+                    var block = state.nominees ?? new List<string>();
+                    var before = wasNominated ?? new HashSet<string>(block);
+                    if (!string.IsNullOrEmpty(state.vetoHolderId) && !block.Contains(state.vetoHolderId) && !before.Contains(state.vetoHolderId))
+                        Add(state.vetoHolderId, "VETO");
+                    foreach (var id in before) if (!block.Contains(id)) Add(id, "SAVED");
+                    foreach (var id in block) if (!before.Contains(id)) Add(id, "REPLACEMENT");
+                    foreach (var id in block) if (before.Contains(id)) Add(id, "NOMINATED");
                     break;
                 case CeremonySting.EvictionKind:
                     // Whoever stopped being active during this commit. Usually one person; the
@@ -110,13 +122,17 @@ namespace Gamesim.Episode
         {
             var people = new List<KeyCeremony.Person>();
             if (state?.contestants == null) return people;
+            var drawing = new List<string>();
             foreach (var actor in state.contestants)
             {
                 if (actor.status != ContestantStatus.Active) continue;
                 if (actor.id == state.hohId) continue;
                 if (state.nominees != null && state.nominees.Contains(actor.id)) continue;
-                people.Add(Person(state, actor.id));
+                drawing.Add(actor.id);
             }
+            // Dealt in a shuffled order that is the same on every reload (KeyOrder), never cast
+            // order: the player is first in the cast, so a safe player always drew the first key.
+            foreach (var id in KeyOrder(drawing, state.seed, state.week)) people.Add(Person(state, id));
             return people;
         }
 
@@ -156,15 +172,20 @@ namespace Gamesim.Episode
         /// <para>Read from state rather than re-derived, so the card counts to the same total the
         /// save holds. It carries who voted and for whom — both already public at the reveal, which
         /// is the moment the engine logs them as <c>vote-reveal</c> events.</para>
+        ///
+        /// <para>The Head of Household votes only to break a tie, and the engine's tally leaves that
+        /// vote out; the card has to know it is the tie-break, or it counts it with the house's and
+        /// a 2-2 tie reads 3-2.</para>
         /// </summary>
-        private static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
+        public static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
         {
             var ballots = new List<VoteReveal.Ballot>();
             if (state?.votes == null) return ballots;
             foreach (var vote in state.votes)
             {
                 var voter = state.Find(vote.voterId);
-                ballots.Add(new VoteReveal.Ballot(voter?.name ?? "A housemate", vote.targetId));
+                ballots.Add(new VoteReveal.Ballot(voter?.name ?? "A housemate", vote.targetId,
+                    tieBreak: !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId));
             }
             return ballots;
         }

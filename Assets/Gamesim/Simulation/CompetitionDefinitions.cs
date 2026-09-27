@@ -4,7 +4,7 @@ using System.Globalization;
 
 namespace Gamesim.Simulation
 {
-    public enum CompetitionPattern { Standard, AlternatingWindows, PreviewPairs, PressureWaves }
+    public enum CompetitionPattern { Standard, AlternatingWindows, PreviewPairs, PressureWaves, HouseguestNames }
 
     /// <summary>Immutable authored mechanics. Published IDs and their rules must never be repurposed.</summary>
     public sealed class CompetitionDefinition
@@ -53,13 +53,29 @@ namespace Gamesim.Simulation
             "pressure-cooker-v3", "Pressure Cooker", "Endurance", CompetitionPattern.PressureWaves, 30,
             "Every 6 seconds, a 1.5 second pressure wave drains grip 70% faster while holding. The wave countdown lets you plan recovery. Full marks still require 19.5 seconds of effort.");
 
+        // Rules 4: the reference's luck and social games. Titles are the reference's own: Roll the
+        // Dice from its Crapshoot names, Word Scramble its social game's; the houseguest variant is
+        // this port's, the same game on the season's own names.
+        public static readonly CompetitionDefinition RollTheDice = new CompetitionDefinition(
+            "roll-the-dice-v4", "Roll the Dice", "Luck", CompetitionPattern.Standard, 30,
+            "Three dice, up to three rolls. Every re-roll replaces the roll you have, so keep a good one when you see it. Your kept total, 3 to 18, is your score.");
+        public static readonly CompetitionDefinition WordScramble = new CompetitionDefinition(
+            "word-scramble-v4", "Word Scramble", "Social", CompetitionPattern.Standard, 30,
+            "Unscramble Big Brother words by choosing their letters in order. Longer words score more: 2 points for five or six letters, 2.5 for seven or eight, 3 for nine or more.");
+        public static readonly CompetitionDefinition HouseguestScramble = new CompetitionDefinition(
+            "houseguest-scramble-v4", "Houseguest Scramble", "Social", CompetitionPattern.HouseguestNames, 30,
+            "Unscramble the first names of this season's houseguests by choosing their letters in order. A longer name scores more: 1.5 points for four letters, 2 for five or six, 2.5 for seven or eight.");
+
         public static IReadOnlyList<CompetitionDefinition> All { get; } = Array.AsReadOnly(new[] {
-            SignalSprint, SwitchbackSignals, HouseMemory, FirstImpressions, HoldYourGround, PressureCooker });
+            SignalSprint, SwitchbackSignals, HouseMemory, FirstImpressions, HoldYourGround, PressureCooker,
+            RollTheDice, WordScramble, HouseguestScramble });
 
         public static CompetitionDefinition Standard(string category) => category == "Skill" ? SignalSprint
-            : category == "Mental" ? HouseMemory : category == "Endurance" ? HoldYourGround : null;
+            : category == "Mental" ? HouseMemory : category == "Endurance" ? HoldYourGround
+            : category == "Luck" ? RollTheDice : category == "Social" ? WordScramble : null;
 
         public static CompetitionDefinition For(EpisodeState state) => state.competitionRulesVersion < 3 ? null
+            : state.competitionRulesVersion >= CompetitionRules.Widened ? Version4(state.seed, state.week, state.phase)
             : Version3(state.seed, state.week, state.phase);
 
         /// <summary>
@@ -77,6 +93,36 @@ namespace Gamesim.Simulation
             bool variant = ((offset + (phase == EpisodePhase.Veto ? 1u : 0u)) & 1u) != 0;
             if (category == "Skill") return variant ? SwitchbackSignals : SignalSprint;
             if (category == "Mental") return variant ? FirstImpressions : HouseMemory;
+            return variant ? PressureCooker : HoldYourGround;
+        }
+
+        /// <summary>
+        /// Rules 4's frozen selector. A kind's variant changes every time the kind comes round,
+        /// rather than once a season: its HoH and veto appearances alternate as rules 3's did, and so
+        /// does each appearance after them, starting from a variant the season's seed picks. Luck
+        /// has one game. The Final HoH keeps its authored rounds. No season random state is read.
+        /// </summary>
+        public static CompetitionDefinition Version4(uint seasonSeed, int week, EpisodePhase phase)
+        {
+            if (phase == EpisodePhase.FinalHoHPart1) return PressureCooker;
+            if (phase == EpisodePhase.FinalHoHPart2) return SwitchbackSignals;
+            if (phase == EpisodePhase.FinalHoHPart3) return FirstImpressions;
+            string category = CompetitionRules.Category(phase, week, seasonSeed);
+            if (category == CompetitionRules.Luck) return RollTheDice;
+            // How many times this kind has come round already this season, HoH before veto each week.
+            int appearance = 0;
+            for (int earlier = 1; earlier <= week; earlier++)
+            {
+                if (earlier == week && phase != EpisodePhase.Veto) break;
+                if (CompetitionRules.Category(EpisodePhase.HoH, earlier, seasonSeed) == category) appearance++;
+                if (earlier == week) break;
+                if (CompetitionRules.Category(EpisodePhase.Veto, earlier, seasonSeed) == category) appearance++;
+            }
+            uint offset = SeededRandom.HashSeed(seasonSeed.ToString(CultureInfo.InvariantCulture) + "/" + category + "/competition-v4");
+            bool variant = ((offset + (uint)appearance) & 1u) != 0;
+            if (category == CompetitionRules.Skill) return variant ? SwitchbackSignals : SignalSprint;
+            if (category == CompetitionRules.Mental) return variant ? FirstImpressions : HouseMemory;
+            if (category == CompetitionRules.Social) return variant ? HouseguestScramble : WordScramble;
             return variant ? PressureCooker : HoldYourGround;
         }
     }

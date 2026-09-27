@@ -67,7 +67,6 @@ namespace Gamesim.Simulation
         public List<RemovalState> removals = new List<RemovalState>();
 
         /// <summary>This week's Have-Nots. Cleared when the week turns.</summary>
-        public List<string> haveNots = new List<string>();
 
         /// <summary>Somebody production is about to remove, carried out as the social window closes.</summary>
         public string pendingRemovalId;
@@ -96,7 +95,6 @@ namespace Gamesim.Simulation
             copy.knownFacts = new List<string>(knownFacts);
             copy.conduct = conduct.Select(x => x.Clone()).ToList();
             copy.removals = removals.Select(x => x.Clone()).ToList();
-            copy.haveNots = new List<string>(haveNots);
             copy.cooldowns = cooldowns.Select(x => x.Clone()).ToList();
             copy.reckonings = reckonings.Select(x => x.Clone()).ToList();
             return copy;

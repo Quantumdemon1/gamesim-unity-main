@@ -182,7 +182,8 @@ namespace Gamesim.Tests.PlayMode
         /// budget is in SECONDS, not frames - the cards fade on unscaled time while a batchmode
         /// frame is a fraction of a millisecond, so a frame budget is a stopwatch that runs at a
         /// different speed on every machine: six thousand frames was twelve seconds on one run here
-        /// and under three on another, and the vote reveal alone needs five.</para>
+        /// and under three on another, and at the suspenseful pace the key ceremony alone needs
+        /// eleven to reach its block.</para>
         ///
         /// <para>It still gives up rather than failing - a card past its hold is a real thing to
         /// photograph, and blocking forever would turn a timing quirk into a hung suite - but the

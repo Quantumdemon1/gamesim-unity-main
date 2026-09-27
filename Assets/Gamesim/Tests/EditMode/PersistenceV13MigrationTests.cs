@@ -23,10 +23,9 @@ namespace Gamesim.Tests.EditMode
         public void MigrationPreservesEveryOldFieldAndDoesNotGuessAppearance()
         {
             var old = V12(); string original = old.ToString();
-            // The frozen v12-to-v13 step on its own; the whole chain to 14 is PersistenceV14MigrationTests'.
-            var migrated = EpisodeSaveMigrations.PrepareV13Payload(old, out var changed);
+            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(13));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(16));
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             foreach (var person in (JArray)migrated["contestants"])
             {
@@ -37,9 +36,8 @@ namespace Gamesim.Tests.EditMode
             projection["schemaVersion"] = 12;
             Assert.That(JToken.DeepEquals(projection, old), Is.True);
             Assert.That(old.ToString(), Is.EqualTo(original));
-            var current = EpisodeSaveMigrations.UpgradeV13ToV14(migrated);
-            Assert.That(EpisodeValidation.TryValidate(current.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
-            var repeated = EpisodeSaveMigrations.PrepareV13Payload(migrated, out changed);
+            Assert.That(EpisodeValidation.TryValidate(migrated.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
+            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
             Assert.That(changed, Is.False); Assert.That(JToken.DeepEquals(repeated, migrated), Is.True);
         }
 
@@ -58,10 +56,10 @@ namespace Gamesim.Tests.EditMode
         public void CurrentSavesRejectInvalidRecipesAndUnsupportedRules()
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice(), 6);
-            Assert.That(state.competitionRulesVersion, Is.EqualTo(3));
+            Assert.That(state.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A new season plays the current competition rules.");
             state.contestants[1].appearance.dna.Add(new AppearanceValue { id = "height", value = float.NaN });
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False);
-            state.contestants[1].appearance.dna.Clear(); state.competitionRulesVersion = 4;
+            state.contestants[1].appearance.dna.Clear(); state.competitionRulesVersion = CompetitionRules.Current + 1;
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False);
         }
 
@@ -74,8 +72,9 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.UpgradeV12ToV13(old);
             Assert.That((int)current[field], Is.EqualTo(count));
             Assert.That((int)old[field], Is.EqualTo(count));
-            var latest = EpisodeSaveMigrations.UpgradeV13ToV14(current);
-            Assert.That(EpisodeValidation.TryValidate(latest.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
+            // Validated as the save it becomes: the live contract is schema 15's.
+            var loaded = EpisodeSaveMigrations.UpgradeV15ToV16(EpisodeSaveMigrations.UpgradeV14ToV15(EpisodeSaveMigrations.UpgradeV13ToV14(current))).ToObject<EpisodeState>(Serializer());
+            Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);
         }
     }
 }

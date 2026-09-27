@@ -36,21 +36,33 @@ namespace Gamesim.Simulation
                 : WebStudyHouse.FastForwardCompetitionBonus(s.phaseEventCompBonus, s.playerStudyBonus);
             s.competitionScores.Clear();
             string numericExplanation = null;
+            bool widened = s.competitionRulesVersion >= CompetitionRules.Widened;
+            double playerRoll = 0, playerLuckRoll = 0, playerRaw = 0;
             foreach (var contestant in players)
             {
                 double roll = Roll(s);
-                double score = WebRules.WeightedCompetitionScore(contestant.stats, category,
-                    s.nominees.Contains(contestant.id), contestant.isPlayer ? playerBonus : 0, roll, 0);
+                double luckRoll = widened && CompetitionRules.RollsTwice(category) ? Roll(s) : 0;
+                // A Have-Not is tired in the veto; zero everywhere else and in seasons without them.
+                double bonus = (contestant.isPlayer ? playerBonus : 0) - HaveNots.Penalty(s, contestant.id);
+                double score = widened
+                    ? CompetitionRules.Score(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, luckRoll)
+                    : WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, 0);
                 s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
-                if (s.competitionRulesVersion >= 3 && contestant.isPlayer)
+                if (contestant.isPlayer) { playerRoll = roll; playerLuckRoll = luckRoll; playerRaw = score; }
+                if (s.competitionRulesVersion >= 3 && !widened && contestant.isPlayer)
                     numericExplanation = WeightedCompetitionExplanation(s, contestant, category, 0, true, roll, score);
             }
+            var you = players.FirstOrDefault(contestant => contestant.isPlayer);
+            if (widened && you != null)
+                numericExplanation = WidenedCompetitionExplanation(s, you, category, 0, true, false, playerRoll, playerLuckRoll, playerRaw);
             string winner = s.competitionScores.OrderByDescending(item => item.score).First().contestantId;
             if (s.phase == EpisodePhase.HoH) { s.hohId = winner; s.Find(winner).hohWins++; }
             else { s.vetoHolderId = winner; s.Find(winner).vetoWins++; }
             s.competitionResolved = true;
             LogCompetitionDefinition(s);
             LogCompetitionStandings(s);
+            HaveNots.Assign(s);
+            HaveNots.AwardVetoPrizes(s);
             LogCompetitionInput(s, 0, true, numericExplanation);
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + " (simulated).");
         }

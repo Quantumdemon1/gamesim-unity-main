@@ -5,7 +5,7 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Schema 14's invariants: the story bundle, story beats and story cycles.
+    /// Schema 16's invariants: the story bundle, story beats and story cycles.
     ///
     /// <para>Every list is bounded, for the reason every list in this file is: nothing legitimate
     /// makes thousands of anything, and an unbounded list is a save that grows until it will not
@@ -85,9 +85,6 @@ namespace Gamesim.Simulation
                 || w.removals.Any(r => s.Find(r.contestantId)?.status != ContestantStatus.Expelled))
                 return Fail(out error, "A removal and the houseguest's status disagree.");
 
-            if (w.haveNots == null || w.haveNots.Count > cast || w.haveNots.Any(id => !Id(id))
-                || w.haveNots.Distinct(StringComparer.Ordinal).Count() != w.haveNots.Count)
-                return Fail(out error, "Invalid Have-Not list.");
             if (!string.IsNullOrEmpty(w.pendingRemovalId) && s.Find(w.pendingRemovalId)?.status != ContestantStatus.Active)
                 return Fail(out error, "A pending removal must name somebody still in the house.");
 

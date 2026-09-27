@@ -125,7 +125,9 @@ namespace Gamesim.Simulation
             // On the block, which outranks every comfortable arrangement below.
             if (!state.evictionResolved && state.nominees.Contains(npcId) && !state.nominees.Contains(targetId))
             {
-                if (state.vetoHolderId == targetId) return DealKind.VetoUse;
+                // Nobody asks for the veto once it is decided - from the strategy windows. Before
+                // them a nominee asked the holder anyway, at the campaign, which is after it.
+                if (state.vetoHolderId == targetId && !(StrategyRules.Apply(state) && state.vetoResolved)) return DealKind.VetoUse;
                 if (warmth > VoteSaveWarmth) return DealKind.VoteSave;
             }
 
@@ -262,6 +264,49 @@ namespace Gamesim.Simulation
                 });
                 RelationshipLedger.Record(state, offer.npc.id, state.playerId, "deal_proposed", 0,
                     offer.npc.name + " put a " + DealKind.Title(offer.kind).ToLowerInvariant() + " to you.");
+            }
+        }
+
+        /// <summary>
+        /// Nominees asking the player for the veto, before the meeting - from the strategy windows.
+        ///
+        /// <para>The one bargain the weekly round can never ask in time: it is struck as the social
+        /// week opens and at the campaign, and the veto is decided between the two. So a nominee warm
+        /// enough to bargain at all asks the player as soon as the competition is over, while the
+        /// answer can still change something, and says so where the player will see it. Outside the
+        /// weekly round, so it does not use up the week's three offers; roll-free, like the rest of
+        /// this file.</para>
+        /// </summary>
+        public static void AskForTheVeto(EpisodeState state)
+        {
+            if (!StrategyRules.Apply(state) || state.week < state.dealRulesStartWeek) return;
+            if (state.vetoHolderId != state.playerId || state.vetoResolved || !StrategyRules.VetoCanBeUsed(state)) return;
+            if (state.Find(state.playerId)?.status != ContestantStatus.Active) return;
+            var asking = state.nominees.Select(state.Find)
+                .Where(npc => npc != null && !npc.isPlayer && npc.status == ContestantStatus.Active
+                              && Adjusted(state, npc.id, state.playerId) >= DealingFloor
+                              && !state.deals.Any(d => DealStatus.Binds(d.status) && d.type == DealKind.VetoUse
+                                                       && d.proposerId == npc.id && d.recipientId == state.playerId))
+                .OrderByDescending(npc => Adjusted(state, npc.id, state.playerId))
+                .ThenBy(npc => npc.id, StringComparer.Ordinal)
+                .ToList();
+            foreach (var npc in asking)
+            {
+                if (state.deals.Count >= DealCeiling) return;
+                state.deals.Add(new DealState
+                {
+                    id = "deal-veto-" + state.nextSequence,
+                    type = DealKind.VetoUse,
+                    proposerId = npc.id,
+                    recipientId = state.playerId,
+                    status = DealStatus.Proposed,
+                    week = state.week,
+                    expiresWeek = state.week,
+                    trustImpact = DealKind.DefaultTrust(DealKind.VetoUse),
+                });
+                RelationshipLedger.Record(state, npc.id, state.playerId, "deal_proposed", 0,
+                    npc.name + " put a " + DealKind.Title(DealKind.VetoUse).ToLowerInvariant() + " to you.");
+                EpisodeEngine.Log(state, "deal", npc.name + " is on the block and wants your word on the veto.", state.playerId, npc.id);
             }
         }
 

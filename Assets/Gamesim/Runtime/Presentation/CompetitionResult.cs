@@ -20,8 +20,10 @@ namespace Gamesim.Presentation
             public readonly bool IsWinner, IsPlayer;
             public readonly Texture Portrait;
             public readonly ContestantState Character;
-            public Standing(string name,double score,bool isWinner,bool isPlayer,Texture portrait,ContestantState character=null)
-            { Name=name;Score=score;IsWinner=isWinner;IsPlayer=isPlayer;Portrait=portrait;Character=character; }
+            /// <summary>A word beside the name - "Threw" on a thrown row - or null.</summary>
+            public readonly string Note;
+            public Standing(string name,double score,bool isWinner,bool isPlayer,Texture portrait,ContestantState character=null,string note=null)
+            { Name=name;Score=score;IsWinner=isWinner;IsPlayer=isPlayer;Portrait=portrait;Character=character;Note=note; }
         }
 
         private CanvasGroup group;
@@ -258,7 +260,8 @@ namespace Gamesim.Presentation
                 rim.name="Row portrait";
                 rim.anchorMin=rim.anchorMax=new Vector2(0f,.5f);rim.pivot=new Vector2(.5f,.5f);
                 rim.anchoredPosition=new Vector2((40f+face*.5f)*scale,0f);
-                var name=Label("Name",row,HudPrimitives.WithYou(entry.Name,entry.IsPlayer),15,48+face,0,barX-58-face,rowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
+                var name=Label("Name",row,HudPrimitives.WithYou(entry.Name,entry.IsPlayer)+(string.IsNullOrEmpty(entry.Note)?"":"  ·  "+entry.Note),
+                    15,48+face,0,barX-58-face,rowHeight-4,entry.IsWinner?UiTheme.Gold:UiTheme.Paper);
                 name.alignment=TextAlignmentOptions.MidlineLeft;Fit(name,11);
                 var track=HudPrimitives.Fill("Track",row,new Color(UiTheme.Outline.r,UiTheme.Outline.g,UiTheme.Outline.b,.5f),3);
                 Place(track,barX*scale,((rowHeight-4)*.5f-3)*scale,barWidth*scale,6*scale);

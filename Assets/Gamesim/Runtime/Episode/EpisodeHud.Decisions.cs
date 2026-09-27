@@ -85,10 +85,10 @@ namespace Gamesim.Episode
         /// A house event's header (mockup-04): what kind of moment this is, what happened, and the
         /// question - in the voice of the web build's event dialog rather than a shouted heading.
         /// </summary>
-        public void HouseEventHeader(string title, string narrative)
+        public void HouseEventHeader(string title, string narrative, string kind = "HOUSE EVENT")
         {
             SetActivityLayout(ActivityLayout.HouseEvent);
-            var eyebrow = DecisionText(content, "HOUSE EVENT", 12, UiTheme.Joke);
+            var eyebrow = DecisionText(content, kind, 12, UiTheme.Joke);
             eyebrow.characterSpacing = 8f;
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             var heading = DecisionText(content, title, 22, Paper);

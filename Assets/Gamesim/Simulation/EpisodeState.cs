@@ -201,7 +201,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 14;
+        public int schemaVersion = 16;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -365,7 +365,41 @@ namespace Gamesim.Simulation
         /// </summary>
         public int storyRulesStartWeek = 1;
 
-        // ---------------------------------------------------------------- schema 14
+        /// <summary>
+        /// The week the house starts naming Have-Nots and playing the veto for a prize and a
+        /// punishment (<see cref="HaveNots"/>), or 0 for a season that plays without them: every
+        /// season saved before they existed, and the default cast's fixture seasons. A season started
+        /// now sets 1. Schema 14.
+        /// </summary>
+        public int haveNotRulesStartWeek;
+
+        /// <summary>This week's Have-Nots: the last out of the Head of Household competition, and anyone the veto's punishment sent.</summary>
+        public List<string> haveNots = new List<string>();
+
+        /// <summary>Houseguests the veto's prize has made safe from the next week's Have-Nots.</summary>
+        public List<string> haveNotPasses = new List<string>();
+
+        /// <summary>Houseguests the veto's punishment has sent to the next week's Have-Nots, whatever the competition says.</summary>
+        public List<string> punishedHaveNots = new List<string>();
+
+        /// <summary>Every prize and punishment the veto has handed out, for the notebook.</summary>
+        public List<VetoPrizeState> vetoPrizes = new List<VetoPrizeState>();
+
+        /// <summary>
+        /// The week the strategy windows open (<see cref="StrategyRules"/>): lobbying the Head of
+        /// Household and the veto holder, decisions that weigh deals and pleas, reply cards, and the
+        /// deal fixes. 0 for a season that plays without them: every season saved before they
+        /// existed, and the default cast's fixture seasons. A season started now sets 1. Schema 15.
+        /// </summary>
+        public int strategyRulesStartWeek;
+
+        /// <summary>This week's lobbying: who the player asked for what, and what it moved.</summary>
+        public List<LobbyState> lobbies = new List<LobbyState>();
+
+        /// <summary>Houseguests who came to the player in this phase and are waiting on an answer.</summary>
+        public List<ReplyCardState> replyCards = new List<ReplyCardState>();
+
+        // ---------------------------------------------------------------- schema 16
 
         /// <summary>
         /// The story system: grudges, facts, bonds, hooks, lore, conduct and the rest of what arcs
@@ -408,6 +442,12 @@ namespace Gamesim.Simulation
             copy.houseEvents = houseEvents.Select(x => x.Clone()).ToList();
             copy.storylines = storylines.Select(x => x.Clone()).ToList();
             copy.activeModifiers = activeModifiers.Select(x => x.Clone()).ToList();
+            copy.haveNots = new List<string>(haveNots);
+            copy.haveNotPasses = new List<string>(haveNotPasses);
+            copy.punishedHaveNots = new List<string>(punishedHaveNots);
+            copy.vetoPrizes = vetoPrizes.Select(x => x.Clone()).ToList();
+            copy.lobbies = lobbies.Select(x => x.Clone()).ToList();
+            copy.replyCards = replyCards.Select(x => x.Clone()).ToList();
             // Deep, like every list above: a rejected candidate command must leave nothing behind.
             copy.story = story?.Clone();
             return copy;
@@ -450,6 +490,23 @@ namespace Gamesim.Simulation
         /// Free, and not a social action; the meet-and-greet is the one time the house comes to you.
         /// </summary>
         Introduce,
+        /// <summary>
+        /// Throwing a weekly competition on purpose, from competition rules 4: every bonus is given
+        /// up and only part of the player's score counts (<see cref="CompetitionRules.ThrowShare"/>).
+        /// Earlier seasons throw with a <see cref="Compete"/> at no performance, as they always did.
+        /// </summary>
+        ThrowCompetition,
+        /// <summary>
+        /// Lobbying whoever is deciding, from the strategy rules: <c>targetId</c> is the Head of
+        /// Household before nominations or the veto holder before the meeting, <c>text</c> the ask
+        /// (<see cref="LobbyAsk"/>) and <c>secondTargetId</c> who it is about. A social action.
+        /// </summary>
+        Lobby,
+        /// <summary>
+        /// Answering a houseguest who came to the player: <c>targetId</c> is the reply card and
+        /// <c>text</c> the answer (<see cref="ReplyCards"/>). Free, as answering an offer is.
+        /// </summary>
+        ReplyToHouseguest,
         // The room acts (decision D-E): the web's room-bound acts, each named for the act. The engine
         // never needs the room - the act implies it - and the house offers each only where it happens.
         // Appended, so no recorded ordinal moves.

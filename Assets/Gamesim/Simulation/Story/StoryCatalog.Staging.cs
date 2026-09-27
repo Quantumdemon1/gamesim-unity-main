@@ -43,6 +43,9 @@ namespace Gamesim.Simulation
             roles = new[] { Role("HOH"), Optional("RIVAL"), Optional("THREAT") },
             cast = c =>
             {
+                // The fuller version of after-the-comp's pitch, so it steps aside with it where the
+                // strategy windows play, and the letter from home goes with it.
+                if (StrategyRules.Apply(c.state)) return null;
                 string hoh = NpcHoh(c);
                 if (hoh == null || c.Score(P(c), hoh) < 0) return null;
                 string rival = Coldest(c, x => x.id != hoh);

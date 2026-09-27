@@ -103,3 +103,26 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
 - M6 sweep: EveryLegalWindowsRemovalPlaysToTheFinale (7, 8, 12).
 - Floors raised: EditMode 1579, PlayMode 519, Uma 64, Sim 842.
 - EditMode 1579/1579; dotnet 842/842; PlayMode (previous full run) 518/518 + keyboard Pull test passing.
+
+## Integration with port/game-flow-v2-pass (2026-09-26/27)
+- 76654f3: the story bundle is schema 16, after upstream's 14 (Have-Nots) and 15 (strategy windows),
+  through FrozenEpisodeV15. There is one Have-Not list, the house's. Where StrategyRules.Apply, the reply
+  cards own confrontation, gossip and a nominee's plea, and veto-dilemma steps aside. Nomination,
+  replacement and veto weights sum the windows' terms with the story's. Safety deals and veto commitments
+  are weighed by the windows alone. The room acts' command kinds follow upstream's.
+- e040ae5 (finale, first part): ResolveJury's early refusal exempts an Expelled player. 6212ee3: a
+  removal at four keeps the screen from the final-three card
+  (StoryFallout_ARemovalThatLeavesThreeKeepsTheScreenFromTheFinalThreeCard).
+- c300dc9: Render re-applies the Pull right after hud.Begin. Update's body-assembly render hid it for a
+  frame, which made the keyboard Pull test fail about one full run in three.
+- 3b108c9 (walk-out): the scene stage and the departure both own motion, and a staged houseguest is
+  refused a walk-out. Everything reached main via PR #2 (99372b6).
+
+## Owner decisions (2026-09-27)
+- A word with whoever decides belongs to the strategy windows where they play: after-the-comp and hoh-room
+  step aside as veto-dilemma already did, so the HoH room's letter from home goes with them in those
+  seasons. Without the windows, the story's moments stand in. Covered by
+  WhereTheWindowsPlayAWordWithWhoeverDecidesIsTheirs, and removing any one of the three guards fails it.
+- Migrated saves keep the story on from week + 1, the plan's default, unchanged.
+- The walk-out's length is unchanged: it can be skipped, and it is off under reduced motion.
+- Floors: EditMode 1711, PlayMode 602, Uma 64, Sim 926.

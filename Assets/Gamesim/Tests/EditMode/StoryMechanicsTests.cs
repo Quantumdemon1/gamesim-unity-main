@@ -354,6 +354,30 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.True, error);
         }
 
+        /// <summary>
+        /// A word with whoever decides belongs to the strategy windows where they play: the new Head
+        /// of Household's (after the competition, and the HoH room that is its fuller version) and the
+        /// veto holder's (the dilemma). Without the windows, the story's moments stand in.
+        /// </summary>
+        [Test]
+        public void WhereTheWindowsPlayAWordWithWhoeverDecidesIsTheirs()
+        {
+            var s = Season(47, 8);
+            Assert.That(StrategyRules.Apply(s), Is.True, "A story season plays the strategy windows.");
+            var npcs = Npcs(s);
+            string hoh = npcs[0].id, holder = npcs[1].id;
+            s.week = 2; s.phase = EpisodePhase.Nomination; s.hohId = hoh; s.vetoHolderId = holder;
+            // On good terms, so the HoH room would have the player up.
+            foreach (var edge in s.relationships.Where(e => e.fromId == s.playerId && e.toId == hoh || e.fromId == hoh && e.toId == s.playerId))
+                edge.score = 20;
+            var moments = new[] { ("after-the-comp", StoryAnchors.HohCrowned), ("hoh-room", StoryAnchors.HohCrowned), ("veto-dilemma", StoryAnchors.VetoWon) };
+            foreach (var (arc, anchor) in moments)
+                Assert.That(CastAt(s, arc, anchor), Is.Null, arc + ": the windows' lobby or plea is the way in.");
+            s.strategyRulesStartWeek = 0;
+            foreach (var (arc, anchor) in moments)
+                Assert.That(CastAt(s, arc, anchor), Is.Not.Null, arc + ": without the windows, the story stands in.");
+        }
+
         // ---------------------------------------------------------------- the season's stream
 
         [Test]

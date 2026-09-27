@@ -36,6 +36,9 @@ namespace Gamesim.Simulation
             roles = new[] { Role("HOH"), Optional("RIVAL"), Optional("THREAT") },
             cast = c =>
             {
+                // Where the strategy windows play, a word with the new Head of Household is their
+                // lobby - with its approaches, odds and answers - and one conversation needs one way in.
+                if (StrategyRules.Apply(c.state)) return null;
                 string hoh = NpcHoh(c);
                 if (hoh == null) return null;
                 string rival = Coldest(c, x => x.id != hoh);

@@ -330,6 +330,10 @@ Four things this pass changed that affect other sections:
   - This adds decisions to the week. Tasks timed across a Nomination or Veto phase (E1) are not
     comparable with earlier runs. Record whether the participant lobbied.
   - A season saved before, and the V7 build, play without them.
+- **The finale reads the jury one juror at a time (26 September).** It used to be a card naming the
+  winner. At the suspenseful pace a six-juror finale takes about 20 seconds, 25 with its pauses;
+  it can be sped up or skipped like the other reveals. Cards now mark the final three and the final
+  Head of Household's choice. Record the pace setting for any finale timing.
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

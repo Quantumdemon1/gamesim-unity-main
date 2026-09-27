@@ -41,6 +41,37 @@ namespace Gamesim.Tests.EditMode
             Assert.That(firsts.Distinct().Count(), Is.GreaterThanOrEqualTo(3), "The first key goes round the house.");
         }
 
+        [Test]
+        public void TheJuryIsReadInAShuffledOrderThatAReloadRepeats()
+        {
+            var ids = new[] { "player", "a", "b", "c", "d", "e" };
+            var once = EpisodeDirector.JuryOrder(ids, 1234u);
+            Assert.That(once, Is.EquivalentTo(ids), "Every juror is read, once.");
+            Assert.That(EpisodeDirector.JuryOrder(ids, 1234u), Is.EqualTo(once), "The same season reads the same way.");
+            var firsts = Enumerable.Range(1, 16).Select(seed => EpisodeDirector.JuryOrder(ids, (uint)seed)[0]).ToList();
+            Assert.That(firsts.Count(id => id == "player"), Is.LessThan(16),
+                "The player, first in the cast, is not read first in every season: the engine records the jury in cast order.");
+            Assert.That(firsts.Distinct().Count(), Is.GreaterThanOrEqualTo(3), "Who is read first goes round the jury.");
+            Assert.That(EpisodeDirector.JuryOrder(ids, 7u), Is.Not.EqualTo(EpisodeDirector.KeyOrder(ids, 7u, 0)),
+                "Its own deal, not the keys'.");
+        }
+
+        [Test]
+        public void TheJurysVoteIsPacedForSuspenseOrQuickly()
+        {
+            Assert.That(CeremonyPacing.JuryIntro(CeremonyPace.Suspenseful), Is.EqualTo(2.6f));
+            Assert.That(CeremonyPacing.JuryIntro(CeremonyPace.Quick), Is.EqualTo(1.0f));
+            Assert.That(CeremonyPacing.PerJuror(CeremonyPace.Suspenseful, 7), Is.EqualTo(2.2f), "Near the reference's 2.5 s a juror,");
+            Assert.That(CeremonyPacing.PerJuror(CeremonyPace.Suspenseful, 8), Is.EqualTo(1.6f), "and quicker for a big jury.");
+            Assert.That(CeremonyPacing.PerJuror(CeremonyPace.Quick, 14), Is.EqualTo(0.55f));
+            Assert.That(CeremonyPacing.DecidingBeat(CeremonyPace.Suspenseful), Is.EqualTo(2.0f));
+            Assert.That(CeremonyPacing.DecidingBeat(CeremonyPace.Quick), Is.EqualTo(0.3f), "A pause even at the quick pace.");
+            Assert.That(CeremonyPacing.WinnerHold(CeremonyPace.Suspenseful), Is.EqualTo(5.2f));
+            Assert.That(CeremonyPacing.WinnerHold(CeremonyPace.Quick), Is.EqualTo(3.2f));
+            Assert.That(CeremonyPacing.WinnerHold(CeremonyPace.Quick), Is.GreaterThanOrEqualTo(ConfettiBurst.Seconds),
+                "The winner holds the stage for as long as the confetti is in the air.");
+        }
+
         private static EpisodeState Finale(int jurors, bool playerSecond)
         {
             var state = new EpisodeState { playerId = "p" };

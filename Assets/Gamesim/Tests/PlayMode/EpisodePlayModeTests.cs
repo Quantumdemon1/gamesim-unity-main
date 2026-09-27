@@ -908,7 +908,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
         }
 
-        private IEnumerator InstallFinaleFixture(bool playerFinalist)
+        private IEnumerator InstallFinaleFixture(bool playerFinalist, string playerName = null)
         {
             // Generate a legal authoritative history, then install it in this test's isolated slot.
             // The full reachable-station test separately covers ordinary whole-season navigation.
@@ -927,6 +927,9 @@ namespace Gamesim.Tests.PlayMode
                     fixture = candidate;
             }
             Assert.That(fixture, Is.Not.Null, "No bounded legal finale fixture found for the required player role.");
+            // The default cast's player is called "You"; a test that must tell the player's name from
+            // the word gives them one.
+            if (playerName != null) fixture.Find(fixture.playerId).name = playerName;
             new EpisodeSaveStore(director.SavePath).Save(fixture);
             yield return ReloadEpisode();
             AssertEquivalent(fixture,director.Snapshot);

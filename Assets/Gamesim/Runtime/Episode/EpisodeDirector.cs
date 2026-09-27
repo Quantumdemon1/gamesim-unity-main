@@ -161,6 +161,8 @@ namespace Gamesim.Episode
             // The reveals make their own sounds as they reach each beat - a vote, the result -
             // rather than the commit making the result's sound before the card has counted to it.
             voteReveal.CueRequested += cue => { if (audioBed != null) audioBed.PlayCue(cue); };
+            juryReveal = JuryReveal.Attach(gameObject);
+            juryReveal.CueRequested += cue => { if (audioBed != null) audioBed.PlayCue(cue); };
             competitionCard = CompetitionResult.Attach(gameObject);
             competitionCard.VisibilityChanged += SyncCompetitionResultInput;
             hud.RegisterOverlay(competitionCard.GetComponent<CanvasGroup>());
@@ -803,6 +805,14 @@ namespace Gamesim.Episode
                         && keyCeremony.Play(result.state.week, NameOf(result.state, result.state.hohId),
                             result.state.hohId == result.state.playerId,
                             SafeHouseguests(result.state), NominatedHouseguests(result.state), reducedMotion, ceremonyPace);
+
+                    // And the season's last beat gets the jury read one juror at a time: the engine
+                    // decides every ballot and the winner in one commit, and the card that named the
+                    // winner at once gave the finale away.
+                    revealed |= ceremony.kind == CeremonySting.WinnerKind
+                        && juryReveal != null
+                        && juryReveal.Play(JuryFinalists(result.state), JuryVotes(result.state), result.state.winnerId,
+                            reducedMotion, ceremonyPace, unchecked((int)result.state.seed));
                     if (!revealed && takeover != null)
                         takeover.Play(ceremony.kind, result.state.week,
                             CeremonySubjects(result.state, ceremony.kind, wasActive, wasNominated), reducedMotion);
@@ -828,6 +838,17 @@ namespace Gamesim.Episode
                         .LastOrDefault(entry => StoryFallout.IsFallout(entry.kind)
                             && (entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId)));
                     if (fallout != null) PlayFallout(result.state, fallout, wasActive);
+                    // The house down to three opens the finale with a card of its own: the engine logs no
+                    // ceremony for it, so it is read from the phase the commit arrived in. A removal that
+                    // took the house from four to three keeps the screen instead: its card names who left,
+                    // and the finale's shows only the three still in it.
+                    else if (wasPhase != EpisodePhase.FinalHoHPart1 && result.state.phase == EpisodePhase.FinalHoHPart1
+                        && takeover != null)
+                    {
+                        EndCeremonyCards();
+                        takeover.Play(CeremonyTakeover.FinalThreeKind, result.state.week,
+                            CeremonySubjects(result.state, CeremonyTakeover.FinalThreeKind, wasActive, wasNominated), reducedMotion);
+                    }
                 }
                 if (revealed) HoldHudForReveal();
                 else if (command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
@@ -848,6 +869,7 @@ namespace Gamesim.Episode
         {
             if (takeover != null) takeover.Cancel();
             if (voteReveal != null) voteReveal.Cancel();
+            if (juryReveal != null) juryReveal.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
             if (includingResult && competitionCard != null) competitionCard.Cancel();
         }
@@ -1402,6 +1424,7 @@ namespace Gamesim.Episode
             if (sting != null) sting.Cancel();
             if (takeover != null) takeover.Cancel();
             if (voteReveal != null) voteReveal.Cancel();
+            if (juryReveal != null) juryReveal.Cancel();
             if (competitionCard != null) competitionCard.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
             DisposeNpcSocialWorld();
@@ -1435,6 +1458,7 @@ namespace Gamesim.Episode
             if (sting != null) { Destroy(sting.gameObject); sting = null; }
             if (takeover != null) { Destroy(takeover.gameObject); takeover = null; }
             if (voteReveal != null) { Destroy(voteReveal.gameObject); voteReveal = null; }
+            if (juryReveal != null) { Destroy(juryReveal.gameObject); juryReveal = null; }
             if (competitionCard != null)
             { competitionCard.VisibilityChanged -= SyncCompetitionResultInput; Destroy(competitionCard.gameObject); competitionCard = null; }
             if (competitionScreen != null) { Destroy(competitionScreen.gameObject); competitionScreen = null; }

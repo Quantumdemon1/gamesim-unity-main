@@ -70,6 +70,19 @@ namespace Gamesim.Episode
                     Add(state.winnerId, "WINNER");
                     Add(state.runnerUpId, "RUNNER-UP");
                     break;
+                case CeremonySting.FinalEvictionKind:
+                    // The final Head of Household, who they chose, and who joins the jury.
+                    Add(state.hohId, "FINAL HOH");
+                    foreach (var actor in state.contestants)
+                        if (actor.status == ContestantStatus.Active && actor.id != state.hohId) Add(actor.id, "FINAL 2");
+                    foreach (var actor in state.contestants)
+                        if ((actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted)
+                            && wasActive != null && wasActive.Contains(actor.id)) Add(actor.id, "JURY");
+                    break;
+                case CeremonyTakeover.FinalThreeKind:
+                    foreach (var actor in state.contestants)
+                        if (actor.status == ContestantStatus.Active) Add(actor.id, "FINAL 3");
+                    break;
             }
             return subjects;
         }
@@ -232,6 +245,11 @@ namespace Gamesim.Episode
                     React(state.winnerId, CharacterPresentation.Reaction.Won);
                     TurnHeads(state, state.winnerId, null);
                     break;
+                case CeremonySting.FinalEvictionKind:
+                    string juror = EvictedThisCommit(state, wasActive);
+                    React(juror, CharacterPresentation.Reaction.Evicted);
+                    TurnHeads(state, juror, null);
+                    break;
             }
         }
 
@@ -273,8 +291,12 @@ namespace Gamesim.Episode
         private static string EvictedThisCommit(EpisodeState state, HashSet<string> wasActive)
         {
             if (state?.contestants == null || wasActive == null) return null;
+            // Out of the house and onto the jury: at the winner's commit both finalists stop being
+            // active too, and neither of them is leaving. Read as the statuses an eviction gives, so
+            // nothing else that ends somebody's stay is taken for one.
             foreach (var actor in state.contestants)
-                if (actor.status != ContestantStatus.Active && wasActive.Contains(actor.id)) return actor.id;
+                if ((actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted)
+                    && wasActive.Contains(actor.id)) return actor.id;
             return null;
         }
     }

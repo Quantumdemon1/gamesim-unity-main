@@ -194,7 +194,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 14;
+        public int schemaVersion = 15;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -378,6 +378,20 @@ namespace Gamesim.Simulation
         /// <summary>Every prize and punishment the veto has handed out, for the notebook.</summary>
         public List<VetoPrizeState> vetoPrizes = new List<VetoPrizeState>();
 
+        /// <summary>
+        /// The week the strategy windows open (<see cref="StrategyRules"/>): lobbying the Head of
+        /// Household and the veto holder, decisions that weigh deals and pleas, reply cards, and the
+        /// deal fixes. 0 for a season that plays without them: every season saved before they
+        /// existed, and the default cast's fixture seasons. A season started now sets 1. Schema 15.
+        /// </summary>
+        public int strategyRulesStartWeek;
+
+        /// <summary>This week's lobbying: who the player asked for what, and what it moved.</summary>
+        public List<LobbyState> lobbies = new List<LobbyState>();
+
+        /// <summary>Houseguests who came to the player in this phase and are waiting on an answer.</summary>
+        public List<ReplyCardState> replyCards = new List<ReplyCardState>();
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -417,6 +431,8 @@ namespace Gamesim.Simulation
             copy.haveNotPasses = new List<string>(haveNotPasses);
             copy.punishedHaveNots = new List<string>(punishedHaveNots);
             copy.vetoPrizes = vetoPrizes.Select(x => x.Clone()).ToList();
+            copy.lobbies = lobbies.Select(x => x.Clone()).ToList();
+            copy.replyCards = replyCards.Select(x => x.Clone()).ToList();
             return copy;
         }
     }
@@ -462,7 +478,18 @@ namespace Gamesim.Simulation
         /// up and only part of the player's score counts (<see cref="CompetitionRules.ThrowShare"/>).
         /// Earlier seasons throw with a <see cref="Compete"/> at no performance, as they always did.
         /// </summary>
-        ThrowCompetition
+        ThrowCompetition,
+        /// <summary>
+        /// Lobbying whoever is deciding, from the strategy rules: <c>targetId</c> is the Head of
+        /// Household before nominations or the veto holder before the meeting, <c>text</c> the ask
+        /// (<see cref="LobbyAsk"/>) and <c>secondTargetId</c> who it is about. A social action.
+        /// </summary>
+        Lobby,
+        /// <summary>
+        /// Answering a houseguest who came to the player: <c>targetId</c> is the reply card and
+        /// <c>text</c> the answer (<see cref="ReplyCards"/>). Free, as answering an offer is.
+        /// </summary>
+        ReplyToHouseguest
     }
 
     /// <summary>

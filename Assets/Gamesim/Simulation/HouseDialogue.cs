@@ -14,6 +14,8 @@ namespace Gamesim.Simulation
             var npc = Speaker(state, npcId);
             if (npc == null) return string.Empty;
             string id = ContentCatalog.CanonicalId(npc.id);
+            // Whoever is deciding has time for the player: that is what the strategy windows are.
+            if (StrategyRules.IsDecider(state, npc.id)) return WindowGreeting(state, npc.id, id);
             if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
                 return Vary(state,
                     Pick(id,
@@ -546,6 +548,38 @@ namespace Gamesim.Simulation
         /// repeating it. Keyed on the week and never on a roll: a line is presentation, and
         /// presentation must not spend the season's randomness.
         /// </summary>
+        /// <summary>
+        /// What whoever is deciding says when the player comes to them before the decision: the
+        /// Head of Household before nominations, the veto holder before the meeting, or the Head of
+        /// Household then, about a replacement.
+        /// </summary>
+        private static string WindowGreeting(EpisodeState state, string npcId, string id)
+        {
+            if (state.phase == EpisodePhase.Nomination)
+                return Pick(id,
+                    "Nominations are mine to make this week. Tell me what you came to say, and be precise.",
+                    "I've got two names to call. If you've got something for me, now's the time.",
+                    "I know why you're here. Everyone's been by. It's okay, go on.",
+                    "Ah, the lobbying begins. I'm listening, but I'm not promising.",
+                    "I'm weighing everything right now. Give me something to weigh.",
+                    "I have to name two people. Talk to me.");
+            if (npcId == state.vetoHolderId)
+                return Pick(id,
+                    "The veto is mine to use or keep. Make your case clearly.",
+                    "Everybody wants a piece of this necklace. Go ahead.",
+                    "I haven't decided about the veto yet. Tell me what you think.",
+                    "Here to tell me what to do with it? Fine, I'm listening.",
+                    "Using it or not changes the whole week. Make your case.",
+                    "I've got the veto. Talk to me.");
+            return Pick(id,
+                "If the veto comes down, I name the replacement. Say what you need to.",
+                "If somebody comes off the block, I'm picking who goes up. Talk.",
+                "If the veto gets used I have to name someone. I'm listening.",
+                "Replacement nominee: my least favourite job. Pitch me.",
+                "A replacement would be my call. Tell me what I should know.",
+                "If the veto is used, I name the replacement. Talk to me.");
+        }
+
         private static string Vary(EpisodeState state, string first, string second, string third)
         {
             int week = state != null && state.week > 0 ? state.week : 1;

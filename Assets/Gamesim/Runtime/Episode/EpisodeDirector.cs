@@ -619,6 +619,7 @@ namespace Gamesim.Episode
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
+            ClearLobbyDraft();
             // Escape cancels without committing, so the run goes with the panel. Leaving it would
             // let a competition keep ticking behind a closed screen and commit itself later.
             challengeRun = null;
@@ -1096,8 +1097,9 @@ namespace Gamesim.Episode
                 // sized to the one thing it says (Refinement Kit 6), not the drawer cut short. Mood
                 // and your trust are two pills - the drawer's "Neutral -9" was a band and a number
                 // that read as a mood - and the week's budget is not on it, because nothing here
-                // spends it.
-                if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
+                // spends it. The exception is a strategy window: whoever is deciding has time.
+                bool window = state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign;
+                if (window && !StrategyRules.IsDecider(state, npc.id))
                 {
                     double trust = state.Score(state.playerId, npc.id);
                     var identity = new List<string>();
@@ -1106,7 +1108,8 @@ namespace Gamesim.Episode
                     hud.ConversationNotice(npc, string.Join(" · ", identity),
                         string.IsNullOrEmpty(npc.mood) ? null : "Mood: " + npc.mood,
                         "Your trust: " + TrustFigure(trust), TrustTint(trust),
-                        HouseDialogue.Greeting(state, npc.id), ConversationUnavailableLine);
+                        HouseDialogue.Greeting(state, npc.id),
+                        StrategyRules.WindowOpen(state) ? StrategyRules.WindowRefusal(state, npc.id, EpisodeCommandKind.Talk) : ConversationUnavailableLine);
                     return;
                 }
                 // Where you stand with them, and what you have left to spend on them, in the header
@@ -1139,6 +1142,7 @@ namespace Gamesim.Episode
                 }
                 else if (state.loyaltyOaths.Any(oath => oath.playerId == state.playerId && oath.targetId == npc.id))
                     hud.Paragraph("Your loyalty declaration is recorded. It does not bind " + npc.name + " to protect you.");
+                if (window) LobbyPanel(state, npc);
                 // The category is a chip pinned to the button, never part of its caption. Baking it
                 // into the label broke every test that finds a control by the words on it — and the
                 // web build draws it as a separate pill anyway, so the caption was the wrong place.
@@ -1199,8 +1203,8 @@ namespace Gamesim.Episode
                         Category(EpisodeCommandKind.SpreadLie));
                 }
                 // A rumour is about somebody but told to the house rather than to one person, so it
-                // is offered per subject and not per listener.
-                foreach (var subject in state.Active.Where(c => !c.isPlayer && c.id != npc.id))
+                // is offered per subject and not per listener. It waits for free time, as scheming does.
+                foreach (var subject in state.Active.Where(c => !window && !c.isPlayer && c.id != npc.id))
                 {
                     string about = subject.id;
                     hud.Tag(hud.ActionFor(about, EpisodeHud.WhisperCaption(subject.name),
@@ -1210,8 +1214,9 @@ namespace Gamesim.Episode
                         () => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.PublicCallout)),
                         Category(EpisodeCommandKind.SpreadRumor));
                 }
-                hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
-                    Category(EpisodeCommandKind.SchemeAgainst));
+                if (!window)
+                    hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
+                        Category(EpisodeCommandKind.SchemeAgainst));
                 DealPanel(state, npc);
                 if (state.phase == EpisodePhase.Campaign)
                     foreach (var nominee in state.nominees) { string id = nominee; hud.Tag(hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)), Category(EpisodeCommandKind.PromiseVote)); }
@@ -1310,7 +1315,7 @@ namespace Gamesim.Episode
                 // Before anything the player chose to do: something has happened to them, and a
                 // situation buried under the ordinary controls is a situation they will not see.
                 // It used to come after the location and the meter, below the fold of the panel.
-                PendingHouseEvent(state);
+                if (!PendingReplyCard(state)) PendingHouseEvent(state);
                 CurrentLocation(state);
                 // The web build draws this as a bar you can watch drain rather than a sentence you
                 // have to read and subtract. The caption still carries the numbers.
@@ -1340,6 +1345,8 @@ namespace Gamesim.Episode
                 }
             }
             if (state.phase == EpisodePhase.Jury) hud.Paragraph(JuryLine(state));
+            string pointer = WindowLine(state);
+            if (pointer != null) hud.Paragraph(pointer);
             string advance = state.phase == EpisodePhase.Social ? "Begin the next competition"
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode";
             // Pinned under the scroll, where it is always seen - except under a house event, whose

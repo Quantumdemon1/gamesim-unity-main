@@ -8,6 +8,107 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 0000000000000000. The strategy windows: a word with whoever decides, decisions that listen, reply cards, and two deal fixes (26 September)
+
+Batch 4 of the minigames brainstorm's plan: "Strategy windows: lobbying the HoH and the veto holder, reply cards, deal fixes." The rules are `Simulation/StrategyRules.cs` and `Simulation/ReplyCards.cs`; the engine's side is `EpisodeEngine.Strategy.cs`, and the screens are `EpisodeDirector.Strategy.cs`.
+
+**What the reference actually does** (a research pass over D:/gamesim-web):
+- Its veto lobbying is real on screen but reaches the decision only for guests. The signed-in server's veto never reads the player's influence.
+- Its NPC Head of Household ignores lobbying entirely.
+- Its confrontation, plea and gossip replies write to the legacy relationship store, which nothing reads.
+- So this batch copies the reference's cards, numbers and words, and gives them consequences.
+
+**The windows**
+- Before nominations the player can reach the Head of Household. Before the veto meeting they can reach the veto holder (while the veto can be used and the holder is not nominated) and the Head of Household (about a replacement). Everybody else gets the old notice card, with a line pointing at who is deciding.
+- What a window allows: any conversation aimed at the decider, and a deal. Not allowed: listening in, rumours told to the house, scheming, and vote promises.
+- A word costs one of the week's conversations, on the out-of-phase counter campaigning already uses.
+- The station says who is deciding and how many conversations are left.
+- Whoever is deciding greets the player with a line of their own, instead of "the ceremony comes first".
+
+**Pleas**
+- Two steps: what to ask, then how to put it. What to ask:
+  - The Head of Household: to keep the player off the block (or out of a saved nominee's place), or to put a named houseguest up.
+  - The veto holder: to use the veto on a named nominee, the player included, or to keep the nominations the same.
+- One plea per decider per window.
+- How to put it is one of the reference's four cards, in its words ("Desperate plea" / "Emotional plea" and so on).
+- **The chance:**
+  - The card's base: 55, 50, 60 or 35.
+  - +15 for each trait it suits, −10 for each it grates on.
+  - A fifth of the relationship, rounded as JavaScript rounds it.
+  - +10 from the block, and +10 for a deal already between them.
+  - Clamped to 5–95.
+  - **Two changes:**
+    - The relationship is the decider's view of the player. The reference reads the player's own.
+    - What is asked is weighed as the deal it resembles, so pushing somebody at a friend is a harder sell.
+- **The answer** is the reference's roll:
+  - Receptive, under six tenths of the chance: 40–60 points, +5.
+  - Open: 15, +3.
+  - Skeptical, the next twenty: −5.
+  - Hostile: −30 to −50, −8.
+- A plea made with a deal that lands writes a safety agreement through next week: the card's "real obligations".
+- **Not ported:** the reference's negotiation step after a counter-proposal.
+
+**Decisions that listen** (all read warmth alone in a season without the windows)
+- **Nominations and replacements:**
+  - Warmth.
+  - Plus the reference server's deal weights, read as points: safety 35, final two 50, veto commitment 40, and so on.
+  - −35 for a broken deal, +30 for an ally, −40 for the target of their own target agreement.
+  - Plus this week's pleas: a hostile answer pushes the other way.
+- **The veto:**
+  - Warmth, +20 for an ally, +40 for a veto commitment, plus pleas.
+  - Against the port's line of 30, which a plea to keep things as they are raises.
+  - A houseguest who gave their word used to break it and be blamed; now they mostly keep it.
+
+**Deal fixes**
+- Nobody offers or accepts a veto commitment once the veto is decided. NPCs used to ask at the campaign, which is after it.
+- A nominee warm enough to bargain now asks the player veto holder as soon as the competition is over. The question is answered on the veto decision itself, and one left unanswered lapses at the decision.
+- An accepted alliance invitation, asked either way, now forms an alliance:
+  - The inviter's own, if nobody in it is below −10 with the player and the player reads nobody in it as sour.
+  - Otherwise a new pact.
+  - It used to be a deal and nothing more, so the voting blocs and the jury never saw it.
+
+**Reply cards**
+- Three kinds, each with the reference's three answers and numbers:
+  - A confrontation: Apologize +10, Deflect −2, Escalate −15.
+  - Gossip the player finds out about, three times in ten: Confront them −15, Let it slide −5, Gossip back −10.
+  - A nominee's plea: Promise support +8, Stay noncommittal 0, Refuse −5.
+- What the answers do:
+  - They move the relationship, and the houseguest remembers them.
+  - Gossiping back costs the gossip 5 with the listener.
+  - Promising support is a vote promise against the other nominee.
+- A card is free to answer and lasts only its phase. It is drawn on the house-event card, above the week's situation, under "SOMEBODY CAME TO YOU".
+
+**Saves: schema 15** (`strategyRulesStartWeek`, `lobbies`, `replyCards`)
+- New seasons set 1. A migrated save and the fixture seasons get 0.
+- `FrozenEpisodeV14` freezes schema 14's Have-Not contract, prize ids included.
+- **Validation:**
+  - Pleas and cards are this week's.
+  - Cards exist only in free time or the campaign.
+  - A season at 0 holds neither.
+- **Test sweep:**
+  - 40 "schema 14" assertions became 15.
+  - Three field inventories learned the three fields, and `StripSchema15` joins the helpers.
+  - The v14 tests now check the frozen step (`PrepareV14Payload`).
+  - The v4 "future schema" damage case moved to 16. It was left at 14 when 14 became current, so it had been testing a current schema number.
+
+**Tests.**
+- EditMode added `StrategyRulesTests` (43, which also run under `dotnet test`) and `PersistenceV15MigrationTests` (14).
+- PlayMode added `EpisodePlayModeTests.Strategy` (4), and the new-season test checks the windows.
+- 103 mutations, all caught at their target assertions: 80 on the rules under `dotnet test` (`simmut_b4.py`) and 23 on persistence and the screens through the harness (`strategy_mut.py`).
+  - Two of the harness's mutations edited the same line of the frozen validator and did not compose, so one was narrowed.
+  - A boolean week turned out to be refused by the serializer itself, so the case that proves the frozen shape check writes the week as text, which only the shape check refuses.
+- Three rules mutations missed at first, all on the tests' side:
+  - An alliance case clamped to 5 either way.
+  - The Eavesdrop label is redundant beside the decider check, so the test now reads the refusal's words.
+  - The gossip test saw too few rumours told to the player, so it now runs until it has seen twenty.
+
+**Verified:** EditMode 1625, PlayMode 561, Uma 64 and Simulation 856, all passing in one full run, with no crashes. Floors raised from 1568, 557 and 813. Port verification's season walk now answers reply cards (the middle answer) and the look sheet answers them before its house-event shot; neither standalone run was made this batch.
+
+**Next:** batch 5, the finale. Follow-ups seen on the way:
+- Pending offers on the cast strip.
+- Deals in the nominee comparison, with a warning before a nomination breaks one.
+- The reference's lobbying negotiation step.
+
 ## 000000000000000. Have-Nots, and a veto played for a prize and a punishment (26 September)
 
 Batch 3 of the minigames brainstorm, the owner's decision 4: "prize or punishment vetoes and have-not competitions... Yes they sounds good". Neither build of the reference has them, so the design is this port's (`Simulation/HaveNots.cs`).

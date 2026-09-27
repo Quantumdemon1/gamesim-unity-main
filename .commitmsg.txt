@@ -1,0 +1,45 @@
+Strategy windows: a word with whoever decides, decisions that listen, reply cards
+
+Batch 4 of the minigames brainstorm's plan: lobbying the Head of Household
+and the veto holder, reply cards, and two deal fixes (StrategyRules.cs,
+ReplyCards.cs).
+
+The windows: before nominations the player can reach the Head of
+Household; before the veto meeting, the veto holder and the Head of
+Household (about a replacement). A word costs one of the week's
+conversations. Everybody else is still busy, and the station says who is
+deciding.
+
+Pleas copy the reference's veto lobbying: four approaches with its bases,
+trait fits and rounding; four answers that move the decision 40-60, 15,
+-5 or -30 to -50. Extended to the Head of Household (keep me off the block,
+put somebody up) and to keeping the nominations as they are. A plea made
+with a deal that lands writes a safety agreement through next week.
+
+Decisions that listen: nominations, replacements and the veto now weigh
+deals (the reference server's weights), alliances and this week's pleas as
+well as warmth. A season without the windows reads warmth alone.
+
+Deal fixes: no veto commitments once the veto is decided; nominees ask the
+player veto holder straight after the competition, answered on the
+decision screen; an accepted alliance invitation forms or joins an
+alliance.
+
+Reply cards: a confrontation, gossip found out (3 in 10) and a nominee's
+plea each put a card up with the reference's three answers, made real:
+relationship, memory, gossip back reaching the listener, and a promise of
+support that is a vote promise.
+
+Saves: schema 15 (strategyRulesStartWeek, lobbies, replyCards). New
+seasons open the windows; migrated saves and the fixture seasons do not.
+FrozenEpisodeV14 freezes the Have-Not contract.
+
+Port verification's season walk answers reply cards with the middle
+answer; the look sheet answers them before its house-event shot.
+
+Tests: StrategyRulesTests (43, also under dotnet test),
+PersistenceV15MigrationTests (14), EpisodePlayModeTests.Strategy (4).
+103 mutations, all caught. Full run: EditMode 1625, PlayMode 561, Uma 64,
+Simulation 856, all passing; floors raised.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

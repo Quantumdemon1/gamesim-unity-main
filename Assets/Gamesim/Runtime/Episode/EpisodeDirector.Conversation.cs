@@ -270,6 +270,7 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.SetBackdoorPlan:
                 case EpisodeCommandKind.ProposeDeal:
                 case EpisodeCommandKind.RespondToDeal:
+                case EpisodeCommandKind.Lobby:
                     return "strategic";
                 case EpisodeCommandKind.PromiseSafety:
                 case EpisodeCommandKind.PromiseVote:

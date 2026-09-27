@@ -142,6 +142,9 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.SkipDiary: ResolveDiary(s, c, false); break;
                 case EpisodeCommandKind.SwearLoyalty: ResolveOathOpportunity(s, c, true); break;
                 case EpisodeCommandKind.DeclineLoyalty: ResolveOathOpportunity(s, c, false); break;
+                case EpisodeCommandKind.Lobby: Lobby(s, c); break;
+                // Not a social action: the houseguest came to the player, as an offer does.
+                case EpisodeCommandKind.ReplyToHouseguest: ReplyToHouseguest(s, c); break;
                 default: Social(s, c); break;
             }
         }
@@ -169,10 +172,12 @@ namespace Gamesim.Simulation
                         s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear(); s.evictionSpeeches.Clear();
                         s.backdoorTargetId = null;   // A plan for a week that has ended is not a plan.
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
+                        s.lobbies.Clear();
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
+                    s.replyCards.Clear();
                     // The finale has no Have-Nots: the last week's end with its three, and so do any
                     // passes and punishments the final four's veto left behind.
                     if (s.Active.Count() == 3) { s.haveNots.Clear(); s.haveNotPasses.Clear(); s.punishedHaveNots.Clear(); }
@@ -189,12 +194,15 @@ namespace Gamesim.Simulation
                     }
                     var next = s.phase == EpisodePhase.HoH ? EpisodePhase.Nomination : s.phase == EpisodePhase.Veto ? EpisodePhase.VetoMeeting :
                         s.phase == EpisodePhase.FinalHoHPart1 ? EpisodePhase.FinalHoHPart2 : s.phase == EpisodePhase.FinalHoHPart2 ? EpisodePhase.FinalHoHPart3 : EpisodePhase.FinalEviction;
-                    s.competitionResolved = false; Phase(s, next); break;
+                    s.competitionResolved = false; Phase(s, next);
+                    // A nominee asks the player for the veto while it is still theirs to use.
+                    if (next == EpisodePhase.VetoMeeting) NpcDeals.AskForTheVeto(s);
+                    break;
                 case EpisodePhase.Nomination:
                     if (s.nominees.Count == 0)
                     {
                         Require(s.hohId != s.playerId, "Choose two nominees first.");
-                        var weakest = NominationCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).Take(2).ToArray();
+                        var weakest = NominationCandidates(s).OrderBy(c => StrategyRules.NominationReluctance(s, s.hohId, c.id)).Take(2).ToArray();
                         Nominate(s, weakest[0].id, weakest[1].id); return;
                     }
                     Phase(s, EpisodePhase.VetoSelection); break;
@@ -210,7 +218,7 @@ namespace Gamesim.Simulation
                         Require(s.vetoHolderId != s.playerId, "Choose whether to use the veto first.");
                         var saved = NpcVetoSave(s);
                         Require(saved == null || s.hohId != s.playerId, "The veto will be used. As HoH, choose the replacement nominee.");
-                        var replacement = saved == null ? null : ReplacementCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).First().id;
+                        var replacement = saved == null ? null : ReplacementCandidates(s).OrderBy(c => StrategyRules.NominationReluctance(s, s.hohId, c.id)).First().id;
                         ResolveVeto(s, saved != null, saved, replacement); return;
                     }
                     // A nominee begging for votes and somebody courting the Head of Household are
@@ -230,6 +238,7 @@ namespace Gamesim.Simulation
                     // and vote-wrangling — so eviction night opens on the speeches rather than
                     // repeating a stage the season has just spent a whole phase on.
                     s.evictionStage = EvictionStage.Speeches;
+                    s.replyCards.Clear();
                     // This sentence is recorded verbatim in the frozen voting-bloc witness. The
                     // speeches announce themselves in their own entries; rewording a committed line
                     // to describe a new stage would break a replay comparison for no gain.
@@ -589,7 +598,11 @@ namespace Gamesim.Simulation
             if (VetoIsLockedAtFinalFour(s)) return null;
             if (!ReplacementCandidates(s).Any()) return null;
             if (s.nominees.Contains(s.vetoHolderId)) return s.vetoHolderId;
-            return s.nominees.OrderByDescending(id => s.Score(s.vetoHolderId, id)).FirstOrDefault(id => s.Score(s.vetoHolderId, id) > 30);
+            // Warmth against the port's line of 30; from the strategy windows, deals, alliances and
+            // this week's pleas are weighed too (StrategyRules), and reduce to exactly this without them.
+            double line = StrategyRules.VetoLine(s, s.vetoHolderId);
+            return s.nominees.OrderByDescending(id => StrategyRules.VetoWillingness(s, s.vetoHolderId, id))
+                .FirstOrDefault(id => StrategyRules.VetoWillingness(s, s.vetoHolderId, id) > line);
         }
 
         private static void Nominate(EpisodeState s, string first, string second)
@@ -637,7 +650,7 @@ namespace Gamesim.Simulation
                     "At the final four a veto holder who is not on the block cannot use the veto.");
                 Require(s.nominees.Contains(saved ?? ""), "The veto can only save a current nominee.");
                 Require(ReplacementCandidates(s).Any(), "The veto cannot be used because no legal replacement exists.");
-                if (s.hohId != s.playerId) replacement = ReplacementCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).First().id;
+                if (s.hohId != s.playerId) replacement = ReplacementCandidates(s).OrderBy(c => StrategyRules.NominationReluctance(s, s.hohId, c.id)).First().id;
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
                 Change(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId));
@@ -656,6 +669,10 @@ namespace Gamesim.Simulation
             if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
                 new List<string> { replacement }));
             s.vetoResolved = true;
+            // A question about a decision already taken is no longer on the table.
+            if (StrategyRules.Apply(s))
+                foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && d.type == DealKind.VetoUse))
+                    offer.status = DealStatus.Expired;
         }
 
         /// <summary>
@@ -760,7 +777,15 @@ namespace Gamesim.Simulation
 
         private static void Social(EpisodeState s, EpisodeCommand c)
         {
-            Require(s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign, "Social actions are available during free time and campaigning.");
+            if (s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign)
+            {
+                // From the strategy windows the Head of Household can be reached before nominations,
+                // and the veto holder before the meeting. Everybody else, and everything that is not
+                // a word with them, still waits for free time.
+                Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
+                string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
+                Require(refusal == null, refusal);
+            }
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
             // Listening in names nobody: the engine draws the pair it overhears. Every other action
@@ -1522,6 +1547,7 @@ namespace Gamesim.Simulation
                 Remember(s, target.id, s.playerId, "Agreed a " + title + " with me.", true);
                 Log(s, "deal", target.name + " agreed a " + title + ". “" + said + "”",
                     s.playerId, target.id);
+                if (type == DealKind.AllianceInvite) AllyThroughInvitation(s, target.id);
                 return;
             }
 
@@ -1564,6 +1590,7 @@ namespace Gamesim.Simulation
                     "Took me up on a " + title + ".", "deal_accepted");
                 Remember(s, s.playerId, deal.proposerId, "I accepted a " + title + " from " + from.name + ".", true);
                 Log(s, "deal", "You accepted a " + title + " from " + from.name + ".", s.playerId, deal.proposerId);
+                if (deal.type == DealKind.AllianceInvite) AllyThroughInvitation(s, deal.proposerId);
                 return;
             }
 

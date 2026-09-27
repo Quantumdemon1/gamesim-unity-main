@@ -46,6 +46,7 @@
     <Compile Include="$(EditMode)CastSizeTests.cs" />
     <Compile Include="$(EditMode)CompetitionRulesV4Tests.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />
+    <Compile Include="$(EditMode)StrategyRulesTests.cs" />
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />

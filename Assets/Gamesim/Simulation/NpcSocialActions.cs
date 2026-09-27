@@ -191,8 +191,11 @@ namespace Gamesim.Simulation
                 Act(state, npc.id, voter.id, CampaignImpact,
                     npc.name + " campaigned to stay", "campaign");
                 if (voter.isPlayer)
+                {
                     EpisodeEngine.Log(state, "campaign",
                         npc.name + " came to you asking to stay this week.", state.playerId);
+                    ReplyCards.Offer(state, ReplyCards.Plea, npc.id, state.nominees.FirstOrDefault(id => id != npc.id));
+                }
             }
         }
 
@@ -294,6 +297,14 @@ namespace Gamesim.Simulation
             if (listener.isPlayer)
                 EpisodeEngine.Log(state, "information",
                     npc.name + " told you something about " + subject.name + ".", state.playerId);
+            // A rumour about the player reaches them three times in ten, from the strategy windows -
+            // the reference's roll, drawn only when it could matter, so an older season spends nothing.
+            if (subject.isPlayer && StrategyRules.Apply(state) && EpisodeEngine.Roll(state) < ReplyCards.GossipDiscoveryChance)
+            {
+                EpisodeEngine.Log(state, "gossip", "You found out " + npc.name + " has been talking about you to "
+                    + listener.name + ".", state.playerId);
+                ReplyCards.Offer(state, ReplyCards.Gossip, npc.id, listener.id);
+            }
             return true;
         }
 
@@ -313,8 +324,11 @@ namespace Gamesim.Simulation
             Act(state, npc.id, target.id, ConfrontationImpact,
                 npc.name + " had words with " + Named(state, target), "confrontation");
             if (target.isPlayer)
+            {
                 EpisodeEngine.Log(state, "confrontation",
                     npc.name + " confronted you in front of the house.", state.playerId);
+                ReplyCards.Offer(state, ReplyCards.Confrontation, npc.id, null);
+            }
             return true;
         }
 

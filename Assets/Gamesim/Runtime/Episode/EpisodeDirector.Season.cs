@@ -263,6 +263,7 @@ namespace Gamesim.Episode
                 var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
                 fresh.competitionRulesVersion = CompetitionRules.Current;
                 fresh.haveNotRulesStartWeek = 1;
+                fresh.strategyRulesStartWeek = 1;
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

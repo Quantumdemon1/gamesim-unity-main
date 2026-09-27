@@ -77,6 +77,24 @@ namespace Gamesim.Episode
             recapWeekSeen = state.phase == EpisodePhase.Eviction ? state.week + 1 : state.week;
         }
 
+        // ---------------------------------------------------------------- reply cards
+
+        /// <summary>
+        /// Answers a houseguest who came to the player with the middle answer - the one that neither
+        /// promises anything nor picks a fight - so the walk's own choices stay its own.
+        /// </summary>
+        private IEnumerator AnswerSeasonReplyCard(EpisodeState state)
+        {
+            var card = ReplyCards.Pending(state);
+            var replies = card == null ? null : ReplyCards.Replies(card.kind);
+            RequireSeason(replies != null && replies.Length >= 2, "A reply card must offer its answers.");
+            yield return ClickSeasonButton(EpisodeHud.ReplyCaption(replies[1].Label));
+            var after = seasonDirector.Snapshot;
+            RequireSeason(after.revision == state.revision + 1 && after.replyCards.All(r => r.id != card.id),
+                "Answering must settle the card it belongs to: " + card.kind);
+            seasonReport.replyCardsAnswered++;
+        }
+
         // ---------------------------------------------------------------- house events
 
         private IEnumerator ResolveSeasonHouseEvent(EpisodeState state, bool graphical)

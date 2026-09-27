@@ -34,7 +34,8 @@ namespace Gamesim.Tests.EditMode
         {
             var old = V13(); string original = old.ToString();
             Assert.That((int)old["competitionRulesVersion"], Is.EqualTo(4), "Schema 13 already held rules-4 seasons.");
-            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
+            // The step itself: the frozen dispatch to fourteen.
+            var migrated = EpisodeSaveMigrations.PrepareV14Payload(old, out var changed);
             Assert.That(changed, Is.True);
             Assert.That((int)migrated["schemaVersion"], Is.EqualTo(14));
             Assert.That((int)migrated["haveNotRulesStartWeek"], Is.Zero, "A season under way plays on without Have-Nots.");
@@ -44,9 +45,10 @@ namespace Gamesim.Tests.EditMode
             projection["schemaVersion"] = 13;
             Assert.That(JToken.DeepEquals(projection, old), Is.True, "Every schema 13 field is carried unchanged.");
             Assert.That(old.ToString(), Is.EqualTo(original), "The original payload is not touched.");
-            var state = migrated.ToObject<EpisodeState>(Serializer());
+            // Validated as the save it becomes: the live contract is schema 15's.
+            var state = EpisodeSaveMigrations.UpgradeV14ToV15(migrated).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
-            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
+            var repeated = EpisodeSaveMigrations.PrepareV14Payload(migrated, out changed);
             Assert.That(changed, Is.False);
             Assert.That(JToken.DeepEquals(repeated, migrated), Is.True);
         }
@@ -84,17 +86,19 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void EveryOlderSchemaLoadsIntoFourteen()
+        public void EveryOlderSchemaLoadsIntoTheCurrentOne()
         {
             var old = PersistenceMigrationTests.StripSchema13(JObject.FromObject(ContentCatalog.Create(603), Serializer()));
             old["schemaVersion"] = 12;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(14), "The whole chain, not one step.");
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(15), "The whole chain, not one step.");
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             Assert.That((int)migrated["haveNotRulesStartWeek"], Is.Zero);
             Assert.That(EpisodeSaveMigrations.PrepareV13Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(13),
                 "The frozen dispatch still stops at thirteen.");
+            Assert.That(EpisodeSaveMigrations.PrepareV14Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(14),
+                "And the next one at fourteen.");
         }
     }
 }

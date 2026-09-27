@@ -70,6 +70,10 @@ namespace Gamesim.Simulation
                 case DealKind.VetoUse:
                     if (state.vetoHolderId != toId)
                         return Refuse(out reason, target.name + " does not hold the veto.");
+                    // A commitment to a decision already taken is one nobody can keep. Seasons from
+                    // before the strategy windows keep offering it, as they always did.
+                    if (StrategyRules.Apply(state) && state.vetoResolved)
+                        return Refuse(out reason, "The veto has already been decided this week.");
                     break;
                 case DealKind.AllianceInvite:
                     if (state.Allied(state.playerId, toId))
@@ -134,12 +138,7 @@ namespace Gamesim.Simulation
             if (npc == null) return 0;
             double relationship = state.Score(npcId, state.playerId);
 
-            double chance;
-            if (relationship >= 70) chance = 80 + (relationship - 70) / 30 * 15;
-            else if (relationship >= 35) chance = 55 + (relationship - 35) / 35 * 20;
-            else if (relationship >= -10) chance = 40 + (relationship + 10) / 45 * 15;
-            else if (relationship >= -50) chance = 20 + (relationship + 50) / 40 * 15;
-            else chance = 5 + Math.Max(0, (relationship + 100) / 50) * 10;
+            double chance = RelationshipChance(relationship);
 
             // How much of themselves the deal asks the houseguest to spend.
             if (type == DealKind.InformationSharing || type == DealKind.Partnership) chance += 10;
@@ -200,6 +199,19 @@ namespace Gamesim.Simulation
             if (type == DealKind.Partnership && allied) chance += 15;
 
             return Math.Max(MinimumChance, Math.Min(MaximumChance, chance));
+        }
+
+        /// <summary>
+        /// Where the reference's five relationship tiers put a houseguest's willingness, in percent,
+        /// before anything else is weighed. Interpolated rather than stepped.
+        /// </summary>
+        public static double RelationshipChance(double relationship)
+        {
+            if (relationship >= 70) return 80 + (relationship - 70) / 30 * 15;
+            if (relationship >= 35) return 55 + (relationship - 35) / 35 * 20;
+            if (relationship >= -10) return 40 + (relationship + 10) / 45 * 15;
+            if (relationship >= -50) return 20 + (relationship + 50) / 40 * 15;
+            return 5 + Math.Max(0, (relationship + 100) / 50) * 10;
         }
 
         private static bool Has(ContestantState npc, string trait) =>

@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 14) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 15) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -182,6 +182,26 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid veto prize data.");
             if (s.haveNotRulesStartWeek == 0 && (s.haveNots.Count > 0 || s.haveNotPasses.Count > 0 || s.punishedHaveNots.Count > 0 || s.vetoPrizes.Count > 0))
                 return Fail(out error, "A season without Have-Nots has none.");
+            // Schema 15: the strategy windows. 0 is a season that never plays them.
+            if (s.strategyRulesStartWeek < 0 || s.strategyRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A strategy rules boundary cannot be further off than next week.");
+            // Both lists are this week's: the lobbying clears as the week turns, and a reply card is
+            // answered in the phase it arrived in or not at all.
+            if (s.lobbies == null || s.lobbies.Count > 32 || s.lobbies.Any(l => l == null || l.week != s.week
+                    || (l.phase != EpisodePhase.Nomination && l.phase != EpisodePhase.VetoMeeting)
+                    || s.Find(l.deciderId) == null || l.deciderId == s.playerId || !LobbyAsk.IsKnown(l.ask)
+                    || !LobbyApproach.IsKnown(l.approach) || !LobbyResponse.IsKnown(l.response)
+                    || (l.subjectId != null && s.Find(l.subjectId) == null)
+                    || !Finite(l.influence) || Math.Abs(l.influence) > StrategyRules.MostInfluence))
+                return Fail(out error, "Invalid lobbying data.");
+            if (s.replyCards == null || s.replyCards.Count > 24 || s.replyCards.Any(r => r == null || !Text(r.id, 160)
+                    || r.week != s.week || !ReplyCards.IsKnown(r.kind) || s.Find(r.fromId) == null || r.fromId == s.playerId
+                    || (r.aboutId != null && s.Find(r.aboutId) == null))
+                || s.replyCards.Select(r => r.id).Distinct(StringComparer.Ordinal).Count() != s.replyCards.Count
+                || (s.replyCards.Count > 0 && s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
+                return Fail(out error, "Invalid reply card data.");
+            if (s.strategyRulesStartWeek == 0 && (s.lobbies.Count > 0 || s.replyCards.Count > 0))
+                return Fail(out error, "A season without the strategy windows has none of their records.");
             if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
                 s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
                 s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)

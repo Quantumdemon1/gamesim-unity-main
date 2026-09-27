@@ -20,6 +20,37 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 15) return (JObject)original.DeepClone();
+            if (version < 1 || version > 14) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV14ToV15(version == 14 ? original : PrepareV14Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Opens the strategy fields, switched off. A season saved before them keeps playing as it
+        /// was - no lobbying, decisions that do not weigh deals or pleas, no reply cards - as it keeps
+        /// its competition rules and its Have-Nots: they are a new season's, not a change to one
+        /// under way.
+        /// </summary>
+        public static JObject UpgradeV14ToV15(JObject original)
+        {
+            FrozenEpisodeV14.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("strategyRulesStartWeek", 0);
+            result.Add("lobbies", new JArray());
+            result.Add("replyCards", new JArray());
+            result["schemaVersion"] = 15;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v13-to-v14 dispatch.</summary>
+        public static JObject PrepareV14Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 14) return (JObject)original.DeepClone();
             if (version < 1 || version > 13) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV13ToV14(version == 13 ? original : PrepareV13Payload(original, out _));

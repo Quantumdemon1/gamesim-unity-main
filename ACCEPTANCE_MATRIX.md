@@ -322,6 +322,14 @@ Four things this pass changed that affect other sections:
     for a prize and a punishment.
   - A season saved before, and the pinned V7 build, play rules 1–3 with neither.
   - Record which a participant played.
+- **New seasons open the strategy windows (26 September).** The Head of Household can be talked to
+  before nominations, and the veto holder and the Head of Household before the veto meeting. A plea
+  costs a conversation, and the decisions now weigh deals, alliances and pleas. A houseguest who
+  confronts the player or pleads with them, or is found out gossiping about them, puts a reply card
+  on the free-time or campaign panel.
+  - This adds decisions to the week. Tasks timed across a Nomination or Veto phase (E1) are not
+    comparable with earlier runs. Record whether the participant lobbied.
+  - A season saved before, and the V7 build, play without them.
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

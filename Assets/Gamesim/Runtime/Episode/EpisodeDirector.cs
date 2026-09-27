@@ -1054,6 +1054,10 @@ namespace Gamesim.Episode
             var run = challengeRun;
             CastRail.PlayerProgress = CastRail.CompetitionField != null && run != null ? () => ProgressWord(run) : (System.Func<string>)null;
             hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen);
+            // The Pull's card is rebuilt hidden with the rest of the chrome, and a render that Update
+            // orders (a body finishing assembly) comes after this frame's TickStoryPull: put it back
+            // now, or it is gone for the rest of the frame and a press on it lands on nothing.
+            TickStoryPull();
             // Committed state, not the projection: a projected eviction is not a fact, and telling
             // someone they are out of the game is the last claim that should run ahead of the save.
             if (Spectating(engine.Snapshot)) hud.SpectatorNote(SpectatorDetail(engine.Snapshot));

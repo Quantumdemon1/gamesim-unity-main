@@ -111,6 +111,22 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "Opening the card writes nothing.");
         }
 
+        /// <summary>
+        /// A render rebuilds the chrome, the Pull's card with it, and the card is built hidden. A
+        /// render Update orders for a body finishing assembly comes after that frame's Pull tick, so
+        /// the card used to be gone for the rest of the frame: a keyboard press in it landed on
+        /// nothing, and the keyboard test above failed about one full run in three.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StoryPull_ARenderPutsItBackInTheSameFrame()
+        {
+            yield return InstallStoryPullFixture();
+            Assert.That(ControlCarrying(EpisodeHud.HearThemOutCaption), Is.Not.Null, "The Pull is on screen.");
+            director.ClosePanels();
+            Assert.That(ControlCarrying(EpisodeHud.HearThemOutCaption), Is.Not.Null,
+                "The render that rebuilt the card puts it back before the frame ends.");
+        }
+
         [UnityTest]
         public IEnumerator StoryPull_NotNowTurnsItDownWithoutLosingIt()
         {

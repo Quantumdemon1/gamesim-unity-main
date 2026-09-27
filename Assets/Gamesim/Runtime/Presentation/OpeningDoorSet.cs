@@ -674,6 +674,8 @@ namespace Gamesim.Presentation
                 material.DisableKeyword("_ALPHATEST_ON");
                 material.SetOverrideTag("RenderType", "Transparent");
                 material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                material.SetShaderPassEnabled("DepthOnly", false);
+                material.SetShaderPassEnabled("SHADOWCASTER", false);
                 material.SetTexture("_BaseMap", texture != null ? texture : Texture2D.whiteTexture);
                 material.SetColor("_BaseColor", colour);
                 return material;

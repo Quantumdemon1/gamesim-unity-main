@@ -370,6 +370,36 @@ namespace Gamesim.Simulation
 
         public static readonly string[] All = { Kitchen, Living, Yard, Bedroom, Storage, HohRoom, DiaryRoom, Hallway, Bathroom, Table };
         public static bool IsKnown(string venue) => venue != null && Array.IndexOf(All, venue) >= 0;
+
+        /// <summary>
+        /// The venue a room the player is standing in is, for the rooms the house builds: the
+        /// house's room ids ("Kitchen", "Living", ...) and the narration's names for them ("the
+        /// kitchen"). A room the house builds that no venue names (the games room) is
+        /// <see cref="NoVenue"/>; text that names no room at all is null, and a caller then knows
+        /// nothing about where it is.
+        /// </summary>
+        public static string ForRoom(string room)
+        {
+            if (string.IsNullOrWhiteSpace(room)) return null;
+            string key = room.Trim().ToLowerInvariant();
+            if (key.StartsWith("the ")) key = key.Substring(4);
+            switch (key)
+            {
+                case "kitchen": return Kitchen;
+                case "living": case "living room": case "living-room": return Living;
+                case "bedroom": case "bedrooms": return Bedroom;
+                case "yard": case "backyard": return Yard;
+                case "hoh": case "hoh room": case "hoh-room": case "head of household's room": return HohRoom;
+                case "private": case "diary room": case "diary-room": return DiaryRoom;
+                case "nomination": case "dining table": case "dining-table": return Table;
+                case "storage room": case "storage-room": return Storage;
+                case "games": case "games room": return NoVenue;
+                default: return IsKnown(key) ? key : null;
+            }
+        }
+
+        /// <summary>A room the house builds that no venue names: nothing staged for a venue happens there.</summary>
+        public const string NoVenue = "";
     }
 
     /// <summary>How a step of a story cycle came out.</summary>

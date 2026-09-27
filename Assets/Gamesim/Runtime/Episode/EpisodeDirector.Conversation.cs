@@ -344,27 +344,73 @@ namespace Gamesim.Episode
 
             var others = here.Occupants
                 .Where(person => !person.IsPlayer && !string.IsNullOrEmpty(person.Id))
-                .OrderBy(person => person.Id, StringComparer.Ordinal)
+                .Select(person => person.Id)
+                .OrderBy(id => id, StringComparer.Ordinal)
                 .ToList();
-            if (others.Count < 2) return;
+            if (!TryWalkInPair(others, out string first, out string second)) return;
 
             // Offered only when something would come of it: a pair no walk-in story will take this
-            // week is two people talking, not an event.
-            if (!EpisodeEngine.ProximityOpen(state, others[0].Id, others[1].Id)) return;
+            // week, in this room, is two people talking, not an event.
+            if (!EpisodeEngine.ProximityOpen(state, first, second, here.Name)) return;
             if (story)
             {
-                walkInFirst = others[0].Id; walkInSecond = others[1].Id; walkInRoom = here.Name; walkInWeek = state.week;
+                walkInFirst = first; walkInSecond = second; walkInRoom = here.Name; walkInWeek = state.week;
                 return;
             }
-            if (HouseEventSources.Proximity(state, others[0].Id, others[1].Id, here.Name, state.nextSequence) == null) return;
+            if (HouseEventSources.Proximity(state, first, second, here.Name, state.nextSequence) == null) return;
             Submit(new EpisodeCommand
             {
                 id = Guid.NewGuid().ToString("N"), actorId = state.playerId,
                 kind = EpisodeCommandKind.WitnessProximity, expectedPhase = state.phase,
-                expectedRevision = state.revision, targetId = others[0].Id,
-                secondTargetId = others[1].Id, text = here.Name,
+                expectedRevision = state.revision, targetId = first,
+                secondTargetId = second, text = here.Name,
             });
         }
+
+        /// <summary>
+        /// How close two houseguests stand to be together, and how near one of them the player has
+        /// to be to have walked in on them: the reference's three and five units, with a metre's
+        /// grace for a body posed at furniture, whose root waits at the approach.
+        /// </summary>
+        public const float WalkInPairMetres = 3f, WalkInReachMetres = 6f;
+
+        /// <summary>
+        /// The two houseguests in the player's room who are actually together: a conversation of
+        /// their own first, otherwise the pair standing within a few metres of each other nearest
+        /// the player. It was the first two by id, wherever in the room they stood and whatever they
+        /// were doing, and the card said they were mid-argument (playtest, 2026-09-27).
+        /// </summary>
+        private bool TryWalkInPair(List<string> ids, out string first, out string second)
+        {
+            first = second = null;
+            if (ids == null || ids.Count < 2 || player == null) return false;
+            if (projected != null && projected.npcSocial != null && npcMeetings != null)
+                foreach (var pending in projected.npcSocial.pending)
+                    if (ids.Contains(pending.firstId) && ids.Contains(pending.secondId)
+                        && npcPendingWorld.TryGetValue(pending.sequence, out var lease) && npcMeetings.ValidateArrivedPair(lease, out _))
+                    {
+                        bool inOrder = string.CompareOrdinal(pending.firstId, pending.secondId) <= 0;
+                        first = inOrder ? pending.firstId : pending.secondId;
+                        second = inOrder ? pending.secondId : pending.firstId;
+                        return true;
+                    }
+            var standing = player.transform.position;
+            float nearest = float.MaxValue;
+            for (int a = 0; a < ids.Count; a++)
+            for (int b = a + 1; b < ids.Count; b++)
+            {
+                var one = BodyFor(ids[a]);
+                var two = BodyFor(ids[b]);
+                if (one == null || two == null || Across(one.position, two.position) > WalkInPairMetres) continue;
+                float reach = Mathf.Min(Across(standing, one.position), Across(standing, two.position));
+                if (reach > WalkInReachMetres || reach >= nearest) continue;
+                nearest = reach; first = ids[a]; second = ids[b];
+            }
+            return first != null;
+        }
+
+        /// <summary>The distance between two points across the floor, ignoring height.</summary>
+        private static float Across(Vector3 from, Vector3 to) { from.y = to.y = 0f; return Vector3.Distance(from, to); }
 
         /// <summary>
         /// The deal table for one houseguest: what they have put to you, and what you can put to them.

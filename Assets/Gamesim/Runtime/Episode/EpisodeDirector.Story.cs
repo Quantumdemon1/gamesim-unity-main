@@ -471,7 +471,7 @@ namespace Gamesim.Episode
             if (state == null || walkInFirst == null) return;
             string first = walkInFirst, second = walkInSecond, room = walkInRoom;
             ClearWalkIn();
-            if (!EpisodeEngine.ProximityOpen(state, first, second)) return;
+            if (!EpisodeEngine.ProximityOpen(state, first, second, room)) return;
             var before = new HashSet<string>(EpisodeEngine.OpenStoryBeats(state).Select(e => e.id));
             var result = Submit(new EpisodeCommand
             {

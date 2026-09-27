@@ -59,7 +59,11 @@ namespace Gamesim.Tests.EditMode
             {
                 var room = EpisodeDirector.VenueRoom(venue);
                 if (room != null) Assert.That(HouseRooms, Does.Contain(room), venue);
+                // And back: the engine reads the room a walk-in names as the venue it is.
+                if (room != null) Assert.That(StoryVenues.ForRoom(room), Is.EqualTo(venue), room);
             }
+            foreach (var room in HouseRooms)
+                Assert.That(StoryVenues.ForRoom(room), Is.Not.Null, room + " is a venue, or a room no venue names.");
             // A meeting is the house in one room, so the room has to exist.
             foreach (var arc in StoryCatalog.All)
                 foreach (var beat in arc.beats.Where(b => b.surface == StorySurfaces.Meeting))

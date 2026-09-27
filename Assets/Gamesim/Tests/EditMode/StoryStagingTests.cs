@@ -150,5 +150,46 @@ namespace Gamesim.Tests.EditMode
             Assert.That(marked, Does.Contain("emergency-meeting/meeting=" + StoryLog.HouseMeeting));
             Assert.That(marked, Does.Contain("the-accounting/living-room-now=" + StoryLog.HouseMeeting));
         }
+
+        /// <summary>
+        /// A walk-in opens only a story its room can hold (playtest, 2026-09-27). Walking in on a
+        /// feuding pair in the bedroom was "Words in the Kitchen": the room came with the command and
+        /// the engine never read it. In the bedroom it is the walk-in that names no room; in the
+        /// kitchen it is still the blow-up.
+        /// </summary>
+        [Test]
+        public void AWalkInOpensOnlyAStoryItsRoomCanHold()
+        {
+            foreach (var (room, arc) in new[] { ("Bedroom", "walked-in-arguing"), ("Kitchen", "kitchen-blowup") })
+            {
+                var s = StorySeasonTests.StorySeason(5);
+                s.week = 2;
+                var npcs = s.Active.Where(c => !c.isPlayer).Select(c => c.id).OrderBy(id => id, System.StringComparer.Ordinal).ToList();
+                Grudges.Add(s, npcs[0], npcs[1], 60, GrudgeCauses.Story);
+                Assert.That(EpisodeValidation.TryValidate(s, out var why), Is.True, why);
+                Assert.That(EpisodeEngine.ProximityOpen(s, npcs[0], npcs[1], room), Is.True, "A walk-in on them is on offer in the " + room + ".");
+
+                var walk = EpisodeEngineTests.Command(s, EpisodeCommandKind.WitnessProximity);
+                walk.targetId = npcs[0]; walk.secondTargetId = npcs[1]; walk.text = room;
+                var result = new EpisodeEngine(s).Apply(walk);
+                Assert.That(result.accepted, Is.True, room + ": " + result.reason);
+                var started = result.state.storylines.Where(x => x.beatId != null).Select(x => x.templateId).ToList();
+                Assert.That(started, Does.Contain(arc), "In the " + room + " it is " + arc + ".");
+                var venues = EpisodeEngine.OpenStoryBeats(result.state).Select(e => e.venue).ToList();
+                if (room == "Kitchen") Assert.That(venues, Does.Contain(StoryVenues.Kitchen));
+                else Assert.That(venues, Does.Not.Contain(StoryVenues.Kitchen), "Nothing the player walked in on in the " + room + " is set in the kitchen.");
+            }
+        }
+
+        [Test]
+        public void EveryRoomNamesItsVenue()
+        {
+            Assert.That(StoryVenues.ForRoom("Kitchen"), Is.EqualTo(StoryVenues.Kitchen));
+            Assert.That(StoryVenues.ForRoom("the kitchen"), Is.EqualTo(StoryVenues.Kitchen), "The narration's name for it too.");
+            Assert.That(StoryVenues.ForRoom("Games"), Is.EqualTo(StoryVenues.NoVenue), "A room the house builds that no venue names.");
+            Assert.That(StoryVenues.ForRoom("somewhere"), Is.Null, "Text that names no room says nothing about where it is.");
+            foreach (var narrated in HouseRooms.All)
+                Assert.That(StoryVenues.ForRoom(narrated), Is.Not.Null, narrated);
+        }
     }
 }

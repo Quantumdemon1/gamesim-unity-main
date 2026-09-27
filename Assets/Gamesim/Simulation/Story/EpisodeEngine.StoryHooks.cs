@@ -589,7 +589,7 @@ namespace Gamesim.Simulation
         /// Whether walking in on these two would come to anything now: the house has room for it,
         /// and some walk-in arc will take this pair this week. The director asks before it offers.
         /// </summary>
-        public static bool ProximityOpen(EpisodeState s, string firstId, string secondId)
+        public static bool ProximityOpen(EpisodeState s, string firstId, string secondId, string room = null)
         {
             if (!ProximityOpen(s)) return false;
             if (!StoryOn(s)) return true;
@@ -598,7 +598,22 @@ namespace Gamesim.Simulation
             if (first == null || second == null || first.id == second.id || first.isPlayer || second.isPlayer
                 || first.status != ContestantStatus.Active || second.status != ContestantStatus.Active) return false;
             var ctx = new StoryContext(s, CurrentAnchor(s) ?? StoryAnchors.EvictionNight, first.id);
-            return StoryCatalog.ProximityArcs.Any(id => ProximityBinding(s, ctx, StoryCatalog.Find(id), first.id, second.id) != null);
+            string venue = StoryVenues.ForRoom(room);
+            return StoryCatalog.ProximityArcs.Any(id => OpensIn(StoryCatalog.Find(id), venue)
+                && ProximityBinding(s, ctx, StoryCatalog.Find(id), first.id, second.id) != null);
+        }
+
+        /// <summary>
+        /// Whether a walk-in arc can open in the room the player walked into: an arc whose first scene
+        /// is set somewhere opens only there. A bedroom walk-in on a feuding pair became "Words in the
+        /// Kitchen" (playtest, 2026-09-27) - the room came with the command and nothing read it. A
+        /// room nobody can place (<paramref name="venue"/> null) keeps the old reading, anywhere.
+        /// </summary>
+        private static bool OpensIn(ArcTemplate arc, string venue)
+        {
+            if (arc == null || venue == null || arc.beats == null || arc.beats.Length == 0) return true;
+            string set = arc.beats[0].venue;
+            return string.IsNullOrEmpty(set) || set == venue;
         }
 
         /// <summary>
@@ -616,9 +631,11 @@ namespace Gamesim.Simulation
                 "There is nobody there to walk in on.");
             Require(ProximityOpen(s), "Deal with what is already in front of you first.");
             var ctx = new StoryContext(s, CurrentAnchor(s) ?? StoryAnchors.EvictionNight, first.id);
+            string venue = StoryVenues.ForRoom(c.text);
             foreach (var id in StoryCatalog.ProximityArcs)
             {
                 var arc = StoryCatalog.Find(id);
+                if (!OpensIn(arc, venue)) continue;
                 var binding = ProximityBinding(s, ctx, arc, first.id, second.id);
                 if (binding == null) continue;
                 StartCycle(s, arc, binding, ctx.anchor);

@@ -49,9 +49,11 @@ namespace Gamesim.Tests.PlayMode
         {
             var playing = SceneComponents<KeyCeremony>().Where(card => card.IsPlaying).ToList();
             var reveals = SceneComponents<VoteReveal>().Where(card => card.IsPlaying).ToList();
-            if (playing.Count == 0 && reveals.Count == 0) yield break;
+            var jury = SceneComponents<JuryReveal>().Where(card => card.IsPlaying).ToList();
+            if (playing.Count == 0 && reveals.Count == 0 && jury.Count == 0) yield break;
             foreach (var card in playing) card.Cancel();
             foreach (var card in reveals) card.Cancel();
+            foreach (var card in jury) card.Cancel();
             // One frame for the director to hand the chrome back and redraw it, one for the copy it
             // replaced to be destroyed.
             yield return Frames(2);

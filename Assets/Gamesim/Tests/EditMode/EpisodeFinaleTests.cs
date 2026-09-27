@@ -153,6 +153,31 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeValidation.TryValidate(bad, out _), Is.False);
         }
 
+        [Test]
+        public void AJurorWhoContinuesBeforeVotingReadsNoBallot()
+        {
+            var state = ContentCatalog.Create(337); state.week = 4; state.phase = EpisodePhase.Jury;
+            string first = state.contestants[1].id, second = state.contestants[2].id;
+            foreach (var actor in state.contestants.Where(c => c.id != first && c.id != second)) actor.status = ContestantStatus.Jury;
+            state.hohId = first; state.finalPart1WinnerId = first; state.finalPart2WinnerId = second;
+            Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
+            var engine = new EpisodeEngine(state);
+
+            var early = engine.Apply(EpisodeEngineTests.Command(engine.Snapshot, EpisodeCommandKind.Advance));
+            Assert.That(early.accepted, Is.False);
+            Assert.That(early.reason, Does.Contain("Cast your jury vote"));
+            Assert.That(engine.Snapshot.votes, Is.Empty, "Not one juror's ballot is cast,");
+            Assert.That(engine.Snapshot.events.Any(e => e.kind == "jury-vote"), Is.False, "or read out, before the player's own.");
+
+            var vote = EpisodeEngineTests.Command(engine.Snapshot, EpisodeCommandKind.CastVote); vote.targetId = first;
+            var cast = engine.Apply(vote);
+            Assert.That(cast.accepted, Is.True, cast.reason);
+            var done = engine.Apply(EpisodeEngineTests.Command(engine.Snapshot, EpisodeCommandKind.Advance));
+            Assert.That(done.accepted, Is.True, done.reason);
+            Assert.That(done.state.phase, Is.EqualTo(EpisodePhase.Finished));
+            Assert.That(done.state.votes, Has.Count.EqualTo(state.contestants.Count - 2), "Then the whole jury votes.");
+        }
+
         private static EpisodeState FinalThree()
         {
             var state = ContentCatalog.Create(337); state.week = 4; state.phase = EpisodePhase.FinalEviction;

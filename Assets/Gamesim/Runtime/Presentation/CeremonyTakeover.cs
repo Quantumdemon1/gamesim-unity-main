@@ -155,6 +155,12 @@ namespace Gamesim.Presentation
         /// </summary>
         public const string VetoSelectionKind = "veto-selection";
 
+        /// <summary>
+        /// The house down to three: not a ceremony the engine logs, but the finale's opening, as the
+        /// reference opens it with its own card ("Only three remain...").
+        /// </summary>
+        public const string FinalThreeKind = "final-three";
+
         /// <summary>The title a beat announces itself with, or null when it does not get a card.</summary>
         public static string TitleFor(string kind)
         {
@@ -165,6 +171,8 @@ namespace Gamesim.Presentation
                 case CeremonySting.EvictionKind: return "Live Eviction";
                 case CeremonySting.WinnerKind: return "The Winner";
                 case VetoSelectionKind: return "Power of Veto";
+                case FinalThreeKind: return "The Final Three";
+                case CeremonySting.FinalEvictionKind: return "The Final Two";
                 default: return null;
             }
         }
@@ -190,6 +198,11 @@ namespace Gamesim.Presentation
                     // draw animation for a selection that does not happen would be theatre for a
                     // decision nobody made.
                     return "Everyone still in the house plays. The winner can take a nominee off the block.";
+                case FinalThreeKind:
+                    // The reference's line for the final Head of Household's card.
+                    return "Only three remain. The final battle for power begins now.";
+                case CeremonySting.FinalEvictionKind:
+                    return "The final Head of Household chooses who sits beside them. The other joins the jury.";
                 default: return string.Empty;
             }
         }
@@ -204,6 +217,8 @@ namespace Gamesim.Presentation
                 case CeremonySting.EvictionKind: return "evicted";
                 case CeremonySting.WinnerKind: return "trophy";
                 case VetoSelectionKind: return "veto-token";
+                case FinalThreeKind: return "trophy";
+                case CeremonySting.FinalEvictionKind: return "trophy";
                 default: return null;
             }
         }
@@ -217,6 +232,8 @@ namespace Gamesim.Presentation
                 case CeremonySting.EvictionKind: return UiTheme.Danger;
                 case CeremonySting.WinnerKind: return UiTheme.Gold;
                 case VetoSelectionKind: return UiTheme.Gold;
+                case FinalThreeKind: return UiTheme.Gold;
+                case CeremonySting.FinalEvictionKind: return UiTheme.Gold;
                 default: return UiTheme.Accent;
             }
         }

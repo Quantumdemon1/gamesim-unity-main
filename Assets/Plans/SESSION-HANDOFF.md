@@ -8,6 +8,48 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 00000000000000000. The finale, first part: the jury read one juror at a time, ballots kept private, and cards for the final three and the final two (26 September)
+
+Batch 5 of the minigames brainstorm's plan, the finale, in two parts. This entry is the first; the jury seated in the house on finale night and the evictee's walk out through the front door follow.
+
+**What the reference does** (D:/gamesim-web, checked by a research pass):
+- It reads the jury one vote every 2.5 s under "{ceil(n/2)} votes to win".
+- It stops at the deciding vote, reports the partial count as the result ("By a vote of 4-1" where the whole jury went 4-3), and throws three seconds of confetti.
+- Its final three get a transition card ("Only three remain..."); its final Head of Household's choice gets a sentence.
+
+**The jury's vote** (new `Presentation/JuryReveal.cs`, `ConfettiBurst.cs`; `EpisodeDirector.Finale.cs`)
+- The winner's commit no longer plays a card that names the winner. The jury is read one juror at a time, a face each:
+  - Each juror's vote goes up as a chip under their face, in the finalist's colour, and the two tallies climb.
+  - The finale's cue plays when the winner is called, with gold confetti from the lower corners, as the reference throws it.
+- **Three changes from the reference, all toward honesty:**
+  - The jurors are read in an order dealt from the seed (`JuryOrder`), as the keys are. The engine records them in cast order, which would read a juror-player's own vote first every time.
+  - A pause comes before any vote that *could* decide it, whoever it names, so the pause gives nothing away.
+  - The count it ends on is the jury's whole count. The rest of the votes go up with the winner, and the host reads the real figures: "By a vote of 4 to 3, Alex Chen, you are the winner of Gamesim: The House!".
+- A tie is called as a tie and settled by the house's rule, as the engine settles it.
+- A player finalist is spoken to ("you are the winner"), and a juror-player's own vote is read as "You".
+- **Controls and pacing:**
+  - The other reveals' controls: speed up, skip to the whole count, a second press closes.
+  - Paced by `CeremonyPacing`: suspenseful 2.6 s of finalists, 2.2 s a juror (1.6 from eight), a 2 s pause before a vote that could decide it, and 5.2 s on the winner; quick is 1.0 / 0.55 / 0.3 / 3.2.
+  - The house's chrome waits while it plays, as it does for the other reveals.
+  - Reduced motion keeps the timings and throws no confetti.
+
+**Private ballots.** A juror who continued before voting used to see every other juror's ballot cast and read out publicly, and still had a vote to cast. The engine now refuses before writing anything. The shipped screen never allowed it; the engine did.
+
+**Two cards**
+- "The Final Three" when the house is down to three, with the reference's line and the three faces.
+- "The Final Two" for the final Head of Household's choice, badged FINAL HOH, FINAL 2 and JURY. The new juror stays in the room while it plays, as an evictee does for their eviction; they used to vanish the next frame.
+- At the winner's commit the runner-up was being treated as the one leaving; nobody is now.
+
+**Tests.**
+- PlayMode added `JuryRevealPlayModeTests` (8) and `EpisodePlayModeTests.FinaleReveal` (4). EditMode added the jury's order (`CeremonyTruthTests`) and the private ballots (`EpisodeFinaleTests`, which also runs under `dotnet test`).
+- The season walk's `SkipReveals` skips the jury's reveal too.
+- The finale tests hold the house before installing a fixture (`SuspendNpcAutonomyForDiagnostics`). The reload loads the scene asynchronously, and the director it replaces could autosave an NPC tick over the fixture just written, so a test run alone played the scene's own season.
+- 25 mutations, all caught at their target assertions: 23 through the harness (`finale_mut.py`, one to a run, since several change what every card test sees) and 2 on the engine under `dotnet test`.
+  - Five needed a second look. The default cast's player is called "You", so the test of a juror-player's label renames them. Only a juror-player's finale can show a finalist taken for someone leaving. The duration test computed its expectation from the pacing it was checking, so the pacing is now pinned on its own.
+  - Three runs failed inside their fixture install, not at their assertions: not a catch. That is how the autosave race above was found. Held, all three were caught where they should be.
+
+**Verified:** EditMode 1628, PlayMode 573, Uma 64 and Simulation 857, all passing in one full run, with no crashes. Floors raised from 1625, 561 and 856.
+
 ## 0000000000000000. The strategy windows: a word with whoever decides, decisions that listen, reply cards, and two deal fixes (26 September)
 
 Batch 4 of the minigames brainstorm's plan: "Strategy windows: lobbying the HoH and the veto holder, reply cards, deal fixes." The rules are `Simulation/StrategyRules.cs` and `Simulation/ReplyCards.cs`; the engine's side is `EpisodeEngine.Strategy.cs`, and the screens are `EpisodeDirector.Strategy.cs`.

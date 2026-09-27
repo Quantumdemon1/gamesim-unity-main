@@ -395,6 +395,7 @@ namespace Gamesim.Episode
             if (sting != null) sting.FontScale = largeText ? 1.2f : 1;
             if (takeover != null) takeover.FontScale = largeText ? 1.2f : 1;
             if (voteReveal != null) voteReveal.FontScale = largeText ? 1.2f : 1;
+            if (juryReveal != null) juryReveal.FontScale = largeText ? 1.2f : 1;
             if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
             if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
             if (tutorial != null) { tutorial.FontScale = largeText ? 1.2f : 1; tutorial.ReducedMotion = reducedMotion; }

@@ -738,7 +738,12 @@ namespace Gamesim.Simulation
         private static void ResolveJury(EpisodeState s)
         {
             var finalists = s.Active.ToArray(); Require(finalists.Length == 2, "The jury requires exactly two finalists.");
-            int votesBefore = s.votes.Count;
+            // A juror's ballot stays private until the player's own is in: nothing is cast, and
+            // nothing read out, before then. This used to cast and publish every other juror's vote
+            // first and only then refuse to count them, so a juror who continued before voting read
+            // the whole jury's ballots and still had a vote to cast.
+            Require(s.Active.Any(c => c.id == s.playerId) || s.votes.Any(v => v.voterId == s.playerId),
+                "Cast your jury vote for a finalist first.");
             foreach (var juror in s.contestants.Where(c => c.status == ContestantStatus.Jury || c.status == ContestantStatus.Evicted))
             {
                 if (juror.isPlayer || s.votes.Any(v => v.voterId == juror.id)) continue;
@@ -759,11 +764,6 @@ namespace Gamesim.Simulation
                 });
                 Log(s, "jury-vote", Name(s, juror.id) + Verb(s, juror.id, " votes for ", " vote for ")
                     + Target(s, preferred.id, juror.id) + " to win.");
-            }
-            if (!s.Active.Any(c => c.id == s.playerId) && !s.votes.Any(v => v.voterId == s.playerId))
-            {
-                if (s.votes.Count > votesBefore) return;
-                throw new RuleException("Cast your jury vote for a finalist first.");
             }
             int firstVotes = s.votes.Count(v => v.targetId == finalists[0].id), secondVotes = s.votes.Count(v => v.targetId == finalists[1].id);
             var ordered = firstVotes > secondVotes ? finalists : new[] { finalists[1], finalists[0] };

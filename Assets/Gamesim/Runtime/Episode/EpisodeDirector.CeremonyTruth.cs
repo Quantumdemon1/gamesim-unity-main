@@ -112,7 +112,8 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickCeremonies()
         {
-            bool revealing = (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying);
+            bool revealing = (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
+                || JuryRevealPlaying;
             if (revealHeld && !revealing)
             {
                 revealHeld = false;

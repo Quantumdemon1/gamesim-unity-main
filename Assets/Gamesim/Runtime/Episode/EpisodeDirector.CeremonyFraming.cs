@@ -25,6 +25,7 @@ namespace Gamesim.Episode
                 case CeremonyTakeover.VetoSelectionKind: return "Games";
                 case CeremonySting.EvictionKind: return "Living";
                 case CeremonySting.WinnerKind: return "Living";
+                case CeremonySting.FinalEvictionKind: return "Living";
                 case "competition": return "Yard";
                 default: return null;
             }
@@ -73,7 +74,7 @@ namespace Gamesim.Episode
             // Held for as long as any card narrating the ceremony is up; the key reveal was left out
             // of this, so the camera could pull back to the house halfway through the keys.
             while (Time.unscaledTime < until || (takeover != null && takeover.IsPlaying)
-                || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying))
+                || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying) || JuryRevealPlaying)
                 yield return null;
             if (cameraRig != null) cameraRig.MoveTo(focus, distance, reducedMotion ? CeremonyCutSeconds : CeremonyMoveSeconds);
             IsFramingCeremony = false;

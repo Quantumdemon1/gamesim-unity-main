@@ -190,7 +190,7 @@ namespace Gamesim.Episode
         /// shot, no ceremony, no competition, and the HUD up.
         /// </summary>
         private bool HouseIsTheView => IsReady && !blockedRecovery && !IsPanelOpen && !overviewOpen && !challengeActive
-            && !CeremonyOverlays.OnScreen && !IsFramingCeremony && (voteReveal == null || !voteReveal.IsPlaying)
+            && !CeremonyOverlays.OnScreen && !IsFramingCeremony && (voteReveal == null || !voteReveal.IsPlaying) && !JuryRevealPlaying
             && (takeover == null || !takeover.IsPlaying) && (keyCeremony == null || !keyCeremony.IsPlaying)
             && hud != null && hud.IsVisible && player != null
             && cameraRig != null && cameraRig.ControlsEnabled && !cameraRig.HasShot && !cameraRig.IsConversationFocused

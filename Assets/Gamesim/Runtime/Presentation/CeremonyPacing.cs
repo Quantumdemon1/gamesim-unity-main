@@ -62,5 +62,28 @@ namespace Gamesim.Presentation
 
         /// <summary>How long the result holds once it is read.</summary>
         public static float ResultHold(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.9f : 3.6f;
+
+        // ------------------------------------------------------------ the jury's vote
+
+        /// <summary>The finalists and how many votes win it, before the first juror's vote is read.</summary>
+        public static float JuryIntro(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.0f : 2.6f;
+
+        /// <summary>
+        /// The time each juror's vote holds; shorter for a big jury. The reference reads one every
+        /// two and a half seconds whatever the size, which a sixteen-houseguest season's fourteen
+        /// jurors would make a thirty-five-second wait.
+        /// </summary>
+        public static float PerJuror(CeremonyPace pace, int jurors) =>
+            pace == CeremonyPace.Quick ? 0.55f : jurors >= 8 ? 1.6f : 2.2f;
+
+        /// <summary>
+        /// The extra wait before a vote that could decide it: whenever a finalist is a vote from
+        /// winning, whoever the next vote names. Held only where it could, never only where it does,
+        /// so the pause itself gives nothing away.
+        /// </summary>
+        public static float DecidingBeat(CeremonyPace pace) => pace == CeremonyPace.Quick ? 0.3f : 2.0f;
+
+        /// <summary>How long the winner holds the stage: the confetti's three seconds and time to read the count.</summary>
+        public static float WinnerHold(CeremonyPace pace) => pace == CeremonyPace.Quick ? 3.2f : 5.2f;
     }
 }

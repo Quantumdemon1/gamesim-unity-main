@@ -382,9 +382,9 @@ namespace Gamesim.Episode
                 hud.ShowFollowing(lastFollowed);
             }
             if (cameraRig != null && followRing == null) followRing = FollowRing.Attach(cameraRig);
-            // A body that has just finished assembling changes what the HUD can show: its portraits
-            // are rendered from the live character, and anything drawn before this point is holding
-            // a fallback face until something else happens to trigger a render.
+            // A body that has just finished assembling changes what the HUD can show - a houseguest
+            // who was not yet drawn is now there to be framed, followed and pointed at - so the HUD
+            // is redrawn rather than left waiting for something else to trigger a render.
             //
             // Not while a panel is open. Rebuilding one because a body finished loading throws away
             // the player's scroll position and keyboard focus mid-read, for a portrait they are not

@@ -92,14 +92,16 @@ namespace Gamesim.Tests.PlayMode
             var visuals = SceneComponents<CharacterPresentation>();
             Assert.That(visuals, Has.Length.EqualTo(6));
             Assert.That(visuals.Select(visual => visual.CharacterId), Is.EquivalentTo(snapshot.contestants.Select(actor => actor.id)));
+            // A UMA body is assembled over its first frames and is not drawn until it is.
+            yield return SettleCast();
             foreach (var visual in visuals)
             {
                 var body = visual.transform.Find("Gamesim Character Visual");
                 Assert.That(body, Is.Not.Null, visual.CharacterId + " needs its native articulated visual.");
                 // This used to require more than ten enabled renderers, which was really a count of
-                // the primitive rig's parts. An authored rigged model is a single skinned renderer,
-                // so that count started failing the moment the cast got real models. Both bodies are
-                // correct, so assert the houseguest reads as a person rather than counting pieces.
+                // the primitive rig's parts. A UMA body is a single skinned renderer, so that count
+                // started failing the moment the cast got real models. Both bodies are correct, so
+                // assert the houseguest reads as a person rather than counting pieces.
                 var parts = body.GetComponentsInChildren<Renderer>().Where(renderer => renderer.enabled).ToArray();
                 Assert.That(parts, Is.Not.Empty, visual.CharacterId + " needs a visible body.");
                 var extent = parts[0].bounds;
@@ -363,7 +365,7 @@ namespace Gamesim.Tests.PlayMode
             LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex(
                 "^Gamesim episode ready: [0-9]+ contestants, validated simulation, local recovery and accessible HUD connected\\.$"));
 #if !GAMESIM_UMA
-            // The shipping scene retains its optional UMA-cast component. In the authored-only
+            // The shipping scene retains its optional UMA-cast component. In the UMA-free
             // configuration Unity reports exactly this missing-script warning on scene load;
             // account for it explicitly so strict teardown checks still catch every other log.
             LogAssert.Expect(LogType.Warning, "The referenced script (Unknown) on this Behaviour is missing!");

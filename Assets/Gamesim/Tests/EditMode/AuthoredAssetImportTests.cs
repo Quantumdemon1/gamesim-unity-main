@@ -38,10 +38,9 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(importer.useFileScale, Is.True, path);
                 Assert.That(importer.bakeAxisConversion, Is.True, path + ": the axis conversion is baked once, here.");
                 Assert.That(importer.addCollider, Is.False, path + ": colliders come only from _col meshes.");
-                Assert.That(importer.isReadable, Is.EqualTo(AuthoredAssetImporter.IsGenericCharacter(path)),
-                    path + ": only a body is readable, for the face it builds at runtime.");
-                Assert.That(importer.animationType, Is.EqualTo(AuthoredAssetImporter.IsGeneric(path) ? ModelImporterAnimationType.Generic
-                    : AuthoredAssetImporter.IsRigged(path) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None), path);
+                Assert.That(importer.isReadable, Is.False, path + ": nothing reads an authored mesh at runtime.");
+                Assert.That(importer.animationType, Is.EqualTo(AuthoredAssetImporter.IsRigged(path)
+                    ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None), path);
                 Assert.That(importer.importAnimation, Is.EqualTo(AuthoredAssetImporter.IsAnimation(path)), path);
                 Assert.That(importer.generateSecondaryUV, Is.EqualTo(!AuthoredAssetImporter.IsRigged(path)),
                     path + ": props carry lightmap UVs; bodies are lit by probes.");
@@ -91,9 +90,6 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(root.name, Does.StartWith("bb_"), path + ": the file and the root share the bb_ name.");
                 // A clip file is an armature and its takes: nothing to render, nothing to stand.
                 if (AuthoredAssetImporter.IsAnimation(path)) continue;
-                // A body on the shipped rig stands where the six shipped bodies stand: their feet
-                // sit two centimetres under the floor, and it is placed by its root, not its bounds.
-                if (AuthoredAssetImporter.IsGenericCharacter(path)) continue;
                 var bounds = RenderBounds(root);
                 // The memory wall hangs on a wall; its origin is the floor beneath it, and nothing of
                 // it touches the floor. Everything else stands.

@@ -60,7 +60,8 @@ any shape, and `Presentation_CeremonyCardsFireDuringAPlayedEpisode` asserts it c
 UMA live the whole cast popped in about half a second after the scene was already running. Found by
 switching the episode over and watching the suite fail on "player needs a visible body".
 `CharacterPresentation.BuildStandIn` now puts the authored body in place immediately and
-`RetireStandIn` removes it the frame the real one can draw.
+`RetireStandIn` removes it the frame the real one can draw. (Superseded 2026-09-27: the stand-in
+went with the Quaternius cast. See "The decision, since taken" below.)
 
 
 **A test the TextMeshPro migration missed.** `EpisodePlayModeTests.SpeechInput()` looked up the final
@@ -104,13 +105,12 @@ one made in place.
 The build is **912 MB against V6's 144 MB**; UMA is essentially all of the difference, and that is a
 distribution decision to take deliberately.
 
-### The open decision
+### The decision, since taken
 
-**Whether the shipping episode uses UMA bodies at all.** The committed scene still carries no
-`GamesimUmaCast`, matching the "temporary figures for testing" plan, so everything above ran on the
-authored prefabs. The switch is `Gamesim > UMA > Use UMA bodies in the episode`, and
-`Gamesim > UMA > Use the authored prefabs in the episode` puts it back; both are reversible scene
-edits, verified in both directions.
+**The shipping episode uses UMA bodies, and only UMA bodies** (2026-09-27). The committed scene
+carries `GamesimUmaCast`. The authored Quaternius prefabs and the menu item that switched back to
+them are gone, and a clone without UMA falls back to the primitive rig. When this section was
+written the scene carried no `GamesimUmaCast` yet, so everything above ran on the authored prefabs.
 
 It was run with UMA live and the **whole suite stayed green at 110/0/0**, so the decision carries no
 correctness risk. What it does carry:
@@ -128,8 +128,9 @@ correctness risk. What it does carry:
   was never the cast.
 
 Verifying it surfaced a genuine defect that the prefab cast never exposed: houseguests were
-**invisible for the half-second UMA takes to assemble**. `CharacterPresentation` now shows the
-authored body as a stand-in from the attach frame and retires it the frame the real body can draw.
+**invisible for the half-second UMA takes to assemble**. V7 covered the gap with the authored body as
+a stand-in. With the Quaternius cast gone (2026-09-27) nothing stands in: a houseguest is undrawn
+until their own body can draw, and the opening's loading gate waits for them.
 
 ### A decision the measurement surfaced, now taken
 

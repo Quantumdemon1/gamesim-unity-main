@@ -433,7 +433,7 @@ namespace Gamesim.Tests.PlayMode
             // What the studio actually finished building, not the id the screen set when she was
             // picked: a screen that never asked the studio for her, or asked for the wrong look,
             // passed everything above. And a real body where one can be built - ready is also what
-            // a timed-out build that swapped in a stand-in reports.
+            // a timed-out build that swapped in the placeholder capsule reports.
             Assert.That(CastScreen().StudioPreview.CompletedKey, Is.EqualTo(CharacterAppearance.Preset(emma.Id).ContentKey()),
                 "The model built is Emma's own look.");
             if (CharacterBodySource.Provider != null)

@@ -115,12 +115,12 @@ namespace Gamesim.Uma.Tests
             AssertGrown(presentation, true, "Changed back");
         }
 
-        /// <summary>Waits for an attached houseguest's body: built, and no longer behind a stand-in.</summary>
+        /// <summary>Waits for an attached houseguest's body: built, and no longer assembling.</summary>
         private static IEnumerator Settle(CharacterPresentation presentation)
         {
             double deadline = Time.realtimeSinceStartupAsDouble + 30;
             while (!Settled(presentation) && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
-            Assert.That(Settled(presentation), Is.True, "The body finished building and took the stand-in's place.");
+            Assert.That(Settled(presentation), Is.True, "The body finished building.");
             yield return null;
         }
 

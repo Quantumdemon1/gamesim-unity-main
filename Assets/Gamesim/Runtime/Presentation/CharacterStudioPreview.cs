@@ -166,25 +166,20 @@ namespace Gamesim.Presentation
             building = true;
         }
 
+        /// <summary>
+        /// A body that could not be built is a plain placeholder, never somebody else's body: the
+        /// cast is UMA's and there is no other (2026-09-27).
+        /// </summary>
         private void UseFallback(string reason)
         {
-                ReleaseBody();
-                buildRoot = new GameObject("Preview fallback " + revision);
-                buildRoot.transform.SetParent(transform, false);
-                var template = CastTemplates.Find(pending.presetId);
-                string fallback = template == null ? pending.fallbackId
-                    : CharacterPresentation.AppearanceId(CastTemplates.ToContestant(template, false), template.Id);
-                var prefab = Resources.Load<GameObject>("GamesimCharacters/" + fallback)
-                    ?? Resources.Load<GameObject>("GamesimCharacters/player");
-                if (prefab != null) subject = Instantiate(prefab, buildRoot.transform, false);
-                else
-                {
-                    subject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                    subject.transform.SetParent(buildRoot.transform, false);
-                    subject.transform.localPosition = Vector3.up;
-                }
-                fallbackStatus = reason + " Showing a fallback; your appearance is retained. Retry preview to try again.";
-                CanRetry = true;
+            ReleaseBody();
+            buildRoot = new GameObject("Preview fallback " + revision);
+            buildRoot.transform.SetParent(transform, false);
+            subject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            subject.transform.SetParent(buildRoot.transform, false);
+            subject.transform.localPosition = Vector3.up;
+            fallbackStatus = reason + " Showing a fallback; your appearance is retained. Retry preview to try again.";
+            CanRetry = true;
             foreach (var collider in subject.GetComponentsInChildren<Collider>()) Destroy(collider);
         }
 

@@ -18,7 +18,7 @@ namespace Gamesim.Uma
     /// only contract is <see cref="ICharacterBodyProvider"/>.
     ///
     /// <para>The body is handed the houseguest controller rather than UMA's <c>Locomotion</c>, so
-    /// it sits, talks, argues and reacts on the same parameter names the Generic cast uses. See
+    /// it sits, talks, argues, dances, poses and reacts on the cues the presentation drives. See
     /// <see cref="ResolveController"/> for the one thing that controller cannot carry itself.</para>
     /// </summary>
     public sealed class UmaBodyProvider : IModularCharacterBodyProvider
@@ -30,7 +30,7 @@ namespace Gamesim.Uma
 
         /// <summary>
         /// The houseguest controller, reached through Resources because it lives in Art/Characters
-        /// beside the Generic cast's and nothing in a build would otherwise pull it in. The asset
+        /// and nothing in a build would otherwise pull it in. The asset
         /// there is an override controller with no overrides, whose only job is to carry the real
         /// one; <c>HumanoidClipWiring</c> in Gamesim.Editor builds and maintains both.
         /// </summary>

@@ -241,7 +241,7 @@ namespace Gamesim.Tests.PlayMode
             // So wait for the cast to actually finish, and ask each body rather than watch the clock:
             // a batchmode frame is well under a millisecond, so "quiet for a few frames" would mean
             // quiet for no time at all, and a second of waiting would only be a longer guess. A body
-            // holding a stand-in has a render still coming; none holding one means none is coming.
+            // still assembling has a render still coming; none assembling means none is coming.
             cameraRig.ClearSubject();
             float bodyDeadline = Time.realtimeSinceStartup + 30f;
             while (SceneComponents<CharacterPresentation>().Any(body => body.IsBodyAssembling)

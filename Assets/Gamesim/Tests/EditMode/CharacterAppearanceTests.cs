@@ -218,5 +218,21 @@ namespace Gamesim.Tests.EditMode
             if (fromTemplate) Assert.That(state.Find(templates[1].Id), Is.Null, "The actual player template is reserved.");
             Assert.That(state.Find(state.playerId).name, Is.EqualTo(draft.Name));
         }
+
+        /// <summary>
+        /// The All-Stars roster's Dan asks for his own look by his own id - the key UMA's cast library
+        /// holds it under - rather than a legacy persona chosen from his traits. (He had an authored
+        /// body under that id until the cast became UMA's alone; the key outlived it.)
+        /// </summary>
+        [Test]
+        public void TheAllStarsTemplateAsksForItsOwnLook()
+        {
+            const string dan = "dan-gheesling";
+            var template = CastTemplates.Find(dan);
+            Assert.That(template, Is.Not.Null, "The All-Stars roster carries Dan.");
+            var contestant = CastTemplates.ToContestant(template, false);
+            Assert.That(Gamesim.Presentation.CharacterPresentation.AppearanceId(contestant, ContentCatalog.CanonicalId(contestant.id)),
+                Is.EqualTo(dan));
+        }
     }
 }

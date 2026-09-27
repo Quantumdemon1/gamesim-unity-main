@@ -17,9 +17,9 @@ which is roughly a gigabyte and is deliberately **not** in this repository — `
 gitignored. Import it from *My Assets* in the Package Manager first.
 
 If you open the scene without it, nothing catastrophic happens: you get one missing script warning
-on the `Gamesim UMA Cast` object and the houseguests fall back to the authored prefabs in
-`Assets/Gamesim/Resources/GamesimCharacters/`. The game is playable. It just is not the cast the
-screenshots show.
+on the `Gamesim UMA Cast` object, every houseguest falls back to a rig built from Unity primitives,
+and the portrait discs stay blank. The game is playable. It just is not the cast the screenshots
+show: the cast is UMA's alone, and there is no second set of character models to fall back to.
 
 Two related things worth knowing before you change anything:
 
@@ -27,12 +27,11 @@ Two related things worth knowing before you change anything:
   editor script sets it locally on any machine where `Assets/UMA` exists, and clears it where it
   does not. Committing it breaks every clone without UMA *beyond self-repair*, because the compile
   errors stop the very script that would clear it.
-- UMA-bodied builds are around 912 MB against 144 MB for the authored cast. That is a distribution
-  decision, not an accident.
+- UMA-bodied builds are around 912 MB, against 144 MB for the same game without UMA. That is a
+  distribution decision, not an accident.
 
-To switch casts, use **Gamesim ▸ UMA ▸ Use UMA bodies in the episode** or **… ▸ Use the authored
-prefabs in the episode**. It is a scene edit, reversible from the same menu, and leaves no trace
-when off.
+The committed scene already carries the `Gamesim UMA Cast` object. If a scene has lost it,
+**Gamesim ▸ UMA ▸ Use UMA bodies in the episode** puts it back.
 
 ---
 
@@ -98,7 +97,7 @@ Assets/Gamesim/
   Editor/         Scene construction and art passes (see the Gamesim menu).
   Uma/            UMA integration, entirely behind the GAMESIM_UMA define.
   Tests/          EditMode and PlayMode suites.
-  Art/External/   Kenney Furniture Kit and Quaternius characters, both CC0.
+  Art/External/   Kenney Furniture Kit and the Quaternius animation library, both CC0.
 ```
 
 The boundary that matters: **player interaction → validated command → simulation → committed result
@@ -156,9 +155,9 @@ anything.
 | Asset | Licence |
 | --- | --- |
 | [Kenney Furniture Kit 2.0](https://kenney.nl) | CC0 — [licence](Assets/Gamesim/Art/External/KenneyFurniture/Kenney-License.txt) |
-| [Quaternius characters](https://quaternius.com) | CC0 — [licence](Assets/Gamesim/Art/External/QuaterniusBaseCharacters/Quaternius-CC0-License.txt) |
+| [Quaternius Universal Animation Library](https://quaternius.com) | CC0 — [sources](Assets/Gamesim/Art/External/QuaterniusCharacters/CC0-SOURCES.txt) |
 | UMA 2 | Unity Asset Store — **not included**, import it yourself |
 
-The Quaternius licence file sits in `QuaterniusBaseCharacters/`, which is a second import that
-nothing references — the cast prefabs use `QuaterniusCharacters/`. Both are the same CC0 licence.
-The unused folder is 42 MB and safe to delete; it is kept only because the licence text lives in it.
+Despite its folder name, `QuaterniusCharacters/` holds only the animation library now: the idle,
+jog, swim, cook and dance takes the UMA bodies borrow. The Quaternius character models it once held
+were removed on 2026-09-27; the houseguests are UMA's alone.

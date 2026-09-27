@@ -46,9 +46,9 @@ the notes.
 ## Before the session
 
 - Use one pinned build and record its path and build report. Do not patch between participants.
-- Decide the cast first: the committed scene ships the authored prefabs. If you are evaluating the
-  UMA cast instead, run `Gamesim > UMA > Use UMA bodies in the episode` **before** building, and say
-  so in the notes — E5 answers differently for each.
+- Build on a machine with UMA imported. The committed scene carries `GamesimUmaCast`, and since
+  2026-09-27 UMA is the only cast. A build made without UMA shows the primitive rig instead; E5
+  answers differently for that, so say so in the notes.
 - Start each participant from a fresh save. `Gamesim > Port > Start Isolated Preview` keeps the normal
   slot untouched.
 - Have a timer and somewhere to write. Write during the session, not after.

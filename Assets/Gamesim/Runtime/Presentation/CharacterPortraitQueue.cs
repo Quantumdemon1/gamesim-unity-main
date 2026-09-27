@@ -11,7 +11,6 @@ namespace Gamesim.Presentation
         private readonly HashSet<string> requested = new HashSet<string>();
         private CharacterStudioPreview preview;
         private string currentKey, currentContent;
-        private CharacterAppearance currentAppearance;
         private float startedAt;
 
         public void Enqueue(string key, CharacterAppearance appearance)
@@ -26,20 +25,17 @@ namespace Gamesim.Presentation
             {
                 if (preview != null && !preview.IsBuilding && preview.CompletedKey == currentContent)
                 {
-                    CharacterPortraits.StoreAppearance(currentKey, preview.Texture, preview.CanRetry);
-                    // A failed request must get a fresh provider build on its next backoff attempt.
-                    if (preview.CanRetry) { Destroy(preview.gameObject); preview = null; }
+                    // A failed build is not a face: nothing is kept, and the look is tried again after
+                    // a back-off, on a fresh provider build.
+                    if (preview.CanRetry) { CharacterPortraits.MarkFailed(currentKey); Destroy(preview.gameObject); preview = null; }
+                    else CharacterPortraits.StoreAppearance(currentKey, preview.Texture);
                     requested.Remove(currentKey);
                     currentKey = null;
                 }
                 else if (Time.unscaledTime - startedAt > 30f)
                 {
                     // A failed content build must not starve the entire cast queue.
-                    var template = CastTemplates.Find(currentAppearance?.presetId);
-                    string fallback = template == null ? currentAppearance?.fallbackId
-                        : CharacterPresentation.AppearanceId(CastTemplates.ToContestant(template, false), template.Id);
-                    CharacterPortraits.StoreAppearance(currentKey, CharacterPortraits.Get(fallback)
-                        ?? CharacterPortraits.Get("player"), true);
+                    CharacterPortraits.MarkFailed(currentKey);
                     requested.Remove(currentKey);
                     currentKey = null;
                     if (preview != null) Destroy(preview.gameObject);
@@ -50,7 +46,7 @@ namespace Gamesim.Presentation
             if (pending.Count == 0) return;
             if (preview == null) { preview = CharacterStudioPreview.Create("Portrait studio"); preview.FocusFace(true); }
             var next = pending.Dequeue();
-            currentKey = next.Key; currentAppearance = next.Value; currentContent = next.Value.ContentKey(); startedAt = Time.unscaledTime;
+            currentKey = next.Key; currentContent = next.Value.ContentKey(); startedAt = Time.unscaledTime;
             preview.Show(next.Value);
         }
 

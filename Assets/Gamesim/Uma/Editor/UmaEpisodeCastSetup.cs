@@ -6,15 +6,15 @@ using UnityEngine;
 namespace Gamesim.Uma.Editor
 {
     /// <summary>
-    /// Switches the episode between UMA bodies and the authored prefabs, in one place, both ways.
+    /// Puts the UMA cast in the episode scene, where every houseguest's body comes from.
     ///
-    /// The provider seam is deliberately opt-in: houseguests use UMA only if the scene carries
-    /// <see cref="GamesimUmaCast"/>. That makes the switch a scene edit, which is exactly the kind of
-    /// change that is easy to make by hand, forget, and then not be able to undo cleanly. This does
-    /// it reversibly and leaves no trace when turned off.
+    /// The provider seam is opt-in: houseguests use UMA only if the scene carries
+    /// <see cref="GamesimUmaCast"/>, which the committed episode does. This restores it to a scene
+    /// that lost it. There is no switch back to another cast: the cast is UMA's alone (2026-09-27),
+    /// and a scene without the component builds the primitive rig, which is only ever meant for a
+    /// clone without the UMA package.
     ///
-    /// Both entry points are public so a headless run can drive them with <c>-executeMethod</c>,
-    /// which is how the UMA-bodied season was verified.
+    /// The entry point is public so a headless run can drive it with <c>-executeMethod</c>.
     /// </summary>
     public static class UmaEpisodeCastSetup
     {
@@ -22,12 +22,7 @@ namespace Gamesim.Uma.Editor
         private const string CastObjectName = "Gamesim UMA Cast";
 
         [MenuItem("Gamesim/UMA/Use UMA bodies in the episode", priority = 110)]
-        public static void UseUmaBodies() => Apply(true);
-
-        [MenuItem("Gamesim/UMA/Use the authored prefabs in the episode", priority = 111)]
-        public static void UseAuthoredPrefabs() => Apply(false);
-
-        private static void Apply(bool useUma)
+        public static void UseUmaBodies()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
@@ -42,28 +37,15 @@ namespace Gamesim.Uma.Editor
                 return;
             }
 
-            var existing = scene.GetRootGameObjects()
-                .SelectMany(root => root.GetComponentsInChildren<GamesimUmaCast>(true))
-                .FirstOrDefault();
-
-            if (useUma && existing == null)
+            if (scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<GamesimUmaCast>(true)).Any())
             {
-                var host = new GameObject(CastObjectName, typeof(GamesimUmaCast));
-                UnityEditor.SceneManagement.EditorSceneManager.MoveGameObjectToScene(host, scene);
-                Debug.Log("[Gamesim.Uma] Episode now builds houseguests from UMA.");
-            }
-            else if (!useUma && existing != null)
-            {
-                Object.DestroyImmediate(existing.gameObject);
-                Debug.Log("[Gamesim.Uma] Episode reverted to the authored prefabs.");
-            }
-            else
-            {
-                Debug.Log("[Gamesim.Uma] Episode already uses "
-                    + (useUma ? "UMA bodies" : "the authored prefabs") + "; nothing changed.");
+                Debug.Log("[Gamesim.Uma] Episode already builds houseguests from UMA; nothing changed.");
                 return;
             }
 
+            var host = new GameObject(CastObjectName, typeof(GamesimUmaCast));
+            EditorSceneManager.MoveGameObjectToScene(host, scene);
+            Debug.Log("[Gamesim.Uma] Episode now builds houseguests from UMA.");
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();

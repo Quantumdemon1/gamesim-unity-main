@@ -17,16 +17,12 @@ namespace Gamesim.House
         private HouseInteractionAnchor anchor;
         private Func<bool> ownsSeat;
         private Transform body,hips,leftFoot,rightFoot,head;
-        private Animator bodyAnimator;
         private static readonly HashSet<HouseSeatPresentation> occupied = new HashSet<HouseSeatPresentation>();
         private static readonly RaycastHit[] pickHits = new RaycastHit[32];
         private Vector3 origin,anchorPosition,anchorContact,appliedOffset,lastWritten,baseLocalPosition;
         private Quaternion baseLocalRotation,startRotation;
         /// <summary>The way the posed body last faced, for a body that takes its place after the old one has gone.</summary>
         private Quaternion heldRotation=Quaternion.identity;
-
-        /// <summary>The half-turn the authored seated clips need to face the way the anchor says.</summary>
-        private const float SeatedClipHalfTurn = 180f;
         private float began,nextScan,anchorFacing;
         private HouseAnchorPose mode;
         /// <summary>Where a swimmer is along the pool, in metres from its middle, and which way they are going.</summary>
@@ -129,7 +125,7 @@ namespace Gamesim.House
             TickLap();
             if(character.VisualRoot!=body)
             {
-                RestoreBody();body=character.VisualRoot;hips=leftFoot=rightFoot=head=null;bodyAnimator=null;nextScan=0;
+                RestoreBody();body=character.VisualRoot;hips=leftFoot=rightFoot=head=null;nextScan=0;
                 if(body==null)return;
                 baseLocalPosition=body.localPosition;baseLocalRotation=body.localRotation;
                 lastWritten=baseLocalPosition;startRotation=body.rotation;
@@ -157,20 +153,18 @@ namespace Gamesim.House
             }
             float blend=character.ReducedMotion ? 1f : Mathf.SmoothStep(0,1,(Time.unscaledTime-began)/.75f);
             if(mode!=HouseAnchorPose.Seat){PoseAlong(blend);return;}
-            // Half a turn only for the non-humanoid bodies, whose Blender-authored seated clips are
-            // still exported facing the other way. It used to be applied to every body, because the
-            // humanoid (mocap) takes were imported "Based Upon: Original" and so faced away too - the
-            // diary confessional framed the back of the player's head until it was added. The
-            // importer now turns every humanoid take to face its body's forward
-            // (AuthoredAssetImporter.OnPreprocessAnimation), so a humanoid sits the way the anchor says.
+            // Every body sits the way the anchor says. A half-turn used to be added for bodies with no
+            // humanoid avatar, whose Blender-authored seated clips were exported facing the other
+            // way; those bodies are gone (the cast is UMA's alone, 2026-09-27), and the half-turn was
+            // left seating the primitive rig facing the chair back, and turning a UMA body round
+            // on the frame its avatar arrived. The importer turns every humanoid take to face its
+            // body's forward (AuthoredAssetImporter.OnPreprocessAnimation).
             //
             // Through baseLocalRotation rather than over it, as well: this line used to set the
             // WORLD rotation and discard the base for the whole time somebody was sitting - the
             // value captured two methods up and carefully restored on the way out.
-            if(bodyAnimator==null)bodyAnimator=body.GetComponentInChildren<Animator>();
-            float halfTurn=bodyAnimator!=null && bodyAnimator.isHuman ? 0f : SeatedClipHalfTurn;
             body.rotation=Quaternion.Slerp(startRotation,
-                Quaternion.Euler(0,anchor.Facing+halfTurn,0)*baseLocalRotation,blend);
+                Quaternion.Euler(0,anchor.Facing,0)*baseLocalRotation,blend);
             Vector3 offset=anchor.Position-transform.position;
             if(hips!=null && Time.unscaledTime-began>.45f)
             {
@@ -248,7 +242,7 @@ namespace Gamesim.House
             // sits, and a flag found set when this pose began - one set with no seat under it -
             // was handed back when it ended, and sat the body down in the air at its approach.
             if(character!=null){character.SetActivity(CharacterPresentation.BodyActivity.None);character.SetSeated(false);}
-            body=hips=leftFoot=rightFoot=head=null;bodyAnimator=null;anchor=null;ownsSeat=null;
+            body=hips=leftFoot=rightFoot=head=null;anchor=null;ownsSeat=null;
         }
 
         /// <summary>Normal departure stands at the chair before returning the visual body to its clear approach.</summary>
@@ -271,7 +265,7 @@ namespace Gamesim.House
                 // dropped the climb halfway and jumped the body to the deck.
                 var facing=body!=null ? body.rotation : heldRotation;
                 RestoreBody();
-                body=character.VisualRoot;hips=leftFoot=rightFoot=head=null;bodyAnimator=null;
+                body=character.VisualRoot;hips=leftFoot=rightFoot=head=null;
                 if(body==null){End();return;}
                 baseLocalPosition=body.localPosition;baseLocalRotation=body.localRotation;lastWritten=baseLocalPosition;
                 body.rotation=facing;

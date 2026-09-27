@@ -121,25 +121,5 @@ namespace Gamesim.Episode
                     if (npc != null && npc.Id == id && npc.gameObject.activeInHierarchy) return npc.transform;
             return player != null && projected != null && id == projected.playerId ? player.transform : null;
         }
-
-        /// <summary>
-        /// The visual root of a houseguest whose body is generated at runtime, or null.
-        ///
-        /// <para>Only generated bodies are offered. An authored prefab photographs better from the
-        /// portrait rig — isolated, unlit, framed — than it does standing in a dark house, so there
-        /// is nothing to gain by capturing it live and a lit-by-the-room portrait to lose.</para>
-        /// </summary>
-        public Transform LiveBody(string contestantId)
-        {
-            if (CharacterBodySource.Provider == null) return null;
-            var canonical = ContentCatalog.CanonicalId(contestantId);
-            foreach (var visual in gameObject.scene.GetRootGameObjects()
-                         .SelectMany(root => root.GetComponentsInChildren<CharacterPresentation>(true)))
-            {
-                if (ContentCatalog.CanonicalId(visual.CharacterId) != canonical) continue;
-                return visual.transform.Find("Gamesim Character Visual");
-            }
-            return null;
-        }
     }
 }

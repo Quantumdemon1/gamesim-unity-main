@@ -231,8 +231,8 @@ namespace Gamesim.Tests.PlayMode
             var presentation = player.GetComponent<CharacterPresentation>();
             string everyday = presentation.AppearanceSnapshot?.activeOutfit;
             int missing = 0;
-            // Seen, and seen as themselves: a stand-in in somebody else's clothes while UMA
-            // rebuilds is the pop this is about, not a body.
+            // Seen, and seen as themselves: a body UMA is still assembling draws nothing, and that
+            // gap is the pop this is about. The swimsuit is made behind the body on show.
             bool Visible()
             {
                 var visual = presentation.VisualRoot;

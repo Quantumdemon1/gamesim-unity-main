@@ -37,13 +37,6 @@ namespace Gamesim.Editor
 
         public static bool IsAnimation(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Animation/", StringComparison.Ordinal);
-        /// <summary>
-        /// Clips authored on the shipped Quaternius skeleton (bb_anim.py): Generic, not Humanoid,
-        /// because that rig is Generic and a Generic clip plays by bone path on the six bodies as
-        /// they are. Humanoid retargeting would need every body re-imported as Humanoid first.
-        /// </summary>
-        public static bool IsGenericAnimation(string path) => IsAuthored(path)
-            && path.StartsWith(Root + "Animation/Generic/", StringComparison.Ordinal);
 
         /// <summary>
         /// Clips for the UMA cast, which is Humanoid: mocap takes retargeted onto whatever body UMA
@@ -63,17 +56,6 @@ namespace Gamesim.Editor
         }
 
         public const string AnimationPrefix = "bb_anim_";
-
-        /// <summary>
-        /// A body authored on the shipped skeleton (<c>ArtSource/characters/bb_char_*.py</c>): the
-        /// same Generic rig as the six bodies, so every clip in the controller plays on it by bone
-        /// path, and readable, because <c>FaceExpression</c> builds its shapes from the mesh.
-        /// </summary>
-        public static bool IsGenericCharacter(string path) => IsAuthored(path)
-            && path.StartsWith(Root + "Characters/Generic/", StringComparison.Ordinal);
-
-        /// <summary>Anything imported as a Generic rig rather than Humanoid: the clips and the bodies on that rig.</summary>
-        public static bool IsGeneric(string path) => IsGenericAnimation(path) || IsGenericCharacter(path);
 
         public static bool IsTexture(string path) => IsAuthored(path)
             && path.StartsWith(Root + "Textures/", StringComparison.Ordinal);
@@ -115,7 +97,7 @@ namespace Gamesim.Editor
             importer.useFileScale = true;
             importer.useFileUnits = true;
             importer.bakeAxisConversion = true;
-            importer.isReadable = IsGenericCharacter(assetPath);   // a body's face is built from its mesh
+            importer.isReadable = false;
             importer.addCollider = false;
             importer.importBlendShapes = true;
             importer.importVisibility = false;
@@ -129,14 +111,12 @@ namespace Gamesim.Editor
             // rig it was captured on. The take is what is wanted; the actor who performed it is not,
             // so nothing of their materials comes with it.
             if (IsHumanoidAnimation(assetPath)) importer.materialImportMode = ModelImporterMaterialImportMode.None;
-            importer.animationType = IsHumanoidAnimation(assetPath) ? ModelImporterAnimationType.Human
-                : IsGeneric(assetPath) ? ModelImporterAnimationType.Generic
-                : IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
+            importer.animationType = IsRigged(assetPath) ? ModelImporterAnimationType.Human : ModelImporterAnimationType.None;
             importer.importAnimation = IsAnimation(assetPath);
             // A prop is lightmapped, and its box-projected UVs tile past 0..1, so the lightmapper
             // gets a second set of its own. A body is lit by probes and needs none.
             importer.generateSecondaryUV = !IsRigged(assetPath);
-            // A Generic rig gets no avatar unless asked; the prefab and the six bodies carry one.
+            // A prop has no rig and needs no avatar; a take carries the avatar it was captured on.
             importer.avatarSetup = IsRigged(assetPath) || IsHumanoidAnimation(assetPath)
                 ? ModelImporterAvatarSetup.CreateFromThisModel : ModelImporterAvatarSetup.NoAvatar;
         }

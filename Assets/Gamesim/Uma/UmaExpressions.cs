@@ -8,13 +8,10 @@ namespace Gamesim.Uma
     /// <summary>
     /// The face a UMA houseguest wears, from the two words the simulation already keeps about them.
     ///
-    /// <para><see cref="FaceExpression"/> gives the low-poly bodies an expression by moving the
-    /// vertices of two eye clusters, because a Quaternius head has no brows and no mouth to move. A
-    /// UMA head has both, and UMA ships a player for them: <see cref="UMAExpressionPlayer"/> drives
-    /// fifty-one pose channels on the built skeleton. So the same <c>mood</c> × <c>stressLevel</c>
-    /// that squints an eye cluster over there lowers a brow and turns a mouth over here, and the
-    /// eye-cluster path is simply left with nothing to bind to — a UMA body has no "Face" material,
-    /// which is the condition that already made <see cref="FaceExpression"/> a no-op on one.</para>
+    /// <para>A UMA head has brows and a mouth to move, and UMA ships a player for them:
+    /// <see cref="UMAExpressionPlayer"/> drives fifty-one pose channels on the built skeleton. So the
+    /// simulation's <c>mood</c> × <c>stressLevel</c> lowers a brow and turns a mouth, read from the
+    /// presentation every frame.</para>
     ///
     /// <para>Mood chooses the shape; stress colours it. They are separate because the simulation
     /// keeps them separately: a houseguest can be happy and about to come apart, and a face that

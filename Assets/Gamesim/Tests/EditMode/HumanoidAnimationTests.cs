@@ -253,10 +253,9 @@ namespace Gamesim.Tests.EditMode
             Declares(HumanoidClipWiring.ArguingParameter, AnimatorControllerParameterType.Bool);
             Declares(HumanoidClipWiring.RunningParameter, AnimatorControllerParameterType.Bool);
 
-            // The reaction triggers are indexed by CharacterPresentation.Reaction, and both casts
-            // answer to the same five names, so a beat added there is a beat both rigs are asked
-            // for. This cast has takes for two of them; the other three rows carry no state, and
-            // the controller must NOT declare those, because an undeclared trigger is how the
+            // The reaction triggers are indexed by CharacterPresentation.Reaction, so a beat added
+            // there is a beat the controller is asked for. Rows with no take carry no state, and the
+            // controller must NOT declare those, because an undeclared trigger is how the
             // presentation knows to leave the body in its idle instead of playing a wrong take.
             var beats = Enum.GetNames(typeof(CharacterPresentation.Reaction));
             Assert.That(HumanoidClipWiring.Reactions.Length, Is.EqualTo(beats.Length),
@@ -264,8 +263,6 @@ namespace Gamesim.Tests.EditMode
             for (int i = 0; i < beats.Length; i++)
             {
                 Assert.That(HumanoidClipWiring.Reactions[i].trigger, Is.EqualTo("React" + beats[i]));
-                Assert.That(HumanoidClipWiring.Reactions[i].trigger,
-                    Is.EqualTo(AuthoredClipWiring.Reactions[i].trigger), "both casts answer to the same trigger");
                 if (HumanoidClipWiring.Reactions[i].state != null)
                     Declares(HumanoidClipWiring.Reactions[i].trigger, AnimatorControllerParameterType.Trigger);
                 else

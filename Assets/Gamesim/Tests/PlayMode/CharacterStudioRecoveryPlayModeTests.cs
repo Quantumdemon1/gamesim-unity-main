@@ -36,14 +36,25 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// A look the studio fails to build is no portrait at all - never somebody else's face, which
+        /// is what the failed look used to be given - waits out a back-off before it is tried again,
+        /// does not hold up the rest of the cast, and is built after all once the studio can.
+        /// </summary>
         [UnityTest]
-        public IEnumerator TemporaryPortraitRecoversWithoutStarvingAnotherQueuedHouseguest()
+        public IEnumerator AFailedPortraitIsNoFaceAndRecoversWithoutStarvingTheCast()
         {
             CharacterPortraits.Release();
             provider.ThrowAfterAllocation = true;
             var broken = CharacterPortraits.PrepareAppearance(CharacterAppearance.Preset("player"));
-            Texture temporary = null;
-            yield return Until(() => (temporary = CharacterPortraits.Get(broken)) != null);
+            Assert.That(CharacterPortraits.Get(broken), Is.Null, "Nothing to show until the studio has built it.");
+            yield return Until(() => provider.Roots.Count == 1 && provider.Roots[0] == null);
+            for (int i = 0; i < 30; i++)
+            {
+                Assert.That(CharacterPortraits.Get(broken), Is.Null, "A failed build is no face, and nothing stands in for it.");
+                yield return null;
+            }
+            Assert.That(provider.Roots.Count, Is.EqualTo(1), "The failed look waits out its back-off, however often it is asked for.");
             provider.ThrowAfterAllocation = false;
             provider.CompleteImmediately = true;
             var another = CharacterPortraits.PrepareAppearance(CharacterAppearance.Preset("emma-brown"));
@@ -51,9 +62,8 @@ namespace Gamesim.Tests.PlayMode
             yield return Until(() => (healthy = CharacterPortraits.Get(another)) != null);
             Assert.That(healthy, Is.Not.Null, "An earlier failed portrait cannot block the remaining cast.");
             Texture recovered = null;
-            yield return Until(() => (recovered = CharacterPortraits.Get(broken)) != null && recovered != temporary);
-            Assert.That(temporary == null || !(temporary as RenderTexture).IsCreated(), Is.True, "Replacing a placeholder releases its texture.");
-            Assert.That(recovered, Is.Not.Null);
+            yield return Until(() => (recovered = CharacterPortraits.Get(broken)) != null);
+            Assert.That(recovered, Is.Not.Null, "and after its back-off the failed look is built after all.");
         }
 
         [UnityTest]
@@ -112,7 +122,7 @@ namespace Gamesim.Tests.PlayMode
                 var store = typeof(CharacterPortraits).GetMethod("StoreAppearance", BindingFlags.Static | BindingFlags.NonPublic);
                 Assert.That(store, Is.Not.Null);
                 for (int i = 0; i < 97; i++)
-                    store.Invoke(null, new object[] { "eviction-fixture-" + i, Texture2D.whiteTexture, false });
+                    store.Invoke(null, new object[] { "eviction-fixture-" + i, Texture2D.whiteTexture });
                 yield return null;
                 Assert.That(original == null, Is.True, "The least recently used texture must be released.");
                 yield return Until(() => image.texture != null && image.texture != original);
@@ -150,7 +160,7 @@ namespace Gamesim.Tests.PlayMode
             yield return Until(() => preview.CanRetry && !preview.IsBuilding);
             Assert.That(preview.Status, Does.Contain("could not be built"));
             Assert.That(provider.Roots[0] == null, Is.True);
-            Assert.That(preview.GetComponentsInChildren<Renderer>(), Is.Not.Empty, "Recovery shows a usable authored fallback.");
+            Assert.That(preview.GetComponentsInChildren<Renderer>(), Is.Not.Empty, "Recovery shows a plain placeholder.");
         }
 
         [UnityTest]

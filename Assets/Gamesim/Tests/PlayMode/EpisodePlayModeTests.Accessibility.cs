@@ -94,9 +94,9 @@ namespace Gamesim.Tests.PlayMode
                 var before = ActiveChromePanel("Brand");
                 Assert.That(before, Is.Not.Null);
 
-                // Exercise the real Update -> Render branch deterministically, including in the
-                // authored-body configuration. Only the director's observed counter is stale;
-                // the global completion counter and cast remain untouched.
+                // Exercise the real Update -> Render branch deterministically, including on the
+                // primitive rig, where no body ever completes. Only the director's observed counter
+                // is stale; the global completion counter and cast remain untouched.
                 seenBodies.SetValue(director, CharacterPresentation.BodiesCompleted - 1);
                 yield return null;
                 Assert.That(ActiveChromePanel("Brand"), Is.Not.SameAs(before),
@@ -149,9 +149,9 @@ namespace Gamesim.Tests.PlayMode
         {
             if (!Application.isBatchMode) yield break;
 
-            // Let the cast settle first. A provided body is assembled over frames, so capturing
-            // immediately photographs the stand-ins rather than the houseguests, which would make
-            // the review frames quietly misleading about what the game looks like.
+            // Let the cast settle first. A provided body is assembled over frames and is not drawn
+            // until it is, so capturing immediately photographs an empty house, which would make the
+            // review frames quietly misleading about what the game looks like.
             yield return SettleCast();
 
             var camera = cameraRig.ViewCamera;
@@ -555,17 +555,18 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Waits until no houseguest is still showing a stand-in, or gives up after a bounded number
-        /// of frames. On the authored-prefab cast there are no stand-ins and this returns at once.
+        /// Waits until no houseguest in the house is still being assembled, or gives up after a
+        /// bounded number of frames. A body in assembly is not drawn, and the one that arrives
+        /// triggers a HUD render. Only bodies in the house count: one on an inactive actor never
+        /// finishes. On the primitive rig nobody assembles and this returns at once.
         /// </summary>
         private IEnumerator SettleCast()
         {
             const int limit = 900;
             for (int frame = 0; frame < limit; frame++)
             {
-                bool waiting = director.gameObject.scene.GetRootGameObjects()
-                    .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
-                    .Any(node => node.name == "Stand-in");
+                bool waiting = SceneComponents<CharacterPresentation>()
+                    .Any(presentation => presentation.gameObject.activeInHierarchy && presentation.IsBodyAssembling);
                 if (!waiting) break;
                 yield return null;
             }

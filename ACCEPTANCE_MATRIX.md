@@ -120,7 +120,7 @@ The expected headless result is **678/0/0** Edit Mode, **111/0/0** Play Mode and
 | B8 | UMA does not regress the suite | Full Edit + Play suites with UMA installed | A1 and A2 still hold | **passed** — 678/0/0 and 114/0/0 with UMA installed |
 | B9 | The seam defaults to the project's own body | `CharacterBodyProviderPlayModeTests` | no provided body appears unless a provider supplied one, and no test leaks a provider | **passed** |
 | B10 | The episode runs on UMA bodies | `Gamesim/UMA/Use UMA bodies in the episode`, then the full suite | suite stays green with UMA live in `EpisodeHouse.unity` | **passed** — 114/0/0 |
-| B11 | No pop-in while UMA assembles | `Houseguest_IsNeverInvisibleWhileUmaAssemblesTheBody` | a body is drawable from the attach frame; the stand-in is retired once the real body exists | **passed** |
+| B11 | Nobody stands in while UMA assembles | `Houseguest_IsOnlyEverTheirOwnBodyWhileUmaAssemblesIt` | no other body is ever under the houseguest; they read as assembling from the attach frame until their body can draw, which is counted once | **passed** |
 
 B3's threshold is two bounds rather than one because the card descends into place: it is never lower
 than where it settles, but it is deliberately part-way above the screen edge for the 0.22 s entrance.
@@ -158,9 +158,15 @@ zooming in from there. B6c is therefore closed as a deliberate choice rather tha
 it is the assumption the playtest is most likely to test, so E2 should note whether participants find
 the zoom without being told.
 
-B9 says "the project's own body", not "the primitive rig", on purpose. The fallback is an authored
-prefab from `Resources/GamesimCharacters/` when the persona has one and the primitive rig when it
-does not. Both are correct; what the seam guarantees is that no provider supplied it.
+B9 says "the project's own body". Since 2026-09-27 that is the primitive rig, the only body the
+project builds itself; before then it was an authored Quaternius prefab where the persona had one.
+What the seam guarantees is unchanged: no provider supplied it.
+
+B11 was "no pop-in while UMA assembles" until 2026-09-27, met by putting an authored Quaternius body
+in place from the attach frame. The Quaternius cast is gone. The stand-in was somebody else's body
+on screen for half a second, and the cast is UMA's alone. So a houseguest now draws nothing for the
+half-second UMA takes, and the opening's loading gate waits for them. The row now asserts the
+opposite of what it used to: that nothing stands in.
 
 ## C — Performance
 
@@ -188,8 +194,13 @@ identical conditions — once on the authored prefabs, once on UMA — and compa
 gave **1.52×** (0.265 → 0.404 ms) and **1.24×** (0.418 → 0.520 ms). Report it as roughly **1.2×–1.5×**
 and do not treat either figure as precise: the spread across runs is comparable to the effect being
 measured, which is the honest state of a sub-millisecond batchmode measurement. The ratio is the
-meaningful part; the absolute numbers carry this section's batchmode caveat. The profiled season
-itself still ran on the prefabs, because no scene carries `GamesimUmaCast` yet.
+meaningful part; the absolute numbers carry this section's batchmode caveat. The 2026-09-19 profiled
+season still ran on the prefabs; the committed scene has carried `GamesimUmaCast` since.
+
+Since 2026-09-27 the other side of that comparison is the primitive rig, because the authored
+prefabs are gone and a house with no provider is built of primitives. The first two runs against it
+gave **1.67×** (0.244 → 0.409 ms) and **1.49×** (0.271 → 0.402 ms). The UMA side is where it was,
+and the spread is the same batchmode noise as above.
 
 Together with the **+768 MB** of build size, that is the cost side of the decision to put UMA in the
 shipping episode. Both numbers are now known rather than guessed.
@@ -252,8 +263,9 @@ recorded as passing without a number behind it are indistinguishable once the bl
 optimistically, so they stay empty until a real session fills them.
 
 - **Build under test:** `D:\GamesimAcceptance\Builds\Port-Windows-V7\Gamesim.exe`
-- **Cast configuration:** authored prefabs (the committed scene). Note it here if the UMA cast is
-  substituted — E5 answers differently for each.
+- **Cast configuration:** UMA, the committed scene's cast and since 2026-09-27 the only one. A build
+  made without UMA shows the primitive rig instead; note it here if so, because E5 answers
+  differently.
 - **Date:** —
 - **Participants:** 0 of the 3 E2 requires
 

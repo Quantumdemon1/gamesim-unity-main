@@ -5,17 +5,14 @@ using UnityEngine;
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// Stylized cast presentation. Prefers an authored rigged model from Resources and drives it
-    /// through an Animator; falls back to the original articulated primitive recipe when no model
-    /// is present, so the project still runs with art stripped out. Only this component's visual
-    /// hierarchy moves; navigation stays authoritative.
+    /// Stylized cast presentation. The houseguest's body is the one the registered provider - UMA -
+    /// builds, driven through an Animator; with no provider, which is a clone without the UMA package,
+    /// the original articulated primitive recipe stands in, so the project still runs. There is no
+    /// other cast. Only this component's visual hierarchy moves; navigation stays authoritative.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CharacterPresentation : MonoBehaviour
     {
-        private const string ModelResourceRoot = "GamesimCharacters/";
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        private static readonly int LegacyColorId = Shader.PropertyToID("_Color");
         private static readonly int SpeedParam = Animator.StringToHash("Speed");
         private static readonly int SeatedParam = Animator.StringToHash("Seated");
         private static readonly int RunningParam = Animator.StringToHash("Running");
@@ -104,14 +101,11 @@ namespace Gamesim.Presentation
         private Pose pose;
         private bool seatedGesturePending;
         /// <summary>
-        /// The ceremony beats a body can act out: one-shot clips the controller may declare as
-        /// triggers. Appended to, never reordered: <c>AuthoredClipWiring.Reactions</c> and
-        /// <see cref="ReactionParams"/> are both indexed by this order.
-        /// </summary>
-        /// <summary>
-        /// A beat a body acts out. The story's five (plan §5.1) are appended, so no value moves:
-        /// until a controller declares their triggers a body skips them like any clip it lacks, and
-        /// the director plays a ceremony stand-in instead (see <see cref="Supports"/>).
+        /// A beat a body acts out: a one-shot clip the controller may declare as a trigger. Appended
+        /// to, never reordered: <c>HumanoidClipWiring.Reactions</c> and <see cref="ReactionParams"/>
+        /// are both indexed by this order. The story's five (plan §5.1) are appended, so no value
+        /// moves: until a controller declares their triggers a body skips them like any clip it
+        /// lacks, and the director plays a ceremony stand-in instead (see <see cref="Supports"/>).
         /// </summary>
         public enum Reaction { Nominated, Saved, Evicted, Won, Cheered, Shocked, Tearful, Embrace, Furious, StormOff }
         private static readonly int[] ReactionParams =
@@ -198,7 +192,8 @@ namespace Gamesim.Presentation
         private Transform modelHead;
         private Quaternion modelHeadRest;
         private CharacterBody providedBody;
-        private Transform standIn;
+        /// <summary>A provider's body asked for and not yet drawable: see <see cref="BodyArrived"/>.</summary>
+        private bool awaitingBody;
         private RuntimeAnimatorController inspectedController;
         private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam, hasArguingParam;
         private bool hasRunningParam;
@@ -216,11 +211,11 @@ namespace Gamesim.Presentation
         public static int BodiesCompleted { get; private set; }
 
         /// <summary>
-        /// True while this body is still a stand-in waiting for its real one. Read-only proof for
-        /// tests that must not be interrupted by the render a finished body triggers; never a
-        /// source of game knowledge and never a command.
+        /// True while the provider is still assembling this body, which is not drawn until it is.
+        /// Read-only proof for tests that must not be interrupted by the render a finished body
+        /// triggers; never a source of game knowledge and never a command.
         /// </summary>
-        public bool IsBodyAssembling => standIn != null;
+        public bool IsBodyAssembling => awaitingBody;
         private static int deferredCloneBuilds;
 
         /// <summary>
@@ -302,19 +297,19 @@ namespace Gamesim.Presentation
         ///
         /// <para>A new look is a new body, and <see cref="Attach"/> builds one by taking the old
         /// one away first - which leaves the houseguest missing for the half-second UMA takes to
-        /// make them again, or a stand-in in the wrong clothes. Here the new body is built out of
+        /// make them again. Here the new body is built out of
         /// sight, at no size, beside the old one; the old one goes on walking, sitting and being
         /// looked at until the frame the new one is ready, and then they change places.</para>
         ///
-        /// <para>Anything with nothing to hide behind - a body not yet built, a different person, an
-        /// authored or primitive body - is attached the ordinary way.</para>
+        /// <para>Anything with nothing to hide behind - a body not yet built, a different person, the
+        /// primitive rig - is attached the ordinary way.</para>
         /// </summary>
         public static CharacterPresentation Dress(GameObject root, ContestantState character, Color palette)
         {
             if (root == null || character == null) return null;
             var component = root.GetComponent<CharacterPresentation>();
             if (component == null || !component.built || !Application.isPlaying || !component.providedBody.Exists
-                || component.standIn != null || component.CharacterId != ContentCatalog.CanonicalId(character.id))
+                || component.awaitingBody || component.CharacterId != ContentCatalog.CanonicalId(character.id))
             {
                 component?.CancelDressing();
                 return Attach(root, character, palette);
@@ -418,57 +413,35 @@ namespace Gamesim.Presentation
             inspectedController = null;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             hasRunningParam = hasPaceParam = false; activityParams = 0;
-            modelHead = null; face = null;
+            modelHead = null;
             definition = dressingAs; AppearanceKey = dressingKey;
             dressingRoom = null; dressing = default; dressingAs = null; dressingKey = null;
-            PushMood();
         }
 
-        private FaceExpression face;
         private string mood = "Neutral", stress = "Normal";
 
-        /// <summary>
-        /// The houseguest's mood and stress level, for the eyes (MASTER-PLAN §3.B faces). Held
-        /// until a body with a face exists, then pushed; a deferred body picks it up when it lands.
-        /// </summary>
+        /// <summary>The houseguest's mood and stress level, for the face (MASTER-PLAN §3.B faces).</summary>
         public void SetMood(string moodWord, string stressWord)
         {
             mood = moodWord ?? "Neutral";
             stress = stressWord ?? "Normal";
-            PushMood();
         }
 
-        /// <summary>The face on this body, or null while there is none.</summary>
-        public FaceExpression Face => face;
-
         /// <summary>
-        /// The two words the face is wearing, and whether it is allowed to move.
-        ///
-        /// <para>The hook a body that grows its own face needs. <see cref="FaceExpression"/> is
-        /// pushed to because it is a component this one attaches; a UMA body's expression player is
-        /// not — it belongs to the body, is built by UMA, and lives in an assembly this one knows
-        /// nothing about — so it reads the same three values instead. Nothing here is new state.</para>
+        /// The two words the face is wearing, and whether it is allowed to move. A UMA body's
+        /// expression player belongs to the body, is built by UMA, and lives in an assembly this one
+        /// knows nothing about, so it reads these three values every frame; nothing is pushed to it.
         /// </summary>
         public string Mood => mood;
         public string Stress => stress;
         public bool ReducedMotion => reducedMotion;
-
-        private void PushMood()
-        {
-            if (face == null && providedBody.Exists && standIn == null
-                && providedBody.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) != null)
-                face = FaceExpression.Attach(providedBody.Root);
-            if (face == null) return;
-            face.ReducedMotion = reducedMotion;
-            face.SetMood(mood, stress);
-        }
 
         private void Awake()
         {
             if (!built && definition != null && deferredCloneBuilds == 0) Build(definition, wardrobeColor);
         }
 
-        public void SetReducedMotion(bool value) { reducedMotion = value; if (face != null) face.ReducedMotion = value; }
+        public void SetReducedMotion(bool value) => reducedMotion = value;
         public void SetTalking(bool value) => talking = value;
         /// <summary>
         /// Within a conversation, whether this body has the floor. The director alternates it
@@ -646,7 +619,7 @@ namespace Gamesim.Presentation
             visual = Joint("Gamesim Character Visual", transform, Vector3.zero);
             visual.localScale = Vector3.one * heightScale;
 
-            if (!TryBuildModel(appearanceId, palette))
+            if (!TryBuildProvidedBody(appearanceId, palette))
                 BuildPrimitiveBody(appearanceId, palette, diplomat, athlete, caregiver, wildcard, analyst);
 
             // U02's body/head are replaceable visual placeholders. Keep every collider and marker.
@@ -664,40 +637,11 @@ namespace Gamesim.Presentation
             built = true;
         }
 
-        private bool TryBuildModel(string appearanceId, Color palette)
-        {
-            if (TryBuildProvidedBody(appearanceId, palette)) return true;
-
-            var prefab = Resources.Load<GameObject>(ModelResourceRoot + appearanceId);
-            if (prefab == null) return false;
-
-            var instance = Instantiate(prefab, visual, false);
-            instance.name = "Model";
-            instance.transform.localPosition = Vector3.zero;
-            instance.transform.localRotation = Quaternion.identity;
-
-            animator = instance.GetComponent<Animator>();
-            if (animator == null) animator = instance.GetComponentInChildren<Animator>();
-            if (animator != null) animator.applyRootMotion = false;
-
-            // Authored rigs carry their own colliders for nothing; navigation owns collision here.
-            foreach (var collider in instance.GetComponentsInChildren<Collider>(true))
-            {
-                if (Application.isPlaying) Destroy(collider); else DestroyImmediate(collider);
-            }
-
-            modelHead = FindBone(instance.transform, "Head");
-            if (modelHead != null) modelHeadRest = modelHead.localRotation;
-
-            ApplyWardrobe(palette);
-            face = FaceExpression.Attach(instance);
-            return true;
-        }
-
         /// <summary>
-        /// Asks the registered body provider — UMA, when a scene opts into it — before falling back
-        /// to an authored prefab. Editor-time builds are skipped because a generated body has no
-        /// business being written into a scene file.
+        /// Asks the registered body provider - UMA, when a scene opts into it - for the houseguest's
+        /// body. There is no other cast: without a provider, which is a clone without the UMA
+        /// package, the primitive rig stands in. Editor-time builds are skipped because a generated
+        /// body has no business being written into a scene file.
         /// </summary>
         private bool TryBuildProvidedBody(string appearanceId, Color palette)
         {
@@ -713,51 +657,27 @@ namespace Gamesim.Presentation
 
             // A deferred body has no skeleton yet; LateUpdate picks the head up once it exists.
             if (!created.Deferred) ResolveModelHead();
-            else BuildStandIn(appearanceId);
+            else awaitingBody = true;
             return true;
         }
 
         /// <summary>
-        /// Puts an authored body in place for the half-second a provider takes to assemble a real
-        /// one, so the houseguest is never simply absent. Without this a UMA cast pops in after the
-        /// scene is already running, and anything that reasonably expects a houseguest to have a
-        /// body — including the episode's own smoke test — is briefly right to complain.
-        ///
-        /// The stand-in is the same prefab the non-provider path would have used, posed and still.
-        /// It is not animated, because it is on screen for less time than a stride.
+        /// Notes the first frame a provider's body has something to draw. Until then the houseguest
+        /// is not drawn at all, for the half-second UMA takes to assemble them. Nothing stands in:
+        /// the stand-in was a body from another cast, a different person on screen for that
+        /// half-second (2026-09-27, the cast is UMA only).
         /// </summary>
-        private void BuildStandIn(string appearanceId)
+        private void BodyArrived()
         {
-            var prefab = Resources.Load<GameObject>(ModelResourceRoot + appearanceId);
-            if (prefab == null) return;
-
-            var instance = Instantiate(prefab, visual, false);
-            instance.name = "Stand-in";
-            instance.transform.localPosition = Vector3.zero;
-            instance.transform.localRotation = Quaternion.identity;
-            foreach (var collider in instance.GetComponentsInChildren<Collider>(true))
-            {
-                if (Application.isPlaying) Destroy(collider); else DestroyImmediate(collider);
-            }
-            standIn = instance.transform;
-        }
-
-        /// <summary>Retires the stand-in the first frame the real body has something to draw.</summary>
-        private void RetireStandIn()
-        {
-            if (standIn == null) return;
-            if (!providedBody.Exists) return;
+            if (!awaitingBody || !providedBody.Exists) return;
             var state = providedBody.Root.GetComponent<CharacterBodyBuildState>();
             if (state != null && !state.Ready) return;
             if (providedBody.Root.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) return;
 
-            if (Application.isPlaying) Destroy(standIn.gameObject); else DestroyImmediate(standIn.gameObject);
-            standIn = null;
-            PushMood();
-            // The HUD photographs these bodies for its portraits, and until this moment there was
-            // nothing to photograph — so anything already drawn is holding a fallback face. A
-            // counter rather than an event: the director polls it, which cannot leave a subscription
-            // behind on a scene that has been unloaded.
+            awaitingBody = false;
+            // The director redraws the HUD when a body arrives, for what it can show of a houseguest
+            // who is finally there. A counter rather than an event: the director polls it, which
+            // cannot leave a subscription behind on a scene that has been unloaded.
             BodiesCompleted++;
         }
 
@@ -853,8 +773,8 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// Tints only the wardrobe slot, leaving the shared skin/hair materials untouched. A property
-        /// block keeps the imported materials shared instead of cloning one set per houseguest.
+        /// Tints only the wardrobe: a provider's body through its provider, which knows which of its
+        /// overlays are clothes, and the primitive rig through its own fabric and accent.
         /// </summary>
         private void ApplyWardrobe(Color palette)
         {
@@ -863,28 +783,9 @@ namespace Gamesim.Presentation
                 (providedBody.Owner ?? CharacterBodySource.Provider)?.SetWardrobeColor(providedBody, palette);
                 return;
             }
-
-            if (animator == null)
-            {
-                if (wardrobeMaterial != null) wardrobeMaterial.color = palette;
-                if (accentMaterial != null && !fixedGoldAccent)
-                    accentMaterial.color = Color.Lerp(palette, Color.white, 0.55f);
-                return;
-            }
-
-            var block = new MaterialPropertyBlock();
-            foreach (var renderer in visual.GetComponentsInChildren<Renderer>(true))
-            {
-                var slots = renderer.sharedMaterials;
-                for (int i = 0; i < slots.Length; i++)
-                {
-                    if (slots[i] == null || !slots[i].name.Contains("Shirt")) continue;
-                    renderer.GetPropertyBlock(block, i);
-                    block.SetColor(BaseColorId, palette);
-                    block.SetColor(LegacyColorId, palette);
-                    renderer.SetPropertyBlock(block, i);
-                }
-            }
+            if (wardrobeMaterial != null) wardrobeMaterial.color = palette;
+            if (accentMaterial != null && !fixedGoldAccent)
+                accentMaterial.color = Color.Lerp(palette, Color.white, 0.55f);
         }
 
         private void BuildPrimitiveBody(string appearanceId, Color palette,
@@ -996,13 +897,12 @@ namespace Gamesim.Presentation
             if (!float.IsNaN(facingYaw) && movementBlend < 0.02f) SettleFacing();
 
             if (providedBody.Exists) { AnimateProvidedBody(); return; }
-            if (animator != null) { AnimateModel(); return; }
             AnimatePrimitives();
         }
 
         /// <summary>
-        /// Drives a body a provider built. Kept separate from the authored-prefab path for one
-        /// specific reason: UMA replaces the avatar's Animator while it assembles the character, so
+        /// Drives a body a provider built. The animator is looked up again here for one specific
+        /// reason: UMA replaces the avatar's Animator while it assembles the character, so
         /// the reference captured when the body was handed over can be destroyed out from under us.
         /// Falling through to <see cref="AnimatePrimitives"/> on a null animator would then drive a
         /// primitive rig that was never built for this houseguest, which is a null reference every
@@ -1010,7 +910,7 @@ namespace Gamesim.Presentation
         /// </summary>
         private void AnimateProvidedBody()
         {
-            RetireStandIn();
+            BodyArrived();
             if (animator == null)
             {
                 animator = providedBody.Root.GetComponentInChildren<Animator>(true);
@@ -1197,7 +1097,7 @@ namespace Gamesim.Presentation
             {
                 case "maya-hassan": case "taylor-kim": case "jamie-roberts":
                 case "casey-wilson": case "riley-johnson":
-                // The All-Stars roster's authored body (ArtSource/characters/bb_char_dan_gheesling.py).
+                // The All-Stars roster's own look key: UMA's cast library has his look under it.
                 case "dan-gheesling": return canonicalId;
             }
             // Imported identities retain their real IDs. Select a native visual recipe from traits,
@@ -1221,7 +1121,6 @@ namespace Gamesim.Presentation
         private void ReleasePresentation()
         {
             CancelDressing();
-            face = null;
             foreach (var old in replacedRenderers) if (old != null) old.enabled = true;
             replacedRenderers.Clear();
             if (visual != null)
@@ -1243,7 +1142,7 @@ namespace Gamesim.Presentation
             animator = null;
             modelHead = null;
             providedBody = default;
-            standIn = null; // destroyed with the visual root above
+            awaitingBody = false;
             inspectedController = null;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             hasRunningParam = hasPaceParam = false;

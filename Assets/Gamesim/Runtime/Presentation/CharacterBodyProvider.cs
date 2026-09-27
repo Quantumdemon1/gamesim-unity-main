@@ -39,7 +39,7 @@ namespace Gamesim.Presentation
         /// <summary>
         /// Builds a body for <paramref name="appearanceId"/> under <paramref name="parent"/>.
         /// Returning false is normal and means "no body for this persona" — the presentation then
-        /// falls back to its authored prefab, and failing that to the primitive rig.
+        /// falls back to the primitive rig.
         /// </summary>
         bool TryCreate(string appearanceId, Transform parent, Color wardrobe, out CharacterBody body);
 

@@ -164,6 +164,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Vector3.Distance(player.transform.position,reachedApproach),Is.LessThan(.05f),
                 "After arrival only the seated visual moves; the navigation root keeps its reached approach.");
             Assert.That(player.GetComponent<HouseSeatPresentation>().Settled,Is.True);
+            // Into the lens (playtest, 2026-09-27): the head was told to look 1.5 m over the camera,
+            // a person's standing height, and sat with its chin at the ceiling and its eyes over it.
+            var confessing = player.GetComponent<CharacterPresentation>();
+            Assert.That(confessing.LookTarget, Is.SameAs(cameraRig.ViewCamera.transform), "The confessional looks at the camera,");
+            Assert.That(Mathf.Abs(confessing.LookPitch), Is.LessThan(10f), "into the lens, not over it: the head pitched " + confessing.LookPitch + " degrees.");
             var seen = cameraRig.ViewCamera.WorldToViewportPoint(seating.FacePosition);
             Assert.That(seen.z > 0f && seen.x > 0.3f && seen.x < 0.7f && seen.y > 0.3f && seen.y < 0.7f, Is.True, "The actual seated face holds the frame: " + seen);
             Assert.That(Vector3.Dot(player.transform.forward,(cameraRig.ViewCamera.transform.position-player.transform.position).normalized),Is.GreaterThan(.5f),

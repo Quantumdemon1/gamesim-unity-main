@@ -100,9 +100,27 @@ namespace Gamesim.Presentation
         public Transform LookTarget => lookTarget != null && Time.time < lookUntil ? lookTarget : null;
 
         /// <summary>Turns the head toward a target for a while. Null, or the time passing, lets it go.</summary>
-        public void LookAt(Transform target, float seconds)
+        public void LookAt(Transform target, float seconds) => Look(target, seconds, PersonEyeHeight);
+
+        /// <summary>
+        /// The same, at a point: the target is where the eyes go, not a person whose face is a
+        /// standing height above their transform. The diary's camera is at eye height already, and a
+        /// head told to look 1.5 m above it put its chin at the ceiling and its eyes over the lens -
+        /// a gape at nothing (playtest, 2026-09-27).
+        /// </summary>
+        public void LookAtPoint(Transform target, float seconds) => Look(target, seconds, 0f);
+
+        /// <summary>Where a person's face is above their transform, which is at their feet.</summary>
+        private const float PersonEyeHeight = 1.5f;
+        private float lookLift = PersonEyeHeight;
+
+        /// <summary>The pitch the head last turned by to look, in degrees, up positive: for the tests.</summary>
+        public float LookPitch { get; private set; }
+
+        private void Look(Transform target, float seconds, float lift)
         {
             lookTarget = target;
+            lookLift = lift;
             lookUntil = target != null ? Time.time + Mathf.Max(0f, seconds) : 0f;
         }
 
@@ -113,11 +131,12 @@ namespace Gamesim.Presentation
             lookBlend = Mathf.Lerp(lookBlend, looking ? 1f : 0f, 1f - Mathf.Exp(-5f * Time.deltaTime));
             if (lookBlend < 0.002f) { lookBlend = 0f; return; }
             if (lookTarget == null) return;
-            var to = lookTarget.position + Vector3.up * 1.5f - headBone.position;
+            var to = lookTarget.position + Vector3.up * lookLift - headBone.position;
             var flat = new Vector3(to.x, 0f, to.z);
             if (flat.sqrMagnitude < 0.0001f) return;
             float yaw = Mathf.Clamp(Vector3.SignedAngle(transform.forward, flat, Vector3.up), -LookYawLimit, LookYawLimit);
             float pitch = Mathf.Clamp(Mathf.Atan2(to.y, flat.magnitude) * Mathf.Rad2Deg, -LookPitchLimit, LookPitchLimit);
+            LookPitch = pitch;
             headBone.rotation = Quaternion.AngleAxis(yaw * lookBlend, Vector3.up)
                 * Quaternion.AngleAxis(-pitch * lookBlend, transform.right) * headBone.rotation;
         }

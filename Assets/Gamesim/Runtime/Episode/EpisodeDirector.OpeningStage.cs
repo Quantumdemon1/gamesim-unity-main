@@ -328,7 +328,7 @@ namespace Gamesim.Episode
                 var visual = Visual(id);
                 if (visual == null) return;
                 visual.SetFacing(90f);
-                if (director.cameraRig != null && director.cameraRig.ViewCamera != null) visual.LookAt(director.cameraRig.ViewCamera.transform, 2f);
+                if (director.cameraRig != null && director.cameraRig.ViewCamera != null) visual.LookAtPoint(director.cameraRig.ViewCamera.transform, 2f);
                 // A little dance on the mark while the name comes up; a body with no dance cheers.
                 if (visual.CanAct(CharacterPresentation.BodyActivity.Dancing)) visual.SetActivity(CharacterPresentation.BodyActivity.Dancing);
                 else if (id != director.projected.playerId) director.React(id, CharacterPresentation.Reaction.Cheered);

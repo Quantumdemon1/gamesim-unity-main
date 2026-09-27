@@ -106,7 +106,8 @@ namespace Gamesim.House
                 var face=FacePosition;
                 eye.y=face.y+.12f;
                 rig.RetargetShot(face-Vector3.up*.10f,eye);
-                visual.LookAt(rig.ViewCamera.transform,.3f);
+                // Into the lens: the camera is where the eyes go, not a person to look up at.
+                visual.LookAtPoint(rig.ViewCamera.transform,.3f);
             }
         }
 

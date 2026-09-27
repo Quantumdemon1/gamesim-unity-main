@@ -293,7 +293,7 @@ namespace Gamesim.Episode
             var visual = body.GetComponent<CharacterPresentation>();
             if (visual == null) return;
             visual.SetFacing(Mathf.Repeat(yaw + 180f, 360f));
-            if (cameraRig.ViewCamera != null) visual.LookAt(cameraRig.ViewCamera.transform, 30f);
+            if (cameraRig.ViewCamera != null) visual.LookAtPoint(cameraRig.ViewCamera.transform, 30f);
         }
 
         /// <summary>

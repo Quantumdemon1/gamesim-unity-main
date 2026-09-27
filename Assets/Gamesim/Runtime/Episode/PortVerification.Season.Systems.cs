@@ -85,12 +85,22 @@ namespace Gamesim.Episode
             RequireSeason(item != null && item.choices.Count > 0, "A pending situation must offer at least one choice.");
             if (seasonReport.houseEventsResolved == 0) yield return CaptureSeason("house-event", graphical);
 
-            var choice = item.choices[0];
+            // A story beat's first option may be locked, may name somebody or may be a rule break;
+            // those take a second press. The first option that answers in one press does, and the
+            // lapse option - never locked - always can.
+            int index = 0;
+            if (item.IsStory)
+            {
+                bool actionsLeft = EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
+                index = item.choices.FindIndex(c => !c.locked && !c.pickPerson && !c.conduct && (!c.costsAction || actionsLeft));
+                if (index < 0) index = item.choices.FindIndex(c => c.lapse);
+            }
+            var choice = item.choices[index];
             yield return ClickSeasonButton(EpisodeHud.EventChoiceCaption(choice.label));
 
             var after = seasonDirector.Snapshot;
             var resolved = after.houseEvents.FirstOrDefault(e => e.id == item.id);
-            RequireSeason(after.revision == state.revision + 1 && resolved != null && resolved.resolved && resolved.chosenIndex == 0,
+            RequireSeason(after.revision == state.revision + 1 && resolved != null && resolved.resolved && resolved.chosenIndex == index,
                 "Choosing an option must resolve the situation it belongs to: " + item.title);
             seasonReport.houseEventsResolved++;
             seasonReport.houseEventKinds.Add(item.kind);

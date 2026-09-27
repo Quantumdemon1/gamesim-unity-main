@@ -77,13 +77,72 @@ namespace Gamesim.Presentation
                 .Select(e => e.text).Take(LineLimit).ToList();
             recap.moments = Moments(state, events);
             // What happened to the house that week, and what the player did about it. The recap is
-            // the only place a resolved situation is readable again once its screen has gone.
+            // the only place a resolved situation is readable again once its screen has gone. A
+            // story's beats are the episode's acts below, so they are not listed twice.
             recap.happenings = state.houseEvents
-                .Where(e => e.week == week)
+                .Where(e => e.week == week && !e.IsStory)
                 .Select(e => e.title + (e.resolved ? " — " + e.outcome : " — you let it pass"))
                 .Take(LineLimit).ToList();
             recap.yourWeek = Narrative(state, week, events);
+            Episode(state, week, events, recap);
             return recap;
+        }
+
+        // ---------------------------------------------------------------- the episode (plan §5.4)
+
+        /// <summary>The four acts a week of the show is cut into, by the phase a beat was answered in.</summary>
+        public static readonly string[] ActTitles = { "Act I · Head of Household", "Act II · Nominations", "Act III · The Veto", "Act IV · Eviction Night" };
+
+        private static int ActOf(EpisodePhase phase)
+        {
+            switch (phase)
+            {
+                case EpisodePhase.HoH: return 0;
+                case EpisodePhase.Nomination: return 1;
+                case EpisodePhase.Veto:
+                case EpisodePhase.VetoMeeting: return 2;
+                default: return 3;
+            }
+        }
+
+        /// <summary>
+        /// The week as an episode of the show: previously on - where each story the player was in
+        /// stood coming into the week; the week's story beats in its four acts; and next time - the
+        /// stories that are not over. Read from the stories' own records and the log, player-facing
+        /// lines only, rendered with names from the stories that wrote them.
+        /// </summary>
+        private static void Episode(EpisodeState state, int week, List<EpisodeEvent> events, Week recap)
+        {
+            if (state?.storylines == null) return;
+            bool Mine(StorylineState cycle) => cycle.path != null && cycle.path.Any(step => step.result != StoryResults.Npc);
+            EpisodeEvent Line(int sequence) => sequence <= 0 ? null : state.events.FirstOrDefault(e => e.sequence == sequence
+                && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId)));
+
+            // Previously on: the last step before this week of each of the player's stories still
+            // going when the week began.
+            foreach (var cycle in state.storylines.Where(Mine).OrderBy(x => x.week).ThenBy(x => x.id, StringComparer.Ordinal))
+            {
+                if (!StorylineStatus.Running(cycle.status) && cycle.endedWeek < week) continue;
+                var before = cycle.path.LastOrDefault(step => step.week < week && step.result != StoryResults.Npc);
+                var line = before == null ? null : Line(before.logSequence);
+                if (line != null) recap.previously.Add(StoryText.Log(state, line));
+            }
+            recap.previously = recap.previously.Distinct(StringComparer.Ordinal).Take(LineLimit).ToList();
+
+            // The acts: the week's answered and lapsed beats, where the week put them.
+            foreach (var entry in events.Where(e => e.kind == StoryLog.Outcome
+                         && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))))
+            {
+                var act = recap.acts[ActOf(entry.phase)];
+                if (act.Count < LineLimit) act.Add(StoryText.Log(state, entry));
+            }
+
+            // Next time: the player's stories still running once the week is done. The title only -
+            // a teaser, not a spoiler.
+            recap.nextTime = state.storylines
+                .Where(cycle => StorylineStatus.Running(cycle.status) && Mine(cycle) && cycle.week <= week)
+                .Select(cycle => (StoryCatalog.Find(cycle.templateId)?.title ?? cycle.title) + ": to be continued.")
+                .Distinct(StringComparer.Ordinal).Take(LineLimit).ToList();
         }
 
         /// <summary>Every week the season has played, oldest first.</summary>
@@ -201,11 +260,15 @@ namespace Gamesim.Presentation
         /// </summary>
         private static List<string> Moments(EpisodeState state, List<EpisodeEvent> events)
         {
-            var kinds = new[] { "promise-outcome", "deal-outcome", "loyalty-oath", "backdoor", "jury-tie" };
+            // A story's outcome and production's word are turning points too: the lines the plan's
+            // recap is built from ("The Backdoor: you told Casey she was a pawn."), rendered with
+            // names from the story that wrote them.
+            var kinds = new[] { "promise-outcome", "deal-outcome", "loyalty-oath", "backdoor", "jury-tie",
+                StoryLog.Outcome, StoryLog.Production, StoryLog.Penalty, StoryLog.Expulsion };
             return events
                 .Where(e => kinds.Contains(e.kind))
                 .Where(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
-                .Select(e => e.text)
+                .Select(e => StoryText.Log(state, e))
                 .Distinct(StringComparer.Ordinal)
                 .Take(LineLimit).ToList();
         }
@@ -246,6 +309,8 @@ namespace Gamesim.Presentation
 
             if (you.status == ContestantStatus.Jury || you.status == ContestantStatus.Evicted)
                 said.Add("Your season ended here.");
+            else if (you.status == ContestantStatus.Expelled)
+                said.Add("Production removed you from the house.");
 
             return said.Count == 0 ? "A quiet week for you." : string.Join(" ", said);
         }
@@ -271,6 +336,15 @@ namespace Gamesim.Presentation
 
             /// <summary>Things that happened to the house, and what was done about them.</summary>
             public List<string> happenings = new List<string>();
+
+            /// <summary>Previously on: where each of the player's stories stood as the week began.</summary>
+            public List<string> previously = new List<string>();
+
+            /// <summary>The week's story beats in its four acts (<see cref="ActTitles"/>).</summary>
+            public List<string>[] acts = { new List<string>(), new List<string>(), new List<string>(), new List<string>() };
+
+            /// <summary>Next time: the player's stories that are not over.</summary>
+            public List<string> nextTime = new List<string>();
 
             /// <summary>A week nothing is known about — a season that stopped before its first vote.</summary>
             public bool Empty => headOfHousehold == null && evicted == null && nominees.Count == 0;

@@ -68,6 +68,12 @@
     <Compile Include="$(EditMode)SocialActionParityTests.cs" />
     <Compile Include="$(EditMode)SocialVocabularyTests.cs" />
     <Compile Include="$(EditMode)StorylineTests.cs" />
+    <Compile Include="$(EditMode)StorySeasonTests.cs" />
+    <Compile Include="$(EditMode)StoryCatalogLintTests.cs" />
+    <Compile Include="$(EditMode)StoryMechanicsTests.cs" />
+    <Compile Include="$(EditMode)StoryStagingTests.cs" />
+    <Compile Include="$(EditMode)StoryRoomActTests.cs" />
+    <Compile Include="$(EditMode)StoryPacingTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
     <Compile Include="$(EditMode)WebIntroductionsTests.cs" />

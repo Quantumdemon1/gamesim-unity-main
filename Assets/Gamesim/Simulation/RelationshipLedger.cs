@@ -52,7 +52,12 @@ namespace Gamesim.Simulation
             "promise-kept",     // +25
             "promise-broken",   // -40
             "alliance-formed",  // +30
-            "alliance-betrayed" // -50, the heaviest single entry in the source's table
+            "alliance-betrayed", // -50, the heaviest single entry in the source's table
+            // The story system's permanent receipts (StoryReceipts.Permanent). Only story beats
+            // write them, so listing them here changes nothing that existed before schema 14.
+            StoryReceipts.StoodUpFor, StoryReceipts.SoldOut, StoryReceipts.SecretKept,
+            StoryReceipts.SecretExposed, StoryReceipts.Showmance, StoryReceipts.ShowmanceBetrayed,
+            StoryReceipts.PublicBlowup, StoryReceipts.MadePeace,
         };
 
         /// <summary>Whether an act of this type fades with time.</summary>
@@ -144,6 +149,32 @@ namespace Gamesim.Simulation
                 });
                 if (edge.events.Count > 512) edge.events.RemoveAt(0);
             }
+        }
+
+        /// <summary>
+        /// Writes one direction of an act: the holder's view of the other, and nothing the other way.
+        ///
+        /// <para><see cref="Record"/> writes both directions, which is right for an act two people
+        /// shared and wrong for one person's private view of another - a pitch they heard, a secret
+        /// they learned, a blow-up they watched. The story system's receipts are all one-way, and
+        /// this is the only writer that can make them. It records; it does not move a score.</para>
+        /// </summary>
+        public static void RecordOneWay(EpisodeState state, string holderId, string aboutId,
+            string type, double impact, string description)
+        {
+            if (state == null || holderId == aboutId) return;
+            var edge = Edge(state, holderId, aboutId);
+            if (edge == null)
+            {
+                edge = new RelationshipState { fromId = holderId, toId = aboutId, score = 0 };
+                state.relationships.Add(edge);
+            }
+            edge.events.Add(new RelationshipEventState
+            {
+                sequence = state.nextSequence++, week = state.week, type = type,
+                description = description, impactScore = impact, decayable = Decays(type),
+            });
+            if (edge.events.Count > 512) edge.events.RemoveAt(0);
         }
 
         /// <summary>

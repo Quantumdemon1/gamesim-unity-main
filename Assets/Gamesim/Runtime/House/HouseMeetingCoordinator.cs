@@ -438,6 +438,7 @@ namespace Gamesim.House
             ReleaseActivities();
             EndCompetitionStage();
             EndOpeningStage();
+            EndSceneStage();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer) Retire(lease,HouseMeetingStatus.Released,null);
         }
@@ -467,6 +468,7 @@ namespace Gamesim.House
             if (ActivityOwnsMotion(motion)) return true;
             if (CompetitionOwnsMotion(motion)) return true;
             if (OpeningOwnsMotion(motion)) return true;
+            if (SceneOwnsMotion(motion)) return true;
             if (motion.LeaseId == null || !leases.TryGetValue(motion.LeaseId, out var lease)) return false;
             return actors.TryGetValue(lease.FirstId, out var first) && first.motion == motion
                 || actors.TryGetValue(lease.SecondId, out var second) && second.motion == motion;

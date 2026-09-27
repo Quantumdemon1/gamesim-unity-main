@@ -215,6 +215,7 @@ namespace Gamesim.Episode
                     var meetings = director.npcMeetings;
                     if (meetings == null || !meetings.IsReady) return false;
                     var ids = director.Housemates().Select(npc => npc.Id).ToList();
+                    meetings.EndSceneStage();
                     if (!meetings.BeginOpeningStage(ids, out var reason)) { Debug.Log("Opening stage: " + reason); return false; }
                     begun = true;
                     return true;

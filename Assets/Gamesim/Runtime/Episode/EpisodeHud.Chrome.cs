@@ -160,6 +160,9 @@ namespace Gamesim.Episode
         private string NextStop(EpisodeState state) =>
             state.pendingDiary != null
                 ? (director != null && director.IsDiaryOpen ? "Here: your private reflection" : "Next stop: private diary room")
+            // Production, or a story's Diary Room moment: the one call that names its own room.
+            : EpisodeEngine.OpenSummons(state) != null && state.Find(state.playerId)?.status == ContestantStatus.Active
+                ? (director != null && director.IsDiaryOpen ? "Here: the Diary Room is calling you" : "The Diary Room is calling you")
             : EpisodeEngine.IsCompetition(state.phase) ? "Next stop: competition yard"
             // A finished season still sends the player to the episode screen - the rail's button
             // and the station's icon both call it that - and then says what waits there. "Next
@@ -544,6 +547,7 @@ namespace Gamesim.Episode
             }
             HouseVibeCard(canvas.transform, top, state);
             if (director.CanListenIn) NearbyCard(canvas.transform, top);
+            if (EpisodeEngine.StoryOn(state)) PullCard(canvas.transform, top);
         }
 
         /// <summary>The Nearby card's name, and its control's caption.</summary>
@@ -597,10 +601,11 @@ namespace Gamesim.Episode
         /// <summary>Swaps the Nearby card in for the week card while a conversation is witnessed.</summary>
         public void SetNearby(bool visible)
         {
+            // A story's Pull outranks it: both borrow the week card's place, and the Pull is rarer.
+            if (visible && PullShowing) visible = false;
             if (nearbyCard == null || nearbyCard.gameObject.activeSelf == visible) return;
             nearbyCard.gameObject.SetActive(visible);
-            var week = nearbyCard.parent != null ? nearbyCard.parent.Find(HouseVibeCardName) : null;
-            if (week != null) week.gameObject.SetActive(!visible);
+            SyncWeekCard();
             if (nearbyBar != null)
             {
                 nearbyBar.gameObject.SetActive(visible);
@@ -760,7 +765,7 @@ namespace Gamesim.Episode
                 const float text = 56f;
                 string when = PhaseShort(entry.phase) + (entry.week != state.week ? " · Week " + entry.week : "");
                 FixedText(card, when, 11, UiTheme.Muted, new Vector2(text, y), new Vector2(width - text - 12f, 15f));
-                FixedText(card, Excerpt(entry.text, RecentEventLetters), 13, Paper,
+                FixedText(card, Excerpt(StoryText.Log(state, entry), RecentEventLetters), 13, Paper,
                     new Vector2(text, y - 15f), new Vector2(width - text - 12f, 36f));
                 if (i + 1 < entries.Count)
                 {

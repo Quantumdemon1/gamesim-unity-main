@@ -703,6 +703,19 @@ namespace Gamesim.Episode
             picture.raycastTarget = false;
             Stretch(picture.rectTransform, 0, 0, 0, 0);
 
+            // The feeds' holding card (plan §5.1, 08:89): what the live feeds cut to while
+            // production deals with something. Built hidden over the picture.
+            liveFeedHolding = Panel(LiveFeedHoldingName, frame, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .96f), 0);
+            Stretch(liveFeedHolding, 0, 0, 0, 0);
+            liveFeedHolding.GetComponent<Image>().raycastTarget = false;
+            HudPrimitives.Glyph("Holding mark", liveFeedHolding, "camera", UiTheme.Muted,
+                new Vector2(pictureWidth * .5f - 14f, -pictureHeight * .5f + 30f), 28f);
+            var holdingWords = FixedText(liveFeedHolding, LiveFeedHoldingCaption, 13, UiTheme.Paper,
+                new Vector2(8f, -pictureHeight * .5f + 2f), new Vector2(pictureWidth - 16f, 40f));
+            holdingWords.alignment = TextAlignmentOptions.Center;
+            AutoSize(holdingWords, 10);
+            liveFeedHolding.gameObject.SetActive(director.LiveFeedHolding);
+
             liveFeedCaption = FixedText(card, director.LiveFeedCaption, 13, Paper,
                 new Vector2(14f, -(40f + pictureHeight + 8f)), new Vector2(RightColumnWidth - 28f, 34f));
             AutoSize(liveFeedCaption, 11);
@@ -718,12 +731,26 @@ namespace Gamesim.Episode
 
         public void SetLiveFeedPaused(bool paused)
         {
+            bool holding = liveFeedHolding != null && liveFeedHolding.gameObject.activeSelf;
             if (liveFeedBadge != null)
             {
-                liveFeedBadge.text = paused ? "PAUSED" : "LIVE";
-                liveFeedBadge.color = paused ? UiTheme.Muted : UiTheme.Conflict;
+                liveFeedBadge.text = holding ? "OFF AIR" : paused ? "PAUSED" : "LIVE";
+                liveFeedBadge.color = paused || holding ? UiTheme.Muted : UiTheme.Conflict;
             }
-            if (liveFeedDot != null) liveFeedDot.color = paused ? UiTheme.Muted : UiTheme.Conflict;
+            if (liveFeedDot != null) liveFeedDot.color = paused || holding ? UiTheme.Muted : UiTheme.Conflict;
+        }
+
+        /// <summary>The holding card's name and words, for the tests.</summary>
+        public const string LiveFeedHoldingName = "Feeds holding card";
+        public const string LiveFeedHoldingCaption = "The feeds will return shortly.";
+        private RectTransform liveFeedHolding;
+
+        /// <summary>Cuts the live feed to its holding card, or back to the house.</summary>
+        public void SetLiveFeedHolding(bool holding)
+        {
+            if (liveFeedHolding == null || liveFeedHolding.gameObject.activeSelf == holding) return;
+            liveFeedHolding.gameObject.SetActive(holding);
+            SetLiveFeedPaused(director.IsPanelOpen);
         }
 
         /// <summary>The overview's side column (V5): who is where, one row a room, beside the labelled house.</summary>

@@ -94,7 +94,8 @@ namespace Gamesim.Episode
         /// </summary>
         private void FrameHouseEvent(HouseEventState item)
         {
-            if (cameraRig == null || item == null || !phaseOpen) return;
+            // The episode screen's card, or a story's card opened out in the house (plan §5.1).
+            if (cameraRig == null || item == null || !(phaseOpen || sceneCardOpen)) return;
             if (framedEventId == item.id && cameraRig.HasShot) return;
             var bodies = item.involvedIds.Select(BodyFor).Where(body => body != null).ToArray();
             if (bodies.Length == 0) return;
@@ -111,7 +112,7 @@ namespace Gamesim.Episode
         }
 
         /// <summary>Whether the camera is on a house event's people, for a test.</summary>
-        public bool IsFramingHouseEvent => framedEventId != null && cameraRig != null && cameraRig.HasShot && phaseOpen;
+        public bool IsFramingHouseEvent => framedEventId != null && cameraRig != null && cameraRig.HasShot && (phaseOpen || sceneCardOpen);
 
         private Transform BodyFor(string id)
         {

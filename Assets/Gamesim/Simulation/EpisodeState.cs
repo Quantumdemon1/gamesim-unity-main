@@ -23,7 +23,14 @@ namespace Gamesim.Simulation
     /// </summary>
     public enum EvictionStage { Interaction, Speeches, Voting, Tiebreaker, Results }
 
-    public enum ContestantStatus { Active, Evicted, Jury, Winner, RunnerUp }
+    /// <summary>
+    /// Where a houseguest stands. Append only: saves store the number.
+    ///
+    /// <para><see cref="Expelled"/> is schema 14's: removed by production. Not active, so every
+    /// system that counts the house counts them out; not a juror, because removal has to cost
+    /// something and a seat would need a juror row the Social close cannot give them.</para>
+    /// </summary>
+    public enum ContestantStatus { Active, Evicted, Jury, Winner, RunnerUp, Expelled }
     public enum PromiseKind { Safety, Vote, FinalTwo, AllianceLoyalty, Information }
     public enum PromiseStatus { Active, Fulfilled, Broken, Expired }
 
@@ -194,7 +201,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 13;
+        public int schemaVersion = 14;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -358,6 +365,14 @@ namespace Gamesim.Simulation
         /// </summary>
         public int storyRulesStartWeek = 1;
 
+        // ---------------------------------------------------------------- schema 14
+
+        /// <summary>
+        /// The story system: grudges, facts, bonds, hooks, lore, conduct and the rest of what arcs
+        /// leave behind. Off until something switches it on (<see cref="StoryWorldState.rulesStartWeek"/>).
+        /// </summary>
+        public StoryWorldState story = new StoryWorldState();
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -393,6 +408,8 @@ namespace Gamesim.Simulation
             copy.houseEvents = houseEvents.Select(x => x.Clone()).ToList();
             copy.storylines = storylines.Select(x => x.Clone()).ToList();
             copy.activeModifiers = activeModifiers.Select(x => x.Clone()).ToList();
+            // Deep, like every list above: a rejected candidate command must leave nothing behind.
+            copy.story = story?.Clone();
             return copy;
         }
     }
@@ -432,7 +449,24 @@ namespace Gamesim.Simulation
         /// houseguest and <c>secondTargetId</c> the approach, "warm", "calculated" or "bold".
         /// Free, and not a social action; the meet-and-greet is the one time the house comes to you.
         /// </summary>
-        Introduce
+        Introduce,
+        // The room acts (decision D-E): the web's room-bound acts, each named for the act. The engine
+        // never needs the room - the act implies it - and the house offers each only where it happens.
+        // Appended, so no recorded ordinal moves.
+        /// <summary>Pillow talk in the bedrooms, with <c>targetId</c>.</summary>
+        PillowTalk,
+        /// <summary>Cooking for the house: <c>targetId</c> and whoever else <c>text</c> names, ids separated by spaces.</summary>
+        Cook,
+        /// <summary>The Head of Household invites <c>targetId</c> up to the suite.</summary>
+        InviteUp,
+        /// <summary>Standing up for <c>targetId</c> in the living room, in front of whoever <c>text</c> names.</summary>
+        PublicDefense,
+        /// <summary>A private word with an ally, <c>targetId</c>, in the backyard.</summary>
+        AllianceMeet,
+        /// <summary>Practising in the backyard for the next competition, with <c>targetId</c> running it.</summary>
+        CompPractice,
+        /// <summary>A game in the game room with <c>targetId</c>.</summary>
+        PlayAGame
     }
 
     /// <summary>

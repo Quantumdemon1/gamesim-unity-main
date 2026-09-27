@@ -908,7 +908,8 @@ namespace Gamesim.Presentation
                 case CastFilter.Jury:
                     return state.contestants.Where(c => c.status == ContestantStatus.Jury);
                 case CastFilter.Evicted:
-                    return state.contestants.Where(c => c.status == ContestantStatus.Evicted);
+                    // Out before the jury either way: evicted, or removed by production.
+                    return state.contestants.Where(c => c.status == ContestantStatus.Evicted || c.status == ContestantStatus.Expelled);
                 default:
                     return state.contestants;
             }
@@ -1013,6 +1014,10 @@ namespace Gamesim.Presentation
             {
                 case ContestantStatus.Winner: return "1st — Winner";
                 case ContestantStatus.RunnerUp: return "2nd — Runner-up";
+                case ContestantStatus.Expelled:
+                    // The career's exit order, which merges production's removals in by week.
+                    int removedAt = Gamesim.Persistence.CareerLedger.Placement(state, you);
+                    return removedAt + Ordinal(removedAt) + " — " + StatusWord(you.status);
                 default:
                     int below = state.contestants.Count(c => c.status == ContestantStatus.Evicted)
                         - (you.status == ContestantStatus.Evicted ? 1 : 0);
@@ -1041,6 +1046,7 @@ namespace Gamesim.Presentation
                 case ContestantStatus.RunnerUp: return "Runner-up";
                 case ContestantStatus.Jury: return "Jury member";
                 case ContestantStatus.Evicted: return "Pre-jury";
+                case ContestantStatus.Expelled: return "Removed by production";
                 default: return "Still in the house";
             }
         }
@@ -1053,6 +1059,7 @@ namespace Gamesim.Presentation
                 case ContestantStatus.RunnerUp: return UiTheme.Accent;
                 case ContestantStatus.Jury: return UiTheme.Warning;
                 case ContestantStatus.Evicted: return UiTheme.Muted;
+                case ContestantStatus.Expelled: return UiTheme.Conflict;
                 default: return UiTheme.Positive;
             }
         }
@@ -1067,6 +1074,8 @@ namespace Gamesim.Presentation
                     return "You sat in the final two and the jury went the other way.";
                 case ContestantStatus.Jury:
                     return "You were evicted with a vote still to cast, and you cast it.";
+                case ContestantStatus.Expelled:
+                    return "Production removed you from the house. The season went on without your vote.";
                 default:
                     return you.hohWins + you.vetoWins > 0
                         ? "You went out before jury, but not before winning something."

@@ -68,12 +68,20 @@ namespace Gamesim.Presentation
         /// triggers. Appended to, never reordered: <c>AuthoredClipWiring.Reactions</c> and
         /// <see cref="ReactionParams"/> are both indexed by this order.
         /// </summary>
-        public enum Reaction { Nominated, Saved, Evicted, Won, Cheered }
+        /// <summary>
+        /// A beat a body acts out. The story's five (plan §5.1) are appended, so no value moves:
+        /// until a controller declares their triggers a body skips them like any clip it lacks, and
+        /// the director plays a ceremony stand-in instead (see <see cref="Supports"/>).
+        /// </summary>
+        public enum Reaction { Nominated, Saved, Evicted, Won, Cheered, Shocked, Tearful, Embrace, Furious, StormOff }
         private static readonly int[] ReactionParams =
         {
             Animator.StringToHash("ReactNominated"), Animator.StringToHash("ReactSaved"),
             Animator.StringToHash("ReactEvicted"), Animator.StringToHash("ReactWon"),
             Animator.StringToHash("ReactCheered"),
+            Animator.StringToHash("ReactShocked"), Animator.StringToHash("ReactTearful"),
+            Animator.StringToHash("ReactEmbrace"), Animator.StringToHash("ReactFurious"),
+            Animator.StringToHash("ReactStormOff"),
         };
         private int reactionParams;
         /// <summary>The last beat this body was asked to act out, whether or not it had a clip for it.</summary>
@@ -469,6 +477,13 @@ namespace Gamesim.Presentation
             if (animator == null || reducedMotion || seated) return;
             RefreshAnimatorParameters();
             if ((reactionParams & (1 << (int)kind)) != 0) animator.SetTrigger(ReactionParams[(int)kind]);
+        }
+        /// <summary>Whether this body's controller has a clip for the reaction: what the director asks before choosing a stand-in.</summary>
+        public bool Supports(Reaction kind)
+        {
+            if (animator == null) return false;
+            RefreshAnimatorParameters();
+            return (reactionParams & (1 << (int)kind)) != 0;
         }
         public bool IsSeated => seated;
         public float FacingYaw => facingYaw;

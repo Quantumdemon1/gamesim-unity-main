@@ -26,7 +26,7 @@ namespace Gamesim.Episode
                 case CeremonySting.EvictionKind: return "Living";
                 case CeremonySting.WinnerKind: return "Living";
                 case "competition": return "Yard";
-                default: return null;
+                default: return StoryFallout.RoomFor(kind);
             }
         }
 

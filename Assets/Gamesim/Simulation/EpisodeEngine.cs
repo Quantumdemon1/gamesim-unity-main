@@ -61,7 +61,15 @@ namespace Gamesim.Simulation
                     ResolveCompetition(s, c.performance); break;
                 case EpisodeCommandKind.Nominate:
                     Require(s.phase == EpisodePhase.Nomination && s.hohId == s.playerId, "Only the reigning HoH chooses nominees.");
-                    Nominate(s, c.targetId, c.secondTargetId); break;
+                    // A beat that closes at the nominations lapses first, so anything it moved has
+                    // moved before the names are said.
+                    if (StoryOn(s)) StoryLapse(s, StoryAnchors.NomsSet);
+                    Nominate(s, c.targetId, c.secondTargetId);
+                    // The player's own backdoor plan, made before the names were said, becomes the
+                    // week's backdoor story - unless they put the target straight up after all.
+                    if (s.backdoorTargetId != null && !s.nominees.Contains(s.backdoorTargetId))
+                        StartBackdoor(s, s.backdoorTargetId, s.nominees.ToList());
+                    StoryAnchor(s, StoryAnchors.NomsSet); break;
                 case EpisodeCommandKind.ResolveVeto:
                     Require(s.phase == EpisodePhase.VetoMeeting && !s.vetoResolved, "No veto decision is pending.");
                     Require(s.vetoHolderId == s.playerId || s.hohId == s.playerId, "The veto holder or replacement-selecting HoH must act.");
@@ -113,6 +121,10 @@ namespace Gamesim.Simulation
                 // Not a social action: the situation came to the player, and charging them
                 // an interaction for being walked in on would be charging for the weather.
                 case EpisodeCommandKind.ResolveHouseEvent: ResolveHouseEvent(s, c); break;
+                // A story beat, answered by its option id. Its ordinal was reserved for this and has
+                // always thrown until now, so no recording holds a successful one. Not a social
+                // action unless the option itself says it costs one.
+                case EpisodeCommandKind.ProgressStoryline: ProgressStoryline(s, c); break;
                 // The house telling the engine where the player is. Only the director knows, which
                 // is why this arrives as a command rather than being computed in the week.
                 case EpisodeCommandKind.WitnessProximity: WitnessProximity(s, c); break;
@@ -153,7 +165,10 @@ namespace Gamesim.Simulation
             if (s.phase == EpisodePhase.Veto) return s.Active.Where(c => s.vetoPlayers.Contains(c.id));
             if (s.phase == EpisodePhase.FinalHoHPart2) return s.Active.Where(c => c.id != s.finalPart1WinnerId);
             if (s.phase == EpisodePhase.FinalHoHPart3) return s.Active.Where(c => c.id == s.finalPart1WinnerId || c.id == s.finalPart2WinnerId);
-            return s.Active.Where(c => s.Active.Count() <= 3 || c.id != s.previousHohId);
+            // Production's penalty: somebody on their second strike sits out this week's HoH
+            // competition. Derived from the saved conduct record, so validation's recount agrees.
+            return s.Active.Where(c => (s.Active.Count() <= 3 || c.id != s.previousHohId)
+                                       && !(StoryAt(s, StoryRules.Production) && Production.SitsOut(s, c.id)));
         }
 
         private static void Advance(EpisodeState s)
@@ -162,6 +177,10 @@ namespace Gamesim.Simulation
             {
                 case EpisodePhase.Social:
                     Require(s.pendingDiary == null, "Visit the Diary Room or skip the pending reflection before beginning the next competition.");
+                    // The social window closes: open beats lapse, and a removal production has decided
+                    // on happens here - after the diary check, before the week turns, so no eviction
+                    // can intervene and no juror row needs dropping.
+                    if (StoryOn(s)) StorySocialClose(s);
                     if (s.evictionResolved)
                     {
                         s.previousHohId = s.hohId; s.week++; s.hohId = null; s.vetoHolderId = null;
@@ -170,6 +189,7 @@ namespace Gamesim.Simulation
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
+                        StoryWeekTurn(s);
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
                     Phase(s, s.Active.Count() == 3 ? EpisodePhase.FinalHoHPart1 : EpisodePhase.HoH); break;
@@ -185,13 +205,30 @@ namespace Gamesim.Simulation
                     }
                     var next = s.phase == EpisodePhase.HoH ? EpisodePhase.Nomination : s.phase == EpisodePhase.Veto ? EpisodePhase.VetoMeeting :
                         s.phase == EpisodePhase.FinalHoHPart1 ? EpisodePhase.FinalHoHPart2 : s.phase == EpisodePhase.FinalHoHPart2 ? EpisodePhase.FinalHoHPart3 : EpisodePhase.FinalEviction;
-                    s.competitionResolved = false; Phase(s, next); break;
+                    // The show's anchors: a Head of Household is crowned, or the veto is won.
+                    string crossed = next == EpisodePhase.Nomination ? StoryAnchors.HohCrowned
+                        : next == EpisodePhase.VetoMeeting ? StoryAnchors.VetoWon : null;
+                    if (crossed != null && StoryOn(s)) StoryLapse(s, crossed);
+                    s.competitionResolved = false; Phase(s, next);
+                    if (crossed != null) StoryAnchor(s, crossed);
+                    break;
                 case EpisodePhase.Nomination:
                     if (s.nominees.Count == 0)
                     {
                         Require(s.hohId != s.playerId, "Choose two nominees first.");
-                        var weakest = NominationCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).Take(2).ToArray();
-                        Nominate(s, weakest[0].id, weakest[1].id); return;
+                        // A beat that closes at the nominations lapses first: a pitch the HoH heard
+                        // has already moved their view by the time they rank the house.
+                        if (StoryOn(s)) StoryLapse(s, StoryAnchors.NomsSet);
+                        // Lowest preference first. With the story system off, or on with nothing
+                        // written, the preference IS the score, so this ranks exactly as it always did.
+                        var ranked = NominationCandidates(s)
+                            .OrderBy(c => StoryConsumers.NominationPreference(s, s.hohId, c.id)).ToList();
+                        string backdoor = NpcBackdoorTarget(s, ranked);
+                        var weakest = ranked.Where(c => c.id != backdoor).Take(2).ToArray();
+                        Nominate(s, weakest[0].id, weakest[1].id);
+                        if (backdoor != null) StartBackdoor(s, backdoor, weakest.Select(w => w.id).ToList());
+                        StoryAnchor(s, StoryAnchors.NomsSet);
+                        return;
                     }
                     Phase(s, EpisodePhase.VetoSelection); break;
                 case EpisodePhase.VetoSelection:
@@ -206,9 +243,10 @@ namespace Gamesim.Simulation
                         Require(s.vetoHolderId != s.playerId, "Choose whether to use the veto first.");
                         var saved = NpcVetoSave(s);
                         Require(saved == null || s.hohId != s.playerId, "The veto will be used. As HoH, choose the replacement nominee.");
-                        var replacement = saved == null ? null : ReplacementCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).First().id;
+                        var replacement = saved == null ? null : NpcReplacement(s);
                         ResolveVeto(s, saved != null, saved, replacement); return;
                     }
+                    if (StoryOn(s)) StoryLapse(s, StoryAnchors.BlockSet);
                     // A nominee begging for votes and somebody courting the Head of Household are
                     // both positional, so they only make sense once the block is settled. This is
                     // that moment.
@@ -219,9 +257,12 @@ namespace Gamesim.Simulation
                     // the Head of Household only mean anything once the block is settled.
                     NpcDeals.Settle(s);
                     NpcDeals.Propose(s);
+                    // The block's stories first, then the nominees' pleas, which fill any gap.
+                    StoryAnchor(s, StoryAnchors.BlockSet);
                     NpcSocialActions.Campaign(s);
                     break;
                 case EpisodePhase.Campaign:
+                    if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionEve);
                     // Campaigning IS the reference build's interaction stage — last conversations
                     // and vote-wrangling — so eviction night opens on the speeches rather than
                     // repeating a stage the season has just spent a whole phase on.
@@ -230,10 +271,13 @@ namespace Gamesim.Simulation
                     // speeches announce themselves in their own entries; rewording a committed line
                     // to describe a new stage would break a replay comparison for no gain.
                     Log(s, "campaign-close", "Campaigning has closed. The house votes privately to evict.");
-                    Phase(s, EpisodePhase.Eviction); break;
+                    Phase(s, EpisodePhase.Eviction);
+                    StoryAnchor(s, StoryAnchors.EvictionEve);
+                    break;
                 case EpisodePhase.Eviction:
                     if (s.evictionResolved)
                     {
+                        if (StoryOn(s)) StoryLapse(s, StoryAnchors.EvictionNight);
                         s.evictionStage = EvictionStage.Interaction;
                         Phase(s, EpisodePhase.Social);
                         // The house takes stock as the social week opens and then plays it: pacts
@@ -244,6 +288,13 @@ namespace Gamesim.Simulation
                         // same rules boundary and why a recording declares itself past it.
                         // The player's alliances going in, so the ones the settle ends can be told.
                         var theirs = s.alliances.Where(a => a.active && a.members.Contains(s.playerId)).ToList();
+                        // Past the story boundary the story system is the one producer: the legacy
+                        // catalogue, crises, emergent situations and one-chapter storylines are
+                        // ported into its pool as one-beat arcs, sharing its airtime instead of a
+                        // one-situation-a-week slot. The night's stories are drawn before the house
+                        // takes its turns, so a houseguest who confronts you fills a gap in the
+                        // week rather than taking the only card the night had.
+                        if (StoryOn(s)) StoryAnchor(s, StoryAnchors.EvictionNight);
                         NpcSocialActions.Settle(s);
                         NpcDeals.Settle(s);
                         NpcDeals.Propose(s);
@@ -251,8 +302,11 @@ namespace Gamesim.Simulation
                         // and anything the player walked away from is written off.
                         Storylines.AgeModifiers(s);
                         Storylines.AbandonStale(s);
-                        BeginStoryline(s);
-                        OfferHouseEvent(s);
+                        if (!StoryOn(s))
+                        {
+                            BeginStoryline(s);
+                            OfferHouseEvent(s);
+                        }
                         NarrateHouse(s);
                         TellThePlayerWhichAlliancesEnded(s, theirs);
                         return;
@@ -313,7 +367,9 @@ namespace Gamesim.Simulation
                         ApplyOathPlan(s, WebLoyaltyOaths.EvictionVote(OathSnapshot(s), vote.voterId, vote.targetId));
                     }
                     SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null));
+                    StoryVotesRevealed(s, evicted);
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
+                    if (StoryOn(s)) Bonds.Apart(s, evicted);
                     s.evictionStage = EvictionStage.Results;
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
                     s.oathOpportunities.Remove(evicted);
@@ -554,7 +610,38 @@ namespace Gamesim.Simulation
             if (VetoIsLockedAtFinalFour(s)) return null;
             if (!ReplacementCandidates(s).Any()) return null;
             if (s.nominees.Contains(s.vetoHolderId)) return s.vetoHolderId;
-            return s.nominees.OrderByDescending(id => s.Score(s.vetoHolderId, id)).FirstOrDefault(id => s.Score(s.vetoHolderId, id) > 30);
+            // The holder's save order. With the story system off, or on with nothing written, the
+            // preference IS the score and nobody is refused, so this saves exactly who it always did.
+            return s.nominees.OrderByDescending(id => StoryConsumers.SavePreference(s, s.vetoHolderId, id))
+                .FirstOrDefault(id => StoryConsumers.SavePreference(s, s.vetoHolderId, id) > 30
+                                      && !StoryConsumers.WillNotSave(s, s.vetoHolderId, id)
+                                      && !ColdPartnerLeavesThemUp(s, s.vetoHolderId, id));
+        }
+
+        /// <summary>
+        /// The showmance veto dilemma from the other side: a partner who is cold and steady enough
+        /// (Honest −2 or lower, Steady 2 or higher) may leave you up. A keyed coin, so the Execute-
+        /// time check and the Advance agree on it.
+        /// </summary>
+        private static bool ColdPartnerLeavesThemUp(EpisodeState s, string holderId, string nomineeId)
+        {
+            if (!StoryAt(s, StoryRules.Bonds) || !Bonds.Holds(s, holderId, nomineeId, BondKinds.Showmance)) return false;
+            var axes = Personality.Of(s.Find(holderId));
+            return axes.Honest <= -2 && axes.Steady >= 2
+                   && StoryRandom.Chance(s, "w" + s.week + ":veto-partner:" + holderId + ":" + nomineeId, 0.5);
+        }
+
+        /// <summary>
+        /// Who an NPC Head of Household names as the replacement: the real target of a backdoor plan
+        /// they made at the nominations if that person is eligible, otherwise their lowest
+        /// preference - which, with nothing written, is exactly their lowest score, as it always was.
+        /// </summary>
+        private static string NpcReplacement(EpisodeState s)
+        {
+            var candidates = ReplacementCandidates(s).ToList();
+            string planned = BackdoorPlanned(s);
+            if (planned != null && candidates.Any(c => c.id == planned)) return planned;
+            return candidates.OrderBy(c => StoryConsumers.NominationPreference(s, s.hohId, c.id)).First().id;
         }
 
         private static void Nominate(EpisodeState s, string first, string second)
@@ -564,6 +651,7 @@ namespace Gamesim.Simulation
             Require(first != second && eligible.Contains(first ?? "") && eligible.Contains(second ?? ""), "Choose two distinct eligible houseguests.");
             s.nominees = new List<string> { first, second };
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
+            StoryNominated(s, s.nominees);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId, s.nominees.ToList()));
             Log(s, "nomination", Name(s, s.hohId) + Verb(s, s.hohId, " nominates ", " nominate ")
                 + Target(s, first, s.hohId) + " and " + Target(s, second, s.hohId) + ".");
@@ -602,9 +690,10 @@ namespace Gamesim.Simulation
                     "At the final four a veto holder who is not on the block cannot use the veto.");
                 Require(s.nominees.Contains(saved ?? ""), "The veto can only save a current nominee.");
                 Require(ReplacementCandidates(s).Any(), "The veto cannot be used because no legal replacement exists.");
-                if (s.hohId != s.playerId) replacement = ReplacementCandidates(s).OrderBy(c => s.Score(s.hohId, c.id)).First().id;
+                if (s.hohId != s.playerId) replacement = NpcReplacement(s);
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
+                StoryReplacement(s, replacement);
                 Change(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId));
                 Change(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee");
                 if (s.hohId != s.vetoHolderId) Change(s, replacement, s.vetoHolderId, -15, Name(s, s.vetoHolderId) + " used POV forcing " + Target(s, replacement, s.vetoHolderId) + " on the block");
@@ -665,6 +754,7 @@ namespace Gamesim.Simulation
                 SettlePromise(s, promise, promise.toId == selected ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Selects, s.hohId, selectedId: selected));
             s.Find(target).status = ContestantStatus.Jury;
+            if (StoryOn(s)) Bonds.Apart(s, target);
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
             // No social week follows this eviction, so the settle that ends an evictee's alliances
             // never comes; end them here. Behind the same boundary as that settle, so a save that
@@ -677,7 +767,8 @@ namespace Gamesim.Simulation
                 + Verb(s, target, " joins", " join") + " the jury.");
             Phase(s, EpisodePhase.JuryQuestioning);
             s.juryExchanges.Clear(); s.juryQuestionIndex = 0;
-            PrepareJuryQuestion(s);
+            // A player production removed has no questions to ask: straight to the speeches.
+            if (JuryExchangeCount(s) > 0) PrepareJuryQuestion(s); else BeginFinalSpeeches(s);
             // Last in the step, as at the weekly settle: nothing minted above moves, and it is the
             // line the status bar shows.
             TellThePlayerWhichAlliancesEnded(s, ended.Where(a => a.members.Contains(s.playerId)).ToList());
@@ -708,7 +799,9 @@ namespace Gamesim.Simulation
                 Log(s, "jury-vote", Name(s, juror.id) + Verb(s, juror.id, " votes for ", " vote for ")
                     + Target(s, preferred.id, juror.id) + " to win.");
             }
-            if (!s.Active.Any(c => c.id == s.playerId) && !s.votes.Any(v => v.voterId == s.playerId))
+            // A player production removed is not a juror: there is no vote to wait for.
+            if (!s.Active.Any(c => c.id == s.playerId) && !s.votes.Any(v => v.voterId == s.playerId)
+                && s.Find(s.playerId).status != ContestantStatus.Expelled)
             {
                 if (s.votes.Count > votesBefore) return;
                 throw new RuleException("Cast your jury vote for a finalist first.");
@@ -741,14 +834,17 @@ namespace Gamesim.Simulation
                     Remember(s, target.id, s.playerId, "We spent time talking in week " + s.week + ".", true);
                     Log(s, "conversation", target.name + ": " + target.motive, s.playerId, target.id); break;
                 case EpisodeCommandKind.FormAlliance:
-                    Require(!s.Allied(s.playerId, target.id), "You already share an active alliance.");
-                    Require(s.Score(target.id, s.playerId) >= 8, "Build some trust before proposing an alliance.");
-                    s.alliances.Add(new AllianceState { id = "alliance-" + s.nextSequence, name = "The " + target.name.Split(' ')[0] + " Pact", members = new List<string> { s.playerId, target.id } });
-                    Change(s, s.playerId, target.id, 8); Log(s, "alliance", "You and " + target.name + " formed a private alliance.", s.playerId, target.id); break;
+                    // The body moved to FormAllianceWith so a story can form one with a keyed roll;
+                    // this path passes the season's own stream, exactly as it always drew.
+                    FormAllianceWith(s, target, () => Roll(s));
+                    if (StoryAt(s, StoryRules.Bonds)) Knowledge.AllianceFormed(s, s.alliances.Last());
+                    break;
                 case EpisodeCommandKind.LeaveAlliance:
                     var alliance = s.alliances.FirstOrDefault(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(target.id));
                     Require(alliance != null, "No shared alliance is active."); alliance.active = false; Change(s, target.id, s.playerId, -15);
-                    Remember(s, target.id, s.playerId, "Left our alliance.", true); Log(s, "alliance", "You left the alliance with " + target.name + ".", s.playerId, target.id); break;
+                    Remember(s, target.id, s.playerId, "Left our alliance.", true); Log(s, "alliance", "You left the alliance with " + target.name + ".", s.playerId, target.id);
+                    foreach (var member in alliance.members.Where(id => id != s.playerId)) StoryAllianceLeft(s, member, s.playerId);
+                    break;
                 case EpisodeCommandKind.PromiseSafety: MakePromise(s, target.id, PromiseKind.Safety, null); break;
                 case EpisodeCommandKind.PromiseFinalTwo: MakePromise(s, target.id, PromiseKind.FinalTwo, null); break;
                 case EpisodeCommandKind.PromiseVote:
@@ -780,9 +876,19 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.DiscussGame: DiscussGame(s, target); break;
                 case EpisodeCommandKind.ShareSecret: ShareSecret(s, target); break;
                 case EpisodeCommandKind.SpreadRumor: SpreadRumor(s, target, c); break;
+                case EpisodeCommandKind.PillowTalk:
+                case EpisodeCommandKind.Cook:
+                case EpisodeCommandKind.InviteUp:
+                case EpisodeCommandKind.PublicDefense:
+                case EpisodeCommandKind.AllianceMeet:
+                case EpisodeCommandKind.CompPractice:
+                case EpisodeCommandKind.PlayAGame: RoomAct(s, target, c); break;
                 default: throw new RuleException("Unsupported social action.");
             }
             SpendSocialAction(s);
+            // A conversation is the web's other beat trigger: it advances a story the houseguest is
+            // in, raises a broken word waiting between you, and sometimes starts something new.
+            if (target != null && TopicChance(c.kind) > 0) StoryConversation(s, target.id, c.kind, c.secondTargetId);
         }
 
         /// <summary>
@@ -923,6 +1029,7 @@ namespace Gamesim.Simulation
             {
                 Change(s, s.playerId, about.id, -15, about.name + " found out what you had been saying", "lie");
                 Remember(s, about.id, s.playerId, "I found out what you were telling people about me.", true);
+                StoryLieDiscovered(s, about.id, s.playerId);
             }
             Log(s, "lie", discovered
                     ? "You told " + recipient.name + " something about " + about.name + " — and " + about.name + " found out."
@@ -1005,6 +1112,8 @@ namespace Gamesim.Simulation
             Require(OpeningBeat.IsKnown(beat), "That is not one of the opening beats.");
             if (s.openingBeatsSeen.Contains(beat)) return;
             s.openingBeatsSeen.Add(beat);
+            // The meet-and-greet over, move-in night has time for one real conversation.
+            if (beat == OpeningBeat.MeetAndGreet && IsFirstNight(s)) StartAimed(s, "first-night", null, StoryAnchors.EvictionNight);
         }
 
         /// <summary>
@@ -1134,7 +1243,14 @@ namespace Gamesim.Simulation
             // Every draw happens AFTER the guards. Passing the room in as an argument spent a roll
             // on choosing one even in the weeks that narrate nothing — and a draw spent is a season
             // re-rolled, whether or not anything was done with it.
-            var line = HouseEventSources.Ambient(s, Roll(s), Roll(s), HouseRooms.Any(s, Roll(s)), s.nextSequence);
+            // Past the story boundary the draws are keyed, so a story beat taking a week's airtime
+            // can never change how many main-stream rolls the house narration spends.
+            bool keyed = StoryOn(s);
+            var line = keyed
+                ? HouseEventSources.Ambient(s, StoryRandom.Unit(s, "w" + s.week + ":ambient:pick"),
+                    StoryRandom.Unit(s, "w" + s.week + ":ambient:which"),
+                    HouseRooms.Any(s, StoryRandom.Unit(s, "w" + s.week + ":ambient:room")), s.nextSequence)
+                : HouseEventSources.Ambient(s, Roll(s), Roll(s), HouseRooms.Any(s, Roll(s)), s.nextSequence);
             if (line == null) return;
             s.houseEvents.Add(line);
             Log(s, "house-ambient", line.narrative, s.playerId);
@@ -1184,6 +1300,7 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void WitnessProximity(EpisodeState s, EpisodeCommand c)
         {
+            if (StoryOn(s)) { StoryProximity(s, c); return; }
             Require(HouseEvents.Ready(s), "Nothing more is going to happen this week.");
             Require(HouseEvents.Pending(s) == null, "Deal with what is already in front of you first.");
             var drawn = HouseEventSources.Proximity(s, c.targetId, c.secondTargetId, c.text, s.nextSequence);
@@ -1210,6 +1327,8 @@ namespace Gamesim.Simulation
                 "Evicted players can follow the season but cannot influence it.");
             var item = s.houseEvents.FirstOrDefault(e => e.id == c.targetId && !e.resolved);
             Require(item != null, "That situation has already passed.");
+            // A story beat is answered by its option id through ProgressStoryline, never by a label.
+            Require(!item.IsStory, "Answer that moment with one of its own options.");
 
             // The choice travels as its own label rather than as an index, so a screen and an engine
             // that disagree about the order cannot silently commit the wrong answer — which is the
@@ -1581,6 +1700,7 @@ namespace Gamesim.Simulation
                         kept ? "deal_fulfilled" : "deal_broken", delta, text);
                     Remember(s, wronged, verdict.actorId, text, true);
                     Log(s, "deal-outcome", text, verdict.actorId, wronged);
+                    if (!kept) StoryWordBroken(s, wronged, verdict.actorId, GrudgeCauses.DealBroken, 60);
                 }
 
                 if (!kept) SpreadBetrayal(s, deal, verdict.actorId);
@@ -1620,6 +1740,7 @@ namespace Gamesim.Simulation
             string text = Name(s, promise.fromId) + (status == PromiseStatus.Broken ? " broke" : " fulfilled") + " a " + promise.kind + " promise.";
             Remember(s, promise.toId, promise.fromId, text, true); Remember(s, promise.fromId, promise.toId, text, true);
             Log(s, "promise-outcome", text, promise.fromId, promise.toId);
+            if (status == PromiseStatus.Broken) StoryWordBroken(s, promise.toId, promise.fromId, GrudgeCauses.PromiseBroken, 60);
             if (status == PromiseStatus.Broken)
             {
                 foreach (var witness in s.Active.Where(c => c.id != promise.fromId && c.id != promise.toId))

@@ -146,6 +146,8 @@ namespace Gamesim.Episode
             if (!playerIsActive) { arrivingIn = null; return; }
             if (!player.HasArrived) return;
             arrivingIn = null;
+            // A Step in walked them here: the moment's card, now that they have arrived.
+            if (OpenPendingScene()) return;
             var line = ArrivalLine();
             if (line == null) return;
             message = line;
@@ -232,7 +234,7 @@ namespace Gamesim.Episode
             string next = projected == null ? null : projected.pendingDiary != null ? (HasDiaryRoom ? "Private" : null) : StationRoomId();
             // One reader, kept: a method group passed every frame is a new delegate every frame.
             if (houseguestsIn == null) houseguestsIn = HouseguestsIn;
-            travelBeacons.Annotate(houseguestsIn, playerIsActive ? next : null);
+            travelBeacons.Annotate(houseguestsIn, playerIsActive ? next : null, StagedRoom(projected, out _));
             travelBeacons.Request(true, cameraRig, largeText ? 1.2f : 1f, StationRoomId(),
                 EpisodeEngine.IsCompetition(projected?.phase ?? EpisodePhase.Social), playerIsActive ? beaconPlayerRoom : null,
                 BeaconAnchor, hud.Covers);

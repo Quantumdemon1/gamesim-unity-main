@@ -91,8 +91,42 @@ namespace Gamesim.Simulation
             if (state.Allied(npcId, targetId)) return false;
             if (ActiveAlliancesFor(state, npcId).Count >= MaximumEach) return false;
             if (ActiveAlliancesFor(state, targetId).Count >= MaximumEach) return false;
+            // The web's rule that a grudge blocks an alliance: nobody offers a pact to somebody they
+            // hold forty or more against. Behind the story boundary, where grudges exist at all.
+            if (EpisodeEngine.StoryAt(state, StoryRules.Grudges)
+                && (Grudges.Severity(state, npcId, targetId) >= 40 || Grudges.Severity(state, targetId, npcId) >= 40))
+                return false;
             return state.Score(npcId, targetId) >= MinimumRelationship
                    && Desire(state, npcId, targetId) > ProposeThreshold;
+        }
+
+        /// <summary>
+        /// A pact a story made: two to four houseguests, no roll, the same record the weekly pass
+        /// writes for every pair in it. Public because the private pair-only <see cref="Form"/>
+        /// cannot make a three-person pact, and a story's "let's make it official" sometimes needs
+        /// one. Returns null when it cannot be formed.
+        /// </summary>
+        public static AllianceState FormFromStory(EpisodeState state, List<string> members)
+        {
+            if (state == null || members == null) return null;
+            var ids = members.Where(id => state.Find(id)?.status == ContestantStatus.Active).Distinct().ToList();
+            if (ids.Count < 2 || ids.Count > 4) return null;
+            if (state.alliances.Any(a => a.active && ids.All(a.members.Contains))) return null;
+            if (state.alliances.Count >= 100) return null;
+            string name = ids.Count == 2
+                ? "The " + state.Find(ids[0]).name.Split(' ')[0] + " and " + state.Find(ids[1]).name.Split(' ')[0] + " Pact"
+                : "The " + string.Join(", ", ids.Take(ids.Count - 1).Select(id => state.Find(id).name.Split(' ')[0]))
+                  + " and " + state.Find(ids.Last()).name.Split(' ')[0] + " Pact";
+            var alliance = new AllianceState
+            {
+                id = "alliance-story-" + state.nextSequence++, name = name.Length > 100 ? name.Substring(0, 100) : name,
+                members = ids, active = true,
+            };
+            state.alliances.Add(alliance);
+            for (int i = 0; i < ids.Count; i++)
+                for (int j = i + 1; j < ids.Count; j++)
+                    RelationshipLedger.Record(state, ids[i], ids[j], "alliance-formed", 30, alliance.name + " was formed");
+            return alliance;
         }
 
         /// <summary>

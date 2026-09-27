@@ -189,14 +189,20 @@ namespace Gamesim.Presentation
             Text(recap.Headline, 18f, UiTheme.Paper, 0f, TextAlignmentOptions.Center);
             Space(10f);
 
+            // Previously on, before the week: the stories the player came into it with.
+            Bullets("Previously on", recap.previously, UiTheme.Muted);
             Ceremony(recap);
             YourWeek(recap);
+            // The week's stories as the episode's four acts, in the order the week played them.
+            for (int act = 0; act < recap.acts.Length; act++)
+                Bullets(WeeklyRecap.ActTitles[act], recap.acts[act], UiTheme.Joke);
             Bullets("How the house voted", recap.ballots, UiTheme.Accent);
             Relationships(recap);
             Bullets("Alliances", recap.alliances, UiTheme.Accent);
             Bullets("Deals", recap.deals, UiTheme.Accent);
             Bullets("What happened to the house", recap.happenings, UiTheme.Warning);
             Bullets("Turning points", recap.moments, UiTheme.Warning);
+            Bullets("Next time", recap.nextTime, UiTheme.Accent);
 
             Controls();
             content.sizeDelta = new Vector2(0f, cursor + Pad);

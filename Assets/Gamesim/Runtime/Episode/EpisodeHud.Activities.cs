@@ -43,7 +43,7 @@ namespace Gamesim.Episode
                     // which pushed the left edge past the right one whenever it was on screen.
                     bool rightCard=item.name==EpisodeDirector.LiveFeedCardName || item.name==RecentEventsCardName
                         || item.name==OverviewColumnName || item.name=="Exploration controls" || item.name==HouseVibeCardName
-                        || item.name==RelationshipsCardName || item.name==NearbyCardName;
+                        || item.name==RelationshipsCardName || item.name==NearbyCardName || item.name==PullCardName;
                     // The floor grew a band. The strip and the caption above it are both fixed
                     // chrome a world bubble must clear, and the caption used to be low enough that
                     // the default floor covered it.
@@ -128,6 +128,7 @@ namespace Gamesim.Episode
             SetChromeVisible(RecentEventsCardName, false);
             SetChromeVisible(RelationshipsCardName, false);
             SetChromeVisible(NearbyCardName, false);
+            SetChromeVisible(PullCardName, false);
             SetChromeVisible(OverviewColumnName, false);
             SetChromeVisible("Exploration controls", false);
             SetChromeVisible(FollowChipName, false);
@@ -298,6 +299,7 @@ namespace Gamesim.Episode
             SetChromeVisible(RecentEventsCardName, false);
             SetChromeVisible(RelationshipsCardName, false);
             SetChromeVisible(NearbyCardName, false);
+            SetChromeVisible(PullCardName, false);
             SetChromeVisible(OverviewColumnName, false);
             SetChromeVisible("Exploration controls", false);
             SetChromeVisible(FollowChipName, false);

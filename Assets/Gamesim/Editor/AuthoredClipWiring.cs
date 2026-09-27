@@ -93,6 +93,9 @@ namespace Gamesim.Editor
             for (int i = 0; i < Reactions.Length; i++)
             {
                 var (trigger, clip) = Reactions[i];
+                // A beat with no take: its trigger stays undeclared, which is what tells the
+                // presentation to leave the body in its idle (the director plays a stand-in).
+                if (clip == null) continue;
                 if (controller.parameters.All(p => p.name != trigger))
                     controller.AddParameter(trigger, AnimatorControllerParameterType.Trigger);
                 var state = Ensure(machine, clip, clips[clip], new Vector3(800, 50 + 80 * i, 0));
@@ -112,12 +115,17 @@ namespace Gamesim.Editor
             Debug.Log("[Gamesim] clips · " + clips.Count + " authored takes wired: SitIdle, SitTalk, Talk, Listen, Argue, " + Reactions.Length + " reactions; parameters " + TalkingParameter + ", " + ListeningParameter + ", " + ArguingParameter);
         }
 
-        /// <summary>The reaction triggers and the clips they play, in CharacterPresentation.Reaction order.</summary>
+        /// <summary>
+        /// The reaction triggers and the clips they play, in CharacterPresentation.Reaction order. A
+        /// row with no clip is a beat this cast has no take for yet: nothing is declared for it.
+        /// </summary>
         public static readonly (string trigger, string clip)[] Reactions =
         {
             ("ReactNominated", "React_nominated"), ("ReactSaved", "React_saved"),
             ("ReactEvicted", "React_evicted"), ("ReactWon", "React_won"),
             ("ReactCheered", "React_cheered"),
+            // The story's five (plan §5.1), awaiting their takes.
+            ("ReactShocked", null), ("ReactTearful", null), ("ReactEmbrace", null), ("ReactFurious", null), ("ReactStormOff", null),
         };
 
         private static AnimatorState State(AnimatorStateMachine machine, string name) =>

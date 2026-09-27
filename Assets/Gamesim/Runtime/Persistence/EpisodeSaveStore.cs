@@ -163,6 +163,9 @@ namespace Gamesim.Persistence
                 if (parsed.npcSocial.rulesStartWeek > parsed.week)
                     message = (string.IsNullOrEmpty(message) ? "" : message + " ")
                         + "NPC conversations begin in week " + parsed.npcSocial.rulesStartWeek + "; the current week is unchanged.";
+                if (parsed.story.rulesStartWeek > parsed.week)
+                    message = (string.IsNullOrEmpty(message) ? "" : message + " ")
+                        + "Story arcs begin in week " + parsed.story.rulesStartWeek + "; the current week is unchanged.";
                 return true;
             }
             catch (Exception error) when (SaveJson.IsExpected(error))

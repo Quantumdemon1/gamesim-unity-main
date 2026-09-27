@@ -33,6 +33,8 @@ namespace Gamesim.Presentation
         private static readonly Color Dimmed = new Color(0.22f, 0.23f, 0.26f);
         private static readonly Color BorderLit = new Color(1f, 0.78f, 0.15f);
         private static readonly Color BorderOut = new Color(0.16f, 0.17f, 0.20f);
+        /// <summary>Production's removal, in the frame (plan §3.6): out like an eviction, marked unlike one.</summary>
+        public static readonly Color BorderRemoved = new Color(0.45f, 0.08f, 0.08f);
 
         private readonly List<Transform> frames = new List<Transform>();
         private readonly Dictionary<string, Transform> bound = new Dictionary<string, Transform>();
@@ -79,7 +81,8 @@ namespace Gamesim.Presentation
                 if (border == null) continue;
                 var borderMaterial = Instance(border);
                 if (borderMaterial == null) continue;
-                SetColour(borderMaterial, active ? BorderLit : BorderOut);
+                bool removed = actor != null && actor.status == ContestantStatus.Expelled;
+                SetColour(borderMaterial, active ? BorderLit : removed ? BorderRemoved : BorderOut);
                 // The emissive channel is what makes the frame read as lit at gameplay distance,
                 // where the base colour is a handful of pixels.
                 if (borderMaterial.HasProperty("_EmissionColor"))

@@ -78,6 +78,7 @@ namespace Gamesim.Episode
             headingToNpcId = null;
             headingToStation = false;
             arrivingIn = null;
+            sceneBeatPending = null;
         }
 
         /// <summary>
@@ -249,6 +250,13 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.SmallTalk:
                 case EpisodeCommandKind.PersonalChat:
                 case EpisodeCommandKind.RelationshipBuilding:
+                // The room acts (D-E): time spent, nothing that can rebound.
+                case EpisodeCommandKind.PillowTalk:
+                case EpisodeCommandKind.Cook:
+                case EpisodeCommandKind.InviteUp:
+                case EpisodeCommandKind.PublicDefense:
+                case EpisodeCommandKind.AllianceMeet:
+                case EpisodeCommandKind.PlayAGame:
                     return "social";
                 // Their own category for the same reason Eavesdrop and SpreadLie have one: these
                 // are the conversations that can rebound, and the chip is the only warning before
@@ -279,6 +287,7 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.SwearLoyalty:
                     return "strategic";
                 case EpisodeCommandKind.StudyHouse:
+                case EpisodeCommandKind.CompPractice:
                     return "preparation";
                 default:
                     return null;
@@ -320,8 +329,13 @@ namespace Gamesim.Episode
         private void OfferProximityEvent(EpisodeState state)
         {
             if (weeklyRecap == null || state == null) return;
-            if (!HouseEvents.Ready(state)) return;
-            if (HouseEvents.Pending(state) != null) return;
+            // Past the story boundary a walk-in is a story beat and shares its airtime; before it,
+            // the legacy one-situation-a-week slot. The engine answers both.
+            // Past the story boundary a walk-in is only ever offered: the Pull's Step in commits it
+            // (plan §5.1), and walking out of the room, or the pair leaving it, withdraws the offer.
+            bool story = EpisodeEngine.StoryOn(state);
+            if (story) ClearWalkIn();
+            if (!EpisodeEngine.ProximityOpen(state)) return;
 
             var here = HouseOccupancy(state)
                 .FirstOrDefault(room => room.Occupants != null && room.Occupants.Any(person => person.IsPlayer));
@@ -333,9 +347,15 @@ namespace Gamesim.Episode
                 .ToList();
             if (others.Count < 2) return;
 
-            var drawn = HouseEventSources.Proximity(state, others[0].Id, others[1].Id,
-                here.Name, state.nextSequence);
-            if (drawn == null) return;
+            // Offered only when something would come of it: a pair no walk-in story will take this
+            // week is two people talking, not an event.
+            if (!EpisodeEngine.ProximityOpen(state, others[0].Id, others[1].Id)) return;
+            if (story)
+            {
+                walkInFirst = others[0].Id; walkInSecond = others[1].Id; walkInRoom = here.Name; walkInWeek = state.week;
+                return;
+            }
+            if (HouseEventSources.Proximity(state, others[0].Id, others[1].Id, here.Name, state.nextSequence) == null) return;
             Submit(new EpisodeCommand
             {
                 id = Guid.NewGuid().ToString("N"), actorId = state.playerId,
@@ -488,7 +508,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void PendingHouseEvent(EpisodeState state)
         {
-            var item = HouseEvents.Pending(state);
+            // Legacy situations only: a story beat has its own card (EpisodeDirector.Story.cs) and
+            // is answered by option id, never by label.
+            var item = state.houseEvents.FirstOrDefault(e => !e.resolved && !e.IsStory);
             if (item == null) return;
 
             hud.HouseEventHeader(item.title, item.narrative);

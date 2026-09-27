@@ -4,8 +4,14 @@ namespace Gamesim.Simulation
 {
     public sealed partial class EpisodeEngine
     {
-        private static int JuryExchangeCount(EpisodeState s) => s.Active.Any(x => x.isPlayer)
-            ? s.contestants.Count(x => x.status == ContestantStatus.Jury || x.status == ContestantStatus.Evicted) : 2;
+        /// <summary>
+        /// How many questions the finale asks: every juror's question to a player finalist, or the
+        /// spectating player's two - none at all for a player production removed, who is not a juror.
+        /// </summary>
+        private static int JuryExchangeCount(EpisodeState s) =>
+            s.Find(s.playerId)?.status == ContestantStatus.Expelled ? 0
+            : s.Active.Any(x => x.isPlayer)
+                ? s.contestants.Count(x => x.status == ContestantStatus.Jury || x.status == ContestantStatus.Evicted) : 2;
 
         private static void PrepareJuryQuestion(EpisodeState s)
         {

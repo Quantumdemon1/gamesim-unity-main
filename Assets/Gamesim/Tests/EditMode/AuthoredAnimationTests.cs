@@ -68,6 +68,12 @@ namespace Gamesim.Tests.EditMode
             Assert.That(states["Listen"].transitions.Any(t => t.destinationState == states["Talk"]), Is.True, "and back");
             foreach (var (trigger, clip) in AuthoredClipWiring.Reactions)
             {
+                // A beat with no take yet is not claimed: the presentation skips an undeclared cue.
+                if (clip == null)
+                {
+                    Assert.That(controller.parameters.Any(p => p.name == trigger), Is.False, trigger + " has no take, so it is not declared");
+                    continue;
+                }
                 Assert.That(controller.parameters.Any(p => p.name == trigger && p.type == AnimatorControllerParameterType.Trigger), Is.True, trigger);
                 Assert.That(states.ContainsKey(clip) && states[clip].motion != null && states[clip].motion.name == clip, Is.True, clip);
                 var any = controller.layers[0].stateMachine.anyStateTransitions.FirstOrDefault(t => t.destinationState == states[clip]);

@@ -23,7 +23,8 @@ namespace Gamesim.Tests.EditMode
         public void MigrationPreservesEveryOldFieldAndDoesNotGuessAppearance()
         {
             var old = V12(); string original = old.ToString();
-            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
+            // The frozen v12-to-v13 step on its own; the whole chain to 14 is PersistenceV14MigrationTests'.
+            var migrated = EpisodeSaveMigrations.PrepareV13Payload(old, out var changed);
             Assert.That(changed, Is.True);
             Assert.That((int)migrated["schemaVersion"], Is.EqualTo(13));
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
@@ -36,8 +37,9 @@ namespace Gamesim.Tests.EditMode
             projection["schemaVersion"] = 12;
             Assert.That(JToken.DeepEquals(projection, old), Is.True);
             Assert.That(old.ToString(), Is.EqualTo(original));
-            Assert.That(EpisodeValidation.TryValidate(migrated.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
-            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
+            var current = EpisodeSaveMigrations.UpgradeV13ToV14(migrated);
+            Assert.That(EpisodeValidation.TryValidate(current.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
+            var repeated = EpisodeSaveMigrations.PrepareV13Payload(migrated, out changed);
             Assert.That(changed, Is.False); Assert.That(JToken.DeepEquals(repeated, migrated), Is.True);
         }
 
@@ -72,7 +74,8 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.UpgradeV12ToV13(old);
             Assert.That((int)current[field], Is.EqualTo(count));
             Assert.That((int)old[field], Is.EqualTo(count));
-            Assert.That(EpisodeValidation.TryValidate(current.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
+            var latest = EpisodeSaveMigrations.UpgradeV13ToV14(current);
+            Assert.That(EpisodeValidation.TryValidate(latest.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
         }
     }
 }

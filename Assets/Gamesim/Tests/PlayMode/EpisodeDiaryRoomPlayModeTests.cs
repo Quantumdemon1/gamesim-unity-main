@@ -186,6 +186,11 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator DiaryRoom_EPrioritizesRoomOverNearbyNpcAndLosingProximityClosesIt()
         {
+            // The subject is E's priority, not the house's own clock. The NPC world commits a tick
+            // for every whole second of free time and carries the fraction over from the load, so on
+            // a slower machine the few free frames here could finish a second begun in the set-up
+            // and move the revision this test holds still.
+            director.SuspendNpcAutonomyForDiagnostics();
             var before = director.Snapshot;
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             WarpPlayer(director.DiaryPosition);

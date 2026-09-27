@@ -61,6 +61,8 @@ namespace Gamesim.Episode
             var ids=new List<string>(); var anchors=new List<HouseInteractionAnchor>();
             var used=new List<Vector3>{competitionPlayerStationPosition};
             competitionAudienceStatus="Other houseguests are unavailable for staging; the eligible field is listed.";
+            // A story scene lets its people go for the arena: the show's own stage comes first.
+            npcMeetings?.EndSceneStage();
             bool castAvailable=npcMeetings!=null && npcMeetings.IsReady && state.npcSocial.pending.Count==0 && npcMeetings.LeaseCount==0;
             if(castAvailable)
             {

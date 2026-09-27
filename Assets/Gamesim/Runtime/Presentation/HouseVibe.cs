@@ -39,7 +39,9 @@ namespace Gamesim.Presentation
         { "alliance", "deal", "deal-outcome", "promise", "promise-outcome", "relationship-milestone" };
         private static readonly HashSet<string> StakesKinds = new HashSet<string>
         { "nomination", "eviction", "final-eviction", "backdoor", "lie", "rumour", "rumour-backfire",
-          "scheme", "vent", "campaign-close", "veto" };
+          "scheme", "vent", "campaign-close", "veto",
+          // The story's ceremonies (plan §5.1) are game moves by any reckoning.
+          StoryLog.Blowup, StoryLog.Penalty, StoryLog.Expulsion, StoryLog.HouseMeeting };
 
         public static Reading Of(EpisodeState state)
         {

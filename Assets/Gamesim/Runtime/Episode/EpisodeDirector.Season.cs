@@ -254,6 +254,10 @@ namespace Gamesim.Episode
                 var nextStore = new EpisodeSaveStore(Path.Combine(saveRoot, "episode-" + Guid.NewGuid().ToString("N") + ".json"));
                 var fresh = choice == null ? ContentCatalog.Create(seed) : SeasonBuilder.Create(choice, seed);
                 fresh.competitionRulesVersion = 3;
+                // Every season the director starts plays under the story system from week one:
+                // arcs, grudges, lore, bonds and production. Seasons built directly by tests and
+                // the default scene engine stay off unless they switch it on themselves.
+                EpisodeEngine.EnableStory(fresh);
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

@@ -172,7 +172,7 @@ namespace Gamesim.Episode
                 var entries = visible.Where(e => e.week == week).ToList();
                 if (entries.Count == 0) continue;
                 hud.Heading(week == newest ? "Week " + week + " · this week" : "Week " + week, UiTheme.Gold);
-                foreach (var entry in entries) hud.Paragraph(entry.text);
+                foreach (var entry in entries) hud.Paragraph(StoryText.Log(state, entry));
             }
         }
 
@@ -301,6 +301,7 @@ namespace Gamesim.Episode
                 case ContestantStatus.Evicted: return "Evicted";
                 case ContestantStatus.Winner: return "Winner";
                 case ContestantStatus.RunnerUp: return "Runner-up";
+                case ContestantStatus.Expelled: return "Removed";
                 default: return status.ToString();
             }
         }
@@ -602,6 +603,12 @@ namespace Gamesim.Episode
         private static string SpectatorDetail(EpisodeState state)
         {
             var you = state.Find(state.playerId);
+            if (you != null && you.status == ContestantStatus.Expelled)
+            {
+                int removed = state.story?.removals.FirstOrDefault(r => r.contestantId == you.id)?.week ?? state.week;
+                return "Production removed you from the house in week " + removed + ". You take no seat on the jury."
+                    + " The house plays on; you can still watch every ceremony and read the notebook.";
+            }
             int week = you != null && you.nominationWeeks != null && you.nominationWeeks.Count > 0
                 ? you.nominationWeeks[you.nominationWeeks.Count - 1]
                 : state.week;

@@ -262,8 +262,19 @@ namespace Gamesim.Persistence
                 case ContestantStatus.RunnerUp: return 2;
             }
             var jurors = state.jurySentiment?.jurors;
+            // Production's removals are exits too, merged into the eviction order by week: a removal
+            // happens as its week's social window closes, after that week's eviction.
+            var removals = state.story?.removals ?? new List<RemovalState>();
+            int JoinedWeek(WebJurorSentiment juror) => juror.events.Count == 0 ? 0 : juror.events[0].week;
+            if (you.status == ContestantStatus.Expelled)
+            {
+                int week = removals.FirstOrDefault(r => r.contestantId == you.id)?.week ?? state.week;
+                int evictedBefore = jurors?.Count(j => JoinedWeek(j) <= week) ?? 0;
+                int removedBefore = removals.Count(r => r.week < week);
+                return state.contestants.Count - evictedBefore - removedBefore;
+            }
             int index = jurors == null ? -1 : jurors.FindIndex(juror => juror.jurorId == you.id);
-            if (index >= 0) return state.contestants.Count - index;
+            if (index >= 0) return state.contestants.Count - index - removals.Count(r => r.week < JoinedWeek(jurors[index]));
             int below = state.contestants.Count(c => c.status == ContestantStatus.Evicted)
                         - (you.status == ContestantStatus.Evicted ? 1 : 0);
             return state.contestants.Count - below;
@@ -277,6 +288,7 @@ namespace Gamesim.Persistence
                 case ContestantStatus.RunnerUp: return "Runner-up";
                 case ContestantStatus.Jury: return "Jury";
                 case ContestantStatus.Evicted: return "Pre-jury";
+                case ContestantStatus.Expelled: return "Removed";
                 default: return "Unfinished";
             }
         }

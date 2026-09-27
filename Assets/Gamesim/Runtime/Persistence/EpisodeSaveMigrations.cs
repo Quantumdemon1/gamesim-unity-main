@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Gamesim.Simulation;
 using Newtonsoft.Json.Linq;
 
@@ -20,10 +21,77 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 14) return (JObject)original.DeepClone();
+            if (version < 1 || version > 13) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV13ToV14(version == 13 ? original : PrepareV13Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v12-to-v13 dispatch; do not retarget its historical defaults.</summary>
+        public static JObject PrepareV13Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 13) return (JObject)original.DeepClone();
             if (version < 1 || version > 12) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV12ToV13(version == 12 ? original : PrepareV12Payload(original, out _));
             migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Opens the story system, from the week after the save's: the seventh use of the rule
+        /// boundary, for the reason the other six give. A season restored mid-week carries on under
+        /// the rules it was played under until the week turns, and then the house starts to remember.
+        ///
+        /// <para>Everything the bundle holds arrives empty - there is nothing in a v13 save to infer
+        /// a grudge or a secret from - except the lore, which is cast now from each houseguest's
+        /// saved card, exactly as a new season casts it. Every house event, storyline and modifier
+        /// gains its story fields at their legacy values: a legacy event carries no beat state, a
+        /// legacy storyline no cycle state, and every existing modifier is the player's.</para>
+        /// </summary>
+        public static JObject UpgradeV13ToV14(JObject original)
+        {
+            FrozenEpisodeV13.Validate(original);
+            int week = (int)original["week"];
+            var result = (JObject)original.DeepClone();
+
+            foreach (JObject item in ((JArray)result["houseEvents"]).OfType<JObject>())
+            {
+                foreach (var field in new[] { "contentId", "cycleId", "closesAnchor", "surface", "venue", "lapseOptionId" })
+                    item.Add(field, JValue.CreateNull());
+                item.Add("cast", new JArray());
+                foreach (JObject choice in ((JArray)item["choices"]).OfType<JObject>())
+                {
+                    foreach (var field in new[] { "optionId", "glyph", "approach", "subjectId", "lockReason", "next", "nextOnBackfire" })
+                        choice.Add(field, JValue.CreateNull());
+                    choice.Add("checkBase", -1.0);
+                    foreach (var field in new[] { "lapse", "costsAction", "conduct", "pickPerson", "locked" })
+                        choice.Add(field, false);
+                    foreach (var field in new[] { "eligibleIds", "bonusTraits", "against", "effects", "backfire" })
+                        choice.Add(field, new JArray());
+                }
+            }
+            foreach (JObject story in ((JArray)result["storylines"]).OfType<JObject>())
+            {
+                foreach (var field in new[] { "beatId", "lane", "nextAnchor", "endingId" }) story.Add(field, JValue.CreateNull());
+                story.Add("variant", 0);
+                story.Add("nextWeek", 0);
+                foreach (var field in new[] { "cast", "path", "vars" }) story.Add(field, new JArray());
+            }
+            foreach (JObject modifier in ((JArray)result["activeModifiers"]).OfType<JObject>())
+                modifier.Add("ownerId", "");
+
+            // The bundle, switched on from next week, with the lore cast from the saved cards.
+            var serializer = SaveJson.Serializer();
+            var cast = result.ToObject<EpisodeState>(serializer);
+            cast.story = new StoryWorldState();
+            EpisodeEngine.EnableStory(cast, checked(week + 1));
+            result.Add("story", JObject.FromObject(cast.story, serializer));
+            result["schemaVersion"] = 14;
             return result;
         }
 

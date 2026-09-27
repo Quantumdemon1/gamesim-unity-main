@@ -293,11 +293,21 @@ namespace Gamesim.Episode
         /// Who is where, and where the player is being sent next: the counts on the icons and the
         /// ring round the one the objective names. Either may be null.
         /// </summary>
-        public void Annotate(System.Func<string, int> countIn, string nextStopRoom)
+        public void Annotate(System.Func<string, int> countIn, string nextStopRoom, string stagedRoom = null)
         {
             occupants = countIn;
             nextStop = nextStopRoom;
+            dramaRoom = stagedRoom;
         }
+
+        /// <summary>
+        /// The room a story moment is being acted out in, whose icon wears the drama mark (plan
+        /// §5.1) - the mark only: its caption is how the icon is found, and the ring still belongs
+        /// to the next stop, because an optional scene teases rather than nags.
+        /// </summary>
+        public string DramaRoom => dramaRoom;
+        private string dramaRoom;
+        private const string DramaGlyph = "drama";
 
         /// <summary>
         /// What this frame's icons should show, from the director's Update. They are placed in
@@ -373,17 +383,19 @@ namespace Gamesim.Episode
                 beacon.group.blocksRaycasts = fade > .5f;
                 beacon.group.interactable = fade > .5f;
 
-                string glyph = beacon.room == stationRoom ? (competition ? "trophy" : "camera") : RoomLabels.Glyph(beacon.room);
+                bool staged = beacon.room == dramaRoom && beacon.room != stationRoom && beacon.room != "Private";
+                string glyph = staged ? DramaGlyph : beacon.room == stationRoom ? (competition ? "trophy" : "camera") : RoomLabels.Glyph(beacon.room);
                 // Keyed on the words, not the glyph: the yard wears the trophy as a room and as the
                 // competition's screen, and only its caption says which.
                 string said = Caption(beacon.room, stationRoom, competition);
                 if (glyph != beacon.glyph || said != beacon.said)
                 {
                     beacon.glyph = glyph; beacon.said = said;
-                    beacon.mark.sprite = UiTheme.Icon(glyph);
+                    beacon.mark.sprite = staged ? UiTheme.Pack(PackArt.IconDrama) ?? UiTheme.Icon(RoomLabels.Glyph(beacon.room)) : UiTheme.Icon(glyph);
                     beacon.mark.enabled = beacon.mark.sprite != null;
                     // Gold is power: the Head of Household's suite wears it here as it does on the map.
-                    beacon.mark.color = beacon.room == "HoH" ? UiTheme.Gold : special ? UiTheme.Accent : UiTheme.Heading;
+                    // The drama mark is pack art in its own colours.
+                    beacon.mark.color = staged ? Color.white : beacon.room == "HoH" ? UiTheme.Gold : special ? UiTheme.Accent : UiTheme.Heading;
                     beacon.caption.text = Localisation.Text(said);
                     var tipRect = (RectTransform)beacon.tip.transform;
                     tipRect.sizeDelta = new Vector2(Mathf.Ceil(beacon.caption.GetPreferredValues(beacon.caption.text).x) + 24f, 30f);

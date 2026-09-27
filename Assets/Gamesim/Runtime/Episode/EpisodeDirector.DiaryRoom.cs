@@ -359,6 +359,7 @@ namespace Gamesim.Episode
             if (state.pendingDiary != null) return true;
             var me = state.Find(state.playerId);
             if (me == null || me.status != ContestantStatus.Active) return false;
+            if (EpisodeEngine.OpenSummons(state) != null) return true;
             if (state.phase == EpisodePhase.Social
                 && EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state)) return true;
             return HasPlayerDecision(state);
@@ -372,6 +373,7 @@ namespace Gamesim.Episode
         private bool QuietBeat(EpisodeState state)
         {
             if (state.pendingDiary != null) return true;
+            if (EpisodeEngine.OpenStoryBeats(state).Count > 0 && state.Find(state.playerId)?.status == ContestantStatus.Active) return false;
             if (challengeActive || EpisodeEngine.IsCompetition(state.phase)) return false;
             if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign
                 || state.phase == EpisodePhase.JuryQuestioning || state.phase == EpisodePhase.FinalSpeeches
@@ -450,6 +452,9 @@ namespace Gamesim.Episode
         private void RenderDiaryPending(EpisodeState state)
         {
             bool any = RenderDiaryReflection(state);
+            // Production's call, or a story's Diary Room moment: answered here as well as on the
+            // episode screen, because the room is where it was said to be.
+            any |= PendingSummons(state);
             if (state.pendingDiary == null && HasPlayerDecision(state))
             {
                 hud.DiarySection("YOUR PENDING DECISION");

@@ -60,6 +60,18 @@ namespace Gamesim.Simulation
         public WebVoteBlocDirective blocDirective;
         public List<string> memories = new List<string>();
         public string playerPersonaLabel;
+        /// <summary>
+        /// Native, not the web's: the story system's view of each nominee from this voter. Empty on
+        /// an empty story state and for every imported web round, so the ten-factor parity holds.
+        /// </summary>
+        public List<WebVoteStoryTerm> storyTerms = new List<WebVoteStoryTerm>();
+    }
+
+    /// <summary>A voter's grudge against a nominee and the bond between them, as vote factors.</summary>
+    [Serializable] public sealed class WebVoteStoryTerm
+    {
+        public string nomineeId;
+        public double grudge, bond;
     }
 
     [Serializable] public sealed class WebVoteFactor
@@ -126,7 +138,9 @@ namespace Gamesim.Simulation
                     relationships = state.relationships.Select(r => r.Clone()).ToList(),
                     relationshipArcs = state.relationshipArcs.Select(a => new WebVoteRelationshipArc
                     { npcId = a.npcId, npcName = a.npcName, arcType = a.arcType, intensity = a.intensity, escalationLevel = a.escalationLevel }).ToList(),
-                    alliances = state.alliances.Select(a => new WebVoteAlliance
+                    // A voter weighs only the alliances they know about. Every alliance without a
+                    // story fact is known to all, so a season before the knowledge rules is unchanged.
+                    alliances = state.alliances.Where(a => Knowledge.AllianceVisibleTo(state, a, voterId)).Select(a => new WebVoteAlliance
                     {
                         id = a.id, name = a.name, status = a.active ? "Active" : "Dissolved",
                         members = new List<string>(a.members)
@@ -146,7 +160,13 @@ namespace Gamesim.Simulation
                     }).ToList()
                 },
                 memories = state.memories.Where(m => m.ownerId == voterId).Reverse().Take(10).Select(m => m.text).ToList(),
-                playerPersonaLabel = state.playerPersona.current
+                playerPersonaLabel = state.playerPersona.current,
+                storyTerms = state.nominees.Select(id => new WebVoteStoryTerm
+                {
+                    nomineeId = id,
+                    grudge = StoryConsumers.VoteGrudge(state, voterId, id),
+                    bond = StoryConsumers.VoteBond(state, voterId, id),
+                }).Where(t => t.grudge != 0 || t.bond != 0).ToList()
             };
             return options;
         }
@@ -204,6 +224,8 @@ namespace Gamesim.Simulation
                 case "blocPressure": return "My alliance needs me to vote out " + target.name + ".";
                 case "memory": return "What I've learned about " + target.name + " makes them too risky to keep.";
                 case "persona": return target.name + "'s reputation makes them dangerous to keep.";
+                case "grudge": return "I haven't forgotten what " + target.name + " did.";
+                case "bond": return "I'm not turning on " + saved.name + ".";
                 default: return "Keeping " + saved.name + " is better for my game right now.";
             }
         }
@@ -397,6 +419,11 @@ namespace Gamesim.Simulation
                 Factor("persona", persona, "private", persona == 0 ? Array.Empty<string>() : new[] { "persona:" + o.playerPersonaLabel }),
                 Factor("blocPressure", follows ? -40 : 0, "private", follows ? new[] { o.blocDirective.allianceId } : Array.Empty<string>())
             };
+            // The story system's two terms, native: present only when they say something, so the
+            // web's ten factors are exactly the web's ten wherever there is no story to tell.
+            var story = o.storyTerms?.FirstOrDefault(t => t.nomineeId == nominee.id);
+            if (story != null && story.grudge != 0) factors.Add(Factor("grudge", story.grudge, "private", "grudge:" + o.voter.id + ":" + nominee.id));
+            if (story != null && story.bond != 0) factors.Add(Factor("bond", story.bond, "private", "bond:" + o.voter.id + ":" + nominee.id));
             return new WebNomineeEvaluation { nomineeId = nominee.id, factors = factors, score = factors.Sum(f => f.value) };
         }
 

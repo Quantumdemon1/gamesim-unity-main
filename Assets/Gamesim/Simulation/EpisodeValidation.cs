@@ -19,7 +19,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 13) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 14) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > 3)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -222,7 +222,8 @@ namespace Gamesim.Simulation
                     return Fail(out error, "HoH ballots are valid only after a complete tied vote.");
             }
             if (s.phase == EpisodePhase.Jury && s.votes.Any(v => !Live(v.targetId) || Live(v.voterId))) return Fail(out error, "Invalid jury ballot eligibility.");
-            return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error);
+            return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
+                && TryValidateStory(s, out error);
         }
 
         /// <summary>

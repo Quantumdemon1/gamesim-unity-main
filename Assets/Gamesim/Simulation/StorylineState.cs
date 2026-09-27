@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Gamesim.Simulation
 {
@@ -32,7 +34,46 @@ namespace Gamesim.Simulation
         /// <summary>The week it ended, so the cooldown can be measured from it. Zero while running.</summary>
         public int endedWeek;
 
-        public StorylineState Clone() => (StorylineState)MemberwiseClone();
+        // ---------------------------------------------------------------- schema 14: story cycles
+        //
+        // A storyline became a multi-beat story cycle. The v12 fields keep their meaning, so a
+        // one-chapter storyline saved before this ran on is still one; a cycle is simply a record
+        // that also knows where it is up to. A legacy record migrates with these empty and keeps
+        // running under Storylines.cs until it ends.
+
+        /// <summary>The beat the cycle is on, or null for a legacy one-chapter storyline.</summary>
+        public string beatId;
+
+        /// <summary>The lane it runs in (<see cref="StoryLanes"/>).</summary>
+        public string lane;
+
+        /// <summary>Which phrasing of its beats it uses; the mechanics never vary.</summary>
+        public int variant;
+
+        /// <summary>Who plays each part, bound when it started.</summary>
+        public List<StoryRoleState> cast = new List<StoryRoleState>();
+
+        /// <summary>The steps taken so far.</summary>
+        public List<StoryStepState> path = new List<StoryStepState>();
+
+        /// <summary>Numbers the cycle keeps: heat, secrecy, exposure.</summary>
+        public List<StoryVarState> vars = new List<StoryVarState>();
+
+        /// <summary>The week and anchor the next beat is due at.</summary>
+        public int nextWeek;
+        public string nextAnchor;
+
+        /// <summary>How it ended, once it has.</summary>
+        public string endingId;
+
+        public StorylineState Clone()
+        {
+            var copy = (StorylineState)MemberwiseClone();
+            copy.cast = cast.Select(x => x.Clone()).ToList();
+            copy.path = path.Select(x => x.Clone()).ToList();
+            copy.vars = vars.Select(x => x.Clone()).ToList();
+            return copy;
+        }
     }
 
     /// <summary>Where a storyline has got to.</summary>
@@ -89,6 +130,13 @@ namespace Gamesim.Simulation
         /// </para>
         /// </summary>
         public double socialBonus;
+
+        /// <summary>
+        /// Whose modifier it is. Empty means the player's, which is what every modifier saved before
+        /// schema 14 was; a houseguest's own modifiers (a Have-Not week) name them, and the sums that
+        /// feed the player's competition score and action budget skip them.
+        /// </summary>
+        public string ownerId = string.Empty;
 
         public StoryModifierState Clone() => (StoryModifierState)MemberwiseClone();
     }

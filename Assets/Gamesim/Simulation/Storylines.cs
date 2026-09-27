@@ -18,10 +18,17 @@ namespace Gamesim.Simulation
     /// season here reproduces from its seed. The fallback is the deterministic half, so the fallback
     /// is what was ported — exactly as with the house events.</para>
     ///
-    /// <para>What is <b>not</b> ported from the fallback either: multi-chapter arcs. Every template
-    /// the reference ships offline has exactly one chapter, so a chapter index would be a field
-    /// that is always zero. <c>branching-story-system.ts</c> is where the branching lives and it is
-    /// AI-driven; porting a chapter counter to serve nothing would be inventing structure.</para>
+    /// <para>Every template here has exactly one chapter, because every storyline fallback the
+    /// reference ships does. Multi-chapter arcs live in the story system instead
+    /// (<see cref="StoryCatalog"/>), which ports <c>branching-story-system.ts</c>'s five three-act
+    /// stories. An earlier note here called that file AI-driven; it is not. Its stories are
+    /// hand-written and deterministic apart from two <c>Math.random</c> calls, which the story
+    /// system replaces with keyed draws.</para>
+    ///
+    /// <para>Seasons past the story boundary (<see cref="StoryWorldState.rulesStartWeek"/>) start
+    /// no new one-chapter storylines: these three templates are ported into the story catalogue as
+    /// one-beat arcs. A season before the boundary, and a legacy record already running, carry on
+    /// exactly as they did.</para>
     /// </summary>
     public static class Storylines
     {
@@ -316,7 +323,14 @@ namespace Gamesim.Simulation
         /// keeps finding.</para>
         /// </summary>
         public static double CompetitionBonus(EpisodeState state) =>
-            state?.activeModifiers.Where(m => m.weeksLeft > 0).Sum(m => m.competitionBonus) ?? 0;
+            state?.activeModifiers.Where(m => m.weeksLeft > 0 && IsPlayers(m)).Sum(m => m.competitionBonus) ?? 0;
+
+        /// <summary>
+        /// Whether a modifier is the player's. Every modifier before schema 14 was; a houseguest's
+        /// own (a Have-Not week) names them, and must not be summed into the player's numbers.
+        /// </summary>
+        public static bool IsPlayers(StoryModifierState modifier) =>
+            modifier != null && string.IsNullOrEmpty(modifier.ownerId);
 
         /// <summary>
         /// The interactions a player's modifiers are worth this week, which can be negative.
@@ -326,7 +340,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static int SocialActions(EpisodeState state) =>
             state == null ? 0
-                : StoryModifiers.ActionsFrom(state.activeModifiers.Where(m => m.weeksLeft > 0).Sum(m => m.socialBonus));
+                : StoryModifiers.ActionsFrom(state.activeModifiers.Where(m => m.weeksLeft > 0 && IsPlayers(m)).Sum(m => m.socialBonus));
 
         /// <summary>
         /// Ages every modifier by a week and drops the ones that have run out.

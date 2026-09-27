@@ -128,6 +128,8 @@ namespace Gamesim.Editor
         {
             ("ReactNominated", "ReactNominated"), ("ReactSaved", "ReactSaved"), ("ReactEvicted", "ReactEvicted"),
             ("ReactWon", "ReactWon"), ("ReactCheered", "ReactCheered"),
+            // The story's five (plan §5.1): no takes yet, so the director plays a stand-in instead.
+            ("ReactShocked", null), ("ReactTearful", null), ("ReactEmbrace", null), ("ReactFurious", null), ("ReactStormOff", null),
         };
 
         /// <summary>The beats this cast can act out - the rest are left to the body's idle.</summary>

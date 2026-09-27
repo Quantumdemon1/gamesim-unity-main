@@ -66,6 +66,51 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// A body sits only while a seat pose holds it. The director said "seated" for an arrived
+        /// table pair whether or not the pose took, and a pose that began over that flag handed it
+        /// back when it ended: a houseguest sat in the air at the table's approach for the rest of
+        /// the phase (playtest, week 2). Both poses that seat a body now stand it up.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AnEndedPoseStandsTheBodyWhateverFlagItFound()
+        {
+            var actor=new GameObject("Stray seated actor");actor.transform.position=new Vector3(1000,0,1000);
+            var npc=actor.AddComponent<HouseNpc>();npc.Configure("stray-seated","Stray Seated");
+            var furniture=new GameObject("Test chair");furniture.transform.position=actor.transform.position+Vector3.right;
+            var anchor=HouseInteractionAnchor.Create(furniture.transform,"test-seat","Living",0,furniture.transform.position,0,true);
+            var provider=new SeatBodyProvider();CharacterBodySource.Register(provider);
+            try
+            {
+                var person=ContentCatalog.Create(91).Find(ContentCatalog.PlayerId);
+                person.appearance=CharacterAppearance.Preset("player");
+                var visual=CharacterPresentation.Attach(actor,person,Color.white);visual.SetReducedMotion(true);
+                yield return null;
+                // The stray: seated, with no seat under it.
+                visual.SetSeated(true);
+                bool owns=true;
+                var seat=actor.AddComponent<HouseSeatPresentation>();seat.Begin(anchor,()=>owns);
+                yield return null;yield return null;
+                Assert.That(seat.Active && visual.IsSeated,Is.True,"The pose holds the body in the seat.");
+                owns=false;yield return null;yield return null;
+                Assert.That(seat.Active,Is.False,"Losing the seat ends the pose.");
+                Assert.That(visual.IsSeated,Is.False,"The body stands: a flag the pose found set is not the pose's to hand back.");
+
+                visual.SetSeated(true);
+                var activity=actor.AddComponent<HouseFurniturePose>();
+                activity.Begin(anchor,HouseFurnitureActivity.PrepareSnack,5f,()=>true,()=>false,null);
+                Assert.That(activity.Active,Is.True);
+                activity.End();
+                Assert.That(visual.IsSeated,Is.False,"An activity that ends stands the body up too.");
+            }
+            finally
+            {
+                CharacterBodySource.Unregister(provider);
+                Object.Destroy(actor);Object.Destroy(furniture);
+            }
+            yield return null;
+        }
+
         private sealed class SeatBodyProvider : IModularCharacterBodyProvider
         {
             public ICharacterAppearanceCatalog Catalog=>null;

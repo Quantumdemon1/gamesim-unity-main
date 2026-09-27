@@ -16,7 +16,6 @@ namespace Gamesim.House
         private Action finished;
         private float arrivedAt,until,duration,routeDeadline,nextArmScan;
         private float previousFacing;
-        private bool previousSeated;
         private bool ending;
         private Transform arm,body;
         private Quaternion armBase,lastArm;
@@ -43,7 +42,7 @@ namespace Gamesim.House
             // at a walk used to time out on the twenty seconds a counter across the kitchen needed.
             float route=Vector3.Distance(transform.position,target.Approach);
             arrivedAt=-1;until=float.PositiveInfinity;routeDeadline=Time.unscaledTime+20f+route/1.5f;
-            previousFacing=visual.FacingYaw;previousSeated=visual.IsSeated;ending=false;Active=true;
+            previousFacing=visual.FacingYaw;ending=false;Active=true;
         }
 
         private void LateUpdate()
@@ -113,7 +112,8 @@ namespace Gamesim.House
         {
             if(!Active)return;
             Active=false;ending=false;RestoreArm();seat?.End();
-            if(visual!=null){visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetSeated(previousSeated);visual.SetFacing(previousFacing);}
+            // Standing: a seat pose is the only thing that may seat a body (HouseSeatPresentation.End).
+            if(visual!=null){visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetSeated(false);visual.SetFacing(previousFacing);}
             valid=null;arrived=null;isPaused=null;finished=null;anchor=null;body=arm=null;
         }
 

@@ -28,7 +28,6 @@ namespace Gamesim.House
         /// <summary>The half-turn the authored seated clips need to face the way the anchor says.</summary>
         private const float SeatedClipHalfTurn = 180f;
         private float began,nextScan,anchorFacing;
-        private bool wasSeated;
         private HouseAnchorPose mode;
         /// <summary>Where a swimmer is along the pool, in metres from its middle, and which way they are going.</summary>
         private float lap, lapHeading = 1f, lapTurnedAt = float.NegativeInfinity, lapRestUntil;
@@ -70,7 +69,7 @@ namespace Gamesim.House
             character=GetComponent<CharacterPresentation>();
             if(target==null || character==null || !target.Posed)return;
             anchor=target;anchorPosition=target.Position;anchorContact=target.SeatContact;anchorFacing=target.Facing;origin=transform.position;ownsSeat=valid;
-            wasSeated=character.IsSeated;began=Time.unscaledTime;nextScan=0;Active=true;mode=target.Pose;
+            began=Time.unscaledTime;nextScan=0;Active=true;mode=target.Pose;
             lap=0f;lapHeading=1f;lapTurnedAt=float.NegativeInfinity;lapRestUntil=Time.unscaledTime+LapRest;floatDepth=-1f;
             occupied.Add(this);
             Cue();
@@ -245,7 +244,10 @@ namespace Gamesim.House
             occupied.Remove(this);
             if(!Active)return;
             Active=false;exiting=false;RestoreBody();
-            if(character!=null){character.SetActivity(CharacterPresentation.BodyActivity.None);character.SetSeated(wasSeated);}
+            // Stood up, not put back as found: only a pose that holds a body in a seat may say it
+            // sits, and a flag found set when this pose began - one set with no seat under it -
+            // was handed back when it ended, and sat the body down in the air at its approach.
+            if(character!=null){character.SetActivity(CharacterPresentation.BodyActivity.None);character.SetSeated(false);}
             body=hips=leftFoot=rightFoot=head=null;bodyAnimator=null;anchor=null;ownsSeat=null;
         }
 

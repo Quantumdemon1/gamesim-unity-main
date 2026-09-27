@@ -84,5 +84,44 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Mathf.DeltaAngle(second.transform.eulerAngles.y, lease.SecondFacing), Is.EqualTo(0f).Within(3f),
                 "The other body turns into its chair too. " + trace);
         }
+
+        /// <summary>
+        /// Arrival does not wait on the chairs, so a table pair can be talking with a chair pose that
+        /// never began. The director said "seated" for both anyway, and the one with no pose sat
+        /// down in the air at the table's approach (playtest, week 2): only a pose that holds a body
+        /// in a seat may seat it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NpcRuntime_ATablePairWhoseChairPoseCannotBeginStandsToTalk()
+        {
+            var fixture = NpcPendingRuntimeFixture();
+            fixture.npcSocial.pending[0].rendezvousId = "kitchen-table-chat";
+            Assert.That(EpisodeValidation.TryValidate(fixture, out var why), Is.True, why);
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
+            yield return WaitForNpcRuntimeBinding();
+
+            NpcInvoke("SetNpcWorldPaused", false);
+            NpcInvoke("RestorePendingNpcMeetings");
+            var leases = NpcRead<Dictionary<long, HouseMeetingLease>>("npcPendingWorld");
+            Assert.That(leases.TryGetValue(1, out var lease) && lease.Seated, Is.True, "The saved table meeting must reserve its two chairs.");
+            var bodies = SceneComponents<HouseNpc>();
+            var firstBody = bodies.Single(npc => npc.Id == lease.FirstId);
+            var first = firstBody.GetComponent<CharacterPresentation>();
+            var second = bodies.Single(npc => npc.Id == lease.SecondId).GetComponent<CharacterPresentation>();
+            // A chair pose that cannot begin: HouseSeatPresentation.Begin does nothing while disabled.
+            var blocked = firstBody.GetComponent<HouseSeatPresentation>();
+            if (blocked == null) blocked = firstBody.gameObject.AddComponent<HouseSeatPresentation>();
+            blocked.enabled = false;
+
+            float deadline = Time.realtimeSinceStartup + 40;
+            while (!director.IsNpcConversationPhysicallyReady(1) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.IsNpcConversationPhysicallyReady(1), Is.True, "The pair must reach the table. " + director.NpcAutonomyDiagnostic);
+            float settled = Time.realtimeSinceStartup + 1f;
+            while (!(second.IsSeated && first.IsTalking) && Time.realtimeSinceStartup < settled) yield return null;
+            Assert.That(second.IsSeated && first.IsTalking, Is.True, "The pair is in its conversation, the one whose pose took in its chair.");
+            Assert.That(blocked.Active, Is.False, "The blocked pose never began.");
+            Assert.That(first.IsSeated, Is.False, "The one with no chair pose stands: nobody sits with no seat under them.");
+        }
     }
 }

@@ -409,7 +409,10 @@ namespace Gamesim.Episode
                     seatPose.Begin(seat,()=>npcMeetings!=null && npcMeetings.TryGetSeat(id,out var current) && current==seat);
                 }
                 else seatPose?.End();
-                visual.SetSeated(seated.Contains(npc.Id));
+                // Only a pose holding the body in its chair seats it (its Cue says so every frame).
+                // Saying "seated" for an arrived pair whose pose had not begun sat that one down in
+                // the air at the table's approach, and a pose begun over that flag later handed it back.
+                if (seatPose == null || !seatPose.Active) visual.SetSeated(false);
                 visual.SetArguing(arguing.Contains(npc.Id));
                 visual.SetFacing(facing.TryGetValue(npc.Id, out float yaw) ? yaw : float.NaN);
             }

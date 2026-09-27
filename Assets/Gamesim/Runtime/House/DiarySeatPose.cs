@@ -19,7 +19,7 @@ namespace Gamesim.House
         private Action interrupted;
         private Vector3 returnPosition, seatPosition;
         private Quaternion returnRotation;
-        private bool updatePosition, updateRotation, colliderEnabled, previouslySeated;
+        private bool updatePosition, updateRotation, colliderEnabled;
         private float previousFacing, nextHeadScan;
         private Transform head;
         private HouseSeatPresentation seatPose;
@@ -50,7 +50,7 @@ namespace Gamesim.House
             seated=onSeated;approach=seat.Approach;approachDeadline=Time.unscaledTime+20f;
             returnPosition=transform.position; returnRotation=transform.rotation; seatPosition=seat.Position;
             updatePosition=agent.updatePosition; updateRotation=agent.updateRotation;
-            colliderEnabled=body!=null && body.enabled; previouslySeated=visual.IsSeated; previousFacing=visual.FacingYaw;
+            colliderEnabled=body!=null && body.enabled; previousFacing=visual.FacingYaw;
             // Keep the proven navigation location and path while the actor occupies furniture.
             // The visual returns there before controls resume; the navigation root never teleports.
             seatPose=GetComponent<HouseSeatPresentation>() ?? gameObject.AddComponent<HouseSeatPresentation>();
@@ -116,7 +116,8 @@ namespace Gamesim.House
             Active=false;Phase=VisitPhase.None;
             bool stayed=Vector3.Distance(transform.position,returnPosition)<.4f;
             seatPose?.End();
-            if(visual!=null){visual.SetSeated(previouslySeated);visual.SetFacing(previousFacing);visual.LookAt(null,0);}
+            // Standing: a seat pose is the only thing that may seat a body (HouseSeatPresentation.End).
+            if(visual!=null){visual.SetSeated(false);visual.SetFacing(previousFacing);visual.LookAt(null,0);}
             if(stayed)transform.rotation=returnRotation;
             if(body!=null)body.enabled=colliderEnabled;
             if(agent!=null){agent.updatePosition=updatePosition;agent.updateRotation=updateRotation;}

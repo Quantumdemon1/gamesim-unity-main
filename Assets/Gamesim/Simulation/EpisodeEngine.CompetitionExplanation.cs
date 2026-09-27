@@ -31,16 +31,17 @@ namespace Gamesim.Simulation
             double weighted = WebRules.WeightedCompetitionScore(actor.stats, category, false, 0, .5);
             decimal chance = DisplayedScore(weighted * (.75 + roll * .5) - weighted);
             decimal nominee = DisplayedScore(state.nominees.Contains(actor.id) ? actor.stats.competition * .5 : 0);
+            decimal haveNot = DisplayedScore(-HaveNots.Penalty(state, actor.id));
             decimal preparation = DisplayedScore(state.playerStudyBonus), phaseEvent = DisplayedScore(state.phaseEventCompBonus);
             decimal storyline = DisplayedScore(Storylines.CompetitionBonus(state)), manual = DisplayedScore(simulated ? 0 : performance * 2);
             decimal total = DisplayedScore(committedScore);
-            decimal rounding = total - (physical + mental + endurance + social + luck + chance + nominee + preparation + phaseEvent + storyline + manual);
+            decimal rounding = total - (physical + mental + endurance + social + luck + chance + nominee + haveNot + preparation + phaseEvent + storyline + manual);
             return (simulated ? "Simulated: no performance bonus" : "Played: performance " + ScoreNumber(performance * 100) + "%")
                 + ". Your weighted stats: physical " + physical.ToString(CultureInfo.InvariantCulture)
                 + "; mental " + mental.ToString(CultureInfo.InvariantCulture) + "; endurance " + endurance.ToString(CultureInfo.InvariantCulture)
                 + "; social " + social.ToString(CultureInfo.InvariantCulture) + "; luck " + luck.ToString(CultureInfo.InvariantCulture)
                 + ". Chance " + SignedScore(chance) + " (sampled multiplier " + (.75 + roll * .5).ToString("0.######", CultureInfo.InvariantCulture) + ")"
-                + "; nominee " + SignedScore(nominee) + "; preparation " + SignedScore(preparation) + "; event " + SignedScore(phaseEvent)
+                + "; nominee " + SignedScore(nominee) + (haveNot != 0 ? "; have-not " + SignedScore(haveNot) : "") + "; preparation " + SignedScore(preparation) + "; event " + SignedScore(phaseEvent)
                 + "; storyline " + SignedScore(storyline) + "; performance " + SignedScore(manual) + "; rounding " + SignedScore(rounding)
                 + ". Sum = " + total.ToString("0.00", CultureInfo.InvariantCulture) + ". All displayed terms add to this committed score. "
                 + "Total player bonus " + SignedScore(preparation + phaseEvent + storyline + manual)

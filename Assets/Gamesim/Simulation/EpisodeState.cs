@@ -194,7 +194,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 13;
+        public int schemaVersion = 14;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -358,6 +358,26 @@ namespace Gamesim.Simulation
         /// </summary>
         public int storyRulesStartWeek = 1;
 
+        /// <summary>
+        /// The week the house starts naming Have-Nots and playing the veto for a prize and a
+        /// punishment (<see cref="HaveNots"/>), or 0 for a season that plays without them: every
+        /// season saved before they existed, and the default cast's fixture seasons. A season started
+        /// now sets 1. Schema 14.
+        /// </summary>
+        public int haveNotRulesStartWeek;
+
+        /// <summary>This week's Have-Nots: the last out of the Head of Household competition, and anyone the veto's punishment sent.</summary>
+        public List<string> haveNots = new List<string>();
+
+        /// <summary>Houseguests the veto's prize has made safe from the next week's Have-Nots.</summary>
+        public List<string> haveNotPasses = new List<string>();
+
+        /// <summary>Houseguests the veto's punishment has sent to the next week's Have-Nots, whatever the competition says.</summary>
+        public List<string> punishedHaveNots = new List<string>();
+
+        /// <summary>Every prize and punishment the veto has handed out, for the notebook.</summary>
+        public List<VetoPrizeState> vetoPrizes = new List<VetoPrizeState>();
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -393,6 +413,10 @@ namespace Gamesim.Simulation
             copy.houseEvents = houseEvents.Select(x => x.Clone()).ToList();
             copy.storylines = storylines.Select(x => x.Clone()).ToList();
             copy.activeModifiers = activeModifiers.Select(x => x.Clone()).ToList();
+            copy.haveNots = new List<string>(haveNots);
+            copy.haveNotPasses = new List<string>(haveNotPasses);
+            copy.punishedHaveNots = new List<string>(punishedHaveNots);
+            copy.vetoPrizes = vetoPrizes.Select(x => x.Clone()).ToList();
             return copy;
         }
     }

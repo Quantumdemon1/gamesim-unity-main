@@ -1325,6 +1325,8 @@ namespace Gamesim.Episode
                     hud.Paragraph("Carrying a +" + state.phaseEventSocialBonus + " social bonus from earlier choices.");
                 if (state.playerStudyBonus > 0)
                     hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
+                // Beside the meter it takes a conversation from.
+                if (HaveNots.Is(state, state.playerId)) hud.Paragraph(HaveNotLine);
                 HouseWideActions(state);
                 hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
                     + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
@@ -1346,6 +1348,10 @@ namespace Gamesim.Episode
                 hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
             else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
         }
+
+        /// <summary>What a Have-Not player reads beside their interactions: what it costs, and until when.</summary>
+        public const string HaveNotLine = "You are a Have-Not until the next Head of Household: slop, cold showers, "
+            + "one fewer conversation, and a point off your score in the veto.";
 
         /// <summary>Whether there is a season on screen worth going back to from the menu.</summary>
         public bool SeasonInProgress => engine != null && !blockedRecovery;

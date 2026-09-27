@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
             var old = V12(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(13));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(14));
             Assert.That((int)migrated["competitionRulesVersion"], Is.EqualTo(1));
             foreach (var person in (JArray)migrated["contestants"])
             {
@@ -72,7 +72,9 @@ namespace Gamesim.Tests.EditMode
             var current = EpisodeSaveMigrations.UpgradeV12ToV13(old);
             Assert.That((int)current[field], Is.EqualTo(count));
             Assert.That((int)old[field], Is.EqualTo(count));
-            Assert.That(EpisodeValidation.TryValidate(current.ToObject<EpisodeState>(Serializer()), out var error), Is.True, error);
+            // Validated as the save it becomes: the live contract is schema 14's.
+            var loaded = EpisodeSaveMigrations.UpgradeV13ToV14(current).ToObject<EpisodeState>(Serializer());
+            Assert.That(EpisodeValidation.TryValidate(loaded, out var error), Is.True, error);
         }
     }
 }

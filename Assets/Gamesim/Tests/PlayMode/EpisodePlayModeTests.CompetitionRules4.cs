@@ -119,6 +119,12 @@ namespace Gamesim.Tests.PlayMode
             director.StartSeason(new SeasonBuilder.Choice());
             yield return null;
             Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A season started now plays rules 4.");
+            Assert.That(director.Snapshot.haveNotRulesStartWeek, Is.EqualTo(1), "and names Have-Nots from its first week.");
+            // Started without a roster choice - the default cast - it plays the same.
+            director.StartSeason(null);
+            yield return null;
+            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current));
+            Assert.That(director.Snapshot.haveNotRulesStartWeek, Is.EqualTo(1), "The default cast's fixture seasons do not, but a season started from it does.");
         }
 
         [UnityTest]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Gamesim.Simulation
@@ -19,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 13) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 14) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -169,6 +170,18 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid story modifier data.");
             if (s.storyRulesStartWeek < 1 || s.storyRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A storyline rules boundary cannot be further off than next week.");
+            // Schema 14: Have-Nots and the veto's prizes. 0 is a season that never plays them.
+            if (s.haveNotRulesStartWeek < 0 || s.haveNotRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A Have-Not rules boundary cannot be further off than next week.");
+            bool Houseguests(List<string> ids, int most) => ids != null && ids.Count <= most
+                && ids.All(id => s.Find(id) != null) && ids.Distinct(StringComparer.Ordinal).Count() == ids.Count;
+            if (!Houseguests(s.haveNots, 16) || !Houseguests(s.haveNotPasses, 16) || !Houseguests(s.punishedHaveNots, 16))
+                return Fail(out error, "Invalid Have-Not data.");
+            if (s.vetoPrizes == null || s.vetoPrizes.Count > 300 ||
+                s.vetoPrizes.Any(p => p == null || p.week < 1 || p.week > s.week || s.Find(p.contestantId) == null || HaveNots.Find(p.prizeId) == null))
+                return Fail(out error, "Invalid veto prize data.");
+            if (s.haveNotRulesStartWeek == 0 && (s.haveNots.Count > 0 || s.haveNotPasses.Count > 0 || s.punishedHaveNots.Count > 0 || s.vetoPrizes.Count > 0))
+                return Fail(out error, "A season without Have-Nots has none.");
             if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
                 s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
                 s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)

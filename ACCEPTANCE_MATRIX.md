@@ -317,8 +317,11 @@ Four things this pass changed that affect other sections:
   skipped reveals (see `PLAYTEST_PROTOCOL.md`).
 - **New seasons play competition rules 4 (26 September).** There are five kinds (skill, mental,
   endurance, luck, social), with a dice game and a word game for the two new ones. Full marks are
-  worth three points, and a throw loses about nine times in ten. A season saved before, and the
-  pinned V7 build, play rules 1–3. Record which a participant played.
+  worth three points, and a throw loses about nine times in ten.
+  - They also name Have-Nots, the last out of each Head of Household competition, and play the veto
+    for a prize and a punishment.
+  - A season saved before, and the pinned V7 build, play rules 1–3 with neither.
+  - Record which a participant played.
 
 ## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
 

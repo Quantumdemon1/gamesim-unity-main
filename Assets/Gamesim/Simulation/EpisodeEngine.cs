@@ -173,6 +173,9 @@ namespace Gamesim.Simulation
                             promise.status = PromiseStatus.Expired;
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
+                    // The finale has no Have-Nots: the last week's end with its three, and so do any
+                    // passes and punishments the final four's veto left behind.
+                    if (s.Active.Count() == 3) { s.haveNots.Clear(); s.haveNotPasses.Clear(); s.punishedHaveNots.Clear(); }
                     Phase(s, s.Active.Count() == 3 ? EpisodePhase.FinalHoHPart1 : EpisodePhase.HoH); break;
                 case EpisodePhase.HoH:
                 case EpisodePhase.Veto:
@@ -464,6 +467,9 @@ namespace Gamesim.Simulation
                     bool throwing = thrown && contestant.isPlayer;
                     double bonus = contestant.isPlayer && !throwing
                         ? performance * weight + (s.competitionRulesVersion >= 3 ? CommonCompetitionBonus(s) : Storylines.CompetitionBonus(s)) : 0;
+                    // A Have-Not is tired in the veto, thrown or not. Zero everywhere else and in
+                    // every season without them, so their arithmetic is unchanged.
+                    bonus -= HaveNots.Penalty(s, contestant.id);
                     double roll = Roll(s);
                     // Rules 4's luck draws its second roll straight after the first, competitor by competitor.
                     double luckRoll = widened && CompetitionRules.RollsTwice(category) ? Roll(s) : 0;
@@ -491,6 +497,10 @@ namespace Gamesim.Simulation
             s.competitionResolved = true;
             LogCompetitionDefinition(s);
             LogCompetitionStandings(s);
+            // The last out of a Head of Household are the week's Have-Nots; the veto's runner-up
+            // and last finisher take its prize and punishment. Both read the standings just committed.
+            HaveNots.Assign(s);
+            HaveNots.AwardVetoPrizes(s);
             // The one line that says the player threw it, for them alone: the results card tags their
             // row from it, and the house is not told.
             if (thrown) Log(s, ThrowEventKind, "You threw the " + AwardName(s.phase) + " competition.", s.playerId);
@@ -532,10 +542,10 @@ namespace Gamesim.Simulation
             // and what was paid for beyond it are different facts. A season under the legacy flat
             // allowance still gets what it bought: refusing it would be charging for nothing.
             // What the week gives, what was bought, and what a storyline left behind — which can be
-            // negative, so the whole thing is floored at one. A week with no interactions at all
-            // would be a week the player cannot play.
+            // negative — less a conversation for a Have-Not, so the whole thing is floored at one. A
+            // week with no interactions at all would be a week the player cannot play.
             Math.Max(1, EarnedSocialActionBudget(s) + Math.Max(0, s.boughtActionPoints)
-                        + Storylines.SocialActions(s));
+                        + Storylines.SocialActions(s) - HaveNots.ActionCost(s));
 
         /// <summary>The allowance before anything is bought: what the week gives you for free.</summary>
         public static int EarnedSocialActionBudget(EpisodeState s) =>

@@ -35,10 +35,31 @@ namespace Gamesim.Episode
                 if (actor == null) continue;
                 standings.Add(new CompetitionResult.Standing(
                     actor.name, entry.score, actor.id == winner, actor.id == state.playerId,
-                    CharacterPortraits.Get(actor), actor, thrown && actor.id == state.playerId ? ThrewNote : null));
+                    CharacterPortraits.Get(actor), actor, StandingNote(state, actor.id, thrown)));
             }
             return standings;
         }
+
+        /// <summary>
+        /// What a row carries beside the name: a throw; a Head of Household's Have-Nots; the veto's
+        /// prize and punishment. Joined when one row has two, as a thrown Head of Household often does.
+        /// </summary>
+        private static string StandingNote(EpisodeState state, string id, bool thrown)
+        {
+            var notes = new List<string>();
+            if (thrown && id == state.playerId) notes.Add(ThrewNote);
+            if (state.phase == EpisodePhase.HoH && HaveNots.Is(state, id)) notes.Add(HaveNotNote);
+            if (state.phase == EpisodePhase.Veto)
+                foreach (var prize in state.vetoPrizes.Where(p => p.week == state.week && p.contestantId == id))
+                {
+                    var award = HaveNots.Find(prize.prizeId);
+                    if (award != null) notes.Add((award.Punishment ? "Punishment: " : "Prize: ") + award.Title);
+                }
+            return notes.Count == 0 ? null : string.Join("  ·  ", notes);
+        }
+
+        /// <summary>What a Head of Household's Have-Not rows carry on the standings.</summary>
+        public const string HaveNotNote = "Have-Not";
 
         /// <summary>What a thrown row carries beside the player's name on the standings.</summary>
         public const string ThrewNote = "Threw";
@@ -69,6 +90,27 @@ namespace Gamesim.Episode
         /// </summary>
         public static string AccessibleCompetitionCaption(int rulesVersion) =>
             rulesVersion >= CompetitionRules.Widened ? "Accessible alternative: steady 1.5-point bonus" : "Accessible alternative: steady 1-point bonus";
+
+        /// <summary>
+        /// What else a weekly competition decides where the season plays Have-Nots: the last out of
+        /// a Head of Household are the week's Have-Nots, and the veto's runner-up and last finisher
+        /// take its prize and punishment. Said with the stakes, not in the fine print.
+        /// </summary>
+        public static string HaveNotStakes(EpisodeState state)
+        {
+            if (!HaveNots.Apply(state)) return "";
+            int field = EpisodeEngine.CompetitionPlayers(state).Count();
+            if (state.phase == EpisodePhase.HoH)
+            {
+                int count = HaveNots.Count(state.Active.Count());
+                if (count == 0) return "";
+                return count == 1 ? " The last one out is this week's Have-Not."
+                    : " The last " + (count == 2 ? "two" : "three") + " out are this week's Have-Nots.";
+            }
+            if (state.phase != EpisodePhase.Veto || field < 3) return "";
+            string line = field >= 4 ? " Second place wins a prize; last place takes a punishment." : " Second place wins a prize.";
+            return HaveNots.Is(state, state.playerId) ? line + " You are a Have-Not: a point off your score." : line;
+        }
 
         /// <summary>"0–2" through rules 3, "0–3" from rules 4: what full marks are worth, for the copy that says so.</summary>
         private static string PerformanceRange(EpisodeState state) =>
@@ -144,9 +186,9 @@ namespace Gamesim.Episode
             var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
             var definition = CompetitionDefinitions.For(state);
-            string stakes = state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
+            string stakes = (state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
                 : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
-                : "At stake: progress toward the final Head of Household decision.";
+                : "At stake: progress toward the final Head of Household decision.") + HaveNotStakes(state);
             hud.CompetitionHero(state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
                 definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes);
             hud.CompetitionBrief(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));
@@ -212,9 +254,9 @@ namespace Gamesim.Episode
             var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
             var definition = CompetitionDefinitions.For(state);
-            string stakes = state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
+            string stakes = (state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
                 : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
-                : "At stake: progress toward the final Head of Household decision.";
+                : "At stake: progress toward the final Head of Household decision.") + HaveNotStakes(state);
             hud.CompetitionHero(state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
                 definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes);
             hud.CompetitionBrief(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));

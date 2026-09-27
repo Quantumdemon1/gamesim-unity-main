@@ -8,6 +8,51 @@ Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
 
 ---
 
+## 000000000000000. Have-Nots, and a veto played for a prize and a punishment (26 September)
+
+Batch 3 of the minigames brainstorm, the owner's decision 4: "prize or punishment vetoes and have-not competitions... Yes they sounds good". Neither build of the reference has them, so the design is this port's (`Simulation/HaveNots.cs`).
+
+**Have-Nots**
+- The last out of each Head of Household competition are the week's Have-Nots: three in a house of nine or more, two in six to eight, one in five, and none from the final four. The finale clears them.
+- The new HoH is never one. A pass from the veto keeps its holder off the list, and the place passes to the next-lowest. A punishment from the veto puts its taker on, whatever they scored.
+- Being a Have-Not costs a point off the week's veto score, and a player among them has one fewer conversation. The status lasts until the next HoH.
+- Finishing low now has a cost, and a throw is a gamble with it.
+- The Have-Nots come from committed standings, so nothing draws on the season's generator.
+- **Shown:**
+  - A `HAVE-NOT` badge on the cast rail, below HOH, VETO and NOM and above YOU.
+  - A note on the HoH's standings rows.
+  - A stakes line on the HoH briefing ("The last two out are this week's Have-Nots.").
+  - The house's story line.
+  - For a player among them, a line beside the interactions meter.
+- The veto explanation carries a "have-not −1" term, so its terms still add up.
+
+**The veto's prize and punishment**
+- The veto's runner-up wins a prize (in a field of three or more) and its last finisher takes a punishment (four or more). Each week's pair is picked from the season's seed and the week, not the generator.
+  - **Prizes:** $5,000 (story only); a Have-Not pass for next week; a luxury night (one more conversation until the end of next week).
+  - **Punishments:** a Have-Not next week; the alarm (one fewer conversation until the end of next week); a banana suit until the eviction (story only).
+- The luxury and the alarm are story modifiers on the player (weeks left 2). Conversations are the player's currency, so for anyone else they are the house's story.
+- **Shown:** notes on the veto's standings ("Prize: $5,000", "Punishment: The alarm"), a stakes line on the veto briefing, and the house's story lines ("You finished last in the veto: an alarm every hour of the night.").
+
+**Saves: schema 14** (`haveNotRulesStartWeek`, `haveNots`, `haveNotPasses`, `punishedHaveNots`, `vetoPrizes`)
+- A season started now plays them from week 1 (`SeasonBuilder`, `StartSeason`).
+- **Everything else has 0 and plays without them:**
+  - A migrated save, as it keeps its competition rules: they are a new season's, not a change to one under way.
+  - The default cast's fixture seasons (`ContentCatalog.Create`), so no pinned history re-rolls. The voting-bloc witness is one.
+- **The frozen v13 contract:** `FrozenEpisodeV13` freezes schema 13 as "schema 12 plus competition rules 1–4, a source template and an appearance". The appearance's shape and checks are copied as they stood, and it delegates to the frozen v12 validator.
+- **Validation:** Have-Not lists hold distinct houseguests; a season at 0 holds none; prizes name the lists' own ids.
+- **Test sweep:** 31 "schema 13" assertions became 14. Two field-inventory tests and the v3 dispatch test learned the five fields. `StripSchema14` joins the downgrade helpers.
+
+**Tests.**
+- EditMode added `HaveNotTests` (15, which also run under `dotnet test`) and `PersistenceV14MigrationTests` (7).
+- PlayMode added `EpisodePlayModeTests.HaveNots` (3), and the new-season test now also checks the Have-Not rules and a season started without a roster choice.
+- 35 mutations, all caught at their target assertions: 23 on the rules under `dotnet test` (`simmut_b3.py`) and 12 on persistence and presentation through the harness (`havenot_mut.py`).
+  - One needed a run of its own. The frozen validator's rules bound, mutated, refuses every rules-4 payload, and so it masked the template-length mutation grouped beside it.
+- `simmut.py` now matches test names by contains, so parameterised cases run, and counts a mutation caught if any case fails.
+
+**Verified:** EditMode 1568, PlayMode 557, Uma 64 and Simulation 813, all passing in one full run, with no crashes. Floors raised from 1546, 554 and 798.
+
+**Next:** batch 4, strategy windows: lobbying the HoH and the veto holder, reply cards, and the deal fixes. Then the finale.
+
 ## 00000000000000. Competition rules 4: five kinds, the dice and the word game, a minigame worth three, and a throw that throws (26 September)
 
 Batch 2 of the minigames brainstorm, covering the owner's decisions 1 to 3:

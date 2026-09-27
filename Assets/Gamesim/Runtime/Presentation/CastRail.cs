@@ -336,6 +336,9 @@ namespace Gamesim.Presentation
             return order;
         }
 
+        /// <summary>A Have-Not's badge on the rail. A caption: tests and screen readers find it by these words.</summary>
+        public const string HaveNotBadge = "HAVE-NOT";
+
         /// <summary>The badge word the rail already shows, expressed as a portrait mark.</summary>
         private static HudPrimitives.RoleMark MarkFor(string badge)
         {
@@ -399,6 +402,9 @@ namespace Gamesim.Presentation
             if (actor.id == state.hohId) return new Standing("HOH", UiTheme.Gold, false);
             if (actor.id == state.vetoHolderId) return new Standing("VETO", UiTheme.Gold, false);
             if (state.nominees != null && state.nominees.Contains(actor.id)) return new Standing("NOM", UiTheme.Danger, false);
+            // Below the week's powers and the block, above the player's own YOU: a Have-Not is
+            // this week's news about them.
+            if (HaveNots.Is(state, actor.id)) return new Standing(HaveNotBadge, UiTheme.Warning, false);
             if (actor.isPlayer || actor.id == state.playerId) return new Standing("YOU", UiTheme.Accent, false);
             return new Standing(null, UiTheme.Outline, false);
         }

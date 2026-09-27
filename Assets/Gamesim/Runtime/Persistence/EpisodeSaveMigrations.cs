@@ -20,6 +20,38 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 14) return (JObject)original.DeepClone();
+            if (version < 1 || version > 13) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV13ToV14(version == 13 ? original : PrepareV13Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Opens the Have-Not fields, switched off. A season saved before them keeps playing as it
+        /// was - no Have-Nots and no veto prizes - as a season keeps the competition rules it
+        /// started with: they are a new season's, not a change to one under way.
+        /// </summary>
+        public static JObject UpgradeV13ToV14(JObject original)
+        {
+            FrozenEpisodeV13.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("haveNotRulesStartWeek", 0);
+            result.Add("haveNots", new JArray());
+            result.Add("haveNotPasses", new JArray());
+            result.Add("punishedHaveNots", new JArray());
+            result.Add("vetoPrizes", new JArray());
+            result["schemaVersion"] = 14;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v12-to-v13 dispatch.</summary>
+        public static JObject PrepareV13Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 13) return (JObject)original.DeepClone();
             if (version < 1 || version > 12) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV12ToV13(version == 12 ? original : PrepareV12Payload(original, out _));

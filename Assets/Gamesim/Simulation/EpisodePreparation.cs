@@ -42,11 +42,11 @@ namespace Gamesim.Simulation
             {
                 double roll = Roll(s);
                 double luckRoll = widened && CompetitionRules.RollsTwice(category) ? Roll(s) : 0;
+                // A Have-Not is tired in the veto; zero everywhere else and in seasons without them.
+                double bonus = (contestant.isPlayer ? playerBonus : 0) - HaveNots.Penalty(s, contestant.id);
                 double score = widened
-                    ? CompetitionRules.Score(contestant.stats, category, s.nominees.Contains(contestant.id),
-                        contestant.isPlayer ? playerBonus : 0, roll, luckRoll)
-                    : WebRules.WeightedCompetitionScore(contestant.stats, category,
-                        s.nominees.Contains(contestant.id), contestant.isPlayer ? playerBonus : 0, roll, 0);
+                    ? CompetitionRules.Score(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, luckRoll)
+                    : WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, 0);
                 s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
                 if (contestant.isPlayer) { playerRoll = roll; playerLuckRoll = luckRoll; playerRaw = score; }
                 if (s.competitionRulesVersion >= 3 && !widened && contestant.isPlayer)
@@ -61,6 +61,8 @@ namespace Gamesim.Simulation
             s.competitionResolved = true;
             LogCompetitionDefinition(s);
             LogCompetitionStandings(s);
+            HaveNots.Assign(s);
+            HaveNots.AwardVetoPrizes(s);
             LogCompetitionInput(s, 0, true, numericExplanation);
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + " (simulated).");
         }

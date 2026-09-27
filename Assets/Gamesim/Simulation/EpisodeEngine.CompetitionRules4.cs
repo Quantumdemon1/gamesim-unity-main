@@ -81,6 +81,7 @@ namespace Gamesim.Simulation
             decimal chance = DisplayedScore(weighted * (.75 + roll * .5) - weighted);
             decimal second = DisplayedScore(twice ? luckRoll * 3 : 0);
             decimal nominee = DisplayedScore(CompetitionRules.Clutch(stats, state.nominees.Contains(actor.id)));
+            decimal haveNot = DisplayedScore(-HaveNots.Penalty(state, actor.id));
             decimal preparation = thrown ? 0m : DisplayedScore(state.playerStudyBonus);
             decimal phaseEvent = thrown ? 0m : DisplayedScore(state.phaseEventCompBonus);
             decimal storyline = thrown ? 0m : DisplayedScore(Storylines.CompetitionBonus(state));
@@ -88,7 +89,7 @@ namespace Gamesim.Simulation
             double committed = state.competitionScores.First(entry => entry.contestantId == actor.id).score;
             decimal cut = thrown ? DisplayedScore(committed - raw) : 0m;
             decimal total = DisplayedScore(committed);
-            decimal rounding = total - (physical + mental + endurance + social + luck + chance + second + nominee
+            decimal rounding = total - (physical + mental + endurance + social + luck + chance + second + nominee + haveNot
                 + preparation + phaseEvent + storyline + manual + cut);
 
             string lead = thrown ? ThrowStory(state, actor, committed) + " Thrown: every bonus given up"
@@ -98,7 +99,8 @@ namespace Gamesim.Simulation
                 + "; endurance " + Number(endurance) + "; social " + Number(social) + "; luck " + Number(luck) + luckNote
                 + ". Chance " + SignedScore(chance) + " (sampled multiplier " + (.75 + roll * .5).ToString("0.######", CultureInfo.InvariantCulture) + ")"
                 + (twice ? "; second roll " + SignedScore(second) + " (" + luckRoll.ToString("0.######", CultureInfo.InvariantCulture) + " × 3)" : "")
-                + "; nominee " + SignedScore(nominee);
+                + "; nominee " + SignedScore(nominee)
+                + (haveNot != 0 ? "; have-not " + SignedScore(haveNot) : "");
             if (thrown)
                 text += "; throw " + SignedScore(cut) + " (" + Percent(CompetitionRules.ThrowShare(state.competitionScores.Count)) + "% of the score counts)";
             else

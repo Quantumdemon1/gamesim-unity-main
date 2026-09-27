@@ -65,6 +65,40 @@ namespace Gamesim.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator Meeting_ADepartureCandidateWhoCannotBindIsLetGoAndNobodyElseIs()
+        {
+            var query=CreateNpcRoomQuery();var cast=CreateMeetingCast(2);
+            var ids=cast.Select(npc=>npc.Id).ToArray();var coordinator=CreateMeetingCoordinator(query);
+            try
+            {
+                // Somewhere no room holds: this body cannot take its navigation.
+                cast[1].transform.position=new Vector3(60f,0f,60f);Physics.SyncTransforms();
+                coordinator.DepartureCandidate=ids[1];
+                Assert.That(coordinator.Reconcile("departure-drop:1",cast,ids,ids,out var reason),Is.True,reason);
+                Assert.That(coordinator.CandidateDropped(ids[1]),Is.True,"The houseguest walking out is let go rather than failing the house,");
+                Assert.That(coordinator.CanWalk(ids[1]),Is.False);
+                Assert.That(coordinator.Reconcile("departure-drop:1",cast,ids,ids,out reason),Is.True,
+                    "and stays let go however often the house looks again.");
+                Assert.That(coordinator.CandidateDropped(ids[0]),Is.False);
+                yield return WaitForMeetingBinding(coordinator,new[]{cast[0]});
+                Assert.That(coordinator.CanWalk(ids[0]),Is.True,"Everybody else binds as before.");
+
+                coordinator.DepartureCandidate=null;
+                Assert.That(coordinator.CandidateDropped(ids[1]),Is.False,"A new candidate starts with a clean slate,");
+                Assert.That(coordinator.Reconcile("departure-drop:1",cast,ids,ids,out reason),Is.False,
+                    "and anybody else whose body cannot bind still stops the house for explicit recovery.");
+                Assert.That(cast[1].GetComponent<HouseNpcMotion>().State,Is.EqualTo(HouseNpcMotionState.Failed));
+
+                // A binding already failed is let go the same way, once they are the one walking out.
+                coordinator.DepartureCandidate=ids[1];
+                Assert.That(coordinator.Reconcile("departure-drop:1",cast,ids,ids,out reason),Is.True,reason);
+                Assert.That(coordinator.CandidateDropped(ids[1]),Is.True);
+                Assert.That(cast[1].GetComponent<HouseNpcMotion>().State,Is.EqualTo(HouseNpcMotionState.Unbound),"Their body is left as the house found it.");
+            }
+            finally{coordinator.Dispose();}
+        }
+
+        [UnityTest]
         public IEnumerator Meeting_CompetitionStagingRespectsMeetingOwnershipAndReleasesItsRoutes()
         {
             var query=CreateNpcRoomQuery();var cast=CreateMeetingCast(2);

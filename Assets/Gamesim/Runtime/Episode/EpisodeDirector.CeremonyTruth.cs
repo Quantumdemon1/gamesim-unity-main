@@ -121,11 +121,14 @@ namespace Gamesim.Episode
                 if (IsReady) Render();
             }
             bool narrating = revealing || (takeover != null && takeover.IsPlaying);
-            if (departingId != null && !narrating)
+            // The cards are done: the evicted walks out through the front door when this house can
+            // play it, and goes as they always did when it cannot.
+            if (departingId != null && !narrating && departingId != walkingOutId && !TryBeginWalkOut(departingId))
             {
                 departingId = null;
                 if (IsReady) Project();
             }
+            TickWalkOut();
             GuardUiSubmit(CeremonyOverlays.OnScreen);
         }
 
@@ -156,6 +159,7 @@ namespace Gamesim.Episode
         private void ResetCeremonyTruth()
         {
             departingId = null;
+            ResetWalkOut();
             if (revealHeld && hud != null) hud.HoldForReveal(false);
             revealHeld = false;
             GuardUiSubmit(false);

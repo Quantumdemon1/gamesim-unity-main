@@ -221,6 +221,8 @@ namespace Gamesim.House
                 }
             }
             eligible.Clear(); eligible.UnionWith(nextEligible);
+            // Somebody walking out who is no longer the house's to route is let go before unbinding.
+            if (departing != null && !eligible.Contains(departing.id)) EndDeparture();
             RetireInvalidActivities();
             // Release invalid pairs before changing any participant's collision owner.
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
@@ -237,6 +239,7 @@ namespace Gamesim.House
                     if (!HouseNpcMotion.TryCreate(actor.npc, rooms, filter, actor.castIndex, out actor.motion, out reason))
                     {
                         if (actor.motion != null) actor.motion.TryClaim(this);
+                        if (DropFailedCandidate(actor)) { reason = null; continue; }
                         return Fail(out reason, reason ?? "The NPC could not acquire movement ownership.");
                     }
                     actor.motion.TryClaim(this);
@@ -248,12 +251,19 @@ namespace Gamesim.House
                 }
                 else if (actor.motion.State == HouseNpcMotionState.Unbound)
                 {
-                    if (!actor.motion.BeginBinding(out reason)) return Fail(out reason, reason);
+                    if (!actor.motion.BeginBinding(out reason))
+                    {
+                        if (DropFailedCandidate(actor)) { reason = null; continue; }
+                        return Fail(out reason, reason);
+                    }
                 }
                 else if (actor.motion.State == HouseNpcMotionState.Failed)
+                {
+                    if (DropFailedCandidate(actor)) continue;
                     return Fail(out reason, actor.motion.FailureReason ?? "NPC binding failed; explicit recovery is required.");
+                }
                 // The opening's cast walks while the house is paused around it.
-                actor.motion.SetPaused(paused && !OpeningHoldsActor(actor.id));
+                actor.motion.SetPaused(paused && !OpeningHoldsActor(actor.id) && !DepartureHoldsActor(actor.id));
             }
             LastFailure = null;
             return true;
@@ -429,7 +439,7 @@ namespace Gamesim.House
         {
             if (disposed || paused == value) return;
             paused = value;
-            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id));
+            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id) && !DepartureHoldsActor(actor.id));
             foreach (var lease in leases.Values) lease.Status = value ? HouseMeetingStatus.Paused : HouseMeetingStatus.Travelling;
         }
         public bool Release(HouseMeetingLease lease) => Current(lease) && Retire(lease,HouseMeetingStatus.Released,null);
@@ -438,6 +448,7 @@ namespace Gamesim.House
             ReleaseActivities();
             EndCompetitionStage();
             EndOpeningStage();
+            EndDeparture();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer) Retire(lease,HouseMeetingStatus.Released,null);
         }
@@ -467,6 +478,7 @@ namespace Gamesim.House
             if (ActivityOwnsMotion(motion)) return true;
             if (CompetitionOwnsMotion(motion)) return true;
             if (OpeningOwnsMotion(motion)) return true;
+            if (DepartureOwnsMotion(motion)) return true;
             if (motion.LeaseId == null || !leases.TryGetValue(motion.LeaseId, out var lease)) return false;
             return actors.TryGetValue(lease.FirstId, out var first) && first.motion == motion
                 || actors.TryGetValue(lease.SecondId, out var second) && second.motion == motion;

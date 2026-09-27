@@ -186,9 +186,19 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(quietWords, Does.Contain(EpisodeDirector.HouseStatus(quiet)), "The house's status is one line.");
             Assert.That(quietWords.Where(w => w.StartsWith("Nominees: ") || w.StartsWith("Veto holder: ")), Is.Empty,
                 "and no fact of it stands on a line of its own.");
-            Assert.That(panel.rect.height, Is.LessThan(300f), "A short beat is a short card.");
-            Assert.That(panel.Find(EpisodeHud.PanelHintName).GetComponent<TMP_Text>().text, Is.EqualTo(EpisodeHud.PanelHintCopy),
-                "Nothing here scrolls, so the hint does not say it does.");
+            // The nomination is a ceremony's screen, not a quiet card (playtest, 2026-09-27): it
+            // takes the stage, names itself, and stands the Head of Household there as a face.
+            AssertOnTheStage(panel);
+            var title = ActiveRect(EpisodeHud.CeremonyTitleName);
+            Assert.That(title != null && title.GetComponent<TMP_Text>().text == "Nomination Ceremony", Is.True, "The ceremony names itself.");
+            var faces = ActiveRect(EpisodeHud.CeremonyFacesName);
+            Assert.That(faces, Is.Not.Null, "The house stands on it as faces.");
+            Assert.That(panel.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == "Face · " + quiet.Find(quiet.hohId).name), Is.True,
+                "The Head of Household is one of them.");
+            var quietContent = ActiveRect("Episode content");
+            string quietHint = panel.Find(EpisodeHud.PanelHintName).GetComponent<TMP_Text>().text;
+            Assert.That(quietHint, Is.EqualTo(quietContent.rect.height > ((RectTransform)quietContent.parent).rect.height + .5f
+                ? EpisodeHud.PanelHintScrollCopy : EpisodeHud.PanelHintCopy), "The hint says \"Scroll for more\" exactly when there is more.");
 
             int revision = quiet.revision;
             yield return PressKey(Key.Enter);

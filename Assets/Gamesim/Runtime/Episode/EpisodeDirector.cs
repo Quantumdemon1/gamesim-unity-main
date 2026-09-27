@@ -631,6 +631,8 @@ namespace Gamesim.Episode
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
+            // A chip's card goes with everything else Escape closes; the campaign opens folded.
+            castMenuFor = null; campaignMore = false;
             ClearLobbyDraft();
             if (sceneCardOpen) { sceneCardOpen = false; sceneCardCycle = null; ClearStoryStep(); }
             // Escape cancels without committing, so the run goes with the panel. Leaving it would
@@ -1161,7 +1163,7 @@ namespace Gamesim.Episode
                     if (!string.IsNullOrEmpty(npc.pronouns)) identity.Add(npc.pronouns);
                     if (npc.traits != null && npc.traits.Count > 0) identity.Add(string.Join(" / ", npc.traits));
                     hud.ConversationNotice(npc, string.Join(" · ", identity),
-                        string.IsNullOrEmpty(npc.mood) ? null : "Mood: " + npc.mood,
+                        MoodLine(state, npc),
                         "Your trust: " + TrustFigure(trust), TrustTint(trust),
                         HouseDialogue.Greeting(state, npc.id),
                         StrategyRules.WindowOpen(state) ? StrategyRules.WindowRefusal(state, npc.id, EpisodeCommandKind.Talk) : ConversationUnavailableLine);
@@ -1189,7 +1191,10 @@ namespace Gamesim.Episode
                 // which is the whole reason this panel now has a clipped-copy guard, and the guard
                 // caught it on the first run. Who somebody is and where you stand with them are
                 // two different questions anyway.
-                hud.Paragraph(Standing(state, npc.id) + "  ·  " + ActionsLeft(state) + " left");
+                // And their mood, when it is not the everyday one, with whom it is about.
+                string mood = npc.mood != "Neutral" ? MoodLine(state, npc) : null;
+                hud.Paragraph(Standing(state, npc.id) + (mood != null ? "  ·  " + mood.Substring("Mood: ".Length) : "")
+                    + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
                 if (state.oathOpportunities.Contains(npc.id))
@@ -1290,7 +1295,9 @@ namespace Gamesim.Episode
             // to the right edge. A quiet beat - "Continue episode" under the house's status, or the
             // reflection prompt - stays a card sized to its few lines. A dedicated layout (the
             // briefing, the nominations, a house event) sizes itself instead.
-            if (QuietBeat(state)) hud.FitPanelToContent();
+            // Except the week's ceremonies, which are screens even with nothing to decide
+            // (EpisodeDirector.CeremonyScreen).
+            if (QuietBeat(state) && !CeremonyScreenBeat(state)) hud.FitPanelToContent();
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1363,6 +1370,7 @@ namespace Gamesim.Episode
             // card the player never sees. It never blocks the decision under it.
             PendingStoryBeats(state);
             if (RenderPlayerDecision(state, false)) return;
+            CeremonyScreen(state);
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
             {
                 hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
@@ -1378,7 +1386,8 @@ namespace Gamesim.Episode
                 foreach (var candidate in state.Active) { string id = candidate.id; hud.PairedActionFor(finalTwo, id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
                 return;
             }
-            if (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
+            if (state.phase == EpisodePhase.Campaign) CampaignScreen(state);
+            else if (state.phase == EpisodePhase.Social)
             {
                 // Before anything the player chose to do: something has happened to them, and a
                 // situation buried under the ordinary controls is a situation they will not see.

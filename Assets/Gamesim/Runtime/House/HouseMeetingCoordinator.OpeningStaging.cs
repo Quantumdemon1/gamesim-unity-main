@@ -29,6 +29,7 @@ namespace Gamesim.House
         public bool BeginOpeningStage(IReadOnlyList<string> ids, out string reason)
         {
             reason = null;
+            EndWandering();
             if (!IsReady || HasCompetitionStage || HasOpeningStage || leases.Count != 0 || ids == null || ids.Count == 0)
             { reason = "Houseguests are not available for the opening."; return false; }
             var unique = new HashSet<string>();

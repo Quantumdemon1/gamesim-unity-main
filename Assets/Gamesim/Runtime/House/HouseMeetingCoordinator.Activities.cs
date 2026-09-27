@@ -45,6 +45,7 @@ namespace Gamesim.House
         public bool TryReserveActivity(string actorId,HouseInteractionAnchor anchor,out HouseActivityLease lease,out string reason)
         {
             lease=null;reason=null;
+            YieldWander(actorId);
             if(paused || !IsReady || HasCompetitionStage || !ActivityAnchorAvailable(anchor)
                 || !actors.TryGetValue(actorId,out var actor) || !eligible.Contains(actorId)
                 || actor.motion==null || actor.motion.LeaseId!=null)

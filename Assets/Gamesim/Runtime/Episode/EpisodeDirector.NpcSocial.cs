@@ -159,7 +159,10 @@ namespace Gamesim.Episode
             if (openingStage != null && openingStage.Active) { openingStage.Tick(); npcCaption?.Hide(); return; }
             bool eligible = NpcCanAdvance && npcMeetings != null;
             SetNpcWorldPaused(!eligible);
-            if (!eligible) { npcCaption?.Hide(); return; }
+            // Paused for the week's business, the house mills about (EpisodeDirector.Wander); free
+            // time hands everybody back to its own conversations.
+            if (!eligible) { npcCaption?.Hide(); TickWandering(); return; }
+            StopWandering();
             // A suspension/debugger/long blocked frame is not elapsed social play.
             // Whole committed seconds persist; the remaining fraction is transient.
             if (float.IsNaN(delta) || float.IsInfinity(delta) || delta < 0 || delta > 1) return;

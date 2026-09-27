@@ -31,6 +31,7 @@ namespace Gamesim.House
         public bool BeginCompetitionStage(IReadOnlyList<string> ids,IReadOnlyList<HouseInteractionAnchor> anchors,out string reason)
         {
             reason=null;
+            EndWandering();
             if(!IsReady||HasCompetitionStage||leases.Count!=0||ids==null||anchors==null||ids.Count!=anchors.Count||ids.Count==0)
             {reason="Houseguests are not available for arena staging.";return false;}
             var unique=new HashSet<string>();var uniqueAnchors=new HashSet<HouseInteractionAnchor>();

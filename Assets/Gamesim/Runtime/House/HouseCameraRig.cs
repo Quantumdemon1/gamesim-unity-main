@@ -113,9 +113,9 @@ namespace Gamesim.House
         public const float TwoShotLift = -0.3f;
         /// <summary>
         /// How far the two-shot's pivot sits to the camera's right of the pair, in metres. Negative:
-        /// to the left, which puts the pair right of the frame's centre, in the middle of what the
-        /// conversation's column on the left and the relationships column on the right leave -
-        /// where mockup-12 stands its pair, over the dial.
+        /// to the left, which puts the pair right of the frame's centre, where mockup-12 stands its
+        /// pair over the dial. The fallback: a conversation screen that says where it leaves the
+        /// pair (<see cref="ConversationWindowOffset"/>) is followed instead.
         /// </summary>
         public const float TwoShotShift = -0.54f;
 
@@ -872,8 +872,20 @@ namespace Gamesim.House
         /// </summary>
         private Vector3 TwoShotPivot(float sideYaw)
         {
-            return ConversationFocus() + Vector3.up * TwoShotLift + Quaternion.Euler(0f, sideYaw, 0f) * Vector3.right * TwoShotShift;
+            // Stood where the conversation's screen leaves room for the pair: its offset from the
+            // frame's centre, in half-heights, is metres at the shot's distance through its vertical
+            // field of view (the briefing does the same for the arena).
+            float shift = ConversationWindowOffset > 0f
+                ? -ConversationWindowOffset * TwoShotDistance * Mathf.Tan(TwoShotFieldOfView * .5f * Mathf.Deg2Rad)
+                : TwoShotShift;
+            return ConversationFocus() + Vector3.up * TwoShotLift + Quaternion.Euler(0f, sideYaw, 0f) * Vector3.right * shift;
         }
+
+        /// <summary>
+        /// Where the conversation's screen leaves the pair, in half-heights right of the frame's
+        /// centre (EpisodeHud.ConversationWindowOffset). Zero keeps <see cref="TwoShotShift"/>.
+        /// </summary>
+        public float ConversationWindowOffset { get; set; }
 
         /// <summary>
         /// Where the camera looks when riding a houseguest: their position, lifted to head height so

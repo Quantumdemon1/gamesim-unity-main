@@ -153,12 +153,27 @@ namespace Gamesim.Episode
         public const string ConversationColumnName = "Conversation column";
         private RectTransform conversationColumn;
 
+        /// <summary>The share of the stage the conversation's reading column takes, and the widest it runs at the resting text size.</summary>
+        private const float ConversationColumnShare = .52f, ConversationColumnMax = 760f;
+        /// <summary>How much of the house shows through a conversation: dimmed, not gone, so the pair stay behind the dial.</summary>
+        private const float ConversationScrim = .72f;
+
         /// <summary>
-        /// A conversation (mockup-12) keeps the house around it: the top bar, the rail, the right
-        /// column - where the relationships card lifts the person being talked to - and the cast
-        /// strip all stay. The panel becomes a transparent frame between the rail and the column,
-        /// holding a glass column on its left for the speaker, what they say and every way to talk
-        /// that is not a petal, and the dial in the rest of it, below the pair.
+        /// Where the conversation leaves the pair: the middle of the stage right of its column, in
+        /// half-heights from the frame's centre, as <see cref="ArenaWindowOffset"/> is for the arena.
+        /// The director hands it to the camera's two-shot.
+        /// </summary>
+        public float ConversationWindowOffset { get; private set; }
+
+        /// <summary>
+        /// A conversation takes the stage (playtest, 2026-09-27). It was mockup-12's transparent frame
+        /// between the rail and the right column, with a glass column a fixed 340 wide down its left,
+        /// and a row that carried a portrait, a trust reading and a tag left its caption 20 units, or
+        /// less than nothing: the words stood one letter a line in a box 860 tall. Now the frame runs
+        /// from the rail to the right edge over a dimmed house, the right column and the strip stand
+        /// down as they do for every stage, and the column - the speaker, what they say and every way
+        /// to talk that is not a petal - takes about half of it. The dial stands in the rest, under
+        /// the pair, whom the camera stands there too.
         ///
         /// <para>The frame keeps its name and its raycast ground: the keyboard ring is scoped to
         /// 'Episode panel', and a click between the column and the dial must not fall through to
@@ -166,30 +181,28 @@ namespace Gamesim.Episode
         /// </summary>
         private void ConversationLayout(float canvasWidth, float canvasHeight)
         {
-            float width = Mathf.Max(420f, canvasWidth - LeftColumnX - RightColumnInset - RightColumnWidth - 12f);
-            float height = Mathf.Max(300f, canvasHeight - ModalLift - ActivityHeadroom - 12f);
+            var stage = StageRect(canvasWidth, canvasHeight);
             modal.anchorMin = modal.anchorMax = Vector2.zero;
             modal.pivot = Vector2.zero;
-            modal.anchoredPosition = new Vector2(LeftColumnX, ModalLift);
-            modal.sizeDelta = new Vector2(width, height);
+            modal.anchoredPosition = stage.position;
+            modal.sizeDelta = stage.size;
             var frame = modal.GetComponent<Image>();
-            if (frame != null) frame.color = new Color(0f, 0f, 0f, 0f);
+            if (frame != null) frame.color = new Color(UiTheme.Background.r, UiTheme.Background.g, UiTheme.Background.b, ConversationScrim);
             foreach (Transform child in modal)
                 if (child.name == "Border" || child.name == "Glow" || child.name == "Phase band" || child.name == "Panel control hint")
                     child.gameObject.SetActive(false);
+            HideStageChrome();
 
-            SetChromeVisible(EpisodeDirector.LiveFeedCardName, false);
-            SetChromeVisible(RecentEventsCardName, false);
-            SetChromeVisible(OverviewColumnName, false);
-            SetChromeVisible(FollowChipName, false);
-            SetChromeVisible("Interaction prompt", false);
+            float columnWidth = Mathf.Min(stage.width, Mathf.Clamp(stage.width * ConversationColumnShare, 420f, ConversationColumnMax * FontScale));
+            float window = stage.x + columnWidth + 12f + (stage.width - columnWidth - 12f) * .5f;
+            ConversationWindowOffset = Mathf.Max(0f, (window - canvasWidth * .5f) / (canvasHeight * .5f));
 
             if (conversationColumn != null) return;
             conversationColumn = Chrome(ConversationColumnName, modal);
             conversationColumn.anchorMin = new Vector2(0f, 0f); conversationColumn.anchorMax = new Vector2(0f, 1f);
             conversationColumn.pivot = new Vector2(0f, .5f);
             conversationColumn.anchoredPosition = Vector2.zero;
-            conversationColumn.sizeDelta = new Vector2(Mathf.Min(340f, width * .40f), 0f);
+            conversationColumn.sizeDelta = new Vector2(columnWidth, 0f);
             if (modalScroll != null)
             {
                 modalScroll.transform.SetParent(conversationColumn, false);

@@ -244,6 +244,7 @@ namespace Gamesim.Episode
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
+            tagUnder.Clear(); readingRows.Clear();
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
@@ -1020,6 +1021,9 @@ namespace Gamesim.Episode
         {
             if (target == null || string.IsNullOrEmpty(text)) return;
             if (dialRoot != null && target.transform.parent == dialRoot) { PetalTag(target, text); return; }
+            // A row carrying a trust reading has already spent its right-hand end on it: a tag
+            // seated at the row's end sat on top of "Trust 9" (the Vent and rumour rows).
+            if (seat == TagSeat.RowEnd && readingRows.Contains(target)) seat = TagSeat.PastReading;
             var chip = Panel("Tag",target.transform,new Color(Accent.r,Accent.g,Accent.b,.16f));
             // Wide enough for what is in it. A row-end tag was a fixed 104, which was right while it
             // held one word and wrong the moment a deal row started carrying its stakes as well as
@@ -1055,11 +1059,35 @@ namespace Gamesim.Episode
             if (caption != null)
             {
                 float clear = -chip.anchoredPosition.x + size.x + 8f;
-                caption.rectTransform.offsetMax = new Vector2(-clear, caption.rectTransform.offsetMax.y);
                 caption.enableAutoSizing = false;
                 caption.textWrappingMode = TextWrappingModes.Normal;
+                float left = caption.rectTransform.offsetMin.x;
+                if (ContentWidth() - left - clear >= MinCaptionWidth * FontScale)
+                {
+                    caption.rectTransform.offsetMax = new Vector2(-clear, caption.rectTransform.offsetMax.y);
+                    return;
+                }
+                // Beside the words there is no room for them: the tag goes under them instead. Its
+                // reserve was fixed and the row's width was not, and a row fronted by a portrait,
+                // with a trust reading and a long tag, left its caption 20 units - or less than
+                // nothing - so the words stood one letter a line in a row grown 860 tall (playtest,
+                // 2026-09-27). The caption keeps what the row's right-hand end already reserved.
+                chip.anchorMin = chip.anchorMax = Vector2.zero; chip.pivot = Vector2.zero;
+                chip.anchoredPosition = new Vector2(left, TagUnderInset * FontScale);
+                float lift = size.y + 2f * TagUnderInset * FontScale;
+                caption.rectTransform.offsetMin = new Vector2(left, caption.rectTransform.offsetMin.y + lift);
+                var element = target.GetComponent<LayoutElement>();
+                if (element != null) { element.minHeight += lift; tagUnder[element] = lift; }
             }
         }
+
+        /// <summary>The narrowest a row's caption may be left beside its tag, at the resting text size; narrower, the tag goes under it.</summary>
+        public const float MinCaptionWidth = 200f;
+        private const float TagUnderInset = 6f;
+        /// <summary>The rows whose tag went under the caption, and the room it takes there; cleared with each rebuild.</summary>
+        private readonly Dictionary<LayoutElement, float> tagUnder = new Dictionary<LayoutElement, float>();
+        /// <summary>The rows <see cref="Annotate"/> gave a trust reading; cleared with each rebuild.</summary>
+        private readonly HashSet<Button> readingRows = new HashSet<Button>();
 
         /// <summary>A petal's category: a small badge seated on the disc's lower rim.</summary>
         private void PetalTag(Button petal, string text)
@@ -1318,6 +1346,7 @@ namespace Gamesim.Episode
                 tag.alignment = TextAlignmentOptions.Right;
             }
 
+            readingRows.Add(button);
             var reading = NewText(rect,"Trust " + trust.ToString("0"),15,
                 // The same set as the portrait ring and the ALLY tag above.
                 trust > 5 ? UiTheme.Allied : trust < -5 ? UiTheme.Conflict : UiTheme.Muted);
@@ -1585,8 +1614,10 @@ namespace Gamesim.Episode
                     {
                         var label = button.GetComponentInChildren<TMP_Text>();
                         var element = button.GetComponent<LayoutElement>();
+                        // Plus the room a tag moved under the caption takes (Tag).
                         if (label != null && element != null)
-                            element.preferredHeight = Mathf.Max(element.minHeight,label.preferredHeight + 14f);
+                            element.preferredHeight = Mathf.Max(element.minHeight,
+                                label.preferredHeight + 14f + (tagUnder.TryGetValue(element, out float lift) ? lift : 0f));
                     }
                     Canvas.ForceUpdateCanvases();
                     // With the rows at their final heights, the panel can take its own.

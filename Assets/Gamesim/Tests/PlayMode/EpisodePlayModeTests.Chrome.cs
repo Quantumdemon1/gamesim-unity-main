@@ -260,6 +260,83 @@ namespace Gamesim.Tests.PlayMode
                     "The column reported an event the player's character was not party to: " + secret);
         }
 
+        /// <summary>
+        /// The playtest's week-2 conversation with the Head of Household (2026-09-27). Its plea rows
+        /// carry a portrait, a trust reading and a tag, and in the fixed 340-unit column their
+        /// captions were left 20 units or less: the words stood one letter a line in rows grown 860
+        /// tall. The conversation takes the stage now, and at both text sizes every row keeps room
+        /// for its words, a tag that will not fit beside them going under them instead.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Conversation_EveryRowKeepsRoomForItsWords()
+        {
+            foreach (bool larger in new[] { false, true })
+            {
+                string hoh = null;
+                yield return InstallStrategySeason(41, state =>
+                {
+                    state.phase = EpisodePhase.Nomination;
+                    hoh = state.hohId = state.Active.First(actor => !actor.isPlayer).id;
+                });
+                yield return ApplyTextSize(larger);
+                yield return TalkTo(hoh);
+                AssertRowsHaveRoom(larger, "the conversation with the Head of Household");
+                var state = director.Snapshot;
+                ButtonWithCaption(EpisodeHud.LobbyAskCaption(state, state.Find(hoh).name, LobbyAsk.Spare, state.playerId)).onClick.Invoke();
+                yield return null;
+                AssertRowsHaveRoom(larger, "the plea's approaches");
+                director.ClosePanels();
+                yield return null;
+            }
+        }
+
+        private void AssertRowsHaveRoom(bool larger, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            float scale = larger ? 1.2f : 1f;
+            var column = ActiveRect(EpisodeHud.ConversationColumnName);
+            Assert.That(column, Is.Not.Null, "A conversation is open: " + where + ".");
+            var dial = ActiveRect(EpisodeHud.DialName);
+            int rows = 0;
+            foreach (var button in column.GetComponentsInChildren<Button>().Where(button => button.IsActive()))
+            {
+                // The rows: in the column's scrolling list, not the dial and not its Close.
+                if (dial != null && button.transform.IsChildOf(dial) || button.GetComponentInParent<ScrollRect>() == null) continue;
+                var caption = button.GetComponentsInChildren<TMP_Text>(true)
+                    .FirstOrDefault(text => text.transform.parent == button.transform && text.text == button.name);
+                if (caption == null || button.GetComponent<LayoutElement>() == null) continue;
+                rows++;
+                var row = (RectTransform)button.transform;
+                string about = "'" + button.name + "' in " + where + " at " + (larger ? "larger" : "standard") + " text";
+                Assert.That(caption.rectTransform.rect.width, Is.GreaterThanOrEqualTo(EpisodeHud.MinCaptionWidth * scale - .5f),
+                    about + " was left " + caption.rectTransform.rect.width.ToString("0") + " units for its words in a row "
+                    + row.rect.width.ToString("0") + " wide.");
+                Assert.That(row.rect.height, Is.LessThan(200f * scale),
+                    about + " grew " + row.rect.height.ToString("0") + " tall: its words are standing a letter a line.");
+                // Everything the row draws side by side - the face, the words, the tag, the trust
+                // reading, the ALLY mark - keeps to its own place.
+                var pieces = row.Cast<Transform>().Select(child => (RectTransform)child)
+                    .Where(rect => rect.gameObject.activeInHierarchy
+                        && (rect.name == "Tag" || rect.name == "Portrait" || rect.GetComponent<TMP_Text>() != null))
+                    .ToArray();
+                for (int a = 0; a < pieces.Length; a++)
+                for (int b = a + 1; b < pieces.Length; b++)
+                    Assert.That(ScreenRect(pieces[a]).Overlaps(ScreenRect(pieces[b])), Is.False,
+                        about + ": " + Piece(pieces[a]) + " and " + Piece(pieces[b]) + " are drawn over each other.");
+            }
+            Assert.That(rows, Is.GreaterThan(3), "The rows were found: " + where + ".");
+            var panel = ActiveRect("Episode panel");
+            var canvas = panel.GetComponentInParent<Canvas>().rootCanvas.GetComponent<RectTransform>();
+            Assert.That(panel.rect.width, Is.GreaterThan(canvas.rect.width * .55f),
+                "The conversation takes the stage, not a strip between the rail and the right column: " + where + ".");
+        }
+
+        private static string Piece(RectTransform rect)
+        {
+            var text = rect.GetComponentInChildren<TMP_Text>();
+            return rect.name + (text != null ? " '" + text.text + "'" : "");
+        }
+
         private RectTransform ActiveRect(string name) => director.GetComponentsInChildren<RectTransform>(true)
             .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy);
     }

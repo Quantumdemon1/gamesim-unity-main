@@ -1145,6 +1145,9 @@ namespace Gamesim.Episode
             if (focusedNpc != null)
             {
                 var npc = state.Find(focusedNpc.Id);
+                // The two-shot keeps its usual place unless the conversation's own screen says where
+                // it has left room for the pair (below, once the stage is laid out).
+                if (cameraRig != null) cameraRig.ConversationWindowOffset = 0f;
                 // Outside free time the house cannot talk, so there is nothing to choose: a card
                 // sized to the one thing it says (Refinement Kit 6), not the drawer cut short. Mood
                 // and your trust are two pills - the drawer's "Neutral -9" was a band and a number
@@ -1180,6 +1183,7 @@ namespace Gamesim.Episode
                 if (ConversationBeat(state, npc.id)) return;
                 hud.SpeakerTitle(npc.id, npc.name.ToUpperInvariant(),
                     npc.pronouns + " · " + string.Join(" / ", npc.traits));
+                if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
                 // On its own line, not appended to the identity one. Four facts in a fixed-width
                 // subtitle fitted at the standard text size and was cut off at the larger one -
                 // which is the whole reason this panel now has a clipped-copy guard, and the guard

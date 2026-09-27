@@ -335,9 +335,13 @@ namespace Gamesim.Editor
         /// and held them there, then snapped them back as it gave way to idle - through the front
         /// door while it was still shut, and into whatever stood 0.8 m ahead in the house.
         /// Measured on a UMA body at the opening's door mark: hips at x -3.04 with the root at -3.85.
+        ///
+        /// <para>The hip-hop dance is one too: its six seconds carry the hips 1.49 m forward and
+        /// the loop starts them back where they began, so baked into the pose a dancer would stride
+        /// off their spot and snap back to it every cycle. As root motion it dances where it stands.</para>
         /// </summary>
         public static readonly System.Collections.Generic.ISet<string> TravellingTakes =
-            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal) { "WalkStop", "WalkTurn180" };
+            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal) { "WalkStop", "WalkTurn180", "DanceHipHop_loop" };
 
         /// <summary>
         /// Humanoid takes whose body lies or swims, where "Based Upon: Body Orientation" means

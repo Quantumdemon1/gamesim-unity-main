@@ -66,12 +66,55 @@ namespace Gamesim.Editor
         public const string SwimmingParameter = "Swimming";
         public const string CookingParameter = "Cooking";
         public const string DancingParameter = "Dancing";
+        /// <summary>Holding a pose for a camera, from <see cref="HumanoidPoseAuthoring.Poses"/>, chosen by <see cref="PoseParameter"/>.</summary>
+        public const string PosingParameter = "Posing";
 
         /// <summary>The activity cues.</summary>
-        public static readonly string[] ActivityParameters = { SleepingParameter, SwimmingParameter, CookingParameter, DancingParameter };
+        public static readonly string[] ActivityParameters = { SleepingParameter, SwimmingParameter, CookingParameter, DancingParameter, PosingParameter };
 
-        /// <summary>The states an activity cue plays.</summary>
-        public static readonly string[] ActivityStates = { "Sleep", "SwimIdle", "SwimForward", "Cook", "Dance" };
+        /// <summary>Which dance a dancing body dances: the row of <see cref="Dances"/>.</summary>
+        public const string DanceStyleParameter = "DanceStyle";
+
+        /// <summary>
+        /// Where in its cycle a dance starts, normalized. A dance begun from its first frame opens on
+        /// a wind-up, which is all a one-second beat on a mark would ever show, and two bodies that
+        /// start together would move in step; whoever starts one says where.
+        /// </summary>
+        public const string DanceOffsetParameter = "DanceOffset";
+
+        /// <summary>Which pose a posing body holds: the row of <see cref="HumanoidPoseAuthoring.Poses"/>.</summary>
+        public const string PoseParameter = "Pose";
+
+        /// <summary>
+        /// The dances, in the order <see cref="DanceStyleParameter"/> counts them. Nought is the
+        /// library's, which every body danced before the mocap dances arrived, so a body nobody gives
+        /// a style dances as it always did.
+        /// </summary>
+        public static readonly (string state, string take)[] Dances =
+        {
+            ("Dance", "Dance_Loop"), ("DanceSamba", "DanceSamba_loop"), ("DanceHipHop", "DanceHipHop_loop"), ("DanceWave", "DanceWave_loop"),
+        };
+
+        /// <summary>The state each pose plays in: the living pose's take, less its loop suffix.</summary>
+        public static string PoseState(string take) => take.EndsWith("_loop", StringComparison.Ordinal) ? take.Substring(0, take.Length - 5) : take;
+
+        /// <summary>
+        /// Seated gestures, each a trigger a sitting body answers from its seat: the clap and the
+        /// fist pump were captured sitting, so they play where the standing reactions cannot.
+        /// </summary>
+        public const string SeatedClapTrigger = "SeatedClap";
+        public const string SeatedVictoryTrigger = "SeatedVictory";
+
+        /// <summary>
+        /// Standing gestures that are not ceremony beats: one-shots a body makes because somebody
+        /// asked it to - the player, mostly. Indexed by <c>CharacterPresentation.Gesture</c>.
+        /// </summary>
+        public static readonly (string trigger, string state, string take)[] Gestures =
+        {
+            ("GestureCheer", "Cheer", "Cheer_loop"),
+            ("GestureShrug", "Shrug", "React_shrug"),
+            ("GestureCelebrate", "Celebrate", "React_won"),
+        };
 
         /// <summary>
         /// Whether this body is covering ground rather than crossing a room.
@@ -83,16 +126,23 @@ namespace Gamesim.Editor
         /// </summary>
         public const string RunningParameter = "Running";
 
-        /// <summary>The twelve takes, one to a file, named by their file (bb_anim_&lt;take&gt;.fbx).</summary>
+        /// <summary>
+        /// The mocap takes, one to a file, named by their file (bb_anim_&lt;take&gt;.fbx). The
+        /// standing poses arrive as stills - one frame each - and are played through the living
+        /// poses <see cref="HumanoidPoseAuthoring"/> builds from them, never directly.
+        /// </summary>
         public static readonly string[] Takes =
         {
             "SitIdle_loop", "SitTalk_loop", "Talk_loop", "TalkB_loop", "TalkC_loop", "Argue_loop",
             "Cheer_loop", "Clap_loop", "React_won", "React_shrug", "Sleep_loop", "SleepLying_loop",
             "Walk_loop", "WalkStop",
+            "DanceSamba_loop", "DanceHipHop_loop", "DanceWave_loop", "SitLounge_loop", "SitClap", "SitVictory",
+            "PoseHandBehindHead", "PoseFootUp", "PoseOverShoulder", "PoseAtEase",
+            "PoseHandOnHip", "PoseHandOnHipGlance", "PosePowerStance",
         };
 
         /// <summary>The states the graph is built from, and the take each one plays.</summary>
-        public static readonly (string state, string take, float x, float y)[] States =
+        public static readonly (string state, string take, float x, float y)[] States = new (string, string, float, float)[]
         {
             ("Idle", IdleStandIn, 200, 0),
             ("Walk", "Walk_loop", 200, 120),
@@ -100,6 +150,8 @@ namespace Gamesim.Editor
             ("WalkStop", "WalkStop", -60, 120),
             ("SitIdle", "SitIdle_loop", 520, 0),
             ("SitTalk", "SitTalk_loop", 760, 0),
+            ("SitClap", "SitClap", 640, -120),
+            ("SitVictory", "SitVictory", 880, -120),
             ("Talk", "Talk_loop", 520, 180),
             ("TalkB", "TalkB_loop", 760, 180),
             ("TalkC", "TalkC_loop", 1000, 180),
@@ -114,8 +166,11 @@ namespace Gamesim.Editor
             ("SwimIdle", "Swim_Idle_Loop", 1500, 120),
             ("SwimForward", "Swim_Fwd_Loop", 1500, 240),
             ("Cook", "Cook_Loop", 1500, 360),
-            ("Dance", "Dance_Loop", 1500, 480),
-        };
+        }
+            .Concat(Gestures.Select((g, i) => (g.state, g.take, 1000f, 560f + 70f * i)))
+            .Concat(Dances.Select((d, i) => (d.state, d.take, 1500f, 480f + 70f * i)))
+            .Concat(HumanoidPoseAuthoring.Poses.Select((p, i) => (PoseState(p.take), p.take, 1780f, 70f * i)))
+            .ToArray();
 
         /// <summary>
         /// One row per beat of <c>CharacterPresentation.Reaction</c>, in its order, because the
@@ -162,11 +217,14 @@ namespace Gamesim.Editor
         public static void Apply()
         {
             var clips = LoadTakes();
-            var missing = Takes.Concat(HumanoidReactionAuthoring.Takes)
+            var missing = Takes.Concat(HumanoidReactionAuthoring.Takes).Concat(HumanoidPoseAuthoring.Takes)
                 .Concat(AuthoredAssetImporter.LibraryClips.Select(c => c.clip)).Where(t => !clips.ContainsKey(t)).ToArray();
             if (missing.Length > 0)
                 throw new InvalidOperationException("No Humanoid take for " + string.Join(", ", missing)
-                    + " under " + ClipFolder + "; each take is one FBX named bb_anim_<take>.fbx.");
+                    + " under " + ClipFolder + "; each take is one FBX named bb_anim_<take>.fbx"
+                    + (missing.Any(HumanoidPoseAuthoring.Takes.Contains)
+                        ? ", and the living poses are built from the stills by Gamesim > Characters > Author the living poses."
+                        : "."));
 
             var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(Controller);
             if (controller == null)
@@ -184,6 +242,12 @@ namespace Gamesim.Editor
             Parameter(controller, RunningParameter, AnimatorControllerParameterType.Bool);
             Parameter(controller, PaceParameter, AnimatorControllerParameterType.Float, 1f);
             foreach (var activity in ActivityParameters) Parameter(controller, activity, AnimatorControllerParameterType.Bool);
+            Parameter(controller, DanceStyleParameter, AnimatorControllerParameterType.Int);
+            Parameter(controller, DanceOffsetParameter, AnimatorControllerParameterType.Float);
+            Parameter(controller, PoseParameter, AnimatorControllerParameterType.Int);
+            Parameter(controller, SeatedClapTrigger, AnimatorControllerParameterType.Trigger);
+            Parameter(controller, SeatedVictoryTrigger, AnimatorControllerParameterType.Trigger);
+            foreach (var (trigger, _, _) in Gestures) Parameter(controller, trigger, AnimatorControllerParameterType.Trigger);
             foreach (var (trigger, state) in Reactions)
             {
                 if (state != null) { Parameter(controller, trigger, AnimatorControllerParameterType.Trigger); continue; }
@@ -196,14 +260,13 @@ namespace Gamesim.Editor
             var states = new Dictionary<string, AnimatorState>();
             foreach (var (name, take, x, y) in States)
                 states[name] = Ensure(machine, name, clips[take], new Vector3(x, y, 0));
+            // Every Any State edge goes, and every one the graph needs is built again below. Clearing
+            // only the edges into the states it knew about left any other edge to be doubled on the
+            // next run, and to fire twice as often.
+            foreach (var edge in machine.anyStateTransitions.ToArray()) machine.RemoveAnyStateTransition(edge);
             foreach (var orphan in machine.states.Select(s => s.state)
                          .Where(s => States.All(row => row.state != s.name)).ToArray())
-            {
-                foreach (var reaching in machine.anyStateTransitions
-                             .Where(t => t.destinationState == orphan).ToArray())
-                    machine.RemoveAnyStateTransition(reaching);
                 machine.RemoveState(orphan);
-            }
             machine.defaultState = states["Idle"];
             foreach (var paced in new[] { states["Walk"], states["Run"] })
             {
@@ -215,10 +278,6 @@ namespace Gamesim.Editor
             // hold is the one taken, so sitting and walking are listed before anything a
             // conversation asks for, and the talk ring - which only fires on exit time - is last.
             foreach (var state in states.Values) Clear(state);
-            foreach (var stateName in Reactions.Select(r => r.state).Concat(ActivityStates))
-                foreach (var existing in machine.anyStateTransitions
-                             .Where(t => t.destinationState != null && t.destinationState.name == stateName).ToArray())
-                    machine.RemoveAnyStateTransition(existing);
 
             Go(states["Idle"], states["SitIdle"], SeatedFade, Seated(true));
             // Before the walk, because the first transition whose conditions hold is the one taken:
@@ -248,11 +307,25 @@ namespace Gamesim.Editor
             settled.hasExitTime = true;
             settled.exitTime = 0.55f;
 
-            Go(states["SitIdle"], states["Idle"], SeatedFade, Seated(false));
+            // A seated gesture is asked for on a trigger and answered from the seat, ahead of talking:
+            // a clap is over in seconds and the conversation picks up after it.
+            foreach (var seat in new[] { states["SitIdle"], states["SitTalk"] })
+            {
+                Go(seat, states["Idle"], SeatedFade, Seated(false));
+                Go(seat, states["SitClap"], 0.2f, Bool(SeatedClapTrigger, true));
+                Go(seat, states["SitVictory"], 0.2f, Bool(SeatedVictoryTrigger, true));
+            }
             Go(states["SitIdle"], states["SitTalk"], 0.15f, Bool(TalkingParameter, true));
-
-            Go(states["SitTalk"], states["Idle"], SeatedFade, Seated(false));
             Go(states["SitTalk"], states["SitIdle"], 0.15f, Bool(TalkingParameter, false));
+            // The clap holds its hands up for five seconds and brings them down by 5.6 of its 6.5;
+            // the fist pump is up and down by four of its 5.6 and sits still after.
+            foreach (var (gesture, done) in new[] { ("SitClap", .9f), ("SitVictory", .72f) })
+            {
+                Go(states[gesture], states["Idle"], SeatedFade, Seated(false));
+                var settle = Go(states[gesture], states["SitIdle"], 0.3f);
+                settle.hasExitTime = true;
+                settle.exitTime = done;
+            }
 
             for (int i = 0; i < TalkRing.Length; i++)
             {
@@ -287,32 +360,55 @@ namespace Gamesim.Editor
                 var back = Go(state, states["Idle"], 0.2f);
                 back.hasExitTime = true;
                 back.exitTime = 0.9f;
+                OneShot(machine, state, trigger);
+            }
 
-                var any = machine.AddAnyStateTransition(state);
-                any.hasExitTime = false;
-                any.exitTime = 0f;
-                any.duration = 0.1f;
-                any.hasFixedDuration = true;
-                any.canTransitionToSelf = false;
-                any.AddCondition(AnimatorConditionMode.If, 0f, trigger);
-                any.AddCondition(AnimatorConditionMode.IfNot, 0f, SeatedParameter);
-                // A body asleep, in the water or at the stove does not jump up to cheer.
-                foreach (var activity in ActivityParameters) any.AddCondition(AnimatorConditionMode.IfNot, 0f, activity);
+            // Gestures are asked of a body that has stopped, and give way to a walk the moment it is
+            // sent somewhere, rather than skating there with its arms in the air. The ceremony beats
+            // keep playing over a step: they fire at a commit, which can land on a body still easing
+            // to a halt, and a beat cut short by that would never be seen at all.
+            foreach (var (trigger, stateName, _) in Gestures)
+            {
+                var state = states[stateName];
+                Go(state, states["Walk"], 0.15f, Moving(true));
+                var back = Go(state, states["Idle"], 0.2f);
+                back.hasExitTime = true;
+                back.exitTime = 0.9f;
+                OneShot(machine, state, trigger, Moving(false));
             }
 
             // Activities, from Any State so they begin from whatever the body was doing - a walk
             // that arrives at the bed does not have to stop first. Each ends to idle when its cue
             // goes, and none can restart itself while it holds.
-            Activity(machine, states["Sleep"], Bool(SleepingParameter, true));
-            Activity(machine, states["SwimForward"], Bool(SwimmingParameter, true), Moving(true));
-            Activity(machine, states["SwimIdle"], Bool(SwimmingParameter, true), Moving(false));
-            Activity(machine, states["Cook"], Bool(CookingParameter, true));
-            Activity(machine, states["Dance"], Bool(DancingParameter, true));
+            Activity(machine, states["Sleep"], .35f, Bool(SleepingParameter, true));
+            Activity(machine, states["SwimForward"], .35f, Bool(SwimmingParameter, true), Moving(true));
+            Activity(machine, states["SwimIdle"], .35f, Bool(SwimmingParameter, true), Moving(false));
+            Activity(machine, states["Cook"], .35f, Bool(CookingParameter, true));
             Go(states["Sleep"], states["Idle"], .45f, Bool(SleepingParameter, false));
             Go(states["SwimIdle"], states["Idle"], .3f, Bool(SwimmingParameter, false));
             Go(states["SwimForward"], states["Idle"], .3f, Bool(SwimmingParameter, false));
             Go(states["Cook"], states["Idle"], .25f, Bool(CookingParameter, false));
-            Go(states["Dance"], states["Idle"], .25f, Bool(DancingParameter, false));
+
+            // A dance is the style it is asked for, and changes style without stopping; each starts
+            // where DanceOffset says, so two dancers who begin together are not in step.
+            for (int style = 0; style < Dances.Length; style++)
+            {
+                var dance = states[Dances[style].state];
+                dance.tag = DanceTag;
+                dance.cycleOffsetParameterActive = true;
+                dance.cycleOffsetParameter = DanceOffsetParameter;
+                Activity(machine, dance, .35f, Bool(DancingParameter, true), Is(DanceStyleParameter, style));
+                Go(dance, states["Idle"], .25f, Bool(DancingParameter, false));
+            }
+
+            // A pose is struck quickly and let go gently, and moves between poses the same way.
+            for (int pose = 0; pose < HumanoidPoseAuthoring.Poses.Length; pose++)
+            {
+                var held = states[PoseState(HumanoidPoseAuthoring.Poses[pose].take)];
+                held.tag = PoseTag;
+                Activity(machine, held, .25f, Bool(PosingParameter, true), Is(PoseParameter, pose));
+                Go(held, states["Idle"], .3f, Bool(PosingParameter, false));
+            }
 
             EditorUtility.SetDirty(controller);
             WireHandle(controller);
@@ -330,7 +426,7 @@ namespace Gamesim.Editor
         public static Dictionary<string, AnimationClip> LoadTakes()
         {
             var clips = new Dictionary<string, AnimationClip>();
-            foreach (var take in Takes.Concat(HumanoidReactionAuthoring.Takes))
+            foreach (var take in Takes.Concat(HumanoidReactionAuthoring.Takes).Concat(HumanoidPoseAuthoring.Takes))
             {
                 var clip = AssetDatabase.LoadAllAssetsAtPath(Path(take)).OfType<AnimationClip>()
                     .FirstOrDefault(c => !c.name.StartsWith("__preview", StringComparison.Ordinal));
@@ -341,23 +437,45 @@ namespace Gamesim.Editor
             return clips;
         }
 
-        private static void Activity(AnimatorStateMachine machine, AnimatorState state,
+        private static void Activity(AnimatorStateMachine machine, AnimatorState state, float fade,
             params (AnimatorConditionMode mode, float threshold, string parameter)[] conditions)
         {
             var any = machine.AddAnyStateTransition(state);
             any.hasExitTime = false;
             any.exitTime = 0f;
-            any.duration = .35f;
+            any.duration = fade;
             any.hasFixedDuration = true;
             any.canTransitionToSelf = false;
             foreach (var (mode, threshold, parameter) in conditions) any.AddCondition(mode, threshold, parameter);
         }
 
+        /// <summary>A one-shot from Any State on its trigger, only for a standing body at liberty.</summary>
+        private static void OneShot(AnimatorStateMachine machine, AnimatorState state, string trigger,
+            params (AnimatorConditionMode mode, float threshold, string parameter)[] conditions)
+        {
+            var any = machine.AddAnyStateTransition(state);
+            any.hasExitTime = false;
+            any.exitTime = 0f;
+            any.duration = 0.1f;
+            any.hasFixedDuration = true;
+            any.canTransitionToSelf = false;
+            any.AddCondition(AnimatorConditionMode.If, 0f, trigger);
+            any.AddCondition(AnimatorConditionMode.IfNot, 0f, SeatedParameter);
+            // A body asleep, in the water or at the stove does not jump up to cheer.
+            foreach (var activity in ActivityParameters) any.AddCondition(AnimatorConditionMode.IfNot, 0f, activity);
+            foreach (var (mode, threshold, parameter) in conditions) any.AddCondition(mode, threshold, parameter);
+        }
+
+        /// <summary>The tag every dance state carries, so a test can ask whether a body is dancing whichever dance it is.</summary>
+        public const string DanceTag = "Dance";
+        /// <summary>The tag every pose state carries.</summary>
+        public const string PoseTag = "Pose";
+
         /// <summary>The file a take arrived in.</summary>
         public static string Path(string take) => AuthoredAssetImporter.LibraryClips.Any(row => row.clip == take)
             ? AuthoredAssetImporter.LibraryPath
             : ClipFolder + AuthoredAssetImporter.AnimationPrefix + take
-                + (HumanoidReactionAuthoring.Takes.Contains(take) ? ".anim" : ".fbx");
+                + (HumanoidReactionAuthoring.Takes.Contains(take) || HumanoidPoseAuthoring.Takes.Contains(take) ? ".anim" : ".fbx");
 
         /// <summary>
         /// Keeps the Resources handle pointing at the controller, creating it if a clone has the
@@ -417,6 +535,9 @@ namespace Gamesim.Editor
             (wanted ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot, 0f, parameter);
 
         private static (AnimatorConditionMode, float, string) Seated(bool wanted) => Bool(SeatedParameter, wanted);
+
+        private static (AnimatorConditionMode, float, string) Is(string parameter, int value) =>
+            (AnimatorConditionMode.Equals, value, parameter);
 
         private static (AnimatorConditionMode, float, string) Moving(bool wanted) =>
             (wanted ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less, Still, SpeedParameter);

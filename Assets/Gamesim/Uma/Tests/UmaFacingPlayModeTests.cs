@@ -34,36 +34,52 @@ namespace Gamesim.Uma.Tests
 
         /// <summary>
         /// Every state, with the parameters that hold it. <c>activity</c> is the activity cue it
-        /// needs, if any; <c>lying</c> marks a body with no upright forward, which is asked where its
-        /// head is instead of which way its hips face.
+        /// needs, if any, and <c>variant</c> which dance or pose that cue plays; <c>lying</c> marks a
+        /// body with no upright forward, which is asked where its head is instead of which way its
+        /// hips face.
         /// </summary>
         private static readonly (string state, float speed, bool running, bool seated, bool talking,
-            bool listening, bool arguing, bool oneShot, string activity, bool lying)[] States =
+            bool listening, bool arguing, bool oneShot, string activity, bool lying, int variant)[] States =
         {
-            ("Idle", 0f, false, false, false, false, false, false, null, false),
-            ("Walk", 1f, false, false, false, false, false, false, null, false),
-            ("Run", 1f, true, false, false, false, false, false, null, false),
-            ("WalkStop", 0f, false, false, false, false, false, true, null, false),
-            ("SitIdle", 0f, false, true, false, false, false, false, null, false),
-            ("SitTalk", 0f, false, true, true, false, false, false, null, false),
-            ("Talk", 0f, false, false, true, false, false, false, null, false),
-            ("TalkB", 0f, false, false, true, false, false, false, null, false),
-            ("TalkC", 0f, false, false, true, false, false, false, null, false),
-            ("Listen", 0f, false, false, false, true, false, false, null, false),
-            ("Argue", 0f, false, false, false, false, true, false, null, false),
-            ("ReactWon", 0f, false, false, false, false, false, true, null, false),
-            ("ReactCheered", 0f, false, false, false, false, false, true, null, false),
-            ("ReactNominated", 0f, false, false, false, false, false, true, null, false),
-            ("ReactSaved", 0f, false, false, false, false, false, true, null, false),
-            ("ReactEvicted", 0f, false, false, false, false, false, true, null, false),
-            ("Cook", 0f, false, false, false, false, false, false, "Cooking", false),
-            ("Dance", 0f, false, false, false, false, false, false, "Dancing", false),
-            ("SwimIdle", 0f, false, false, false, false, false, false, "Swimming", false),
-            ("SwimForward", 1f, false, false, false, false, false, false, "Swimming", true),
-            ("Sleep", 0f, false, false, false, false, false, false, "Sleeping", true),
+            ("Idle", 0f, false, false, false, false, false, false, null, false, 0),
+            ("Walk", 1f, false, false, false, false, false, false, null, false, 0),
+            ("Run", 1f, true, false, false, false, false, false, null, false, 0),
+            ("WalkStop", 0f, false, false, false, false, false, true, null, false, 0),
+            ("SitIdle", 0f, false, true, false, false, false, false, null, false, 0),
+            ("SitTalk", 0f, false, true, true, false, false, false, null, false, 0),
+            ("SitClap", 0f, false, true, false, false, false, true, null, false, 0),
+            ("SitVictory", 0f, false, true, false, false, false, true, null, false, 0),
+            ("Talk", 0f, false, false, true, false, false, false, null, false, 0),
+            ("TalkB", 0f, false, false, true, false, false, false, null, false, 0),
+            ("TalkC", 0f, false, false, true, false, false, false, null, false, 0),
+            ("Listen", 0f, false, false, false, true, false, false, null, false, 0),
+            ("Argue", 0f, false, false, false, false, true, false, null, false, 0),
+            ("ReactWon", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactCheered", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactNominated", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactSaved", 0f, false, false, false, false, false, true, null, false, 0),
+            ("ReactEvicted", 0f, false, false, false, false, false, true, null, false, 0),
+            ("Cheer", 0f, false, false, false, false, false, true, null, false, 0),
+            ("Shrug", 0f, false, false, false, false, false, true, null, false, 0),
+            ("Celebrate", 0f, false, false, false, false, false, true, null, false, 0),
+            ("Cook", 0f, false, false, false, false, false, false, "Cooking", false, 0),
+            ("Dance", 0f, false, false, false, false, false, false, "Dancing", false, 0),
+            ("DanceSamba", 0f, false, false, false, false, false, false, "Dancing", false, 1),
+            ("DanceHipHop", 0f, false, false, false, false, false, false, "Dancing", false, 2),
+            ("DanceWave", 0f, false, false, false, false, false, false, "Dancing", false, 3),
+            ("PoseHandBehindHead", 0f, false, false, false, false, false, false, "Posing", false, 0),
+            ("PoseFootUp", 0f, false, false, false, false, false, false, "Posing", false, 1),
+            ("PoseOverShoulder", 0f, false, false, false, false, false, false, "Posing", false, 2),
+            ("PoseAtEase", 0f, false, false, false, false, false, false, "Posing", false, 3),
+            ("PoseHandOnHip", 0f, false, false, false, false, false, false, "Posing", false, 4),
+            ("PoseHandOnHipGlance", 0f, false, false, false, false, false, false, "Posing", false, 5),
+            ("PosePowerStance", 0f, false, false, false, false, false, false, "Posing", false, 6),
+            ("SwimIdle", 0f, false, false, false, false, false, false, "Swimming", false, 0),
+            ("SwimForward", 1f, false, false, false, false, false, false, "Swimming", true, 0),
+            ("Sleep", 0f, false, false, false, false, false, false, "Sleeping", true, 0),
         };
 
-        private static readonly string[] Activities = { "Sleeping", "Swimming", "Cooking", "Dancing" };
+        private static readonly string[] Activities = { "Sleeping", "Swimming", "Cooking", "Dancing", "Posing" };
 
         private GameObject cast, actor;
         private Animator animator;
@@ -105,8 +121,13 @@ namespace Gamesim.Uma.Tests
             var wrong = new List<string>();
             foreach (var entry in States)
             {
+                // A dance is measured from where the show starts it (CastMoves.Lively): the samba
+                // swings through a whole turn over its eighteen seconds, so "which way does it face"
+                // is only a question about the moment somebody is looking - the mark, the landed
+                // introduction - and that moment is the one asked about.
+                float? from = entry.activity == "Dancing" ? CastMoves.Lively((CharacterPresentation.DanceStyle)entry.variant) : (float?)null;
                 Hold(entry.state, entry.speed, entry.running, entry.seated, entry.talking, entry.listening, entry.arguing, entry.oneShot,
-                    entry.activity);
+                    entry.activity, entry.variant, from);
                 var hips = Vector3.zero; var shoulders = Vector3.zero; var spine = Vector3.zero; int held = 0;
                 for (int frame = 0; frame < 42; frame++)
                 {
@@ -226,12 +247,15 @@ namespace Gamesim.Uma.Tests
         }
 
         private void Hold(string state, float speed, bool running, bool seated, bool talking, bool listening, bool arguing, bool oneShot,
-            string activity)
+            string activity, int variant = 0, float? from = null)
         {
             animator.SetFloat("Speed", speed); animator.SetBool("Running", running); animator.SetBool("Seated", seated);
             animator.SetBool("Talking", talking); animator.SetBool("Listening", listening); animator.SetBool("Arguing", arguing);
             foreach (var cue in Activities) animator.SetBool(cue, cue == activity);
-            animator.Play(Animator.StringToHash(state), 0, oneShot ? .05f : .1f);
+            // Which dance, which pose: without it the controller's own edge takes a dancing body
+            // straight to the dance that is style nought, and the state asked for is never measured.
+            animator.SetInteger("DanceStyle", variant); animator.SetInteger("Pose", variant);
+            animator.Play(Animator.StringToHash(state), 0, from ?? (oneShot ? .05f : .1f));
         }
 
         private Vector3 Local(HumanBodyBones bone) => root.InverseTransformPoint(animator.GetBoneTransform(bone).position);

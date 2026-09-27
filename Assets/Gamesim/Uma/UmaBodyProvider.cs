@@ -111,6 +111,7 @@ namespace Gamesim.Uma
             root.transform.localRotation = Quaternion.identity;
             var buildState = root.AddComponent<CharacterBodyBuildState>();
             buildState.Revision = request.Revision;
+            buildState.Frame = FrameOf(look.Race);
 
             // UMA reuses an Animator already on the object, so adding it first keeps the handle we
             // return valid from this frame rather than from whenever UMA gets to the build.
@@ -214,6 +215,12 @@ namespace Gamesim.Uma
             body = new CharacterBody(root, animator, deferred: true);
             return true;
         }
+
+        /// <summary>Which build a race is: the two bodies the creator offers, and nothing for any other race.</summary>
+        public static BodyFrame FrameOf(string race) =>
+            race == UmaCastLibrary.MaleRace ? BodyFrame.Masculine
+            : race == UmaCastLibrary.FemaleRace ? BodyFrame.Feminine
+            : BodyFrame.Unknown;
 
         /// <summary>
         /// The skin's own albedo, averaged in linear light: <c>UMA_F_Diffuse.100x</c>, the one skin

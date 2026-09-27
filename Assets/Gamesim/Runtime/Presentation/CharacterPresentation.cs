@@ -54,15 +54,55 @@ namespace Gamesim.Presentation
         /// What a body is doing at a piece of furniture, beyond sitting. Appended to, never
         /// reordered: <see cref="ActivityParams"/> is indexed by it, less one.
         /// </summary>
-        public enum BodyActivity { None, Sleeping, Swimming, Cooking, Dancing }
+        public enum BodyActivity { None, Sleeping, Swimming, Cooking, Dancing, Posing }
         private static readonly int[] ActivityParams =
         {
             Animator.StringToHash("Sleeping"), Animator.StringToHash("Swimming"),
             Animator.StringToHash("Cooking"), Animator.StringToHash("Dancing"),
+            Animator.StringToHash("Posing"),
         };
         private BodyActivity activity;
         private bool activityMoving;
         private int activityParams;
+
+        /// <summary>
+        /// Which dance a dancing body dances. Appended to, never reordered: the controller counts its
+        /// dances in this order (<c>HumanoidClipWiring.Dances</c>). House is the library's, which
+        /// every body danced first, so a body nobody gives a style dances as it always did.
+        /// </summary>
+        public enum DanceStyle { House, Samba, HipHop, Wave }
+
+        /// <summary>
+        /// A pose held for a camera, in the order the controller counts them
+        /// (<c>HumanoidPoseAuthoring.Poses</c>). Appended to, never reordered. Each is a still
+        /// brought to life - it breathes - and all but the look over the shoulder face the way the
+        /// chest does. The first four were captured on a man, the last three on a woman; which a
+        /// body strikes is <see cref="CastMoves"/>'s business, by the body's frame.
+        /// </summary>
+        public enum Pose { HandBehindHead, FootUp, OverShoulder, AtEase, HandOnHip, HandOnHipGlance, PowerStance }
+
+        /// <summary>
+        /// A standing one-shot a body makes because it was asked to - by the player, mostly - rather
+        /// than a ceremony beat. Given way to a walk the moment the body moves. Appended to, never
+        /// reordered: <c>HumanoidClipWiring.Gestures</c> is indexed by it.
+        /// </summary>
+        public enum Gesture { Cheer, Shrug, Celebrate }
+        private static readonly int[] GestureParams =
+        {
+            Animator.StringToHash("GestureCheer"), Animator.StringToHash("GestureShrug"), Animator.StringToHash("GestureCelebrate"),
+        };
+        private int gestureParams;
+
+        private static readonly int DanceStyleParam = Animator.StringToHash("DanceStyle");
+        private static readonly int DanceOffsetParam = Animator.StringToHash("DanceOffset");
+        private static readonly int PoseParam = Animator.StringToHash("Pose");
+        private static readonly int SeatedClapParam = Animator.StringToHash("SeatedClap");
+        private static readonly int SeatedVictoryParam = Animator.StringToHash("SeatedVictory");
+        private bool hasDanceStyleParam, hasDanceOffsetParam, hasPoseParam, hasSeatedClapParam, hasSeatedVictoryParam;
+        private DanceStyle danceStyle;
+        private float danceStart = float.NaN;
+        private Pose pose;
+        private bool seatedGesturePending;
         /// <summary>
         /// The ceremony beats a body can act out: one-shot clips the controller may declare as
         /// triggers. Appended to, never reordered: <c>AuthoredClipWiring.Reactions</c> and
@@ -460,6 +500,67 @@ namespace Gamesim.Presentation
         public BodyActivity Activity => activity;
 
         /// <summary>
+        /// Which dance this body dances when it dances, and where in the dance it starts, normalized;
+        /// NaN starts it at this body's own place, so two dancers side by side are never in step.
+        /// Set it before the dance begins: the start is read as the dance is entered.
+        /// </summary>
+        public void SetDanceStyle(DanceStyle style, float startAt = float.NaN) { danceStyle = style; danceStart = startAt; }
+        public DanceStyle Dance => danceStyle;
+
+        /// <summary>Whether this body can dance the style: any dancer the library's steps, and the mocap dances only on a controller that has them.</summary>
+        public bool CanDance(DanceStyle style)
+        {
+            if (!CanAct(BodyActivity.Dancing)) return false;
+            return style == DanceStyle.House || hasDanceStyleParam;
+        }
+
+        /// <summary>Whether the body has come to a stop - its movement blend all but gone.</summary>
+        public bool IsStill => movementBlend < .1f;
+
+        /// <summary>Which pose this body strikes when it is <see cref="BodyActivity.Posing"/>.</summary>
+        public void SetPose(Pose value) => pose = value;
+        public Pose HeldPose => pose;
+
+        /// <summary>
+        /// Makes a gesture, if the body can: standing, at liberty and still, with a controller that
+        /// has the take, and with motion not reduced. Returns whether it was asked of the animator.
+        /// </summary>
+        public bool MakeGesture(Gesture kind)
+        {
+            LastGesture = kind;
+            if (animator == null || reducedMotion || seated || activity != BodyActivity.None || movementBlend > .1f) return false;
+            RefreshAnimatorParameters();
+            if ((gestureParams & (1 << (int)kind)) == 0) return false;
+            animator.SetTrigger(GestureParams[(int)kind]);
+            return true;
+        }
+
+        /// <summary>The last gesture this body was asked for, whether or not it could make it.</summary>
+        public Gesture? LastGesture { get; private set; }
+
+        /// <summary>Whether this body's controller has a take for the gesture.</summary>
+        public bool Supports(Gesture kind)
+        {
+            if (animator == null) return false;
+            RefreshAnimatorParameters();
+            return (gestureParams & (1 << (int)kind)) != 0;
+        }
+
+        /// <summary>
+        /// The body this houseguest was built on, as its provider reported it; Unknown for a body
+        /// that did not say, which is any body that is not a provider's.
+        /// </summary>
+        public BodyFrame Frame
+        {
+            get
+            {
+                if (!providedBody.Exists) return BodyFrame.Unknown;
+                var state = providedBody.Root.GetComponent<CharacterBodyBuildState>();
+                return state == null ? BodyFrame.Unknown : state.Frame;
+            }
+        }
+
+        /// <summary>
         /// Whether this body's controller can act the activity out. A body that cannot is posed by
         /// its owner instead, or left standing - never handed a cue it has no state for.
         /// </summary>
@@ -487,15 +588,32 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// Acts out a ceremony beat. Recorded always; played only when the controller declares the
-        /// trigger, the body is standing, and motion is not reduced - a reaction is the largest
-        /// motion a body makes, and the seated clips have no reaction to cut to.
+        /// trigger and motion is not reduced - a reaction is the largest motion a body makes. A
+        /// seated body answers from its seat where it has a take captured sitting: a clap for a
+        /// cheer, a fist pump for a win or a save. The standing beats have nothing to cut to from a
+        /// chair, so the rest leave a sitter sitting.
         /// </summary>
         public void React(Reaction kind)
         {
             LastReaction = kind;
-            if (animator == null || reducedMotion || seated) return;
+            if (animator == null || reducedMotion) return;
             RefreshAnimatorParameters();
+            if (seated)
+            {
+                if (kind == Reaction.Cheered && hasSeatedClapParam) { animator.SetTrigger(SeatedClapParam); seatedGesturePending = true; }
+                else if ((kind == Reaction.Won || kind == Reaction.Saved) && hasSeatedVictoryParam)
+                { animator.SetTrigger(SeatedVictoryParam); seatedGesturePending = true; }
+                return;
+            }
             if ((reactionParams & (1 << (int)kind)) != 0) animator.SetTrigger(ReactionParams[(int)kind]);
+        }
+
+        /// <summary>Whether a seated body can answer the reaction from its seat.</summary>
+        public bool SupportsSeated(Reaction kind)
+        {
+            if (animator == null) return false;
+            RefreshAnimatorParameters();
+            return kind == Reaction.Cheered ? hasSeatedClapParam : (kind == Reaction.Won || kind == Reaction.Saved) && hasSeatedVictoryParam;
         }
         /// <summary>Whether this body's controller has a clip for the reaction: what the director asks before choosing a stand-in.</summary>
         public bool Supports(Reaction kind)
@@ -656,7 +774,9 @@ namespace Gamesim.Presentation
                 inspectedController = null;
                 hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
                 hasRunningParam = hasPaceParam = false;
+                hasDanceStyleParam = hasDanceOffsetParam = hasPoseParam = hasSeatedClapParam = hasSeatedVictoryParam = false;
                 activityParams = 0;
+                gestureParams = 0;
                 return;
             }
 
@@ -668,10 +788,20 @@ namespace Gamesim.Presentation
             inspectedController = controller;
             hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
             hasRunningParam = hasPaceParam = false;
+            hasDanceStyleParam = hasDanceOffsetParam = hasPoseParam = hasSeatedClapParam = hasSeatedVictoryParam = false;
             reactionParams = 0;
             activityParams = 0;
+            gestureParams = 0;
             foreach (var parameter in animator.parameters)
             {
+                if (parameter.nameHash == DanceStyleParam && parameter.type == AnimatorControllerParameterType.Int) hasDanceStyleParam = true;
+                else if (parameter.nameHash == DanceOffsetParam && parameter.type == AnimatorControllerParameterType.Float) hasDanceOffsetParam = true;
+                else if (parameter.nameHash == PoseParam && parameter.type == AnimatorControllerParameterType.Int) hasPoseParam = true;
+                else if (parameter.nameHash == SeatedClapParam && parameter.type == AnimatorControllerParameterType.Trigger) hasSeatedClapParam = true;
+                else if (parameter.nameHash == SeatedVictoryParam && parameter.type == AnimatorControllerParameterType.Trigger) hasSeatedVictoryParam = true;
+                if (parameter.type == AnimatorControllerParameterType.Trigger)
+                    for (int i = 0; i < GestureParams.Length; i++)
+                        if (parameter.nameHash == GestureParams[i]) gestureParams |= 1 << i;
                 if (parameter.nameHash == SpeedParam && parameter.type == AnimatorControllerParameterType.Float)
                     hasSpeedParam = true;
                 else if (parameter.nameHash == SeatedParam && parameter.type == AnimatorControllerParameterType.Bool)
@@ -908,15 +1038,28 @@ namespace Gamesim.Presentation
             if (hasListeningParam) animator.SetBool(ListeningParam, talking && !speaking && !reducedMotion);
             // The tense loop is the talk loop with the arms working, so it follows the same rule.
             if (hasArguingParam) animator.SetBool(ArguingParam, IsArguing);
-            // Lying and floating are where a body is, so they hold under reduced motion; the stove
-            // and the dance floor are motion, and follow the talk loops' rule.
+            // Lying and floating are where a body is, and a pose is a body holding still, so they
+            // hold under reduced motion; the stove and the dance floor are motion, and follow the
+            // talk loops' rule.
             for (int i = 0; i < ActivityParams.Length; i++)
                 if ((activityParams & (1 << i)) != 0)
                 {
                     var cue = (BodyActivity)(i + 1);
-                    bool still = cue == BodyActivity.Sleeping || cue == BodyActivity.Swimming;
+                    bool still = cue == BodyActivity.Sleeping || cue == BodyActivity.Swimming || cue == BodyActivity.Posing;
                     animator.SetBool(ActivityParams[i], activity == cue && (still || !reducedMotion));
                 }
+            if (hasDanceStyleParam) animator.SetInteger(DanceStyleParam, (int)danceStyle);
+            // The same start for as long as the body dances; only the next dance takes a new one.
+            if (hasDanceOffsetParam) animator.SetFloat(DanceOffsetParam, float.IsNaN(danceStart) ? Mathf.Repeat(phaseOffset / 6.28f, 1f) : danceStart);
+            if (hasPoseParam) animator.SetInteger(PoseParam, (int)pose);
+            // A seated gesture is answered from the chair; one still waiting when the body stands
+            // would fire the next time it sat down, at whatever was happening then.
+            if (seatedGesturePending && !seated)
+            {
+                if (hasSeatedClapParam) animator.ResetTrigger(SeatedClapParam);
+                if (hasSeatedVictoryParam) animator.ResetTrigger(SeatedVictoryParam);
+                seatedGesturePending = false;
+            }
 
             // A provided body streams its rig in over a few frames. Retry on a slow cadence so the
             // hierarchy walk behind ResolveModelHead cannot become a per-frame cost on a body that

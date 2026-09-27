@@ -39,10 +39,11 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheMocapTakesImportAsHumanoidAndTheLoopsLoop()
         {
-            // Fourteen: the twelve mocap takes, plus the walk and its stop. The walk is the one
-            // that matters - without an authored take the Walk state was a key for UMA to fill, and
-            // UMA's Locomotion controller has no walk to fill it with, so it filled it with a run.
-            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(14), "fourteen takes arrived");
+            // Twenty-seven: the twelve mocap takes, the walk and its stop - the walk is the one that
+            // mattered, because without an authored take the Walk state was a key for UMA to fill,
+            // and UMA's Locomotion controller has no walk, so it filled it with a run - then three
+            // dances, three seated takes and the seven standing stills the living poses come from.
+            Assert.That(HumanoidClipWiring.Takes.Length, Is.EqualTo(27), "twenty-seven takes arrived");
             foreach (var take in HumanoidClipWiring.Takes)
             {
                 var path = HumanoidClipWiring.Path(take);
@@ -135,6 +136,8 @@ namespace Gamesim.Tests.EditMode
         public void ATakeThatWalksKeepsItsTravelOffTheBody()
         {
             Assert.That(AuthoredAssetImporter.TravellingTakes, Does.Contain("WalkStop"), "the stop take walks two steps as it stops");
+            Assert.That(AuthoredAssetImporter.TravellingTakes, Does.Contain("DanceHipHop_loop"),
+                "the hip-hop dance carries its hips 1.49 m forward a cycle and starts each one back where it began");
             foreach (var take in HumanoidClipWiring.Takes)
             {
                 bool walks = AuthoredAssetImporter.TravellingTakes.Contains(take);
@@ -312,7 +315,8 @@ namespace Gamesim.Tests.EditMode
                 var state = State(controller, name);
                 Assert.That(state, Is.Not.Null, name);
                 Assert.That(state.motion, Is.Not.Null, name + " has a take to play");
-                var expected = HumanoidReactionAuthoring.Takes.Contains(take) ? "bb_anim_" + take : take;
+                var expected = HumanoidReactionAuthoring.Takes.Contains(take) || HumanoidPoseAuthoring.Takes.Contains(take)
+                    ? "bb_anim_" + take : take;
                 Assert.That(state.motion.name, Is.EqualTo(expected), name + " plays " + take);
                 Assert.That(AssetDatabase.GetAssetPath(state.motion), Is.EqualTo(HumanoidClipWiring.Path(take)),
                     name + " references the authored motion for this beat");
@@ -391,6 +395,170 @@ namespace Gamesim.Tests.EditMode
                     && c.mode == AnimatorConditionMode.IfNot), Is.True, stateName + " only while standing");
                 Assert.That(state.transitions.Any(t => t.destinationState == idle && t.hasExitTime), Is.True,
                     stateName + " returns to idle");
+            }
+        }
+
+        /// <summary>
+        /// A dancing body dances the style it is asked for and a posing body holds the pose it is
+        /// numbered: each from Any State, each tagged, each let go when its cue goes. The lists the
+        /// presentation counts in and the lists the controller is built from are the same lists in
+        /// the same order, because the presentation sends a number and the controller reads it.
+        /// </summary>
+        [Test]
+        public void EveryDanceIsItsStyleAndEveryPoseItsNumber()
+        {
+            var controller = Controller();
+            var machine = Machine(controller);
+            var idle = State(controller, "Idle");
+            void Declares(string name, AnimatorControllerParameterType type) =>
+                Assert.That(controller.parameters.Any(p => p.name == name && p.type == type), Is.True, name + " is declared as " + type);
+            Declares(HumanoidClipWiring.DanceStyleParameter, AnimatorControllerParameterType.Int);
+            Declares(HumanoidClipWiring.DanceOffsetParameter, AnimatorControllerParameterType.Float);
+            Declares(HumanoidClipWiring.PoseParameter, AnimatorControllerParameterType.Int);
+            Declares(HumanoidClipWiring.PosingParameter, AnimatorControllerParameterType.Bool);
+
+            var styles = Enum.GetNames(typeof(CharacterPresentation.DanceStyle));
+            Assert.That(styles.Length, Is.EqualTo(HumanoidClipWiring.Dances.Length), "a dance for every style the presentation can ask for");
+            Assert.That(HumanoidClipWiring.Dances[0].take, Is.EqualTo("Dance_Loop"),
+                "style nought is the library's dance, so a body nobody gives a style dances as it always did");
+            for (int style = 0; style < styles.Length; style++)
+            {
+                var dance = State(controller, HumanoidClipWiring.Dances[style].state);
+                Assert.That(dance, Is.Not.Null, styles[style]);
+                Assert.That(dance.tag, Is.EqualTo(HumanoidClipWiring.DanceTag), dance.name + " is tagged a dance");
+                Assert.That(dance.cycleOffsetParameterActive && dance.cycleOffsetParameter == HumanoidClipWiring.DanceOffsetParameter,
+                    Is.True, dance.name + " starts where it is told to");
+                var any = machine.anyStateTransitions.Where(t => t.destinationState == dance).ToArray();
+                Assert.That(any.Length, Is.EqualTo(1), dance.name + " has one way in");
+                Assert.That(any[0].conditions.Any(c => c.parameter == HumanoidClipWiring.DancingParameter && c.mode == AnimatorConditionMode.If)
+                    && any[0].conditions.Any(c => c.parameter == HumanoidClipWiring.DanceStyleParameter
+                        && c.mode == AnimatorConditionMode.Equals && Mathf.Approximately(c.threshold, style)), Is.True,
+                    dance.name + " plays on Dancing with the style " + style + " (" + styles[style] + ")");
+                Assert.That(any[0].canTransitionToSelf, Is.False, dance.name + " does not restart itself every frame");
+                Assert.That(dance.transitions.Any(t => t.destinationState == idle && t.conditions.Any(c =>
+                    c.parameter == HumanoidClipWiring.DancingParameter && c.mode == AnimatorConditionMode.IfNot)), Is.True,
+                    dance.name + " ends when the dancing does");
+            }
+
+            var poses = Enum.GetNames(typeof(CharacterPresentation.Pose));
+            Assert.That(poses.Length, Is.EqualTo(HumanoidPoseAuthoring.Poses.Length), "a living pose for every pose the presentation can ask for");
+            for (int number = 0; number < poses.Length; number++)
+            {
+                string stateName = HumanoidClipWiring.PoseState(HumanoidPoseAuthoring.Poses[number].take);
+                Assert.That(stateName, Is.EqualTo("Pose" + poses[number]), "pose " + number + " is " + poses[number] + " in both lists");
+                var held = State(controller, stateName);
+                Assert.That(held, Is.Not.Null, stateName);
+                Assert.That(held.tag, Is.EqualTo(HumanoidClipWiring.PoseTag), stateName);
+                var any = machine.anyStateTransitions.Where(t => t.destinationState == held).ToArray();
+                Assert.That(any.Length, Is.EqualTo(1), stateName + " has one way in");
+                Assert.That(any[0].conditions.Any(c => c.parameter == HumanoidClipWiring.PosingParameter && c.mode == AnimatorConditionMode.If)
+                    && any[0].conditions.Any(c => c.parameter == HumanoidClipWiring.PoseParameter
+                        && c.mode == AnimatorConditionMode.Equals && Mathf.Approximately(c.threshold, number)), Is.True,
+                    stateName + " is held on Posing with the pose " + number);
+                Assert.That(held.transitions.Any(t => t.destinationState == idle && t.conditions.Any(c =>
+                    c.parameter == HumanoidClipWiring.PosingParameter && c.mode == AnimatorConditionMode.IfNot)), Is.True,
+                    stateName + " is let go when the posing stops");
+            }
+
+            // Nothing is built twice. The rebuild used to clear only the Any State edges into the
+            // states it knew, so any other edge doubled on every run of the menu item.
+            var doubled = machine.anyStateTransitions.GroupBy(t => t.destinationState.name + ":" + string.Join(",",
+                    t.conditions.Select(c => c.parameter + c.mode + c.threshold))).Where(group => group.Count() > 1)
+                .Select(group => group.Key).ToArray();
+            Assert.That(doubled, Is.Empty, "an Any State edge is built once");
+        }
+
+        /// <summary>
+        /// A gesture is asked of a body that is standing still and gives way to a walk the moment it
+        /// is sent somewhere; a seated body claps and pumps its fist from its seat, and stands up out
+        /// of either.
+        /// </summary>
+        [Test]
+        public void GesturesGiveWayToAWalkAndASitterAnswersFromTheSeat()
+        {
+            var controller = Controller();
+            var machine = Machine(controller);
+            var idle = State(controller, "Idle");
+            var walk = State(controller, "Walk");
+            var gestures = Enum.GetNames(typeof(CharacterPresentation.Gesture));
+            Assert.That(gestures.Length, Is.EqualTo(HumanoidClipWiring.Gestures.Length), "a take for every gesture the presentation can ask for");
+            for (int i = 0; i < gestures.Length; i++)
+            {
+                var (trigger, stateName, _) = HumanoidClipWiring.Gestures[i];
+                Assert.That(trigger, Is.EqualTo("Gesture" + gestures[i]), "gesture " + i + " is " + gestures[i] + " in both lists");
+                Assert.That(controller.parameters.Any(p => p.name == trigger && p.type == AnimatorControllerParameterType.Trigger), Is.True, trigger);
+                var state = State(controller, stateName);
+                var any = machine.anyStateTransitions.Single(t => t.destinationState == state);
+                Assert.That(any.conditions.Any(c => c.parameter == trigger && c.mode == AnimatorConditionMode.If), Is.True, stateName + " on its trigger");
+                Assert.That(any.conditions.Any(c => c.parameter == HumanoidClipWiring.SeatedParameter && c.mode == AnimatorConditionMode.IfNot), Is.True,
+                    stateName + " only while standing");
+                Assert.That(any.conditions.Any(c => c.parameter == HumanoidClipWiring.SpeedParameter && c.mode == AnimatorConditionMode.Less), Is.True,
+                    stateName + " only for a body that has stopped");
+                foreach (var cue in HumanoidClipWiring.ActivityParameters)
+                    Assert.That(any.conditions.Any(c => c.parameter == cue && c.mode == AnimatorConditionMode.IfNot), Is.True,
+                        stateName + " waits while the body is " + cue.ToLowerInvariant());
+                Assert.That(Leads(state, walk, HumanoidClipWiring.SpeedParameter), Is.True, stateName + " gives way to a walk");
+                Assert.That(state.transitions.Any(t => t.destinationState == idle && t.hasExitTime), Is.True, stateName + " returns to idle");
+            }
+            // The ceremony beats keep playing over a step, and gain no walk: they fire at a commit,
+            // on bodies that may still be easing to a halt.
+            foreach (var (_, stateName) in HumanoidClipWiring.WiredReactions)
+                Assert.That(Leads(State(controller, stateName), walk, HumanoidClipWiring.SpeedParameter), Is.False,
+                    stateName + " plays out rather than being cut short by a body still coming to a stop");
+
+            foreach (var seat in new[] { "SitIdle", "SitTalk" })
+            {
+                Assert.That(Leads(State(controller, seat), State(controller, "SitClap"), HumanoidClipWiring.SeatedClapTrigger), Is.True,
+                    seat + " claps from the seat");
+                Assert.That(Leads(State(controller, seat), State(controller, "SitVictory"), HumanoidClipWiring.SeatedVictoryTrigger), Is.True,
+                    seat + " pumps a fist from the seat");
+            }
+            foreach (var gesture in new[] { "SitClap", "SitVictory" })
+            {
+                var state = State(controller, gesture);
+                Assert.That(state.transitions.Any(t => t.destinationState == State(controller, "SitIdle") && t.hasExitTime), Is.True,
+                    gesture + " settles back into the seat");
+                Assert.That(Leads(state, idle, HumanoidClipWiring.SeatedParameter), Is.True, gesture + " stands up with the body");
+            }
+        }
+
+        /// <summary>
+        /// The standing poses are stills brought to life: each loops once a breath, the chest is
+        /// somewhere else half a breath in and back where it began at the end, the body stands over
+        /// its root facing the way it faces, and the head keeps only its row's share of the still's
+        /// turn - a pose for the lens with the face turned from it is a photograph of an ear.
+        /// </summary>
+        [Test]
+        public void EveryLivingPoseBreathesAndTurnsItsHeadAsItsRowSays()
+        {
+            float Muscle(AnimationClip clip, string name, float time) => AnimationUtility.GetEditorCurve(clip,
+                EditorCurveBinding.FloatCurve("", typeof(Animator), name)).Evaluate(time);
+            foreach (var (take, still, keepTurn) in HumanoidPoseAuthoring.Poses)
+            {
+                var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(HumanoidClipWiring.Path(take));
+                Assert.That(clip, Is.Not.Null, take + " is authored - Gamesim > Characters > Author the living poses");
+                Assert.That(clip.humanMotion, Is.True, take);
+                Assert.That(clip.isLooping, Is.True, take + " loops");
+                Assert.That(clip.length, Is.EqualTo(HumanoidPoseAuthoring.Breath).Within(.05f), take + " is one breath long");
+
+                float start = Muscle(clip, "Chest Front-Back", 0f);
+                Assert.That(Mathf.Abs(Muscle(clip, "Chest Front-Back", clip.length * .5f) - start), Is.GreaterThan(.02f), take + " breathes");
+                Assert.That(Muscle(clip, "Chest Front-Back", clip.length), Is.EqualTo(start).Within(.001f), take + " ends where it began");
+
+                var source = AssetDatabase.LoadAllAssetsAtPath(HumanoidClipWiring.Path(still)).OfType<AnimationClip>()
+                    .First(c => !c.name.StartsWith("__preview", StringComparison.Ordinal));
+                var frame = HumanoidPoseAuthoring.Frame(source);
+                foreach (var muscle in HumanoidPoseAuthoring.HeadTurn)
+                    Assert.That(Muscle(clip, muscle, 0f), Is.EqualTo(frame[muscle] * keepTurn).Within(.001f),
+                        take + " keeps " + keepTurn + " of " + still + "'s " + muscle);
+
+                var settings = AnimationUtility.GetAnimationClipSettings(clip);
+                Assert.That(settings.keepOriginalOrientation, Is.False, take + " turns with its body");
+                var body = new Quaternion(Muscle(clip, "RootQ.x", 0f), Muscle(clip, "RootQ.y", 0f), Muscle(clip, "RootQ.z", 0f), Muscle(clip, "RootQ.w", 0f));
+                var ahead = body * Vector3.forward; ahead.y = 0f;
+                Assert.That(Mathf.Abs(Vector3.SignedAngle(Vector3.forward, ahead, Vector3.up)), Is.LessThan(2f), take + " faces the way its body does");
+                Assert.That(Muscle(clip, "RootT.x", 0f), Is.Zero, take + " stands over its root");
+                Assert.That(Muscle(clip, "RootT.z", 0f), Is.Zero, take + " stands over its root");
             }
         }
 

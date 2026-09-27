@@ -388,7 +388,7 @@ namespace Gamesim.Episode
                 About = string.IsNullOrEmpty(actor.bio) ? null : actor.bio,
                 Status = "Status: " + StatusWord(actor.status),
                 // Mood is what the house can see of someone; a juror is not in the house to be seen.
-                Mood = inHouse && !string.IsNullOrEmpty(actor.mood) ? "Mood: " + actor.mood : null,
+                Mood = inHouse ? MoodLine(state, actor) : null,
                 Trust = TrustFigure(score),
                 TrustTint = TrustTint(score),
                 TrustNote = "This is your character\u2019s relationship value, not " + first + "\u2019s private opinion of you.",
@@ -403,6 +403,21 @@ namespace Gamesim.Episode
             };
             hud.HouseguestProfile(view);
             hud.Mark(NotebookSection.People);
+        }
+
+        /// <summary>
+        /// A houseguest's mood as the house can read it, with whom it is about when everybody saw
+        /// why (<see cref="EpisodeEngine.MoodTarget"/>): "Mood: Angry at Jordan", "Mood: Upset at
+        /// you". Null when there is no mood to read.
+        /// </summary>
+        public static string MoodLine(EpisodeState state, ContestantState actor)
+        {
+            if (state == null || actor == null || string.IsNullOrEmpty(actor.mood)) return null;
+            string target = EpisodeEngine.MoodTarget(state, actor.id, out _);
+            var about = target != null ? state.Find(target) : null;
+            if (about == null) return "Mood: " + actor.mood;
+            string name = about.id == state.playerId ? "you" : (about.name ?? "").Split(' ')[0];
+            return "Mood: " + actor.mood + " at " + name;
         }
 
         /// <summary>

@@ -194,6 +194,7 @@ namespace Gamesim.Simulation
                         s.lobbies.Clear();
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
+                        if (StoryAt(s, StoryRules.Bonds)) MoodsSettle(s);
                         StoryWeekTurn(s);
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
@@ -382,6 +383,8 @@ namespace Gamesim.Simulation
                     SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null));
                     StoryVotesRevealed(s, evicted);
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
+                    // Off the block by the house's vote is saved too.
+                    foreach (var survivor in s.nominees.Where(id => id != evicted)) MoodLift(s, survivor);
                     if (StoryOn(s)) Bonds.Apart(s, evicted);
                     s.evictionStage = EvictionStage.Results;
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
@@ -559,6 +562,7 @@ namespace Gamesim.Simulation
             else if (s.phase == EpisodePhase.FinalHoHPart1) s.finalPart1WinnerId = winner;
             else if (s.phase == EpisodePhase.FinalHoHPart2) s.finalPart2WinnerId = winner;
             else { s.hohId = winner; s.Find(winner).hohWins++; }
+            MoodLift(s, winner);
             s.competitionResolved = true;
             LogCompetitionDefinition(s);
             LogCompetitionStandings(s);
@@ -728,15 +732,85 @@ namespace Gamesim.Simulation
                 Arc(s, id == s.playerId ? s.hohId : id, -8, "Nominated " + (s.hohId == s.playerId ? guest.name : "you") + " in week " + s.week);
             if (initial)
             {
-                var moods = new[] { "Angry", "Upset", "Neutral", "Content", "Happy" };
                 var stress = new[] { "Relaxed", "Normal", "Tense", "Stressed", "Overwhelmed" };
-                guest.mood = moods[Math.Max(0, Array.IndexOf(moods, guest.mood) - 2)];
+                MoodStep(guest, -2);
                 guest.stressLevel = stress[Math.Min(4, Array.IndexOf(stress, guest.stressLevel) + 2)];
             }
             Remember(s, id, s.hohId, "Nominated me in week " + s.week + ".", false);
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.fromId == s.hohId &&
                 ((p.kind == PromiseKind.Safety && p.toId == id) || (p.kind == PromiseKind.AllianceLoyalty && s.Allied(p.fromId, id)))).ToArray())
                 SettlePromise(s, promise, PromiseStatus.Broken);
+        }
+
+        /// <summary>The mood ladder, worst to best: what a houseguest's face and chip say.</summary>
+        public static readonly string[] Moods = { "Angry", "Upset", "Neutral", "Content", "Happy" };
+
+        /// <summary>
+        /// Moves a mood along <see cref="Moods"/>: the web's mental-state steps (mental-state.ts) -
+        /// nominated -2, saved +2, a competition won +2. The web defines all three and calls only
+        /// the first, so a nominee there is Angry for the rest of the season, as one was here
+        /// (playtest, 2026-09-27). Nothing in the rules reads a mood; it is what the house shows.
+        /// </summary>
+        private static void MoodStep(ContestantState guest, int steps)
+        {
+            if (guest == null || steps == 0) return;
+            int at = Array.IndexOf(Moods, guest.mood);
+            if (at < 0) at = Array.IndexOf(Moods, "Neutral");
+            guest.mood = Moods[Math.Max(0, Math.Min(Moods.Length - 1, at + steps))];
+        }
+
+        /// <summary>
+        /// Saved, or a competition won: two steps up. Under the rule the story's stress relief plays
+        /// under (M5, bonds), for the same reason - a season that predates it keeps its moods as they
+        /// were, so a replay of one is exact - and a season this build starts has it from week one.
+        /// </summary>
+        private static void MoodLift(EpisodeState s, string id)
+        {
+            if (StoryAt(s, StoryRules.Bonds)) MoodStep(s.Find(id), 2);
+        }
+
+        /// <summary>
+        /// Who an Angry or Upset houseguest is sore at, when the whole house saw why: the Head of
+        /// Household who nominated them, or who - with the veto holder - named them the replacement.
+        /// The ceremony's grudge when the story keeps one, else this week's or last week's Head of
+        /// Household. Never a private grudge (a lie found out, a deal broken): what somebody thinks
+        /// in private is what the game does not tell you. Null when nobody is to blame in public.
+        /// </summary>
+        public static string MoodTarget(EpisodeState s, string id, out string why)
+        {
+            why = null;
+            var guest = s?.Find(id);
+            if (guest == null || (guest.mood != "Angry" && guest.mood != "Upset")) return null;
+            var ceremony = s.story?.grudges?
+                .Where(g => g.holderId == id && g.targetId != id && s.Find(g.targetId) != null
+                    && (g.cause == GrudgeCauses.Nominated || g.cause == GrudgeCauses.Replacement || g.cause == GrudgeCauses.ReplacementVeto))
+                .OrderByDescending(g => g.originWeek).ThenByDescending(g => g.severity).FirstOrDefault();
+            if (ceremony != null)
+            {
+                why = (ceremony.cause == GrudgeCauses.Nominated ? "nominated them" : "put them on the block as the replacement")
+                    + " in week " + ceremony.originWeek;
+                return ceremony.targetId;
+            }
+            if (guest.nominationWeeks.Contains(s.week) && !string.IsNullOrEmpty(s.hohId) && s.hohId != id)
+            { why = "nominated them in week " + s.week; return s.hohId; }
+            if (guest.nominationWeeks.Contains(s.week - 1) && !string.IsNullOrEmpty(s.previousHohId) && s.previousHohId != id)
+            { why = "nominated them in week " + (s.week - 1); return s.previousHohId; }
+            return null;
+        }
+
+        /// <summary>
+        /// A new week takes every mood one step back toward Neutral, the way the story's week turn
+        /// takes one step off stress, and under the same rule (see <see cref="MoodLift"/>): a
+        /// nomination is felt, and then it is last week's. Native; the web has no recovery at all.
+        /// </summary>
+        private static void MoodsSettle(EpisodeState s)
+        {
+            int neutral = Array.IndexOf(Moods, "Neutral");
+            foreach (var guest in s.Active)
+            {
+                int at = Array.IndexOf(Moods, guest.mood);
+                if (at >= 0 && at != neutral) MoodStep(guest, at < neutral ? 1 : -1);
+            }
         }
 
         private static void ResolveVeto(EpisodeState s, bool use, string saved, string replacement)
@@ -753,6 +827,7 @@ namespace Gamesim.Simulation
                 if (s.hohId != s.playerId) replacement = NpcReplacement(s);
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
+                MoodLift(s, saved);
                 StoryReplacement(s, replacement);
                 Change(s, saved, s.vetoHolderId, 25, Name(s, s.vetoHolderId) + " used POV to save " + Target(s, saved, s.vetoHolderId));
                 Change(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee");

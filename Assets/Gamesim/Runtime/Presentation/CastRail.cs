@@ -482,6 +482,10 @@ namespace Gamesim.Presentation
             HudPrimitives.AddRoleMark(rim, MarkFor(standing.Badge), ring);
             // The mood face takes the opposite shoulder, so the two marks can never collide.
             MoodFace(rim, actor.mood, moodColour, ring);
+            // Whom the mood is about, when the house saw why: their face on the ring's free side,
+            // under the mood's (the wide chip has room to say "at" as well).
+            string about = standing.Dim || CompetitionField != null ? null : EpisodeEngine.MoodTarget(state, actor.id, out _);
+            if (about != null) MoodTargetBadge(rim, about, portrait, moodColour, ring);
 
             // A circular mask over the portrait render. The face texture is square, so without this
             // the cast reads as a row of tiles rather than as a row of people.
@@ -692,6 +696,11 @@ namespace Gamesim.Presentation
 
             // The mood face at the head of the column, in the mood's own colour.
             MoodFace(entry, actor.mood, moodColour, new Vector2(x, -(ChipTop + 6f) * scale), 22f * scale);
+            // And who it is about, when the whole house saw why (EpisodeEngine.MoodTarget): "at" and
+            // their face, beside it. A nominee used to read Angry for the rest of the season with
+            // nothing to say at whom (playtest, 2026-09-27).
+            string about = standing.Dim || CompetitionField != null ? null : EpisodeEngine.MoodTarget(state, actor.id, out _);
+            if (about != null) MoodTarget(entry, about, portrait, moodColour, x + 26f * scale, (ChipTop + 8f) * scale, scale, font);
 
             // A role, when there is one, rides on the photo's foot, as a lower third on a face.
             RectTransform badgeChip = null;
@@ -782,6 +791,63 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>Top-left placement inside an entry, in the entry's own units.</summary>
+        /// <summary>The small "at" and face beside a mood, of whoever the mood is about; the name a test finds it by.</summary>
+        public const string MoodTargetName = "Mood target";
+
+        private static void MoodTarget(RectTransform entry, string targetId, System.Func<string, Texture> portrait, Color colour,
+            float x, float top, float scale, TMP_FontAsset font)
+        {
+            var holder = new GameObject(MoodTargetName, typeof(RectTransform)).GetComponent<RectTransform>();
+            holder.SetParent(entry, false);
+            Place(holder, x, top, 36f * scale, 18f * scale);
+            var at = Label(holder, Localisation.Text("at"), 10, colour, scale, font, TextAlignmentOptions.Left);
+            at.rectTransform.anchorMin = new Vector2(0f, 0f); at.rectTransform.anchorMax = new Vector2(0f, 1f);
+            at.rectTransform.pivot = new Vector2(0f, .5f);
+            at.rectTransform.anchoredPosition = Vector2.zero;
+            at.rectTransform.sizeDelta = new Vector2(14f * scale, 0f);
+            // The face in a ring of the mood's colour: the ring is the mask, the face inset inside it.
+            float side = 18f * scale;
+            var ring = Disc("Target ring", holder, colour);
+            ring.anchorMin = ring.anchorMax = new Vector2(0f, .5f);
+            ring.pivot = new Vector2(0f, .5f);
+            ring.anchoredPosition = new Vector2(15f * scale, 0f);
+            ring.sizeDelta = new Vector2(side, side);
+            ring.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var face = portrait != null ? portrait(targetId) : null;
+            if (face == null) return;
+            var raw = new GameObject("Target face", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+            raw.rectTransform.SetParent(ring, false);
+            raw.rectTransform.anchorMin = Vector2.zero; raw.rectTransform.anchorMax = Vector2.one;
+            raw.rectTransform.offsetMin = new Vector2(1.5f * scale, 1.5f * scale);
+            raw.rectTransform.offsetMax = new Vector2(-1.5f * scale, -1.5f * scale);
+            raw.texture = face;
+            raw.raycastTarget = false;
+        }
+
+        /// <summary>The narrow chip's version: the face alone, on the left of the portrait's ring, the mood's own size.</summary>
+        private static void MoodTargetBadge(RectTransform rim, string targetId, System.Func<string, Texture> portrait, Color colour, float diameter)
+        {
+            float size = Mathf.Max(13f, diameter * 0.33f);
+            var holder = new GameObject(MoodTargetName, typeof(RectTransform)).GetComponent<RectTransform>();
+            holder.SetParent(rim, false);
+            holder.anchorMin = holder.anchorMax = new Vector2(0f, .5f);
+            holder.pivot = new Vector2(.5f, .5f);
+            holder.anchoredPosition = new Vector2(size * 0.28f, -size * .2f);
+            holder.sizeDelta = new Vector2(size, size);
+            var ring = Disc("Target ring", holder, colour);
+            ring.anchorMin = Vector2.zero; ring.anchorMax = Vector2.one;
+            ring.offsetMin = Vector2.zero; ring.offsetMax = Vector2.zero;
+            ring.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var face = portrait != null ? portrait(targetId) : null;
+            if (face == null) return;
+            var raw = new GameObject("Target face", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+            raw.rectTransform.SetParent(ring, false);
+            raw.rectTransform.anchorMin = Vector2.zero; raw.rectTransform.anchorMax = Vector2.one;
+            raw.rectTransform.offsetMin = new Vector2(1.5f, 1.5f); raw.rectTransform.offsetMax = new Vector2(-1.5f, -1.5f);
+            raw.texture = face;
+            raw.raycastTarget = false;
+        }
+
         private static void Place(RectTransform rect, float x, float top, float width, float height)
         {
             rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);

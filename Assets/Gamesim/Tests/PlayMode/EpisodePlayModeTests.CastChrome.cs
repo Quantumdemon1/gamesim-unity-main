@@ -259,6 +259,49 @@ namespace Gamesim.Tests.PlayMode
             return null;
         }
 
+        /// <summary>
+        /// A mood says whom it is about when the house saw why (playtest, 2026-09-27): an Angry
+        /// nominee read Angry with nothing to say at whom. Their chip carries "at" and a face beside
+        /// the mood's, the notebook says "Mood: Angry at" the Head of Household, and a houseguest
+        /// nobody wronged in public carries neither.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CastRail_AnAngryNomineeSaysWhomTheyAreAngryAt()
+        {
+            string hoh = null, nominee = null, bystander = null;
+            yield return InstallStrategySeason(43, state =>
+            {
+                AtVetoMeeting(state, false);
+                hoh = state.hohId; nominee = state.nominees[0];
+                bystander = state.Active.First(actor => !actor.isPlayer && actor.id != hoh && actor.id != state.vetoHolderId
+                    && !state.nominees.Contains(actor.id)).id;
+                state.Find(nominee).mood = "Angry";
+                state.Find(nominee).nominationWeeks.Add(state.week);
+            });
+            yield return null; yield return null;
+            var state = director.Snapshot;
+            Assert.That(EpisodeEngine.MoodTarget(state, nominee, out _), Is.EqualTo(hoh), "The house saw who put them there.");
+            var rail = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(rect => rect.name == CastRail.RootName && rect.gameObject.activeInHierarchy);
+            Assert.That(rail, Is.Not.Null, "The strip is up.");
+            RectTransform Chip(string id) => rail.GetComponentsInChildren<RectTransform>().First(rect => rect.name == state.Find(id).name);
+
+            RectTransform About(string id) => Chip(id).GetComponentsInChildren<RectTransform>().FirstOrDefault(rect => rect.name == CastRail.MoodTargetName);
+            var about = About(nominee);
+            Assert.That(about, Is.Not.Null, "The nominee's chip says whom they are angry at.");
+            Assert.That(about.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == "Target ring"), Is.True, "It shows their face.");
+            // The wide chip has the room to say "at" as well; the narrow one, a 4:3 frame's, shows the face alone.
+            if (Chip(nominee).rect.width > 120f)
+                Assert.That(about.GetComponentsInChildren<TMP_Text>().Select(label => label.text), Does.Contain("at"));
+            Assert.That(About(bystander), Is.Null, "Nobody wronged the bystander in public.");
+
+            director.ShowHouseguestProfile(nominee);
+            yield return null;
+            string first = state.Find(hoh).name.Split(' ')[0];
+            Assert.That(ShownText(), Does.Contain("Mood: Angry at " + first), "The notebook says it in words.");
+            director.ClosePanels();
+            yield return null;
+        }
+
         /// <summary>Colour equality at eight-bit precision, which is what the theme round-trips to.</summary>
         private static bool SameColour(Color a, Color b) =>
             Mathf.Abs(a.r - b.r) < 0.005f && Mathf.Abs(a.g - b.g) < 0.005f

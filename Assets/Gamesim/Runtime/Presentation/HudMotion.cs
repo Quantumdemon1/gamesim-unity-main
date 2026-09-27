@@ -28,6 +28,53 @@ namespace Gamesim.Presentation
     }
 
     /// <summary>
+    /// Lifts a panel's edge one level while the pointer is over it or the keyboard is on it, and
+    /// puts it back afterwards. Resting becomes interactive; interactive becomes the accent.
+    ///
+    /// <para>An edge rather than a colour multiplier. The dial's petals carry their action's own
+    /// colour on a glyph, and a multiplier tints whatever it is given - the old highlight was
+    /// weighted green, so every hovered petal drifted green and the colour coding stopped meaning
+    /// anything exactly when the player was looking at it.</para>
+    ///
+    /// <para>Visual only: no layout, no focus movement, nothing a rebuild can race. It reads the
+    /// Border child that <see cref="UiTheme.AddBorder"/> makes, and does nothing without one.</para>
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class HudEmphasis : MonoBehaviour,
+        IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
+    {
+        private Image edge;
+        private Color resting, promoted;
+        private bool hovered, focused;
+
+        /// <summary>Gives <paramref name="panel"/> a hover and focus step up from its resting level.</summary>
+        public static void Promote(RectTransform panel, UiTheme.Emphasis level)
+        {
+            if (panel == null) return;
+            var child = panel.Find("Border");
+            var image = child != null ? child.GetComponent<Image>() : null;
+            if (image == null) return;
+            var component = panel.gameObject.GetComponent<HudEmphasis>();
+            if (component == null) component = panel.gameObject.AddComponent<HudEmphasis>();
+            component.edge = image;
+            component.resting = UiTheme.Edge(level);
+            component.promoted = UiTheme.Edge(level == UiTheme.Emphasis.Resting
+                ? UiTheme.Emphasis.Interactive : UiTheme.Emphasis.Active);
+            component.Apply();
+        }
+
+        public void OnPointerEnter(PointerEventData eventData) { hovered = true; Apply(); }
+        public void OnPointerExit(PointerEventData eventData) { hovered = false; Apply(); }
+        public void OnSelect(BaseEventData eventData) { focused = true; Apply(); }
+        public void OnDeselect(BaseEventData eventData) { focused = false; Apply(); }
+
+        private void Apply()
+        {
+            if (edge != null) edge.color = hovered || focused ? promoted : resting;
+        }
+    }
+
+    /// <summary>
     /// A meter's fill travelling from where it was to where it is now, so a budget that just spent
     /// an action is seen draining rather than found smaller. Ease-out, a quarter of a second,
     /// unscaled time; removes itself when it lands.

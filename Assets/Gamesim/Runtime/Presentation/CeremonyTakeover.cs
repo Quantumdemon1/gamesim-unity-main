@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Globalization;
+using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -41,17 +43,80 @@ namespace Gamesim.Presentation
             public readonly string Name;
             public readonly string Badge;
             public readonly Texture Portrait;
+            public readonly ContestantState Character;
 
-            public Subject(string name, string badge, Texture portrait)
+            public Subject(string name, string badge, Texture portrait, ContestantState character = null)
             {
                 Name = name; Badge = badge; Portrait = portrait;
+                Character = character?.Clone();
             }
         }
 
         /// <summary>What the card says it is waiting for, matching the web build's wording.</summary>
         public const string DismissCaption = "Click anywhere to continue";
 
-        private RectTransform rule;
+        /// <summary>
+        /// What the key ceremony and the live eviction say speeds them up and skips them, on a
+        /// keyboard. A caption other code and tests identify the line by, like <see cref="DismissCaption"/>.
+        /// </summary>
+        public const string ControlsCaption = "Space  Speed up   ·   Enter  Skip";
+
+        /// <summary>The same line for a player on a pad: X speeds a reveal up, A skips it.</summary>
+        public const string PadControlsCaption = "X  Speed up   ·   A  Skip";
+
+        /// <summary>What a reveal says in its corner while it is sped up.</summary>
+        public static string SpeedCaption =>
+            "Fast-forward ×" + CeremonyPacing.SpeedUp.ToString("0.#", CultureInfo.InvariantCulture);
+
+        /// <summary>The controls line for the device last used on a card.</summary>
+        public static string ControlsFor(bool pad) => pad ? PadControlsCaption : ControlsCaption;
+
+        /// <summary>
+        /// A press that moves a ceremony card on: a left click, Enter (either one), Escape, or the
+        /// pad's A or B. Read straight off the devices, never through the event system, so the rule
+        /// in the class notes holds for every card that uses it - a card cannot take a click, or a
+        /// Submit, that was meant for the house, and nothing can be stranded behind one.
+        /// </summary>
+        internal static bool SkipPressed()
+        {
+            var mouse = Mouse.current;
+            var keyboard = Keyboard.current;
+            var pad = Gamepad.current;
+            return (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                || (keyboard != null && (keyboard.enterKey.wasPressedThisFrame
+                    || keyboard.numpadEnterKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame))
+                || (pad != null && (pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame));
+        }
+
+        /// <summary>A press that speeds a reveal up, or back to its own pace: Space, or the pad's X.</summary>
+        internal static bool SpeedPressed()
+        {
+            var keyboard = Keyboard.current;
+            var pad = Gamepad.current;
+            return (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+                || (pad != null && pad.buttonWest.wasPressedThisFrame);
+        }
+
+        /// <summary>
+        /// Where this frame's press came from, for the key hints to follow: true for the pad, false
+        /// for a key or a click, null when nothing was pressed.
+        /// </summary>
+        internal static bool? PadUsed()
+        {
+            var pad = Gamepad.current;
+            if (pad != null && (pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame
+                || pad.buttonWest.wasPressedThisFrame || pad.buttonNorth.wasPressedThisFrame
+                || pad.startButton.wasPressedThisFrame || pad.selectButton.wasPressedThisFrame))
+                return true;
+            var keyboard = Keyboard.current;
+            var mouse = Mouse.current;
+            if ((keyboard != null && keyboard.anyKey.wasPressedThisFrame)
+                || (mouse != null && mouse.leftButton.wasPressedThisFrame))
+                return false;
+            return null;
+        }
+
+        private RectTransform rule, glassGround;
         private TMP_Text dismiss;
         private CanvasGroup group;
         private RectTransform column, scrim, faces;
@@ -90,6 +155,12 @@ namespace Gamesim.Presentation
         /// </summary>
         public const string VetoSelectionKind = "veto-selection";
 
+        /// <summary>
+        /// The house down to three: not a ceremony the engine logs, but the finale's opening, as the
+        /// reference opens it with its own card ("Only three remain...").
+        /// </summary>
+        public const string FinalThreeKind = "final-three";
+
         /// <summary>The title a beat announces itself with, or null when it does not get a card.</summary>
         public static string TitleFor(string kind)
         {
@@ -100,7 +171,10 @@ namespace Gamesim.Presentation
                 case CeremonySting.EvictionKind: return "Live Eviction";
                 case CeremonySting.WinnerKind: return "The Winner";
                 case VetoSelectionKind: return "Power of Veto";
-                default: return null;
+                case FinalThreeKind: return "The Final Three";
+                case CeremonySting.FinalEvictionKind: return "The Final Two";
+                // The story's ceremonies (plan §5.1) keep their own table.
+                default: return StoryFallout.TitleFor(kind);
             }
         }
 
@@ -125,7 +199,12 @@ namespace Gamesim.Presentation
                     // draw animation for a selection that does not happen would be theatre for a
                     // decision nobody made.
                     return "Everyone still in the house plays. The winner can take a nominee off the block.";
-                default: return string.Empty;
+                case FinalThreeKind:
+                    // The reference's line for the final Head of Household's card.
+                    return "Only three remain. The final battle for power begins now.";
+                case CeremonySting.FinalEvictionKind:
+                    return "The final Head of Household chooses who sits beside them. The other joins the jury.";
+                default: return StoryFallout.FlavourFor(kind) ?? string.Empty;
             }
         }
 
@@ -139,7 +218,9 @@ namespace Gamesim.Presentation
                 case CeremonySting.EvictionKind: return "evicted";
                 case CeremonySting.WinnerKind: return "trophy";
                 case VetoSelectionKind: return "veto-token";
-                default: return null;
+                case FinalThreeKind: return "trophy";
+                case CeremonySting.FinalEvictionKind: return "trophy";
+                default: return StoryFallout.IconFor(kind);
             }
         }
 
@@ -152,7 +233,9 @@ namespace Gamesim.Presentation
                 case CeremonySting.EvictionKind: return UiTheme.Danger;
                 case CeremonySting.WinnerKind: return UiTheme.Gold;
                 case VetoSelectionKind: return UiTheme.Gold;
-                default: return UiTheme.Accent;
+                case FinalThreeKind: return UiTheme.Gold;
+                case CeremonySting.FinalEvictionKind: return UiTheme.Gold;
+                default: return StoryFallout.TintFor(kind);
             }
         }
 
@@ -181,7 +264,7 @@ namespace Gamesim.Presentation
             markOuter.GetComponent<Image>().preserveAspect = glyph != null;
             markInner.gameObject.SetActive(glyph == null);
             markInner.GetComponent<Image>().color = tint;
-            title.color = UiTheme.Paper;
+            title.color = Color.white;
 
             Faces(subjects, tint);
 
@@ -200,24 +283,24 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// True once the card has been up long enough to have been read, after which a click ends
-        /// it. The delay matters: without it a click already in flight when the card appears
-        /// dismisses it before anyone has seen what it said.
+        /// True once the card has been up long enough to have been read, after which a press ends
+        /// it. The delay matters: without it a click - or the Enter that committed the beat - already
+        /// in flight when the card appears dismisses it before anyone has seen what it said.
         /// </summary>
         private bool Dismissable => elapsed >= FadeIn + 0.35f;
 
         private void Update()
         {
             if (!playing) return;
+            CeremonyOverlays.Showing();
             elapsed += Time.unscaledDeltaTime;
 
-            // Read the device directly rather than through the event system. The card carries no
+            // Read the devices directly rather than through the event system. The card carries no
             // GraphicRaycaster and every graphic on it is non-raycasting — an acceptance criterion,
             // because a ceremony must never be able to swallow a click meant for the house. Polling
-            // the mouse keeps that true while still letting the card close on demand the way the
-            // web build's does.
-            if (Dismissable && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-            { Cancel(); return; }
+            // the devices keeps that true while still letting the card close on demand the way the
+            // web build's does: a click, Enter, Escape, or the pad's A or B.
+            if (Dismissable && SkipPressed()) { Cancel(); return; }
 
             if (reduced)
             {
@@ -257,15 +340,26 @@ namespace Gamesim.Presentation
             // The set stays visible behind the card, but only just. The web build darkens almost to
             // black here and the house reads as a texture rather than as a room; at 0.93 the set was
             // bright enough to compete with the title for attention.
-            scrim = NewPanel("Scrim", root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.975f), 1);
+            // Dimmed and vignetted, so the room the ceremony is in stays a room behind the card.
+            scrim = NewPanel("Scrim", root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.55f), 1);
             scrim.anchorMin = Vector2.zero; scrim.anchorMax = Vector2.one;
             scrim.offsetMin = Vector2.zero; scrim.offsetMax = Vector2.zero;
+            HudPrimitives.Vignette(scrim);
 
             column = new GameObject("Card", typeof(RectTransform)).GetComponent<RectTransform>();
             column.SetParent(root, false);
             column.anchorMin = new Vector2(.5f, .5f);
             column.anchorMax = new Vector2(.5f, .5f);
             column.pivot = new Vector2(.5f, .5f);
+
+            // The mockups' glass ground behind the whole composition (VISUAL-TARGET.md §4,
+            // mockup-08 and -10): the night background at 85 %, a cyan hairline, a soft glow. First
+            // child, so every piece of the card draws over it; stretched, so it follows the column
+            // as the large-text preference grows it.
+            glassGround = NewPanel("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
+            glassGround.anchorMin = Vector2.zero;
+            glassGround.anchorMax = Vector2.one;
+            UiTheme.Glass(glassGround, UiTheme.GlassRadius);
 
             eyebrow = NewText("Takeover week", column, 15f, UiTheme.Muted);
             eyebrow.alignment = TextAlignmentOptions.Center;
@@ -277,8 +371,15 @@ namespace Gamesim.Presentation
             markOuter = Disc("Takeover mark", column, UiTheme.Danger);
             markInner = Disc("Takeover mark core", markOuter, UiTheme.Danger);
 
-            title = NewText("Takeover title", column, 62f, UiTheme.Paper);
+            // The beat's name in the bold cut, lit from above as every title in the mockups is; the
+            // regular weight at this size read as a caption blown up rather than as a title card.
+            title = NewText("Takeover title", column, 56f, UiTheme.Paper);
             title.alignment = TextAlignmentOptions.Center;
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 1f;
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(Color.white, Color.white, UiTheme.Glow, UiTheme.Glow);
 
             flavour = NewText("Takeover flavour", column, 20f, UiTheme.Muted);
             flavour.alignment = TextAlignmentOptions.Center;
@@ -308,7 +409,7 @@ namespace Gamesim.Presentation
             const float width = 820f;
 
             eyebrow.fontSize = 15f * scale;
-            title.fontSize = 62f * scale;
+            title.fontSize = 56f * scale;
             flavour.fontSize = 20f * scale;
 
             float mark = 54f * scale;
@@ -326,6 +427,11 @@ namespace Gamesim.Presentation
                 + (facesH > 0f ? gap + facesH : 0f)
                 + gap * 1.6f + ruleH + gap + dismissH;
             column.sizeDelta = new Vector2(width * scale, total);
+            if (glassGround != null)
+            {
+                glassGround.offsetMin = new Vector2(-36f * scale, -28f * scale);
+                glassGround.offsetMax = new Vector2(36f * scale, 28f * scale);
+            }
 
             float y = 0f;
             Place(eyebrow.rectTransform, width * scale, eyebrowH, ref y);
@@ -406,7 +512,7 @@ namespace Gamesim.Presentation
                 frame.sizeDelta = new Vector2(portrait, portrait);
                 frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
 
-                if (subject.Portrait != null)
+                if (subject.Portrait != null || subject.Character != null)
                 {
                     var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage))
                         .GetComponent<RawImage>();
@@ -416,6 +522,7 @@ namespace Gamesim.Presentation
                     raw.rectTransform.offsetMin = Vector2.zero;
                     raw.rectTransform.offsetMax = Vector2.zero;
                     raw.texture = subject.Portrait;
+                    if (subject.Character != null) CharacterPortraits.Bind(raw, subject.Character);
                     raw.raycastTarget = false;
                 }
                 else
@@ -485,9 +592,7 @@ namespace Gamesim.Presentation
             var holder = new GameObject(name, typeof(RectTransform));
             holder.transform.SetParent(parent, false);
             var label = holder.AddComponent<TextMeshProUGUI>();
-            var font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            var font = UiTheme.Font(UiTheme.Weight.Regular);
             if (font != null) label.font = font;
             label.fontSize = size;
             label.color = color;

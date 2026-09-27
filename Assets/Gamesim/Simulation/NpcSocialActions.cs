@@ -147,13 +147,16 @@ namespace Gamesim.Simulation
                          .Where(c => c.status == ContestantStatus.Active && !c.isPlayer)
                          .ToList())
             {
+                // A Have-Not is on slop and a cot: two turns this week, not three.
+                int turns = EpisodeEngine.StoryAt(state, StoryRules.Production) && Production.IsHaveNot(state, npc.id)
+                    ? ActionsPerSocialPhase - 1 : ActionsPerSocialPhase;
                 int taken = 0;
                 if (NpcAlliances.TryPropose(state, npc.id, joined)) taken++;
-                if (taken < ActionsPerSocialPhase && NpcPromises.TryGive(state, npc.id)) taken++;
+                if (taken < turns && NpcPromises.TryGive(state, npc.id)) taken++;
 
                 foreach (var kind in Repertoire(LeadTrait(npc)))
                 {
-                    if (taken >= ActionsPerSocialPhase) break;
+                    if (taken >= turns) break;
                     // Both were already attempted above, at the priority the source gives them.
                     if (kind == NpcActionKind.AllianceProposal || kind == NpcActionKind.Promise) continue;
                     if (Perform(state, npc, kind, met)) taken++;
@@ -191,8 +194,13 @@ namespace Gamesim.Simulation
                 Act(state, npc.id, voter.id, CampaignImpact,
                     npc.name + " campaigned to stay", "campaign");
                 if (voter.isPlayer)
+                {
                     EpisodeEngine.Log(state, "campaign",
                         npc.name + " came to you asking to stay this week.", state.playerId);
+                    ReplyCards.Offer(state, ReplyCards.Plea, npc.id, state.nominees.FirstOrDefault(id => id != npc.id));
+                    // Where the reply cards do not play, past the story boundary the plea is a story moment.
+                    EpisodeEngine.StoryCampaignedTo(state, npc.id);
+                }
             }
         }
 
@@ -294,16 +302,35 @@ namespace Gamesim.Simulation
             if (listener.isPlayer)
                 EpisodeEngine.Log(state, "information",
                     npc.name + " told you something about " + subject.name + ".", state.playerId);
+            // A rumour about the player reaches them three times in ten, from the strategy windows -
+            // the reference's roll, drawn only when it could matter, so an older season spends nothing.
+            if (subject.isPlayer && StrategyRules.Apply(state) && EpisodeEngine.Roll(state) < ReplyCards.GossipDiscoveryChance)
+            {
+                EpisodeEngine.Log(state, "gossip", "You found out " + npc.name + " has been talking about you to "
+                    + listener.name + ".", state.playerId);
+                ReplyCards.Offer(state, ReplyCards.Gossip, npc.id, listener.id);
+            }
+            // Where the reply cards do not play, talk about the player gets back to them as a story moment.
+            if (subject.isPlayer) EpisodeEngine.StoryGossipedAbout(state, npc.id, listener.id);
             return true;
         }
 
         /// <summary>
         /// Picking a fight, with whoever they like least — and only if they actually dislike them.
-        /// Nobody confronts a house they are on good terms with.
+        /// Nobody confronts a house they are on good terms with. Past the story system's grudge
+        /// rules, somebody they hold a real grudge against (forty or more) comes first: a
+        /// nomination, a broken word or a betrayal is what people actually confront each other
+        /// about. With no grudges held, this is exactly the old choice.
         /// </summary>
         private static bool Confront(EpisodeState state, ContestantState npc)
         {
-            var target = state.Active
+            var target = EpisodeEngine.StoryAt(state, StoryRules.Grudges)
+                ? state.Active.Where(other => other.id != npc.id && Grudges.Severity(state, npc.id, other.id) >= 40)
+                    .OrderByDescending(other => Grudges.Severity(state, npc.id, other.id))
+                    .ThenBy(other => other.id, StringComparer.Ordinal)
+                    .FirstOrDefault()
+                : null;
+            target = target ?? state.Active
                 .Where(other => other.id != npc.id && state.Score(npc.id, other.id) < ConfrontationLine)
                 .OrderBy(other => state.Score(npc.id, other.id))
                 .ThenBy(other => other.id, StringComparer.Ordinal)
@@ -313,8 +340,13 @@ namespace Gamesim.Simulation
             Act(state, npc.id, target.id, ConfrontationImpact,
                 npc.name + " had words with " + Named(state, target), "confrontation");
             if (target.isPlayer)
+            {
                 EpisodeEngine.Log(state, "confrontation",
                     npc.name + " confronted you in front of the house.", state.playerId);
+                ReplyCards.Offer(state, ReplyCards.Confrontation, npc.id, null);
+                // Where the reply cards do not play, past the story boundary it is a story moment to answer.
+                EpisodeEngine.StoryConfronted(state, npc.id);
+            }
             return true;
         }
 

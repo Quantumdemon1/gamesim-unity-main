@@ -82,5 +82,5 @@ scripting defines — the bootstrap adds it locally on any machine with UMA, so 
 routinely, and committing it breaks every clone without UMA beyond self-repair. The committed value
 must stay `SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY`.
 
-`EpisodeHouse.unity` should also be on the authored prefabs unless you have decided to ship the UMA
-cast.
+`EpisodeHouse.unity` carries `GamesimUmaCast`, and should. Since 2026-09-27 the cast is UMA's
+alone, and there are no authored prefabs to put the scene back on.

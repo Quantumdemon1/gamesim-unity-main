@@ -185,11 +185,11 @@ namespace Gamesim.House
             }
 
             int count = Physics.RaycastNonAlloc(origin, offset / distance, sightHits, distance,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
             // A saturated buffer must not accidentally hide an occluding wall.
             RaycastHit[] hits = count == sightHits.Length
                 ? Physics.RaycastAll(origin, offset / distance, distance,
-                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                    HouseLayers.Sight, QueryTriggerInteraction.Ignore)
                 : sightHits;
             if (hits != sightHits)
             {
@@ -218,9 +218,7 @@ namespace Gamesim.House
                 return;
             }
 
-            font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            font = UiTheme.Font(UiTheme.Weight.Regular);
             GameObject canvasObject = new GameObject("Gamesim House HUD", typeof(RectTransform),
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObject.transform.SetParent(transform, false);

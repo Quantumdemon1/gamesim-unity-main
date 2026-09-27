@@ -1,0 +1,260 @@
+{
+  "format": "Reference rectangles [x,y,width,height], top-left origin; not automatic production overrides",
+  "canvas": [
+    1920,
+    1080
+  ],
+  "shared": {
+    "top": [
+      24,
+      14,
+      1872,
+      66
+    ],
+    "nav": [
+      24,
+      96,
+      216,
+      888
+    ],
+    "notebook": [
+      264,
+      96,
+      1632,
+      888
+    ],
+    "title": [
+      296,
+      130,
+      1320,
+      56
+    ],
+    "close": [
+      1710,
+      125,
+      150,
+      48
+    ],
+    "scrollContent": [
+      296,
+      255,
+      1564,
+      650
+    ],
+    "footer": [
+      296,
+      914,
+      1564,
+      46
+    ],
+    "castStrip": [
+      264,
+      974,
+      1632,
+      80
+    ]
+  },
+  "conversation": {
+    "world": [
+      264,
+      96,
+      1248,
+      858
+    ],
+    "availabilityCard": [
+      300,
+      546,
+      556,
+      376
+    ],
+    "rightRail": [
+      1532,
+      96,
+      364,
+      858
+    ],
+    "note": "Card should size to actual text. No world replacement."
+  },
+  "whoIsWhere": {
+    "filters": [
+      296,
+      255,
+      686,
+      46
+    ],
+    "roomGrid": [
+      296,
+      330,
+      1176,
+      426
+    ],
+    "roomCard": [
+      0,
+      0,
+      576,
+      202
+    ],
+    "gridGap": [
+      24,
+      22
+    ],
+    "unknownLocations": [
+      1516,
+      330,
+      344,
+      426
+    ]
+  },
+  "houseguests": {
+    "search": [
+      1276,
+      255,
+      584,
+      46
+    ],
+    "row": [
+      296,
+      361,
+      1564,
+      76
+    ],
+    "rowStride": 86,
+    "columns": {
+      "portrait": 316,
+      "name": 392,
+      "status": 962,
+      "trust": 1244,
+      "profile": 1550
+    }
+  },
+  "voteRecords": {
+    "tabs": [
+      296,
+      255,
+      492,
+      46
+    ],
+    "illustration": [
+      830,
+      351,
+      454,
+      290
+    ],
+    "emptyStateTitle": [
+      658,
+      679,
+      930,
+      50
+    ],
+    "copy": [
+      651,
+      739,
+      905,
+      92
+    ]
+  },
+  "diary": {
+    "cameraArea": [
+      264,
+      96,
+      884,
+      858
+    ],
+    "recordPanel": [
+      1172,
+      96,
+      724,
+      858
+    ],
+    "recordTabs": [
+      1204,
+      189,
+      660,
+      44
+    ],
+    "pendingStatus": [
+      1204,
+      260,
+      660,
+      95
+    ],
+    "summaryArea": [
+      1204,
+      382,
+      660,
+      364
+    ],
+    "disclosure": [
+      1204,
+      796,
+      290,
+      48
+    ]
+  },
+  "confirmation": {
+    "answer": [
+      296,
+      269,
+      902,
+      449
+    ],
+    "effects": [
+      1222,
+      269,
+      638,
+      449
+    ],
+    "cancel": [
+      296,
+      867,
+      731,
+      60
+    ],
+    "confirm": [
+      1051,
+      867,
+      809,
+      60
+    ]
+  },
+  "profile": {
+    "identity": [
+      296,
+      266,
+      488,
+      684
+    ],
+    "trust": [
+      810,
+      266,
+      1050,
+      166
+    ],
+    "statement": [
+      810,
+      528,
+      1050,
+      124
+    ],
+    "history": [
+      810,
+      696,
+      1050,
+      254
+    ]
+  },
+  "relationships": {
+    "graph": [
+      296,
+      329,
+      1080,
+      618
+    ],
+    "details": [
+      1400,
+      329,
+      460,
+      618
+    ]
+  }
+}

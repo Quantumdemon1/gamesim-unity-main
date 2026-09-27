@@ -32,33 +32,40 @@ namespace Gamesim.Editor
             { "stoolBar", "bb_set_barstool" },
             { "trashcan", "bb_set_bin" },
             // The living room's set, which most other rooms borrow from.
-            { "loungeDesignSofa", "bb_set_sofa" },
-            { "loungeSofaCorner", "bb_set_sofa" },
-            { "loungeSofaLong", "bb_set_sofa" },
-            { "loungeChairRelax", "bb_set_armchair" },
-            { "loungeDesignChair", "bb_set_armchair" },
+            // V4 hero pieces (VISUAL-TARGET.md): Poly Haven models through bb_polyhaven.py stand in
+            // for the living room's flat-colour twins; the twins stay exported for the rooms and
+            // rows that still name them.
+            { "loungeDesignSofa", "bb_set_ph_sofa" },
+            { "loungeSofaCorner", "bb_set_ph_sofa" },
+            { "loungeSofaLong", "bb_set_ph_sofa" },
+            { "loungeChairRelax", "bb_set_ph_armchair" },
+            { "loungeDesignChair", "bb_set_ph_armchair" },
             { "lampSquareFloor", "bb_set_floorlamp" },
             { "lampRoundFloor", "bb_set_floorlamp" },
             { "lampSquareTable", "bb_set_tablelamp" },
             { "bookcaseOpen", "bb_set_bookcase" },
-            { "sideTableDrawers", "bb_set_sidetable" },
-            { "cabinetBedDrawer", "bb_set_sidetable" },
-            { "tableCoffee", "bb_set_coffeetable" },
+            { "sideTableDrawers", "bb_set_ph_sidetable" },
+            { "cabinetBedDrawer", "bb_set_ph_sidetable" },
+            { "tableCoffee", "bb_set_ph_coffeetable" },
             { "speaker", "bb_set_speaker" },
             { "rugSquare", "bb_set_rug" },
             { "rugRectangle", "bb_set_rug" },
             { "rugRound", "bb_set_rug_round" },
             // Plants, beds, the screen, the desk, the nomination table and its chairs.
-            { "pottedPlant", "bb_set_plant" },
-            { "plantSmall1", "bb_set_plantsmall" },
-            { "plantSmall2", "bb_set_plantsmall" },
-            { "plantSmall3", "bb_set_plantsmall" },
+            // The plants are scans too now (V4): a broad-leaved plant in a glazed pot and a
+            // succulent in a small one, each at a tenth of the scan's triangles. The fanned-box
+            // twins stay exported - bb_set_plant and bb_set_plantsmall - for a clone that has to
+            // rebuild without the fetch.
+            { "pottedPlant", "bb_set_ph_plant" },
+            { "plantSmall1", "bb_set_ph_plantsmall" },
+            { "plantSmall2", "bb_set_ph_plantsmall" },
+            { "plantSmall3", "bb_set_ph_plantsmall" },
             { "bedSingle", "bb_set_bed" },
             { "bedBunk", "bb_set_bunk" },
             { "cabinetTelevision", "bb_set_tvconsole" },
             { "desk", "bb_set_desk" },
             { "tableRound", "bb_set_roundtable" },
-            { "chairModernCushion", "bb_set_diningchair" },
+            { "chairModernCushion", "bb_set_ph_diningchair" },
             // The HoH ensuite, and the game room's bar.
             { "bathtub", "bb_set_bathtub" },
             { "showerRound", "bb_set_shower" },

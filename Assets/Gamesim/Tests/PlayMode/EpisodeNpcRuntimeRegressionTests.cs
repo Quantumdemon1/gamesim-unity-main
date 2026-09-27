@@ -309,18 +309,47 @@ namespace Gamesim.Tests.PlayMode
             new EpisodeSaveStore(director.SavePath).Save(fixture);
             director.LoadNow();
             director.OpenJournal();
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null;
             yield return null;
 
-            string visible = string.Join("\n", director.GetComponentsInChildren<TMPro.TMP_Text>(true)
+            string Visible() => string.Join("\n", director.GetComponentsInChildren<TMPro.TMP_Text>(true)
                 .Where(text => text.gameObject.activeInHierarchy).Select(text => text.text));
-            Assert.That(visible, Does.Contain("YOUR NOTEBOOK"));
-            Assert.That(visible, Does.Contain(knownEvent), "The privacy check must inspect the real populated notebook.");
-            Assert.That(visible, Does.Contain(first.name + " · " + first.status + " · Your trust "
-                + fixture.Score(fixture.playerId, first.id).ToString("0")));
-            Assert.That(visible, Does.Not.Contain(forbiddenNarrative));
-            Assert.That(visible, Does.Not.Contain(secretAlliance));
-            Assert.That(visible, Does.Not.Contain(secretEvent));
+
+            string story = Visible();
+            Assert.That(story, Does.Contain("YOUR NOTEBOOK"));
+            Assert.That(story, Does.Contain(knownEvent), "The privacy check must inspect the real populated notebook.");
+
+            // The trust line is the houseguests page. It used to be printed under the relationship
+            // graph, which made the page the rail opens by default the longest one in the notebook;
+            // the roster is its own page now. The notebook shows one section at a time, so a check
+            // that used to read the whole document has to name the page it means.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.People);
+            yield return null;
+            yield return null;
+            string people = Visible();
+            // A row of the directory: the name, their status and your own trust, each in a column
+            // of its own (Refinement Kit 6) rather than run together into one sentence.
+            var firstRow = director.GetComponentsInChildren<RectTransform>()
+                .Single(rect => rect.name == EpisodeHud.RosterRowPrefix + first.name);
+            var cells = firstRow.GetComponentsInChildren<TMPro.TMP_Text>().Select(text => text.text).ToArray();
+            Assert.That(cells, Does.Contain(first.name));
+            Assert.That(cells, Does.Contain(EpisodeDirector.StatusWord(first.status)));
+            Assert.That(cells, Does.Contain(EpisodeDirector.TrustFigure(fixture.Score(fixture.playerId, first.id))));
+
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
+            yield return null;
+            yield return null;
+            string network = Visible();
+
+            // A leak may not appear on ANY page. Asking once of one page would be weaker than the
+            // single question this used to ask of a notebook that rendered everything at once.
+            foreach (var page in new[] { story, network, people })
+            {
+                Assert.That(page, Does.Not.Contain(forbiddenNarrative));
+                Assert.That(page, Does.Not.Contain(secretAlliance));
+                Assert.That(page, Does.Not.Contain(secretEvent));
+            }
             Assert.That(director.ObservedNpcConversation, Is.Empty);
             AssertEquivalent(fixture, director.Snapshot);
         }

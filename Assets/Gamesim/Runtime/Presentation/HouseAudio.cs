@@ -12,11 +12,17 @@ namespace Gamesim.Presentation
             Button, Save, SocialUp, SocialDown, CompetitionStart, CompetitionWin,
             Nomination, Veto, Vote, Eviction, Finale,
             // UI foley (§3.C): a panel opening, a panel closing, a hover over a control.
-            PanelOpen, PanelClose, Hover
+            PanelOpen, PanelClose, Hover,
+            // The tour moving on a step: the reference build's tutorialStep, a glide from 500 to
+            // 700 Hz over a tenth of a second (useGameSFX.ts). Appended, so no cue's value moves.
+            TutorialStep
         }
 
         /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
         public Cue? LastCue { get; private set; }
+
+        /// <summary>How many cues have been asked for, muted or not: what a test counts a double click by.</summary>
+        public int CuesAsked { get; private set; }
 
         private const int SampleRate = 22050;
         private readonly Dictionary<Cue, AudioClip> clips = new Dictionary<Cue, AudioClip>();
@@ -36,7 +42,60 @@ namespace Gamesim.Presentation
         /// </summary>
         public enum Music { Silent, Theme, Season }
 
-        private AudioSource ambienceSource, cueSource, musicSource, roomSource;
+        // Two music voices, so the theme can be let go while the season's bed comes up: each has
+        // its own source, and a level from 0 to 1 that moves toward its target at the reference
+        // build's constant rates (MusicFade). The level is what the voice is doing now; the target is
+        // what the requested state wants from it.
+        private AudioSource ambienceSource, cueSource, themeSource, seasonSource, roomSource;
+        private float themeLevel, themeTarget, seasonLevel, seasonTarget;
+        private bool themeRunning;
+        private SeasonVoice seasonVoice;
+
+        /// <summary>
+        /// The bed's source, in the three states it can be in. Its own bookkeeping rather than
+        /// AudioSource.isPlaying, which is false for a paused source and a stopped one alike - and
+        /// telling those two apart is the difference between the bed resuming and starting over.
+        ///
+        /// <para>Bookkeeping can be wrong, though, because the engine can stop a source without
+        /// asking: a reset of the audio system stops every source there is. So the bookkeeping is
+        /// checked against isPlaying at the three places where believing it would lose the bed -
+        /// the reset's own notification (<see cref="RecoverFromAudioReset"/>), a bed asked for
+        /// while it is marked playing (<see cref="EnterMusic"/>), and a bed put away
+        /// (<see cref="PutSeasonAway"/>) - and a source that is not playing is stopped there, not
+        /// paused or playing, whatever the enum said.</para>
+        /// </summary>
+        private enum SeasonVoice { Stopped, Playing, Paused }
+
+        /// <summary>How loud the theme is now, 0 to 1 of its full level, as its fade has it.</summary>
+        public float ThemeLevel => themeLevel;
+
+        /// <summary>How loud the season's bed is now, 0 to 1 of its full level, as its fade has it.</summary>
+        public float SeasonLevel => seasonLevel;
+
+        /// <summary>Whether the season's bed is paused where it was, to carry on from there when it comes back.</summary>
+        public bool SeasonPaused => seasonVoice == SeasonVoice.Paused;
+
+        /// <summary>Where the season's bed is in its track, in samples: a read, for the tests that check it resumes rather than restarting.</summary>
+        public int SeasonSamples => seasonSource != null ? seasonSource.timeSamples : 0;
+
+        /// <summary>The season voice's volume as it is being played: the fade's level at the bed's peak, under the preferences.</summary>
+        public float SeasonVolume => seasonSource != null ? seasonSource.volume : 0f;
+
+        /// <summary>Whether the season's bed is sounding as the engine has it - the source's own isPlaying, not the bookkeeping - for the tests that stop it behind the bookkeeping's back.</summary>
+        public bool SeasonPlaying => seasonSource != null && seasonSource.isPlaying;
+
+        /// <summary>Whether the theme is sounding as the engine has it: its source's own isPlaying.</summary>
+        public bool ThemePlaying => themeSource != null && themeSource.isPlaying;
+
+        /// <summary>
+        /// Whether the fades wait for <see cref="TickMusic"/> instead of following the real clock.
+        ///
+        /// <para>A test's seam. The fades run on unscaled time, so that a paused game still fades
+        /// its music, and Time.captureDeltaTime pins only scaled time - there is no other way to
+        /// hold a fade still between two assertions and move it by an exact amount.</para>
+        /// </summary>
+        public bool ManualMusicClock { get; set; }
+
         private readonly Dictionary<string, AudioClip> roomTones = new Dictionary<string, AudioClip>();
         /// <summary>Where a room's bed lives: <c>Resources/Audio/Rooms/&lt;RoomName&gt;</c>.</summary>
         public const string RoomResourceFolder = "Audio/Rooms/";
@@ -132,31 +191,243 @@ namespace Gamesim.Presentation
         /// screen that is not the game asks for <see cref="Music.Silent"/>. Repeating the state a
         /// caller is already in does nothing, so a screen can assert its own music every time it
         /// renders without restarting the track under the player.</para>
+        ///
+        /// <para>A change fades rather than cuts, as the reference build's audio hooks do: see
+        /// <see cref="EnterMusic"/> for each handover and <see cref="MusicFade"/> for the rates.</para>
         /// </summary>
         public void SetMusic(Music value)
         {
             if (music == value) return;
             music = value;
-            ApplySettings();
+            EnterMusic();
         }
 
+        /// <summary>The state last asked for - what a caller wants, not what can be heard while a fade is still getting there.</summary>
         public Music CurrentMusic => music;
 
         /// <summary>
-        /// Whether the bed is a real recording rather than the synthesised stand-in.
+        /// Whether the theme is a recording rather than the synthesised stand-in.
         ///
-        /// <para>False in every build today. <c>Resources/Audio/Theme</c> and
-        /// <c>Resources/Audio/Season</c> are looked up at startup and used when present, so supplying
-        /// the reference's <c>bbtheme.mp3</c> and <c>background_music.mp3</c> under those names is the
-        /// whole of the work — nothing here needs changing. They are deliberately not committed:
-        /// a file called <c>bbtheme</c> is very likely somebody else's music, and that is a licensing
-        /// decision rather than a porting one.</para>
+        /// <para>True in every build today. <c>Resources/Audio/Theme.wav</c> and
+        /// <c>Resources/Audio/Season.wav</c> are the project's own renders, made by
+        /// <c>ArtSource/audio/bb_music.py</c>, and the chord beds built below are only the fallback for
+        /// a build without them. The reference's own <c>bbtheme.mp3</c> and
+        /// <c>background_music.mp3</c> are deliberately not used: a file called <c>bbtheme</c> is very
+        /// likely somebody else's music, and that is a licensing decision rather than a porting one.
+        /// Other recordings supplied under those two names need nothing changed here.</para>
         /// </summary>
         public bool HasRecordedMusic { get; private set; }
+
+        private void Update()
+        {
+            if (!ManualMusicClock) TickMusicFrame(Time.unscaledDeltaTime);
+        }
+
+        /// <summary>
+        /// One frame of the real clock, as the fades are credited it: all of an ordinary frame, and
+        /// no more than <see cref="MusicFade.LongestStep"/> of a long one.
+        ///
+        /// <para>Unscaled time is not capped the way scaled time is by maximumDeltaTime, and the
+        /// frames either side of a voice starting are the long ones: the loading gate lets the theme
+        /// go on the frame the last body is built and the house is placed, and the frame after pays
+        /// for whatever the first Play() had to do. Credited in full, those frames would bring the
+        /// theme in partway up its 1.5 s rise - a fifth of the way, after a 300 ms frame - where the
+        /// reference build takes its first step from the moment its fade begins
+        /// (useIntroAudio.ts's lastTime, set inside fade()). A twentieth of a second is a step no
+        /// ear notices, and a fade stalled by a hitch loses the difference rather than jumping it.
+        /// A test steps exact amounts with <see cref="TickMusic"/>; this is the seam for the clamp.</para>
+        /// </summary>
+        public void TickMusicFrame(float frameSeconds) => TickMusic(MusicFade.FrameStep(frameSeconds));
+
+        /// <summary>
+        /// Moves both fades on by <paramref name="seconds"/>, and lets a voice that has faded all the
+        /// way out go: the theme stops and rewinds, as the reference build's does once its fade-out
+        /// ends (useIntroAudio.ts), and the season's bed pauses where it is, to carry on from there
+        /// when it comes back (useBackgroundMusic.ts). Called once a frame, through
+        /// <see cref="TickMusicFrame"/>, on unscaled time; or by a test under
+        /// <see cref="ManualMusicClock"/>, with exactly the time it says and no clamp.
+        /// </summary>
+        public void TickMusic(float seconds)
+        {
+            if (!initialized) return;
+            themeLevel = MusicFade.Theme(themeLevel, themeTarget, seconds);
+            seasonLevel = MusicFade.Season(seasonLevel, seasonTarget, seconds);
+            ReleaseSilentVoices();
+            WriteMusicVolumes();
+        }
+
+        /// <summary>
+        /// Starts the fades the requested state needs - the reference build's handover in each case.
+        ///
+        /// <para><b>The theme</b> always starts over, silent and from the top, and rises over 1.5 s:
+        /// the reference's lifecycle zeroes its volume and rewinds it before every fade in. Whatever
+        /// the season's bed was doing is cut and rewound with it, because a theme means an opening,
+        /// and an opening means a season whose bed has not begun.</para>
+        ///
+        /// <para><b>The season's bed</b> cuts whatever is left of the theme - the reference build's
+        /// theme goes with the intro that plays it, at the house entry or on a skip - and rises to
+        /// full over 2 s from wherever it is: from silence when it is fresh, from the level a
+        /// fade out had reached when it is called back mid-fade, and from the place it paused when it
+        /// was put away, which it resumes rather than restarting.</para>
+        ///
+        /// <para><b>Silence</b> fades out whatever is sounding over 1.5 s.</para>
+        /// </summary>
+        private void EnterMusic()
+        {
+            if (!initialized || !isActiveAndEnabled || themeSource == null || seasonSource == null) return;
+            switch (music)
+            {
+                case Music.Theme:
+                    CutSeason();
+                    themeSource.Stop();
+                    themeSource.clip = themeBed;
+                    themeLevel = 0f;
+                    themeTarget = 1f;
+                    themeSource.volume = 0f;
+                    themeSource.Play();
+                    themeRunning = true;
+                    break;
+                case Music.Season:
+                    CutTheme();
+                    seasonTarget = 1f;
+                    // Marked playing but not playing: a reset stopped the source under the
+                    // bookkeeping. It is a stopped bed, and starts again as one, or asking for the
+                    // bed would leave it silent because the enum said it was already there.
+                    if (seasonVoice == SeasonVoice.Playing && !seasonSource.isPlaying) seasonVoice = SeasonVoice.Stopped;
+                    if (seasonVoice == SeasonVoice.Paused) seasonSource.UnPause();
+                    else if (seasonVoice == SeasonVoice.Stopped)
+                    {
+                        seasonSource.clip = seasonBed;
+                        seasonSource.volume = 0f;
+                        seasonSource.Play();
+                    }
+                    seasonVoice = SeasonVoice.Playing;
+                    break;
+                default:
+                    themeTarget = 0f;
+                    seasonTarget = 0f;
+                    break;
+            }
+            // A voice asked for silence while already silent lets go now, not a frame later: the
+            // start-up flips the state twice in one frame, and nothing it started should linger.
+            ReleaseSilentVoices();
+            WriteMusicVolumes();
+        }
+
+        private void ReleaseSilentVoices()
+        {
+            if (themeRunning && themeTarget <= 0f && themeLevel <= 0f) CutTheme();
+            if (seasonVoice == SeasonVoice.Playing && seasonTarget <= 0f && seasonLevel <= 0f) PutSeasonAway();
+        }
+
+        /// <summary>
+        /// The bed put away where it is, to carry on from there when it comes back - if it is
+        /// playing. A source the engine has stopped behind the bookkeeping (an audio reset) has no
+        /// place to keep, and UnPause on a stopped source plays nothing, so marking it paused would
+        /// keep "Turn music on" silent for the rest of the season. It is marked stopped instead, and
+        /// comes back from the top. Asked before the Pause(), which makes isPlaying false either way.
+        /// </summary>
+        private void PutSeasonAway()
+        {
+            if (seasonSource == null) return;
+            if (seasonSource.isPlaying)
+            {
+                seasonSource.Pause();
+                seasonVoice = SeasonVoice.Paused;
+            }
+            else
+            {
+                seasonSource.Stop();
+                seasonVoice = SeasonVoice.Stopped;
+            }
+        }
+
+        /// <summary>
+        /// Puts back what an audio reset took away. Unity resets its audio system when
+        /// AudioSettings.Reset is called and, on its own, when the output device changes - headphones
+        /// unplugged, a Bluetooth headset reconnecting - and a reset stops the sources that were
+        /// playing; AudioSettings.OnAudioConfigurationChanged says so afterwards, and its documented
+        /// answer is to Play() again. Subscribed while the component is enabled.
+        ///
+        /// <para>The music's bookkeeping would otherwise go on saying the voices play: nothing asks
+        /// for a state that has not changed, so a stopped bed stayed silent until the next season's
+        /// theme. Here the theme starts again from the top - a theme always starts from the top -
+        /// and a playing bed starts again (a reset has already lost its place). A paused bed is
+        /// marked stopped, because the reset lost its place too, and UnPause on a stopped source
+        /// plays nothing: "Turn music on" brings it back from the top. Each keeps the level its fade
+        /// had reached, and the fades carry on. The ambience and a room's bed are stopped and handed
+        /// to <see cref="ApplySettings"/>, which starts whichever the preferences want.</para>
+        ///
+        /// <para>Public so a test can deliver the notification without resetting the audio of every
+        /// test after it.</para>
+        /// </summary>
+        public void RecoverFromAudioReset()
+        {
+            if (!initialized || !isActiveAndEnabled) return;
+            if (themeRunning && themeSource != null) themeSource.Play();
+            if (seasonSource != null)
+            {
+                if (seasonVoice == SeasonVoice.Playing) seasonSource.Play();
+                else if (seasonVoice == SeasonVoice.Paused)
+                {
+                    seasonSource.Stop();
+                    seasonVoice = SeasonVoice.Stopped;
+                }
+            }
+            if (ambienceSource != null) ambienceSource.Stop();
+            if (roomSource != null) roomSource.Stop();
+            ApplySettings();
+        }
+
+        private void OnAudioConfigurationChanged(bool deviceWasChanged) => RecoverFromAudioReset();
+
+        /// <summary>The theme off at once and rewound.</summary>
+        private void CutTheme()
+        {
+            themeLevel = themeTarget = 0f;
+            themeRunning = false;
+            if (themeSource == null) return;
+            themeSource.Stop();
+            themeSource.volume = 0f;
+        }
+
+        /// <summary>The season's bed off at once and rewound, for a season that has not begun.</summary>
+        private void CutSeason()
+        {
+            seasonLevel = seasonTarget = 0f;
+            seasonVoice = SeasonVoice.Stopped;
+            if (seasonSource == null) return;
+            seasonSource.Stop();
+            seasonSource.volume = 0f;
+        }
+
+        /// <summary>
+        /// Each voice's volume: its fade's level at its peak, under the preferences.
+        ///
+        /// <para>Written every frame and on every change of preference, so the master volume and
+        /// reduced audio reach a fade in progress at once - the reference build reads its master
+        /// volume only when a fade begins - and "Mute sound" silences the music with everything else,
+        /// where the reference's sound switch leaves its music playing.</para>
+        /// </summary>
+        private void WriteMusicVolumes()
+        {
+            float preferences = volume * (ReducedAudio ? 0.5f : 1f);
+            if (themeSource != null)
+            {
+                themeSource.mute = Muted;
+                themeSource.volume = preferences * MusicFade.ThemePeak * themeLevel;
+            }
+            if (seasonSource != null)
+            {
+                seasonSource.mute = Muted;
+                seasonSource.volume = preferences * MusicFade.SeasonPeak * seasonLevel;
+            }
+        }
 
         public void PlayCue(Cue cue)
         {
             LastCue = cue;
+            CuesAsked++;
             if (!isActiveAndEnabled || Muted || volume <= 0f) return;
             Initialize();
             if (clips.TryGetValue(cue, out var clip)) cueSource.PlayOneShot(clip);
@@ -165,7 +436,12 @@ namespace Gamesim.Presentation
         private void OnEnable()
         {
             if (Application.isPlaying) Initialize();
+            // Told when the engine resets its audio, which stops the sources behind this
+            // component's bookkeeping; OnDisable unsubscribes.
+            AudioSettings.OnAudioConfigurationChanged += OnAudioConfigurationChanged;
             ApplySettings();
+            // Enabled again, the music picks the requested state back up: OnDisable let it go.
+            EnterMusic();
         }
 
         private void Initialize()
@@ -182,13 +458,8 @@ namespace Gamesim.Presentation
             cueSource.playOnAwake = false;
             cueSource.spatialBlend = 0f;
             cueSource.priority = 80;
-            musicSource = gameObject.AddComponent<AudioSource>();
-            musicSource.playOnAwake = false;
-            musicSource.loop = true;
-            musicSource.spatialBlend = 0f;
-            // Below the cues and the ambience: music is the thing that gets out of the way when the
-            // house has something to say.
-            musicSource.priority = 200;
+            themeSource = MusicVoice();
+            seasonSource = MusicVoice();
 
             // A supplied recording wins over the synthesised bed, and neither is required.
             var recordedTheme = Resources.Load<AudioClip>("Audio/Theme");
@@ -196,6 +467,12 @@ namespace Gamesim.Presentation
             themeBed = recordedTheme != null ? recordedTheme : Own(BuildBed("Theme bed", ThemeChords, 1.5f));
             seasonBed = recordedSeason != null ? recordedSeason : Own(BuildBed("Season bed", SeasonChords, 2.4f));
             HasRecordedMusic = recordedTheme != null;
+            // Decoded here, while the house is still being put together, rather than by the first
+            // Play(). Neither recording preloads (their metas turn preloadAudioData off) or loads in
+            // the background, so the first Play() decompressed the whole track on the main thread -
+            // 16 s of theme, 45 s of bed - and stalled the very frame its fade began on.
+            Preload(themeBed);
+            Preload(seasonBed);
 
             ambience = Own(BuildAmbience());
             ambienceSource.clip = ambience;
@@ -220,6 +497,7 @@ namespace Gamesim.Presentation
             clips[Cue.PanelOpen] = Recorded(Cue.PanelOpen) ?? Own(Compose("Panel opens", 0.28f, new Tone(520, 0.12f, 0, 0.08f), new Tone(780, 0.14f, 0.1f, 0.08f)));
             clips[Cue.PanelClose] = Recorded(Cue.PanelClose) ?? Own(Compose("Panel closes", 0.24f, new Tone(760, 0.1f, 0, 0.08f), new Tone(460, 0.12f, 0.09f, 0.08f)));
             clips[Cue.Hover] = Recorded(Cue.Hover) ?? Own(Compose("Hover", 0.09f, new Tone(1800, 0.07f, 0, 0.05f)));
+            clips[Cue.TutorialStep] = Recorded(Cue.TutorialStep) ?? Own(Compose("Tutorial step", 0.1f, new Tone(500, 0.1f, 0, 0.15f, 700)));
             clips[Cue.Finale] = Recorded(Cue.Finale) ?? Own(Compose("Final result", 1.5f,
                 new Tone(523.25f, 1.35f, 0, 0.10f), new Tone(659.25f, 1.25f, 0.10f, 0.09f),
                 new Tone(783.99f, 1.15f, 0.20f, 0.09f), new Tone(1046.5f, 0.75f, 0.55f, 0.065f)));
@@ -254,19 +532,26 @@ namespace Gamesim.Presentation
                 if (wanted && !roomSource.isPlaying) roomSource.Play();
                 else if (!wanted && roomSource.isPlaying) roomSource.Stop();
             }
-            if (musicSource != null)
-            {
-                musicSource.mute = Muted;
-                // Under the cues on purpose. A bed that competes with the eviction sting is not a bed.
-                musicSource.volume = volume * 0.45f * (ReducedAudio ? 0.5f : 1f);
-                var wanted = music == Music.Theme ? themeBed : music == Music.Season ? seasonBed : null;
-                if (wanted == null || !isActiveAndEnabled) musicSource.Stop();
-                else if (musicSource.clip != wanted || !musicSource.isPlaying)
-                {
-                    musicSource.clip = wanted;
-                    musicSource.Play();
-                }
-            }
+            // The music's volumes, and only its volumes. Starting, stopping and fading the voices
+            // belongs to EnterMusic and TickMusic, so a preference changed - or a room crossed -
+            // in the middle of a fade cannot jump it, restart it or cut it.
+            WriteMusicVolumes();
+        }
+
+        /// <summary>
+        /// A looping music voice. Under the cues and the ambience on purpose, in priority and in
+        /// gain: music is the thing that gets out of the way when the house has something to say,
+        /// and a bed that competes with the eviction sting is not a bed.
+        /// </summary>
+        private AudioSource MusicVoice()
+        {
+            var source = gameObject.AddComponent<AudioSource>();
+            source.playOnAwake = false;
+            source.loop = true;
+            source.spatialBlend = 0f;
+            source.priority = 200;
+            source.volume = 0f;
+            return source;
         }
 
         /// <summary>The theme: brighter, shorter, and it opens on the tonic so it reads as a fanfare.</summary>
@@ -330,12 +615,23 @@ namespace Gamesim.Presentation
             return clip;
         }
 
+        /// <summary>A clip's audio data loaded now, if it is not yet; a synthesised clip always is.</summary>
+        private static void Preload(AudioClip clip)
+        {
+            if (clip != null && clip.loadState == AudioDataLoadState.Unloaded) clip.LoadAudioData();
+        }
+
+        /// <summary>
+        /// One voice of a composed cue: a sine at <c>frequency</c>, or a glide from it to
+        /// <c>endFrequency</c> over its duration when one is given - the reference build's sweeps.
+        /// </summary>
         private readonly struct Tone
         {
-            public readonly float frequency, duration, start, gain;
-            public Tone(float frequency, float duration, float start, float gain)
+            public readonly float frequency, duration, start, gain, endFrequency;
+            public Tone(float frequency, float duration, float start, float gain, float endFrequency = 0f)
             {
                 this.frequency = frequency; this.duration = duration; this.start = start; this.gain = gain;
+                this.endFrequency = endFrequency > 0f ? endFrequency : frequency;
             }
         }
 
@@ -346,13 +642,18 @@ namespace Gamesim.Presentation
             {
                 int start = Mathf.RoundToInt(tone.start * SampleRate);
                 int count = Mathf.Min(Mathf.CeilToInt(tone.duration * SampleRate), samples.Length - start);
+                // A glide moves in a straight line in frequency, as the reference's
+                // linearRampToValueAtTime does. The phase is that line's integral, so the pitch slides
+                // without a click; a fixed tone's glide is zero and its phase is what it always was.
+                float glide = (tone.endFrequency - tone.frequency) / tone.duration;
                 for (int index = 0; index < count; index++)
                 {
                     float time = index / (float)SampleRate;
                     float attack = Mathf.Clamp01(time / 0.015f);
                     float release = Mathf.Clamp01((tone.duration - time) / 0.035f);
                     float envelope = attack * release * Mathf.Exp(-3.5f * time / tone.duration);
-                    samples[start + index] += Mathf.Sin(time * tone.frequency * Mathf.PI * 2f) * tone.gain * envelope;
+                    float cycles = time * tone.frequency + 0.5f * glide * time * time;
+                    samples[start + index] += Mathf.Sin(cycles * Mathf.PI * 2f) * tone.gain * envelope;
                 }
             }
             for (int index = 0; index < samples.Length; index++) samples[index] = Mathf.Clamp(samples[index], -0.65f, 0.65f);
@@ -384,8 +685,16 @@ namespace Gamesim.Presentation
 
         private void OnDisable()
         {
+            AudioSettings.OnAudioConfigurationChanged -= OnAudioConfigurationChanged;
             if (ambienceSource != null) ambienceSource.Stop();
             if (cueSource != null) cueSource.Stop();
+            // The music too. A disabled component ticks no fades, and the bed used to play on under
+            // one with nothing left to fade it or stop it. The theme goes; the bed keeps its place -
+            // when it has one - and OnEnable brings back whatever is asked for then.
+            CutTheme();
+            if (seasonVoice == SeasonVoice.Playing) PutSeasonAway();
+            seasonLevel = seasonTarget = 0f;
+            WriteMusicVolumes();
         }
 
         private void OnDestroy()
@@ -393,6 +702,8 @@ namespace Gamesim.Presentation
             if (ambienceSource != null) { ambienceSource.Stop(); Release(ambienceSource); }
             if (cueSource != null) { cueSource.Stop(); Release(cueSource); }
             if (roomSource != null) { roomSource.Stop(); Release(roomSource); }
+            if (themeSource != null) { themeSource.Stop(); Release(themeSource); }
+            if (seasonSource != null) { seasonSource.Stop(); Release(seasonSource); }
             foreach (var clip in owned) if (clip != null) Release(clip);
             owned.Clear();
             clips.Clear();

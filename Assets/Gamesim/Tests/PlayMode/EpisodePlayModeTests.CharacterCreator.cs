@@ -22,6 +22,17 @@ namespace Gamesim.Tests.PlayMode
     {
         private CharacterCreator Creator() => director.GetComponentInChildren<CharacterCreator>(true);
 
+        [UnityTest]
+        public IEnumerator Creator_TheDirectorSharesAnIsolatedLibraryWithCastSelection()
+        {
+            var creator = Creator();
+            var cast = CastScreen();
+            Assert.That(creator.ProfileStore, Is.SameAs(cast.ProfileStore));
+            Assert.That(creator.ProfileStore.DirectoryPath,
+                Is.EqualTo(Path.GetFullPath(Path.Combine(temporaryDirectory, "Houseguests"))));
+            yield return null;
+        }
+
         private IEnumerator OpenCreator()
         {
             yield return OpenCastScreen();
@@ -47,6 +58,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.SavePath, Is.EqualTo(slot));
             Assert.That(director.Snapshot.sessionId, Is.EqualTo(before.sessionId));
             if (bytes != null) Assert.That(File.ReadAllBytes(slot), Is.EqualTo(bytes));
+            // The studio builds its body asynchronously; photograph it once it has, not the
+            // "Updating preview" placeholder of the first frames.
+            float built = UnityEngine.Time.realtimeSinceStartup + 25f;
+            while (Creator().StudioPreview != null && Creator().StudioPreview.IsBuilding && UnityEngine.Time.realtimeSinceStartup < built)
+                yield return null;
+            if (UnityEngine.Application.isBatchMode) yield return CaptureFraming("creator");
         }
 
         [UnityTest]
@@ -110,6 +127,8 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Creator_TheStatControlsSpendTheAllowanceAndStop()
         {
             yield return OpenCreator();
+            CastButtons("Personality")[0].onClick.Invoke();
+            yield return null;
             var creator = Creator();
 
             for (int i = 0; i < CharacterDraft.SparePoints; i++)
@@ -124,7 +143,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(WebTraits.Get(creator.Draft.Stats, "mental"),
                 Is.EqualTo(CharacterDraft.StartingStat + CharacterDraft.SparePoints));
 
-            CastButtons(CharacterCreator.RaiseCaption("social"))[0].onClick.Invoke();
+            Assert.That(CastButtons(CharacterCreator.RaiseCaption("social")), Is.Empty,
+                "Raising another stat is disabled once the allocation is spent.");
             yield return null;
             Assert.That(WebTraits.Get(creator.Draft.Stats, "social"), Is.EqualTo(CharacterDraft.StartingStat),
                 "The allowance is spent, so the control does nothing rather than going into debt.");
@@ -134,6 +154,8 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Creator_ATraitRaisesTwoStatsAndGivesThemBack()
         {
             yield return OpenCreator();
+            CastButtons("Personality")[0].onClick.Invoke();
+            yield return null;
             var creator = Creator();
 
             CastButtons("Competitive")[0].onClick.Invoke();
@@ -172,6 +194,34 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(you.traits, Does.Contain("Sneaky"));
             Assert.That(state.contestants.Count(c => c.isPlayer), Is.EqualTo(1));
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
+        }
+
+        [UnityTest]
+        public IEnumerator Creator_CosmeticRemixPreservesBuildAndBackRetainsTheDraft()
+        {
+            yield return OpenCastScreen();
+            var template = CastTemplates.Find("emma-brown");
+            CastButtons(template.Name)[0].onClick.Invoke();
+            yield return null;
+            CastButtons(CharacterCreator.CustomiseCaption)[0].onClick.Invoke();
+            yield return null;
+            var original = CastTemplates.ToContestant(template, true);
+            Assert.That(Creator().Draft.PreserveStats, Is.True);
+            Assert.That(Creator().Draft.Appearance.presetId, Is.EqualTo(template.Id));
+            CastButtons("Next starting look")[0].onClick.Invoke();
+            yield return null;
+            string appearance = Creator().Draft.Appearance.ContentKey();
+            foreach (string stat in WebTraits.StatNames)
+                Assert.That(WebTraits.Get(Creator().Draft.Stats, stat), Is.EqualTo(WebTraits.Get(original.stats, stat)), stat);
+            Assert.That(Creator().Draft.Pronouns, Is.EqualTo(original.pronouns));
+            Assert.That(Creator().Draft.Name, Is.EqualTo(original.name));
+
+            CastButtons(CharacterCreator.BackCaption)[0].onClick.Invoke();
+            yield return null;
+            CastButtons("Resume setup")[0].onClick.Invoke();
+            yield return null;
+            Assert.That(Creator().Draft.Appearance.ContentKey(), Is.EqualTo(appearance));
+            Assert.That(Creator().Draft.PreserveStats, Is.True);
         }
     }
 }

@@ -67,8 +67,23 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
+            // An alliance you are in belongs to your own story.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
+            yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain("The Maya Pact"),
                 "The player's own pact membership is legitimately known, unlike its private coordination.");
+            // Asked on BOTH pages a ballot could surface on - the story, which prints event text
+            // verbatim, and the votes page, which prints the ballots themselves. The original asked
+            // once of a notebook that rendered everything at once; asking each page separately is
+            // strictly stronger, and asking only one of them would be weaker.
+            Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes);
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
+            // Before the reveal the ballots the page knows are the player's own - and only that.
+            ButtonWithCaption("Known ballots").onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain("You voted to evict Taylor Kim"));
             Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
             AssertBlocPrivateEvidenceAbsent(pending, witness);
             AssertEquivalent(pending, director.Snapshot);
@@ -109,10 +124,25 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(revealed, director.Snapshot);
             Assert.That(File.ReadAllBytes(director.SavePath), Is.EqualTo(bytesAfterReveal));
 
+            yield return SkipReveals();
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
+            // The reveal is an event, and events are the story page.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
+            yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain(publicMayaReveal));
+            // And the vote page holds the result and every ballot the reveal made public, with the
+            // reason each voter gave in public.
+            var gone = revealed.contestants.Single(c => pending.Find(c.id).status == ContestantStatus.Active
+                && c.status != ContestantStatus.Active);
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes);
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain(gone.id == revealed.playerId ? "You were evicted" : gone.name + " was evicted"));
+            ButtonWithCaption("Known ballots").onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveDiaryText(), Does.Contain("Maya Hassan voted to evict Casey Wilson"));
+            Assert.That(ActiveDiaryText(), Does.Contain(publicReason));
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             AssertEquivalent(revealed, director.Snapshot);
             yield return ReloadBlocThroughActualSettings(revealed);
@@ -128,6 +158,9 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(revealed, director.Snapshot);
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
+            yield return null; yield return null;
+            // The reveal is an event, and events are the story page.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain(publicMayaReveal));
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
@@ -278,6 +311,7 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator OpenBlocEpisodeStation()
         {
+            yield return SkipReveals();
             director.ClosePanels();
             WarpPlayer(director.StationPosition);
             Assert.That(director.TryOpenPhasePanel(), Is.True);

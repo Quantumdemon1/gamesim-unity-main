@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -14,6 +15,33 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        [UnityTest]
+        public IEnumerator Display_CompactHudPreservesTheObjectiveCastAndLargeTextWithoutSecondaryChrome()
+        {
+            foreach(bool larger in new[]{false,true})
+            {
+                yield return ApplyTextSize(larger);
+                director.OpenSettings();
+                ButtonWithCaption("Use compact HUD").onClick.Invoke();
+                Assert.That(director.CompactHud,Is.True);
+                director.ClosePanels();yield return null;Canvas.ForceUpdateCanvases();
+                foreach(var name in new[]{"Objective","Navigation","Status",CastRail.RootName,"Exploration controls"})
+                    Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect=>rect.name==name),Is.True,name);
+                foreach(var name in new[]{EpisodeHud.HouseVibeCardName,EpisodeHud.RecentEventsCardName,EpisodeDirector.LiveFeedCardName})
+                    Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect=>rect.name==name),Is.False,name);
+                Assert.That(ButtonWithCaption("Go to episode screen").interactable,Is.True);
+                Assert.That(ButtonWithCaption(EpisodeHud.DiaryTravelCaption).interactable,Is.True);
+                var objective=ActiveRect("Objective");
+                foreach(var label in objective.GetComponentsInChildren<TMPro.TMP_Text>())
+                {label.ForceMeshUpdate();Assert.That(label.isTextOverflowing,Is.False,label.text);}
+                var destination=objective.GetComponentsInChildren<TMPro.TMP_Text>().Single(label=>label.text.StartsWith("Next stop:"));
+                Assert.That(destination.fontSize,Is.EqualTo(Mathf.RoundToInt(18*(larger ? 1.2f : 1))));
+                director.OpenSettings();ButtonWithCaption("Show full HUD").onClick.Invoke();
+                Assert.That(director.CompactHud,Is.False);director.ClosePanels();yield return null;
+                Assert.That(ActiveRect(EpisodeDirector.LiveFeedCardName),Is.Not.Null);
+            }
+        }
+
         [UnityTest]
         public IEnumerator Display_TheSettingsPanelsControlsApplyWhatTheyName()
         {

@@ -4,7 +4,9 @@ Section E is the only part of the acceptance matrix that cannot be automated. Th
 vague. These five criteria are judgements, but they are judgements about specific things, and a
 session run to this protocol produces evidence a later session can be compared against.
 
-Everything else in `ACCEPTANCE_MATRIX.md` passes. This is what remains.
+The schema-13 review candidate is undergoing fresh automated, rendered and performance
+verification. Historical passes in `ACCEPTANCE_MATRIX.md` do not certify it. Run this protocol only
+against the new candidate identified by its executable hash, build report and source manifest.
 
 ## The camera default is 24, and now actually is
 
@@ -44,9 +46,9 @@ the notes.
 ## Before the session
 
 - Use one pinned build and record its path and build report. Do not patch between participants.
-- Decide the cast first: the committed scene ships the authored prefabs. If you are evaluating the
-  UMA cast instead, run `Gamesim > UMA > Use UMA bodies in the episode` **before** building, and say
-  so in the notes — E5 answers differently for each.
+- Build on a machine with UMA imported. The committed scene carries `GamesimUmaCast`, and since
+  2026-09-27 UMA is the only cast. A build made without UMA shows the primitive rig instead; E5
+  answers differently for that, so say so in the notes.
 - Start each participant from a fresh save. `Gamesim > Port > Start Isolated Preview` keeps the normal
   slot untouched.
 - Have a timer and somewhere to write. Write during the session, not after.
@@ -63,6 +65,12 @@ Also note where time actually went. The automated season commits 56 decisions in
 of the real duration is reading, deliberating and moving. If the number is wrong, the fix follows from
 which of those three dominated.
 
+The ceremony reveals are part of that time. The key ceremony and the vote reveal default to a
+suspenseful pace. The two take 30 to 50 seconds in an early week, by house size, which is 20 to 30
+seconds more than the quick pace Settings offers. A click, Enter or Esc jumps a reveal to its result, and a second press
+closes it. Record the pace setting, and note whether the participant skipped reveals. A run where they
+did is not "without skipping".
+
 ## E2 — First-time comprehension
 
 **Threshold: at least three participants who have never seen the build reach the eviction unaided.**
@@ -70,14 +78,17 @@ which of those three dominated.
 "Unaided" means no hints, no answering questions about controls or what to do next. Sit where you can
 see the screen and stay quiet.
 
-**Decide the tutorial before the first participant, and record it.** The build now carries a
-seven-step first-run tour that names the cast rail, the week, the objective panel, movement, the
-notebook and the episode screen. It is exactly the intervention this criterion exists to detect the
-absence of, so it changes what E2 measures rather than how well the build does on it:
+**Decide the tutorial before the first participant, and record it.** The build carries the
+reference build's seven-step tour - the welcome and controls, the top bar, the side rail, the episode
+screen, the cast strip, the phase panels, and a closing card - with a dimmed spotlight on each. Like
+the reference, it plays at every new season's opening, seen before or not. It is exactly the
+intervention this criterion exists to detect the absence of, so it changes what E2 measures rather
+than how well the build does on it:
 
-- **Tour off** — the honest reading of "unaided", and the number comparable to the V6 record. Clear
-  it with `PlayerPrefs.DeleteKey("Gamesim.TutorialSeen")` per participant to guarantee a first run,
-  then skip it on sight, or run a build with it disabled.
+- **Tour off** — the honest reading of "unaided", and the number comparable to the V6 record. Press
+  "Skip Tutorial" (or Esc) the moment it appears, before the participant reads it. The
+  `Gamesim.TutorialSeen` preference no longer holds it back at the opening; it only records a finished
+  tour for the one offered to a season imported mid-way.
 - **Tour on** — a fair question about the shipping product, but a different one. If you run it this
   way, write "tour on" beside the number.
 

@@ -11,15 +11,16 @@ namespace Gamesim.Tests.PlayMode
     /// Which body each houseguest is actually wearing, asserted rather than inferred from a
     /// screenshot.
     ///
-    /// <para>There are three possible bodies and they look different enough that a person can tell
+    /// <para>There are two possible bodies and they look different enough that a person can tell
     /// them apart in a frame, but only if that character happens to be in shot and lit. The cast is
     /// spread across eight rooms, so "are there still procedural characters in the game" is a
     /// question a screenshot answers badly and an enumeration answers exactly.</para>
     ///
-    /// <para>The three, in the order <see cref="CharacterPresentation"/> tries them: a provided body
-    /// (UMA, when the scene opts in), an authored prefab from Resources, and — only if both fail —
-    /// an articulated rig built from Unity primitives. That last one is the fallback this test
-    /// exists to catch, because it is the one nobody chooses.</para>
+    /// <para>The two, in the order <see cref="CharacterPresentation"/> tries them: the provided
+    /// body (UMA, which the episode opts into) and - only if that fails - an articulated rig built
+    /// from Unity primitives. That second one is the fallback this test exists to catch, because it
+    /// is the one nobody chooses. There is no third: the cast is UMA's alone (2026-09-27). In a clone
+    /// without the UMA package there is no provider at all, and the primitive rig is the cast.</para>
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -40,10 +41,15 @@ namespace Gamesim.Tests.PlayMode
                 .Select(visual => visual.CharacterId)
                 .ToArray();
 
-            Assert.That(procedural, Is.Empty,
-                "These houseguests are wearing the primitive fallback rather than a real model: "
-                + string.Join(", ", procedural)
-                + ". That happens when the provided body and the authored prefab both fail to load.");
+            if (CharacterBodySource.Provider == null)
+                // A clone without UMA: the primitive rig is the whole cast, by design.
+                Assert.That(procedural, Has.Length.EqualTo(visuals.Length),
+                    "Without a body provider every houseguest wears the primitive rig.");
+            else
+                Assert.That(procedural, Is.Empty,
+                    "These houseguests are wearing the primitive fallback rather than their UMA body: "
+                    + string.Join(", ", procedural)
+                    + ". That happens when UMA cannot build them: a race missing from its index, or no look to resolve.");
 
             // And every one of them is actually wearing something with geometry, so "no fallback"
             // cannot be satisfied by a character wearing nothing at all.
@@ -64,9 +70,7 @@ namespace Gamesim.Tests.PlayMode
                 var body = visual.transform.Find("Gamesim Character Visual");
                 bool uma = body != null && body.GetComponentsInChildren<Transform>(true)
                     .Any(node => node.name == "UMA Body");
-                bool skinned = body != null && body.GetComponentsInChildren<SkinnedMeshRenderer>(true).Any();
-                Debug.Log("[Gamesim] cast body · " + visual.CharacterId + ": "
-                    + (uma ? "UMA" : skinned ? "authored prefab" : "primitive"));
+                Debug.Log("[Gamesim] cast body · " + visual.CharacterId + ": " + (uma ? "UMA" : "primitive"));
             }
         }
 

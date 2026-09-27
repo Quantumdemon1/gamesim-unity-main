@@ -40,10 +40,10 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(closedWeek, Is.GreaterThan(0), "The season should have reached an eviction.");
 
-            // A wall-clock deadline, not a frame count. The vote reveal holds for roughly six real
-            // seconds and batchmode renders far faster than that, so counting frames waits a
-            // fraction of the time the beat actually takes — which is the same trap reduced motion
-            // exists to sidestep and the reason nothing in this file is timed in frames.
+            // A wall-clock deadline, not a frame count. The vote reveal holds for roughly fourteen real
+            // seconds at the suspenseful pace and batchmode renders far faster than that, so counting
+            // frames waits a fraction of the time the beat actually takes — which is the same trap
+            // reduced motion exists to sidestep and the reason nothing in this file is timed in frames.
             float deadline = Time.realtimeSinceStartup + 30f;
             while (!screen.IsOpen && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(screen.IsOpen, Is.True,
@@ -61,6 +61,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(screen.Lines.Any(line => line.StartsWith("Evicted: ")), Is.True);
             if (expected.evicted != null)
                 Assert.That(screen.Lines, Does.Contain("Evicted: " + expected.evicted));
+            if (Application.isBatchMode) yield return CaptureFraming("weekly-recap");
 
             var dismiss = ButtonWithCaption(WeeklyRecapScreen.ContinueCaption);
             Assert.That(dismiss.IsInteractable(), Is.True);

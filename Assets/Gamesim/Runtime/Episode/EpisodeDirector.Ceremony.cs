@@ -27,7 +27,7 @@ namespace Gamesim.Episode
         /// entitled to know.</para>
         /// </summary>
         private List<CeremonyTakeover.Subject> CeremonySubjects(
-            EpisodeState state, string kind, HashSet<string> wasActive)
+            EpisodeState state, string kind, HashSet<string> wasActive, HashSet<string> wasNominated = null)
         {
             var subjects = new List<CeremonyTakeover.Subject>();
             if (state == null) return subjects;
@@ -37,16 +37,27 @@ namespace Gamesim.Episode
                 var actor = state.Find(id);
                 if (actor == null) return;
                 subjects.Add(new CeremonyTakeover.Subject(actor.name, badge,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+                    CharacterPortraits.Get(actor), actor));
             }
 
             switch (kind)
             {
                 case CeremonySting.NominationKind:
-                case CeremonySting.VetoKind:
                     if (state.nominees != null)
                         foreach (var id in state.nominees) Add(id, "NOMINATED");
+                    break;
+                case CeremonySting.VetoKind:
+                    // The veto meeting's own story: who held it, who came off the block, who went up
+                    // in their place, and who stayed. Every face was badged "NOMINATED", which left the
+                    // one beat the meeting exists for - somebody saved, somebody replacing them -
+                    // unmarked, and the holder absent from their own ceremony.
+                    var block = state.nominees ?? new List<string>();
+                    var before = wasNominated ?? new HashSet<string>(block);
+                    if (!string.IsNullOrEmpty(state.vetoHolderId) && !block.Contains(state.vetoHolderId) && !before.Contains(state.vetoHolderId))
+                        Add(state.vetoHolderId, "VETO");
+                    foreach (var id in before) if (!block.Contains(id)) Add(id, "SAVED");
+                    foreach (var id in block) if (!before.Contains(id)) Add(id, "REPLACEMENT");
+                    foreach (var id in block) if (before.Contains(id)) Add(id, "NOMINATED");
                     break;
                 case CeremonySting.EvictionKind:
                     // Whoever stopped being active during this commit. Usually one person; the
@@ -58,6 +69,19 @@ namespace Gamesim.Episode
                 case CeremonySting.WinnerKind:
                     Add(state.winnerId, "WINNER");
                     Add(state.runnerUpId, "RUNNER-UP");
+                    break;
+                case CeremonySting.FinalEvictionKind:
+                    // The final Head of Household, who they chose, and who joins the jury.
+                    Add(state.hohId, "FINAL HOH");
+                    foreach (var actor in state.contestants)
+                        if (actor.status == ContestantStatus.Active && actor.id != state.hohId) Add(actor.id, "FINAL 2");
+                    foreach (var actor in state.contestants)
+                        if ((actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted)
+                            && wasActive != null && wasActive.Contains(actor.id)) Add(actor.id, "JURY");
+                    break;
+                case CeremonyTakeover.FinalThreeKind:
+                    foreach (var actor in state.contestants)
+                        if (actor.status == ContestantStatus.Active) Add(actor.id, "FINAL 3");
                     break;
             }
             return subjects;
@@ -96,8 +120,7 @@ namespace Gamesim.Episode
                     : state.nominees != null && state.nominees.Contains(actor.id) ? "NOMINATED"
                     : null;
                 field.Add(new CeremonyTakeover.Subject(actor.name, badge,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+                    CharacterPortraits.Get(actor), actor));
             }
             return field;
         }
@@ -112,13 +135,17 @@ namespace Gamesim.Episode
         {
             var people = new List<KeyCeremony.Person>();
             if (state?.contestants == null) return people;
+            var drawing = new List<string>();
             foreach (var actor in state.contestants)
             {
                 if (actor.status != ContestantStatus.Active) continue;
                 if (actor.id == state.hohId) continue;
                 if (state.nominees != null && state.nominees.Contains(actor.id)) continue;
-                people.Add(Person(state, actor.id));
+                drawing.Add(actor.id);
             }
+            // Dealt in a shuffled order that is the same on every reload (KeyOrder), never cast
+            // order: the player is first in the cast, so a safe player always drew the first key.
+            foreach (var id in KeyOrder(drawing, state.seed, state.week)) people.Add(Person(state, id));
             return people;
         }
 
@@ -134,8 +161,7 @@ namespace Gamesim.Episode
         {
             var actor = state.Find(id);
             return new KeyCeremony.Person(actor.id, actor.name,
-                CharacterPortraits.Get(
-                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id))));
+                CharacterPortraits.Get(actor), actor);
         }
 
         /// <summary>The two people on the block, with their faces, for the eviction reveal.</summary>
@@ -148,8 +174,7 @@ namespace Gamesim.Episode
                 var actor = state.Find(id);
                 if (actor == null) continue;
                 block.Add(new VoteReveal.Nominee(actor.id, actor.name,
-                    CharacterPortraits.Get(
-                        CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)))));
+                    CharacterPortraits.Get(actor), actor));
             }
             return block;
         }
@@ -160,15 +185,20 @@ namespace Gamesim.Episode
         /// <para>Read from state rather than re-derived, so the card counts to the same total the
         /// save holds. It carries who voted and for whom — both already public at the reveal, which
         /// is the moment the engine logs them as <c>vote-reveal</c> events.</para>
+        ///
+        /// <para>The Head of Household votes only to break a tie, and the engine's tally leaves that
+        /// vote out; the card has to know it is the tie-break, or it counts it with the house's and
+        /// a 2-2 tie reads 3-2.</para>
         /// </summary>
-        private static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
+        public static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
         {
             var ballots = new List<VoteReveal.Ballot>();
             if (state?.votes == null) return ballots;
             foreach (var vote in state.votes)
             {
                 var voter = state.Find(vote.voterId);
-                ballots.Add(new VoteReveal.Ballot(voter?.name ?? "A housemate", vote.targetId));
+                ballots.Add(new VoteReveal.Ballot(voter?.name ?? "A housemate", vote.targetId,
+                    tieBreak: !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId));
             }
             return ballots;
         }
@@ -187,21 +217,62 @@ namespace Gamesim.Episode
             {
                 case CeremonySting.NominationKind:
                     foreach (var id in state.nominees ?? new List<string>()) React(id, CharacterPresentation.Reaction.Nominated);
+                    TurnHeads(state, (state.nominees ?? new List<string>()).FirstOrDefault(), state.nominees);
                     break;
                 case CeremonySting.VetoKind:
                     foreach (var id in wasNominated)
                         if (state.nominees == null || !state.nominees.Contains(id)) React(id, CharacterPresentation.Reaction.Saved);
+                    string replacement = null;
                     foreach (var id in state.nominees ?? new List<string>())
-                        if (!wasNominated.Contains(id)) React(id, CharacterPresentation.Reaction.Nominated);
+                        if (!wasNominated.Contains(id))
+                        {
+                            React(id, CharacterPresentation.Reaction.Nominated);
+                            if (replacement == null) replacement = id;
+                        }
+                    // The room turns to whoever just went up, or to the block itself when the veto
+                    // went unused. This case was the only ceremony that never turned a head, which
+                    // left the beat the veto exists for - somebody replacing somebody - unmarked.
+                    TurnHeads(state, replacement ?? (state.nominees ?? new List<string>()).FirstOrDefault(),
+                        state.nominees);
                     break;
                 case CeremonySting.EvictionKind:
                     foreach (var actor in state.contestants)
                         if (actor.status != ContestantStatus.Active && wasActive.Contains(actor.id))
                             React(actor.id, CharacterPresentation.Reaction.Evicted);
+                    TurnHeads(state, EvictedThisCommit(state, wasActive), null);
                     break;
                 case CeremonySting.WinnerKind:
                     React(state.winnerId, CharacterPresentation.Reaction.Won);
+                    TurnHeads(state, state.winnerId, null);
                     break;
+                case CeremonySting.FinalEvictionKind:
+                    string juror = EvictedThisCommit(state, wasActive);
+                    React(juror, CharacterPresentation.Reaction.Evicted);
+                    TurnHeads(state, juror, null);
+                    break;
+            }
+        }
+
+        /// <summary>How long the room looks at the ceremony's subject: the card's strip and a beat after.</summary>
+        public const float HeadTurnSeconds = 7f;
+
+        /// <summary>
+        /// The crowd turns to look (V6): every other body in the house turns its head toward the
+        /// ceremony's subject for the card's length, except the subjects themselves, who are
+        /// acting the beat out. Heads only: the bodies stay where the venues put them.
+        /// </summary>
+        private void TurnHeads(EpisodeState state, string towardId, ICollection<string> except)
+        {
+            if (string.IsNullOrEmpty(towardId)) return;
+            var target = BodyFor(towardId);
+            if (target == null) return;
+            foreach (var actor in state.contestants)
+            {
+                if (actor.id == towardId || actor.status != ContestantStatus.Active) continue;
+                if (except != null && except.Contains(actor.id)) continue;
+                var body = BodyFor(actor.id);
+                var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+                if (visual != null) visual.LookAt(target, HeadTurnSeconds);
             }
         }
 
@@ -220,8 +291,12 @@ namespace Gamesim.Episode
         private static string EvictedThisCommit(EpisodeState state, HashSet<string> wasActive)
         {
             if (state?.contestants == null || wasActive == null) return null;
+            // Out of the house and onto the jury: at the winner's commit both finalists stop being
+            // active too, and neither of them is leaving. Read as the statuses an eviction gives, so
+            // nothing else that ends somebody's stay is taken for one.
             foreach (var actor in state.contestants)
-                if (actor.status != ContestantStatus.Active && wasActive.Contains(actor.id)) return actor.id;
+                if ((actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted)
+                    && wasActive.Contains(actor.id)) return actor.id;
             return null;
         }
     }

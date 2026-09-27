@@ -1,4 +1,6 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Gamesim.Episode;
@@ -9,6 +11,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using Object = UnityEngine.Object;
 
 namespace Gamesim.Tests.PlayMode
 {
@@ -53,34 +56,80 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator Accessibility_FixedChromeNeverOverlapsAtEitherTextSize()
         {
-            // The always-on chrome. The modal and the interaction prompt deliberately sit over the
-            // scene, so they are not part of this check.
-            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status", "House pill" };
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return ApplyTextSize(larger);
+                director.ClosePanels();
+                yield return null;
+                AssertFixedChromeDoesNotOverlap(larger);
 
+                // And with the controls box open, which is where the floor is tightest. The cast
+                // strip moved to the bottom of the frame and pushed the caption and the controls box
+                // up a band; the box grows upward from there toward the vibe card, and the expanded
+                // state is 126 units taller than the resting one. Checking only the resting state
+                // would have left the whole of that clearance to an argument rather than a
+                // measurement - and an argument is what put 'Status' on top of 'Cast rail'.
+                ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
+                yield return null;
+                AssertFixedChromeDoesNotOverlap(larger);
+                ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
+                yield return null;
+            }
+        }
+
+        private const string ExpandControlsCaption = "Help \u00b7 controls";
+        private const string CollapseControlsCaption = "Hide controls";
+
+        [UnityTest]
+        public IEnumerator Accessibility_FixedChromeLayoutTracksBodyCompletionRedraw()
+        {
+            var seenBodies = typeof(EpisodeDirector).GetField("seenBodiesCompleted",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(seenBodies, Is.Not.Null);
             foreach (bool larger in new[] { false, true })
             {
                 yield return ApplyTextSize(larger);
                 director.ClosePanels();
                 Canvas.ForceUpdateCanvases();
+                var before = ActiveChromePanel("Brand");
+                Assert.That(before, Is.Not.Null);
+
+                // Exercise the real Update -> Render branch deterministically, including on the
+                // primitive rig, where no body ever completes. Only the director's observed counter
+                // is stale; the global completion counter and cast remain untouched.
+                seenBodies.SetValue(director, CharacterPresentation.BodiesCompleted - 1);
                 yield return null;
+                Assert.That(ActiveChromePanel("Brand"), Is.Not.SameAs(before),
+                    "A newly observed body completion must rebuild the chrome after the earlier layout pass.");
+                AssertFixedChromeDoesNotOverlap(larger);
+            }
+        }
 
-                var panels = names
-                    .Select(name => director.GetComponentsInChildren<RectTransform>(true)
-                        .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy))
-                    .Where(rect => rect != null)
-                    .ToArray();
-                Assert.That(panels, Has.Length.EqualTo(names.Length),
-                    "Expected every fixed panel to be present; found " + panels.Length + " of " + names.Length + ".");
+        private RectTransform ActiveChromePanel(string name) =>
+            director.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == name && rect.gameObject.activeInHierarchy);
 
-                for (int a = 0; a < panels.Length; a++)
-                for (int b = a + 1; b < panels.Length; b++)
-                {
-                    var first = ScreenRect(panels[a]);
-                    var second = ScreenRect(panels[b]);
-                    Assert.That(first.Overlaps(second), Is.False,
-                        "At " + (larger ? "larger" : "standard") + " text, '" + panels[a].name +
-                        "' " + first + " overlaps '" + panels[b].name + "' " + second + ".");
-                }
+        private void AssertFixedChromeDoesNotOverlap(bool larger)
+        {
+            // Flush the hierarchy that will be measured. A yield after this pass would allow
+            // UMA completion to replace it in Update, before LateUpdate / willRenderCanvases
+            // has positioned the new layout-group children for the frame actually rendered.
+            Canvas.ForceUpdateCanvases();
+            // The modal and interaction prompt deliberately sit over the scene, unlike chrome.
+            var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status",
+                "House pill", "Live feed", EpisodeHud.HouseVibeCardName, EpisodeHud.RecentEventsCardName,
+                CastRail.RootName, IconRail.RootName };
+            var panels = names.Select(ActiveChromePanel).Where(rect => rect != null).ToArray();
+            Assert.That(panels, Has.Length.EqualTo(names.Length),
+                "Expected every fixed panel to be present; found " + panels.Length + " of " + names.Length + ".");
+            for (int a = 0; a < panels.Length; a++)
+            for (int b = a + 1; b < panels.Length; b++)
+            {
+                var first = ScreenRect(panels[a]);
+                var second = ScreenRect(panels[b]);
+                Assert.That(first.Overlaps(second), Is.False,
+                    "At " + (larger ? "larger" : "standard") + " text, '" + panels[a].name +
+                    "' " + first + " overlaps '" + panels[b].name + "' " + second + ".");
             }
         }
 
@@ -100,9 +149,9 @@ namespace Gamesim.Tests.PlayMode
         {
             if (!Application.isBatchMode) yield break;
 
-            // Let the cast settle first. A provided body is assembled over frames, so capturing
-            // immediately photographs the stand-ins rather than the houseguests, which would make
-            // the review frames quietly misleading about what the game looks like.
+            // Let the cast settle first. A provided body is assembled over frames and is not drawn
+            // until it is, so capturing immediately photographs an empty house, which would make the
+            // review frames quietly misleading about what the game looks like.
             yield return SettleCast();
 
             var camera = cameraRig.ViewCamera;
@@ -269,7 +318,19 @@ namespace Gamesim.Tests.PlayMode
             return Mathf.Abs(crown.y - feet.y) / camera.pixelHeight;
         }
 
-        private IEnumerator CaptureFraming(string name)
+        /// <summary>
+        /// Photographs what the player would see - the view camera with every overlay canvas drawn
+        /// through it - into <c>{name}.png</c> beside the project, and fails a frame that did not
+        /// render.
+        ///
+        /// <para><paramref name="inspect"/>, when given, is handed the frame before it is thrown
+        /// away, while the overlays are still drawn through the camera: a
+        /// <see cref="RectTransform"/>'s world corners projected by the view camera are then its
+        /// pixels in the frame, which is how a caller asks whether a portrait or a card actually drew
+        /// where it stands (<see cref="AssertRegionHasContent"/>). A whole-frame check cannot tell a
+        /// face from the empty disc it lands in.</para>
+        /// </summary>
+        private IEnumerator CaptureFraming(string name, bool settle = true, Action<Texture2D> inspect = null)
         {
             const int width = 1600, height = 900;
             var camera = cameraRig.ViewCamera;
@@ -282,15 +343,34 @@ namespace Gamesim.Tests.PlayMode
             var previousActive = RenderTexture.active;
             try
             {
+                camera.targetTexture = texture;
                 foreach (var canvas in overlays)
                 {
                     canvas.renderMode = RenderMode.ScreenSpaceCamera;
                     canvas.worldCamera = camera;
                     canvas.planeDistance = Mathf.Max(camera.nearClipPlane + 0.1f, 1f);
                 }
-                camera.targetTexture = texture;
+                // Let queued portraits land first: a frame with empty discs where the faces go
+                // cannot say what the screen looks like. The studio builds one look at a time, so
+                // in a short filtered run the queue can still be working seconds after the panel
+                // opened; wait for it, but not forever - a face that never lands is a capture worth
+                // having too.
+                // Unless the frame is of something that will not wait: a caption the house's
+                // world tick takes down within a tenth of a second.
+                float until = Time.realtimeSinceStartup + (settle ? 10f : 0f);
+                float least = Time.realtimeSinceStartup + (settle ? 0.5f : 0f);
+                while (Time.realtimeSinceStartup < least
+                    || (Time.realtimeSinceStartup < until && AnyBoundFaceIsStillMissing()))
+                    yield return null;
                 Canvas.ForceUpdateCanvases();
+                // Then lay the HUD out again for the frame being photographed. A batchmode canvas is
+                // 4:3 and this frame is 16:9; anchored chrome follows the change by itself, but a
+                // panel whose size is computed when the HUD renders - the activity layouts are -
+                // kept its 4:3 numbers and photographed distorted, which made the review frames
+                // unusable for judging a screen against its mockup.
+                RenderHudForTheCurrentCanvas();
                 yield return null;
+                Canvas.ForceUpdateCanvases();
                 camera.Render();
 
                 RenderTexture.active = texture;
@@ -300,30 +380,193 @@ namespace Gamesim.Tests.PlayMode
                     Application.dataPath, "..", name + ".png"));
                 System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
                 Debug.Log("[Gamesim] framing capture -> " + path);
+                // A capture that asserts nothing is a file somebody has to remember to open. This
+                // one at least refuses to pass when the frame did not render: a solid PNG is what a
+                // dead camera, a culled canvas or a batchmode ScreenCapture produces, and all three
+                // have been mistaken for evidence on this project.
+                AssertNotBlank(readback, name);
+                // Before the finally: the frame is destroyed there and the canvases go back to overlays.
+                inspect?.Invoke(readback);
             }
             finally
             {
                 RenderTexture.active = previousActive;
                 camera.targetTexture = previousTarget;
-                foreach (var canvas in overlays) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                // A canvas can be gone by now: the wait above spans frames, and a panel's fade-out
+                // ghost is a canvas that destroys itself when its fade ends.
+                foreach (var canvas in overlays)
+                    if (canvas != null) canvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 Object.Destroy(readback);
                 texture.Release();
                 Object.Destroy(texture);
             }
+            // And back to the layout the rest of the test is measuring.
+            Canvas.ForceUpdateCanvases();
+            RenderHudForTheCurrentCanvas();
+            yield return null;
+        }
+
+        private static bool AnyBoundFaceIsStillMissing() =>
+            Object.FindObjectsByType<CharacterPortraitBinding>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                .Select(binding => binding.GetComponent<RawImage>())
+                .Any(face => face != null && face.gameObject.activeInHierarchy && (face.texture == null || !face.enabled));
+
+        /// <summary>Re-renders the HUD against whatever shape its canvas has right now.</summary>
+        private void RenderHudForTheCurrentCanvas()
+        {
+            typeof(EpisodeDirector).GetMethod("Render",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                    null, System.Type.EmptyTypes, null)
+                .Invoke(director, null);
         }
 
         /// <summary>
-        /// Waits until no houseguest is still showing a stand-in, or gives up after a bounded number
-        /// of frames. On the authored-prefab cast there are no stand-ins and this returns at once.
+        /// Fails when a captured frame is one flat colour.
+        ///
+        /// <para>The weakest possible claim about a picture, and the one that catches the failures
+        /// that have actually happened here: a camera with no target, a canvas culled to alpha
+        /// zero, and ScreenCapture in batchmode, which returns identical black frames that were
+        /// very nearly treated as a look sheet.</para>
+        /// </summary>
+        private static void AssertNotBlank(Texture2D frame, string name)
+        {
+            var pixels = frame.GetPixels32();
+            var seen = new System.Collections.Generic.HashSet<int>();
+            for (int i = 0; i < pixels.Length; i += 53)
+            {
+                seen.Add((pixels[i].r << 16) | (pixels[i].g << 8) | pixels[i].b);
+                if (seen.Count > 8) return;
+            }
+            Assert.Fail("The capture '" + name + "' has only " + seen.Count
+                + " sampled colours, so nothing rendered into it.");
+        }
+
+        /// <summary>
+        /// Fails when one named region of a captured frame is a flat colour.
+        ///
+        /// <para>For the thing a whole-frame check cannot see: twelve cast portraits rendering as
+        /// identical black squares while the rest of the screen was full of content. Give it the
+        /// screen rect of the element that is supposed to contain a picture.</para>
+        /// </summary>
+        private static void AssertRegionHasContent(Texture2D frame, Rect region, string what)
+        {
+            int x0 = Mathf.Clamp(Mathf.RoundToInt(region.xMin), 0, frame.width - 1);
+            int x1 = Mathf.Clamp(Mathf.RoundToInt(region.xMax), 0, frame.width);
+            int y0 = Mathf.Clamp(Mathf.RoundToInt(region.yMin), 0, frame.height - 1);
+            int y1 = Mathf.Clamp(Mathf.RoundToInt(region.yMax), 0, frame.height);
+            Assert.That(x1 - x0, Is.GreaterThan(1), what + " has no width in the frame.");
+            Assert.That(y1 - y0, Is.GreaterThan(1), what + " has no height in the frame.");
+
+            var seen = new System.Collections.Generic.HashSet<int>();
+            for (int y = y0; y < y1; y += 2)
+            for (int x = x0; x < x1; x += 2)
+            {
+                var pixel = frame.GetPixel(x, y);
+                seen.Add((Mathf.RoundToInt(pixel.r * 255) << 16)
+                    | (Mathf.RoundToInt(pixel.g * 255) << 8) | Mathf.RoundToInt(pixel.b * 255));
+                if (seen.Count > 6) return;
+            }
+            Assert.Fail(what + " is " + seen.Count + " flat colour(s) in the captured frame, so "
+                + "whatever is supposed to be drawn there is not.");
+        }
+
+        /// <summary>
+        /// No copy is clipped on ANY panel the player can open, at either text size.
+        ///
+        /// <para>The sweep this project already had opens the notebook and stops. Every other
+        /// surface - the conversation, the settings, the house activities, the phase panel - has
+        /// been unguarded for its whole life, which is how a four-fact subtitle came to fit at one
+        /// text size and be cut off at the other, and how a stakes tag came to overlap itself.</para>
+        ///
+        /// <para>An opener that cannot run in this fixture is REPORTED, not skipped silently: a
+        /// sweep that quietly covers two of five panels reads exactly like one that covers five.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Accessibility_NoPanelClipsItsCopyAtEitherTextSize()
+        {
+            var openers = new (string Name, Func<bool> Open)[]
+            {
+                ("the notebook", () => { director.OpenJournal(); return director.IsPanelOpen; }),
+                // Refinement Kit 6's pages each lay their own copy out, so each is swept.
+                ("who is where", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Rooms); return director.IsPanelOpen; }),
+                ("the houseguests", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.People); return director.IsPanelOpen; }),
+                ("a houseguest profile", () =>
+                {
+                    var someone = director.Snapshot.contestants.FirstOrDefault(c => !c.isPlayer);
+                    if (someone == null) return false;
+                    director.ShowHouseguestProfile(someone.id);
+                    return director.ProfileId == someone.id;
+                }),
+                ("the vote", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes); return director.IsPanelOpen; }),
+                // The episode screen, fitted to what it holds with its way on pinned.
+                ("the episode screen", () => { WarpPlayer(director.StationPosition); return director.TryOpenPhasePanel(); }),
+                ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }),
+                ("house activities", () => { director.OpenHouseActivities(); return director.IsHouseActivityOpen; }),
+                ("a conversation", () =>
+                {
+                    var npc = SceneComponents<HouseNpc>().FirstOrDefault(actor => actor.gameObject.activeInHierarchy);
+                    if (npc == null) return false;
+                    WarpPlayer(npc.transform.position
+                        + (player.transform.position - npc.transform.position).normalized * 1.4f);
+                    return director.TryOpenNpc(npc.Id);
+                }),
+            };
+
+            var unreached = new List<string>();
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return ApplyTextSize(larger);
+                foreach (var opener in openers)
+                {
+                    director.ClosePanels();
+                    yield return null;
+                    if (!opener.Open()) { unreached.Add(opener.Name + " at " + (larger ? "larger" : "standard") + " text"); continue; }
+
+                    // Let asynchronous content land before measuring. This is not politeness: a
+                    // panel whose picture had not arrived used to draw a DIFFERENT layout -
+                    // SpeakerTitle fell back to a wrapping PanelTitle when the portrait was null, and
+                    // a wrapping label cannot clip. A mutation that re-crammed the conversation
+                    // subtitle into one fixed-width line survived this sweep for exactly that reason.
+                    // The header now binds its face instead, but a panel measured before its content
+                    // lands is still a panel measured in a state nobody sees for long.
+                    float settle = Time.realtimeSinceStartup + 2f;
+                    while (Time.realtimeSinceStartup < settle) yield return null;
+                    Canvas.ForceUpdateCanvases();
+                    yield return null;
+
+                    var clipped = director.GetComponentsInChildren<TMP_Text>(true)
+                        .Where(label => label.gameObject.activeInHierarchy && !string.IsNullOrEmpty(label.text))
+                        .Where(label => { label.ForceMeshUpdate(); return label.isTextOverflowing; })
+                        .Select(label => "'" + Excerpt(label.text) + "'")
+                        .ToArray();
+                    Assert.That(clipped, Is.Empty,
+                        "On " + opener.Name + " at " + (larger ? "larger" : "standard")
+                        + " text, this copy is cut off: " + string.Join(" | ", clipped));
+                    director.ClosePanels();
+                    yield return null;
+                }
+            }
+
+            Assert.That(unreached, Is.Empty,
+                "These panels never opened, so this sweep says nothing about them: "
+                + string.Join(", ", unreached) + ". A sweep that silently covers some of the "
+                + "surfaces reads exactly like one that covers all of them.");
+            yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// Waits until no houseguest in the house is still being assembled, or gives up after a
+        /// bounded number of frames. A body in assembly is not drawn, and the one that arrives
+        /// triggers a HUD render. Only bodies in the house count: one on an inactive actor never
+        /// finishes. On the primitive rig nobody assembles and this returns at once.
         /// </summary>
         private IEnumerator SettleCast()
         {
             const int limit = 900;
             for (int frame = 0; frame < limit; frame++)
             {
-                bool waiting = director.gameObject.scene.GetRootGameObjects()
-                    .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
-                    .Any(node => node.name == "Stand-in");
+                bool waiting = SceneComponents<CharacterPresentation>()
+                    .Any(presentation => presentation.gameObject.activeInHierarchy && presentation.IsBodyAssembling);
                 if (!waiting) break;
                 yield return null;
             }

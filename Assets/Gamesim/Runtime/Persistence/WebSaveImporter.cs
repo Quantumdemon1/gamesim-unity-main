@@ -61,14 +61,18 @@ namespace Gamesim.Persistence
                     + "Unity room homes, motives, camera, and deterministic random state use new scenario defaults. "
                     + "Voting-bloc rules begin in week " + candidate.blocRulesStartWeek + "; the current week is unchanged. "
                     + "NPC conversations begin in week " + candidate.npcSocial.rulesStartWeek + "; the current week is unchanged. "
+                    + "Story arcs begin in week " + candidate.story.rulesStartWeek + "; the current week is unchanged. "
                     + (report.Count == 0 ? "" : "Metadata retained in the original archive: " + string.Join(", ", report.OrderBy(value => value)) + ". ")
-                    + "Original preserved at " + archived;
+                    + "Original preserved in your saves folder.";
                 return true;
             }
             catch (Exception error) when (SaveJson.IsExpected(error))
             {
-                message = "Web save was not installed: " + error.Message
-                    + (archived != null && File.Exists(archived) ? " Original preserved at " + archived : " No game state was changed.");
+                // The exception type rather than its text: an IO failure's message embeds the
+                // full path of whatever it could not read.
+                message = "Web save was not installed: " + SaveJson.Explain(error)
+                    + (archived != null && File.Exists(archived)
+                        ? " Original preserved in your saves folder." : " No game state was changed.");
                 return false;
             }
         }
@@ -197,6 +201,9 @@ namespace Gamesim.Persistence
                 }
             }
             if (result.relationships.Count < 30) report.Add("absent directed relationships use the Unity neutral-score default");
+            // The story system switches on at the same boundary the voting blocs use: the week after
+            // the import, so the week the web save was in plays under the rules it was written under.
+            EpisodeEngine.EnableStory(result, checked(week + 1));
             return result;
         }
 

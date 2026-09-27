@@ -31,19 +31,39 @@ namespace Gamesim.Simulation
             Require(players.Any(contestant => contestant.isPlayer), "Only an eligible player can choose this simulation mode.");
             // Source weighted arithmetic and raw fast-forward caller bonus. The category cycle and
             // persisted RNG are the existing native scenario adapter, not original full-run replay.
-            string category = s.week % 3 == 1 ? "Skill" : s.week % 3 == 2 ? "Mental" : "Endurance";
-            double playerBonus = WebStudyHouse.FastForwardCompetitionBonus(s.phaseEventCompBonus, s.playerStudyBonus);
+            string category = CompetitionCategory(s);
+            double playerBonus = s.competitionRulesVersion >= 3 ? CommonCompetitionBonus(s)
+                : WebStudyHouse.FastForwardCompetitionBonus(s.phaseEventCompBonus, s.playerStudyBonus);
             s.competitionScores.Clear();
+            string numericExplanation = null;
+            bool widened = s.competitionRulesVersion >= CompetitionRules.Widened;
+            double playerRoll = 0, playerLuckRoll = 0, playerRaw = 0;
             foreach (var contestant in players)
             {
-                double score = WebRules.WeightedCompetitionScore(contestant.stats, category,
-                    s.nominees.Contains(contestant.id), contestant.isPlayer ? playerBonus : 0, Roll(s), 0);
+                double roll = Roll(s);
+                double luckRoll = widened && CompetitionRules.RollsTwice(category) ? Roll(s) : 0;
+                // A Have-Not is tired in the veto; zero everywhere else and in seasons without them.
+                double bonus = (contestant.isPlayer ? playerBonus : 0) - HaveNots.Penalty(s, contestant.id);
+                double score = widened
+                    ? CompetitionRules.Score(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, luckRoll)
+                    : WebRules.WeightedCompetitionScore(contestant.stats, category, s.nominees.Contains(contestant.id), bonus, roll, 0);
                 s.competitionScores.Add(new CompetitionScore { contestantId = contestant.id, score = score });
+                if (contestant.isPlayer) { playerRoll = roll; playerLuckRoll = luckRoll; playerRaw = score; }
+                if (s.competitionRulesVersion >= 3 && !widened && contestant.isPlayer)
+                    numericExplanation = WeightedCompetitionExplanation(s, contestant, category, 0, true, roll, score);
             }
+            var you = players.FirstOrDefault(contestant => contestant.isPlayer);
+            if (widened && you != null)
+                numericExplanation = WidenedCompetitionExplanation(s, you, category, 0, true, false, playerRoll, playerLuckRoll, playerRaw);
             string winner = s.competitionScores.OrderByDescending(item => item.score).First().contestantId;
             if (s.phase == EpisodePhase.HoH) { s.hohId = winner; s.Find(winner).hohWins++; }
             else { s.vetoHolderId = winner; s.Find(winner).vetoWins++; }
             s.competitionResolved = true;
+            LogCompetitionDefinition(s);
+            LogCompetitionStandings(s);
+            HaveNots.Assign(s);
+            HaveNots.AwardVetoPrizes(s);
+            LogCompetitionInput(s, 0, true, numericExplanation);
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + " (simulated).");
         }
     }

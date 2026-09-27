@@ -27,7 +27,7 @@ namespace Gamesim.Episode
             yield return ClickSeasonButton(EpisodeHud.DiaryTravelCaption);
             yield return WaitSeasonWalk("study diary", seasonDirector.DiaryPosition);
             RequireSeason(seasonDirector.TryOpenDiary(), "Study requires physically reaching and opening the actual diary.");
-            yield return null; yield return null;
+            yield return WaitSeasonDiarySeating();
             var arrived = seasonDirector.Snapshot;
             RequireSeason(arrived.randomState == original.randomState && arrived.socialActions == original.socialActions
                 && arrived.playerStudyBonus == original.playerStudyBonus,

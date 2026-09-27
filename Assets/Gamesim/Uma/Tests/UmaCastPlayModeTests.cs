@@ -66,8 +66,17 @@ namespace Gamesim.Uma.Tests
                     "Races are keyed by race name, not by asset file name.");
 
                 foreach (var recipeName in look.Wardrobe)
+                {
+                    // Hair and accessories built in code are catalog items, not recipes.
+                    if (UmaAppearanceCatalog.IsGrown(recipeName))
+                    {
+                        Assert.That(ProceduralHair.Find(recipeName) != null || ProceduralAccessories.Find(recipeName) != null, Is.True,
+                            appearanceId + " wears '" + recipeName + "', which nothing builds.");
+                        continue;
+                    }
                     Assert.That(indexer.GetAsset<UMAWardrobeRecipe>(recipeName), Is.Not.Null,
                         appearanceId + " wears '" + recipeName + "', which is not in the Global Library.");
+                }
             }
         }
 
@@ -203,43 +212,44 @@ namespace Gamesim.Uma.Tests
         }
 
         /// <summary>
-        /// A houseguest must have something to draw from the frame they are attached, not from the
-        /// frame UMA finishes. Otherwise the cast pops in half a second after the scene is running.
+        /// While UMA assembles a houseguest nothing else stands in for them - the stand-in was a body
+        /// from another cast, a different person on screen for that half-second, and the cast is UMA's
+        /// alone (2026-09-27). The houseguest reads as assembling from the frame they are attached and
+        /// for as long as there is nothing to draw, stops the moment their body can be drawn, says so
+        /// exactly once to whoever counts finished bodies, and is drawn from then on.
         /// </summary>
         [UnityTest]
-        public IEnumerator Houseguest_IsNeverInvisibleWhileUmaAssemblesTheBody()
+        public IEnumerator Houseguest_IsOnlyEverTheirOwnBodyWhileUmaAssemblesIt()
         {
             yield return null;
-            CharacterPresentation.Attach(actor, Houseguest(), Color.white);
-
-            // Same frame: a stand-in should already be drawable.
-            Assert.That(VisibleRenderers(), Is.GreaterThan(0),
-                "The houseguest had no visible body on the frame they were attached.");
+            int completedBefore = CharacterPresentation.BodiesCompleted;
+            var presentation = CharacterPresentation.Attach(actor, Houseguest(), Color.white);
+            Assert.That(presentation.IsBodyAssembling, Is.True, "The houseguest is assembling from the frame they are attached.");
 
             bool built = false;
             for (int frame = 0; frame < BuildTimeoutFrames && !built; frame++)
             {
-                Assert.That(VisibleRenderers(), Is.GreaterThan(0),
-                    "The houseguest went invisible on frame " + frame + " while UMA was assembling.");
+                Assert.That(actor.GetComponentsInChildren<Transform>(true)
+                        .Any(t => t.name == "Stand-in" || t.name == "Model" || t.name == "Head pivot"), Is.False,
+                    "Frame " + frame + ": something other than their own body is standing in for them.");
                 yield return null;
-                built = UmaMesh() != null;
+                if (UmaMesh() == null)
+                    Assert.That(presentation.IsBodyAssembling, Is.True,
+                        "Frame " + frame + ": nothing to draw yet, so the houseguest is still assembling.");
+                built = UmaMesh() != null && !presentation.IsBodyAssembling;
             }
-            Assert.That(built, Is.True, "UMA never produced a body.");
-
-            // Once the real body exists the stand-in must go, or every houseguest is drawn twice.
+            Assert.That(built, Is.True, "UMA never produced a body, or it never stopped assembling.");
+            Assert.That(CharacterPresentation.BodiesCompleted - completedBefore, Is.EqualTo(1),
+                "The body's arrival is counted once, for the HUD's redraw.");
             for (int i = 0; i < 10; i++) yield return null;
-            Assert.That(actor.GetComponentsInChildren<Transform>(true).Any(t => t.name == "Stand-in"),
-                Is.False, "The stand-in outlived the body it was standing in for.");
+            Assert.That(VisibleRenderers(), Is.GreaterThan(0), "and it is drawn.");
+            Assert.That(CharacterPresentation.BodiesCompleted - completedBefore, Is.EqualTo(1), "and counted only once.");
         }
 
         private int VisibleRenderers() =>
             actor.GetComponentsInChildren<Renderer>(true).Count(renderer => renderer.enabled);
 
-        /// <summary>
-        /// The UMA body's mesh specifically. Scoping matters: while UMA assembles, an authored
-        /// stand-in with its own skinned mesh is also under the houseguest, and a whole-hierarchy
-        /// search will happily return that one and assert against the wrong body.
-        /// </summary>
+        /// <summary>The UMA body's mesh specifically: the one under "UMA Body".</summary>
         private SkinnedMeshRenderer UmaMesh()
         {
             var body = actor.GetComponentsInChildren<Transform>(true)

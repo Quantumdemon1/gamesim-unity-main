@@ -37,13 +37,45 @@ namespace Gamesim.Simulation
         /// <summary>What happened as a result, written when it resolves.</summary>
         public string outcome;
 
+        // ---------------------------------------------------------------- schema 14: story beats
+        //
+        // A story beat is a house event of kind "story". Its words are not stored: the title and
+        // narrative above hold a name-free fallback sentence (validation requires both, and an
+        // older reader shows something sensible), and every surface renders the real text from
+        // contentId and cast through StoryText. Null and empty on every legacy event.
+
+        /// <summary>The beat's catalogue key, "arc:beat".</summary>
+        public string contentId;
+
+        /// <summary>The story cycle (storyline record) this beat belongs to.</summary>
+        public string cycleId;
+
+        /// <summary>The anchor whose Advance lapses this beat if it is still open.</summary>
+        public string closesAnchor;
+
+        /// <summary>How the beat reaches the player (<see cref="StorySurfaces"/>).</summary>
+        public string surface;
+
+        /// <summary>The room it happens in, a staging hint.</summary>
+        public string venue;
+
+        /// <summary>The option taken when the beat lapses.</summary>
+        public string lapseOptionId;
+
+        /// <summary>Who plays each part in this beat.</summary>
+        public List<StoryRoleState> cast = new List<StoryRoleState>();
+
         public HouseEventState Clone()
         {
             var copy = (HouseEventState)MemberwiseClone();
             copy.involvedIds = new List<string>(involvedIds);
             copy.choices = choices.Select(x => x.Clone()).ToList();
+            copy.cast = cast.Select(x => x.Clone()).ToList();
             return copy;
         }
+
+        /// <summary>Whether this is a story beat rather than a legacy house event.</summary>
+        public bool IsStory => kind == HouseEventKind.Story;
     }
 
     /// <summary>One way of answering a house event.</summary>
@@ -62,10 +94,72 @@ namespace Gamesim.Simulation
         /// <summary>What taking it does to the player's standing generally.</summary>
         public double trustChange;
 
+        // ---------------------------------------------------------------- schema 14: story options
+        //
+        // Empty on every legacy choice. A story option is answered by its optionId, never by its
+        // label: the label is a fixed caption constant and doubles as the control's accessible
+        // name, which is exactly why it must never be what the engine keys on.
+
+        /// <summary>The option's catalogue id within its beat.</summary>
+        public string optionId;
+
+        /// <summary>The glyph drawn beside it, chosen by the catalogue rather than by matching words.</summary>
+        public string glyph;
+
+        /// <summary>
+        /// How it approaches the person it is aimed at (<see cref="Personality.Approach"/>), or null.
+        /// Decides whether a gain resonates or grates with them when it lands.
+        /// </summary>
+        public string approach;
+
+        /// <summary>
+        /// The base chance of the check, 0-100, or −1 when the option is certain. The chance shown
+        /// and used is <see cref="StoryOdds.Chance"/> of this plus the visible terms.
+        /// </summary>
+        public double checkBase = -1;
+
+        /// <summary>Who the check is against: the houseguest whose view of the player decides it.</summary>
+        public string subjectId;
+
+        /// <summary>The option the beat takes when it lapses.</summary>
+        public bool lapse;
+
+        /// <summary>Whether taking it spends a social action.</summary>
+        public bool costsAction;
+
+        /// <summary>A rule break: always a production strike, labelled before it is chosen.</summary>
+        public bool conduct;
+
+        /// <summary>The player chooses somebody; the command carries the id and it must be in <see cref="eligibleIds"/>.</summary>
+        public bool pickPerson;
+        public List<string> eligibleIds = new List<string>();
+
+        /// <summary>Shown but not available: drawn as one muted line naming what it needs.</summary>
+        public bool locked;
+        public string lockReason;
+
+        /// <summary>Player traits that make it +15 (the web's trait bonus).</summary>
+        public List<string> bonusTraits = new List<string>();
+
+        /// <summary>Player traits against which choosing it costs a stress step.</summary>
+        public List<string> against = new List<string>();
+
+        /// <summary>What it does on success (or always, when certain), and on a backfire.</summary>
+        public List<StoryEffectState> effects = new List<StoryEffectState>();
+        public List<StoryEffectState> backfire = new List<StoryEffectState>();
+
+        /// <summary>The beat that follows, on success and on a backfire. Null ends the thread.</summary>
+        public string next, nextOnBackfire;
+
         public HouseEventChoice Clone()
         {
             var copy = (HouseEventChoice)MemberwiseClone();
             copy.impacts = impacts.Select(x => x.Clone()).ToList();
+            copy.eligibleIds = new List<string>(eligibleIds);
+            copy.bonusTraits = new List<string>(bonusTraits);
+            copy.against = new List<string>(against);
+            copy.effects = effects.Select(x => x.Clone()).ToList();
+            copy.backfire = backfire.Select(x => x.Clone()).ToList();
             return copy;
         }
     }
@@ -118,7 +212,21 @@ namespace Gamesim.Simulation
         /// <summary>The week going wrong — <c>mid-week-crisis-system</c>.</summary>
         public const string Crisis = "crisis";
 
-        public static readonly string[] All = { Phase, House, Proximity, Ambient, Emergent, Crisis };
+        /// <summary>
+        /// A beat of a story cycle (schema 14). Answered by <c>ProgressStoryline</c> with an option
+        /// id, never by <c>ResolveHouseEvent</c>'s label match.
+        /// </summary>
+        public const string Story = "story";
+
+        /// <summary>
+        /// Something the player did in the house: HOUSE-LIFE-PLAN's queued kind, appended in the same
+        /// schema-14 bundle so the format needs one migration rather than two.
+        /// </summary>
+        public const string Activity = "activity";
+
+        // Append only: an older build rejects a save holding a kind it does not know, which is the
+        // honest answer; reordering would make it reject kinds it did know.
+        public static readonly string[] All = { Phase, House, Proximity, Ambient, Emergent, Crisis, Story, Activity };
         public static bool IsKnown(string kind) => kind != null && Array.IndexOf(All, kind) >= 0;
 
         /// <summary>

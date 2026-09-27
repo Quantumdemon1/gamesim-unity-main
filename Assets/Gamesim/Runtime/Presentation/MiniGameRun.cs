@@ -19,7 +19,7 @@ namespace Gamesim.Presentation
     /// <c>EpisodeState.randomState</c> on them would re-roll the rest of the season — the same
     /// reason <c>SeasonBuilder</c> takes the cast in table order rather than shuffling it.</para>
     /// </summary>
-    public sealed class MiniGameRun
+    public sealed partial class MiniGameRun
     {
         /// <summary>How long a target stays up, and the gap before the next. The reference's numbers.</summary>
         public const double TargetLife = 0.9, TargetGapLow = 0.1, TargetGapHigh = 0.3;
@@ -31,6 +31,8 @@ namespace Gamesim.Presentation
         public const double FlipBackDelay = 1.0;
 
         public CompetitionMiniGames.Kind Kind { get; }
+        public int RulesVersion { get; }
+        public CompetitionDefinition Definition { get; }
         public double TimeLimit { get; }
         public double Elapsed { get; private set; }
         public double Remaining => Math.Max(0, TimeLimit - Elapsed);
@@ -53,10 +55,30 @@ namespace Gamesim.Presentation
         public bool TargetLive { get; private set; }
         public int Hits { get; private set; }
         public int Spawned { get; private set; }
+        public int FalseStarts { get; private set; }
+        public int WrongDirections { get; private set; }
+        public int PointerMisses { get; private set; }
+        public int ExpiredTargets { get; private set; }
+        public enum Direction { Up, Right, Down, Left }
+        public Direction TargetDirection { get; private set; }
+        public string Feedback { get; private set; } = "Get ready";
 
         /// <summary>Where the current target sits, each 0–1 across the play area.</summary>
         public double TargetX { get; private set; }
         public double TargetY { get; private set; }
+        public double TargetWindowSeconds { get; private set; } = TargetLife;
+        public double GripPressure => Definition?.GripPressure(Elapsed) ?? 1;
+
+        /// <summary>How long the live target has left of its window; zero with none up. Read-only.</summary>
+        public double TargetRemaining => TargetLive ? Math.Max(0, targetExpiresAt - Elapsed) : 0;
+
+        /// <summary>How fast the grip is changing right now, in percent a second. Read-only.</summary>
+        public double GripRate => Kind != CompetitionMiniGames.Kind.Endurance ? 0
+            : CompetitionMiniGames.MeterRatePerSecond(Elapsed, TimeLimit, Holding, GripPressure, RulesVersion);
+
+        /// <summary>Seconds until the grip is empty at the current rate; infinity while it is not falling.</summary>
+        public double SecondsToEmpty => GripRate < 0 ? Meter / -GripRate : double.PositiveInfinity;
+        public double PressureChangeIn => Definition?.PressureChangeIn(Elapsed) ?? 0;
         private double nextTargetAt, targetExpiresAt;
 
         // --- memory
@@ -73,13 +95,27 @@ namespace Gamesim.Presentation
         public int SecondFlip { get; private set; } = -1;
         private double flipBackAt;
 
-        public MiniGameRun(CompetitionMiniGames.Kind kind, uint seed)
+        /// <param name="words">The houseguest scramble's names; the reference's words when null. Words only.</param>
+        public MiniGameRun(CompetitionMiniGames.Kind kind, uint seed, int rulesVersion = CompetitionMiniGames.LegacyRules,
+            CompetitionDefinition definition = null, IReadOnlyList<string> words = null)
         {
             Kind = kind;
-            TimeLimit = CompetitionMiniGames.TimeLimit(kind);
+            if (rulesVersion < CompetitionMiniGames.LegacyRules || rulesVersion > CompetitionMiniGames.CurrentRules)
+                throw new ArgumentOutOfRangeException(nameof(rulesVersion));
+            bool widenedGame = kind == CompetitionMiniGames.Kind.Dice || kind == CompetitionMiniGames.Kind.Words;
+            if (widenedGame && rulesVersion < CompetitionMiniGames.WidenedRules)
+                throw new ArgumentOutOfRangeException(nameof(rulesVersion), "The luck and social games are rules 4's.");
+            RulesVersion = rulesVersion;
+            string category = CompetitionMiniGames.CategoryOf(kind);
+            if (definition != null && (rulesVersion < 3 || definition.Category != category))
+                throw new ArgumentException("The competition definition must match the game and rules version.", nameof(definition));
+            Definition = rulesVersion >= 3 ? definition ?? CompetitionDefinitions.Standard(category) : null;
+            TimeLimit = Definition?.Duration ?? CompetitionMiniGames.TimeLimit(kind);
             random = new SeededRandom(seed);
             if (kind == CompetitionMiniGames.Kind.Memory) Deal();
             if (kind == CompetitionMiniGames.Kind.Reaction) nextTargetAt = FirstTargetDelay;
+            if (kind == CompetitionMiniGames.Kind.Dice) { DealDice(); Feedback = "Roll the dice"; }
+            if (kind == CompetitionMiniGames.Kind.Words) { DealWords(words); Feedback = "Spell the word"; }
         }
 
         // ---------------------------------------------------------------- the clock
@@ -93,14 +129,31 @@ namespace Gamesim.Presentation
         /// </summary>
         public void Tick(double delta)
         {
-            if (Finished || delta <= 0) return;
+            if (Finished || delta <= 0 || double.IsNaN(delta) || double.IsInfinity(delta)) return;
+            if (Kind == CompetitionMiniGames.Kind.Reaction && RulesVersion >= CompetitionMiniGames.ScheduledRules)
+            { TickReaction(delta); return; }
+            if (RulesVersion < CompetitionMiniGames.ImprovedRules) { Step(delta); return; }
+            delta = TimeLimit > 0 ? Math.Min(delta, Remaining) : delta;
+            while (delta > 0.0000001 && !Finished)
+            {
+                double step = Math.Min(delta, 1.0 / 120.0);
+                Step(step);
+                delta -= step;
+            }
+            if (!Finished && TimeLimit > 0 && Remaining <= .0000001) { Elapsed = TimeLimit; Finish(); }
+        }
+
+        private void Step(double delta)
+        {
             Elapsed += delta;
 
             switch (Kind)
             {
                 case CompetitionMiniGames.Kind.Endurance:
                     if (Holding) Held += delta;
-                    Meter = CompetitionMiniGames.MeterAfter(Meter, Elapsed, TimeLimit, delta, Holding);
+                    Meter = CompetitionMiniGames.MeterAfter(Meter,
+                        RulesVersion >= CompetitionMiniGames.ImprovedRules ? Elapsed - delta / 2 : Elapsed,
+                        TimeLimit, delta * (Holding ? Definition?.GripPressure(Elapsed - delta / 2) ?? 1 : 1), Holding, RulesVersion);
                     // The grip giving out ends it early, which is the point of letting go sparingly.
                     if (Meter <= CompetitionMiniGames.MeterEmpty) { Finish(); return; }
                     break;
@@ -111,6 +164,8 @@ namespace Gamesim.Presentation
                         // An expired target is a miss. It was already counted as spawned, so the
                         // accuracy it feeds has nothing further to do.
                         TargetLive = false;
+                        ExpiredTargets++;
+                        Feedback = "Missed: target expired";
                         nextTargetAt = Elapsed + Gap();
                     }
                     else if (!TargetLive && Elapsed >= nextTargetAt) Spawn();
@@ -119,9 +174,33 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Memory:
                     if (SecondFlip >= 0 && Elapsed >= flipBackAt) TurnBack();
                     break;
+
+                case CompetitionMiniGames.Kind.Dice: StepDice(); if (Finished) return; break;
+                case CompetitionMiniGames.Kind.Words: StepWords(); break;
             }
 
             if (TimeLimit > 0 && Elapsed >= TimeLimit) Finish();
+        }
+
+        // Version 3 schedules targets at exact times, independently of hit speed or frame size.
+        // Never spawn a target that cannot receive its complete response window before the bell.
+        private void TickReaction(double delta)
+        {
+            double until = Math.Min(TimeLimit, Elapsed + delta);
+            while (!Finished)
+            {
+                double next = TargetLive ? targetExpiresAt : nextTargetAt;
+                if (next > until || next > TimeLimit) break;
+                if (!TargetLive && next + (Definition?.ReactionWindow(Spawned + 1) ?? TargetLife) > TimeLimit) break;
+                Elapsed = next;
+                if (TargetLive)
+                {
+                    TargetLive = false; ExpiredTargets++; Feedback = "Missed: target expired";
+                }
+                else Spawn();
+            }
+            Elapsed = until;
+            if (Remaining <= .0000001) { Elapsed = TimeLimit; Finish(); }
         }
 
         /// <summary>Ends the run where it stands and works out what it was worth.</summary>
@@ -132,12 +211,14 @@ namespace Gamesim.Presentation
             switch (Kind)
             {
                 case CompetitionMiniGames.Kind.Endurance:
-                    Score = CompetitionMiniGames.EnduranceScore(Held, TimeLimit); break;
+                    Score = CompetitionMiniGames.EnduranceScore(Held, TimeLimit, RulesVersion); break;
                 case CompetitionMiniGames.Kind.Reaction:
-                    Score = CompetitionMiniGames.ReactionScore(Hits, Spawned); break;
+                    Score = CompetitionMiniGames.ReactionScore(Hits, Spawned, FalseStarts, RulesVersion); break;
                 case CompetitionMiniGames.Kind.Memory:
-                    Score = CompetitionMiniGames.MemoryScore(MatchedPairs, Pairs, WrongFlips, Remaining, TimeLimit);
+                    Score = CompetitionMiniGames.MemoryScore(MatchedPairs, Pairs, WrongFlips, Remaining, TimeLimit, RulesVersion);
                     break;
+                case CompetitionMiniGames.Kind.Dice: Score = DiceScore(); break;
+                case CompetitionMiniGames.Kind.Words: Score = WordsScore(); break;
             }
         }
 
@@ -159,11 +240,35 @@ namespace Gamesim.Presentation
         /// </summary>
         public bool Tap()
         {
+            // New rules require an explicit directional input or a click on the visible target.
+            if (RulesVersion >= CompetitionMiniGames.ImprovedRules) return false;
             if (Finished || Kind != CompetitionMiniGames.Kind.Reaction || !TargetLive) return false;
             TargetLive = false;
             Hits++;
             nextTargetAt = Elapsed + Gap();
             return true;
+        }
+
+        public bool Tap(Direction direction)
+        {
+            if (Finished || Kind != CompetitionMiniGames.Kind.Reaction) return false;
+            if (RulesVersion < CompetitionMiniGames.ImprovedRules) return Tap();
+            if (!TargetLive) { FalseStarts++; Feedback = "Too early: wait for a target"; return false; }
+            TargetLive = false;
+            if (RulesVersion < CompetitionMiniGames.ScheduledRules) nextTargetAt = Elapsed + Gap();
+            if (direction != TargetDirection)
+            {
+                WrongDirections++; Feedback = "Missed: wrong direction"; return false;
+            }
+            Hits++; Feedback = "Hit"; return true;
+        }
+
+        /// <summary>Version 3 pointer errors use exactly the same opportunity/early-input policy as directions.</summary>
+        public void MissPointer()
+        {
+            if (Finished || Kind != CompetitionMiniGames.Kind.Reaction || RulesVersion < CompetitionMiniGames.ScheduledRules) return;
+            if (!TargetLive) { FalseStarts++; Feedback = "Too early: wait for a target"; return; }
+            TargetLive = false; PointerMisses++; Feedback = "Missed: outside the target";
         }
 
         /// <summary>
@@ -217,7 +322,18 @@ namespace Gamesim.Presentation
             Spawned++;
             TargetX = random.NextDouble();
             TargetY = random.NextDouble();
-            targetExpiresAt = Elapsed + TargetLife;
+            if (RulesVersion >= CompetitionMiniGames.ImprovedRules)
+            {
+                // The arrow is the equivalent non-pointer input; placement is still real aiming.
+                double x = TargetX - .5, y = TargetY - .5;
+                TargetDirection = Math.Abs(x) > Math.Abs(y)
+                    ? (x < 0 ? Direction.Left : Direction.Right)
+                    : (y < 0 ? Direction.Down : Direction.Up);
+                Feedback = "Target: " + TargetDirection;
+            }
+            TargetWindowSeconds = Definition?.ReactionWindow(Spawned) ?? TargetLife;
+            targetExpiresAt = Elapsed + TargetWindowSeconds;
+            if (RulesVersion >= CompetitionMiniGames.ScheduledRules) nextTargetAt = targetExpiresAt + Gap();
         }
 
         /// <summary>

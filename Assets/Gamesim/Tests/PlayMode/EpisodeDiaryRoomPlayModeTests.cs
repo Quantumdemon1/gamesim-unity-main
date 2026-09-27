@@ -21,6 +21,16 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator DiaryRoom_AllFiveRoutesRemainReachableAndActualTravelButtonOpensWithE()
         {
+            // This test measures route reachability and the diary's durable pause. Crossing every
+            // room can legitimately offer proximity content when two NPCs happen to be present.
+            // HouseEventSourceTests covers that content separately; defer its valid week boundary
+            // here so the full state comparison still detects unintended diary effects. NPC
+            // autonomy stays enabled and its real travel/completion changes remain checked below.
+            var fixture=director.Snapshot;
+            fixture.eventRulesStartWeek=fixture.week+1;
+            Assert.That(EpisodeValidation.TryValidate(fixture,out var fixtureReason),Is.True,fixtureReason);
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
             Assert.That(director.HasDiaryRoom, Is.True);
             var before = director.Snapshot;
             player.Agent.speed = 25; player.Agent.acceleration = 100;
@@ -156,6 +166,9 @@ namespace Gamesim.Tests.PlayMode
                 && state.memories.Any(memory => memory.ownerId == state.playerId), "recorded player experience");
             var before = director.Snapshot;
             yield return OpenDiaryFixturePanel();
+            // The memories are their own tab now (Refinement Kit 6); the privacy rule is the same.
+            ButtonWithCaption(EpisodeDirector.DiaryMemoriesTabCaption).onClick.Invoke();
+            yield return null; yield return null;
             var labels = ActiveDiaryText();
             foreach (var memory in before.memories.Where(memory => memory.ownerId == before.playerId))
                 Assert.That(labels, Does.Contain("Week " + memory.week + ": " + memory.text));
@@ -173,6 +186,11 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator DiaryRoom_EPrioritizesRoomOverNearbyNpcAndLosingProximityClosesIt()
         {
+            // The subject is E's priority, not the house's own clock. The NPC world commits a tick
+            // for every whole second of free time and carries the fraction over from the load, so on
+            // a slower machine the few free frames here could finish a second begun in the set-up
+            // and move the revision this test holds still.
+            director.SuspendNpcAutonomyForDiagnostics();
             var before = director.Snapshot;
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             WarpPlayer(director.DiaryPosition);
@@ -254,8 +272,38 @@ namespace Gamesim.Tests.PlayMode
             var before = director.Snapshot;
             yield return OpenDiaryFixturePanel();
             var caption = "Vote to evict " + before.Find(before.nominees[0]).name;
+            // Review frames of the ballot (mockup-08), before a choice and while it waits.
+            if (Application.isBatchMode) yield return CaptureFraming("ballot-diary");
             ButtonWithCaption(caption).onClick.Invoke();
             yield return null; yield return null;
+            if (Application.isBatchMode) yield return CaptureFraming("ballot-review");
+            // The eviction vote's own panel (mockup-08), with Confirm straight under the cards:
+            // on screen without a scroll, where the choice was just made.
+            Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout,
+                Is.EqualTo(EpisodeHud.ActivityLayout.Ballot), "A ballot in the diary is the eviction vote's panel.");
+            Canvas.ForceUpdateCanvases();
+            var viewport = ScreenRect(director.GetComponentsInChildren<RectTransform>()
+                .First(rect => rect.name == "Episode scroll" && rect.gameObject.activeInHierarchy));
+            var confirmAt = ScreenRect((RectTransform)ButtonWithCaption(EpisodeHud.DiaryConfirmCaption).transform);
+            Assert.That(confirmAt.yMin, Is.GreaterThanOrEqualTo(viewport.yMin - 1f),
+                "Confirm stands under the ballot, not past the fold of the panel.");
+            var cards = ScreenRect(director.GetComponentsInChildren<RectTransform>()
+                .First(rect => rect.name == EpisodeHud.BallotRowName && rect.gameObject.activeInHierarchy));
+            Assert.That(cards.yMin - confirmAt.yMax, Is.LessThan(confirmAt.height),
+                "Confirm follows the cards directly; the explanation comes after it.");
+            // Mockup-08's bar under the vote, in the strip's place.
+            Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == EpisodeHud.SpeechBarName && rect.gameObject.activeInHierarchy),
+                Is.True, "The ballot has its bar.");
+            Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.RootName && rect.gameObject.activeInHierarchy),
+                Is.False, "The bar stands in the strip's place.");
+            // The ballot takes the stage, so the strip's quote card stands down with the strip, and the
+            // bar runs under the whole vote; the vote's foot stays above the status line.
+            Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == Gamesim.Presentation.CastRail.QuoteName && rect.gameObject.activeInHierarchy),
+                Is.False, "The quote card stands down with the strip.");
+            var ballotPanel = ScreenRect(director.GetComponentsInChildren<RectTransform>().First(rect => rect.name == "Episode panel" && rect.gameObject.activeInHierarchy));
+            Assert.That(ballotPanel.width * ballotPanel.height, Is.GreaterThan(Screen.width * Screen.height * .5f), "The vote takes most of the frame: " + ballotPanel + ".");
+            var statusLine = director.GetComponentsInChildren<RectTransform>().FirstOrDefault(rect => rect.name == "Status" && rect.gameObject.activeInHierarchy);
+            if (statusLine != null) Assert.That(ballotPanel.Overlaps(ScreenRect(statusLine)), Is.False, "The vote stands above the status line.");
             AssertEquivalent(before,director.Snapshot);
             ButtonWithCaption(EpisodeHud.DiaryCancelCaption).onClick.Invoke();
             yield return null; yield return null;
@@ -342,7 +390,7 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallFinaleFixture(false);
             var before = director.Snapshot;
             var position = player.transform.position;
-            Assert.That(ButtonWithCaption(EpisodeHud.DiaryTravelCaption).interactable, Is.False);
+            Assert.That(FindButton(EpisodeHud.DiaryTravelCaption).interactable, Is.False);
             director.GoToDiary();
             Assert.That(player.transform.position, Is.EqualTo(position));
             WarpPlayer(director.DiaryPosition);
@@ -402,7 +450,11 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenDiaryFixturePanel();
             Assert.That(DiaryHasButton(choiceCaption), Is.False);
             Assert.That(DiaryHasButton(EpisodeHud.DiarySkipReflectionCaption), Is.False);
-            Assert.That(ActiveDiaryText(), Does.Contain("Current diary persona: " + after.playerPersona.current));
+            // The persona is a row of the record's tab: its label, and the value under it.
+            ButtonWithCaption(EpisodeDirector.DiaryRecordTabCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveRect(EpisodeHud.DiaryRecordRowPrefix + "Diary persona").GetComponentsInChildren<TMPro.TMP_Text>()
+                .Select(label => label.text), Does.Contain(after.playerPersona.current));
             director.ClosePanels();
             var npc = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
             yield return OpenNearbyNpc(npc);
@@ -459,6 +511,9 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             AssertEquivalent(after,director.Snapshot);
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
+            yield return null; yield return null;
+            // The notebook shows one section at a time; declarations are part of the season's story.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain("You declared loyalty to " + after.Find(id).name));
             Assert.That(ActiveDiaryText(), Does.Contain("A declaration is not a mutual guarantee."));
@@ -532,9 +587,26 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator OpenDiaryFixturePanel()
         {
             // Fixture positioning is isolated from the real navigation-route acceptance test above.
+            yield return WaitForDiaryExit();
             WarpPlayer(director.DiaryPosition);
             Assert.That(director.TryOpenDiary(), Is.True);
-            yield return null; yield return null;
+            yield return WaitForDiarySeating();
+        }
+
+        private IEnumerator WaitForDiarySeating()
+        {
+            float deadline=Time.realtimeSinceStartup+20f;
+            while(director.IsDiaryOpen && !director.IsDiarySettled && Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(director.IsDiarySettled,Is.True,"Diary decisions must follow actual approach, alignment and seating.");
+            yield return null;
+        }
+
+        private IEnumerator WaitForDiaryExit()
+        {
+            var seat=player.GetComponent<DiarySeatPose>();
+            float deadline=Time.realtimeSinceStartup+3f;
+            while(seat!=null && seat.Active && Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(seat==null || !seat.Active,Is.True,"Normal departure must finish before movement resumes.");
         }
 
         private IEnumerator WaitForDiaryWalk()
@@ -552,6 +624,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState());
             yield return null; yield return null;
+            if(key==Key.E && director.IsDiaryOpen)yield return WaitForDiarySeating();
+            if(key==Key.Escape && !director.IsDiaryOpen)yield return WaitForDiaryExit();
         }
 
         private bool DiaryHasButton(string caption) => director.GetComponentsInChildren<Button>()

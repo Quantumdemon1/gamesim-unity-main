@@ -139,6 +139,92 @@ namespace Gamesim.Tests.EditMode
             Assert.That(result.state.relationshipArcs.All(a => a.weeklyHistory.Single().delta == -8), Is.True);
         }
 
+        /// <summary>
+        /// Moods move with the week (playtest, 2026-09-27). A nominee read Angry for the rest of the
+        /// season, winning Head of Household or the veto included: the web defines "saved" and
+        /// "competition_win" steps and never calls them. Now a competition won, a veto save and
+        /// surviving the vote each lift two steps, every new week takes one step back toward
+        /// Neutral, and nobody starts a week Angry.
+        /// </summary>
+        [Test]
+        public void MoodsMoveWithTheWeekAndNobodyStartsOneAngry()
+        {
+            // A season this build starts: the story's rules, the ones stress relief plays under.
+            var engine = new EpisodeEngine(StorySeasonTests.StorySeason(77));
+            int turns = 0, wins = 0, saves = 0, survivals = 0;
+            for (int i = 0; i < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+            {
+                var before = engine.Snapshot;
+                var result = engine.Apply(StorySeasonTests.StoryNext(before, 77));
+                Assert.That(result.accepted, Is.True, result.reason);
+                var after = result.state;
+                if (after.week > before.week)
+                {
+                    turns++;
+                    foreach (var guest in after.Active)
+                    {
+                        Assert.That(MoodAt(after, guest.id), Is.EqualTo(Settled(MoodAt(before, guest.id))),
+                            guest.name + " takes one step toward Neutral as week " + after.week + " begins.");
+                        Assert.That(guest.mood, Is.Not.EqualTo("Angry"), guest.name + " starts week " + after.week + " Angry.");
+                    }
+                }
+                if (!before.competitionResolved && after.competitionResolved && after.competitionScores.Count > 0
+                    && (before.phase == EpisodePhase.HoH || before.phase == EpisodePhase.Veto))
+                {
+                    wins++;
+                    string winner = before.phase == EpisodePhase.HoH ? after.hohId : after.vetoHolderId;
+                    Assert.That(MoodAt(after, winner), Is.EqualTo(Math.Min(4, MoodAt(before, winner) + 2)), "Winning lifts two steps.");
+                }
+                if (!before.vetoResolved && after.vetoResolved)
+                    foreach (var saved in before.nominees.Except(after.nominees))
+                    {
+                        saves++;
+                        Assert.That(MoodAt(after, saved), Is.EqualTo(Math.Min(4, MoodAt(before, saved) + 2)), "The veto's save lifts two steps.");
+                    }
+                if (!before.evictionResolved && after.evictionResolved && after.week == before.week)
+                    foreach (var survivor in before.nominees.Where(id => after.Find(id).status == ContestantStatus.Active))
+                    {
+                        survivals++;
+                        Assert.That(MoodAt(after, survivor), Is.EqualTo(Math.Min(4, MoodAt(before, survivor) + 2)), "Surviving the vote lifts two steps.");
+                    }
+            }
+            Assert.That(engine.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
+            Assert.That((turns > 0, wins > 0, saves > 0, survivals > 0), Is.EqualTo((true, true, true, true)),
+                "Every rule came up: " + turns + " turns, " + wins + " wins, " + saves + " saves, " + survivals + " survivals.");
+        }
+
+        [Test]
+        public void ASeasonBeforeTheStoryRulesKeepsItsMoodsAsTheyWere()
+        {
+            // Recorded seasons replay exactly: without the story's rules nothing lifts or settles a mood.
+            var engine = new EpisodeEngine(ContentCatalog.Create(77));
+            for (int i = 0; i < 4000 && engine.Snapshot.week < 3 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+            {
+                var before = engine.Snapshot;
+                var result = engine.Apply(EpisodeEngineTests.NextCommand(before));
+                Assert.That(result.accepted, Is.True, result.reason);
+                foreach (var guest in result.state.contestants)
+                    Assert.That(MoodAt(result.state, guest.id), Is.LessThanOrEqualTo(MoodAt(before, guest.id)),
+                        guest.name + "'s mood rose in a season without the story's rules.");
+            }
+            Assert.That(engine.Snapshot.week, Is.GreaterThanOrEqualTo(3), "The walk reached a third week.");
+        }
+
+        [Test]
+        public void AnAngryNomineeIsAngryAtTheHeadOfHouseholdWhoNominatedThem()
+        {
+            var state = ContentCatalog.Create(101); state.phase = EpisodePhase.Nomination; state.hohId = state.playerId;
+            var c = EpisodeEngineTests.Command(state, EpisodeCommandKind.Nominate);
+            c.targetId = state.contestants[1].id; c.secondTargetId = state.contestants[2].id;
+            var result = new EpisodeEngine(state).Apply(c); Assert.That(result.accepted, Is.True, result.reason);
+            Assert.That(EpisodeEngine.MoodTarget(result.state, c.targetId, out var why), Is.EqualTo(state.playerId));
+            Assert.That(why, Is.EqualTo("nominated them in week " + state.week));
+            Assert.That(EpisodeEngine.MoodTarget(result.state, state.contestants[3].id, out _), Is.Null, "Nobody is sore at anybody for no reason.");
+        }
+
+        private static int MoodAt(EpisodeState s, string id) => Array.IndexOf(EpisodeEngine.Moods, s.Find(id).mood);
+        private static int Settled(int mood) => mood < 2 ? mood + 1 : mood > 2 ? mood - 1 : mood;
+
         [Test]
         public void RecoveryRejectsTamperedQuestionArcAndMentalState()
         {
@@ -151,6 +237,31 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeValidation.TryValidate(bad, out _), Is.False);
             bad = original.Clone(); bad.phase = EpisodePhase.Jury;
             Assert.That(EpisodeValidation.TryValidate(bad, out _), Is.False);
+        }
+
+        [Test]
+        public void AJurorWhoContinuesBeforeVotingReadsNoBallot()
+        {
+            var state = ContentCatalog.Create(337); state.week = 4; state.phase = EpisodePhase.Jury;
+            string first = state.contestants[1].id, second = state.contestants[2].id;
+            foreach (var actor in state.contestants.Where(c => c.id != first && c.id != second)) actor.status = ContestantStatus.Jury;
+            state.hohId = first; state.finalPart1WinnerId = first; state.finalPart2WinnerId = second;
+            Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
+            var engine = new EpisodeEngine(state);
+
+            var early = engine.Apply(EpisodeEngineTests.Command(engine.Snapshot, EpisodeCommandKind.Advance));
+            Assert.That(early.accepted, Is.False);
+            Assert.That(early.reason, Does.Contain("Cast your jury vote"));
+            Assert.That(engine.Snapshot.votes, Is.Empty, "Not one juror's ballot is cast,");
+            Assert.That(engine.Snapshot.events.Any(e => e.kind == "jury-vote"), Is.False, "or read out, before the player's own.");
+
+            var vote = EpisodeEngineTests.Command(engine.Snapshot, EpisodeCommandKind.CastVote); vote.targetId = first;
+            var cast = engine.Apply(vote);
+            Assert.That(cast.accepted, Is.True, cast.reason);
+            var done = engine.Apply(EpisodeEngineTests.Command(engine.Snapshot, EpisodeCommandKind.Advance));
+            Assert.That(done.accepted, Is.True, done.reason);
+            Assert.That(done.state.phase, Is.EqualTo(EpisodePhase.Finished));
+            Assert.That(done.state.votes, Has.Count.EqualTo(state.contestants.Count - 2), "Then the whole jury votes.");
         }
 
         private static EpisodeState FinalThree()

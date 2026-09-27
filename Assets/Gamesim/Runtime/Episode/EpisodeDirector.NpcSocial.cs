@@ -25,6 +25,8 @@ namespace Gamesim.Episode
         }
         private HouseMeetingCoordinator npcMeetings;
         private HouseConversationCaption npcCaption;
+        /// <summary>How far above the pair's feet the witnessed caption's bubble is anchored.</summary>
+        private const float CaptionHeadHeight = 1.95f;
         private HouseMeetingLease npcShownLease;
         private readonly Dictionary<long, HouseMeetingLease> npcPendingWorld = new Dictionary<long, HouseMeetingLease>();
         private readonly List<NpcApproach> npcApproaches = new List<NpcApproach>();
@@ -39,6 +41,41 @@ namespace Gamesim.Episode
 
         public bool NpcAutonomyReady => npcMeetings != null && npcMeetings.IsReady && !npcWorldFailed && !npcDiagnosticsSuspended;
         public string ObservedNpcConversation => npcCaption != null ? npcCaption.CurrentText : "";
+
+        /// <summary>
+        /// Whether listening in is on offer right now: the house's Eavesdrop, on the same terms the
+        /// episode screen offers it - free time or the campaign, an action left, and at least two
+        /// other houseguests to overhear.
+        /// </summary>
+        public bool CanListenIn
+        {
+            get
+            {
+                var state = projected;
+                if (!IsReady || blockedRecovery || challengeActive || state == null) return false;
+                if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign) return false;
+                if (state.Find(state.playerId)?.status != ContestantStatus.Active) return false;
+                if (state.Active.Count(c => !c.isPlayer) < 2) return false;
+                return EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
+            }
+        }
+
+        /// <summary>The Nearby card's control: the house's Eavesdrop, committed as the episode screen commits it.</summary>
+        public void ListenInNearby()
+        {
+            if (!CanListenIn || IsPanelOpen) return;
+            Commit(projected, EpisodeCommandKind.Eavesdrop);
+        }
+
+        /// <summary>
+        /// The Nearby card is up exactly while a conversation is being witnessed, listening in is on
+        /// offer and no panel is open. Update runs it every frame and Render right after rebuilding
+        /// the chrome, which builds the card hidden; the HUD keeps a story's Pull ahead of it.
+        /// </summary>
+        private void TickNearby()
+        {
+            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation) && CanListenIn);
+        }
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>
         public bool IsNpcConversationPhysicallyReady(long sequence) => npcMeetings != null
@@ -61,6 +98,23 @@ namespace Gamesim.Episode
         {
             if (npcMeetings != null || npcWorldFailed || npcDiagnosticsSuspended || projected == null
                 || !NpcSocialState.IsEligible(projected) || blockedRecovery) return;
+            CreateNpcSocialWorld();
+        }
+
+        /// <summary>
+        /// Editor-only: builds the house's world now, as a season's first social phase does and a
+        /// played season then keeps. A fixture installed past that phase has none, and the walk out
+        /// borrows its people from it.
+        /// </summary>
+        public void BuildNpcWorldForDiagnostics()
+        {
+            if (!Application.isEditor) throw new InvalidOperationException("World diagnostics are Editor-only.");
+            if (npcMeetings == null && !npcWorldFailed && !npcDiagnosticsSuspended && projected != null && !blockedRecovery)
+                CreateNpcSocialWorld();
+        }
+
+        private void CreateNpcSocialWorld()
+        {
             if (!HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out var reason)
                 || !HouseMeetingCoordinator.TryCreate(rooms, new NavMeshQueryFilter
                     { agentTypeID = player.Agent.agentTypeID, areaMask = player.Agent.areaMask }, out npcMeetings, out reason))
@@ -74,7 +128,7 @@ namespace Gamesim.Episode
             if (npcMeetings == null || projected == null) return;
             var cast = projected.contestants.Where(actor => !actor.isPlayer).ToArray();
             if (!npcMeetings.Reconcile(NpcWorldGeneration, housemates, cast.Select(actor => actor.id).ToArray(),
-                cast.Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id), out var reason))
+                cast.Where(actor => actor.status == ContestantStatus.Active || actor.id == walkingOutId).Select(actor => actor.id), out var reason))
             { StopNpcWorld(reason); return; }
             foreach (long sequence in npcPendingWorld.Keys.ToArray())
                 if (!projected.npcSocial.pending.Any(row => row.sequence == sequence))
@@ -93,15 +147,22 @@ namespace Gamesim.Episode
             if (npcShownLease != null && (!NpcCanAdvance || !npcMeetings.CanWitness(player, npcShownLease)))
             { npcCaption?.Hide(); npcShownLease = null; }
             if (!IsReady || npcDiagnosticsSuspended) return;
+            if (competitionArenaStaging) { TickCompetitionArena(); return; }
             EnsureNpcSocialWorld();
             if (npcMeetings != null && !npcMeetings.IsReady && !npcWorldFailed && Time.unscaledTime >= npcNextBindingCheck)
             {
                 npcNextBindingCheck = Time.unscaledTime + .1f;
                 ReconcileNpcSocialWorld(); // Surface failed asynchronous bindings, without retry/teleport.
             }
+            // The opening's front door has the house: its people walk where the show sends them, and
+            // nothing else ticks, as the arena's stage does below a competition.
+            if (openingStage != null && openingStage.Active) { openingStage.Tick(); npcCaption?.Hide(); return; }
             bool eligible = NpcCanAdvance && npcMeetings != null;
             SetNpcWorldPaused(!eligible);
-            if (!eligible) { npcCaption?.Hide(); return; }
+            // Paused for the week's business, the house mills about (EpisodeDirector.Wander); free
+            // time hands everybody back to its own conversations.
+            if (!eligible) { npcCaption?.Hide(); TickWandering(); return; }
+            StopWandering();
             // A suspension/debugger/long blocked frame is not elapsed social play.
             // Whole committed seconds persist; the remaining fraction is transient.
             if (float.IsNaN(delta) || float.IsInfinity(delta) || delta < 0 || delta > 1) return;
@@ -291,7 +352,12 @@ namespace Gamesim.Episode
             if (npcMeetings == null) return;
             npcMeetings.SetPaused(paused);
             if (paused && !npcWorldPaused)
-                foreach (var npc in housemates) if (npc != null) npc.GetComponent<CharacterPresentation>()?.SetTalking(false);
+                foreach (var npc in housemates)
+                {
+                    var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
+                    if (visual == null) continue;
+                    visual.SetTalking(false); visual.SetArguing(false);
+                }
             npcWorldPaused = paused;
         }
 
@@ -299,6 +365,7 @@ namespace Gamesim.Episode
         {
             if (!NpcCanAdvance) { npcCaption?.Hide(); return; }
             var talking = new HashSet<string>(); var seated = new HashSet<string>(); var speaking = new HashSet<string>();
+            var arguing = new HashSet<string>();
             var facing = new Dictionary<string, float>(); bool witnessed = false;
             foreach (var pending in projected.npcSocial.pending)
             {
@@ -308,11 +375,21 @@ namespace Gamesim.Episode
                 // by the conversation's sequence so two pairs in the house are not in step.
                 bool firstSpeaks = (((long)(npcFreeSeconds / 4.0) + pending.sequence) & 1) == 0;
                 speaking.Add(firstSpeaks ? pending.firstId : pending.secondId);
+                // The two topics the witnessed caption calls a tense conversation are the two the
+                // bodies argue through. This reads the topic the same way the caption does and
+                // changes nothing about what it says or when it is shown: a body waving its arms
+                // across the house tells a passer-by that something is going on, which is exactly
+                // what the caption already tells whoever is close enough to witness it.
+                if (IsTenseTopic(pending.topic)) { arguing.Add(pending.firstId); arguing.Add(pending.secondId); }
                 if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); }
                 facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
-                if (!witnessed && npcMeetings.CanWitness(player, lease))
+                if (!witnessed && npcMeetings.CanWitness(player, lease,out var visibleMidpoint))
                 {
-                    npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name, pending.topic, largeText ? 1.2f : 1);
+                    // Use the same current body endpoints that passed visibility. Navigation
+                    // approaches stay reserved; they are not where seated faces are rendered.
+                    var between = visibleMidpoint+Vector3.up*(lease.Seated ? .35f : CaptionHeadHeight-1.15f);
+                    npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
+                        pending.topic, largeText ? 1.2f : 1, between);
                     npcShownLease = lease;
                     witnessed = true;
                 }
@@ -324,12 +401,32 @@ namespace Gamesim.Episode
             {
                 var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                 if (visual == null) continue;
+                if(npcMeetings.TryGetActivity(npc.Id,out var activity) && npcMeetings.ActivityValid(activity))continue;
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
-                visual.SetSeated(seated.Contains(npc.Id));
+                var seatPose=npc.GetComponent<HouseSeatPresentation>();
+                if(seated.Contains(npc.Id) && npcMeetings.TryGetSeat(npc.Id,out var seat))
+                {
+                    if(seatPose==null)seatPose=npc.gameObject.AddComponent<HouseSeatPresentation>();
+                    string id=npc.Id;
+                    seatPose.Begin(seat,()=>npcMeetings!=null && npcMeetings.TryGetSeat(id,out var current) && current==seat);
+                }
+                else seatPose?.End();
+                // Only a pose holding the body in its chair seats it (its Cue says so every frame).
+                // Saying "seated" for an arrived pair whose pose had not begun sat that one down in
+                // the air at the table's approach, and a pose begun over that flag later handed it back.
+                if (seatPose == null || !seatPose.Active) visual.SetSeated(false);
+                visual.SetArguing(arguing.Contains(npc.Id));
                 visual.SetFacing(facing.TryGetValue(npc.Id, out float yaw) ? yaw : float.NaN);
             }
         }
+
+        /// <summary>
+        /// The topics a body argues through: the same two <see cref="HouseConversationCaption.Describe"/>
+        /// calls a tense conversation. Kept beside the presentation it drives rather than inside the
+        /// caption, which receives an allowlisted topic and never answers questions about one.
+        /// </summary>
+        private static bool IsTenseTopic(string topic) => topic == "tension" || topic == "rivalry";
 
         private void StopNpcWorld(string reason)
         {
@@ -344,6 +441,9 @@ namespace Gamesim.Episode
         }
         private void DisposeNpcSocialWorld()
         {
+            EndDiaryVisit(true);
+            DisposeHouseActivities();
+            EndCompetitionArena();
             // Disable/re-enable also replaces world ownership, even without a save load.
             loadGeneration = checked(loadGeneration + 1);
             if (housemates != null)
@@ -351,7 +451,7 @@ namespace Gamesim.Episode
                 {
                     var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                     if (visual == null) continue;
-                    visual.SetTalking(false); visual.SetSeated(false); visual.SetFacing(float.NaN);
+                    visual.SetTalking(false); visual.SetSeated(false); visual.SetArguing(false); visual.SetFacing(float.NaN);
                 }
             npcCaption?.Hide(); npcMeetings?.Dispose(); npcMeetings = null;
             npcShownLease = null;

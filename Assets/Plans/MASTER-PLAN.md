@@ -1,5 +1,11 @@
 # Gamesim Big Brother — Master Development Plan
 
+**20 September implementation update:** work now includes schema-13 appearance snapshots, the
+modular creator/library, custom cast slots, activity layouts, prop-bound house interactions and
+versioned competition improvements. Integrated verification is in progress. The dated baseline
+below remains historical; consult fresh XML, build reports and source manifests before claiming a
+current pass. PR #1 was merged on 19 September; human acceptance is still outstanding.
+
 *One plan, replacing eight. Written 2026-09-18 against the code at `ac00ee6` on
 `port/game-flow-v2-pass` — 29 commits ahead of `main`, CI green, EditMode 1208/1208, PlayMode
 152/152. Every status below was read from the tree, not from the plan it supersedes; where a plan
@@ -123,14 +129,14 @@ Standing between "every item delivered" and "done."
 
 | Step | Status | Note |
 | --- | --- | --- |
-| Merge PR #1 to `main` | **open** | Nothing blocks it. `main` has none of Part 1. |
+| Merge PR #1 to `main` | **done — 2026-09-19** | Historical integration completed; subsequent branch work needs its own verification. |
 | Extend `PortVerification.Season` to deals, events, storylines, minigames | **written 2026-09-19; standalone walk passed (89 commands, a winner)** — two gates fixed on the way (a refused proposal records no deal; the ballot is offered only once the night reaches the voting stage); the full season walk is the next build's job | `PortVerification.Season.Systems.cs`: the weekly recap (which would have stranded the old walk after the first eviction), pending house events, one played minigame, an optional deal, and the season's storyline/event/deal counts in the report. The first standalone run showed `-nographics` cannot host the portrait RenderTextures — `Tools/build-and-verify.sh` runs `-batchmode` alone now — and then failed at its own first save/reload check, which now reports what it saw. **That failure was real:** a houseguest body cloned for a season larger than the authored five copied its template's motion owner and agent, and the coordinator refused every such clone its rebind — `FitHousematesToCast` strips them now, `NpcRuntime_ASeasonSeatedBeyondTheSixthSlotBindsAndSurvivesAReload` pins it, and the standalone season is to be rerun. |
 | Run Section E, once | **open** | Three fresh participants, one timed episode each, one losing run to its end. `PLAYTEST_PROTOCOL.md` is how. |
 | Re-measure C1–C5 in a window, on named hardware, at sixteen | **measured at twelve 2026-09-19 on the full authored house, uncapped: median 3.20 ms, p95 4.32, p99 6.28 — above the proposed thresholds, recorded in the matrix** | A roster seats twelve and the builder will not pad a season with the other roster, so sixteen is a save's bound, not a cast; the verifier now clamps and says so. Windowed 1600×900 on the reference machine: median 3.24 ms, p95 4.45 ms, p99 6.32 ms over 300 s and 82,928 frames. The 2 / 3 / 4 ms thresholds came from the primitive prototype; the shell, 139 authored props and twelve bodies cost about 2.5× that. Next: a clean re-run after the verifier fix, then either a profile of where the frame goes or thresholds that name this scene |
 | Tier 5 writing pass — triple every template set | **done 2026-09-19** | 17 dialogue blocks × 6 voices × 3 variants, 6 situations × 3 narratives, 3 storyline chapters × 3, 6 jury reasons × 3. Wording is chosen by week (jury: by seat), never by a roll, so a seeded season plays out identically however it is phrased — `WritingPassTests` pins that. Labels and captions untouched. |
 | D2 — one test that walks every action by keyboard | **done 2026-09-19** | `Accessibility_EveryPanelIsWalkableAndCommittableByKeyboard`: a whole season plus notebook, settings, conversation, recap and report, committed only by `Submit`. It found three real defects on its first runs — the recap and report never took focus, an auto-hidden scrollbar sat in the ring where Down and Tab both refuse to land, and the creator's name field rebuilt the form from its own teardown — all fixed in `EpisodeHud`, `EpisodeDirector` and `CharacterCreator`. |
 | Carry the post-processing volume into `EpisodeHouse.unity` | **done 2026-09-19** | `Gamesim/U07/Carry the volume and decor to the episode house` — volume, camera post-processing flag, and the 46-object `Decor` subtree the first pass could not carry. |
-| Housekeeping: `SampleScene` out of the build list; decide `HousePrototype`; delete the 42 MB unreferenced `QuaterniusBaseCharacters`; extract panels from the 2,230-line director | **done but for the two deletions** | Build list is Bootstrap, HousePrototype, EpisodeHouse. `HousePrototype` stays: three PlayMode suites load it by name and it is the authored source the episode scene is dressed from. Deleting `Assets/Scenes/` and `QuaterniusBaseCharacters/` (43 MB, no GUID referenced outside the folder) awaits a human `git rm`. **Director extracted 2026-09-19**: seven topic partials (Challenge, Ceremony, Journal, Conversation, Season, Camera, Opening) carry 1,396 lines verbatim; the main file is 953 lines of configuration, Update, the command path, Render and the lifecycle. |
+| Housekeeping: `SampleScene` out of the build list; decide `HousePrototype`; delete the 42 MB unreferenced `QuaterniusBaseCharacters`; extract panels from the 2,230-line director | **done** | Build list is Bootstrap, HousePrototype, EpisodeHouse. `HousePrototype` stays: three PlayMode suites load it by name and it is the authored source the episode scene is dressed from. `Assets/Scenes/` and `QuaterniusBaseCharacters/` (43 MB, no GUID referenced outside the folder) deleted 2026-09-19 on the human's say-so. **Director extracted 2026-09-19**: seven topic partials (Challenge, Ceremony, Journal, Conversation, Season, Camera, Opening) carry 1,396 lines verbatim; the main file is 953 lines of configuration, Update, the command path, Render and the lifecycle. |
 | Repoint `README.md`, `COMMIT_NOTES.md`, `UNITY_PORT_ROADMAP.md` at this plan | **done with this document** | The root roadmap's "completion boundary" paragraph is superseded by §1.2. |
 
 ### 3.A — Environment art *(the largest visible gap; Part 4 is the how)*
@@ -171,11 +177,13 @@ contrast results in D6b stop being true.
 | **Reactions** — nominated, saved, evicted, won | **First pass 2026-09-19** — four one-shots authored on the rig, wired from Any State on triggers while standing; the director asks the nominees, the saved, the evicted and the winner at their beats (`Reactions_…` PlayMode test) |
 | **Faces from `mood` × `stressLevel`** | **Done 2026-09-19** — `FaceExpression` builds five blend shapes at runtime on the shipped mesh's Face submesh (the Quaternius head is two white eye shapes on a dark head, no mouth, no brows, no UVs: the emoticon's vocabulary — inner corners down, up, a squint to the lid, narrow, wide), one mesh per source mesh shared by every body of that kind; `CharacterPresentation` pushes the contestant's two words on every attach, eased, immediate under reduced motion; the six bodies the prefabs use import Read/Write for it. Two `Faces_*` PlayMode tests. Blender shape keys were the plan's route; the runtime route needs no key per body and no FBX re-export, and gives every body the same five by one rule |
 | Show-specific wardrobe | **Missing** — "Blender-authored content is still the plan" |
+| **An authored body on the shipped rig** | **First one 2026-09-19** — Dan Gheesling (the All-Stars template's body), `ArtSource/characters/bb_char_dan_gheesling.py`: the CC0 base body re-dressed from his character sheet (spiky hair, dark button-up rolled to the elbow, dark jeans, white sneakers, a grin), 1,894 verts, exported as FBX and GLB into `Art/Authored/Characters/Generic/`. A third route beside A and B: the same 32-bone Generic rig the six bodies and every authored clip use, so nothing is re-imported and every clip plays; the importer takes `Characters/Generic/` as a readable Generic rig, `AuthoredCharacterPrefabs` writes the `Resources/GamesimCharacters/<id>` prefab from the file name, and the palette recolour passes him by because his materials are not named for a shirt. What it cannot do is a likeness: the head is the cast's head, and the sheet is carried by silhouette, outfit and palette. |
 | UMA at a full house of sixteen | **Profiled at twelve 2026-09-19** — the roster's full house; the windowed 300 s profile in the matrix (median 3.20 ms, p95 4.32, p99 6.28) ran the UMA cast, since the working tree's define builds UMA bodies. Sixteen is a save's bound, not a cast |
 
 **Decide once: UMA or bespoke.** UMA gives variety cheaply and costs per frame; bespoke rigs give a
 look and cost an artist. The animation set is needed either way and is the part that reads loudest.
-Part 4 §4.5 covers both routes.
+Part 4 §4.5 covers both routes, and the Dan body above is the cheap third: re-dress the shipped base
+per houseguest, in a script, on the rig everything already plays on.
 
 ### 3.C — Audio *(wiring done; first content 2026-09-19)*
 
@@ -231,7 +239,8 @@ its final frame breaks a guarantee that currently passes.
   text and choices travel inside the recorded command that introduced it.* Events and storylines
   already persist their choices for exactly this reason; the remaining step is to carry generated
   content in the `Advance` payload rather than deriving it inside the commit. `SENTIS_ANALYTICS_ENABLED`
-  exists; Sentis is not installed. This is a project, not a task.
+  exists; `com.unity.ai.inference` 2.6.1 is present in the manifest. That package entry does not
+  establish a generated-content feature; such a feature remains separate future scope.
 
 ### 3.G — Systems depth *(only after the slice)*
 
@@ -258,6 +267,76 @@ Section E once, then every milestone. Windowed performance budgets on named hard
 ceilings. Load-time targets. Crash-free sessions measured in real sessions.
 
 ---
+
+### 3.J — The player's experience, checked against the brief *(2026-09-19)*
+
+The brief: a single-player, Sims-like season of Big Brother USA — create a character or pick a
+default, play the house socially and strategically against interactive houseguests in a
+choose-your-own-adventure season, win or lose the competitions for power, nominate, veto, replace,
+sway the vote, reach the final two, face a jury that votes on its own motivations; keep career
+stats between seasons; play another season by hand, or set up a cast and watch it play out.
+
+| Element of the brief | In the project | Where |
+| --- | --- | --- |
+| Create a character or pick a default | **Present** | `CastSelect` (24-template pool, two rosters, 3–12 seats), `CharacterCreator` (name, age, occupation, hometown, bio, pronouns, two traits, five spare points) |
+| Interactive houseguests, a season with choices | **Present** | 41 command kinds: fourteen social actions, promises, alliances (propose and leave, from any conversation), deals with counter-answers, intel, lies, rumours, schemes, backdoor plans, house meetings; house events and storylines the player resolves by choice; NPCs with motives, meetings, proximity and their own alliances |
+| Competitions: play, simulate or throw; HoH, nominations, veto, replacement, final HoH in three parts | **Present** | `EpisodeEngine` phases HoH → Nomination → VetoSelection → Veto → VetoMeeting → Campaign → Eviction (five stages) → FinalHoH 1–3 → FinalEviction; three mini-games and an untimed assisted option |
+| Sway the house before the vote | **Present** | the Campaign phase, conversations, deals, promises, the block speech, the eviction stages |
+| A jury that votes on its own motivations | **Present, on screen since 2026-09-19** | `WebJuryVoting` (the web's `calculateJuryScore` and `calculateGameplayRespect`: competition wins, times nominated, the strategic stat, alliances, deals, and the relationship) with `WebJurySentiment` and the questioning; the finale panel and the report list each juror's ballot with its recorded reason (J3) |
+| Spectate after eviction | **Present** | the season plays on; the HUD names it; the report badges it |
+| Career stats between seasons | **Present since 2026-09-19** | `CareerLedger` (`career.json` beside the saves): one entry per finished season; seasons, wins, runner-ups, jury finishes, median and best placement, competition record on the main menu, the settings panel and the report (J1) |
+| Set up a cast and watch a season play | **Absent** | the web had no such mode either (its "simulate" is a competition, not a season); the engine already runs NPC-only weeks for the verifier and for a spectating player |
+
+Three items follow. The first and third are small and belong in Phase 0 or 2; the second is a
+feature and belongs after the slice gate, beside clutter and wardrobe.
+
+**J1 — A career ledger, offline. Done 2026-09-19.** One JSON file beside the saves (`career.json`,
+versioned like a save) that the director appends to when a season reaches `Finished`: the season's seed, roster,
+house size, the player's placement, HoH and veto wins, times nominated, days on the block, jury
+votes received, whether they were evicted or spectated, and the winner. From it: seasons played,
+wins, runner-ups, jury finishes, median and best placement, competition record, win rate. Shown on
+the main menu under the continue button as a career line, and as a "YOUR CAREER" card on the season
+report beside "YOUR JOURNEY"; reset from settings with a confirmation. Persisted per save root so
+the tests' isolated roots keep their own; `SaveRootOverride` respected. Tests: the ledger gains one
+entry per finished season and never one for an abandoned one; the median is the median; the report
+card reads the ledger; a corrupt file is archived, not trusted. No accounts, no network - the
+"unranked local season" notice the web showed becomes the truth rather than a caveat.
+*As built:* `Runtime/Persistence/CareerLedger.cs` (envelope, checksum and exact-shape check like
+the save store; schema 1; a file that fails any of them is moved to `career.json.damaged-<stamp>`;
+entries keyed by `sessionId`, so a reloaded finale is not a second season); the placement is read
+from the jury sentiment ledger's order, which holds every evictee including the final eviction's,
+rather than from the capped event log. `EpisodeDirector.Career.cs` records on every durable commit
+and every install, carries the line to the menu and the settings panel, and resets in two clicks
+by moving the file to `career.json.reset-<stamp>`. Tests: `CareerLedgerTests` (seven) and
+`EpisodePlayModeTests.Career` (three, one of them a full season under the director with a reload).
+
+**J2 — Watch a season.** A third entry on the main menu, "Watch a season", that takes the cast
+screen as it is (roster, house size, the creator for a guest star) with no seat for the player, and
+runs the season on the engine's own NPC decisions - the same path the verifier's autonomy walk and
+the post-eviction spectator already use - with the presentation doing the work: the camera follows
+the ceremonies' framing presets, the cast rail and follow keys pick who to ride, the recap opens
+each week, and a pace control (pause, real time, a beat a second, a week a minute) sits where the
+action budget would. Nothing new in the simulation: the player id is a houseguest like the rest with
+`isPlayer` false, so every rule and save format holds, and a watched season can be saved, resumed
+and reported. The ceremonies, the reactions, the seated conversations and the room tone are what
+make it worth watching; this is the item that turns the presentation work into a mode. Tests: an
+NPC-only season reaches `Finished` under the director in batchmode; the pace control changes the
+world's clock and nothing else; a watched season's report has no "you" card and a full cast one.
+
+**J3 — The jury's reasons, on screen. Done 2026-09-19.** The engine already records one: every `jury-vote` ballot
+carries `WebJuryVoting.Reason` - the term that decided it, from the juror's own score of each
+finalist - and the notebook shows the eviction ballots' reasons the same way. The season report
+does not show the jury's. Add a "HOW THE JURY VOTED" section to the report and a line per juror to
+the finale's reveal, read from the recorded ballots, so a player learns whether they lost the jury
+on competitions, on the block, on a broken promise or on the person they were. No schema change; the
+reasons are in the events. Tests: the report lists every juror with their reason; a reloaded
+finished season shows the same lines.
+*As built:* `SeasonReport.JuryBallots` reads the recorded ballots (a voter on the jury, a target
+among the finalists, so a mid-season state's eviction ballots never qualify); the report's "HOW THE
+JURY VOTED" section lists juror, pick and reason with the tally above it, and the finale panel
+prints one line per juror under the winner. The player's own ballot is listed as theirs, with no
+reason invented for it. Tests: `Report_ListsEveryJurorWithTheirReason` and the reload half of the
+career season test.
 
 ## Part 4 — The Blender pipeline
 
@@ -330,7 +409,7 @@ something, and the house is never half-furnished during the transition.
 | **LODs** | `_lod0` / `_lod1` / `_lod2` suffixes on child meshes; Unity's importer builds an `LODGroup` from that naming automatically. Props: 2 levels. Shell: 1. Characters: 3. | The full house is ~175 props plus sixteen bodies. |
 | **Materials** | Principled BSDF only, one material per texture set, named `bb_mat_<name>`. No procedural nodes that do not bake. | Only what bakes survives export. |
 | **Textures** | Baked to power-of-two, 1024 for props, 2048 for hero pieces and characters. **URP/Lit packing:** Base Map (RGB albedo, A alpha) · Metallic map (**R metallic, A smoothness** — bake roughness and invert into the alpha) · Normal map (**OpenGL, +Y**, which is Blender's default) · Occlusion in its own map's G. Emission where the material glows. | URP/Lit reads exactly these channels. A Unity-side "convert roughness" step is a step that gets forgotten. |
-| **Colliders** | Export a separate simplified mesh named `bb_<name>_col` for anything a houseguest must path around. **Do not add colliders to furniture that has none today.** | The NavMesh bakes from colliders; the furniture is collider-free by design because carving it broke seventeen tests (memory: *furniture is collider-free and carving it breaks NPCs*). Colliders are for the shell and the set pieces the navigation audit already accounts for. |
+| **Colliders** | Export a separate simplified mesh named `bb_<name>_col` where the shape matters; otherwise let `Gamesim/Fit furniture collision` box it. **Superseded 2026-09-21:** this row used to read "do not add colliders to furniture that has none today", which is now the opposite of what the house does. | The instruction was right about *carving* and wrong about *colliders*. Fitting `NavMeshObstacle` carving to the set is what broke seventeen tests; a collider on layer 8 does not, because the mesh is correct before anything samples it. Walk-through went 126 of 262 to 41 this way. See `WORLD-INTERACTION.md` Stage 3. |
 
 Textures are baked by `ArtSource/tools/bb_bake.py` (2026-09-19): a procedural surface on a unit
 plane, Cycles on the CPU, to an sRGB albedo and a tangent normal, square and power of two, which
@@ -508,11 +587,12 @@ and the Blender pipeline is the art track of the vertical slice.
 
 | Phase | Weeks | Deliverable | Gate |
 | --- | --- | --- | --- |
-| **0 — Finish** | 1 | §3.0 complete: merged, verified, housekept, E run once, volume in the shipping scene | Section E has a first result; C1–C5 measured windowed |
+| **0 — Finish** | 1 | §3.0 complete: merged, verified, housekept, E run once, volume in the shipping scene; §3.J J1 career ledger and J3 jury reasons **(done 2026-09-19)** | Section E has a first result; C1–C5 measured windowed |
 | **1 — Vertical slice** | 5–7 | **One week of one season at final quality.** Part 4 tiers 1–2 and the seated clip (A, B); theme, bed and cue SFX (C); UI motion and layout (D); ceremonies on Timeline with Cinemachine framing (E) | *Does one week look like a shipped game?* If yes, the rest is production. If no, the answer is in 3.A or 3.B and nothing below fixes it. |
 | **2 — Content** | 3–4 | Tier 5 writing pass, every template set tripled; Part 4 tier 3 furniture; conversation and reaction clips; faces | No repetition inside a season; every room off Kenney |
 | **3 — Platform** | 2–3 | Addressables, three desktop targets, settings, Steam, localisation keys | A stranger can install and play it |
-| **4 — Depth** | ongoing | §3.G; generated content if adopted; wardrobe or cast; clutter | Players are asking for more |
+| **4 — Depth** | ongoing | §3.G; generated content if adopted; wardrobe or cast; clutter; **§3.J J2 watch a season** | Players are asking for more |
+| **5 — The visual target** | 3–5 weeks | `VISUAL-TARGET.md` (2026-09-19): the twelve mockups in `ArtSource/reference/mockups/` as the target; V0 look sheet, V1 light the house, V2 the chrome, V3 the UMA cast, V4 Poly Haven surfaces, V5 camera modes and the live feed, V6 motion | The look sheet's twelve pairs read as the same screens; the C rows hold at twelve |
 
 **Where the phases stand at the end of 2026-09-19.** Phase 0 is done but for the human steps in
 §3.0 (merge PR #1, Section E, the two `git rm`s) and the C-threshold decision the matrix names.
@@ -530,7 +610,7 @@ HUD idiom before finishing the seven steps; the STYLARTS download.
 
 An increment is done when all of the following hold, and *only* then is it merged:
 
-- Offline compile clean; **EditMode ≥ 1253 and PlayMode ≥ 181 passing** (the full run of 2026-09-19: 1253 and 181, none failed), run via
+- Offline compile clean; **EditMode ≥ 1260 and PlayMode ≥ 186 passing** (the full run of 2026-09-19: 1260 and 186, none failed), run via
   `Tools/sync-and-run.sh`, results read from the XML.
 - Every new asset has a `.meta`; no duplicate GUIDs; `GAMESIM_UMA` not in `ProjectSettings.asset`
   — the CI invariants job is green.

@@ -44,6 +44,7 @@ namespace Gamesim.Editor
             written.Add(Write("houseguest", Houseguest));
             written.Add(Write("eye", Eye));
             written.Add(Write("house", House));
+            foreach (var glyph in Glyphs) written.Add(Write(glyph.Key, glyph.Value));
 
             AssetDatabase.Refresh();
             foreach (var path in written) Configure(path);
@@ -61,17 +62,19 @@ namespace Gamesim.Editor
         [MenuItem("Gamesim/U07/Preview HUD icons")]
         public static void Preview()
         {
-            var names = new[] { "target", "crown", "veto-token", "trophy", "gavel", "evicted", "key",
+            var names = new System.Collections.Generic.List<string> { "target", "crown", "veto-token", "trophy", "gavel", "evicted", "key",
                 "houseguest", "eye", "house" };
+            names.AddRange(Glyphs.Keys);
+
             const int cell = 160, pad = 16;
-            int columns = names.Length, width = columns * cell, height = cell;
+            int columns = Mathf.Min(7, names.Count), rows = (names.Count + columns - 1) / columns, width = columns * cell, height = rows * cell;
 
             var sheet = new Texture2D(width, height, TextureFormat.RGBA32, false);
             var ground = new Color32(18, 26, 36, 255);
             var pixels = new Color32[width * height];
             for (int i = 0; i < pixels.Length; i++) pixels[i] = ground;
 
-            for (int i = 0; i < names.Length; i++)
+            for (int i = 0; i < names.Count; i++)
             {
                 // Decoded from the file rather than from the imported asset: an imported sprite is
                 // not CPU-readable unless its importer says so, and turning that on for shipping
@@ -89,7 +92,7 @@ namespace Gamesim.Editor
                     int sy = Mathf.Clamp(y * sprite.height / inner, 0, sprite.height - 1);
                     var texel = source[sy * sprite.width + sx];
                     float alpha = texel.a / 255f;
-                    int dx = i * cell + pad + x, dy = pad + y;
+                    int dx = (i % columns) * cell + pad + x, dy = (rows - 1 - i / columns) * cell + pad + y;
                     var under = pixels[dy * width + dx];
                     pixels[dy * width + dx] = new Color32(
                         (byte)Mathf.RoundToInt(under.r * (1 - alpha) + texel.r * alpha),
@@ -255,6 +258,229 @@ namespace Gamesim.Editor
             c.Rect(.44f, .36f, .12f, .20f);   // lintel over the doorway
         }
 
+
+        // ------------------------------------------------------------------ the mockups' glyphs (V2)
+
+        /// <summary>A heart: two lobes and a point.</summary>
+        private static void Heart(Canvas c)
+        {
+            c.Disc(.34f, .62f, .22f);
+            c.Disc(.66f, .62f, .22f);
+            c.Polygon(new[] { new Vector2(.13f, .56f), new Vector2(.87f, .56f), new Vector2(.50f, .10f) });
+        }
+
+        /// <summary>Two houseguests, for the cast and the relationships cards.</summary>
+        private static void People(Canvas c)
+        {
+            c.Disc(.34f, .70f, .15f);
+            c.Disc(.68f, .66f, .13f);
+            Shoulders(c, .34f, .14f, .30f, .26f);
+            Shoulders(c, .68f, .12f, .25f, .22f);
+        }
+
+        private static void Shoulders(Canvas c, float cx, float baseY, float halfWidth, float height)
+        {
+            var points = new List<Vector2>();
+            const int steps = 20;
+            for (int i = 0; i <= steps; i++)
+            {
+                float angle = Mathf.PI * i / steps;
+                points.Add(new Vector2(cx - Mathf.Cos(angle) * halfWidth, baseY + Mathf.Sin(angle) * height));
+            }
+            points.Add(new Vector2(cx + halfWidth, baseY - .02f));
+            points.Add(new Vector2(cx - halfWidth, baseY - .02f));
+            c.Polygon(points.ToArray());
+        }
+
+        /// <summary>A task: a framed square with a tick.</summary>
+        private static void Task(Canvas c)
+        {
+            Frame(c, .12f, .12f, .76f, .76f, .07f);
+            c.Bar(.28f, .48f, .44f, .30f, .09f);
+            c.Bar(.44f, .30f, .74f, .68f, .09f);
+        }
+
+        private static void Frame(Canvas c, float x, float y, float w, float h, float stroke)
+        {
+            c.Bar(x, y, x + w, y, stroke);
+            c.Bar(x + w, y, x + w, y + h, stroke);
+            c.Bar(x + w, y + h, x, y + h, stroke);
+            c.Bar(x, y + h, x, y, stroke);
+        }
+
+        /// <summary>An open journal: two pages and the gap of the spine.</summary>
+        private static void Journal(Canvas c)
+        {
+            c.Polygon(new[] { new Vector2(.10f, .20f), new Vector2(.46f, .26f), new Vector2(.46f, .84f), new Vector2(.10f, .78f) });
+            c.Polygon(new[] { new Vector2(.54f, .26f), new Vector2(.90f, .20f), new Vector2(.90f, .78f), new Vector2(.54f, .84f) });
+            c.Bar(.10f, .14f, .46f, .20f, .05f);
+            c.Bar(.54f, .20f, .90f, .14f, .05f);
+        }
+
+        /// <summary>A gear: a ring and eight teeth.</summary>
+        private static void Settings(Canvas c)
+        {
+            c.Ring(.50f, .50f, .30f, .13f);
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = Mathf.PI * 2f * i / 8f;
+                float dx = Mathf.Cos(angle), dy = Mathf.Sin(angle);
+                c.Bar(.50f + dx * .26f, .50f + dy * .26f, .50f + dx * .44f, .50f + dy * .44f, .13f);
+            }
+        }
+
+        /// <summary>A camera: a framed body, a viewfinder bump, a lens ring.</summary>
+        private static void CameraGlyph(Canvas c)
+        {
+            Frame(c, .10f, .24f, .80f, .50f, .07f);
+            c.Rect(.34f, .72f, .26f, .12f);
+            c.Ring(.50f, .49f, .16f, .07f);
+            c.Disc(.50f, .49f, .05f);
+        }
+
+        /// <summary>A calendar: a frame, a solid header, two pegs, six days.</summary>
+        private static void Calendar(Canvas c)
+        {
+            Frame(c, .12f, .10f, .76f, .70f, .06f);
+            c.Rect(.12f, .66f, .76f, .14f);
+            c.Rect(.30f, .78f, .08f, .14f);
+            c.Rect(.62f, .78f, .08f, .14f);
+            for (int row = 0; row < 2; row++)
+                for (int col = 0; col < 3; col++)
+                    c.Disc(.30f + col * .20f, .50f - row * .18f, .05f);
+        }
+
+        /// <summary>A five-point star.</summary>
+        private static void Star(Canvas c)
+        {
+            var points = new List<Vector2>();
+            for (int i = 0; i < 10; i++)
+            {
+                float angle = Mathf.PI / 2f + Mathf.PI * i / 5f;
+                float r = i % 2 == 0 ? .46f : .20f;
+                points.Add(new Vector2(.50f + Mathf.Cos(angle) * r, .52f + Mathf.Sin(angle) * r));
+            }
+            c.Polygon(points.ToArray());
+        }
+
+        /// <summary>An ear, for eavesdropping: an outer curl and an inner one.</summary>
+        private static void Ear(Canvas c)
+        {
+            c.Arc(.50f, .58f, .30f, 20f, 300f, .08f);
+            c.Arc(.48f, .52f, .15f, 40f, 250f, .07f);
+            c.Bar(.50f, .28f, .40f, .10f, .09f);
+        }
+
+        /// <summary>A speech bubble with a tail.</summary>
+        private static void Chat(Canvas c)
+        {
+            c.Disc(.50f, .58f, .36f);
+            c.Polygon(new[] { new Vector2(.30f, .34f), new Vector2(.22f, .08f), new Vector2(.52f, .26f) });
+        }
+
+        /// <summary>Two bubbles, for gossip.</summary>
+        private static void Gossip(Canvas c)
+        {
+            c.Disc(.34f, .64f, .25f);
+            c.Polygon(new[] { new Vector2(.18f, .48f), new Vector2(.10f, .26f), new Vector2(.36f, .42f) });
+            c.Disc(.70f, .40f, .21f);
+            c.Polygon(new[] { new Vector2(.84f, .26f), new Vector2(.92f, .06f), new Vector2(.68f, .22f) });
+        }
+
+        /// <summary>A bulb, for strategy: a globe, a neck, a base.</summary>
+        private static void Bulb(Canvas c)
+        {
+            c.Disc(.50f, .62f, .27f);
+            c.Polygon(new[] { new Vector2(.36f, .46f), new Vector2(.64f, .46f), new Vector2(.60f, .30f), new Vector2(.40f, .30f) });
+            c.Rect(.39f, .20f, .22f, .07f);
+            c.Rect(.41f, .11f, .18f, .06f);
+        }
+
+        /// <summary>Two links, for deals and alliances.</summary>
+        private static void Handshake(Canvas c)
+        {
+            c.Ring(.36f, .50f, .24f, .10f);
+            c.Ring(.64f, .50f, .24f, .10f);
+        }
+
+        /// <summary>A doorway and an arrow out of it.</summary>
+        private static void Exit(Canvas c)
+        {
+            Frame(c, .14f, .10f, .46f, .80f, .07f);
+            c.Bar(.44f, .50f, .88f, .50f, .09f);
+            c.Bar(.72f, .66f, .88f, .50f, .09f);
+            c.Bar(.72f, .34f, .88f, .50f, .09f);
+        }
+
+        /// <summary>A bed seen from the side.</summary>
+        private static void Bed(Canvas c)
+        {
+            c.Rect(.08f, .30f, .07f, .44f);
+            c.Rect(.08f, .30f, .84f, .18f);
+            c.Rect(.18f, .50f, .22f, .12f);
+            c.Rect(.08f, .14f, .07f, .16f);
+            c.Rect(.85f, .14f, .07f, .16f);
+        }
+
+        /// <summary>A dumbbell.</summary>
+        private static void Dumbbell(Canvas c)
+        {
+            c.Bar(.22f, .50f, .78f, .50f, .10f);
+            c.Rect(.10f, .30f, .12f, .40f);
+            c.Rect(.24f, .36f, .08f, .28f);
+            c.Rect(.68f, .36f, .08f, .28f);
+            c.Rect(.78f, .30f, .12f, .40f);
+        }
+
+        /// <summary>A fork, for the kitchen.</summary>
+        private static void Fork(Canvas c)
+        {
+            c.Rect(.46f, .08f, .08f, .50f);
+            c.Rect(.34f, .56f, .32f, .08f);
+            c.Rect(.34f, .62f, .07f, .30f);
+            c.Rect(.465f, .62f, .07f, .30f);
+            c.Rect(.59f, .62f, .07f, .30f);
+        }
+
+        // ------------------------------------------------------------------ the mood faces (V2)
+
+        /// <summary>The face every mood shares: a stroked disc, so the mood is in the eyes and mouth.</summary>
+        private static void FaceRing(Canvas c) => c.Ring(.50f, .50f, .44f, .07f);
+        private static void Eyes(Canvas c, float r = .06f) { c.Disc(.36f, .60f, r); c.Disc(.64f, .60f, r); }
+        private static void Smile(Canvas c, float r = .20f) => c.Arc(.50f, .48f, r, 205f, 335f, .07f);
+        private static void Frown(Canvas c) => c.Arc(.50f, .22f, .20f, 25f, 155f, .07f);
+        private static void Flat(Canvas c) => c.Bar(.34f, .32f, .66f, .32f, .07f);
+
+        private static void MoodHappy(Canvas c) { FaceRing(c); Eyes(c); Smile(c, .22f); }
+        private static void MoodConfident(Canvas c) { FaceRing(c); Eyes(c); c.Arc(.54f, .46f, .18f, 215f, 335f, .07f); c.Bar(.28f, .72f, .42f, .74f, .06f); }
+        private static void MoodPlayful(Canvas c) { FaceRing(c); c.Disc(.36f, .60f, .06f); c.Bar(.58f, .61f, .70f, .61f, .06f); Smile(c); c.Disc(.62f, .30f, .05f); }
+        private static void MoodCharming(Canvas c) { FaceRing(c); Eyes(c); Smile(c); c.Arc(.36f, .60f, .12f, 30f, 150f, .05f); c.Arc(.64f, .60f, .12f, 30f, 150f, .05f); }
+        private static void MoodTense(Canvas c) { FaceRing(c); Eyes(c); Flat(c); c.Bar(.26f, .76f, .42f, .70f, .06f); c.Bar(.58f, .70f, .74f, .76f, .06f); }
+        private static void MoodShocked(Canvas c) { FaceRing(c); c.Ring(.36f, .60f, .09f, .05f); c.Ring(.64f, .60f, .09f, .05f); c.Ring(.50f, .30f, .10f, .06f); }
+        private static void MoodConcerned(Canvas c) { FaceRing(c); Eyes(c); Frown(c); c.Bar(.26f, .70f, .42f, .76f, .06f); c.Bar(.58f, .76f, .74f, .70f, .06f); }
+        private static void MoodAmused(Canvas c) { FaceRing(c); Eyes(c); Smile(c, .24f); c.Bar(.56f, .76f, .72f, .80f, .06f); }
+        private static void MoodSuspicious(Canvas c) { FaceRing(c); c.Bar(.28f, .60f, .44f, .60f, .07f); c.Bar(.56f, .60f, .72f, .60f, .07f); c.Bar(.40f, .30f, .66f, .34f, .07f); }
+        private static void MoodAnxious(Canvas c) { FaceRing(c); Eyes(c, .08f); c.Bar(.32f, .30f, .41f, .36f, .06f); c.Bar(.41f, .36f, .50f, .30f, .06f); c.Bar(.50f, .30f, .59f, .36f, .06f); c.Bar(.59f, .36f, .68f, .30f, .06f); }
+        private static void MoodRelieved(Canvas c) { FaceRing(c); c.Arc(.36f, .58f, .09f, 20f, 160f, .06f); c.Arc(.64f, .58f, .09f, 20f, 160f, .06f); Smile(c); }
+        private static void MoodObservant(Canvas c) { FaceRing(c); c.Ring(.36f, .60f, .09f, .045f); c.Ring(.64f, .60f, .09f, .045f); c.Disc(.36f, .60f, .035f); c.Disc(.64f, .60f, .035f); Flat(c); }
+        private static void MoodNeutral(Canvas c) { FaceRing(c); Eyes(c); Flat(c); }
+        private static void MoodAngry(Canvas c) { FaceRing(c); Eyes(c); Frown(c); c.Bar(.26f, .80f, .44f, .70f, .07f); c.Bar(.56f, .70f, .74f, .80f, .07f); }
+        private static void MoodSad(Canvas c) { FaceRing(c); Eyes(c); Frown(c); c.Bar(.28f, .70f, .42f, .76f, .05f); c.Bar(.58f, .76f, .72f, .70f, .05f); }
+
+        /// <summary>The mockups' glyphs and mood faces, by the name UiTheme.Icon loads them under.</summary>
+        private static readonly SortedDictionary<string, System.Action<Canvas>> Glyphs = new SortedDictionary<string, System.Action<Canvas>>
+        {
+            { "heart", Heart }, { "people", People }, { "task", Task }, { "journal", Journal }, { "settings", Settings },
+            { "camera", CameraGlyph }, { "calendar", Calendar }, { "star", Star }, { "ear", Ear }, { "chat", Chat },
+            { "gossip", Gossip }, { "bulb", Bulb }, { "handshake", Handshake }, { "exit", Exit }, { "bed", Bed },
+            { "dumbbell", Dumbbell }, { "fork", Fork },
+            { "mood-happy", MoodHappy }, { "mood-confident", MoodConfident }, { "mood-playful", MoodPlayful },
+            { "mood-charming", MoodCharming }, { "mood-tense", MoodTense }, { "mood-shocked", MoodShocked },
+            { "mood-concerned", MoodConcerned }, { "mood-amused", MoodAmused }, { "mood-suspicious", MoodSuspicious },
+            { "mood-anxious", MoodAnxious }, { "mood-relieved", MoodRelieved }, { "mood-observant", MoodObservant },
+            { "mood-neutral", MoodNeutral }, { "mood-angry", MoodAngry }, { "mood-sad", MoodSad },
+        };
+
         // ------------------------------------------------------------------ raster
 
         /// <summary>A supersampled coverage buffer in unit space, resolved to white-on-transparent.</summary>
@@ -296,6 +522,18 @@ namespace Gamesim.Editor
             }
 
             /// <summary>A thick line between two points, with rounded ends.</summary>
+            /// <summary>A stroked arc, as a run of short bars; angles in degrees, counter-clockwise from +x.</summary>
+            public void Arc(float cx, float cy, float r, float fromDegrees, float toDegrees, float thickness)
+            {
+                int steps = Mathf.Max(6, Mathf.CeilToInt(Mathf.Abs(toDegrees - fromDegrees) / 8f));
+                for (int i = 0; i < steps; i++)
+                {
+                    float a = Mathf.Deg2Rad * Mathf.Lerp(fromDegrees, toDegrees, i / (float)steps);
+                    float b = Mathf.Deg2Rad * Mathf.Lerp(fromDegrees, toDegrees, (i + 1) / (float)steps);
+                    Bar(cx + Mathf.Cos(a) * r, cy + Mathf.Sin(a) * r, cx + Mathf.Cos(b) * r, cy + Mathf.Sin(b) * r, thickness);
+                }
+            }
+
             public void Bar(float x0, float y0, float x1, float y1, float thickness)
             {
                 int s = Side;

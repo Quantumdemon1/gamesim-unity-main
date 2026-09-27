@@ -20,9 +20,8 @@ namespace Gamesim.Simulation
     /// asymmetry is pinned by <c>ClampingIsLossyOnTheWayBack_MatchingTheWebGame</c> and is deliberate
     /// there too.</para>
     ///
-    /// <para>Nothing here persists. A draft becomes a <see cref="ContestantState"/> at the moment the
-    /// season is built and is then forgotten, so the creator adds no saved field and needs no schema
-    /// version — every field it writes has existed since schema 8.</para>
+        /// <para>A draft is copied into a season or reusable profile when confirmed. Appearance uses
+        /// schema 13; canceling a draft cannot change either saved snapshot.</para>
     /// </summary>
     public sealed class CharacterDraft
     {
@@ -54,11 +53,15 @@ namespace Gamesim.Simulation
         public string HomeRoom = "Living";
         public string Motive = "Choose who to trust, survive the vote, and build a game you can explain.";
         public int Age = DefaultAge;
+        public string SourceTemplateId;
+        public CharacterAppearance Appearance = CharacterAppearance.Preset("player");
+        public bool PreserveStats { get; private set; }
 
         public readonly List<string> Traits = new List<string>();
         public ContestantStats Stats = Flat();
 
         private int spent;
+        private readonly Dictionary<string, int> allocated = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>The pronoun sets the form offers, which are the ones the shipped cast uses.</summary>
         public static readonly string[] PronounOptions = { "she/her", "he/him", "they/them" };
@@ -92,6 +95,8 @@ namespace Gamesim.Simulation
         {
             var draft = new CharacterDraft();
             if (template == null) return draft;
+            draft.SourceTemplateId = template.Id;
+            draft.Appearance = CharacterAppearance.Preset(template.Id);
 
             draft.Name = template.Name ?? string.Empty;
             draft.Occupation = template.Occupation ?? string.Empty;
@@ -107,23 +112,59 @@ namespace Gamesim.Simulation
             return draft;
         }
 
+        /// <summary>Cosmetic editing preserves the chosen card's personality and exact stat block.</summary>
+        public static CharacterDraft FromAppearance(CastTemplates.Template template)
+        {
+            var draft = From(template);
+            if (template != null) draft.Stats = CastTemplates.ToContestant(template, true).stats.Clone();
+            draft.PreserveStats = true;
+            return draft;
+        }
+
+        /// <summary>Library snapshots are copied; edits never mutate a profile or a running season.</summary>
+        public static CharacterDraft FromContestant(ContestantState person)
+        {
+            if (person == null) throw new ArgumentNullException(nameof(person));
+            var draft = new CharacterDraft
+            {
+                Name = person.name, Occupation = person.occupation, Hometown = person.hometown, Bio = person.bio,
+                Pronouns = person.pronouns, Archetype = person.archetype, HomeRoom = person.homeRoom, Motive = person.motive,
+                Age = person.age, Stats = person.stats.Clone(), SourceTemplateId = person.sourceTemplateId,
+                Appearance = person.appearance?.Clone() ?? CharacterAppearance.Preset(person.sourceTemplateId ?? person.id),
+                PreserveStats = true
+            };
+            draft.Traits.AddRange(person.traits);
+            return draft;
+        }
+
+        /// <summary>Explicitly rebuild personality allocation while keeping biography and the complete look.</summary>
+        public CharacterDraft RebuildGameplay()
+        {
+            var copy = Copy();
+            copy.PreserveStats = false; copy.spent = 0; copy.allocated.Clear(); copy.Stats = Flat();
+            foreach (string trait in copy.Traits) WebTraits.Apply(copy.Stats, trait, true);
+            return copy;
+        }
+
         // ---------------------------------------------------------------- points
 
         public int Spent => spent;
-        public int Remaining => SparePoints - spent;
+        public int Remaining => PreserveStats ? 0 : SparePoints - spent;
 
         public bool CanRaise(string stat) =>
-            Remaining > 0 && WebTraits.Get(Stats, stat) < WebTraits.Maximum;
+            KnownStat(stat) && Remaining > 0 && WebTraits.Get(Stats, stat) < WebTraits.Maximum;
 
         /// <summary>Only points the player put in can be taken back out, never a trait's boost.</summary>
         public bool CanLower(string stat) =>
-            spent > 0 && WebTraits.Get(Stats, stat) > WebTraits.Minimum;
+            !PreserveStats && KnownStat(stat) && allocated.TryGetValue(stat, out int count) && count > 0
+            && WebTraits.Get(Stats, stat) > WebTraits.Minimum;
 
         public bool Raise(string stat)
         {
             if (!CanRaise(stat)) return false;
             WebTraits.Set(Stats, stat, WebTraits.Get(Stats, stat) + 1);
             spent++;
+            allocated[stat] = allocated.TryGetValue(stat, out int count) ? count + 1 : 1;
             return true;
         }
 
@@ -132,6 +173,7 @@ namespace Gamesim.Simulation
             if (!CanLower(stat)) return false;
             WebTraits.Set(Stats, stat, WebTraits.Get(Stats, stat) - 1);
             spent--;
+            allocated[stat]--;
             return true;
         }
 
@@ -141,7 +183,7 @@ namespace Gamesim.Simulation
             Traits.Any(held => string.Equals(held, trait, StringComparison.OrdinalIgnoreCase));
 
         public bool CanAddTrait(string trait) =>
-            WebTraits.Known(trait) && !HasTrait(trait) && Traits.Count < WebTraits.MaximumTraits;
+            !PreserveStats && WebTraits.Known(trait) && !HasTrait(trait) && Traits.Count < WebTraits.MaximumTraits;
 
         public bool AddTrait(string trait)
         {
@@ -157,6 +199,7 @@ namespace Gamesim.Simulation
 
         public bool RemoveTrait(string trait)
         {
+            if (PreserveStats) return false;
             int index = Traits.FindIndex(held => string.Equals(held, trait, StringComparison.OrdinalIgnoreCase));
             if (index < 0) return false;
             string held = Traits[index];
@@ -180,6 +223,8 @@ namespace Gamesim.Simulation
         /// </summary>
         public bool TryValidate(out string error)
         {
+            if (Appearance != null && !Appearance.TryValidate(out error)) return false;
+            if (Length(SourceTemplateId) > 100) return Fail(out error, "Invalid source template identity.");
             if (string.IsNullOrWhiteSpace(Name)) return Fail(out error, "Give your houseguest a name.");
             if (Name.Length > NameLimit) return Fail(out error, "That name is longer than " + NameLimit + " characters.");
             if (Age < MinimumAge || Age > MaximumAge)
@@ -194,8 +239,9 @@ namespace Gamesim.Simulation
                 return Fail(out error, "One of those traits is not on the list.");
             if (spent < 0 || spent > SparePoints)
                 return Fail(out error, "Spare points are between zero and " + SparePoints + ".");
-            if (WebTraits.StatNames.Any(stat =>
-                    WebTraits.Get(Stats, stat) < WebTraits.Minimum || WebTraits.Get(Stats, stat) > WebTraits.Maximum))
+            if (Stats == null || WebTraits.StatNames.Any(stat => double.IsNaN(WebTraits.Get(Stats, stat))
+                    || double.IsInfinity(WebTraits.Get(Stats, stat))
+                    || WebTraits.Get(Stats, stat) < WebTraits.Minimum || WebTraits.Get(Stats, stat) > WebTraits.Maximum))
                 return Fail(out error, "Every stat is held between " + WebTraits.Minimum + " and " + WebTraits.Maximum + ".");
             error = null;
             return true;
@@ -213,6 +259,8 @@ namespace Gamesim.Simulation
             return new ContestantState
             {
                 id = ContentCatalog.PlayerId,
+                sourceTemplateId = SourceTemplateId,
+                appearance = Appearance?.Clone(),
                 name = Name.Trim(),
                 pronouns = Pronouns,
                 isPlayer = true,
@@ -241,8 +289,10 @@ namespace Gamesim.Simulation
                 Name = Name, Occupation = Occupation, Hometown = Hometown, Bio = Bio,
                 Pronouns = Pronouns, Archetype = Archetype, HomeRoom = HomeRoom, Motive = Motive,
                 Age = Age, spent = spent, Stats = Stats.Clone(),
+                SourceTemplateId = SourceTemplateId, Appearance = Appearance?.Clone(), PreserveStats = PreserveStats,
             };
             copy.Traits.AddRange(Traits);
+            foreach (var item in allocated) copy.allocated.Add(item.Key, item.Value);
             return copy;
         }
 
@@ -256,6 +306,7 @@ namespace Gamesim.Simulation
         }
 
         private static int Length(string value) => value == null ? 0 : value.Length;
+        private static bool KnownStat(string value) => value != null && WebTraits.StatNames.Contains(value, StringComparer.OrdinalIgnoreCase);
         private static string Trim(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         private static bool Fail(out string error, string message) { error = message; return false; }
     }

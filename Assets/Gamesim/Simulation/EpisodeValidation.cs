@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Gamesim.Simulation
@@ -19,7 +20,9 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 12) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 16) return Fail(out error, "Unsupported episode schema.");
+            if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
+                return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0
                 || s.socialActions > MostActionsAWeekCanHold || !Defined(s.phase))
@@ -35,6 +38,8 @@ namespace Gamesim.Simulation
                 !s.contestants.Any(c => c.isPlayer && c.id == s.playerId)) return Fail(out error, "Cast/player identity is invalid.");
             foreach (var c in s.contestants)
             {
+                if (!ShortOrAbsent(c.sourceTemplateId, 100)) return Fail(out error, "Invalid source template identity.");
+                if (c.appearance != null && !c.appearance.TryValidate(out error)) return false;
                 if (!Text(c.id, 100) || !Text(c.name, 100) || !Defined(c.status) || c.stats == null || c.traits == null ||
                     c.traits.Count > 20 || c.traits.Any(t => !Text(t, 100)) || c.nominationWeeks == null || c.nominationWeeks.Count > 100 ||
                     c.nominationWeeks.Any(w => w < 1 || w > s.week) || c.timesNominated < 0 || c.hohWins < 0 || c.vetoWins < 0 ||
@@ -165,6 +170,38 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid story modifier data.");
             if (s.storyRulesStartWeek < 1 || s.storyRulesStartWeek > Math.Min(101, s.week + 1))
                 return Fail(out error, "A storyline rules boundary cannot be further off than next week.");
+            // Schema 14: Have-Nots and the veto's prizes. 0 is a season that never plays them.
+            if (s.haveNotRulesStartWeek < 0 || s.haveNotRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A Have-Not rules boundary cannot be further off than next week.");
+            bool Houseguests(List<string> ids, int most) => ids != null && ids.Count <= most
+                && ids.All(id => s.Find(id) != null) && ids.Distinct(StringComparer.Ordinal).Count() == ids.Count;
+            if (!Houseguests(s.haveNots, 16) || !Houseguests(s.haveNotPasses, 16) || !Houseguests(s.punishedHaveNots, 16))
+                return Fail(out error, "Invalid Have-Not data.");
+            if (s.vetoPrizes == null || s.vetoPrizes.Count > 300 ||
+                s.vetoPrizes.Any(p => p == null || p.week < 1 || p.week > s.week || s.Find(p.contestantId) == null || HaveNots.Find(p.prizeId) == null))
+                return Fail(out error, "Invalid veto prize data.");
+            if (s.haveNotRulesStartWeek == 0 && (s.haveNots.Count > 0 || s.haveNotPasses.Count > 0 || s.punishedHaveNots.Count > 0 || s.vetoPrizes.Count > 0))
+                return Fail(out error, "A season without Have-Nots has none.");
+            // Schema 15: the strategy windows. 0 is a season that never plays them.
+            if (s.strategyRulesStartWeek < 0 || s.strategyRulesStartWeek > Math.Min(101, s.week + 1))
+                return Fail(out error, "A strategy rules boundary cannot be further off than next week.");
+            // Both lists are this week's: the lobbying clears as the week turns, and a reply card is
+            // answered in the phase it arrived in or not at all.
+            if (s.lobbies == null || s.lobbies.Count > 32 || s.lobbies.Any(l => l == null || l.week != s.week
+                    || (l.phase != EpisodePhase.Nomination && l.phase != EpisodePhase.VetoMeeting)
+                    || s.Find(l.deciderId) == null || l.deciderId == s.playerId || !LobbyAsk.IsKnown(l.ask)
+                    || !LobbyApproach.IsKnown(l.approach) || !LobbyResponse.IsKnown(l.response)
+                    || (l.subjectId != null && s.Find(l.subjectId) == null)
+                    || !Finite(l.influence) || Math.Abs(l.influence) > StrategyRules.MostInfluence))
+                return Fail(out error, "Invalid lobbying data.");
+            if (s.replyCards == null || s.replyCards.Count > 24 || s.replyCards.Any(r => r == null || !Text(r.id, 160)
+                    || r.week != s.week || !ReplyCards.IsKnown(r.kind) || s.Find(r.fromId) == null || r.fromId == s.playerId
+                    || (r.aboutId != null && s.Find(r.aboutId) == null))
+                || s.replyCards.Select(r => r.id).Distinct(StringComparer.Ordinal).Count() != s.replyCards.Count
+                || (s.replyCards.Count > 0 && s.phase != EpisodePhase.Social && s.phase != EpisodePhase.Campaign))
+                return Fail(out error, "Invalid reply card data.");
+            if (s.strategyRulesStartWeek == 0 && (s.lobbies.Count > 0 || s.replyCards.Count > 0))
+                return Fail(out error, "A season without the strategy windows has none of their records.");
             if (s.openingBeatsSeen == null || s.openingBeatsSeen.Count > 16 ||
                 s.openingBeatsSeen.Any(beat => !Text(beat, 100)) ||
                 s.openingBeatsSeen.Distinct(StringComparer.Ordinal).Count() != s.openingBeatsSeen.Count)
@@ -218,7 +255,8 @@ namespace Gamesim.Simulation
                     return Fail(out error, "HoH ballots are valid only after a complete tied vote.");
             }
             if (s.phase == EpisodePhase.Jury && s.votes.Any(v => !Live(v.targetId) || Live(v.voterId))) return Fail(out error, "Invalid jury ballot eligibility.");
-            return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error);
+            return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
+                && TryValidateStory(s, out error);
         }
 
         /// <summary>

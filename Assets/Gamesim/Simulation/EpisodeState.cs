@@ -23,7 +23,14 @@ namespace Gamesim.Simulation
     /// </summary>
     public enum EvictionStage { Interaction, Speeches, Voting, Tiebreaker, Results }
 
-    public enum ContestantStatus { Active, Evicted, Jury, Winner, RunnerUp }
+    /// <summary>
+    /// Where a houseguest stands. Append only: saves store the number.
+    ///
+    /// <para><see cref="Expelled"/> is schema 14's: removed by production. Not active, so every
+    /// system that counts the house counts them out; not a juror, because removal has to cost
+    /// something and a seat would need a juror row the Social close cannot give them.</para>
+    /// </summary>
+    public enum ContestantStatus { Active, Evicted, Jury, Winner, RunnerUp, Expelled }
     public enum PromiseKind { Safety, Vote, FinalTwo, AllianceLoyalty, Information }
     public enum PromiseStatus { Active, Fulfilled, Broken, Expired }
 
@@ -47,6 +54,8 @@ namespace Gamesim.Simulation
         // a season built before the creator existed has neither, and every surface omits the line
         // rather than printing a blank one.
         public string hometown, bio;
+        public string sourceTemplateId;
+        public CharacterAppearance appearance;
         public int age;
         public string mood = "Neutral", stressLevel = "Normal";
         public bool isPlayer;
@@ -60,6 +69,7 @@ namespace Gamesim.Simulation
             var copy = (ContestantState)MemberwiseClone();
             copy.stats = stats.Clone(); copy.traits = new List<string>(traits);
             copy.nominationWeeks = new List<int>(nominationWeeks);
+            copy.appearance = appearance?.Clone();
             return copy;
         }
     }
@@ -191,7 +201,8 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 12;
+        public int schemaVersion = 16;
+        public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
         public int revision, week = 1, nextSequence = 1, socialActions;
@@ -354,6 +365,48 @@ namespace Gamesim.Simulation
         /// </summary>
         public int storyRulesStartWeek = 1;
 
+        /// <summary>
+        /// The week the house starts naming Have-Nots and playing the veto for a prize and a
+        /// punishment (<see cref="HaveNots"/>), or 0 for a season that plays without them: every
+        /// season saved before they existed, and the default cast's fixture seasons. A season started
+        /// now sets 1. Schema 14.
+        /// </summary>
+        public int haveNotRulesStartWeek;
+
+        /// <summary>This week's Have-Nots: the last out of the Head of Household competition, and anyone the veto's punishment sent.</summary>
+        public List<string> haveNots = new List<string>();
+
+        /// <summary>Houseguests the veto's prize has made safe from the next week's Have-Nots.</summary>
+        public List<string> haveNotPasses = new List<string>();
+
+        /// <summary>Houseguests the veto's punishment has sent to the next week's Have-Nots, whatever the competition says.</summary>
+        public List<string> punishedHaveNots = new List<string>();
+
+        /// <summary>Every prize and punishment the veto has handed out, for the notebook.</summary>
+        public List<VetoPrizeState> vetoPrizes = new List<VetoPrizeState>();
+
+        /// <summary>
+        /// The week the strategy windows open (<see cref="StrategyRules"/>): lobbying the Head of
+        /// Household and the veto holder, decisions that weigh deals and pleas, reply cards, and the
+        /// deal fixes. 0 for a season that plays without them: every season saved before they
+        /// existed, and the default cast's fixture seasons. A season started now sets 1. Schema 15.
+        /// </summary>
+        public int strategyRulesStartWeek;
+
+        /// <summary>This week's lobbying: who the player asked for what, and what it moved.</summary>
+        public List<LobbyState> lobbies = new List<LobbyState>();
+
+        /// <summary>Houseguests who came to the player in this phase and are waiting on an answer.</summary>
+        public List<ReplyCardState> replyCards = new List<ReplyCardState>();
+
+        // ---------------------------------------------------------------- schema 16
+
+        /// <summary>
+        /// The story system: grudges, facts, bonds, hooks, lore, conduct and the rest of what arcs
+        /// leave behind. Off until something switches it on (<see cref="StoryWorldState.rulesStartWeek"/>).
+        /// </summary>
+        public StoryWorldState story = new StoryWorldState();
+
         public ContestantState Find(string id) => contestants.FirstOrDefault(c => c.id == id);
         public IEnumerable<ContestantState> Active => contestants.Where(c => c.status == ContestantStatus.Active);
         public double Score(string from, string to) => relationships.FirstOrDefault(r => r.fromId == from && r.toId == to)?.score ?? 0;
@@ -389,6 +442,14 @@ namespace Gamesim.Simulation
             copy.houseEvents = houseEvents.Select(x => x.Clone()).ToList();
             copy.storylines = storylines.Select(x => x.Clone()).ToList();
             copy.activeModifiers = activeModifiers.Select(x => x.Clone()).ToList();
+            copy.haveNots = new List<string>(haveNots);
+            copy.haveNotPasses = new List<string>(haveNotPasses);
+            copy.punishedHaveNots = new List<string>(punishedHaveNots);
+            copy.vetoPrizes = vetoPrizes.Select(x => x.Clone()).ToList();
+            copy.lobbies = lobbies.Select(x => x.Clone()).ToList();
+            copy.replyCards = replyCards.Select(x => x.Clone()).ToList();
+            // Deep, like every list above: a rejected candidate command must leave nothing behind.
+            copy.story = story?.Clone();
             return copy;
         }
     }
@@ -422,7 +483,47 @@ namespace Gamesim.Simulation
         /// <summary>Walking in on two houseguests in the same room.</summary>
         WitnessProximity,
         /// <summary>Answering the chapter of a storyline.</summary>
-        ProgressStoryline // Append: preserve every pre-v4 command ordinal.
+        ProgressStoryline, // Append: preserve every pre-v4 command ordinal.
+        /// <summary>
+        /// Introducing yourself to a houseguest on the first night: <c>targetId</c> is the
+        /// houseguest and <c>secondTargetId</c> the approach, "warm", "calculated" or "bold".
+        /// Free, and not a social action; the meet-and-greet is the one time the house comes to you.
+        /// </summary>
+        Introduce,
+        /// <summary>
+        /// Throwing a weekly competition on purpose, from competition rules 4: every bonus is given
+        /// up and only part of the player's score counts (<see cref="CompetitionRules.ThrowShare"/>).
+        /// Earlier seasons throw with a <see cref="Compete"/> at no performance, as they always did.
+        /// </summary>
+        ThrowCompetition,
+        /// <summary>
+        /// Lobbying whoever is deciding, from the strategy rules: <c>targetId</c> is the Head of
+        /// Household before nominations or the veto holder before the meeting, <c>text</c> the ask
+        /// (<see cref="LobbyAsk"/>) and <c>secondTargetId</c> who it is about. A social action.
+        /// </summary>
+        Lobby,
+        /// <summary>
+        /// Answering a houseguest who came to the player: <c>targetId</c> is the reply card and
+        /// <c>text</c> the answer (<see cref="ReplyCards"/>). Free, as answering an offer is.
+        /// </summary>
+        ReplyToHouseguest,
+        // The room acts (decision D-E): the web's room-bound acts, each named for the act. The engine
+        // never needs the room - the act implies it - and the house offers each only where it happens.
+        // Appended, so no recorded ordinal moves.
+        /// <summary>Pillow talk in the bedrooms, with <c>targetId</c>.</summary>
+        PillowTalk,
+        /// <summary>Cooking for the house: <c>targetId</c> and whoever else <c>text</c> names, ids separated by spaces.</summary>
+        Cook,
+        /// <summary>The Head of Household invites <c>targetId</c> up to the suite.</summary>
+        InviteUp,
+        /// <summary>Standing up for <c>targetId</c> in the living room, in front of whoever <c>text</c> names.</summary>
+        PublicDefense,
+        /// <summary>A private word with an ally, <c>targetId</c>, in the backyard.</summary>
+        AllianceMeet,
+        /// <summary>Practising in the backyard for the next competition, with <c>targetId</c> running it.</summary>
+        CompPractice,
+        /// <summary>A game in the game room with <c>targetId</c>.</summary>
+        PlayAGame
     }
 
     /// <summary>

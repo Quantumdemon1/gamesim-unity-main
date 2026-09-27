@@ -100,6 +100,15 @@ def cues():
     yield "PanelClose", stereo(s.lowpass(close_sweep, 2400.0), rev=0.1)
     hover = s.note("sine", 1800.0, 0.09, env=(0.001, 0.02, 0.0, 0.04), gain=0.35)
     yield "Hover", stereo(hover, rev=0.0)
+    # The tour's step, as the reference build's tutorialStep (useGameSFX.ts): a sine gliding from
+    # 500 to 700 Hz over 0.1 s, its gain falling exponentially from 0.15 to 0.001 - with a 2 ms
+    # attack so it does not click and a 3 ms tail to silence, like the rest of the UI foley.
+    dur = 0.1
+    n = s.seconds(dur)
+    t = np.arange(n) / s.SR
+    glide = np.sin(2.0 * np.pi * np.cumsum(500.0 + 200.0 * t / dur) / s.SR)
+    shape = np.minimum(1.0, t / 0.002) * np.exp(-t * np.log(150.0) / dur) * np.clip((dur - t) / 0.003, 0.0, 1.0)
+    yield "TutorialStep", stereo(s.lowpass(glide * shape * 0.4, 3000.0), rev=0.0)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+{
+  "runtime_sprites": 71,
+  "svg_sources": 44,
+  "standalone_screen_previews": 8,
+  "before_after_boards": 5,
+  "checks": [
+    "All sprite PNGs are RGBA",
+    "All sprite RGB pixels are white; all visual geometry is in alpha",
+    "Manifest dimensions and SHA256 match files",
+    "Nine-slice borders leave a stretchable center",
+    "PNG icon alpha equals rasterized SVG source alpha",
+    "State families share dimensions and borders",
+    "No font binaries in package"
+  ],
+  "errors": [],
+  "offline_asset_checks": "PASS",
+  "unity_compilation": "NOT RUN",
+  "unity_render_validation": "NOT RUN",
+  "user_project_test_suite": "NOT RUN",
+  "preview_note": "Static composited references. Room assignments and pending-decision demonstration are fixtures; no game-state claim."
+}

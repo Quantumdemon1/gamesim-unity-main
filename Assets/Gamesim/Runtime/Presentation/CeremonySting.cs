@@ -33,6 +33,10 @@ namespace Gamesim.Presentation
         public const string VetoKind = "veto";
         public const string EvictionKind = "eviction";
         public const string WinnerKind = "winner";
+        /// <summary>The final Head of Household choosing who sits beside them: the engine's own line for it.</summary>
+        public const string FinalEvictionKind = "final-eviction";
+        /// <summary>The evicted walking out through the front door: not a logged ceremony, the house's goodbye.</summary>
+        public const string WalkOutKind = "walk-out";
 
         private const float FadeIn = 0.22f;
         private const float Hold = 2.0f;
@@ -52,8 +56,10 @@ namespace Gamesim.Presentation
         /// drew straight over the Notebook button during every ceremony.
         /// </summary>
         private const float LeftInset = Episode.EpisodeHud.LeftColumnX + 330f + 16f; // column start, width, gap
-        private const float RightInset = 24f + 465f + 16f;  // navigation margin, width, gap
-        private const float TopInset = 18f;
+        private const float RightInset = 24f + Episode.EpisodeHud.RightColumnWidth + 16f;  // column margin, width, gap
+        // Under the top bar: the objective is a chip on the band now, and the card may cover no
+        // part of it.
+        private const float TopInset = 80f;
         private const float HeadlineSize = 34f;
         private const float DetailSize = 19f;
         private const float TopPad = 14f, Gap = 6f, BottomPad = 14f;
@@ -68,6 +74,9 @@ namespace Gamesim.Presentation
 
         /// <summary>Matches the HUD's accessibility preference so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
+
+        /// <summary>Whether the card is still on its own timer, as every sibling card reports.</summary>
+        public bool IsPlaying => playing;
 
         /// <summary>
         /// Creates the sting in <paramref name="owner"/>'s scene, as a root object so it unloads with
@@ -93,7 +102,7 @@ namespace Gamesim.Presentation
 
         /// <summary>Returns true when this kind of committed event deserves a card.</summary>
         public static bool IsCeremony(string kind) =>
-            kind == NominationKind || kind == VetoKind || kind == EvictionKind || kind == WinnerKind;
+            kind == NominationKind || kind == VetoKind || kind == EvictionKind || kind == WinnerKind || kind == FinalEvictionKind || kind == WalkOutKind;
 
         /// <summary>
         /// Plays the card for a committed event. <paramref name="detail"/> must already be
@@ -121,6 +130,14 @@ namespace Gamesim.Presentation
         public void Cancel()
         {
             playing = false;
+            // The canvas goes with it. The fade-out ends by calling this on the first frame past
+            // its end rather than by drawing a last frame at zero, so without this line the card
+            // is stranded at whatever alpha it drew before - a thousandth at a steady frame rate,
+            // three-quarters of full if one long frame crossed the fade in a single step. Nothing
+            // renders either way, because the card itself is deactivated; but the group keeps the
+            // number, and anything that asks the screen whether a card is still fading believes it
+            // forever. Every sibling card zeroes its group here; this one used not to.
+            if (group != null) group.alpha = 0f;
             if (card != null) card.gameObject.SetActive(false);
         }
 
@@ -132,6 +149,8 @@ namespace Gamesim.Presentation
                 case VetoKind: return "VETO CEREMONY";
                 case EvictionKind: return "EVICTION";
                 case WinnerKind: return "THE WINNER";
+                case FinalEvictionKind: return "THE FINAL TWO";
+                case WalkOutKind: return "GOODBYE";
                 default: return string.Empty;
             }
         }
@@ -140,10 +159,11 @@ namespace Gamesim.Presentation
         {
             switch (kind)
             {
-                case NominationKind: return UiTheme.Warning;
+                case NominationKind: return UiTheme.Danger;
                 case VetoKind: return UiTheme.Gold;
                 case EvictionKind: return UiTheme.Danger;
                 case WinnerKind: return UiTheme.Gold;
+                case FinalEvictionKind: return UiTheme.Gold;
                 default: return UiTheme.Accent;
             }
         }
@@ -162,12 +182,15 @@ namespace Gamesim.Presentation
         {
             if (card != null) return;
 
-            card = NewPanel("Card", (RectTransform)transform, UiTheme.Ink, UiTheme.PanelRadius);
+            card = NewPanel("Card", (RectTransform)transform, UiTheme.GlassFill, UiTheme.GlassRadius);
             // Stretched across the top, inset past the chrome on both sides.
             card.anchorMin = new Vector2(0f, 1f);
             card.anchorMax = new Vector2(1f, 1f);
             card.pivot = new Vector2(0.5f, 1f);
-            UiTheme.AddBorder(card, UiTheme.PanelRadius, UiTheme.Outline);
+            // The mockups' running bug is a glass strip: the night ground at 85 %, a cyan hairline
+            // on the edge and a soft glow outside it (mockup-08, -10). The glow is a child that
+            // reaches past the rect, and every geometry check in the suite reads the rect.
+            UiTheme.Glass(card, UiTheme.GlassRadius);
 
             rule = NewPanel("Sting rule", card, UiTheme.Accent, 2).GetComponent<Image>();
             ruleRect = (RectTransform)rule.transform;
@@ -176,6 +199,11 @@ namespace Gamesim.Presentation
             ruleRect.pivot = new Vector2(0f, 0.5f);
 
             headline = NewText("Sting headline", card, HeadlineSize, UiTheme.Accent);
+            headline.overflowMode = TextOverflowModes.Overflow;
+            headline.textWrappingMode = TextWrappingModes.NoWrap;
+            headline.characterSpacing = 2f;
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) headline.font = bold;
             detail = NewText("Sting detail", card, DetailSize, UiTheme.Paper);
 
             card.gameObject.SetActive(false);
@@ -189,7 +217,9 @@ namespace Gamesim.Presentation
         {
             float head = Mathf.Round(HeadlineSize * FontScale);
             float body = Mathf.Round(DetailSize * FontScale);
-            float headLine = Mathf.Ceil(head * 1.2f);
+            // Inter's line is taller than 1.2 of its size, and a headline in a box one pixel short of
+            // its line is truncated whole: every sting drew its detail under an empty band.
+            float headLine = Mathf.Ceil(head * 1.35f);
             float bodyLine = Mathf.Ceil(body * 1.25f);
             float height = TopPad + headLine + Gap + bodyLine + BottomPad;
 
@@ -262,9 +292,7 @@ namespace Gamesim.Presentation
             var holder = new GameObject(name, typeof(RectTransform));
             holder.transform.SetParent(parent, false);
             var label = holder.AddComponent<TextMeshProUGUI>();
-            var font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            var font = UiTheme.Font(UiTheme.Weight.Regular);
             if (font != null) label.font = font;
             label.fontSize = size;
             label.color = color;

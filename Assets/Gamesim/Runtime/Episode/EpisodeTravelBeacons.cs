@@ -1,0 +1,460 @@
+using System.Collections.Generic;
+using Gamesim.House;
+using Gamesim.Presentation;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Gamesim.Episode
+{
+    /// <summary>
+    /// Clickable icons over the house: one above each room, and a click takes the player there.
+    ///
+    /// <para>Two of them are more than rooms. The room the phase's screen stands in carries the
+    /// screen - the episode screen, or the competition in a competition week - and the private
+    /// room carries the diary: out of reach they go there, and within reach they open it, so the
+    /// icon over the thing is the way to use the thing.</para>
+    ///
+    /// <para>Shown only while the camera is pulled back over the house. Close in, following
+    /// somebody, the icons would sit on top of the people the shot is about, and a click meant
+    /// for a houseguest would land on a room instead; the house is a map from far away and a set
+    /// from close up. They never take the keyboard: every place they go has its own control, and
+    /// the notebook's panels keep their Tab ring to themselves.</para>
+    /// </summary>
+    [DisallowMultipleComponent, DefaultExecutionOrder(1000)]
+    public sealed class EpisodeTravelBeacons : MonoBehaviour
+    {
+        public const string RootName = "Travel beacons";
+        /// <summary>The count of houseguests on a room's icon, and the ring that marks the next stop.</summary>
+        public const string BadgeName = "Houseguests here", NextStopName = "Next stop", PointerName = "Toward the next stop";
+        public const string BeaconPrefix = "Beacon · ";
+        public const string StationCaption = "Travel to episode screen";
+        public const string CompetitionCaption = "Travel to competition";
+        public const string DiaryCaption = "Travel to diary room";
+
+        /// <summary>How far back the camera has to be before the icons show, and where they are fully in, in metres.</summary>
+        public const float HiddenBelow = 14f, ShownFrom = 18f;
+
+        /// <summary>Metres over a room's floor: above the walls, which are cut away to 1.1 m, and above heads.</summary>
+        public const float Height = 2.9f;
+        private const float Side = 46f, MarkSide = 26f;
+
+        /// <summary>The caption a room's icon carries: its name, or what it is for.</summary>
+        public static string Caption(string room, string stationRoom, bool competition)
+        {
+            if (room == stationRoom) return competition ? CompetitionCaption : StationCaption;
+            if (room == "Private") return DiaryCaption;
+            return "Travel to the " + RoomLabels.InSentence(room);
+        }
+
+        private sealed class Beacon
+        {
+            public string room;
+            public RectTransform rect;
+            public Button button;
+            public Image mark, ring;
+            public RectTransform badge;
+            public TMP_Text count;
+            public int shownCount = -1;
+            public bool ringed, pinned;
+            public RectTransform pointer;
+            public TMP_Text caption;
+            public GameObject tip;
+            public CanvasGroup group;
+            public bool hovered;
+            public string glyph, said;
+        }
+
+        /// <summary>Tells its beacon the pointer is over it, for the tip that names what a click does.</summary>
+        private sealed class Hover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public Beacon beacon;
+            public void OnPointerEnter(PointerEventData data) { if (beacon != null) beacon.hovered = true; }
+            public void OnPointerExit(PointerEventData data) { if (beacon != null) beacon.hovered = false; }
+        }
+
+        private readonly List<Beacon> beacons = new List<Beacon>();
+        private Canvas canvas;
+        private RectTransform root;
+        private float shownScale = -1f;
+
+        /// <summary>
+        /// The camera a screen point is measured against: none for the overlay the icons are, the
+        /// canvas's own when something - a test capture - has turned it into a camera canvas.
+        /// </summary>
+        private Camera UiCamera => canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+
+        /// <summary>Whether any icon is on screen and can be clicked.</summary>
+        public bool IsShowing { get; private set; }
+        public int Count => beacons.Count;
+
+        public static EpisodeTravelBeacons Attach(GameObject host)
+        {
+            var existing = host.GetComponentInChildren<EpisodeTravelBeacons>(true);
+            if (existing != null) return existing;
+            var holder = new GameObject(RootName, typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            holder.transform.SetParent(host.transform, false);
+            return holder.AddComponent<EpisodeTravelBeacons>();
+        }
+
+        private void Awake()
+        {
+            canvas = GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // Under the HUD, whose panels cover the house and everything on it; over the name
+            // plates and a warp's dip.
+            canvas.sortingOrder = 65;
+            var scaler = GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1600f, 900f);
+            scaler.matchWidthOrHeight = .5f;
+            root = (RectTransform)transform;
+        }
+
+        /// <summary>One icon a room, built once for the house's rooms and kept.</summary>
+        public void Build(IEnumerable<HouseRoomMarker> markers, System.Action<string> go)
+        {
+            foreach (var beacon in beacons) if (beacon.rect != null) Destroy(beacon.rect.gameObject);
+            beacons.Clear();
+            foreach (var marker in markers)
+            {
+                if (marker == null || string.IsNullOrEmpty(marker.RoomName)) continue;
+                string room = marker.RoomName;
+                var beacon = new Beacon { room = room };
+                var rect = new GameObject(BeaconPrefix + room, typeof(RectTransform), typeof(CanvasGroup)).GetComponent<RectTransform>();
+                rect.SetParent(root, false);
+                rect.anchorMin = rect.anchorMax = Vector2.zero;
+                rect.pivot = new Vector2(.5f, .5f);
+                rect.sizeDelta = new Vector2(Side, Side);
+                beacon.rect = rect;
+                beacon.group = rect.GetComponent<CanvasGroup>();
+
+                // A glass disc with a hairline, as the room chips on the overview wear.
+                var disc = HudPrimitives.Disc("Disc", rect, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f));
+                disc.anchorMin = Vector2.zero; disc.anchorMax = Vector2.one;
+                disc.offsetMin = Vector2.zero; disc.offsetMax = Vector2.zero;
+                var face = disc.GetComponent<Image>();
+                face.raycastTarget = true;
+                var ring = HudPrimitives.Disc("Ring", rect, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .7f));
+                ring.anchorMin = Vector2.zero; ring.anchorMax = Vector2.one;
+                ring.offsetMin = new Vector2(-2f, -2f); ring.offsetMax = new Vector2(2f, 2f);
+                ring.SetAsFirstSibling();
+                beacon.ring = ring.GetComponent<Image>();
+
+                var mark = new GameObject("Mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(rect, false);
+                mark.rectTransform.sizeDelta = new Vector2(MarkSide, MarkSide);
+                mark.preserveAspect = true; mark.raycastTarget = false;
+                beacon.mark = mark;
+
+                // The words a click stands for, under the icon while the pointer is on it. The
+                // text is always there, visible or not: it is the control's caption.
+                var tip = HudPrimitives.Fill("Tip", rect, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .94f), 10);
+                tip.anchorMin = tip.anchorMax = new Vector2(.5f, 0f);
+                tip.pivot = new Vector2(.5f, 1f);
+                tip.anchoredPosition = new Vector2(0f, -6f);
+                tip.GetComponent<Image>().raycastTarget = false;
+                var caption = HudPrimitives.Label("Caption", tip, 15f, UiTheme.Paper, TextAlignmentOptions.Center);
+                caption.textWrappingMode = TextWrappingModes.NoWrap;
+                caption.raycastTarget = false;
+                caption.rectTransform.anchorMin = Vector2.zero; caption.rectTransform.anchorMax = Vector2.one;
+                caption.rectTransform.offsetMin = new Vector2(10f, 0f); caption.rectTransform.offsetMax = new Vector2(-10f, 0f);
+                beacon.caption = caption;
+                beacon.tip = tip.gameObject;
+
+                // How many houseguests are in the room, on the icon's shoulder: where the house is
+                // is where the talking is. A label, not a control - the icon takes the click - and
+                // made after the caption, so the caption stays the icon's first words.
+                var badge = HudPrimitives.Disc(BadgeName, rect, UiTheme.Accent);
+                badge.anchorMin = badge.anchorMax = new Vector2(1f, 1f);
+                badge.pivot = new Vector2(.5f, .5f);
+                badge.sizeDelta = new Vector2(20f, 20f);
+                badge.anchoredPosition = new Vector2(-4f, -4f);
+                badge.GetComponent<Image>().raycastTarget = false;
+                var count = HudPrimitives.Label("Count", badge, 12f, UiTheme.Ink, TextAlignmentOptions.Center);
+                count.textWrappingMode = TextWrappingModes.NoWrap;
+                count.raycastTarget = false;
+                count.rectTransform.anchorMin = Vector2.zero; count.rectTransform.anchorMax = Vector2.one;
+                count.rectTransform.offsetMin = Vector2.zero; count.rectTransform.offsetMax = Vector2.zero;
+                badge.gameObject.SetActive(false);
+                beacon.badge = badge; beacon.count = count;
+
+                // The pip on the rim of a next stop that has had to wait somewhere clear, on the
+                // side its place is on.
+                var pointer = HudPrimitives.Disc(PointerName, rect, UiTheme.Accent);
+                pointer.anchorMin = pointer.anchorMax = new Vector2(.5f, .5f);
+                pointer.pivot = new Vector2(.5f, .5f);
+                pointer.sizeDelta = new Vector2(10f, 10f);
+                pointer.GetComponent<Image>().raycastTarget = false;
+                pointer.gameObject.SetActive(false);
+                beacon.pointer = pointer;
+
+                var button = rect.gameObject.AddComponent<Button>();
+                button.targetGraphic = face;
+                button.navigation = new Navigation { mode = Navigation.Mode.None };
+                var colours = button.colors;
+                colours.highlightedColor = new Color(1.25f, 1.25f, 1.25f, 1f);
+                colours.pressedColor = new Color(.8f, .8f, .8f, 1f);
+                button.colors = colours;
+                button.onClick.AddListener(() =>
+                {
+                    // A click selects a Button, and the HUD reads a selection as keyboard focus.
+                    if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == rect.gameObject)
+                        EventSystem.current.SetSelectedGameObject(null);
+                    beacon.hovered = false;
+                    go?.Invoke(room);
+                });
+                beacon.button = button;
+                rect.gameObject.AddComponent<Hover>().beacon = beacon;
+                beacons.Add(beacon);
+            }
+            shownScale = -1f;
+            Hide();
+        }
+
+        public const string FurnitureTipName = "Furniture tip";
+        private RectTransform furnitureTip;
+        private TMP_Text furnitureTipText;
+
+        /// <summary>
+        /// Names what a click on the furniture under the pointer would do, just below the pointer;
+        /// null takes it away. It takes no click: the click is the furniture's.
+        /// </summary>
+        public void ShowFurnitureTip(string text, Vector2 screen, float textScale)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                if (furnitureTip != null && furnitureTip.gameObject.activeSelf) furnitureTip.gameObject.SetActive(false);
+                return;
+            }
+            if (furnitureTip == null)
+            {
+                furnitureTip = HudPrimitives.Fill(FurnitureTipName, root, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .94f), 10);
+                furnitureTip.anchorMin = furnitureTip.anchorMax = Vector2.zero;
+                furnitureTip.pivot = new Vector2(.5f, 1f);
+                furnitureTip.GetComponent<Image>().raycastTarget = false;
+                furnitureTipText = HudPrimitives.Label("Caption", furnitureTip, 15f, UiTheme.Paper, TextAlignmentOptions.Center);
+                furnitureTipText.textWrappingMode = TextWrappingModes.NoWrap;
+                furnitureTipText.raycastTarget = false;
+                furnitureTipText.rectTransform.anchorMin = Vector2.zero; furnitureTipText.rectTransform.anchorMax = Vector2.one;
+                furnitureTipText.rectTransform.offsetMin = new Vector2(10f, 0f); furnitureTipText.rectTransform.offsetMax = new Vector2(-10f, 0f);
+            }
+            if (!furnitureTip.gameObject.activeSelf) furnitureTip.gameObject.SetActive(true);
+            furnitureTipText.text = Localisation.Text(text);
+            furnitureTip.localScale = Vector3.one * textScale;
+            furnitureTip.sizeDelta = new Vector2(Mathf.Ceil(furnitureTipText.GetPreferredValues(furnitureTipText.text).x) + 24f, 30f);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
+            furnitureTip.anchoredPosition = local - root.rect.min + new Vector2(0f, -22f);
+        }
+
+        /// <summary>Takes every icon off the screen, and out of the way of clicks.</summary>
+        public void Hide()
+        {
+            IsShowing = false;
+            foreach (var beacon in beacons)
+            {
+                // An icon switched off never hears the pointer leave, so it forgets the hover here.
+                beacon.hovered = false;
+                if (beacon.tip != null && beacon.tip.activeSelf) beacon.tip.SetActive(false);
+                if (beacon.rect != null && beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(false);
+            }
+        }
+
+        private bool wanted, competition;
+        private HouseCameraRig rig;
+        private float scale = 1f;
+        private string stationRoom, playerRoom;
+        private System.Func<string, Vector3> where;
+        private System.Func<Vector2, bool> covered;
+        private System.Func<string, int> occupants;
+        private string nextStop;
+
+        /// <summary>How many houseguests the icon over a room says are in it, as last shown; -1 while it is hidden.</summary>
+        public int ShownCount(string room)
+        {
+            foreach (var beacon in beacons)
+                if (beacon.room == room) return beacon.rect != null && beacon.rect.gameObject.activeInHierarchy ? beacon.shownCount : -1;
+            return -1;
+        }
+
+        /// <summary>The room whose icon is marked as the next stop, while one is.</summary>
+        public string NextStop => nextStop;
+
+        /// <summary>Whether a room's icon is on screen away from its place, waiting somewhere clear because its place is not.</summary>
+        public bool IsPinned(string room)
+        {
+            foreach (var beacon in beacons)
+                if (beacon.room == room) return beacon.pinned && beacon.rect != null && beacon.rect.gameObject.activeInHierarchy;
+            return false;
+        }
+
+        /// <summary>
+        /// Who is where, and where the player is being sent next: the counts on the icons and the
+        /// ring round the one the objective names. Either may be null.
+        /// </summary>
+        public void Annotate(System.Func<string, int> countIn, string nextStopRoom, string stagedRoom = null)
+        {
+            occupants = countIn;
+            nextStop = nextStopRoom;
+            dramaRoom = stagedRoom;
+        }
+
+        /// <summary>
+        /// The room a story moment is being acted out in, whose icon wears the drama mark (plan
+        /// §5.1) - the mark only: its caption is how the icon is found, and the ring still belongs
+        /// to the next stop, because an optional scene teases rather than nags.
+        /// </summary>
+        public string DramaRoom => dramaRoom;
+        private string dramaRoom;
+        private const string DramaGlyph = "drama";
+
+        /// <summary>
+        /// What this frame's icons should show, from the director's Update. They are placed in
+        /// LateUpdate, after the camera has moved: placed any earlier, every icon trails the view
+        /// by a frame and swims whenever it pans. <paramref name="where"/> says where a room's icon
+        /// floats over the floor; the room the player is standing in is left out, unless there is
+        /// something in it to open.
+        /// </summary>
+        public void Request(bool visible, HouseCameraRig camera, float textScale, string screenRoom, bool isCompetition,
+            string standingIn, System.Func<string, Vector3> anchor, System.Func<Vector2, bool> underChrome = null)
+        {
+            wanted = visible; rig = camera; scale = textScale; stationRoom = screenRoom; competition = isCompetition;
+            playerRoom = standingIn; where = anchor; covered = underChrome;
+            if (!visible) Hide();
+        }
+
+        private void LateUpdate()
+        {
+            if (!wanted || rig == null || where == null) { if (IsShowing) Hide(); return; }
+            Place(rig.ViewCamera, rig.Distance);
+        }
+
+        private void Place(Camera eye, float cameraDistance)
+        {
+            if (eye == null || beacons.Count == 0) { Hide(); return; }
+            float fade = Mathf.InverseLerp(HiddenBelow, ShownFrom, cameraDistance);
+            if (fade <= 0f) { Hide(); return; }
+            if (!Mathf.Approximately(shownScale, scale))
+            {
+                shownScale = scale;
+                foreach (var beacon in beacons) { beacon.rect.localScale = Vector3.one * scale; beacon.glyph = null; beacon.said = null; }
+            }
+            var frame = root.rect;
+            bool any = false;
+            // Middle to edge of an icon, in screen pixels, with a little air.
+            float margin = (Side * .5f + 6f) * scale * canvas.scaleFactor;
+            foreach (var beacon in beacons)
+            {
+                bool special = beacon.room == stationRoom || beacon.room == "Private";
+                bool show = beacon.room != playerRoom || special;
+                Vector3 screen = default;
+                bool pinned = false;
+                Vector2 toward = default;
+                if (show)
+                {
+                    screen = eye.WorldToScreenPoint(where(beacon.room) + Vector3.up * Height);
+                    // An icon under the HUD's chrome is not shown: it would be half hidden, and
+                    // where the chrome takes no click, clickable without being seen. Any of it, not
+                    // just its middle: an icon half under the status line was still being shown.
+                    show = screen.z > .5f && eye.pixelRect.Contains(screen) && !Covered(screen, margin);
+                    // Except the next stop, which is never lost that way: its icon waits at the
+                    // first clear spot on the way from its place to the middle of the screen,
+                    // whole and clickable, with a pip on the side its place is on.
+                    if (!show && beacon.room == nextStop && screen.z > .5f
+                        && TryPin(eye.pixelRect, screen, margin, out var clear))
+                    {
+                        toward = ((Vector2)screen - clear).normalized;
+                        screen = new Vector3(clear.x, clear.y, screen.z);
+                        show = pinned = true;
+                    }
+                }
+                if (!show)
+                {
+                    if (beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(false);
+                    beacon.hovered = false;
+                    continue;
+                }
+                if (!beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(true);
+                any = true;
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
+                beacon.rect.anchoredPosition = local - frame.min;
+                beacon.group.alpha = fade;
+                beacon.group.blocksRaycasts = fade > .5f;
+                beacon.group.interactable = fade > .5f;
+
+                bool staged = beacon.room == dramaRoom && beacon.room != stationRoom && beacon.room != "Private";
+                string glyph = staged ? DramaGlyph : beacon.room == stationRoom ? (competition ? "trophy" : "camera") : RoomLabels.Glyph(beacon.room);
+                // Keyed on the words, not the glyph: the yard wears the trophy as a room and as the
+                // competition's screen, and only its caption says which.
+                string said = Caption(beacon.room, stationRoom, competition);
+                if (glyph != beacon.glyph || said != beacon.said)
+                {
+                    beacon.glyph = glyph; beacon.said = said;
+                    beacon.mark.sprite = staged ? UiTheme.Pack(PackArt.IconDrama) ?? UiTheme.Icon(RoomLabels.Glyph(beacon.room)) : UiTheme.Icon(glyph);
+                    beacon.mark.enabled = beacon.mark.sprite != null;
+                    // Gold is power: the Head of Household's suite wears it here as it does on the map.
+                    // The drama mark is pack art in its own colours.
+                    beacon.mark.color = staged ? Color.white : beacon.room == "HoH" ? UiTheme.Gold : special ? UiTheme.Accent : UiTheme.Heading;
+                    beacon.caption.text = Localisation.Text(said);
+                    var tipRect = (RectTransform)beacon.tip.transform;
+                    tipRect.sizeDelta = new Vector2(Mathf.Ceil(beacon.caption.GetPreferredValues(beacon.caption.text).x) + 24f, 30f);
+                }
+                if (beacon.tip.activeSelf != beacon.hovered) beacon.tip.SetActive(beacon.hovered);
+                if (beacon.pinned != pinned) { beacon.pinned = pinned; beacon.pointer.gameObject.SetActive(pinned); }
+                if (pinned) beacon.pointer.anchoredPosition = toward * (Side * .5f + 6f);
+
+                int here = occupants != null ? Mathf.Max(0, occupants(beacon.room)) : 0;
+                if (here != beacon.shownCount)
+                {
+                    beacon.shownCount = here;
+                    beacon.badge.gameObject.SetActive(here > 0);
+                    beacon.count.text = here > 9 ? "9+" : here.ToString();
+                }
+                // The next stop's ring is lit, and breathes unless motion is reduced.
+                bool next = beacon.room == nextStop;
+                float breathe = next && !rig.ReducedMotion ? .5f + .5f * Mathf.Sin(Time.unscaledTime * 3f) : 1f;
+                beacon.ring.color = next ? new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .55f + .45f * breathe)
+                    : new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .7f);
+                float reach = next ? 4f + 2f * breathe : 2f;
+                beacon.ring.rectTransform.offsetMin = new Vector2(-reach, -reach);
+                beacon.ring.rectTransform.offsetMax = new Vector2(reach, reach);
+                // Renamed only when it changes: reading a name back makes a string every frame.
+                if (beacon.ringed != next) { beacon.ringed = next; beacon.ring.name = next ? NextStopName : "Ring"; }
+            }
+            IsShowing = any;
+        }
+
+        /// <summary>
+        /// The first spot on the way from <paramref name="target"/> to the middle of the screen
+        /// where the whole icon - <paramref name="margin"/> from its middle to its edge - is on
+        /// the screen and clear of the HUD's chrome.
+        /// </summary>
+        private bool TryPin(Rect pixels, Vector2 target, float margin, out Vector2 at)
+        {
+            at = default;
+            var inner = new Rect(pixels.xMin + margin, pixels.yMin + margin, pixels.width - 2f * margin, pixels.height - 2f * margin);
+            if (inner.width <= 0f || inner.height <= 0f) return false;
+            const int Steps = 24;
+            for (int step = 0; step <= Steps; step++)
+            {
+                var point = Vector2.Lerp(target, pixels.center, step / (float)Steps);
+                if (!inner.Contains(point) || Covered(point, margin)) continue;
+                at = point;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Whether the chrome covers an icon here: its middle, or anywhere on the square round it.</summary>
+        private bool Covered(Vector2 point, float margin)
+        {
+            if (covered == null) return false;
+            if (covered(point)) return true;
+            for (int x = -1; x <= 1; x++)
+                for (int y = -1; y <= 1; y++)
+                    if ((x != 0 || y != 0) && covered(point + new Vector2(x * margin, y * margin))) return true;
+            return false;
+        }
+    }
+}

@@ -92,14 +92,16 @@ namespace Gamesim.Tests.PlayMode
             var visuals = SceneComponents<CharacterPresentation>();
             Assert.That(visuals, Has.Length.EqualTo(6));
             Assert.That(visuals.Select(visual => visual.CharacterId), Is.EquivalentTo(snapshot.contestants.Select(actor => actor.id)));
+            // A UMA body is assembled over its first frames and is not drawn until it is.
+            yield return SettleCast();
             foreach (var visual in visuals)
             {
                 var body = visual.transform.Find("Gamesim Character Visual");
                 Assert.That(body, Is.Not.Null, visual.CharacterId + " needs its native articulated visual.");
                 // This used to require more than ten enabled renderers, which was really a count of
-                // the primitive rig's parts. An authored rigged model is a single skinned renderer,
-                // so that count started failing the moment the cast got real models. Both bodies are
-                // correct, so assert the houseguest reads as a person rather than counting pieces.
+                // the primitive rig's parts. A UMA body is a single skinned renderer, so that count
+                // started failing the moment the cast got real models. Both bodies are correct, so
+                // assert the houseguest reads as a person rather than counting pieces.
                 var parts = body.GetComponentsInChildren<Renderer>().Where(renderer => renderer.enabled).ToArray();
                 Assert.That(parts, Is.Not.Empty, visual.CharacterId + " needs a visible body.");
                 var extent = parts[0].bounds;
@@ -166,6 +168,29 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(result.competitionScores, Has.Count.EqualTo(6));
             Assert.That(result.competitionScores.All(score => !double.IsNaN(score.score) && !double.IsInfinity(score.score)), Is.True);
             Assert.That(result.hohId, Is.Not.Null.And.Not.Empty);
+
+            yield return ContinueCompetitionResults(byKeyboard: false);
+            ButtonWithCaption("Review competition results").onClick.Invoke();
+            yield return null;
+            var resultsCard = SceneComponents<CompetitionResult>().Single();
+            Assert.That(resultsCard.IsPlaying, Is.True, "Saved standings must be available to review.");
+            director.ClosePanels();
+            yield return null;
+            Assert.That(resultsCard.IsPlaying, Is.False, "Explicitly closing panels must retire the persistent results scrim.");
+            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(player.InputEnabled, Is.True);
+
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Review competition results").onClick.Invoke();
+            yield return null;
+            Assert.That(resultsCard.IsPlaying, Is.True);
+            director.LoadNow();
+            yield return null; yield return null;
+            Assert.That(resultsCard.IsPlaying, Is.False, "Loading must discard presentation belonging to the replaced session.");
+            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(player.InputEnabled, Is.True);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(result.revision));
+            Assert.That(director.Snapshot.competitionResolved, Is.True, "Dismissing or loading results never replays the competition.");
         }
 
         [UnityTest]
@@ -302,6 +327,7 @@ namespace Gamesim.Tests.PlayMode
             var count = 0;
             while (director.Snapshot.phase != EpisodePhase.Finished && count++ < 150)
             {
+                yield return ContinueCompetitionResults(byKeyboard: false);
                 var before = director.Snapshot;
                 seen.Add(before.phase);
                 var command = NextCommand(before);
@@ -334,6 +360,16 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator ReloadEpisode()
         {
+            // This exact informational startup line is expected on every successful load.
+            // Keep strict teardown checks sensitive to every unrelated log and warning.
+            LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex(
+                "^Gamesim episode ready: [0-9]+ contestants, validated simulation, local recovery and accessible HUD connected\\.$"));
+#if !GAMESIM_UMA
+            // The shipping scene retains its optional UMA-cast component. In the UMA-free
+            // configuration Unity reports exactly this missing-script warning on scene load;
+            // account for it explicitly so strict teardown checks still catch every other log.
+            LogAssert.Expect(LogType.Warning, "The referenced script (Unknown) on this Behaviour is missing!");
+#endif
             yield return SceneManager.LoadSceneAsync(EpisodeScene, LoadSceneMode.Single);
             director = SceneComponents<EpisodeDirector>().Single();
             var deadline = Time.realtimeSinceStartup + 10f;
@@ -372,10 +408,156 @@ namespace Gamesim.Tests.PlayMode
             Physics.SyncTransforms();
         }
 
+        /// <summary>
+        /// The control carrying exactly these words, and a player could have pressed it.
+        ///
+        /// <para>This filtered on <c>IsActive()</c> alone for its whole life and then the callers
+        /// invoked the handler directly, which answers a much weaker question than the one the tests
+        /// are written to ask. A hundred and fifty assertions across twenty files said "the handler
+        /// runs" while reading as "the player can do this". A control that is disabled, or behind a
+        /// modal, or scrolled out of its own viewport, passed every one of them.</para>
+        ///
+        /// <para>That gap is not hypothetical here: a broken feature passed this suite 293/293 the
+        /// same week a commit shipped an event that was declared, subscribed and never raised.
+        /// Pressability is the cheapest property that would have caught a whole class of it.</para>
+        /// </summary>
         private Button ButtonWithCaption(string caption)
         {
-            return director.GetComponentsInChildren<Button>(true).Single(button => button.IsActive()
-                && button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
+            var button = FindButton(caption);
+            ScrollIntoView(button);
+            AssertPressable(button, caption);
+            return button;
+        }
+
+        /// <summary>
+        /// The control carrying these words, without asking whether it can be pressed.
+        ///
+        /// <para>For the handful of tests whose subject IS that a control is unavailable - an
+        /// evicted player's travel buttons, a spent action - where insisting on pressability would
+        /// assert the opposite of the thing under test.</para>
+        /// </summary>
+        private Button FindButton(string caption) =>
+            director.GetComponentsInChildren<Button>(true).Single(item => item.IsActive()
+                && item.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption));
+
+        /// <summary>
+        /// Brings a control inside a scroll view into view, the way a player would.
+        ///
+        /// <para>Seventeen of the first thirty-six failures were this: a control sitting at a
+        /// negative screen y because its panel is taller than its viewport and the content is
+        /// anchored at the top. "A player could not press it" is too strong for those - a player
+        /// scrolls. Doing the scroll here makes the assertion honest AND exercises the scroll,
+        /// which nothing did before; a control that cannot be scrolled to still fails.</para>
+        /// </summary>
+        private static void ScrollIntoView(Button button)
+        {
+            var scroll = button.GetComponentInParent<ScrollRect>();
+            if (scroll == null || scroll.content == null || !scroll.vertical) return;
+            Canvas.ForceUpdateCanvases();
+            var viewport = scroll.viewport != null ? scroll.viewport : (RectTransform)scroll.transform;
+            var target = (RectTransform)button.transform;
+            float span = scroll.content.rect.height, window = viewport.rect.height;
+            float scrollable = span - window;
+            if (scrollable <= 1f) return;
+
+            // Centre it in the viewport by NORMALISED position, not by moving the content rect.
+            // Two earlier versions did the arithmetic directly and both got it wrong in ways that
+            // read as dozens of game defects: one compounded every call and drove controls to
+            // -2120, the next parked them just outside the viewport where the RectMask2D culls them
+            // and the click falls through to the panel behind. Normalised position is bounded by
+            // construction and does not care how deeply the control is nested.
+            var centre = scroll.content.InverseTransformPoint(target.TransformPoint(target.rect.center));
+            float fromTop = scroll.content.rect.yMax - centre.y;
+            scroll.verticalNormalizedPosition =
+                1f - Mathf.Clamp01((fromTop - window * 0.5f) / scrollable);
+            Canvas.ForceUpdateCanvases();
+        }
+
+        /// <summary>
+        /// Fails when the control is disabled or when something else is on top of it.
+        ///
+        /// <para>Reports what IS on top rather than only that something is, because the useful half
+        /// of this failure is which panel is covering the control - a name in that list is a defect
+        /// or a test asserting something it cannot see, and both are worth knowing.</para>
+        /// </summary>
+        private void AssertPressable(Button button, string caption)
+        {
+            Assert.That(button.IsInteractable(), Is.True,
+                "'" + caption + "' is on screen but not interactable, so a player could not press it.");
+            if (EventSystem.current == null) return;
+
+            // Land any reveal still in flight. A panel fades in over 160 ms from alpha 0, a group
+            // at alpha 0 is culled, and a culled graphic takes no raycasts - so a test pressing on
+            // the frame the panel is built finds its own control unreachable. That is the harness
+            // being faster than a person, not a defect: waiting is what a player does, and this is
+            // waiting without a yield. Deliberately only reveals IN FLIGHT - forcing every
+            // zero-alpha group to one would make a deliberately hidden screen look pressable.
+            foreach (var reveal in button.GetComponentsInParent<Gamesim.Presentation.HudReveal>(true))
+                reveal.Finish();
+            var rect = (RectTransform)button.transform;
+            Canvas.ForceUpdateCanvases();
+            var canvas = button.GetComponentInParent<Canvas>();
+            // An overlay canvas draws in screen coordinates, so its rects need a null camera; a
+            // camera-space one needs the camera that renders it.
+            var eye = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera : null;
+            var centre = RectTransformUtility.WorldToScreenPoint(eye, rect.TransformPoint(rect.rect.center));
+            if (centre.x < 0f || centre.y < 0f || centre.x > Screen.width || centre.y > Screen.height)
+                Assert.Fail("'" + caption + "' sits at " + centre.ToString("0") + ", off a "
+                    + Screen.width + "x" + Screen.height + " screen, so a player could not reach it.");
+
+            var hits = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = centre }, hits);
+            if (hits.Count == 0)
+            {
+                // Nothing registered as hittable AT ALL at this point - which also means nothing is
+                // covering the control. A graphic only enters the raycaster's list once the canvas
+                // has built its render batch and given it a depth, and that happens at render time;
+                // a test that presses on the frame the panel was built is simply ahead of the
+                // renderer. So fall back to asking the graphic itself, which is the question that
+                // actually matters: does this control occupy this point, unculled and visible. The
+                // covering check is unaffected, because a coverer would have put itself in the list.
+                var own = button.targetGraphic;
+                if (own != null && !own.canvasRenderer.cull
+                    && own.canvasRenderer.GetInheritedAlpha() > 0.01f
+                    && own.Raycast(centre, null))
+                    return;
+
+                // Report the state rather than the symptom. "Hits nothing" has several possible
+                // causes - no raycaster, a graphic that takes no raycasts, a canvas group that
+                // blocks none, a point outside every canvas - and guessing between them from the
+                // symptom alone has been wrong three times on this instrument already.
+                var graphic = button.targetGraphic;
+                var owner = button.GetComponentInParent<Canvas>();
+                var caster = owner != null ? owner.GetComponent<GraphicRaycaster>() : null;
+                var group = button.GetComponentInParent<CanvasGroup>();
+                Assert.Fail("'" + caption + "' is at " + centre.ToString("0") + " on a "
+                    + Screen.width + "x" + Screen.height + " screen and the pointer hits nothing."
+                    + "  graphic=" + (graphic == null ? "none" : graphic.GetType().Name
+                        + " raycastTarget=" + graphic.raycastTarget + " enabled=" + graphic.enabled)
+                    + "  canvas=" + (owner == null ? "none" : owner.name + " mode=" + owner.renderMode
+                        + " order=" + owner.sortingOrder + " active=" + owner.isActiveAndEnabled)
+                    + "  raycaster=" + (caster == null ? "none" : "enabled=" + caster.enabled)
+                    + "  group=" + (group == null ? "none" : group.name + " blocks=" + group.blocksRaycasts
+                        + " alpha=" + group.alpha.ToString("0.00"))
+                    + "  rect=" + ((RectTransform)button.transform).rect.size.ToString("0")
+                    + "  cull=" + (graphic == null ? "?" : graphic.canvasRenderer.cull.ToString())
+                    + "  inheritedAlpha=" + (graphic == null ? "?"
+                        : graphic.canvasRenderer.GetInheritedAlpha().ToString("0.00"))
+                    + "  selfRaycast=" + (graphic == null ? "?"
+                        : graphic.Raycast(centre, null).ToString())
+                    + "  raycasters=" + Object.FindObjectsByType<BaseRaycaster>(
+                        FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length
+                    + "  topCanvases=" + string.Join(",", Object.FindObjectsByType<Canvas>(
+                        FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                        .Where(c => c.isRootCanvas).OrderByDescending(c => c.sortingOrder)
+                        .Take(4).Select(c => c.name + ":" + c.sortingOrder)));
+            }
+            bool reachable = hits[0].gameObject == button.gameObject
+                || hits[0].gameObject.transform.IsChildOf(button.transform);
+            Assert.That(reachable, Is.True,
+                "'" + caption + "' is covered: a click at its centre lands on '"
+                + HierarchyPath(hits[0].gameObject.transform) + "' instead.");
         }
 
         private static T[] SceneComponents<T>() where T : Component
@@ -470,6 +652,16 @@ namespace Gamesim.Tests.PlayMode
             int count = 0, walkedRoutes = 0;
             while (director.Snapshot.phase != EpisodePhase.Finished && count++ < 150)
             {
+                yield return ContinueCompetitionResults(byKeyboard: false);
+                yield return SkipReveals();
+                // A skipped eviction reveal hands over to the week's recap. This walk used to press
+                // on under the reveal, which the recap takes as the player moving on and drops.
+                if (director.IsWeeklyRecapOpen)
+                {
+                    ButtonWithCaption(WeeklyRecapScreen.ContinueCaption).onClick.Invoke();
+                    yield return Frames(2);
+                    Assert.That(director.IsWeeklyRecapOpen, Is.False, "The recap's Continue closes it.");
+                }
                 var before = director.Snapshot;
                 var next = NextCommand(before);
                 if (!director.IsPanelOpen)
@@ -533,9 +725,18 @@ namespace Gamesim.Tests.PlayMode
                         .Where(item => item.IsActive())
                         .SelectMany(item => item.GetComponentsInChildren<TMPro.TMP_Text>(true))
                         .Select(text => text.text).Distinct().Take(20)));
+                // Measured across the CLICK, not across the whole iteration. `before` was read
+                // above a twelve-second navigation wait, and the houseguests act on their own
+                // while the player walks - so an autonomous conversation committed during the walk
+                // made this read two commits where it wanted one, about six runs in a hundred. The
+                // guarantee is unchanged and sharper: this button, once. The two frames that remain
+                // are the frames the commit itself needs.
+                int beforeClick = director.Snapshot.revision;
                 button.onClick.Invoke();
                 yield return null; yield return null;
-                Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1), before.phase + ": " + director.StatusMessage);
+                Assert.That(director.Snapshot.revision, Is.EqualTo(beforeClick + 1),
+                    before.phase + ": " + director.StatusMessage
+                    + "  ·  one button press must commit exactly one command");
             }
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
             Assert.That(walkedRoutes, Is.GreaterThanOrEqualTo(3));
@@ -709,7 +910,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
         }
 
-        private IEnumerator InstallFinaleFixture(bool playerFinalist)
+        private IEnumerator InstallFinaleFixture(bool playerFinalist, string playerName = null)
         {
             // Generate a legal authoritative history, then install it in this test's isolated slot.
             // The full reachable-station test separately covers ordinary whole-season navigation.
@@ -728,6 +929,9 @@ namespace Gamesim.Tests.PlayMode
                     fixture = candidate;
             }
             Assert.That(fixture, Is.Not.Null, "No bounded legal finale fixture found for the required player role.");
+            // The default cast's player is called "You"; a test that must tell the player's name from
+            // the word gives them one.
+            if (playerName != null) fixture.Find(fixture.playerId).name = playerName;
             new EpisodeSaveStore(director.SavePath).Save(fixture);
             yield return ReloadEpisode();
             AssertEquivalent(fixture,director.Snapshot);

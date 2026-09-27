@@ -63,6 +63,8 @@ namespace Gamesim.House
         public InputAction Interact { get; }
         /// <summary>Space, or South: a competition's tap or hold.</summary>
         public InputAction Hit { get; }
+        /// <summary>M, or the d-pad up: the overview of the whole house, and back.</summary>
+        public InputAction Overview { get; }
 
         public InputActionAsset Asset { get; }
         private readonly bool ownsAsset;
@@ -95,6 +97,7 @@ namespace Gamesim.House
             Diary = shortcuts.FindAction(nameof(Diary), throwIfNotFound: true);
             Interact = shortcuts.FindAction(nameof(Interact), throwIfNotFound: true);
             Hit = shortcuts.FindAction(nameof(Hit), throwIfNotFound: true);
+            Overview = shortcuts.FindAction(nameof(Overview), throwIfNotFound: true);
         }
 
         public void Enable() { if (!disposed) Asset.Enable(); }
@@ -188,6 +191,9 @@ namespace Gamesim.House
             var hit = shortcuts.AddAction(nameof(Hit), InputActionType.Button);
             hit.AddBinding("<Keyboard>/space", groups: km);
             hit.AddBinding("<Gamepad>/buttonSouth", groups: pad);
+            var overview = shortcuts.AddAction(nameof(Overview), InputActionType.Button);
+            overview.AddBinding("<Keyboard>/m", groups: km);
+            overview.AddBinding("<Gamepad>/dpad/up", groups: pad);
 
             asset.AddControlScheme(km).WithRequiredDevice<Keyboard>().WithRequiredDevice<Mouse>();
             asset.AddControlScheme(pad).WithRequiredDevice<Gamepad>();
@@ -197,7 +203,7 @@ namespace Gamesim.House
         /// <summary>The shortcut names, in the map's order.</summary>
         public static readonly string[] ShortcutNames =
         {
-            nameof(Menu), nameof(Notebook), nameof(Save), nameof(Diary), nameof(Interact), nameof(Hit),
+            nameof(Menu), nameof(Notebook), nameof(Save), nameof(Diary), nameof(Interact), nameof(Hit), nameof(Overview),
         };
 
         /// <summary>The ten action names, in the map's order, for the export and its test.</summary>

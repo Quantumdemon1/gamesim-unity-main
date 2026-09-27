@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -36,6 +37,160 @@ namespace Gamesim.Presentation
         public static readonly Color Award = Hex("7C3AED");
         public static readonly Color Paper = Hex("F2F5FA");
         public static readonly Color Muted = Hex("94A7B8");
+
+        // The mockups' palette (VISUAL-TARGET.md §4), beside the set's own tokens above. The panel
+        // ground is the night background at 85 %, so the set shows through every card; the hairline
+        // and its glow are the cyan every panel edge carries; the rest are colours by meaning.
+        public static readonly Color Background = Hex("0B1220");
+        public static readonly Color GlassFill = Hex("0B1220D9");
+        /// <summary>
+        /// The ground a card in a grid sits on, a lift above the night rather than the night again.
+        ///
+        /// <para>A cast card was <see cref="GlassFill"/> on a scrim of <see cref="Background"/> at
+        /// 0.97 - the same hex, under one percent apart - so twelve cards were twelve hairlines
+        /// around nothing. The reference draws the ground at #00101F and the cards at #07182B,
+        /// a lift of about eight parts on every channel.</para>
+        ///
+        /// <para>This goes further than the reference does. Its own card-to-ground lift is 1.074:1,
+        /// and a first attempt at matching it came out at 1.080:1 - which the contrast guard
+        /// rejected, correctly: the reference can afford a lift that small because every card also
+        /// carries a visible border inside a lighter container, and at 1.08 on this palette the card
+        /// is still doing none of the work. 1.21:1 is a card you can see is a card.</para>
+        /// </summary>
+        public static readonly Color CardFill = Hex("1A2438F2");
+        /// <summary>
+        /// The ring a portrait wears in a roster.
+        ///
+        /// <para>Warm, because the reference rings every face in bronze and that is most of what
+        /// makes them read as portraits rather than as avatars. Deliberately NOT <see cref="Gold"/>:
+        /// gold is power here - the crown, the veto, the win - and gilding twelve rings at once
+        /// would spend it on nothing. It clears Gold by 55/255 and Joke by 55/255, and
+        /// <c>GoldIsNotNearlyTheColourOfAnythingThatIsNotPower</c> guards that.</para>
+        /// </summary>
+        public static readonly Color Brass = Hex("C89B54");
+        public static readonly Color Hairline = Hex("3AA0FFC0");
+        public static readonly Color Glow = Hex("5CC8FF");
+        public static readonly Color Flirt = Hex("FF4FA3");     // flirt, playful
+        public static readonly Color Strategic = Hex("A56BFF"); // strategy, gossip, secrets
+        // Amber, not the old FFC93C: that was twenty-two parts in 255 from Gold, so a joke
+        // glyph and a Head of Household crown were the same colour to anyone glancing. This
+        // clears Gold by 31/255 and Warning by 48/255 and still reads 9.7:1 on glass.
+        public static readonly Color Joke = Hex("FFA82C");      // joke, ambition
+        public static readonly Color Allied = Hex("4ADE80");    // reassure, chill, allied
+        public static readonly Color Conflict = Hex("FF5A5A");  // conflict, nominated
+        /// <summary>
+        /// The mockups' title blue: card titles, the objective's title and the wordmark's base. A
+        /// saturated mid-blue, deliberately apart from <see cref="Accent"/> - that pale blue is the
+        /// fixture glow and reads as a light rather than as a word, which is why every heading
+        /// drawn in it looked like one more lamp in the set.
+        /// </summary>
+        public static readonly Color Heading = Hex("4DA8FF");
+        /// <summary>
+        /// The mockups' action blue: the one control to press on a setup screen, and the chosen
+        /// segment of a switch - saturated, with white words on it (4.6:1; Paper is 4.2:1 and falls
+        /// short of body copy). Deliberately not <see cref="AccentDeep"/>, whose best word is 3.89:1.
+        /// </summary>
+        public static readonly Color ActionBlue = Hex("076CFE");
+
+        /// <summary>The mockups' corner radius, and how far a panel's glow reaches past its edge.</summary>
+        public const int GlassRadius = 14;
+        public const int GlowWidth = 10;
+
+        /// <summary>
+        /// How much a panel is asking for. Chrome is structure, not emphasis: a resting edge is a
+        /// seam that keeps the panel from dissolving, an interactive edge says this can be acted
+        /// on, and the accent edge is reserved for whatever the player is meant to act on NOW -
+        /// which is usually nothing, so a resting frame usually carries no accent at all. That is
+        /// what the mockups do: mockup-01 gives no persistent panel a lit edge and mockup-04
+        /// gives exactly one element in the frame one.
+        /// </summary>
+        public enum Emphasis { Resting, Interactive, Active }
+
+        /// <summary>
+        /// The edge colour for a level. The steps are alpha as much as hue, and the numbers are
+        /// measured rather than chosen: composited over the .94 panel ground these read 1.23:1,
+        /// 1.68:1 and 9.05:1 against it, and in luminance alone - which is what a colour-blind
+        /// player and a bloom-crushed frame both see - they are greys 42, 62 and 179 of 255.
+        ///
+        /// <para>Resting sits just over the 1.2:1 floor that
+        /// <c>PanelEdges_AreDistinguishableFromTheirFill</c> holds panels to, which is as close to
+        /// the mockups' near-invisible seam as this ground allows. A lower alpha was tried first:
+        /// .16 measures 1.09:1, under that floor, and lands 1.09:1 from the interactive step, so
+        /// the two levels were one level.</para>
+        /// </summary>
+        public static Color Edge(Emphasis emphasis)
+        {
+            switch (emphasis)
+            {
+                case Emphasis.Active:      return new Color(Accent.r, Accent.g, Accent.b, .85f);
+                case Emphasis.Interactive: return Outline;   // its own authored .69
+                default:                   return new Color(Outline.r, Outline.g, Outline.b, .32f);
+            }
+        }
+
+        /// <summary>
+        /// Dresses <paramref name="panel"/> as one of the mockups' glass cards: the night ground at
+        /// 85 %, a cyan hairline on the edge and a soft glow of the same hue outside it. The glow is
+        /// a child that reaches <see cref="GlowWidth"/> px past the rect; layout and overlap checks
+        /// read the rect, not the glow.
+        /// </summary>
+        public static void Glass(RectTransform panel, int radius = GlassRadius)
+        {
+            if (panel == null) return;
+            var image = panel.GetComponent<Image>();
+            if (image == null) image = panel.gameObject.AddComponent<Image>();
+            Style(image, GlassFill, radius);
+            AddGlow(panel, radius);
+            AddBorder(panel, radius, Hairline);
+        }
+
+        /// <summary>
+        /// The glass card's halo and nothing else: a child reaching <see cref="GlowWidth"/> px past
+        /// the rect, behind every other child, that never touches the panel's own ground or edge.
+        ///
+        /// <para>The cast screen wanted a glow on grounds of its own - the card ground on the picked
+        /// card, a saturated fill on the active pills - and the only way to get one was
+        /// <see cref="Glass"/>. So it called Glass, which repainted the ground to GlassFill and
+        /// drew a hairline, then painted its own ground back over the top and drew a second edge
+        /// over the first. Two write-backs and a doubled ring, to get one child. Ask for the child.</para>
+        ///
+        /// <para>It is named "Glow", never "Border": <c>HudEmphasis.Promote</c> finds a panel's edge
+        /// by that name, and a halo is not an edge.</para>
+        /// </summary>
+        public static void AddGlow(RectTransform panel, int radius)
+        {
+            if (panel == null) return;
+            var glow = new GameObject("Glow", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)glow.transform;
+            rect.SetParent(panel, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(-GlowWidth, -GlowWidth); rect.offsetMax = new Vector2(GlowWidth, GlowWidth);
+            var glowImage = glow.GetComponent<Image>();
+            glowImage.sprite = GlowSprite(radius);
+            glowImage.type = Image.Type.Sliced;
+            glowImage.pixelsPerUnitMultiplier = 1f;
+            glowImage.color = new Color(Glow.r, Glow.g, Glow.b, 0.35f);
+            glowImage.raycastTarget = false;
+        }
+
+        public enum Weight { Regular, Medium, SemiBold, Bold }
+
+        private static readonly Dictionary<Weight, TMP_FontAsset> fonts = new Dictionary<Weight, TMP_FontAsset>();
+
+        /// <summary>
+        /// The mockups' typeface at a weight: Inter, from <c>Resources/Fonts</c>. Falls back to the
+        /// project's default font asset when the weight is not there, so a clone without the fonts
+        /// still draws every label.
+        /// </summary>
+        public static TMP_FontAsset Font(Weight weight)
+        {
+            if (fonts.TryGetValue(weight, out var cached) && cached != null) return cached;
+            var asset = Resources.Load<TMP_FontAsset>("Fonts/Inter-" + weight + " SDF");
+            if (asset == null) asset = TMP_Settings.defaultFontAsset;
+            fonts[weight] = asset;
+            return asset;
+        }
 
         /// <summary>
         /// Ink or Paper, whichever reads against <paramref name="background"/>.
@@ -129,6 +284,49 @@ namespace Gamesim.Presentation
         private static readonly System.Collections.Generic.Dictionary<string, Sprite> icons
             = new System.Collections.Generic.Dictionary<string, Sprite>();
 
+        /// <summary>
+        /// A sprite from the imported UI packs, by its path under <c>Resources/Packs</c> without the
+        /// extension - one of the <see cref="PackArt"/> names - or null when it is not there.
+        ///
+        /// <para>Cached, and null-safe the same way <see cref="Icon"/> is: the packs are an import
+        /// (<c>ArtSource/ui-packs/tools/bb_ui_packs.py --install</c>), so every caller keeps the
+        /// shape it drew before and a clone without them gets the plainer HUD, not holes. The pack
+        /// files stay where the importer put them; copying one into <c>GamesimIcons</c> would be
+        /// undone the next time the icon pass regenerates that folder.</para>
+        /// </summary>
+        public static Sprite Pack(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            if (packs.TryGetValue(path, out var cached)) return cached;
+            var sprite = Resources.Load<Sprite>("Packs/" + path);
+            packs[path] = sprite;
+            return sprite;
+        }
+
+        private static readonly Dictionary<string, Sprite> packs = new Dictionary<string, Sprite>();
+
+        /// <summary>
+        /// Paints <paramref name="image"/> with a nine-sliced pack sprite at
+        /// <paramref name="border"/> canvas units a side, keeping whatever it had when the sprite is
+        /// missing. Returns whether the pack art was applied.
+        ///
+        /// <para>The pack's nine-slice borders are authored for a 1920-wide screen at two to four
+        /// times the size a HUD edge wants, so the multiplier is solved from the border the caller
+        /// asks for rather than guessed per call.</para>
+        /// </summary>
+        public static bool PackSliced(Image image, string path, float border, Color? tint = null)
+        {
+            var sprite = Pack(path);
+            if (image == null || sprite == null) return false;
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+            float authored = Mathf.Max(sprite.border.x, sprite.border.y, sprite.border.z, sprite.border.w);
+            image.pixelsPerUnitMultiplier = authored > 0f && border > 0f
+                ? authored / border * (100f / sprite.pixelsPerUnit) : 1f;
+            image.color = tint ?? Color.white;
+            return true;
+        }
+
         public static Sprite Circle()
         {
             if (circle != null) return circle;
@@ -166,8 +364,209 @@ namespace Gamesim.Presentation
             return circle;
         }
 
+        private static Sprite ring;
+
+        /// <summary>
+        /// A ring, white, anti-aliased on both edges, its stroke a ninth of its diameter: the track
+        /// and the draining arc of a clock or a window, drawn as a Filled Radial360 image. Generated
+        /// once, like <see cref="Circle"/>, and readable. The pack's timer ring bakes in a fixed
+        /// fill, so it can decorate but never drain.
+        /// </summary>
+        public static Sprite Ring()
+        {
+            if (ring != null) return ring;
+            const int size = 256;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Ring", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            const float half = size * .5f, outer = half - 1.5f, inner = outer - size / 9f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x + .5f - half, dy = y + .5f - half, d = Mathf.Sqrt(dx * dx + dy * dy);
+                float alpha = Mathf.Clamp01(.5f - (d - outer)) * Mathf.Clamp01(.5f + (d - inner));
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            ring = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            ring.name = texture.name;
+            ring.hideFlags = HideFlags.HideAndDontSave;
+            return ring;
+        }
+
+        private static Sprite softLine;
+
+        /// <summary>
+        /// A soft horizontal line: white, fading from its centre row to nothing over its height, for
+        /// the glow under a relationship's line. Generated once, like <see cref="Circle"/>.
+        /// </summary>
+        public static Sprite SoftLine()
+        {
+            if (softLine != null) return softLine;
+            const int width = 4, height = 32;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Soft Line", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                float t = (y + .5f - height * .5f) / 6f;
+                byte alpha = (byte)Mathf.RoundToInt(Mathf.Exp(-t * t) * 255f);
+                for (int x = 0; x < width; x++) pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            softLine = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            softLine.name = texture.name;
+            softLine.hideFlags = HideFlags.HideAndDontSave;
+            return softLine;
+        }
+
+        private static Sprite fadeRight;
+
+        /// <summary>A horizontal ramp, clear on the left and solid on the right: a photo's edge
+        /// fading into the card it sits on. Generated once.</summary>
+        public static Sprite FadeRight()
+        {
+            if (fadeRight != null) return fadeRight;
+            const int width = 32, height = 4;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Fade Right", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[width * height];
+            for (int x = 0; x < width; x++)
+            {
+                float t = x / (width - 1f);
+                byte alpha = (byte)Mathf.RoundToInt(t * t * (3f - 2f * t) * 255f);
+                for (int y = 0; y < height; y++) pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            fadeRight = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            fadeRight.name = texture.name;
+            fadeRight.hideFlags = HideFlags.HideAndDontSave;
+            return fadeRight;
+        }
+
+        private static Sprite playMark;
+
+        /// <summary>A filled triangle pointing right, the play mark: the packs' is a hairline outline
+        /// that disappears on a lit button. Generated once.</summary>
+        public static Sprite PlayMark()
+        {
+            if (playMark != null) return playMark;
+            const int side = 32;
+            var texture = new Texture2D(side, side, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Play Mark", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[side * side];
+            for (int y = 0; y < side; y++)
+            for (int x = 0; x < side; x++)
+            {
+                // Inside the triangle (4,2)-(4,30)-(29,16), with a pixel of soft edge.
+                float px = x + .5f, py = y + .5f;
+                float half = 14f * (1f - (px - 4f) / 25f);
+                float inside = Mathf.Min(px - 4f, half - Mathf.Abs(py - 16f));
+                byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(inside + .5f) * 255f);
+                pixels[y * side + x] = new Color32(255, 255, 255, px > 29f ? (byte)0 : alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            playMark = Sprite.Create(texture, new Rect(0, 0, side, side), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            playMark.name = texture.name;
+            playMark.hideFlags = HideFlags.HideAndDontSave;
+            return playMark;
+        }
+
+        private static Sprite fadeDown;
+
+        /// <summary>A vertical ramp, solid at the top and clear at the bottom: a shade under a band
+        /// of chrome along the frame's top edge. Generated once.</summary>
+        public static Sprite FadeDown()
+        {
+            if (fadeDown != null) return fadeDown;
+            const int width = 4, height = 32;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Fade Down", wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
+            };
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                // A texture's first row is its bottom one.
+                float t = y / (height - 1f);
+                byte alpha = (byte)Mathf.RoundToInt(t * t * (3f - 2f * t) * 255f);
+                for (int x = 0; x < width; x++) pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            fadeDown = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 100f, 0, SpriteMeshType.FullRect);
+            fadeDown.name = texture.name;
+            fadeDown.hideFlags = HideFlags.HideAndDontSave;
+            return fadeDown;
+        }
+
         private static Sprite Fill(int radius) => Cached(FillCache, radius, false);
         private static Sprite OutlineSprite(int radius) => Cached(OutlineCache, radius, true);
+
+        private static readonly Dictionary<int, Sprite> GlowCache = new Dictionary<int, Sprite>();
+
+        /// <summary>
+        /// A soft halo outside a rounded rect: transparent inside the panel, fading over
+        /// <see cref="GlowWidth"/> px beyond its edge. Nine-sliced like the fill, with the border set
+        /// past the glow so corners keep their shape at any panel size.
+        /// </summary>
+        private static Sprite GlowSprite(int radius)
+        {
+            radius = Mathf.Clamp(radius, 1, 64);
+            if (GlowCache.TryGetValue(radius, out var existing) && existing != null) return existing;
+            int reach = radius + GlowWidth;
+            int size = reach * 2 + 4;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "UiTheme Glow " + radius,
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            float half = size * 0.5f;
+            float inner = half - reach;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float px = Mathf.Abs(x + 0.5f - half) - inner;
+                    float py = Mathf.Abs(y + 0.5f - half) - inner;
+                    float qx = Mathf.Max(px, 0f);
+                    float qy = Mathf.Max(py, 0f);
+                    float distance = Mathf.Sqrt(qx * qx + qy * qy) + Mathf.Min(Mathf.Max(px, py), 0f) - radius;
+                    float t = Mathf.Clamp01(distance / GlowWidth);
+                    float alpha = distance <= 0f ? 0f : (1f - t) * (1f - t);
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            float edge = reach + 1f;
+            var sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, .5f), 100f, 0,
+                SpriteMeshType.FullRect, new Vector4(edge, edge, edge, edge));
+            sprite.name = texture.name;
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            GlowCache[radius] = sprite;
+            return sprite;
+        }
 
         private static Sprite Cached(Dictionary<int, Sprite> cache, int radius, bool ring)
         {

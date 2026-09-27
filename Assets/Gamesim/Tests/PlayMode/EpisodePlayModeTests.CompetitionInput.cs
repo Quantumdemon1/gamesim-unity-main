@@ -1,0 +1,114 @@
+using System.Collections;
+using System.Linq;
+using Gamesim.Presentation;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.TestTools;
+
+namespace Gamesim.Tests.PlayMode
+{
+    public sealed partial class EpisodePlayModeTests
+    {
+        [UnityTest]
+        public IEnumerator CompetitionResultOpenedByDirectCommandOwnsWorldInputAndRestoresTheHouse()
+        {
+            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(director.Submit(NextCommand(director.Snapshot)).accepted, Is.True);
+            var before = director.Snapshot;
+            Assert.That(director.Submit(NextCommand(before)).accepted, Is.True);
+            Assert.That(SceneComponents<CompetitionResult>().Single().IsPlaying, Is.True);
+            Assert.That(player.InputEnabled, Is.False, "Result ownership must not depend on entering through a phase panel.");
+            Assert.That(cameraRig.ControlsEnabled, Is.False);
+            yield return ContinueCompetitionResults(byKeyboard: false);
+            Assert.That(director.IsPanelOpen, Is.False);
+            Assert.That(player.InputEnabled, Is.True);
+            Assert.That(cameraRig.ControlsEnabled, Is.True);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision + 1));
+        }
+
+        [UnityTest]
+        public IEnumerator CompetitionMenuKeysAffectOnlyTheAttemptAndPreserveTheBriefing()
+        {
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();
+            yield return null;
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            var before = director.Snapshot;
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            yield return null;
+            var screen = SceneComponents<CompetitionGameScreen>().Single();
+            Assert.That(screen.IsShowing, Is.True);
+            yield return PressKey(Key.Escape);
+            Assert.That(screen.IsShowing, Is.False);
+            Assert.That(director.IsPanelOpen, Is.True, "Escape returns to briefing without closing the phase panel underneath.");
+            Assert.That(player.InputEnabled, Is.False);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
+
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            yield return null;
+            var pad = TestGamepad();
+            yield return PressPad(pad, GamepadButton.Start);
+            Assert.That(screen.Paused, Is.True, "Start pauses the attempt instead of cancelling it.");
+            Assert.That(screen.IsShowing, Is.True);
+            yield return PressPad(pad, GamepadButton.East);
+            Assert.That(screen.IsShowing, Is.False);
+            Assert.That(director.IsPanelOpen, Is.True);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision));
+            Assert.That(director.Snapshot.randomState, Is.EqualTo(before.randomState));
+        }
+
+        /// <summary>
+        /// A competition being played, the frame to judge against mockup-05: the game's cards over
+        /// the yard, with the house's chrome standing aside for it. A practice attempt, so nothing
+        /// it does is committed.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Competition_CapturesThePracticeForReview()
+        {
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();
+            yield return null;
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            var before = director.Snapshot;
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            yield return null;
+            var screen = SceneComponents<CompetitionGameScreen>().Single();
+            Assert.That(screen.IsShowing, Is.True);
+            if (Application.isBatchMode) yield return CaptureFraming("competition-assembly");
+            // Past the walk to the stations and the count-in, into the game itself.
+            if (screen.IsAssembling)
+                screen.GetComponentsInChildren<UnityEngine.UI.Button>().First(button => button.name == "Continue to competition").onClick.Invoke();
+            float playing = Time.realtimeSinceStartup + 3.6f;
+            while (Time.realtimeSinceStartup < playing && screen.IsShowing) yield return null;
+            Assert.That(screen.IsShowing, Is.True, "The practice should still be in play.");
+
+            // While it is played the competition is the whole screen: the house's HUD stands down,
+            // and the game's own cards say who is in the field and how the player is doing.
+            yield return null;
+            Assert.That(ActiveRect(IconRail.RootName), Is.Null, "The house's chrome stands down while the game is played.");
+            Assert.That(ActiveRect(CastRail.RootName), Is.Null);
+            var field = Gamesim.Simulation.EpisodeEngine.CompetitionPlayers(before).ToArray();
+            var texts = screen.GetComponentsInChildren<TMPro.TMP_Text>();
+            string listed = texts.Single(text => text.name == "Competition field").text;
+            foreach (var actor in field)
+                Assert.That(listed, Does.Contain(HudPrimitives.WithYou(actor.name, actor.id == before.playerId)),
+                    "The field card lists everyone competing: '" + listed + "'.");
+            string progress = texts.Single(text => text.name == "Progress").text;
+            Assert.That(progress, Does.Contain("pairs").Or.Contain("hits").Or.Contain("Effort"),
+                "The player's progress is the game's own measure: '" + progress + "'.");
+            // And the board is most of what is on screen.
+            var board = screen.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Game surface");
+            var area = ScreenRect(board);
+            Assert.That(area.width * area.height, Is.GreaterThan(Screen.width * Screen.height * .45f),
+                "The board takes most of the frame: " + area + ".");
+            if (Application.isBatchMode && screen.IsShowing) yield return CaptureFraming("competition-practice");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
+        }
+    }
+}

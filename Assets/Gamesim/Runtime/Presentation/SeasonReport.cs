@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Gamesim.Persistence;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Gamesim.Presentation
@@ -20,12 +23,40 @@ namespace Gamesim.Presentation
     /// <para>It is built entirely from committed state and derives nothing the simulation does not
     /// already record, so it cannot disagree with the save. That also means it required no
     /// simulation change to add, and cannot regress a season.</para>
+    ///
+    /// <para>Every way on is at the top, under the title, and stays there while the season scrolls
+    /// beneath it - a new season, the main menu, the notebook, close - as the web game's game-over
+    /// screen puts them straight under its winner. They were once only at the very bottom, below
+    /// three screens of content that nothing on the report could scroll: no part of it caught the
+    /// mouse, so the wheel went nowhere and clicks fell through to the HUD behind it, and a player
+    /// who opened it had no way out but to quit. The whole report takes the mouse now, and a
+    /// scrollbar shows how much there is.</para>
+    ///
+    /// <para>The mouse is not the only way through it. The keyboard's ring holds the ways on at the
+    /// top and the table's chips at the foot, and nothing between, so Page Up and Page Down, Home
+    /// and End, and a pad's right stick scroll the season itself.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SeasonReport : MonoBehaviour
     {
         private const float Width = 1180f;
         private const float Pad = 28f;
+
+        /// <summary>The ways on, at the top of the report. Tests and screen readers find them by these words.</summary>
+        public const string NewSeasonCaption = "Start a new season";
+        public const string MainMenuCaption = "Main menu";
+        public const string ReviewCaption = "Review the season";
+        public const string CloseCaption = "Close";
+
+        /// <summary>The line at the head of the season saying how to move through it without a mouse.</summary>
+        public const string ScrollHint = "Page Up and Page Down, or a pad's right stick, scroll the season";
+
+        /// <summary>How far the right stick leans before it scrolls: past the drift of a stick at rest.</summary>
+        private const float StickDeadZone = .2f;
+        /// <summary>A full lean of the right stick, in reference units a second - about a screen a second.</summary>
+        private const float StickSpeed = 1200f;
+        /// <summary>What a page key keeps of the page it leaves, so the reader does not lose their line.</summary>
+        private const float PageOverlap = 60f;
 
         private RectTransform content;
         private RectTransform viewport;
@@ -84,6 +115,18 @@ namespace Gamesim.Presentation
         private EpisodeState shown;
         private Func<string, Texture> shownPortrait;
         private Action shownReview;
+        private CareerSummary shownCareer;
+        private Action shownNewSeason, shownMainMenu, shownClose;
+        private ScrollRect scroller;
+
+        // The selection the report last brought into view, so it brings each one into view once;
+        // and the corners it measures with, kept rather than made again on every reveal.
+        private GameObject revealed;
+        private readonly Vector3[] selectedCorners = new Vector3[4], viewCorners = new Vector3[4];
+
+        /// <summary>How far the season can scroll: its height past the window it is read through.</summary>
+        private float Travel => content != null && viewport != null
+            ? Mathf.Max(0f, content.rect.height - viewport.rect.height) : 0f;
 
         /// <summary>
         /// The "larger text" accessibility setting, applied by scaling the whole screen rather than
@@ -144,14 +187,29 @@ namespace Gamesim.Presentation
         /// Builds the report for a finished season. <paramref name="portrait"/> resolves a
         /// contestant id to a face; it may return null, and the portrait helper draws a hole.
         /// </summary>
-        public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview)
+        public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview,
+            CareerSummary career = null) => Show(state, portrait, onReview, career, null, null, null);
+
+        /// <summary>
+        /// The same, with the ways on the report offers at its top: <paramref name="onNewSeason"/>,
+        /// <paramref name="onMainMenu"/> and <paramref name="onReview"/> each close the report and
+        /// go; <paramref name="onClose"/> runs after it closes, so the house behind can redraw. A
+        /// null action is simply not offered.
+        /// </summary>
+        public void Show(EpisodeState state, Func<string, Texture> portrait, Action onReview,
+            CareerSummary career, Action onNewSeason, Action onMainMenu, Action onClose)
         {
             if (state == null) return;
             shown = state;
             shownPortrait = portrait ?? (_ => null);
             shownReview = onReview;
+            shownCareer = career;
+            shownNewSeason = onNewSeason;
+            shownMainMenu = onMainMenu;
+            shownClose = onClose;
             sortBy = CastSort.Placement;
             filter = CastFilter.Everyone;
+            revealed = null;
             Rebuild(state, shownPortrait, onReview);
             group.alpha = 1f;
             group.blocksRaycasts = true;
@@ -160,18 +218,55 @@ namespace Gamesim.Presentation
 
         private void Rebuild(EpisodeState state, Func<string, Texture> portrait, Action onReview)
         {
-            foreach (Transform child in transform) Destroy(child.gameObject);
+            foreach (Transform child in transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
 
-            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(0.02f, 0.04f, 0.06f, 0.97f), 1);
+            // The house dimmed behind the season rather than blacked out, and the season on a
+            // glass card, as the mockups set every summary over the room it is about. Both take
+            // the mouse: a modal that catches nothing lets every click through to the HUD behind.
+            var scrim = HudPrimitives.Fill("Scrim", transform, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0.88f), 1);
+            scrim.GetComponent<Image>().raycastTarget = true;
             Stretch(scrim);
+            HudPrimitives.Vignette(scrim);
 
-            viewport = HudPrimitives.Fill("Viewport", scrim, new Color(0f, 0f, 0f, 0f), 1);
+            var sheet = HudPrimitives.Fill("Report card", scrim, new Color(UiTheme.GlassFill.r, UiTheme.GlassFill.g, UiTheme.GlassFill.b, .94f), UiTheme.GlassRadius);
+            sheet.anchorMin = new Vector2(0.5f, 0f);
+            sheet.anchorMax = new Vector2(0.5f, 1f);
+            sheet.pivot = new Vector2(0.5f, 0.5f);
+            sheet.sizeDelta = new Vector2(Width + 40f, -96f);
+            sheet.anchoredPosition = Vector2.zero;
+            UiTheme.Glass(sheet, UiTheme.GlassRadius);
+            sheet.GetComponent<Image>().raycastTarget = true;
+
+            // The title and the ways on, fixed at the top of the card.
+            content = new GameObject("Fixed header", typeof(RectTransform)).GetComponent<RectTransform>();
+            content.SetParent(sheet, false);
+            content.anchorMin = content.anchorMax = new Vector2(.5f, 1f);
+            content.pivot = new Vector2(.5f, 1f);
+            content.anchoredPosition = Vector2.zero;
+            cursor = 0f;
+            Header(state);
+            ActionBar(onReview);
+            float band = cursor + 6f;
+            content.sizeDelta = new Vector2(Width, band);
+            var divider = new GameObject("Header rule", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            divider.rectTransform.SetParent(sheet, false);
+            divider.rectTransform.anchorMin = divider.rectTransform.anchorMax = new Vector2(.5f, 1f);
+            divider.rectTransform.pivot = new Vector2(.5f, 1f);
+            divider.rectTransform.sizeDelta = new Vector2(Width - Pad * 2f, 1f);
+            divider.rectTransform.anchoredPosition = new Vector2(0f, -band);
+            divider.color = new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .3f);
+            divider.raycastTarget = false;
+
+            viewport = HudPrimitives.Fill("Viewport", sheet, new Color(0f, 0f, 0f, 0f), 1);
             viewport.anchorMin = new Vector2(0.5f, 0f);
             viewport.anchorMax = new Vector2(0.5f, 1f);
             viewport.pivot = new Vector2(0.5f, 1f);
-            viewport.sizeDelta = new Vector2(Width, 0f);
-            viewport.anchoredPosition = Vector2.zero;
+            viewport.sizeDelta = new Vector2(Width, -(band + 10f));
+            viewport.anchoredPosition = new Vector2(0f, -(band + 4f));
             viewport.gameObject.AddComponent<RectMask2D>();
+            // The wheel and a drag reach the scroll through whatever they land on; the viewport
+            // itself has to be something to land on, or the gaps between rows scroll nothing.
+            viewport.GetComponent<Image>().raycastTarget = true;
 
             content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
             content.SetParent(viewport, false);
@@ -186,18 +281,172 @@ namespace Gamesim.Presentation
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 40f;
+            scroll.verticalScrollbar = Scrollbar(sheet, band);
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            scroller = scroll;
 
             cursor = 0f;
-            Header(state);
+            Space(12f);
+            // Said once, at the head of the season: the scrollbar tells a mouse there is more, and
+            // nothing else would tell a keyboard or a pad how to reach it.
+            Text(ScrollHint, 13f, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
+            Space(6f);
             Winner(state, portrait);
             WinnersJourney(state);
             YourJourney(state);
+            YourCareer(shownCareer);
+            HowTheJuryVoted(state);
             Standings(state);
             WeekByWeek(state);
             Cast(state, portrait);
-            Buttons(onReview);
 
             content.sizeDelta = new Vector2(0f, cursor + Pad);
+        }
+
+        /// <summary>
+        /// A thin bar down the card's right edge, showing how much season there is below and where
+        /// the reader is in it; draggable, and out of the keyboard's way.
+        /// </summary>
+        private static Scrollbar Scrollbar(RectTransform sheet, float band)
+        {
+            var track = HudPrimitives.Fill("Scrollbar", sheet, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .14f), 4);
+            track.anchorMin = new Vector2(1f, 0f); track.anchorMax = new Vector2(1f, 1f);
+            track.pivot = new Vector2(1f, 1f);
+            track.sizeDelta = new Vector2(8f, -(band + 24f));
+            track.anchoredPosition = new Vector2(-8f, -(band + 10f));
+            track.GetComponent<Image>().raycastTarget = true;
+            var area = new GameObject("Sliding area", typeof(RectTransform)).GetComponent<RectTransform>();
+            area.SetParent(track, false);
+            area.anchorMin = Vector2.zero; area.anchorMax = Vector2.one;
+            area.offsetMin = Vector2.zero; area.offsetMax = Vector2.zero;
+            var handle = HudPrimitives.Fill("Handle", area, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .7f), 4);
+            handle.offsetMin = Vector2.zero; handle.offsetMax = Vector2.zero;
+            var handleImage = handle.GetComponent<Image>();
+            handleImage.raycastTarget = true;
+            var bar = track.gameObject.AddComponent<Scrollbar>();
+            bar.handleRect = handle;
+            bar.targetGraphic = handleImage;
+            bar.direction = UnityEngine.UI.Scrollbar.Direction.BottomToTop;
+            bar.navigation = new Navigation { mode = Navigation.Mode.None };
+            return bar;
+        }
+
+        /// <summary>
+        /// The ways on, under the title: a new season first, as the web game's primary action is,
+        /// then the notebook, the main menu, and close. Only the ones given are drawn.
+        /// </summary>
+        private void ActionBar(Action onReview)
+        {
+            Space(4f);
+            var bar = Panel(52f, new Color(0f, 0f, 0f, 0f));
+            var actions = new List<(string caption, Action act, bool primary)>();
+            if (shownNewSeason != null) actions.Add((NewSeasonCaption, () => { Hide(); shownNewSeason(); }, true));
+            if (onReview != null) actions.Add((ReviewCaption, () => { Hide(); onReview(); }, shownNewSeason == null));
+            if (shownMainMenu != null) actions.Add((MainMenuCaption, () => { Hide(); shownMainMenu(); }, false));
+            actions.Add((CloseCaption, Close, actions.Count == 0));
+            const float buttonWidth = 250f, gap = 16f;
+            float x = -(actions.Count * buttonWidth + (actions.Count - 1) * gap) * .5f + buttonWidth * .5f;
+            foreach (var action in actions)
+            {
+                Button(bar, action.caption, x, action.act, action.primary, buttonWidth);
+                x += buttonWidth + gap;
+            }
+        }
+
+        /// <summary>Closes the report, and lets the house behind it redraw.</summary>
+        public void Close()
+        {
+            if (!IsShowing) return;
+            Hide();
+            shownClose?.Invoke();
+        }
+
+        /// <summary>
+        /// The right stick's lean, up positive, once it is past the dead zone; nothing otherwise.
+        /// </summary>
+        internal static float StickLean()
+        {
+            var pad = Gamepad.current;
+            if (pad == null) return 0f;
+            float lean = pad.rightStick.ReadValue().y;
+            return Mathf.Abs(lean) > StickDeadZone ? lean : 0f;
+        }
+
+        /// <summary>
+        /// Whether the right stick is scrolling the report with nothing that walks the ring held
+        /// alongside it. The report's controls take no step from a stick that is scrolling: see
+        /// <see cref="SeasonReportControl"/>.
+        /// </summary>
+        internal static bool StickIsScrolling()
+        {
+            var pad = Gamepad.current;
+            return pad != null && StickLean() != 0f && !pad.dpad.IsActuated() && pad.leftStick.ReadValue().magnitude < .5f;
+        }
+
+        /// <summary>
+        /// Page Up and Page Down, Home and End, and the right stick, scroll the season.
+        ///
+        /// <para>The keyboard's ring has the ways on at the top and the table's chips at the foot,
+        /// and nothing in between: the winner's road, the jury's ballots, the standings and the
+        /// weeks sat between the first screen and the last, where a player without a mouse could
+        /// not get. None of these keys is anything else's while the report is up, and the stick
+        /// only scrolls - it takes no step round the ring while it does.</para>
+        /// </summary>
+        private void Update()
+        {
+            if (!IsShowing || scroller == null || content == null || viewport == null) return;
+            float travel = Travel;
+            if (travel <= 0f) return;
+            float from = content.anchoredPosition.y, to = from;
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                float page = Mathf.Max(viewport.rect.height - PageOverlap, viewport.rect.height * .5f);
+                if (keyboard.pageDownKey.wasPressedThisFrame) to += page;
+                if (keyboard.pageUpKey.wasPressedThisFrame) to -= page;
+                if (keyboard.homeKey.wasPressedThisFrame) to = 0f;
+                if (keyboard.endKey.wasPressedThisFrame) to = travel;
+            }
+            // Leaning up reads back up the season, as a wheel turned away from you does. A hitch in
+            // the frame rate is not a leap down the page.
+            to -= StickLean() * StickSpeed * Mathf.Min(Time.unscaledDeltaTime, .1f);
+            to = Mathf.Clamp(to, 0f, travel);
+            if (Mathf.Abs(to - from) < .01f) return;
+            scroller.StopMovement();
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, to);
+        }
+
+        /// <summary>
+        /// Brings the keyboard's selection into view when it moves: Tab onto the sort chips at the
+        /// foot of the house table and the report scrolls down to them.
+        ///
+        /// <para>Once per selection, not every frame. It used to run every frame for as long as a
+        /// chip was selected, and a chip stays selected after a click or a press-and-drag, so the
+        /// wheel, a drag or the page keys could not take the reader away from it: each frame the
+        /// report snapped back to the chip, until something else was clicked.</para>
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (!IsShowing || scroller == null || content == null || viewport == null) return;
+            var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            if (selected == revealed) return;
+            revealed = selected;
+            if (selected == null || !selected.activeInHierarchy || !selected.transform.IsChildOf(content)) return;
+            Reveal((RectTransform)selected.transform);
+        }
+
+        private void Reveal(RectTransform rect)
+        {
+            rect.GetWorldCorners(selectedCorners);
+            viewport.GetWorldCorners(viewCorners);
+            float below = viewCorners[0].y - selectedCorners[0].y, above = selectedCorners[1].y - viewCorners[1].y;
+            if (below <= 0f && above <= 0f) return;
+            float scale = viewport.lossyScale.y > 0f ? viewport.lossyScale.y : 1f;
+            var position = content.anchoredPosition;
+            position.y += (below > 0f ? below + 12f * scale : -(above + 12f * scale)) / scale;
+            position.y = Mathf.Clamp(position.y, 0f, Travel);
+            scroller.StopMovement();
+            content.anchoredPosition = position;
         }
 
         // ---------------------------------------------------------------- sections
@@ -205,7 +454,12 @@ namespace Gamesim.Presentation
         private void Header(EpisodeState state)
         {
             Space(Pad);
-            Text("SEASON COMPLETE", 26f, UiTheme.Gold, 34f, TextAlignmentOptions.Center);
+            var title = Text("SEASON COMPLETE", 34f, Color.white, 44f, TextAlignmentOptions.Center);
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 3f;
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(UiTheme.Glow, UiTheme.Glow, UiTheme.Heading, UiTheme.Heading);
             Text(state.week + (state.week == 1 ? " week" : " weeks") + " · "
                 + state.contestants.Count + " houseguests · "
                 + state.contestants.Count(c => c.status == ContestantStatus.Jury) + " on the jury",
@@ -229,6 +483,17 @@ namespace Gamesim.Presentation
             if (winner == null) return;
 
             var card = Panel(216f, UiTheme.SurfaceRaised);
+            // The winner lit in gold: this is where the season is won.
+            var gold = UiTheme.Pack(PackArt.GlowGold);
+            if (gold != null)
+            {
+                var light = new GameObject("Winner glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                light.rectTransform.SetParent(card, false);
+                light.rectTransform.anchorMin = light.rectTransform.anchorMax = new Vector2(.5f, .5f);
+                light.rectTransform.sizeDelta = new Vector2(240f, 240f);
+                light.rectTransform.anchoredPosition = new Vector2(runnerUp != null ? -180f : 0f, 38f);
+                light.sprite = gold; light.color = new Color(1f, 1f, 1f, .55f); light.preserveAspect = true; light.raycastTarget = false;
+            }
             var row = new GameObject("Finalists", typeof(RectTransform)).GetComponent<RectTransform>();
             row.SetParent(card, false);
             row.anchorMin = new Vector2(0.5f, 0.5f);
@@ -254,7 +519,7 @@ namespace Gamesim.Presentation
             holder.SetParent(parent, false);
             holder.anchoredPosition = new Vector2(x, 0f);
 
-            var face = HudPrimitives.Portrait(holder, portrait(who.id), tint, size, 4f, false);
+            var face = HudPrimitives.Portrait(holder, portrait(who.id), tint, size, 4f, false, who);
             face.anchoredPosition = new Vector2(0f, 26f);
 
             var name = HudPrimitives.Label("Name", holder, 19f, UiTheme.Paper, TextAlignmentOptions.Center);
@@ -337,6 +602,103 @@ namespace Gamesim.Presentation
             Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
         }
 
+        /// <summary>
+        /// The player's record across seasons, when there is one. Sits beside "Your season"
+        /// because that is the question it answers next: this one, and then all of them.
+        /// </summary>
+        private void YourCareer(CareerSummary career)
+        {
+            if (career == null || career.Seasons == 0) return;
+
+            Heading("Your career");
+            var card = Panel(132f, UiTheme.Surface);
+
+            Stat(card, 0, "SEASONS", career.Seasons.ToString(), UiTheme.Paper);
+            Stat(card, 1, "WINS", career.Wins.ToString(), UiTheme.Gold);
+            Stat(card, 2, "MEDIAN FINISH", CareerSummary.PlaceWord(career.MedianPlacement), UiTheme.Accent);
+            Stat(card, 3, "BEST FINISH", CareerSummary.PlaceWord(career.BestPlacement), UiTheme.Positive);
+            Stat(card, 4, "COMP WINS", (career.HohWins + career.VetoWins).ToString(), UiTheme.Positive);
+
+            var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
+            note.text = career.Note();
+            Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
+        }
+
+        /// <summary>One juror's ballot as the screens say it: who, for whom, and the recorded why.</summary>
+        public readonly struct JuryBallot
+        {
+            public readonly string Juror;
+            public readonly string Finalist;
+            /// <summary>The engine's recorded reason; null for the player's own ballot, which needs none.</summary>
+            public readonly string Reason;
+            public readonly bool IsPlayer;
+
+            public JuryBallot(string juror, string finalist, string reason, bool isPlayer)
+            {
+                Juror = juror; Finalist = finalist; Reason = reason; IsPlayer = isPlayer;
+            }
+
+            /// <summary>The one-line form the finale panel shows.</summary>
+            public string Line => (IsPlayer ? "You" : Juror) + " voted for " + Finalist + "."
+                                  + (string.IsNullOrEmpty(Reason) ? string.Empty : " " + Reason);
+        }
+
+        /// <summary>
+        /// The jury's ballots, in the order they were cast, read from the recorded votes.
+        ///
+        /// <para>Every jury ballot carries the term that decided it — the engine writes one when it
+        /// resolves the jury — so nothing here is inferred. A ballot counts when its voter is on the
+        /// jury and its target is a finalist; the eviction ballots a mid-season state still holds
+        /// fail the second test and are never mistaken for these.</para>
+        /// </summary>
+        public static List<JuryBallot> JuryBallots(EpisodeState state)
+        {
+            var ballots = new List<JuryBallot>();
+            if (state?.votes == null) return ballots;
+            foreach (var vote in state.votes)
+            {
+                var juror = state.Find(vote.voterId);
+                var finalist = state.Find(vote.targetId);
+                if (juror == null || finalist == null) continue;
+                if (juror.status != ContestantStatus.Jury && juror.status != ContestantStatus.Evicted) continue;
+                if (finalist.status != ContestantStatus.Winner && finalist.status != ContestantStatus.RunnerUp) continue;
+                ballots.Add(new JuryBallot(juror.name, finalist.name, juror.isPlayer ? null : vote.reason, juror.isPlayer));
+            }
+            return ballots;
+        }
+
+        /// <summary>
+        /// Why the season ended the way it did: each juror, their pick, and the recorded reason,
+        /// so a player learns whether they lost the jury on competitions, on the block, on a broken
+        /// promise or on the person they were.
+        /// </summary>
+        private void HowTheJuryVoted(EpisodeState state)
+        {
+            var ballots = JuryBallots(state);
+            if (ballots.Count == 0) return;
+
+            Heading("How the jury voted");
+            var winner = state.Find(state.winnerId);
+            var runnerUp = state.Find(state.runnerUpId);
+            if (winner != null && runnerUp != null)
+                Text(winner.name + " " + ballots.Count(b => b.Finalist == winner.name)
+                     + " · " + runnerUp.name + " " + ballots.Count(b => b.Finalist == runnerUp.name),
+                    15f, UiTheme.Muted, 24f, TextAlignmentOptions.Left);
+
+            for (int i = 0; i < ballots.Count; i++)
+            {
+                var ballot = ballots[i];
+                var line = Panel(36f, i % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
+                Cell(line, 22f, 230f, HudPrimitives.WithYou(ballot.Juror, ballot.IsPlayer, "  "), 15f,
+                    ballot.IsPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
+                Cell(line, 260f, 230f, "voted for " + ballot.Finalist, 14f,
+                    winner != null && ballot.Finalist == winner.name ? UiTheme.Gold : UiTheme.Muted,
+                    TextAlignmentOptions.Left);
+                Cell(line, 500f, 600f, ballot.IsPlayer ? "Your ballot" : ballot.Reason, 13f, UiTheme.Paper,
+                    TextAlignmentOptions.Left);
+            }
+        }
+
         private void Standings(EpisodeState state)
         {
             Heading("Final standings");
@@ -363,7 +725,7 @@ namespace Gamesim.Presentation
                 var line = Panel(34f, i % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
 
                 Cell(line, 22f, 44f, (i + 1).ToString(), 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-                Cell(line, 78f, 320f, who.name + (who.isPlayer ? "  (You)" : string.Empty), 16f,
+                Cell(line, 78f, 320f, HudPrimitives.WithYou(who.name, who.isPlayer, "  "), 16f,
                     who.isPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
                 Cell(line, 420f, 200f, StatusWord(who.status), 15f, PlacementTint(who.status),
                     TextAlignmentOptions.Left);
@@ -447,13 +809,13 @@ namespace Gamesim.Presentation
                 var row = Panel(64f, UiTheme.Surface);
 
                 var face = HudPrimitives.Portrait(row, portrait(who.id),
-                    PlacementTint(who.status), 42f, 2f, who.status == ContestantStatus.Evicted);
+                    PlacementTint(who.status), 42f, 2f, who.status == ContestantStatus.Evicted, who);
                 face.anchorMin = new Vector2(0f, 0.5f);
                 face.anchorMax = new Vector2(0f, 0.5f);
                 face.pivot = new Vector2(0.5f, 0.5f);
                 face.anchoredPosition = new Vector2(46f, 0f);
 
-                Cell(row, 84f, 300f, who.name + (who.isPlayer ? "  (You)" : string.Empty), 17f,
+                Cell(row, 84f, 300f, HudPrimitives.WithYou(who.name, who.isPlayer, "  "), 17f,
                     who.isPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
                 Cell(row, 84f, 300f, StatusWord(who.status), 13f, PlacementTint(who.status),
                     TextAlignmentOptions.Left, -18f);
@@ -485,7 +847,7 @@ namespace Gamesim.Presentation
                 Chip(sortBar, SortCaption(pick), x, span - 8f, sortBy == pick, () =>
                 {
                     sortBy = pick;
-                    Rebuild(shown, shownPortrait, shownReview);
+                    Redraw();
                 });
                 x += span;
             }
@@ -500,10 +862,40 @@ namespace Gamesim.Presentation
                 Chip(filterBar, FilterCaption(pick), x, span - 8f, filter == pick, () =>
                 {
                     filter = pick;
-                    Rebuild(shown, shownPortrait, shownReview);
+                    Redraw();
                 });
                 x += span;
             }
+        }
+
+        /// <summary>
+        /// Draws the report again for a new sort or filter, with the reader still where they were.
+        ///
+        /// <para>A redraw is a new report, whose scroll starts at the top. Sorting the table three
+        /// screens down used to put the reader back at the winner, with the table three screens
+        /// under them, and the chip they had pressed thrown away: the keyboard fell to the first
+        /// control on the screen, "Start a new season", so a second Enter to sort again opened the
+        /// cast screen instead. The sections above the table do not change with it, so the same
+        /// reading position shows the same part of the season, and the keyboard goes back to the
+        /// control with the words it was on.</para>
+        /// </summary>
+        private void Redraw()
+        {
+            float reading = content != null ? content.anchoredPosition.y : 0f;
+            var events = EventSystem.current;
+            var selected = events != null ? events.currentSelectedGameObject : null;
+            string focus = selected != null && selected.transform.IsChildOf(transform) ? selected.name : null;
+
+            Rebuild(shown, shownPortrait, shownReview);
+            Canvas.ForceUpdateCanvases();
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, Mathf.Clamp(reading, 0f, Travel));
+            scroller.StopMovement();
+
+            if (events == null || focus == null) return;
+            // The report thrown away is inactive already and only destroyed at the frame's end, so
+            // an active control of that name is the new one.
+            var again = GetComponentsInChildren<Selectable>().FirstOrDefault(control => control.name == focus);
+            if (again != null) events.SetSelectedGameObject(again.gameObject);
         }
 
         private IEnumerable<ContestantState> Filtered(EpisodeState state)
@@ -516,7 +908,8 @@ namespace Gamesim.Presentation
                 case CastFilter.Jury:
                     return state.contestants.Where(c => c.status == ContestantStatus.Jury);
                 case CastFilter.Evicted:
-                    return state.contestants.Where(c => c.status == ContestantStatus.Evicted);
+                    // Out before the jury either way: evicted, or removed by production.
+                    return state.contestants.Where(c => c.status == ContestantStatus.Evicted || c.status == ContestantStatus.Expelled);
                 default:
                     return state.contestants;
             }
@@ -562,7 +955,7 @@ namespace Gamesim.Presentation
         /// <summary>A pill control, the same shape the cast screen and the creator use.</summary>
         private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)
         {
-            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.AccentDeep : UiTheme.SurfaceRaised, 16);
+            var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 16);
             pill.anchorMin = new Vector2(0.5f, 0.5f);
             pill.anchorMax = new Vector2(0.5f, 0.5f);
             pill.pivot = new Vector2(0.5f, 0.5f);
@@ -573,7 +966,7 @@ namespace Gamesim.Presentation
             var image = pill.GetComponent<Image>();
             image.raycastTarget = true;
 
-            var label = HudPrimitives.Label("Label", pill, 12f, active ? UiTheme.Paper : UiTheme.Muted,
+            var label = HudPrimitives.Label("Label", pill, 12f, active ? Color.white : UiTheme.Muted,
                 TextAlignmentOptions.Center);
             label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
@@ -581,19 +974,10 @@ namespace Gamesim.Presentation
             label.rectTransform.offsetMin = new Vector2(5f, 0f);
             label.rectTransform.offsetMax = new Vector2(-5f, 0f);
 
-            var button = pill.gameObject.AddComponent<Button>();
+            var button = pill.gameObject.AddComponent<SeasonReportControl>();
             button.targetGraphic = image;
             button.onClick.AddListener(() => action());
             return button;
-        }
-
-        private void Buttons(Action onReview)
-        {
-            Space(6f);
-            var bar = Panel(56f, new Color(0f, 0f, 0f, 0f));
-            if (onReview != null) Button(bar, "Review the season", -150f, onReview);
-            Button(bar, "Close", 150f, Hide);
-            Space(Pad);
         }
 
         // ---------------------------------------------------------------- derivation
@@ -630,6 +1014,10 @@ namespace Gamesim.Presentation
             {
                 case ContestantStatus.Winner: return "1st — Winner";
                 case ContestantStatus.RunnerUp: return "2nd — Runner-up";
+                case ContestantStatus.Expelled:
+                    // The career's exit order, which merges production's removals in by week.
+                    int removedAt = Gamesim.Persistence.CareerLedger.Placement(state, you);
+                    return removedAt + Ordinal(removedAt) + " — " + StatusWord(you.status);
                 default:
                     int below = state.contestants.Count(c => c.status == ContestantStatus.Evicted)
                         - (you.status == ContestantStatus.Evicted ? 1 : 0);
@@ -658,6 +1046,7 @@ namespace Gamesim.Presentation
                 case ContestantStatus.RunnerUp: return "Runner-up";
                 case ContestantStatus.Jury: return "Jury member";
                 case ContestantStatus.Evicted: return "Pre-jury";
+                case ContestantStatus.Expelled: return "Removed by production";
                 default: return "Still in the house";
             }
         }
@@ -670,6 +1059,7 @@ namespace Gamesim.Presentation
                 case ContestantStatus.RunnerUp: return UiTheme.Accent;
                 case ContestantStatus.Jury: return UiTheme.Warning;
                 case ContestantStatus.Evicted: return UiTheme.Muted;
+                case ContestantStatus.Expelled: return UiTheme.Conflict;
                 default: return UiTheme.Positive;
             }
         }
@@ -684,6 +1074,8 @@ namespace Gamesim.Presentation
                     return "You sat in the final two and the jury went the other way.";
                 case ContestantStatus.Jury:
                     return "You were evicted with a vote still to cast, and you cast it.";
+                case ContestantStatus.Expelled:
+                    return "Production removed you from the house. The season went on without your vote.";
                 default:
                     return you.hohWins + you.vetoWins > 0
                         ? "You went out before jury, but not before winning something."
@@ -693,29 +1085,44 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- layout
 
+        /// <summary>
+        /// A section's name, small and letterspaced in the heading blue over a soft rule. It was
+        /// gold, and gold is power in this house - the win, the crown - not every heading on the page.
+        /// </summary>
         private void Heading(string text)
         {
-            Space(16f);
-            var label = HudPrimitives.Label("Heading", content, 18f, UiTheme.Gold, TextAlignmentOptions.Left);
+            Space(20f);
+            var label = HudPrimitives.Label("Heading", content, 14f, UiTheme.Heading, TextAlignmentOptions.Left);
             label.text = Localisation.Text(text).ToUpperInvariant();
-            Place(label.rectTransform, Width - Pad * 2f, 26f, -cursor);
-            cursor += 30f;
+            label.characterSpacing = 4f;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) label.font = semibold;
+            Place(label.rectTransform, Width - Pad * 2f, 22f, -cursor);
+            cursor += 24f;
+            var rule = new GameObject("Rule", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            rule.rectTransform.SetParent(content, false);
+            Place(rule.rectTransform, Width - Pad * 2f, 1f, -cursor);
+            rule.color = new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .35f);
+            rule.raycastTarget = false;
+            cursor += 10f;
         }
 
         private RectTransform Panel(float height, Color colour)
         {
-            var panel = HudPrimitives.Fill("Row", content, colour, 8);
+            var panel = HudPrimitives.Fill("Row", content, colour, 10);
             Place(panel, Width - Pad * 2f, height, -cursor);
+            if (colour.a > 0f) UiTheme.AddBorder(panel, 10, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .3f));
             cursor += height + 6f;
             return panel;
         }
 
-        private void Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
+        private TMP_Text Text(string value, float size, Color colour, float height, TextAlignmentOptions align)
         {
             var label = HudPrimitives.Label("Text", content, size, colour, align);
             label.text = Localisation.Text(value);
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
             cursor += height;
+            return label;
         }
 
         private void Space(float amount) => cursor += amount;
@@ -742,25 +1149,29 @@ namespace Gamesim.Presentation
             rect.anchoredPosition = new Vector2(x, y);
         }
 
-        private static void Button(Transform parent, string text, float x, Action action)
+        /// <summary>The report's controls: the one the player most likely wants in the action blue.</summary>
+        private static void Button(Transform parent, string text, float x, Action action, bool primary, float width = 260f)
         {
-            var panel = HudPrimitives.Fill(text, parent, UiTheme.SurfaceRaised, 8);
+            var panel = HudPrimitives.Fill(text, parent, primary ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 10);
             panel.anchorMin = new Vector2(0.5f, 0.5f);
             panel.anchorMax = new Vector2(0.5f, 0.5f);
             panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(260f, 44f);
+            panel.sizeDelta = new Vector2(width, 48f);
             panel.anchoredPosition = new Vector2(x, 0f);
             panel.GetComponent<Image>().raycastTarget = true;
-            UiTheme.AddBorder(panel, 8, UiTheme.Outline);
+            UiTheme.AddBorder(panel, 10, primary ? UiTheme.Glow : UiTheme.Outline);
+            if (primary) UiTheme.AddGlow(panel, 10);
 
-            var label = HudPrimitives.Label("Label", panel, 16f, UiTheme.Paper, TextAlignmentOptions.Center);
+            var label = HudPrimitives.Label("Label", panel, 17f, primary ? Color.white : UiTheme.Paper, TextAlignmentOptions.Center);
+            var weight = UiTheme.Font(primary ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
+            if (weight != null) label.font = weight;
             label.text = Localisation.Text(text);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.sizeDelta = Vector2.zero;
             label.rectTransform.anchoredPosition = Vector2.zero;
 
-            var button = panel.gameObject.AddComponent<Button>();
+            var button = panel.gameObject.AddComponent<SeasonReportControl>();
             button.targetGraphic = panel.GetComponent<Image>();
             button.onClick.AddListener(() => action());
         }
@@ -788,6 +1199,8 @@ namespace Gamesim.Presentation
 
             var number = HudPrimitives.Label("Value", holder, 26f, tint, TextAlignmentOptions.Center);
             number.text = value;
+            // A placement is words, not a figure: "6th - Jury member" ran out of its cell at 26.
+            number.enableAutoSizing = true; number.fontSizeMax = 26f; number.fontSizeMin = 14f;
             number.rectTransform.sizeDelta = new Vector2(step - 10f, 34f);
             number.rectTransform.anchoredPosition = new Vector2(0f, 8f);
 

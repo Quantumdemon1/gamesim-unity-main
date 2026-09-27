@@ -117,12 +117,29 @@ namespace Gamesim.Editor
                 {
                     Path = Path(go.transform, surface.transform),
                     Size = bounds.size,
-                    HasCollider = go.GetComponent<Collider>() != null,
+                    HasCollider = Solid(bounds),
                     WalkableThrough = PassesThrough(bounds),
                 });
             }
             return findings;
         }
+
+        /// <summary>
+        /// Whether anything solid stands where this object is drawn.
+        ///
+        /// <para>Asked of the space rather than of the GameObject, because collision and art are no
+        /// longer the same object. <c>HouseFurnitureCollision</c> hangs a box on a child of the prop
+        /// so the art can stay on the layer it was authored on, and a renderer two nodes down from
+        /// that child has no collider of its own and never will. Looking only at the renderer's own
+        /// GameObject reported forty props as "NO COLLIDER - invisible to the bake" on the very pass
+        /// that gave them one, which is the most misleading thing a diagnostic can do: agree with the
+        /// bug it was written to catch, after the bug is fixed.</para>
+        /// </summary>
+        /// <para>A pinprick at the object's own centre, not a box over the whole of it. Sweeping the
+        /// full bounds finds the floor slab under everything and the wall behind half of it, and
+        /// reported all 262 objects as solid - the opposite error, and just as useless.</para>
+        private static bool Solid(Bounds bounds) =>
+            Physics.OverlapSphere(bounds.center, 0.01f, ~0, QueryTriggerInteraction.Ignore).Length > 0;
 
         /// <summary>
         /// Whether unbroken walkable surface runs through the middle of these bounds.
@@ -201,6 +218,33 @@ namespace Gamesim.Editor
         /// How many room pairs can currently reach each other, for a caller that wants to compare
         /// two navigation meshes rather than read a report.
         /// </summary>
+        /// <summary>
+        /// The same count, but measured against a named mesh rather than against whatever happens to
+        /// be registered.
+        ///
+        /// <para>This exists because the plain overload answered the wrong question once, and it did
+        /// it inside the one guard the project relies on. A <see cref="NavMeshSurface.BuildNavMesh"/>
+        /// leaves registration in a state that depends on what the caller did beforehand, so a bake
+        /// compared against itself reported 21 room pairs while a clean reading of the very same bake
+        /// reported 28 - and the rebake refused a mesh that was perfectly connected. A guard that can
+        /// cry wolf is a guard people learn to work around, which is worse than no guard.</para>
+        ///
+        /// <para>Registration is put back the way it was found, so measuring changes nothing.</para>
+        /// </summary>
+        public static int ReachablePairs(NavMeshSurface surface, NavMeshData data)
+        {
+            if (surface == null || data == null) return 0;
+            NavMesh.RemoveAllNavMeshData();
+            var instance = NavMesh.AddNavMeshData(data, surface.transform.position, surface.transform.rotation);
+            try { return ReachablePairs(); }
+            finally
+            {
+                if (instance.valid) instance.Remove();
+                if (surface.navMeshData != null)
+                    NavMesh.AddNavMeshData(surface.navMeshData, surface.transform.position, surface.transform.rotation);
+            }
+        }
+
         public static int ReachablePairs()
         {
             var markers = UnityEngine.Object.FindObjectsByType<Gamesim.House.HouseRoomMarker>(

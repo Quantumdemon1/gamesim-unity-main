@@ -4,6 +4,7 @@ using Gamesim.Episode;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -32,12 +33,18 @@ namespace Gamesim.Tests.PlayMode
             // Each frame shows the portrait of the contestant it is bound to. Asserted against the
             // exact texture rather than merely "something is assigned", because every frame sharing
             // one face would satisfy the weaker check and be the more likely bug.
+            double portraitDeadline = Time.realtimeSinceStartupAsDouble + 60;
             for (int i = 0; i < frames.Length; i++)
             {
                 var actor = state.contestants[i];
-                var expected = CharacterPortraits.Get(
-                    CharacterPresentation.AppearanceId(actor, ContentCatalog.CanonicalId(actor.id)));
-                if (expected == null) continue; // persona without authored art; the slot stays dark
+                Texture expected = null;
+                while (expected == null && Time.realtimeSinceStartupAsDouble < portraitDeadline)
+                {
+                    expected = CharacterPortraits.Get(actor);
+                    yield return null;
+                }
+                Assert.That(expected, Is.Not.Null, "The shared appearance portrait must finish for " + actor.name + ".");
+                yield return null; // Let the wall's asynchronous binding publish the completed image.
 
                 Assert.That(PortraitTexture(frames[i]), Is.SameAs(expected),
                     "Frame " + i + " should show " + actor.name + ".");
@@ -118,8 +125,10 @@ namespace Gamesim.Tests.PlayMode
         {
             var sections = new[]
             {
+                EpisodeDirector.NotebookSection.People,
                 EpisodeDirector.NotebookSection.Network,
                 EpisodeDirector.NotebookSection.Rooms,
+                EpisodeDirector.NotebookSection.Votes,
                 EpisodeDirector.NotebookSection.Story,
             };
 
@@ -133,7 +142,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(rail, Is.Not.Null, "The HUD should carry the section rail.");
 
                 var buttons = rail.GetComponentsInChildren<UnityEngine.UI.Button>(true);
-                Assert.That(buttons, Has.Length.EqualTo(4), "The rail should carry four sections.");
+                Assert.That(buttons, Has.Length.EqualTo(6), "The rail should carry five sections and the overview.");
 
                 director.ShowNotebookSection(section);
                 yield return null; yield return null;
@@ -143,6 +152,23 @@ namespace Gamesim.Tests.PlayMode
                 var found = director.GetComponentsInChildren<RectTransform>(true)
                     .FirstOrDefault(rect => rect.name == section);
                 Assert.That(found, Is.Not.Null, "The notebook should contain " + section + ".");
+
+                // And the rail says which one you are on. A rail of six identical buttons is the
+                // "they all open the same thing" complaint in miniature: the pages became separate
+                // and nothing on screen said which page you had landed on.
+                Assert.That(director.ActiveSection, Is.EqualTo(section),
+                    "The director should report " + section + " as the open one.");
+                // Re-find the rail: opening a section rebuilds the whole HUD, so the one captured
+                // before the jump is a destroyed object by now.
+                var lifted = director.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == IconRail.RootName && rect.gameObject.activeInHierarchy);
+                Assert.That(lifted, Is.Not.Null, "The rail survives opening a section.");
+                var lit = lifted.GetComponentsInChildren<RectTransform>(true)
+                    .Where(rect => rect.name == IconRail.ActiveMarkName)
+                    .Select(rect => rect.parent.name)
+                    .ToArray();
+                Assert.That(lit, Has.Length.EqualTo(1),
+                    "Exactly one rail item is marked open; " + lit.Length + " are.");
             }
 
             director.ClosePanels();
@@ -192,6 +218,125 @@ namespace Gamesim.Tests.PlayMode
             caption.Hide();
             yield return null;
             Assert.That(director.ObservedNpcConversation, Is.Empty, "Hiding should clear the caption.");
+        }
+
+        /// <summary>
+        /// Given somewhere to point, the caption becomes a bubble over the pair rather than a banner
+        /// at the top of the screen (VISUAL-TARGET.md V2, mockups 01, 06 and 09).
+        ///
+        /// <para>Two things are worth pinning and neither is the wording. It must grow a tail, which
+        /// is what makes it point at somebody rather than float. And it must still keep out of the
+        /// house pill: a caption that follows a pair across the room will walk under the week
+        /// counter unless it is clamped, and a line of prose over the week counter is worse than a
+        /// line of prose in the wrong place.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AmbientCaption_AnchoredOverAPairBecomesABubbleAndStaysOffTheChrome()
+        {
+            var caption = SceneComponents<Gamesim.Episode.HouseConversationCaption>().FirstOrDefault();
+            Assert.That(caption, Is.Not.Null, "The episode should stage the conversation caption.");
+            var camera = Camera.main;
+            Assert.That(camera, Is.Not.Null, "The house camera is what the bubble is projected through.");
+
+            var pill = director.GetComponentsInChildren<RectTransform>(true)
+                .FirstOrDefault(rect => rect.name == "House pill" && rect.gameObject.activeInHierarchy);
+            Assert.That(pill, Is.Not.Null, "The HUD should carry the house pill.");
+            var pillRect = ScreenRect(pill);
+
+            // Walk the anchor up the FRAME, not up the world: the house camera looks steeply down,
+            // so world-up quickly puts a point behind it, and a point behind the camera is one the
+            // bubble hides rather than clamps. Along the camera's own up axis the anchor stays six
+            // metres in front at every step, and the last of them is well above the top of the
+            // screen - which is exactly where an unclamped bubble would land on the chrome.
+            // Measured in the same frame it is shown, with no yield between. The NPC runtime hides
+            // this caption on any frame where no conversation is actually being witnessed, and the
+            // test is staging one by hand - so yielding hands the director a frame in which to take
+            // it away again, which it duly does on the second pass.
+            foreach (var lift in new[] { 0f, 2f, 6f, 14f })
+            {
+                caption.Show("Maya Hassan", "Riley Johnson", "strategy", 1f,
+                    camera.transform.position + camera.transform.forward * 6f + camera.transform.up * lift);
+                Canvas.ForceUpdateCanvases();
+
+                var panel = caption.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == Gamesim.Episode.HouseConversationCaption.PanelName);
+                Assert.That(panel, Is.Not.Null, "The caption should have built its panel.");
+                var tail = caption.GetComponentsInChildren<RectTransform>(true)
+                    .FirstOrDefault(rect => rect.name == Gamesim.Episode.HouseConversationCaption.TailName);
+                Assert.That(tail, Is.Not.Null, "An anchored caption should have built its tail.");
+                Assert.That(tail.gameObject.activeInHierarchy, Is.True,
+                    "The tail is what makes the bubble point at somebody; a banner has none. Lift "
+                    + lift + ": tail self " + tail.gameObject.activeSelf
+                    + ", panel in hierarchy " + panel.gameObject.activeInHierarchy
+                    + ", canvas self " + panel.parent.gameObject.activeSelf + ".");
+
+                Assert.That(ScreenRect(panel).Overlaps(pillRect), Is.False,
+                    "Anchored " + lift + " m up, the bubble " + ScreenRect(panel)
+                    + " overlaps the house pill " + pillRect + ".");
+            }
+
+            caption.Hide();
+            yield return null;
+            Assert.That(director.ObservedNpcConversation, Is.Empty, "Hiding should clear the caption.");
+        }
+
+        [UnityTest]
+        public IEnumerator AmbientCaption_LongNamesWrapWithoutShrinkingLargerTextOrCoveringChrome()
+        {
+            director.ClosePanels();yield return null;
+            var caption=SceneComponents<Gamesim.Episode.HouseConversationCaption>().First();
+            var camera=Camera.main;
+            caption.Show("Alexandria Alexandra Montgomery", "Christopher Nathaniel Rutherford", "alliance_talk",1.2f,
+                camera.transform.position+camera.transform.forward*6);
+            Canvas.ForceUpdateCanvases();
+            var panel=caption.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==Gamesim.Episode.HouseConversationCaption.PanelName);
+            var label=panel.GetComponentInChildren<TMP_Text>();label.ForceMeshUpdate();
+            Assert.That(label.fontSize,Is.EqualTo(23));Assert.That(label.enableAutoSizing,Is.False);
+            Assert.That(label.isTextOverflowing,Is.False,"The bubble grows around the requested text size.");
+            foreach(var name in new[]{"Objective","Status","House pill",EpisodeDirector.LiveFeedCardName})
+            {
+                var chrome=director.GetComponentsInChildren<RectTransform>().FirstOrDefault(rect=>rect.name==name);
+                if(chrome!=null)Assert.That(ScreenRect(panel).Overlaps(ScreenRect(chrome)),Is.False,name);
+            }
+            caption.Hide();
+        }
+
+        [UnityTest]
+        public IEnumerator AmbientCaption_OverviewRoomListRemainsClearAtBothTextSizesAndHudDensities()
+        {
+            bool originalLarge=director.LargeText,originalCompact=director.CompactHud;
+            var caption=SceneComponents<HouseConversationCaption>().First();
+            try
+            {
+                foreach(bool compact in new[]{false,true})
+                foreach(bool larger in new[]{false,true})
+                {
+                    director.SetLargeText(larger);director.SetCompactHud(compact);
+                    Assert.That(director.ShowOverview(),Is.True);
+                    yield return null;Canvas.ForceUpdateCanvases();
+                    var column=ActiveRect(EpisodeHud.OverviewColumnName);
+                    Assert.That(column,Is.Not.Null,"The room list is useful in either HUD density.");
+                    // Place an observed pair behind the room list. The visible caption must clamp
+                    // left of the whole list, not only left of the narrower exploration-help card.
+                    caption.Show("Maya Hassan","Riley Johnson","strategy",larger ? 1.2f : 1f,
+                        Camera.main.ViewportToWorldPoint(new Vector3(.98f,.65f,6f)));
+                    Canvas.ForceUpdateCanvases();
+                    var panel=caption.GetComponentsInChildren<RectTransform>().Single(rect=>rect.name==HouseConversationCaption.PanelName);
+                    var label=panel.GetComponentInChildren<TMP_Text>();label.ForceMeshUpdate();
+                    Assert.That(ScreenRect(panel).Overlaps(ScreenRect(column)),Is.False,
+                        "Overview captions must not cover occupants at compact="+compact+", larger="+larger);
+                    Assert.That(ScreenRect(panel).xMax,Is.LessThan(ScreenRect(column).xMin));
+                    Assert.That(label.fontSize,Is.EqualTo(larger ? 23 : 19));
+                    Assert.That(label.enableAutoSizing,Is.False);
+                    Assert.That(label.isTextOverflowing,Is.False);
+                    caption.Hide();director.EndOverview();yield return null;
+                }
+            }
+            finally
+            {
+                caption.Hide();director.EndOverview();
+                director.SetLargeText(originalLarge);director.SetCompactHud(originalCompact);
+            }
         }
 
         // The frames a season shows: the authored wall carries sixteen and switches the rest off.

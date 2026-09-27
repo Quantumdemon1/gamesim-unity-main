@@ -1,0 +1,1681 @@
+# Session handoff — 21–22 September 2026
+
+Written for whoever picks this up next. It covers what shipped, what is in flight, what remains,
+and — the part that will save you the most time — the traps this session fell into, several of them
+more than once.
+
+Branch: `port/game-flow-v2-pass`. Baseline before this session: `e45686f`.
+
+---
+
+## 000000000000000000. The finale, second part: the evicted walk out through the front door, and the jury in the living room on finale night (26 September)
+
+The second half of batch 5 of the minigames brainstorm's plan. The first half (the jury read one juror at a time, private ballots, the final-three and final-two cards) is the entry below.
+
+**What the reference does** (D:/gamesim-web):
+- It wrote a goodbye for the evictee, with a line for how they leave things with the player (`PostEvictionGoodbyeDialog.tsx`), and never shows it: the dialog listens for an event type spelled differently from the one its writer emits.
+- It has no walk out, and its jury is a panel of faces.
+
+**The walk out** (new `Episode/EpisodeDirector.WalkOut.cs`, `House/HouseMeetingCoordinator.Departure.cs`)
+- Once the cards about an eviction are done, the evicted walks across the yard to the opening's front door, which opens for them, then through it and off the deck behind the facade. They used to vanish on the frame the last card ended.
+- The strip says GOODBYE with the reference's line, chosen by how the evicted leaves things with the player:
+  - A deal between them: "… pauses at the door and turns to you…".
+  - Warmth of 20 or more: a last look.
+  - -20 or less: a glare from the doorway.
+  - Otherwise: "… walks to the door without looking back".
+  - Every line ends "They'll be waiting in the jury house."
+  - It reads the evicted's view of the player, not the player's of them. An offer never taken up is not a deal, nor is a broken one.
+- The camera follows them out and comes back to the player.
+- **How the house lends them.** The house lends them for the walk as it lends the opening its cast: a reservation of its own, exempt from the house's pause, one at a time.
+- **When it stops early.**
+  - A press (Enter, Escape, a click or the pad) lets them go. The press that closed the last card does not count.
+  - Starting a competition ends it: the arena takes the yard they would cross.
+  - Anything that goes wrong lets them go as they used to: no route, a walk over 40 s, or the house's world stopping.
+  - Reduced motion never plays it, and a batch run does not unless a test asks, as with the opening's stage.
+- **A body that cannot walk.** If the house cannot give the evicted's body its navigation back (a failed binding), the coordinator lets that one person go instead of stopping the house's world. It knows who they are: the director names them as the departure candidate. Anyone else's failed binding still stops the world for explicit recovery, as before.
+- **The week goes on around the walk.** Commits made meanwhile keep them in the house until they reach the deck. A panel pausing the house, or a decision made under it, does not stop them.
+- **No house world, no walk.** The house's world is created in the first social or campaign phase. A season loaded straight into an eviction has no world yet, so its evictee goes as they used to.
+- **The final eviction** has no walk out. It opens finale night, and the new juror joins the jury.
+
+**The jury on finale night**
+- From jury questioning to the end of the season, the jurors are back in the living room. They stand around its middle, facing it, at least a metre apart, and clear of the furniture, the finalists, the player and the episode station.
+  - Places are chosen once for the finale, nearest the middle first (`JuryPlaces`, a pure function of the floor and the room's clearance).
+  - A room that cannot hold the whole jury gives the places it has. A juror with no place is not shown, rather than shown somewhere wrong.
+- They are placed while the house does not route them: the house moves only the people it routes, and a juror is not one of them.
+- The new juror stays where they stood while the Final Two card is about them, and joins the others when it ends.
+
+**Tests**
+- PlayMode:
+  - `EpisodePlayModeTests.WalkOut` (10):
+    - The walk to the door, through it and off the deck, with the strip's goodbye.
+    - A press lets them go; presses on the walk's first frames do not.
+    - A competition started mid-walk.
+    - The week going on around the walk: the house's world running, a panel, and a decision under it.
+    - A body that cannot walk.
+    - A batch run.
+    - A whole season: every weekly eviction walks out, and the final one joins the jury.
+    - The jury in the living room, and no jury before finale night.
+  - `HouseMeetingCoordinatorPlayModeTests` (1): the coordinator lets a departure candidate go from each binding path, and nobody else.
+  - The final-two card test now checks that the new juror is not moved during the card and joins the jury afterwards.
+- EditMode (`CeremonyTruthTests`): the goodbye line, and the jury's places against a small fake room with a sofa and a kitchen beyond it.
+- 43 mutations, all caught at their target assertions (`walkout_mut.py`). The groups pair only mutations whose tests cannot see each other.
+- Eight needed new or sharper tests:
+  - **The press guard.** Its test now presses on the walk's first frames. In this build's execution order, the press that closes a card is spent a frame before the walk starts, so closing the card by keyboard never reached the guard.
+  - **The walker's pause exemption and lease ownership** only matter once the week moves on. An eviction is already paused, and its world does not reconcile. The new week test walks into the social week, opens a panel and commits under it.
+  - **The jury's places** became a pure function with its own test. The scene's living room always had room on the inner rings, and the NavMesh kept the places off the furniture anyway.
+  - **The finale-night rule** was invisible in the fixture. A season installed at the final eviction has no house world, so nobody could walk out either way. The final-two test now builds the world a played season carries (`BuildNpcWorldForDiagnostics`, editor-only).
+  - **The recap's wait for the walk**: the season walk found the recap opening after a walk nobody interrupted. That is the design, and the plain season walk never sees it because its next command commits first.
+- The season walk leaves the final eviction to the final-two test. Its outcome is not fixed: the house's world ticks in real time, and one run's final Head of Household evicted the player.
+
+**Verified:** EditMode 1630, PlayMode 584, Uma 64 and Simulation 857, all passing in one full run, with no crashes. Floors raised from 1628 and 573.
+
+## 00000000000000000. The finale, first part: the jury read one juror at a time, ballots kept private, and cards for the final three and the final two (26 September)
+
+Batch 5 of the minigames brainstorm's plan, the finale, in two parts. This entry is the first; the jury seated in the house on finale night and the evictee's walk out through the front door follow.
+
+**What the reference does** (D:/gamesim-web, checked by a research pass):
+- It reads the jury one vote every 2.5 s under "{ceil(n/2)} votes to win".
+- It stops at the deciding vote, reports the partial count as the result ("By a vote of 4-1" where the whole jury went 4-3), and throws three seconds of confetti.
+- Its final three get a transition card ("Only three remain..."); its final Head of Household's choice gets a sentence.
+
+**The jury's vote** (new `Presentation/JuryReveal.cs`, `ConfettiBurst.cs`; `EpisodeDirector.Finale.cs`)
+- The winner's commit no longer plays a card that names the winner. The jury is read one juror at a time, a face each:
+  - Each juror's vote goes up as a chip under their face, in the finalist's colour, and the two tallies climb.
+  - The finale's cue plays when the winner is called, with gold confetti from the lower corners, as the reference throws it.
+- **Three changes from the reference, all toward honesty:**
+  - The jurors are read in an order dealt from the seed (`JuryOrder`), as the keys are. The engine records them in cast order, which would read a juror-player's own vote first every time.
+  - A pause comes before any vote that *could* decide it, whoever it names, so the pause gives nothing away.
+  - The count it ends on is the jury's whole count. The rest of the votes go up with the winner, and the host reads the real figures: "By a vote of 4 to 3, Alex Chen, you are the winner of Gamesim: The House!".
+- A tie is called as a tie and settled by the house's rule, as the engine settles it.
+- A player finalist is spoken to ("you are the winner"), and a juror-player's own vote is read as "You".
+- **Controls and pacing:**
+  - The other reveals' controls: speed up, skip to the whole count, a second press closes.
+  - Paced by `CeremonyPacing`: suspenseful 2.6 s of finalists, 2.2 s a juror (1.6 from eight), a 2 s pause before a vote that could decide it, and 5.2 s on the winner; quick is 1.0 / 0.55 / 0.3 / 3.2.
+  - The house's chrome waits while it plays, as it does for the other reveals.
+  - Reduced motion keeps the timings and throws no confetti.
+
+**Private ballots.** A juror who continued before voting used to see every other juror's ballot cast and read out publicly, and still had a vote to cast. The engine now refuses before writing anything. The shipped screen never allowed it; the engine did.
+
+**Two cards**
+- "The Final Three" when the house is down to three, with the reference's line and the three faces.
+- "The Final Two" for the final Head of Household's choice, badged FINAL HOH, FINAL 2 and JURY. The new juror stays in the room while it plays, as an evictee does for their eviction; they used to vanish the next frame.
+- At the winner's commit the runner-up was being treated as the one leaving; nobody is now.
+
+**Tests.**
+- PlayMode added `JuryRevealPlayModeTests` (8) and `EpisodePlayModeTests.FinaleReveal` (4). EditMode added the jury's order (`CeremonyTruthTests`) and the private ballots (`EpisodeFinaleTests`, which also runs under `dotnet test`).
+- The season walk's `SkipReveals` skips the jury's reveal too.
+- The finale tests hold the house before installing a fixture (`SuspendNpcAutonomyForDiagnostics`). The reload loads the scene asynchronously, and the director it replaces could autosave an NPC tick over the fixture just written, so a test run alone played the scene's own season.
+- 25 mutations, all caught at their target assertions: 23 through the harness (`finale_mut.py`, one to a run, since several change what every card test sees) and 2 on the engine under `dotnet test`.
+  - Five needed a second look. The default cast's player is called "You", so the test of a juror-player's label renames them. Only a juror-player's finale can show a finalist taken for someone leaving. The duration test computed its expectation from the pacing it was checking, so the pacing is now pinned on its own.
+  - Three runs failed inside their fixture install, not at their assertions: not a catch. That is how the autosave race above was found. Held, all three were caught where they should be.
+
+**Verified:** EditMode 1628, PlayMode 573, Uma 64 and Simulation 857, all passing in one full run, with no crashes. Floors raised from 1625, 561 and 856.
+
+## 0000000000000000. The strategy windows: a word with whoever decides, decisions that listen, reply cards, and two deal fixes (26 September)
+
+Batch 4 of the minigames brainstorm's plan: "Strategy windows: lobbying the HoH and the veto holder, reply cards, deal fixes." The rules are `Simulation/StrategyRules.cs` and `Simulation/ReplyCards.cs`; the engine's side is `EpisodeEngine.Strategy.cs`, and the screens are `EpisodeDirector.Strategy.cs`.
+
+**What the reference actually does** (a research pass over D:/gamesim-web):
+- Its veto lobbying is real on screen but reaches the decision only for guests. The signed-in server's veto never reads the player's influence.
+- Its NPC Head of Household ignores lobbying entirely.
+- Its confrontation, plea and gossip replies write to the legacy relationship store, which nothing reads.
+- So this batch copies the reference's cards, numbers and words, and gives them consequences.
+
+**The windows**
+- Before nominations the player can reach the Head of Household. Before the veto meeting they can reach the veto holder (while the veto can be used and the holder is not nominated) and the Head of Household (about a replacement). Everybody else gets the old notice card, with a line pointing at who is deciding.
+- What a window allows: any conversation aimed at the decider, and a deal. Not allowed: listening in, rumours told to the house, scheming, and vote promises.
+- A word costs one of the week's conversations, on the out-of-phase counter campaigning already uses.
+- The station says who is deciding and how many conversations are left.
+- Whoever is deciding greets the player with a line of their own, instead of "the ceremony comes first".
+
+**Pleas**
+- Two steps: what to ask, then how to put it. What to ask:
+  - The Head of Household: to keep the player off the block (or out of a saved nominee's place), or to put a named houseguest up.
+  - The veto holder: to use the veto on a named nominee, the player included, or to keep the nominations the same.
+- One plea per decider per window.
+- How to put it is one of the reference's four cards, in its words ("Desperate plea" / "Emotional plea" and so on).
+- **The chance:**
+  - The card's base: 55, 50, 60 or 35.
+  - +15 for each trait it suits, −10 for each it grates on.
+  - A fifth of the relationship, rounded as JavaScript rounds it.
+  - +10 from the block, and +10 for a deal already between them.
+  - Clamped to 5–95.
+  - **Two changes:**
+    - The relationship is the decider's view of the player. The reference reads the player's own.
+    - What is asked is weighed as the deal it resembles, so pushing somebody at a friend is a harder sell.
+- **The answer** is the reference's roll:
+  - Receptive, under six tenths of the chance: 40–60 points, +5.
+  - Open: 15, +3.
+  - Skeptical, the next twenty: −5.
+  - Hostile: −30 to −50, −8.
+- A plea made with a deal that lands writes a safety agreement through next week: the card's "real obligations".
+- **Not ported:** the reference's negotiation step after a counter-proposal.
+
+**Decisions that listen** (all read warmth alone in a season without the windows)
+- **Nominations and replacements:**
+  - Warmth.
+  - Plus the reference server's deal weights, read as points: safety 35, final two 50, veto commitment 40, and so on.
+  - −35 for a broken deal, +30 for an ally, −40 for the target of their own target agreement.
+  - Plus this week's pleas: a hostile answer pushes the other way.
+- **The veto:**
+  - Warmth, +20 for an ally, +40 for a veto commitment, plus pleas.
+  - Against the port's line of 30, which a plea to keep things as they are raises.
+  - A houseguest who gave their word used to break it and be blamed; now they mostly keep it.
+
+**Deal fixes**
+- Nobody offers or accepts a veto commitment once the veto is decided. NPCs used to ask at the campaign, which is after it.
+- A nominee warm enough to bargain now asks the player veto holder as soon as the competition is over. The question is answered on the veto decision itself, and one left unanswered lapses at the decision.
+- An accepted alliance invitation, asked either way, now forms an alliance:
+  - The inviter's own, if nobody in it is below −10 with the player and the player reads nobody in it as sour.
+  - Otherwise a new pact.
+  - It used to be a deal and nothing more, so the voting blocs and the jury never saw it.
+
+**Reply cards**
+- Three kinds, each with the reference's three answers and numbers:
+  - A confrontation: Apologize +10, Deflect −2, Escalate −15.
+  - Gossip the player finds out about, three times in ten: Confront them −15, Let it slide −5, Gossip back −10.
+  - A nominee's plea: Promise support +8, Stay noncommittal 0, Refuse −5.
+- What the answers do:
+  - They move the relationship, and the houseguest remembers them.
+  - Gossiping back costs the gossip 5 with the listener.
+  - Promising support is a vote promise against the other nominee.
+- A card is free to answer and lasts only its phase. It is drawn on the house-event card, above the week's situation, under "SOMEBODY CAME TO YOU".
+
+**Saves: schema 15** (`strategyRulesStartWeek`, `lobbies`, `replyCards`)
+- New seasons set 1. A migrated save and the fixture seasons get 0.
+- `FrozenEpisodeV14` freezes schema 14's Have-Not contract, prize ids included.
+- **Validation:**
+  - Pleas and cards are this week's.
+  - Cards exist only in free time or the campaign.
+  - A season at 0 holds neither.
+- **Test sweep:**
+  - 40 "schema 14" assertions became 15.
+  - Three field inventories learned the three fields, and `StripSchema15` joins the helpers.
+  - The v14 tests now check the frozen step (`PrepareV14Payload`).
+  - The v4 "future schema" damage case moved to 16. It was left at 14 when 14 became current, so it had been testing a current schema number.
+
+**Tests.**
+- EditMode added `StrategyRulesTests` (43, which also run under `dotnet test`) and `PersistenceV15MigrationTests` (14).
+- PlayMode added `EpisodePlayModeTests.Strategy` (4), and the new-season test checks the windows.
+- 103 mutations, all caught at their target assertions: 80 on the rules under `dotnet test` (`simmut_b4.py`) and 23 on persistence and the screens through the harness (`strategy_mut.py`).
+  - Two of the harness's mutations edited the same line of the frozen validator and did not compose, so one was narrowed.
+  - A boolean week turned out to be refused by the serializer itself, so the case that proves the frozen shape check writes the week as text, which only the shape check refuses.
+- Three rules mutations missed at first, all on the tests' side:
+  - An alliance case clamped to 5 either way.
+  - The Eavesdrop label is redundant beside the decider check, so the test now reads the refusal's words.
+  - The gossip test saw too few rumours told to the player, so it now runs until it has seen twenty.
+
+**Verified:** EditMode 1625, PlayMode 561, Uma 64 and Simulation 856, all passing in one full run, with no crashes. Floors raised from 1568, 557 and 813. Port verification's season walk now answers reply cards (the middle answer) and the look sheet answers them before its house-event shot; neither standalone run was made this batch.
+
+**Next:** batch 5, the finale. Follow-ups seen on the way:
+- Pending offers on the cast strip.
+- Deals in the nominee comparison, with a warning before a nomination breaks one.
+- The reference's lobbying negotiation step.
+
+## 000000000000000. Have-Nots, and a veto played for a prize and a punishment (26 September)
+
+Batch 3 of the minigames brainstorm, the owner's decision 4: "prize or punishment vetoes and have-not competitions... Yes they sounds good". Neither build of the reference has them, so the design is this port's (`Simulation/HaveNots.cs`).
+
+**Have-Nots**
+- The last out of each Head of Household competition are the week's Have-Nots: three in a house of nine or more, two in six to eight, one in five, and none from the final four. The finale clears them.
+- The new HoH is never one. A pass from the veto keeps its holder off the list, and the place passes to the next-lowest. A punishment from the veto puts its taker on, whatever they scored.
+- Being a Have-Not costs a point off the week's veto score, and a player among them has one fewer conversation. The status lasts until the next HoH.
+- Finishing low now has a cost, and a throw is a gamble with it.
+- The Have-Nots come from committed standings, so nothing draws on the season's generator.
+- **Shown:**
+  - A `HAVE-NOT` badge on the cast rail, below HOH, VETO and NOM and above YOU.
+  - A note on the HoH's standings rows.
+  - A stakes line on the HoH briefing ("The last two out are this week's Have-Nots.").
+  - The house's story line.
+  - For a player among them, a line beside the interactions meter.
+- The veto explanation carries a "have-not −1" term, so its terms still add up.
+
+**The veto's prize and punishment**
+- The veto's runner-up wins a prize (in a field of three or more) and its last finisher takes a punishment (four or more). Each week's pair is picked from the season's seed and the week, not the generator.
+  - **Prizes:** $5,000 (story only); a Have-Not pass for next week; a luxury night (one more conversation until the end of next week).
+  - **Punishments:** a Have-Not next week; the alarm (one fewer conversation until the end of next week); a banana suit until the eviction (story only).
+- The luxury and the alarm are story modifiers on the player (weeks left 2). Conversations are the player's currency, so for anyone else they are the house's story.
+- **Shown:** notes on the veto's standings ("Prize: $5,000", "Punishment: The alarm"), a stakes line on the veto briefing, and the house's story lines ("You finished last in the veto: an alarm every hour of the night.").
+
+**Saves: schema 14** (`haveNotRulesStartWeek`, `haveNots`, `haveNotPasses`, `punishedHaveNots`, `vetoPrizes`)
+- A season started now plays them from week 1 (`SeasonBuilder`, `StartSeason`).
+- **Everything else has 0 and plays without them:**
+  - A migrated save, as it keeps its competition rules: they are a new season's, not a change to one under way.
+  - The default cast's fixture seasons (`ContentCatalog.Create`), so no pinned history re-rolls. The voting-bloc witness is one.
+- **The frozen v13 contract:** `FrozenEpisodeV13` freezes schema 13 as "schema 12 plus competition rules 1–4, a source template and an appearance". The appearance's shape and checks are copied as they stood, and it delegates to the frozen v12 validator.
+- **Validation:** Have-Not lists hold distinct houseguests; a season at 0 holds none; prizes name the lists' own ids.
+- **Test sweep:** 31 "schema 13" assertions became 14. Two field-inventory tests and the v3 dispatch test learned the five fields. `StripSchema14` joins the downgrade helpers.
+
+**Tests.**
+- EditMode added `HaveNotTests` (15, which also run under `dotnet test`) and `PersistenceV14MigrationTests` (7).
+- PlayMode added `EpisodePlayModeTests.HaveNots` (3), and the new-season test now also checks the Have-Not rules and a season started without a roster choice.
+- 35 mutations, all caught at their target assertions: 23 on the rules under `dotnet test` (`simmut_b3.py`) and 12 on persistence and presentation through the harness (`havenot_mut.py`).
+  - One needed a run of its own. The frozen validator's rules bound, mutated, refuses every rules-4 payload, and so it masked the template-length mutation grouped beside it.
+- `simmut.py` now matches test names by contains, so parameterised cases run, and counts a mutation caught if any case fails.
+
+**Verified:** EditMode 1568, PlayMode 557, Uma 64 and Simulation 813, all passing in one full run, with no crashes. Floors raised from 1546, 554 and 798.
+
+**Next:** batch 4, strategy windows: lobbying the HoH and the veto holder, reply cards, and the deal fixes. Then the finale.
+
+## 00000000000000. Competition rules 4: five kinds, the dice and the word game, a minigame worth three, and a throw that throws (26 September)
+
+Batch 2 of the minigames brainstorm, covering the owner's decisions 1 to 3:
+1. Keep stats and weight the minigames more.
+2. Widen the competitions with luck and social.
+3. A throw should lose about 90% of the time. When it still wins, say the player got lucky, or explain how a throw can still win.
+
+Everything here is **competition rules 4**, which new seasons play (`CompetitionRules.Current`, set by `SeasonBuilder.Create` and `EpisodeDirector.StartSeason`). Seasons saved under rules 1–3 are frozen: they keep their three kinds, their two-point weight, their throw and their reaction schedule. The PlayMode fixture's own season is a legacy one.
+
+**Five kinds, in each season's own order** (new `Simulation/CompetitionRules.cs`)
+- Skill, Mental, Endurance, Luck and Social: the reference's five player-facing types.
+- A season shuffles the five from its seed (no draw on the season's generator). The HoH takes the next kind each week and the veto the kind two on. A week's two competitions never share a kind, and each kind comes round once as each in every five weeks.
+- `EpisodeEngine.CompetitionCategory` takes the seed now. The result card passes it, so it names the kind the season dealt.
+- **Luck** is the reference's Crapshoot: a tenth mental, nine tenths luck, plus a second roll worth up to 3. The luck statistic is squeezed toward five, as the reference's dice game does (5 + (luck − 5) × 0.2), so a lucky houseguest is favoured, not crowned. Luck draws its second roll straight after each competitor's first.
+- **Social** uses this port's weights, since the reference has none: three fifths social, a fifth mental, a fifth luck.
+
+**The minigame counts for more.** Full marks are worth 3 points (they were 2); `CompetitionRules.PerformanceWeight`.
+- The accessible alternative is still half marks, now 1.5 points. Its caption is a contract: "Accessible alternative: steady 1.5-point bonus" in a rules-4 season (`EpisodeDirector.AccessibleCompetitionCaption`).
+- The briefing's copy says 0–3.
+- Simulated in a field of six and averaged over the five kinds, a balanced player wins 18% at no performance, 56% at half marks and 89% at full marks.
+
+**The throw** (its own command, `EpisodeCommandKind.ThrowCompetition`, appended)
+- Every bonus is given up, and only part of the player's score counts (`CompetitionRules.ThrowShare`): 0.82 in a field of three, 0.88 of four, 0.93 of five, 0.94 of six, 0.96 of seven, 0.98 of eight, 0.99 of nine, and all of it from ten up.
+- The shares were measured over 2,000 seasons per field size (the regular roster, the player as each of its houseguests, every kind) to leave a throw winning one time in ten.
+  - A first table from a simplified cast won only 4.5–8.8% on the real casts.
+  - The test checks the measured rate on real casts at fields of 3, 5, 6 and 11.
+- It never touches another score, so a throw can still win.
+- The explanation leads with the story:
+  - "You threw it. A throw gives up every bonus and counts 94% of your score in a field of 6. Yours came to 5.4, 4th of 6."
+  - "You threw it and won anyway: you got lucky. … It lowers only your own score, and yours came to 6.83 while the best of the rest scored 6.28."
+  - It names the runner-up's score, not the runner-up: the explanation stays the player's own account.
+- The standings mark the row "Threw". The card's attempt line reads "You threw it · 4 of 6" or "You threw it and won anyway: you got lucky".
+- The throw is recorded in a private `competition-throw` line, and the house is not told.
+- A rules-3 season throws as it always did, with a Compete at no performance.
+
+**The games** (`MiniGameRun.Dice.cs`, `MiniGameRun.Words.cs`, and the board partials `CompetitionGameScreen.Dice.cs` / `.Words.cs`)
+- **Roll the Dice** (luck): three dice, up to three rolls.
+  - The reference kept the best roll, so rolling three times was always right. Here each re-roll replaces the roll you have: "Roll again" gives up the roll showing, and "Keep this roll" ends on it. A third roll stands.
+  - The total out of ten is the reference's scale, (total − 3) / 15 × 10.
+  - The faces are dealt when the run is made, so a ranked attempt rolls the same dice after a cancel or reload.
+  - The dice land one after another. The tumble's faces are the screen's own flicker, never the dealt faces, and under reduced motion a tumbling die is blank.
+- **Word Scramble** (social): the reference's list, kept to five letters or more, and its points (2 for five or six letters, 2.5 for seven or eight, 3 for nine or more, 1.5 for a four-letter name).
+  - A finished spelling is judged at once. A wrong one clears after half a second, and skipping is free. The score is the points, capped at ten.
+  - A letter can be chosen by clicking its tile, typing it (read on the keyboard's own layout), or pressing the pad's A. Backspace or the pad's X takes one back.
+  - While the board is played every letter types, P included. It pauses with Start or the Pause button; paused, P resumes.
+  - The **Houseguest Scramble** variant spells the season's own first names: letters only, four to twelve letters, topped up from the list when the house's names run short.
+- A kind's game now changes every time the kind comes round, not once a season (`CompetitionDefinitions.Version4`; Luck has one game). The Final HoH keeps its authored rounds.
+- The house's shortcuts wait during a competition. Typing J in the word game opened the notebook underneath it.
+
+**Found on the way**
+- `CompetitionMiniGames.CurrentRules` meant "newest" in the range check and "rules 3's reaction schedule" in four places in `MiniGameRun`. Bumping it would have moved every rules-3 season off its schedule. `ScheduledRules = 3` now gates the schedule, and a mutation checks it (memory: a-current-version-constant-is-a-bound-not-a-gate).
+- A Selectable made non-interactable while the keyboard is on it drops the selection. Disabling Roll during a tumble, or a letter tile once chosen, left pad and keyboard players selecting nothing. Those controls now stay live but inert, and they look spent.
+- Port verification plays the dice and word games, reading the board as a player does, and uses the rules-aware caption.
+
+**Tests.** EditMode added `CompetitionRulesV4Tests` (16, which also run under `dotnet test`) and `LuckAndSocialGameTests` (17). PlayMode added `CompetitionSurfacePlayModeTests.LuckAndSocial` (6) and `EpisodePlayModeTests.CompetitionRules4` (7). Two tests changed with the contract: the catalogue count and new seasons' rules. The rules-3 surface test now builds the luck and social games under rules 4.
+- 59 mutations, all caught at their target assertions: 24 on the simulation rules, run against a scratch copy with `dotnet test` (`scratchpad/simmut/simmut.py`); 15 EditMode and 20 PlayMode through the D: harness (`rules4_mut.py`).
+- Two needed a stronger test first:
+  - The reroll test compared the kept total with the same accessor the mutation broke, so both moved together. It now checks against the dice showing.
+  - A missing card line threw from a lookup instead of failing an assertion.
+
+**Verified:** EditMode 1546, PlayMode 554, Uma 64 and Simulation 798, all passing in one full run, with no crashes. Floors raised from 1513, 541 and 782.
+
+**Next:** batch 3, prize and punishment vetoes and have-nots (decision 4). They need a save schema bump. Then strategy windows, then the finale.
+
+## 0000000000000. Ceremonies that keep their secret: a suspenseful pace you can skip or speed up, and the spoilers gone (26 September)
+
+The request: "Brainstorm improvements to minigames and other features of the game". After the brainstorm the owner decided:
+1. Keep stats, and weight the minigames more.
+2. Widen the competitions with luck and social (the web's five types).
+3. Throwing a competition should lose about 90% of the time. When it still wins, say the player got lucky, or explain how a throw can still win.
+4. Prize and punishment vetoes and have-nots: yes.
+5. Suspense and slower pacing for the ceremonies, with the option to skip or speed up.
+
+The plan is five batches, each tested, mutation-tested and committed before the next:
+1. Honest ceremonies and pacing (decision 5). **This entry.**
+2. Competition rules v4 (decisions 1–3).
+3. Prize and punishment vetoes and have-nots (decision 4; needs a schema bump).
+4. Strategy windows: lobbying the HoH and the veto holder, reply cards, deal fixes.
+5. The finale: jury reveal, jury present, and the evictee's walk out through the opening's front door. The walk-out moved here from batch 1.
+
+**Pacing** (new `Presentation/CeremonyPacing.cs`)
+- Two paces. **Suspenseful** is the default: a beat on every key and vote and a longer one before the last. **Quick** is the timings the cards had before.
+  - The reference build holds about seven seconds per key; the port had 0.62 s. Suspenseful sits between, and shortens for a big house.
+  - Key ceremony: 2.2 s a key, 1.8 at seven keys or more, 1.4 at ten or more. The last key waits another 1.8 s ("One key left"), and the block holds 3.6 s.
+  - Vote reveal: 1.8 s a vote, 1.4 at six or more. The last vote waits another 1.6 s, a tie gets a 2.4 s beat before the Head of Household breaks it, and the result holds 3.6 s.
+- **Speed up:** Space or the pad's X plays a reveal at 3×. **Skip:** a click, Enter, keypad Enter, Esc, or the pad's A or B jumps to the block or result, and a second press closes. Both wait out a 0.35 s read delay, and each card shows its controls.
+- **Settings:** a CEREMONIES section with "Make ceremonies quick" / "Make ceremonies suspenseful", kept in the `Gamesim.CeremonyPace` PlayerPrefs key (0 suspenseful, 1 quick). The key is neither read nor written under a test save root.
+- Reduced motion keeps the timings (they are reading time) and now cuts to the ceremony's room instead of skipping the framing.
+- The takeover card (the veto field, and any ceremony without a reveal) is dismissable by keyboard and pad, as the reveals are.
+
+**Honest ceremonies** (new `EpisodeDirector.CeremonyTruth.cs`)
+- **The keys are shuffled.** They came out in cast order, and the player is first in the cast, so the first key told a safe player their fate every week. `KeyOrder` is an FNV hash of seed, week and id: the same week of the same season deals the same way after a reload. It is presentation only and draws nothing from the season's generator.
+- **The chrome steps aside while a reveal plays.** The status line, house panel and cast strip were redrawn from the committed result while the reveal was still counting, so they named the nominees and the evictee first. `EpisodeHud.HoldForReveal` takes the HUD to alpha 0 with no raycasts. It comes back, redrawn, when the card ends or is skipped.
+- **A card owns its keys.** While any ceremony card is on screen:
+  - the UI's Submit and Cancel actions are disabled, so the press that moves a card on no longer presses the HUD control under it;
+  - the house's shortcuts and follow-cycling wait (the pad's X is both speed-up and Interact);
+  - Esc on a card no longer also closes the notebook or opens the settings.
+- **The evictee stays for their eviction.** The body was switched off at the commit, so the room turned to look at an empty spot. `departingId` keeps them in the room until the last card narrating the eviction is gone.
+- **The count is the house's.** The Head of Household's tie-break ballot is marked (`EvictionBallots` sets `TieBreak`), so a 1–1 tie no longer reads 2–1. The reveal calls the tie, then shows the HoH's vote with its own chip and pip.
+- **The host reads the result:** "By a vote of X to Y, NAME, you have been evicted.", a sole-voter line, or "By the Head of Household's tie-breaking vote, …". An evicted player is spoken to as "you", and a player HoH is asked to break the tie.
+- **The sound matches the beat.** The commit's cue came from its last event, which after an eviction is always a vote read out, so the eviction's sound never played. `CommitCue` takes the biggest beat among everything appended: winner, eviction, nomination, veto, competition. The reveals now raise their own cues: Save per key, Nomination at the block, Vote per ballot and Eviction at the result.
+- **The veto card tells the meeting's story.** Its badges read VETO (the holder, when not on the block), SAVED, REPLACEMENT and NOMINATED; every face used to say NOMINATED.
+- **The finale's jury line** counts the real jury and, for an even jury, names who a split goes to under the reference game's tie rule. It said "Four jurors" whatever the house; the default house seats six.
+
+**Harness**
+- Port verification runs at the quick pace.
+- So does the keyboard walk, which waits out every card on the wall clock.
+- The pointer season walk and the voting-bloc walk skip reveals the way a player would (`SkipReveals`). They used to press HUD controls under a reveal, which nobody could see.
+- The season walk now also presses the weekly recap's "Continue to next week". That recap never opened in the walk before: pressing on under the reveal made the recap drop itself as an interruption.
+
+**Tests.** EditMode added `CeremonyTruthTests` (4) and `CeremonyPacingTests` (3). PlayMode added `CeremonyRevealPlayModeTests` (18) and `EpisodePlayModeTests.CeremonyTruth` (7). 33 mutations across the pacing, the cards and the director, all caught at their target assertions. One was missed at first, and it exposed a test that had never switched reduced motion on: the fixture's reduced motion is the bodies' own, and the director reads the player's setting from preferences it leaves alone under a test save root. The test now switches it on in Settings and checks that the camera cut rather than panned.
+
+**Verified:** EditMode 1513, Uma 64 and Simulation 782, all passing. PlayMode 541 over two full runs, 537 and 540, with every test passing in at least one:
+- The first run lost four house-life tests together within 45 seconds (a body without an animator, a sleep take not playing). They passed 34/34 when re-run in suite order after the ceremony tests.
+- The second run lost one camera-framing test (`DefaultCamera_RetainsAutomaticConversationFraming`, a standalone rig in another fixture). It passed on its own.
+- No crashes.
+- Treat both as known flakes. Neither touches anything this batch changed.
+
+Floors raised from 1506 and 516 to 1513 and 541.
+
+**Next:** batch 2, competition rules 4 (decisions 1–3): five kinds dealt in each season's own order, luck and social scoring, full marks worth three points, a real throw calibrated to win about one time in ten at every field size, and the dice and word games. Then batches 3 to 5 as listed above.
+
+## 000000000000. The opening, second pass: the GitHub web's opening, Gamesim: The House, a front door nobody walks through shut (26 September)
+
+The request: carry on with the opening's open items, then - "don't use the survivor version, use the web version from the GitHub repo going forward, brainstorm solutions for the open items". After the brainstorm the owner decided: **3D reveals** (keep the real-bodies front door); brand **"Gamesim: The House"**; palette and tour **my judgment**; **skip the whole show** (unchanged); the free first night after the meet **unchanged for now**; and implement **the music, the white flash and confetti, the dancing, and remove the lamp**.
+
+**The reference is now the GitHub repo.** `Quantumdemon1/gamesim` (private; `gh` is signed in), main branch, cloned read-only to `D:\gamesim-web` (HEAD c2f79c9). `D:\gamesim-main` is a Survivor conversion - do not use it (memory: web-version-is-the-reference). **Corrections to the entry below:**
+- The web tree is not Survivor-only; its Big Brother opening is live code (`PhaseContent.tsx:32-41`). The Survivor tree's dead copy differs: IntroSequence by 234 lines, HouseWalkIn 182, Tutorial 14, MeetAndGreet 18 (diff with `--strip-trailing-cr -w`).
+- "{n} Houseguests. 1 Winner." and "Meet the Houseguests" are verbatim (`IntroSequence.tsx:470`, `MeetAndGreetPhase.tsx:488`), not reconstructions.
+- Taylor's "stack-top ball" was the shade of the `Decor/Lamp - Competition` pendant hanging at 1.54-1.90 m over the centre lane; and it was not a fixture quirk: scene body slot 1 starts at (0,0,15) in every season, heels in the stack's plinth.
+- **What a default web game actually shows:** no default or All-Star houseguest has a 3D model (`npc-avatar-seeds.ts:216-227`), so its intro is a 3 s portrait card each, its walk-in cranes over an empty house until a 25 s safety timer, and a 15 s + 2 s-per-guest timer cuts the intro's end at 8+ guests. The port keeps the web's design intent (the tunnel walker's branch: 3D for a guest with a body) and skips those bugs.
+
+**What changed**
+- **Intro, house entry, walk-in** (`OpeningSequence.Cards.cs`, `OpeningSequence.cs`): the GitHub timings and copy - "Preparing the show..." from the first frame with a 20 s cap; a typed "Season N" line at 0.06 s a letter from 1.8 s (N = finished seasons in the career record + 1, `EpisodeDirector.SeasonNumberFor`, presentation only); the subtitle at 2.4 s in capitals; the lower third's web stagger (name slides from -40 px, portrait 0.7→1, details from +30, counter at 2.2 s) with the plain name; "Welcome to Gamesim: The House" on the group card; the house entry's "Welcome to the House" over "{N} HOUSEGUESTS HAVE ENTERED" with the season's arrival line in the slot where the web's untrue "HoH competition starting soon" was; the walk-in caption "The houseguests enter the house..." and the web's camera schedule - a 1 s push-in (a new first `WalkInKeys` key), rise from 1 s, crane from 4 s.
+- **The brand:** "GAMESIM" over a letter-spaced "THE HOUSE" on the title card, the front door's sign and the main menu (the "GAMESIM" labels keep their text). The HUD brand and smaller marks stay "GAMESIM".
+- **Palette (judgment):** the UI stays blue (gold is power in this house). Warm colours only in celebratory effects: the confetti (the web's golds plus the house blue and accent, gold under half) and the door's lights.
+- **The white flash** when the front door opens (0→0.8→0 over 0.15 s, the web's) and **confetti** on the group card (120 pieces, 80° fan from 60% down, ~3.3 s, seeded from the season), both off under reduced motion.
+- **The dancing:** each houseguest dances on the door mark (`BodyActivity.Dancing`, the living room's dance) instead of cheering, and stops as they walk off; a houseguest whose introduction lands dances for 1.6 s (a seated body or one with no dance cheers). The web waves in neither place; this is the port's own.
+- **Music** (`HouseAudio`, new `MusicFade`): two voices on a constant-rate linear fade core with the web's times - the theme silent under the loading gate, 1.5 s in, 1.5 s out under the fade to black; at the house entry the theme is cut and the season bed rises from silence over 2 s; music off fades 1.5 s and pauses, and on resumes where it paused. Loudness is unchanged (both peaks at today's volume × 0.45; the web's 0.35/0.15 are in a comment). The director polls the opening's `MusicHeld`/`MusicClosing` each frame. A new `Cue.TutorialStep` (the web's 500→700 Hz blip; recipe in `ArtSource/audio/bb_cues.py`).
+- **The meet** (`OpeningSequence.Meet.cs`): the prompt hides after an answer, the reply takes its place with Next right under it, the card shrinks to fit, cards swap in sequence (0.35 s out, then 0.35 s in on the web's ease), straight quotes, a click per accepted introduction, a real flame for Bold (the pack icon drew as a dot), "Skip Introductions" as a muted link with a glyph. The 0.35 s arming is testable (`Settings.ArmSeconds`) and applies to the first card and whenever no leave separates two cards (reduced motion); the skip is out of the keyboard ring for the whole swap.
+- **The tour** (`HouseTutorial.cs`, judgment): the web's seven steps and mechanics in words true for this HUD - a dim with a spotlight hole and an accent ring, the web's card placement (the old pixel/canvas-unit mix fixed), 0.3 s fades with the card rising, "Skip Tutorial", "Next", "Let's Go!", the step blip, steps dropped when their chrome is missing. It plays at **every season's opening**, as the web's does; Escape closes it (also when offered to an imported season, where the house's keys now wait).
+- **The lamp is gone** (runtime strike by name and position before seating, and the editor dressing no longer carries it), and **slot 1's start spot** moves to a validated clear yard spot (1.1, 0, 14.8) with one explicit override in `SeatCast` (`EpisodeDirector.Seating.cs`), mirrored in `EpisodeProjectSetup`'s spawn table. A PlayMode audit fails, naming the prop, if any start spot is spoiled.
+- **The player's selection disc** goes down with the name plates for the opening.
+
+**Found on the way**
+- **The walk-stop take walked every UMA body 0.8 m past where it stopped.** It was imported with its travel baked into the pose (`lockRootPositionXZ`), and root motion is off, so after every stop the visible body stood ~0.8 m ahead of its agent until the take gave way to idle and it snapped back. At the front door that put the player through the shut leaves. Found by probing (hips at x -3.04, root at -3.85, state `WalkStop`). Now `AuthoredAssetImporter.TravellingTakes` (WalkStop, WalkTurn180) keeps their travel as root motion; the metas are updated. This affected every stop in the house, not only the opening.
+- **The walk through the door started during its rattle.** Walks began 0.2 s after `OpenDoor`, but the flush leaves rattle shut for 0.3 s first; the stage now holds the walk until the door is 35% open, so the leaves are ~75% open by the time anyone reaches them.
+- **The committed closed-door capture photographed the whole house** (taken while the camera travelled), and the new capture test's per-frame Continue left a press pending that ended the group card at once (a black frame). Both fixed; the door's state is read inside the capture.
+- **A six-lens review** (22 findings, all verified and fixed), among them: a double Enter during the card swap landed on "Skip Introductions" and forfeited everyone; under reduced motion a double press answered the next houseguest Warm unread; every introduction clicked twice (the commit and the hook); a bed stopped by an audio device reset never came back; the first fade tick swallowed a clip-decode stall; the tour's hole let clicks through and Skip Tutorial showed no focus; an introduction's dance could outlive a stageless opening.
+
+**Tests**
+- **EditMode, 13 new:** `OpeningPresentationTests` (+5: loader cap, Season typing, lower-third stagger, flash envelope, walk-in schedule), `MusicFadeTests` (7, also in the Unity-free `Tools/SimulationTests`), `HumanoidAnimationTests.ATakeThatWalksKeepsItsTravelOffTheBody`.
+- **PlayMode, 47 new:** `.OpeningParity` (13), `.OpeningMeet` (7, the arming through real `ExecuteEvents` input), `.Music` (9, on a stepped clock), `.Tour` (9, the cutout measured at 1600x900 and 1920x1080), `.StartSpots` (3), `.OpeningCaptures` (2: every staged beat and the card path photographed with state and content checks - frames `opening-staged-*` and `opening-cards-*` on D:), `.OpeningGlue` (4). `OpeningStage_TheFrontDoorRevealWalksAHouseguestIn` now watches every frame that nobody's hips are in the leaves' sweep while the door is under half open, and that bodies stand over their feet at the door.
+- **Mutation-tested:** 58 mutations in seven groups, every one caught, each group's result XML read and every failure matched to its target assertion (one group was re-run after C1 masked C2). The fade core's mutations were run outside Unity. Not pinned: that `Update` uses the capped fade step, and a shortened arming inside its window.
+
+**Verified.** Full suite on D: - EditMode 1506, PlayMode 516, Uma 64, Simulation 782, all passing, no crashes (floors raised from 1493, 469 and 775). Every beat photographed headlessly and reviewed; the closed door now hides whoever stands behind it (`opening-reveal-closed.png`, `opening-staged-02-door-closed.png`).
+
+**Left**
+- The tour now shows every season; if that proves too much, a setting or a first-season-only rule is a small change (`EpisodeDirector.OpeningPlan` RunTutorial).
+- After "Let's Play!" the port still gives a free first night; the web goes straight to the HoH (owner: keep for now).
+- An authored `bb_set_entrance` set piece and a lit corridor behind the door were considered and deferred (the web's own door is plain boxes).
+- The stack's collision proxy in the saved scene is still switched off for the old slot-1 spot; only a regenerated scene turns it back on.
+- The lamp's glow may linger in the baked lightmaps until the next bake.
+
+## 00000000000. The premiere and the introductions: the web's opening, walked through a real front door (26 September)
+
+The request: rework the intro animation when a house first starts, and the introductions where the player is first given options to meet each houseguest. "The web version had better setups for both, take those and build on them."
+
+**What the web actually has.** The web tree is now Survivor-only.
+- Its Big Brother opening survives only as unreachable code: `HouseEntrySequence`, `HouseWalkInSequence`, `MeetAndGreetPhase`, and the orphaned `IntroBBEyeLogo`.
+- The live intro is the Survivor `IntroSequence`: a title card, a tunnel-and-door reveal per castaway, and a group grid.
+- That dead Big Brother code and the live intro's shape are what this ports.
+- The design doc `GameSim-Game-Flow_v2.md` is no longer on disk. Two strings are reconstructions: "{n} Houseguests. 1 Winner." and "Meet the Houseguests".
+
+**The opening now** (same five saved beats; no schema change):
+- **intro:**
+  - The loading gate waits for the bodies, with real progress rather than the web's faked bar.
+  - Title card: the eye emblem, the "GAMESIM" wordmark, "{n} Houseguests. 1 Winner.".
+  - One reveal per houseguest, the player first: each walks through a front door with a lower third (face, name, age, job, hometown, "i of n").
+  - The house together on one card, then a fade to black.
+- **house-entry:** the web's card, "{n} Houseguests have entered", with the season's arrival line.
+- **house-walk-in:** everyone walks from the yard to where the season starts them while the camera cranes from inside the house to over the top (the web's three keys).
+- **tutorial:** the existing tour, unchanged apart from Next being focused and the controls line.
+- **meet-and-greet:** the web's introductions, one houseguest at a time in cast order. Each card shows their traits and their own line; the player picks Warm, Calculated or Bold; they reply. The camera frames them where they stand, with a key light, and they react with their body. Next / "Let's Play!", and "Skip Introductions" forfeits the rest.
+
+**The front door** (`OpeningDoorSet`, runtime; `EpisodeDirector.OpeningStage`):
+- **Where it is.** The yard's roped arch cannot be an entrance: it is the HoH competition gate, its backdrop is 0.8 m behind, and a podium stands on its centre line (probed). So the door is a runtime facade in the open west yard at x −3.3, facing east, with a vestibule closed by a wall of light.
+- **Placement.** The house queues behind the facade out of sight. Placement uses the load's own sequence (ResetNpcSocialForLoad, transforms, Project), once, under the title.
+- **Movement.** Everyone then walks. Guests are never hidden, because SetActive unbinds navigation, and never teleported mid-shot.
+- **The door beat.** It is the web's: a 0.3 s jitter, hinged leaves (the web rotated them about their centres and left a 0.7 m gap), a light burst, sparkles, and a push-in.
+- **After the reveal.** Guests walk off frame-left to gather behind the camera, then walk home at the walk-in.
+- **Skipping.** A skip puts everyone back under black with the same sequence.
+- **Fallback.** Reduced motion, batchmode, a cast that will not fit, or a world that will not bind all use the web's 2D card reveal.
+- **Staging the walkers.** `HouseMeetingCoordinator.BeginOpeningStage` borrows idle actors with tokens of their own; `TickNpcSocialRuntime` hands the stage the tick.
+
+**Introductions in the engine** (`EpisodeCommandKind.Introduce`, appended; `EpisodeEngine.Introductions.cs`; `WebIntroductions.cs`):
+- **Scoring.** +3 for a match, −3 for a clash, +1 for neutral, read from all of the guest's traits, as the web does.
+- **The write.** It goes through `ChangeWithRoll` with one injected draw, a hash of seed and id. You get the web's social scaling, the 80–120% reciprocal, notes and the arc, with `randomState` untouched and the recorded impact equal to the applied one (the web rolled twice).
+- **What it costs.** No interaction, and it never gates Advance.
+- **When it is allowed.** Only on the first night (`IsFirstNight` = Social, week 1, no HoH, no eviction).
+- **Progress.** Read from the ledger ("introduced" events), so no saved field.
+- **Unmet houseguests** get nothing.
+- **The flat +3** at the meet-and-greet mark is gone.
+- **Reaction voice.** Reactions speak in the voice of the trait that decided the outcome; the web used the first trait, so a warm hello to a Confrontational/Social guest got "Bring it on!".
+- **No numbers.** None is shown during the meet (web). The event line is "You introduced yourself to {name}.".
+
+**The house while it plays:**
+- The opening is a panel (`IsPanelOpen`) and a registered overlay.
+- No houseguest ticks, and the player neither walks nor opens anything underneath.
+- Space / Enter / South is Continue. Esc / Start skips the show and stops at the introductions; during them it only focuses "Skip Introductions".
+- The theme plays under the intro only (web); the season's bed plays after it.
+- The HUD steps aside by alpha (`EpisodeHud.SetCinematic`). Name plates stay down (`HouseNpc.PlateSuppressed`).
+- Beat marks make no sound.
+- No opening outside the first night: imports and migrated saves get the tour only.
+
+**Found on the way:**
+- **`??` on `GetComponent` is a trap.** Unity's fake null in the editor fools `??`, so no CanvasGroup was ever added and 11 tests threw MissingComponentException. Use an explicit `== null`.
+- **A fade group made non-interactable greys out and disables every control under it.** The meet card's choices were dead to real input; only `onClick.Invoke` worked.
+- **`HouseRoomQuery.HasCapsuleClearance` needs a real house actor as `self`.** With null it refuses every spot, so the stage was never placed.
+- **The fixture season's Taylor Kim stands on the competition course with her head inside the stack-top ball.** No camera angle frames her cleanly. It is an authored placement in the scene, which is not edited from here, so it is left as is.
+- **The four-lens adversarial review** (sequence and input, stage and world, engine and saves, fidelity and UX), each finding verified. Fixed:
+  - **The meet's buttons were live the instant a card appeared.** A double-click or a double Enter on Next committed the next houseguest's introduction unread. Choices and Next are now armed for 0.35 s (real input only), with the skip disarmed too so the ring cannot land on it. Next moved clear of the next card's rows.
+  - **Keyboard focus was invisible** (Unity's default darkens by 4%), and Esc put it on a transparent "Skip Introductions". Now there are brighter selected colours, `HudEmphasis` edges, and a visible skip.
+  - **Continue on the walk-in** started the cards with the house still walking. The meet now puts anybody not home back under black first.
+  - **A season resumed at the tour** hid the HUD under it (`StartOpening` overrode the beat's choice).
+  - **The HUD was clickable during the tour.** It is now drawn but not raycastable until the opening ends.
+  - **A walk refused by a mark's clearance check** (the last walker still on it) parked a houseguest in shot. Refused legs retry for 6 s.
+  - **A refused introduction** (a failed save) took the choices away; they stay now, with the reason. A resumed meet skipped only those before the first stranger.
+  - **Heads and facing** stayed on the lens after the opening; they are released.
+  - **The stage** is not placed on a house whose people cannot move (web imports).
+  - **The tour's controls line** claimed Space/Esc worked for every cutscene.
+
+**Tests:**
+- **EditMode:** `IntroductionTests` (18 cases), `WebIntroductionsTests` (+2), `OpeningBeatTests` (the flat +3 is gone; the mark moves nobody), `OpeningPresentationTests` (music rule, reveal timing), `LocalisationTests` (Format).
+- **PlayMode:** `EpisodePlayModeTests.Opening` (17 new sequence tests with a FakeStage), `.OpeningDirector` (11), `.OpeningStage` (2, with captures), `.OpeningReview` (5).
+- **Mutation-tested.** 35 of 36 engine mutations are killed; the survivor, "negatives scaled", is unobservable at ±3. 26 of 28 runtime mutations are killed; the two survivors are equivalent: the HUD ring selects Next anyway, and the coordinator is never paused during the stage. The 0.35 s arming is not pinned: it applies to real input only and is zero in batchmode.
+
+**Verified.** Full suite on D: - EditMode 1493, PlayMode 469, Uma 64, Simulation 775, all passing, no crashes (floors raised from 1456, 434 and 741). Captures of every beat, staged and on cards (`scratchpad/probe_opening`), reviewed.
+
+**Left:**
+- The runtime facade could become an authored `bb_set_entrance` set piece.
+- A wave take (`HumanoidReactionAuthoring`) for the reveal and greetings.
+- Music fades (the web fades 1.5 s in and out).
+- Taylor's fixture anchor.
+- A LookSheet frame in PortVerification.
+
+## 0000000000. Hats that fit, hair held under them, Casey in Tyler's curls, and an afro without scalp showing (26 September)
+
+The request: hair came through hats; either change the hairstyle under a hat or fix the collision. The grown afro showed scalp; Casey Wilson should wear a black version of Tyler Crispen's hair until the afro is fixed.
+
+**Casey.** She wears `Hair_Poofy` (Tyler's full curls, UMA; compatible with both bodies) in her own black. The grown afro stays in the creator. Her look comment, the photo-match test and the scratchpad `looks_table.py` generator all say so.
+
+**Hats fit the head and hold the hair under them** (`HatShape`, new).
+- **What was wrong.** A cap or beanie was fitted over the envelope of everything the hair carried. It stood off big hair like a mushroom (Tyler's curls, the afro, a bob, long hair), and hair still came through its back (Vanessa's cap).
+- **Sizing.** `ProceduralAccessories.Dome` now sizes the hat from a skin-only envelope (`HeadScan.SkinRadius`) plus 8 mm for hair pressed flat (`HairRoom`), when the head carries hair (`HairOnTop` over 2 mm). The full envelope and `EnvelopeRadius` are gone.
+- **Holding the hair.** `Dress` puts a `HatShape` on the hat, holding its dome in the head's space, and calls `HoldHairUnder(body)`:
+  - points above the band at their bearing are pulled radially to 10 mm inside the hat;
+  - below the band, hair is drawn in *across the head* (towards the vertical line through the head's middle), never up or down, to no further out than the rim − 10 mm + 0.7 × how far it has fallen below the rim (`Flare`), so it comes out close under the rim and fans out;
+  - a point below the band that shares a triangle with a point under the hat is **tethered**: held in far enough that the straight edge from the covered point passes the band 7 mm inside the rim (`Crossing`), never further in than the rim − 10 mm;
+  - every copy of a point (same position) shares one tether.
+- **What gets held.** Grown hair meshes (the afro, coils, the locs' strands, the last read as the head holds them), and UMA's own hair in the body's combined mesh: vertices of submeshes whose material is a hair material, moved through their bone matrices and written back with `SetVertices`. It runs after every fit, which comes after every UMA build, and a held point is a limit, so holding twice changes nothing.
+
+**Found on the way** (each measured with a probe before fixing):
+- **Hair cards are long triangles.** Held by their corners, a card held inside at its top and fanned out at its foot crossed the cloth just above the band. Checking vertices never saw it, but rendering the covered-touching triangles alone did. Hence the tether, and tests that sample points across every triangle.
+- **4 mm is not "inside" enough.** Hair held 4 mm under the cap showed through in patches. The cap's flat facets sit inside the curve between its rows, and the cards are wide. At 10 mm it is clean.
+- **The GPU follows the mesh edits.** Moving the hair 10 cm up moved it on screen, and a proxy built from `BakeMesh` drew the same patches as the skinned renderer. So the patches were geometry, not the transparent second pass or GPU skinning.
+- **Found by the adversarial review (three lenses, all verified):**
+  - The first below-band rule was a *radial* limit from the head's middle, capped at about 0.23 m because the arc below the band stops growing at −90°. Hair hanging straight down past the shoulders was pulled up into the neck: Vanessa's by about 10 cm, braids by about 20 cm. The portrait captures, framed at the shoulders, could not show it. Now the limit is horizontal, so below-band points never move vertically. `LongHair_HangsAsLongUnderAHatAsWithout` puts the cap on in the frame the hair is read in and asserts nothing hanging below the rim is lifted.
+  - A grown shell gives every triangle its own corners. Tethered by vertex index, one copy was held to the rim and its twin fanned out, tearing the shell open all round under the band. Now tethers are keyed by position. `HairHeldUnderAHat_StaysInOnePiece` covers this.
+  - `Blend` now renormalises the four bone weights.
+  - Refuted: "a buzz cut should not get the hair room". Inset (10 mm) is more than the bare-head room (6 mm), so with no room for hair, stubble would be held under the skin. Stability matters too: the HairOnTop threshold (2 mm) must stay under the pressed height (≈4 mm = 6 + 8 − 10), or a texture-only UMA refit (UpdateColors, same mesh) re-reads pressed hair as a bare head and shrinks the cap.
+**The afro no longer shows scalp** (the minimal fix, from a read-only diagnosis).
+- Its edge walls now face the way they are wound: out of the hair, since they are wound from the scalp's own outward-facing triangles. They used to be turned to face out from the head's middle, which faced them inwards at the temples, round the ears and at the nape.
+- The afro is drawn from both sides (`HairTextures.Material(twoSided)`, in the cache key), so the inside of its shell, seen from below the brow and past the ears, shows hair.
+- The walls go 4 mm under the skin (was 1.5 mm).
+- Before and after captures on two bodies: skin notches along the hairline before, none after.
+- **Left for the proper afro fix:**
+  - a soft hairline (triangles cut at the hairline, not whole-triangle selection);
+  - no front brim ridge;
+  - a closed inner layer;
+  - over the ears rather than notched round them;
+  - the nape skinned to the neck;
+  - normal-blended texture projection, the coil hash (it takes only two values) and a softer normal map;
+  - a fuzzy silhouette.
+
+**Tests** (Uma; each mutation-tested: 13 mutations in 7 groups, every one failed on its target assertion):
+- `Headwear_IsTheSizeOfTheHeadNotOfTheHairUnderIt` (curls against a buzz cut, both with the room)
+- `LongHair_HangsAsLongUnderAHatAsWithout` (Vanessa, box braids)
+- `HairHeldUnderAHat_StaysInOnePiece` (afro, coils)
+- `UmaHair_GoesUnderAHatAndComesOutBeneathIt` (Vanessa)
+- `GrownHair_GoesUnderAHatAndComesOutBeneathIt` (afro under a cap, locs under a beanie)
+- `GrownAfro_IsDrawnFromBothSidesSoNoOpeningShowsTheScalp`
+- Casey's hair in `EveryLook_IsOnThePalettesAndMatchesItsPhoto`
+- The shared tether is pinned only together with a binding tether: under the edge rule the tether seldom binds on the afro or coils, so dropping the sharing alone changes nothing there; with a tether held to the rim (the first rule), the afro tears 6.9 mm and the test fails.
+- **Not pinned by a test:** the edge walls' facing. Rays from all round found the same four grazing hits whether the old rule or the new one was in place, because the notches came from the shell's own back faces, which the two-sided material now draws. The capture is the evidence.
+
+**Traps.**
+- **Hold hair by its triangles, not its points.** A hair card's triangle can cross a surface both its corners are on the right side of.
+- **Keep one surface well behind another,** about 1 cm at house scale, or they fight over which is in front.
+- **Rendering vs geometry.** To tell rendering from geometry, draw a `BakeMesh` proxy in place of the skinned renderer, and move the vertices somewhere obvious.
+- **A measurement that doesn't separate the fix from the bug measures nothing.** Run the mutation before trusting the test.
+- **Frame captures to where the change reaches.** Portraits stop at the shoulders; hair shortened below them looked fine in every sheet. The probe now takes wide back views (`wide-*.png`).
+- **Known and left:** UMA gives some vertices more than four weights; the hold reads the four `mesh.boneWeights` returns (renormalised), exact for the PC quality level (FourBones) but not for Mobile (TwoBones). A style whose only hair above crown height sits away from the top could still drop the hair room on a texture-only refit (none found in the catalogue).
+
+**Verified.** Full suite on D: - EditMode 1456, PlayMode 434, Uma 64 (floor raised from 58), Simulation 741 - all passing, no crashes. Captures (`scratchpad/probe_hats`, 18 cases, close and wide): nothing through any cap or beanie; long hair, braids and locs as long under a hat as without; Casey in black curls.
+
+**Left.**
+- **The grown afro itself** (list above): under a cap it still bells out below the band, a skirt of hair round the rim.
+- **The player's side-part hair patch** (UMA asset, as before).
+
+## 000000000. The review pass: thirty-five fixes, face details, a beard in the brows' colour, and strands that bend (25 September, night)
+
+After the first commit pair (`c8f1354`, `c4b2307`) the request was "Continue". A review workflow confirmed 35 defects in that work, a fix workflow repaired them in five file-disjoint groups, and verification found three more.
+
+**What the review found, by area.**
+- **UMA body tint.**
+  - Grown hair and glasses survive a change of clothes. The new body is built at no size; its fit now waits for `LateUpdate`, and `UmaBodyTint` runs after `CharacterPresentation` (execution order 100), so the pieces are fitted on the swap frame.
+  - HD brows keep their recipe's additive colour: a private brow colour is repainted, not replaced.
+  - Skin colour is measured on the generated texture, not only in arithmetic.
+- **Grown pieces.**
+  - A cap goes over grown hair: the head's envelope includes it.
+  - Neckwear is built in the body's axes.
+  - Painted hair textures are reference-counted, with an idle list of 8.
+- **The cast screen.**
+  - "Play as" plays the houseguest it names, and "Customize" reopens that houseguest's own edits.
+  - A failed start comes back to the screen, and the live model is let go after a start or a cancel.
+  - The layout holds on short wide frames, the grid keeps its scroll, and a pick hands the keyboard to Play as.
+  - Reduced motion holds the model, halo and portraits still. The report and the cast screen are silent.
+- **The creator.**
+  - Deep and tan skin rows have undertones.
+  - A random look draws its hair and eyes to suit its skin, and rolls accessories unless they are locked.
+  - The brow heading says "Matches hair". The tiles fit wide screens, and the focused swatch is named.
+  - A starting look's garment colour stays pickable.
+  - **Face details**: freckles, makeup and age, from 11 UMA wardrobe entries. They are worn on every outfit, swim and sleep included. A body change takes off makeup the other body cannot wear rather than turning it into an older face.
+- **Report, spotlight and finale.**
+  - Sorting keeps the reader's place and focus. Page keys and the right stick scroll.
+  - The spotlight is a 14.9° cone with hard low-tier shadows and a 2.1 m near plane, and it holds still under reduced motion.
+  - The objective names "episode screen · season report".
+- **Looks**: Danielle's bob, Casey's studs, Taylor's bra (so she has a swimwear set).
+
+**Found in verification.**
+- **The beard was painted the brows' colour.** UMA's `MergeMatchingOverlays` hands slots whose overlays match one overlay list between them. The trimmed beard and the brows are both a single CardWhiskers on the shared hair colour, so `PaintBrows` painted both. A brow slot sharing its list now gets its own copy first; shared colours inside it stay shared.
+- **The Notebook "flake" was the test.** Opening any panel banks the house's elapsed free time as an NPC clock tick (`PauseNpcSocialForPanel` → `FlushNpcWholeTicks`), which is a commit. The test read the revision before opening the page. It now reads it after. The previous entry's "known autonomy flake" was wrong.
+- **Locs and braids parted at the jaw when a head turned.** A look turns the head bone alone, up to 60°. The split made in the fix pass (strands above the chin on the head, below it on the neck) left the part on the head ending at the jaw like a curtain cut straight across. Now:
+  - Every strand is one skinned piece (`ProceduralHair.StrandsName`) between the head and the neck bones. It is wholly the head's down to the chin and wholly the neck's 15 cm below (`StrandBend`), eased between, so it bends.
+  - Strands are built for a head facing the way the body does (`HeadScan.Straightened`). The head's present turn goes into its bind pose, so a refit with the head turned comes out as a straight one.
+  - **Every fit is made with the body standing** (`UmaBodyTint.StandingPose`). It saves every layer's state and moment and every parameter, then `Rebind` and `Update(0)` put the body in the controller's first frame; after the fit, the saved state is played back. A review found that a change into sleepwear finishing after the houseguest lay down fitted the hair to a head lying on its side. The humanoid root stays upright while the sleep take lays the skeleton down, and the scan takes its up from the root. The same goes for floating, sitting, a look's nod and the talk nod. Fits are now identical whenever they land. (An earlier version took only the look off, from `CharacterPresentation`; the standing pose replaced it.)
+  - **Strands root where a seeded ray leaves the scalp**, drawn in the head bone's own space, instead of at a point drawn by index. A re-read head welds a few points differently, and an index into a different count re-dealt every strand, so the style reshuffled on every rebuild. Every random draw for a strand is made whether or not it grows, so one that misses moves no other.
+  - **Strands root only on skin wholly the head's** (`HeadScan.HeadShares`, at least 0.98). At the nape the skin is shared with the neck and moves with a turn. A strand rooted there once came out round the other side of the neck.
+  - `HeadScan.Read` skips the strands piece. `AddGrownHair` reads its wholly-head vertices through the head's bind pose, so a cap goes over the roots.
+  - Bounds stay upright in the holder's space, so portraits' crown framing does not move.
+  - **Left:** only the head's turn is straightened. A neck turned by the idle's standing frame stays in the lower strands; that is a few millimetres.
+
+**Investigated, left.**
+- **The player's side-part hair shows a blue-grey patch on its side cards** under the studio light. None of our colours cause it. Both hair passes carry the hair colour, and the patch stays with each of these: the highlight at 0, root and tip set to the base colour, the gradient off, and either pass alone. It is how UMA's `Hair_LeftPart` side cards take that light.
+- **Face details on Emma cannot be judged** under her visor (her card's look). On the male body they read clearly.
+
+**Traps.**
+- **UMA shares overlay lists** between slots whose overlays match (`MergeMatchingOverlays`). Repainting one slot's overlay repaints the other slot's.
+- **Opening a panel commits** (the NPC tick flush). Read a revision after the panel is open.
+- **Skinned meshes are skinned once a frame, after `LateUpdate`.** Turn a bone and render in the same frame, and rigid children move while the skin does not. For a capture, switch the animator off, turn the bone, wait a frame. `BakeMesh` reads the bones as they are now.
+- **`SkinnedMeshRenderer.localBounds` is in the root bone's space**, or the renderer's own when it has none. UMA's bones are not upright, so bounds kept in a bone's axes reach above the head.
+- **`CharacterStudioPreview` in a probe**: several looks shown in one studio kept saving the first body's frame; one test per look worked.
+- **Mutation groups share result files by kind.** A later group overwrites an earlier one's XML. Copy each before the next.
+- **A "fit again and compare" test needs the same body both times.** Hold the idle still (`animator.speed = 0`) or refit in one frame. Compare against a later rebuild, not the first fit: the first lands as UMA finishes, possibly before the animator has posed the body. Judge a grown style by where nearly all its points are (95th percentile) and how far the worst is, not by every vertex.
+- **Seeded layouts must not index into scanned geometry.** Draw directions or parameters and look them up in the scan continuously.
+
+**Verified.**
+- **Full suite:** EditMode 1456/1456, PlayMode 434/434, Uma 58/58, Simulation 741/741, with no crashes. Floors raised to 1456, 434 and 58.
+- **Mutations** (`scratchpad/mutate_n`):
+  - The review pass's 40 new tests each have a revert-the-fix mutation, run in groups Q1–Q4. All 40 were caught, and every failure message was read against its test's target assertion.
+  - The strands and fitting have 8 more: S1–S6, plus N1 rechecked against the afro test's new pose. All 8 were caught.
+  - S7 (a root draw depending on the scalp's point count) is equivalent: every fit now reads the body standing, so the count is the same each time.
+- **Captures:** the 24 skin tones, each face detail, and locs and braids with the head turned 0°, 35° and 60°.
+- **Adversarial reviews** of the strand design ran twice, with three lenses and then two, and each finding was checked by a refuter.
+  - Confirmed and fixed: the roots read in the wrong space, a look baked into a refit, the reshuffle, and the fit to a body lying down.
+  - A third review of the standing pose (triggers, cross-fades, UMA's own save and restore, every gameplay flow) refuted all its findings.
+
+**Left.**
+- **Only the head's turn is straightened.** A neck turned in the idle's first frame stays in the lower strands, by a few millimetres.
+- **The talk nod.** It is taken off only because the body stands; a refit with no controller keeps it.
+- **The player's side-part hair patch** (above).
+
+## 00000000. The character screen, the cast screen, the cast's faces, a spotlight, and a finale with ways out (25 September)
+
+The request, in five parts:
+- make the creator AAA, with colours and options that work for Black and Asian houseguests;
+- redo the cast screen with the web game's glamour photos, details for the one clicked (as the Emma Brown card shows) and their live model only after the click;
+- make the models look like the photos;
+- replace the green gem over the followed houseguest, which reads as The Sims;
+- fix the finale, where a spectator was stuck until they quit.
+
+**The creator.**
+- **Skin is exact.** `UmaBodyProvider.SkinColour` divides the swatch by the skin albedo's measured mean (linear 0.581, 0.332, 0.248), and lifts additively where a fair tone is lighter than the texture. The drawn texture then averages to the swatch, within 0.005. Before this, deep tones drew a muddy red and everyone shared an orange cast. `UmaStylizer.Apply(root, skin)` brings the skin shader's gloss down and its subsurface toward brown as the tone deepens.
+- **Palettes.** `CharacterPalettes` holds 24 skin tones in four depths (Monk-scale anchored, golden, olive and rosy at each depth), 18 natural and 8 dyed hair shades, and 12 eye colours. All are named. `SwatchGrid` shows them in labelled rows and names the hovered swatch. The deep row keeps red at or below about 1.45 times green; past that a lit brown turns maroon.
+- **Brows** get their own colour. Most brow styles draw in the shared hair colour, so the Brows row did nothing until `UmaBodyTint.PaintBrows` gave them a private one.
+- **The bun** drew its hair card in a private white and stayed silver. `UmaBodyTint.ShareHairColour` hands every `CardHair*` overlay the shared hair colour.
+- **Hair highlights.** The UMA3 hair material's specular tint is orange-red (0.65, 0.27, 0), which put a maroon sheen on every dark head. `HairColour` now sets `_SpecularTint` from the hair (`HairHighlight`).
+- **Textured hair, grown from the head.** `ProceduralHair` offers buzz, taper fade, waves, short coils, afro, cornrows, locs and box braids. It reads the built body's head with `HeadScan`: every skin submesh, welded, in a head-bone frame with the eyes, ears, skull width, collar and an envelope of the hair. It lifts the scalp above a hairline, rounds an afro out, and drops strands clear of the head, neck and shoulders. The textures are drawn in code (`HairTextures`). Partings and faded sides are painted with the skin colour, so a fade shows scalp.
+- **Accessories.** `ProceduralAccessories` covers four slots: Eyewear (black frames, round wire frames, sunglasses, chrome visor), Headwear (trucker cap, beanie), Earrings (studs, gold and silver hoops, drops) and Neckwear (chain, statement collar, beaded necklace, red bow tie). Each is fitted to the scan, and a necklace hangs from the chest bone. A new "Accessories" creator page picks them per outfit; its reset touches only them.
+- **Built pieces** carry `GrownPiece` (it owns the mesh, and the stylizer skips it) and are refitted after every rebuild. `GrownThumbnails` draws each piece's creator picture.
+- **The face.** The jaw slider named `jawSize`; UMA's DNA is `jawsSize`, so the slider never appeared. `UmaAppearanceCatalog.DeclaredControls()` now lists 30 face controls, including eye tilt, nose bridge, cheekbones and jawline. A test holds every entry to real DNA. The face page groups them under headings.
+
+**The cast screen** (`CastSelect`, `CastSelectArt`).
+- Each card is the web game's portrait (`Resources/Portraits/Glamour/<id>.png`, square crops of `D:/gamesim-main/.../avatars`) in a gold ring, with a slate name plate, a nickname pill in the category's gradient, the traits, and a gold "PLAYING AS" badge when picked.
+- The details panel is the web game's CharacterDetailPanel in the Emma card's dress: the gold name, the live model turning in a pool of light (drag to turn; nothing until a click), occupation and nickname pills, age and home, the quoted bio, the traits, and the category with its web description. "Play as <first name>" commits; "Customize <first name>" opens the creator.
+- Filters and rosters share one row, with a line under it that explains the category.
+- The footer is one row where it fits.
+- The screen rebuilds when its frame changes shape. The details panel was laid out for a 4:3 frame and then photographed at 16:9.
+
+**The looks** (`UmaCastLibrary`).
+- All 24 are matched to their photos. Colours are named from the palettes, and garments are dyed by the new `UmaCastLook.Fabric`: saved with the outfit by `Materialize`, and applied to preset bodies by the provider.
+- Casey wears an afro, Danielle coils, Avery a fade, Derrick a buzz; Xavier is bald.
+- Riley has black frames and a moustache. Emma has the visor, the bow tie and a white coat. Vanessa has the cap; Maya and Chelsie hoops; Janelle beads; Rachel the collar; Jun drops.
+
+**The marker** (`FollowRing`). The green diamond is gone. Whoever is followed stands in a studio spotlight (a warm spot 4.2 m up, pooling light round them) over a camera focus reticle at the feet: a ring and four corner brackets. Both breathe gently, and hold still under reduced motion.
+
+**The finale** (`SeasonReport`, `EpisodeDirector`). The report could not be left:
+- nothing on it took a raycast, so the wheel scrolled nothing and clicks fell through to the HUD;
+- its only exit was at the foot of three screens;
+- Escape closed the panel beneath;
+- "Review" opened the notebook behind it.
+
+Now:
+- the scrim, card and viewport catch the mouse, and a scrollbar shows the length;
+- "Start a new season", "Review the season", "Main menu" and "Close" sit under the title and stay there;
+- Escape closes only the report, and closing panels closes it;
+- `IsPanelOpen` counts it;
+- Close redraws the house.
+
+The finale panel offers the same ways on as buttons, and the objective reads "Next stop: season report".
+
+**Traps.**
+- **UMA marks its combined mesh unreadable** (`UMAData.markNotReadable` defaults true), so a head scan read nothing. Bodies that wear built pieces set it false at CharacterBegun, before the combine. That costs about 2 MB each.
+- **`Mathf.SmoothStep(from, to, t)` eases between two values; it is not an edge function.** Used as one, every parting came out almost all scalp. `HairTextures.Edge` is the edge.
+- **`Pow(cos(π/2), x)` is NaN**, because the cosine is a hair below zero. A cap mesh full of NaNs imports with zero vertices and no error. Clamp first.
+- **A two-line meta on a PNG never imports** ("TextureImporter object at version 1"). Textures need the full `TextureImporter` block; scripts do not (memory: new-scripts-need-hand-written-metas-before-a-commit).
+- **UMA replaces the Animator** a body is created with. A test must read the live one (`GetComponentInChildren<Animator>()`), not `CharacterBody.Animator`.
+- **The harness lays the cast screen out at one aspect and captures at another.** Anything sized from the frame at rebuild has to anchor or rebuild.
+- **The head scan's frame turns with the head, by the eye line.** Scanning in the root's axes read the ears lopsided whenever the idle had the head a few degrees round, and one hoop hung off true. Carrying the root's axes through the head bone's bind pose put the hair across the face, because UMA's bind space is not upright. The line between the eye bones is the head's right; up is the body's, straightened against it.
+- **Fair skin is flat by construction, not clipped.** A probe measured no clipped pixels at any tone under the studio lights, with or without tonemapping. Tones lighter than the skin texture take an additive lift, which flattens the texture's relative contrast. Lifting multiplicatively through the skin shader's `_Base_Color` instead made light tones grey and golden tones green: the graph also feeds `_Base_Color` through a luminance dot product and a lerp, so it is not a plain multiply. The cast's fair looks were warmed a step instead.
+- **`Travel_AnErrandWalksNearRuns...` read the pace 30 frames after passing 2 m/s,** which in batchmode is a fraction of a millisecond, mid-acceleration. It failed intermittently (1.49 against 1.62) and passed alone. Waiting on the clock instead caught short errands already slowing for the door. The test now takes the pace's own peak over the whole walk; the pace follows the body's measured speed, which trails the agent's. It passed 3/3 and a pace mutation catches it.
+
+**Verified.**
+- Full suite: EditMode 1453/1453, Uma 43/43 (44 with the probe), Simulation 741/741.
+- PlayMode: the final full run was 410/412.
+  - The travel test, since fixed as above.
+  - `NotebookVotes_AnEmptyPageSaysWhyInBothTabs`: the season's revision moved by one while its capture settled, the house committing something in the background. It passed 3/3 on rerun. (It was not a flake: opening a panel commits, and the test read the revision too early - see the entry above.)
+- Floors raised to 1453, 412 and 43.
+- Mutation pass, `scratchpad/mutate_n` (24 mutations, one per feature). All caught. Three needed a second look:
+  - the afro's rounding and the stylizer's skip were missed at first, and their tests were sharpened: a rebuild before the chrome check, and fuller behind than over the brow;
+  - the hair highlight's second target compared against the mutated function itself, which the dedicated black-hair test covers.
+- **Not pinned:** the eye-line frame. Whether a test catches it depends on the head's pose at scan time.
+
+**Not done.** Face detail overlays (freckles, makeup, age) are on disk but still outside the catalog's slot allowlist.
+
+## 0000000. House life built: forward-facing takes, travel, room icons, beds, pool, hot tub, stove, outfits (24 September)
+
+The request: implement `HOUSE-LIFE-PLAN.md` and keep improving. The owner's answers are recorded in its §6: warp far, run nearer, walk near; presentation only; no non-UMA work; UMA keeps its own idle and run; work out outfit swaps; leave Listen in alone.
+
+**What shipped (M0–M4 of the plan, and the outfit swaps):**
+- **Every UMA take faces forward (M0).** Humanoid takes import "Based Upon: Body Orientation" (`AuthoredAssetImporter.ApplyTakeRules`). Lying takes keep "Original" plus a measured trim (`HorizontalTakes`). The four authored reactions lose the talk take's heading (`HumanoidReactionAuthoring.FaceForward`). The seat half-turn now applies to non-humanoid bodies only. `UmaFacingPlayModeTests` holds every state and checks the hips, the shoulders and the planted foot; it writes `uma-facing.png` beside the project.
+- **The library (M1).** Six clips are cut from the committed Universal Animation Library by `AuthoredAssetImporter.LibraryClips`: Idle, Jog, Swim idle, Swim forward, Cook (the Interact take, looped) and Dance. The Idle/Run override keys moved onto the library's idle and jog, which freed `Sleep_loop` to play a Sleep state. There are new Any State activity states with the cues `Sleeping`, `Swimming`, `Cooking` and `Dancing`, driven by `CharacterPresentation.SetActivity`.
+- **Travel (M2).** `EpisodeDirector.TryTravel` measures the route:
+  - over 20 m (`HousePlayerController.WarpRouteMetres`) it warps behind a 0.3 s dip with a camera `CutTo`;
+  - over 8 m it runs;
+  - otherwise it walks.
+
+  GoToStation, GoToDiary and the new GoToRoom all use it. Floor clicks and chases are unchanged. Display-only HUD chrome (Status, Week chip, House pill, Follow chip) no longer eats clicks.
+- **The clickable house (M3).** `EpisodeTravelBeacons` puts one screen-space icon over each room. The station room's icon is the screen's and Private's is the diary's; within reach they open instead of travelling. The icons show only when the camera is pulled back past 14–18 m, and they hide under HUD chrome (`EpisodeHud.Covers`). The overview's room chips are a map: `RoomLabels` lays screen-space hotspots over them.
+- **Activities (M4–M7 MVP).** `HouseActivityAnchors` builds runtime anchors from the set pieces' own geometry: eight beds (the HoH bed is the HoH's only), the pool (Float), two hot-tub seats, the stove, and a dance spot in the living room.
+  - Clicking the prop starts the activity with no menu. The menu lists one row per new verb.
+  - Nothing freezes: the notebook opens over a sleeper.
+  - E, or a click anywhere, ends it. The click is then replayed (`HousePlayerController.ActivityInterruptRequested` → `DispatchClick`), so one click gets you up and takes you there.
+  - `HouseSeatPresentation` owns Seat, Lie and Float. Swimmers do lengths with the root waiting at the side.
+  - The cast's own routine is fenced to its three old places by `HouseFurniture.Ambient`.
+- **Outfit swaps.** `CharacterOutfits.ForActivity` uses the player's own Swimwear or Sleepwear set if they have one. Otherwise it derives one from the everyday set: outer layers off, underwear kept, and the shirt kept for bed. It never derives from a look with no underwear. `CharacterPresentation.Dress` builds the new body out of sight at zero scale and swaps it in the frame it is ready. The director dresses the player on the way to the pool or bed, and back after.
+
+**Traps:**
+- **A trim offset turns the other way from its sign.** `Sleep_loop` measured its head at −117° and needed −117, not +117.
+- **The overview's lens is a blended projection matrix.** A world-space canvas is hit-tested with `ScreenPointToRay`, which ignores the blend, so clicks landed on the wrong chip. The screen-space hotspots are placed with `WorldToScreenPoint`, which does follow it. The player's own floor click in the overview uses `ScreenPointToRay` too; it has not been checked.
+- **The PlayMode fixture runs with reduced motion on.** The stove and dance cues respect it, so a test of them must turn it off. A third of a second of cross-fade is hundreds of batchmode frames: wait on the clock.
+- **The fixture's player has no saved appearance at all.** Swimwear is derived after the provider materialises the preset.
+- **`HumanoidReactionAuthoring` used to rename its clips on every run,** because CopySerialized copies the name. It now names them by file, and a re-run reproduces the committed clips byte for byte.
+- **The offline compiler reads D:'s Bee artefacts.** It fails while a D: run is rebuilding them; compile again afterwards.
+- **Regenerate on D:, never in the C: editor.**
+  - The library and lying-take metas: `-executeMethod Gamesim.Editor.HumanoidClipWiring.ReimportLibrary`.
+  - The reactions: `HumanoidReactionAuthoring.Apply`.
+  - Copy the metas and the controller back afterwards.
+
+**Second pass (same day):**
+- **The overview's floor clicks** went to the wrong place, by 3.7 m on the kitchen floor. `HousePlayerController.ScreenRay` now inverts the projection the frame is drawn with, and it is used for clicks and hovers.
+- **Pace is calibrated** from the planted foot. The walk take covers 1.36 m/s and the run 4.83 m/s; the plan's 1.7 was wrong. Pace may now rise to 1.65, so the walk covers the house's 2.2 m/s.
+- **Activities** now frame the player close up.
+- **Hover tips:** hovering a piece of furniture names what a click on it does, in the click's own caption (`EpisodeTravelBeacons.ShowFurnitureTip`).
+
+**Third pass: a review, the prompt, company.**
+
+A four-way review plus an adversarial verifier confirmed 16 of 17 findings. All 16 are fixed and each has a test:
+- **Travel and activities:**
+  - a refused place no longer warps the player there first (`HouseMeetingCoordinator.PlayerActivityPossible`);
+  - getting up no longer resumes the walk the activity interrupted (`StopHere` first);
+  - the House Activities menu no longer wakes an in-house sleeper;
+  - leaving the pool changes out of swimwear as the player climbs out, not after;
+  - the player is not dressed while the director is being torn down.
+- **Presentation:**
+  - an outfit swap mirrors the cues and takes over mid-state;
+  - a warp's cut resets the lens as well;
+  - the hover re-picks when the camera moves;
+  - the icons stand down through the vote reveal;
+  - the icons' captions follow the room;
+  - hidden icons forget their hover;
+  - room names keep their capitals mid-sentence (`RoomLabels.InSentence`: "the HoH suite").
+- **Swimming:** only a body that can swim does lengths, and its depth eases between the stroke and treading water.
+
+The interaction prompt is now a button: "E · Get up" gets you up. It has the fixed caption "Interact [E]", and `EpisodeDirector.Interact` is what both the key and the button call.
+
+In the hot tub, the housemate the player gets on with best, by score and never somebody who dislikes them, walks over, changes and takes the other seat, and gets out when the player does. Only the hot tub is shared place by place (`HouseFurniture.SeatsCompany`); a conversation still takes the whole venue.
+
+**Fourth pass: the review of the third.**
+
+A second review looked at the companion, the prompt button and the change of clothes. It confirmed six defects and left seven lower findings unverified; one of those repeats another. Six of the seven are fixed too. Only the prompt's caption under a loaded translation is left. Each fix has a test, and each test was mutation-checked.
+
+- **The change of clothes never handed over.**
+  - UMA replaces a body's Animator while it assembles. The handle `TickDressing` kept for the new body was a destroyed object within a frame, so the mirrored cues and the `Play` at the swap both went nowhere. A seated houseguest stood up out of Idle and sat down again.
+  - `TickDressing` now looks the new body's Animator up every tick.
+  - `HouseLife_AChangeOfClothesKeepsTheBodyWhereItIs` checks the new body is in the old one's state, and at the same moment in its loop.
+  - The pool test's own state check is gone: it sampled during a walk, so it couldn't tell.
+  - Removing the cue mirroring alone is not caught. The `Play` at the swap sets the state, and the cues are pushed again before the animator next steps, so the mirroring is a backstop.
+- **Company in the hot tub:**
+  - liking goes both ways (`Score(npc, player) >= 0` as well as the player's reading);
+  - a housemate the schedule has paired off is never asked;
+  - one the house takes out is not asked back until the player gets out;
+  - the companion climbs out as the player does (`LetCompanionOut`), not a frame after the player is out;
+  - "X joins you in the hot tub" is cleared when they go.
+- **`HouseMeetingCoordinator.Reserve`** checks for a free pair slot before taking anybody off their furniture. A pairing that could never happen used to pull the friend out of the tub every few seconds.
+- **The prompt button** stays out of the Tab ring, since E is its key. It also stands down under a ceremony card: the click that dismissed the card used to press it.
+- **A body that arrives mid-climb** now climbs on from where the old one had got to. This happens often, because the change back out of swimwear finishes on the way out. `HouseSeatPresentation.TickExit` used to end the climb and jump the body to the deck.
+- **A houseguest with no saved look** now changes into swimwear as themselves. `WithWardrobe` resolves the look the way a new season's snapshot does: the preset first, the trait recipe behind it.
+- **New accessors** for tests: `EpisodeDirector.IsPhasePanelOpen` and `IsConversationOpen`.
+
+**Harness:**
+- A batchmode run killed with `taskkill /T` while it was exiting left a Unity process that can't be killed, holding `D:\GamesimAcceptance`'s lock file.
+- Testing moved to a clone, `D:\GamesimAcceptance2` (set `GAMESIM_ACCEPTANCE`).
+- On the clone, PlayMode only resolves scene scripts with play-mode domain reload on. The scratchpad runner turns it on there after each sync.
+- The old copy is usable again after a reboot.
+
+**Fifth pass: who is where, where to go, and a house that looks used.**
+- **Room icons count their houseguests.** Each icon wears a badge with the number of houseguests in its room, the player not counted (`EpisodeTravelBeacons.ShownCount`). The count reads the notebook's Who Is Where (`HouseOccupancy`) twice a second, so the two never disagree.
+- **The next stop is ringed.** The objective's next stop is the diary when one is owed, otherwise the episode screen. Its icon wears a lit ring, which breathes unless motion is reduced (`NextStop`, `NextStopName`).
+- **The objective chip's wording.** It now says "Next stop: episode screen", per decision 13; it used to say "ceremony screen".
+- **Activity effects, after the web game's** `EnvironmentalParticles.tsx` and `BackyardArea.tsx` (`HouseActivityEffects`):
+  - bubbles always rise in the hot tub;
+  - steam comes off the hob while the player cooks;
+  - splashes rise round the player while they swim.
+- **How the effects are made:**
+  - Counts, sizes and opacities follow the web. The splashes are paler, because the web's blue is lost against this pool's lit water.
+  - Nothing plays under reduced motion.
+  - The particles use `Sprites/Default`, which is always in a build, with a dot drawn at runtime. There is no new asset.
+- **A gap in the test captures:** `CaptureFraming` turns overlay canvases into camera canvases, so the room icons are placed wrongly in captures. Judge the icons by the tests, not by the PNGs.
+- **A review of this pass** confirmed three defects, and they are fixed:
+  - two per-frame allocations: the ring's name was read back every frame, and a method group was passed as a new delegate every frame;
+  - a 9% flake: the slowest splash drops fell below the test's bound, so the drops now live 0.4 s and land near the surface;
+  - splashes sorting behind the pool's translucent water: they and the bubbles now draw after it.
+  
+  The review's unverified note, that the test could not tell whether the player was counted, is also fixed. The test stands the player in the screen's room, whose icon always shows, and a mutation that counts the player is caught.
+**Sixth pass: the next stop is never lost.**
+- **The problem:** from over the house centre, the episode screen's icon often sat under the top bar, where icons are hidden by design. The one place the objective names was the one icon missing.
+- **The fix:** the next stop's icon now waits at the first clear spot on the way from its place to the middle of the screen (`EpisodeTravelBeacons.IsPinned`).
+  - It is whole, clear of the chrome, and still takes the player there.
+  - A pip on its rim (`PointerName`) sits on the side its place is on.
+- **Every other icon** keeps the old rule, with one change: the whole icon must be clear of the chrome, not just its middle. An icon half under the status line was being shown.
+- **Captures** now show the icons where the player sees them: the icons use the canvas's camera when a capture has made it a camera canvas.
+
+**Seventh pass: arriving says who else is there.**
+- **Before:** a trip to a room on foot kept saying "Heading to the kitchen." after the player had arrived.
+- **Now:** on arrival it says where they are and who else is there, in the notebook's own Current Location words: "In the kitchen.  2 houseguests here: Maya, Jamie", or "You have this room to yourself."
+  - The status line uses first names; the notebook keeps full names.
+  - A warp says the same at once.
+  - A floor click or another errand on the way cancels it.
+- **The words** come from `EpisodeDirector.CompanyLine`, which the notebook now uses too.
+
+**Not done:**
+- M0b.
+- M8 and later, except the hot-tub companion. That leaves NPCs using the new verbs (decision 9 keeps them to their three places), props and IK, and sit-down and stand-up takes.
+- The non-UMA cast: it sits where a UMA body lies.
+
+---
+
+## 000000. The backwards walk measured, and a plan for house life (24 September)
+
+The request:
+- the walk plays backwards;
+- use Quaternius's Universal Animation Library, for example for swimming when the pool is clicked;
+- clickable icons that take the player to rooms, the challenge, the episode screen and the diary room;
+- more to do in the house, such as sleeping and cooking;
+- a brainstorm and a detailed plan.
+
+**Only the plan shipped.** It is `Assets/Plans/HOUSE-LIFE-PLAN.md`: evidence, 57 ideas in tiers, milestones M0–M9 with files, tests and acceptance criteria, and 13 decisions for the owner.
+
+**The finding that matters:**
+- **What is turned.** Every custom animation take plays turned about 180° on both casts: Walk, WalkStop, standing Talk/Listen/Argue and all five reactions. Sitting is turned too, but hidden by the hard-coded `SeatedClipHalfTurn`.
+  - On UMA bodies, only UMA's own Idle and Run face forward.
+  - On the non-UMA cast, only the Quaternius Idle and Walk face forward.
+- **Cause, UMA takes:** `AuthoredAssetImporter` bakes root rotation "Based Upon: Original" (`:243-248`), and the Mixamo files store a reversed heading.
+- **Cause, authored reactions:** `HumanoidReactionAuthoring` copies Talk's reversed RootQ.
+- **Cause, non-UMA takes:** the Blender `bb_anim_casual` export's root is turned.
+- **The fix is M0 in the plan.** The three sources are fixed first, and only then is the seat hack removed.
+
+**Traps:**
+- **A facing probe must hold each state's parameters** and assert `IsName(state)` before it samples. Playing a state with its parameters cleared lets the controller leave it within a third of a second. The first probe did exactly that, and reported several turned takes as correct.
+- **The Universal Animation Library Standard is already committed and unused:** `Art/External/QuaterniusCharacters/AnimationLibrary_Unity_Standard.fbx`, 46 takes including Swim_Idle_Loop and Swim_Fwd_Loop.
+  - Do not drop it into `Art/Authored/Animation/Humanoid`. The importer renames every clip there to the file's name, and loops anything ending in `_loop`.
+- **The non-UMA rig is not a humanoid chain.** The legs hang off `Body`, and the feet are IK bones under the root. So "import it as Humanoid" is a re-rig, not a setting.
+
+---
+
+## 00000. The character creator, rebuilt to its mockups — and colours that reach the body (23 September, late night)
+
+The user sent four mockups (Appearance, Identity, Personality, My Houseguests) and reported that hair
+colour, clothing colour and so on could not be changed: every model had white hair.
+
+**Why the hair was white.** UMA 3's card-hair shader (`UMA3_HairShader_URP`) reads its colour from
+its own `_BaseColor`, `_RootColor` and `_Tip_Color` properties. A plain shared colour sets the
+channel mask and never those, so every houseguest's hair drew in the material's pale default.
+`UmaBodyProvider.HairColour` builds an `OverlayColorData` that carries the three properties.
+`SetRawColor(..., false)` keeps them; `SetColor` would drop the property block.
+- Eyebrows and lashes use the "Hair" shared colour. A separate brows colour changes nothing, so the
+  creator no longer offers one.
+
+**Why clothing had no colour.** The house's `bb_` garments have no shared colour at all: each overlay
+carries its own unshared colour. A fabric colour is now saved as an outfit colour named
+`Fabric-Chest`, `Fabric-Legs` or `Fabric-Feet` (`AppearanceEditing.SetFabric` / `TryFabric`). This
+reuses the existing `outfit.colors` list, so there is no schema change.
+- The provider maps each worn garment's recipe slots to its tint.
+- `UmaBodyTint.Bind(..., garmentTints)` hooks `OnCharacterBegun`, which fires before textures are
+  generated. There it replaces each unshared overlay colour in those slots with a tinted clone. It
+  never mutates the shared asset.
+
+**The creator** is now one page per step, in partials:
+- `CharacterCreator.Chrome`: frame, header, tabs, footer, and the Pill / GlyphButton / Swatch /
+  Thumbnail helpers.
+- `.Studio`: Appearance.
+- `.Identity`.
+- `.Personality`.
+- `.Library`: My Houseguests and Review.
+
+**How the page is laid out.**
+- **From the frame.** Layout comes from the frame the canvas is really drawn to: the screen, or the
+  camera a capture hands it to, through the scaler. When that frame changes, `RefitToFrame` rebuilds
+  on the next frame, so a window resize or a review capture gets its own layout.
+- **The live preview.** It clears to transparent (`CharacterStudioPreview.Transparent`, which only the
+  creator sets; portraits keep their backdrop). The houseguest stands on a lit ring with the
+  turntable on its front edge.
+
+**The pages.**
+- **Appearance.**
+  - The sidebar lists the categories.
+  - The panel has Undo, Redo, Randomize and Reset look.
+  - Body: the starting looks as portraits, the body cards, and the proportions two to a row.
+  - Hair: style strips with arrows and Remove, and hair colour.
+  - Clothing: the outfits, then each garment's style strip with **its own colour row** and "Original
+    … color".
+  - Colors: skin, hair and eye palettes.
+  - Each category keeps its Reset and its Lock; Randomize leaves locked categories alone.
+- **Identity.** The form (name, occupation, hometown, bio with a counter, age slider and steps,
+  pronouns), the preview, and a card showing the photo, bio and facts.
+- **Personality.** The 17 traits as cards showing their real boosts, then 8 tendencies with segment
+  bars and +/− steppers, then the summary (the draft's archetype, traits and strongest stats).
+- **My Houseguests.**
+  - The shared search row and "Create new houseguest", which takes two presses.
+  - Cards with bound portraits.
+  - A bar for the houseguest in focus: Play as, Edit, Duplicate, Rename, Delete (with confirm).
+- **Review.** Who they are, their stats, the season, and a readiness checklist.
+
+**The caption contract held.** Every caption the tests, the season walk and the cast screen use is
+still a control's first text. Glyph-only controls (arrows, swatches, +/−, Remove) carry theirs as a
+hidden first label, stretched to the control.
+
+**Traps:**
+- A TMP label left at its default rect is 200×50. On a 40-pixel glyph button it spilled 80 units
+  past the frame. The new page-fit test caught it.
+- The portrait queue renders through `CharacterStudioPreview` too. Clearing that class to transparent
+  would have put every portrait in the game on white, so transparency is opt-in.
+- The pack's slider track and fill are drawn for a thick bar; sliced 8 units thin they are all border
+  and read as nothing. The creator's sliders draw a plain line and fill under the pack's handle.
+- `AspectRatioFitter` (FitInParent) takes over the anchors. A picture that must stand on a floor is
+  sized by hand.
+
+**The review** (4 reviewers, each finding checked by a skeptic): 28 of 30 findings were confirmed,
+and all are fixed. The ones that mattered:
+- **Loading and looking are separate.** Pressing a card still loads its houseguest (the tests and the
+  season walk rely on that). A "Details for …" glyph on each card focuses it without loading, so
+  the bar's Delete and Duplicate reach any card without replacing the draft. Play as, Edit and Rename
+  on the houseguest already loaded go to their page and keep the edits.
+- **The first click after typing was lost.** A field's end-of-edit rebuilt the page under the press
+  that ended it; this was inherited from HEAD. The rebuild now waits a frame (`rebuildSoon`), and the
+  focus restore stands aside while the event system is mid-selection.
+- **What belongs to a page ends with it.** "Compare original", the head-shot framing, an armed Delete
+  and an armed new houseguest all end on a page change (`GoTo`). `Show` clears the last session's
+  notice, message and armed delete.
+- **Hair colour belongs to the Hair page too.** Lock Hair keeps it through Randomize, and Reset hair
+  restores it.
+- **Brows.** Five catalogue brow styles bind the "Brows" colour rather than "Hair". A hair pick now
+  sets both, and a BROW COLOR row on Colors sets them apart.
+- **Garments on shared colours** (the turquoise hoodie) offer their shared-colour row under the
+  garment, not a fabric tint that could not reach them.
+- **Substitutes.** A fabric tint lands on the substitute garment actually worn, not on the recipe
+  that could not be.
+- **Short frames.** The Identity fields and the tendency rows scroll rather than run under the
+  footer. The "Original … color" control moved to its heading row. Zoom became two glyphs.
+- **Focus you can see.** Every control lights a ring while the keyboard or the pad is on it
+  (`CreatorFocus`). A disabled glyph dims whole (`Enable`).
+- **Copy for a cast slot** speaks about the cast member, not you.
+
+The two refuted findings:
+- Card-press-loads is the contract.
+- Focus fallback is handled by the HUD's overlay scope.
+
+**Tests:** 7 new PlayMode tests and 1 new UMA test.
+- Every page fits the frame at standard and larger text, and each page is captured.
+- Re-layout for the frame the canvas is drawn to.
+- Swatches write the colour they show (fabric, hair, brows).
+- New-houseguest confirm.
+- Lock survives Randomize.
+- Looking does not load.
+- The comparison ends with its page.
+- The hair and fabric colours reach the materials that draw them.
+
+**Mutation testing:** 13 mutations, 12 caught.
+- The survivor was equivalent: removing only the hidden label's anchors leaves it zero-sized. The
+  real defect, the 200×50 default rect, was caught by the page-fit test before the fix.
+- The hair mutation (plain `SetColor`) failed with the material's pale 0.82 default: the white hair
+  exactly.
+
+**Untested on purpose:**
+- The deferred rebuild after a field edit needs a real pointer press through the input module.
+- The shared-colour garment row and the substitute-garment tint need a catalogue item the harness
+  does not wear.
+
+---
+
+## 0000. The minigames redrawn, and new ones brainstormed (23 September, night)
+
+The user asked for more minigames in the games' tone and theme, and for better quality and styling
+in the ones already there. Two workflows ran: a brainstorm plus UI audit (24 concepts, 52 findings,
+judged and verified), then an adversarial review of the rewrite.
+
+**The brainstorm is a plan, not code:** `Assets/Plans/MINIGAME-IDEAS.md`. It has 11 ranked concepts
+with verified facts, a build order (Ready, Set, Whoa! with Grip Check, then Spotlight Sequence), and
+the one decision only the owner can make:
+- variants inside Skill, Mental and Endurance under a frozen rules-version-4 selector, with no
+  season re-roll; or
+- widening the category rotation, which re-rolls every seeded season.
+
+**The UI pass** (`CompetitionGameScreen` split into partials: `.Layout .Chrome .Overlay .Memory
+.Reaction .Endurance .Finish`):
+- **Built once, laid out often.** `Show` builds everything once; `LayoutForFrame` re-places it
+  whenever the frame changes shape. `LateUpdate` watches `CurrentFrame()`, which is the screen, or the
+  camera's target when the canvas is drawn through a camera. A real window resize mid-attempt pauses
+  first. Review captures now show the true 16:9 layout instead of the 4:3 runner's.
+- **Fairness.** A paused or held board shows no faces. First Impressions' preview shows its faces
+  for exactly its 3 seconds, however it is interrupted. The pause plate is opaque. The arena gate
+  applies before play only; a houseguest stepping off their mark mid-attempt used to freeze the clock
+  while taps still scored.
+- **The overlay.** GET READY says what it is waiting for, then 3-2-1, then GO for half a second,
+  and PAUSED; each state has its own size.
+- **The frame's cards.**
+  - The challenge card: the award as eyebrow, the game's own name, category and mode chips, and
+    larger rules that state the controls and costs.
+  - The clock: a draining ring, fixed-width digits, a state line, red for the last 5 seconds.
+  - A band over the board with the live message.
+  - A key-cap legend under the board that follows the last device used.
+  - Key hints beside Pause and Back to briefing.
+  - Faces in the competitors card.
+- **The boards.**
+  - Memory: tiles with the web game's symbols, and states that differ by mark (back, symbol,
+    cross, check), not only colour. A focus ring, a pair tray, a mistakes chip, a preview meter.
+  - Reaction: a round target with an arrow, a draining window ring and the window's seconds. The
+    field's diagonals and an edge legend make the direction rule visible. A mark stays where each
+    press landed. The target is sized to the board, never to the text.
+  - Endurance: a stamina panel holding the grip meter with a 25% tick, the rate, a warning before
+    the grip runs out, effort banked towards full marks, and Pressure Cooker's wave timeline.
+- **Endings.** Every attempt ends on a finish plate. A ranked one holds 0.9 s before it commits, and
+  nothing can leave it while it stands. The standings card shows the player's attempt, a face on
+  every row and the player's row outlined, honours large text, and follows the frame.
+- **Input.** Space and RT are read as a level, not an edge (`SyncHoldKey`). In ranked play the first
+  Esc/B pauses and asks. WASD and the left stick aim.
+- **Audio.** Pairs and hits rise, misses fall, and the start sting moves to GO. Only existing cues
+  are used; a new cue needs a recording.
+
+**Traps:**
+- Assigning a `Selectable`'s `targetGraphic` runs one colour transition before the transition can be
+  switched off. On a board that is not yet live, that left the graphic at the disabled half-alpha,
+  the board's own glass included. `Untinted()` stops the transition *and* clears the tint.
+- Board animations run on the screen's own `Update` clock, not `AdvanceReady`. Otherwise a test or a
+  capture that drives the run without the director leaves a card squeezed edge-on forever.
+- `CompetitionEntrant` carries nothing about how an NPC is doing: their result does not exist
+  until the commit.
+
+- The capture's own frame is slow enough to trip the stall guard and pause a live board. The
+  capture test pins `Time.captureDeltaTime` and resumes through a pause, as a player would.
+
+**The review** (4 reviewers, each finding checked by a skeptic): 24 of 30 findings were confirmed, and
+all 24 are fixed. The ones that mattered:
+- The arena's cancel checks could throw away a finished ranked result during the 0.9 s hold.
+  `TickCompetitionArena` now stands still while the hold runs.
+- Esc on a memory board just cleared by its last pair, before the plate went up, discarded the
+  result.
+- Back to briefing now asks first in a ranked attempt under way, as Esc does. It is one Up away
+  from the board's top row.
+- The live accuracy counted the target still up as a miss.
+- Pause, Back to briefing and the result card's buttons showed no focus (`Focusable`).
+- Version 1 endurance said "Release to recover" while letting go drained the grip. Its caption is
+  now "Let go (grip drains)"; the v2+ captions are unchanged.
+- A full grip read "+28 %/s refilling". It now reads "steady" and "RESTING · GRIP FULL".
+- The competitors list now fits a field of any size.
+- Large text no longer shrinks the reaction target at 16:9, nor the memory captions.
+
+Mutation testing covered the rewrite and the review fixes: 45 mutations, all caught.
+
+**Untested on purpose:**
+- The arena-gate-mid-play fix and the arena's stand-still during the finish hold have no dedicated
+  director test. The ranked finish test exercises them only when the audience is still walking.
+- The director's reaction cues (silent on a v1 no-op press) have no test either.
+
+---
+
+## 000. Screens fill the frame (23 September, late)
+
+The user's direction: *pretty much all the screens, especially challenge screens, should take up most
+of the screen if not full screen.* A mapping workflow (every screen's rect, chrome, camera shot and
+geometry tests) came first. The result is two frame sizes:
+
+- **FULL** covers about 92% of the frame; all HUD chrome stands down except the status line. It
+  is used for challenges. The status line carries a failed start, a cancelled walk to the stations
+  and a rejected commit, so it moves into the arena window's bottom-right corner instead of going.
+  - **The briefing** is a full-height sheet down the left, `min(900·FS, 58% of the frame)` wide.
+    The house's chrome is hidden (`HideChromeForFullFrame`), and the camera stands the arena in the
+    right-hand window. The shot's sideways shift is derived from `ArenaWindowOffset` through the
+    shot's vertical FOV, so the arena sits right at any aspect ratio.
+  - **The spectator's "Watch"** is the same sheet (`SpectatorBriefing`).
+  - **The minigame** is the whole frame: the challenge and clock across the top, the board filling
+    the rest, and the field and controls down the right. The HUD stays hidden for the whole attempt
+    and comes back at commit or cancel. Every board size is derived from the frame. That includes
+    the memory grid, the reaction target, which scales with the board so its share of the field
+    holds, and the endurance rows. With the HUD down, its focus rescue does not run, so the game
+    keeps a control selected itself (`RescueFocus`: the board while playing, Pause while paused). The frame is computed from `Screen` and the scaler's settings,
+    because the first competition builds its canvas in the same frame it lays it out, before the
+    scaler has run.
+  - **The result card** scales to fill the frame's height, clamped to [.75, 1.6]. A six-player
+    result is about 1.45× its old size, and a 16-player field that used to run off the screen now
+    fits.
+- **STAGE** covers about 60%: the rail, the top bar and the status line stay; the right column and
+  the strip stand down. It is the notebook's frame, from the rail to the right edge and from the
+  status line to the top bar. Content is capped to a centred reading column (`CapContent`; reset per
+  layout by `UncapContent`).
+  - **The episode screen** takes it in every state with something to read or decide. Quiet beats
+    (Continue-only, the reflection prompt) stay cards (`QuietBeat`). The strip and its badges
+    stand down, so the one-line `HouseStatus` (who holds what this week) heads every decision,
+    not only the quiet beats.
+  - **Nominations and settings** take the whole stage.
+  - **The diary ballot** runs from the top bar down to the status line, never below it: the status
+    line carries the diary's messages while the vote is up. Its cards grow up to 1.4·FS, but only
+    as far as the panel's height still holds them with Confirm underneath.
+  - **The house event** takes the stage's width, with its top at 0.65H so the people it frames stay
+    visible. It is never shorter than its old card at the current text size.
+
+**Deliberate exceptions** (the user can overrule any of them):
+- the conversation, where the two-shot is the screen;
+- the conversation notice;
+- the diary room's column beside the chair;
+- house activities;
+- quiet beats;
+- the competition assembly card, which shows the walk to the stations;
+- the ceremony cards and sting (the sting takes no input, so Close under it stays pressable);
+- the weekly recap and season report. They are already about 62% of the frame, and the recap sizes
+  its height to the week on purpose.
+
+**Traps:**
+- An `Assume` on the layout skipped the only check that the way on was pinned while it had
+  regressed (memory note).
+- A stage's reading cap leaked into the briefing laid out after it and pushed option text past its
+  cards. `isTextOverflowing` cannot see that: check that words stay inside their control.
+- The clip sweep's openers cannot wait a frame, so the briefing checks its own copy at both text
+  sizes.
+- `canvas.transform.Find(name)` in a layout returns the last render's copy. Begin's rebuild only
+  deactivates the old chrome and `Destroy`s it at the frame's end, so the old copy comes first. The
+  full-frame layout moved a dead status line while the live one sat over the sheet. Take the last
+  child of that name.
+- The result card sizes itself from `Screen` for the same first-frame reason as the minigame.
+
+**Not covered yet:** the spectator's briefing has no geometry test of its own (it shares
+`CompetitionLayout` with the tested briefing). The entrant strip's wiring in the game screen is
+dead now that the field card lists the competitors; it can go in a clean-up.
+
+---
+
+## 00. Refinement Kit 6 — the five missed screens (23 September)
+
+The kit (`ArtSource/ui-packs/Kit6_Refinement/`, its review `GAMESIM_REMAINING_MENUS_REVIEW.md` and
+integration notes) covers five screens the mockup pass left generic, plus three companion views.
+All five are done, in the order the kit asked for; `Assets/Plans/ASSET-PACKS.md` has a Kit 6 section
+saying which sprite goes where.
+
+| Screen | What it is now | Test (capture) |
+|---|---|---|
+| Who is where | Room cards in two columns, no glow at rest, a face and first name per occupant, filters All rooms / Occupied (and Location unavailable only when someone has no body), the house's count, House activities in the foot. Occupancy walks the roster, so everyone in the house is in exactly one card. | `NotebookRooms_EveryoneIsInOneRoomCardAndNoCardGlows` (`notebook-rooms`) |
+| Houseguests + profile | Columns: face and name with the card line, status word, your trust signed and coloured by sign, View profile. Filters "All · N", "Active · N", "Jury · N" (the counts keep the captions apart from a row's status word), a search that narrows in place and survives a repaint. A row opens the profile - identity card, your trust with what it is not, what you remember of them, the records you hold, Back to Houseguests - still on the Houseguests page. | `NotebookPeople_ColumnsFiltersAndSearch` (`notebook-people`), `NotebookPeople_ARowOpensTheProfileAndBackReturns` (`notebook-profile`) |
+| The vote | Read from the public record by `VoteRecords` (the page read the ballot box, which the engine empties when the next week begins - hence "Nobody has voted yet" in week 2). Tabs Eviction results / Known ballots; empty copy chosen by why (no eviction yet, record rolled off the 256-entry log, vote in progress); before the reveal the only ballot known is the player's own. | `NotebookVotes_AnEmptyPageSaysWhyInBothTabs` (`notebook-votes`), the post-reveal half of `VotingBloc_ActualPact...`, `VoteRecordsTests` (EditMode) |
+| Conversation unavailable | `ActivityLayout.ConversationNotice`: a card sized to its content low on the left - name, pronouns and traits, "Mood: X" and "Your trust: ±N" as two pills, the greeting once, and "Conversation unavailable during this ceremony." No budget, no dial, nothing spent. | `Conversation_OutsideFreeTimeIsACardThatSpendsNothing` (`conversation-unavailable`) |
+| Diary room | A 540-wide column (under 35% of the frame; house activities keep 420). Tabs Your record / Memories / Pending decision - the decision's tab opens first when there is something to choose. The record: a status card, preparation / persona / recorded jury impression as rows ("None yet" with no jury, never a zero), the long rules behind "How this record works". A review is two cards (what is decided, what confirming records) with the note and the same captions. The line under the frame no longer says "walk to the private room" once you are in it, and the rail lights Go to diary room while you are. | `Diary_TheRecordIsThreeTabsAndReadingThemChangesNothing` (`diary-record`) |
+
+Deliberate test updates (layout, not behaviour): the houseguest row's sentence became columns
+(`NpcRuntime_NotebookDoesNot...`); the diary's memories and persona are read from their tabs.
+
+**Traps:** `hud.Mark` renames the *last* content child, so a filter row becomes the section's mark -
+look the row up by the section name. A search field rebuilt by a repaint loses the caret unless it is
+handed back (`SearchBox`). A card whose scroll starts near its top covers its own Close unless Close is
+raised above the viewport (`ConversationNoticeLayout`) - the test's pressability check caught it.
+The C: editor re-imported the kit's sliced sprites with its catalogue stale and wrote their metas with
+`spriteBorder` zero (the importer's fallback for a file it does not list); D:'s fresh import wrote the
+right borders, so the tests passed over wrong C: metas. Check `git diff` on `Resources/Packs` before a
+commit, restore the metas from HEAD and force-reimport them in the editor.
+
+**PR #4** (`ui/expanded-event-screens`, another assistant's, built on `main` without Unity) forked 125
+commits back and conflicts in three of its four files; do not merge it. Its diagnosis held here, and its
+worthwhile ideas are rebuilt on this branch's design (`EpisodeHud.PhasePanel.cs`):
+- **The episode screen fits its content.** The Standard panel (every phase-panel state without a
+  dedicated layout) keeps its dock and its 900 width, and grows from 200 up to the free area. The
+  height is measured in LateUpdate's selection pass, after rows grow to their wrapped labels. The
+  panel stops short of any chrome still above its column. It puts away the follow chip and the
+  compact objective card, as the activity layouts do, and narrows to the band between the rail and the
+  right column on squarer screens. Removing the chip-hiding alone is caught by nothing, because the
+  height cap then stops the panel under the chip instead. That is defence in depth, not a gap.
+- **The way on is pinned** (`PinnedAction`: "Begin the next competition", "Close campaigning and open
+  voting", "Continue episode", "Continue to the next ceremony"). It is named by its caption, sits
+  under the scroll, and the scroll's foot stays clear of it after any layout. A panel with nothing
+  else opens on it, so Enter advances rather than closing. Under a house event it stays inline after
+  the choices.
+- **The rest:**
+  - results rank the standings with the winner marked;
+  - the house status is one line (`EpisodeDirector.HouseStatus`);
+  - the veto holder's saves, the replacement candidates, the final-HoH eviction and the jury vote
+    are peers two to a row on the public screen (`PairedActionFor`), one column at the larger text,
+    and the diary keeps its rows;
+  - the hint says "Scroll for more" only when the panel scrolls.
+- **The rule copy is kept.** The PR's cuts deleted disclosures: the 7-in-10 odds, the weekly budget,
+  what preparation does not boost. They stay, and `PhasePanel_FreeTime...` holds the first two.
+
+---
+
+## 0. The UI pass against the mockups (22 September, evening)
+
+The goal: *make the menus and the layout of the UI look like `ArtSource/reference/mockups/`*,
+using the imported packs (`Resources/Packs`, named in `PackArt.cs`, loaded through `UiTheme.Pack`
+and `UiTheme.PackSliced`). Commits, oldest first: `891c500` diary branding, `43c2159` HUD /
+conversation / ceremonies / decisions, `2c176c3` diary, ring, notebook and web tuning, `473093a`
+the diary as a room of options, the ballot, the cast as photographs, `94b3cca` the front door,
+the web's faces, room names, stale results, `fa79d3b` recap and report on glass, the sting's
+headline, the competition cards, `5339cc8` the reveal fix and settings, `54d1ba6` the status floor,
+`f03aa0f` Nearby, the entrant strip, the confessional's caption, the notebook's head, `76f2488` the
+speech bar, `558fc3d` name plates, the dial's discs, one follow marker, the creator's sliders,
+`267259e` the overview's feed, the house event card, cast select's dressing.
+
+| Mockup | Screen | Where it stands |
+|---|---|---|
+| 01 | HUD | Top bar of chips, icon rail, right column (live feed, recent events, this week), cast strip with quote. |
+| 02 | Cast select | Photo cards on the lit ground with no frame round them, the mockup's type sizes, the brand in the corner, a featured rail of the roster's faces (decoration: never a second control with a houseguest's name), the corner lines. No top-right stats: a season has no social points or day count to put there. |
+| 03 | Overview | Room chips with glyphs over each room (`RoomLabels`); the camera looks `OverviewLift` nearer than the house's centre so the near rooms clear the status line; the live feed heads the column with "Who is where" under it, each row wearing its chip's glyph. |
+| 04 | House event | `ActivityLayout.HouseEvent`: a 760-wide card low in the free area (`HouseEventHeader`, `EventChoices` tiles, then the rest of the phase panel a scroll below), and a still shot of the event's people when they stand together (`FrameHouseEvent`), let go with the panel. No Conflict Status card: the game keeps no tension reading between two houseguests. |
+| 05 | Competition | Challenge / timer / competitors cards over the yard; assembly card; while it is played the strip says Competing / Sitting out and the player's own chip carries their live progress (hits, pairs, seconds held). The others' progress is not drawn: their scores do not exist until the result commits, and the web build shows none either. |
+| 06 | Night | The Nearby card in the week card's place while a conversation is witnessed (Listen in commits the house's `Eavesdrop`, cost and odds printed), and the speech bar in the status line's place. |
+| 07 | Relationship web | The notebook's slim head; geometry sized from the page; icon pill tabs; legend card lower left; wider column led by a larger face; the speech bar at the foot (the player, and where they stand by their own reading). |
+| 08 | Eviction vote | `ActivityLayout.Ballot`: centred panel over the diary chair, Confirm straight under the cards; the speech bar in the strip's place, short of the quote card. |
+| 09 | HoH nominees | `ActivityLayout.Nominations` band of candidate cards. |
+| 10 | Nomination ceremony | `KeyCeremony` card with key slots. |
+| 11 | Diary room | `ActivityLayout.Diary`: a right-hand column of option cards; `ScreenHeader` in place of the phase band; the chair captioned with the player's latest memory. |
+| 12 | Conversation | Column + dial: 96-unit glass discs with the caption inside under the glyph, centred under the pair; the two-shot puts the pair either side of it with their faces in the upper third. |
+| 01, 12 | World | Every houseguest's name on the pack's name plate (`HouseNpc.Plate`), and the follow diamond over the plate with a neon ring at the feet (`FollowRing`). |
+| Style guide | Competition briefing | `ActivityLayout.Competition`: a 640-wide card beside the rail with the right column and the strip up, the camera on the arena beside it (`FrameBriefing`). A hero card (the player's face, the category chip, the competition's title, the stakes), the brief, four facts from the rules the game runs, Practice as the one primary action beside "View full rules" (the old paragraphs, on request), and the ranked entry, the accessible alternative, Simulate and Throw as compact cards under "COMPETE FOR REAL". The rail's lists carry their names ("PLAY", "NOTEBOOK & SETTINGS"). No quote card: the game writes the player no lines. `EpisodeHud.Briefing.cs`. |
+
+Also restyled with no mockup of their own, in the same language: main menu, settings (its own tall
+panel and head), weekly recap, season report, tutorial card, opening titles, ceremony takeover
+titles, competition result card.
+
+**How it was verified.** Every screen above has a capture taken in batchmode (`CaptureFraming`,
+16:9) by the test that opens it: `cast-select`, `diary-options`, `ballot-diary`/`-review`,
+`nominations-band`, `house-event`, `conversation-panel`, `overview`, `main-menu`, `settings`,
+`creator`, `weekly-recap`, `season-report`, `competition-assembly`/`-practice`, `followed`, and the walkthrough
+frames, and `nearby` and `opening-title` (the opening holds its card headless only for that test). They land in `D:\GamesimAcceptance\*.png` after a run. Look at them;
+the tests assert structure, not appearance.
+
+**Traps this pass fell into:**
+
+- **Inter's line is taller than the boxes that were sized for the old font.** The HUD labels
+  truncate, and TextMesh Pro truncates a line *whole* when its box is shorter than the line, so the
+  sting's headline and the eviction tally's figures drew nothing while their `text` said the right
+  thing. `Labels_EveryScreenAndCardDrawsItsCopy` now counts visible glyphs across the house, the
+  menu, the notebook, the diary and a season's cards. Size a label's box at ≥1.3× its font size.
+- **Automation commits past cards a player could not.** The competition result holds the input
+  until Continue; `Submit` does not, and the walkthrough stacked the HoH result under three later
+  beats. A beat now takes down the cards before it (`EndCeremonyCards(includingResult)`).
+- **A reveal that records where its element rests must record it after the layout.** `HudReveal`
+  read the panel's position the moment the panel was built; the activity layouts move the panel
+  after that, so every activity panel opened from closed rose back to the docked panel's offset in
+  its new anchors (the settings column at the canvas's left edge, the conversation over the rail)
+  until the next re-render. Captures never showed it: `CaptureFraming` re-renders first. It now
+  reads its rest position on its first frame.
+- **The first frame's canvas is the raw screen.** Before the scaler has run, a 640-wide batchmode
+  canvas is 640 units, and the status toast's room (width minus both gutters) came to −2: the toast
+  was built at a negative width and its line drew nothing. It is floored at a caption's width now.
+  Only a test that runs first sees this, which is why the label sweep found it in a filtered run.
+- **`InstallDiaryFixture` fails when its test is the first in a run** (the installed session is not
+  the one the director holds: `gamesim-00000003` against a fresh one). It passes whenever anything
+  ran before it; a filtered run of one diary test needs a warm-up test ahead of it in the filter.
+  Not investigated further.
+- **Mutations that reach every screen mask everything else.** A broken `HudReveal` misplaced the
+  settings panel a diary fixture presses through; run such a mutation in a round of its own.
+- **A test that checks "visible" may not check "where".** The ballot's Confirm stayed on screen
+  in a tall panel even when a mutation moved it under the explanation; the test now measures the gap
+  to the cards.
+- **A Slider owns its fill's and handle's anchors.** It sets them to the full height of their
+  parent every time it draws, so a 6-unit fill parented to the track stood as tall as the track.
+  Give each its own area of the height it should have (`CharacterCreator.SliderArea`).
+- **A name at dollhouse height is in the top bar in a two-shot.** Raising the pair's faces into
+  the upper third took their 2.4 m plates into the chips' band. A plate comes down toward the head
+  as the camera closes in (`HouseNpc.NameTagCloseDrop`, all of it by a conversation's distance);
+  `NamePlates_TheOneYouAreTalkingToWearsTheirNameUnderTheTopBar` measures it. It passed and failed
+  by turns at half that drop, depending on where the partner stood - measure a margin, not a pass.
+- **A per-frame follow that re-derives a shot's pivot must derive all of it.** The two-shot's
+  sideways shift held for the shot's first frame only: `LateUpdate` rebuilt the focus from the
+  lift alone. Both now go through `HouseCameraRig.TwoShotPivot`.
+- **Commit exactly what was tested.** Work continued on C: while D: ran; the commits were staged from
+  the D: copy's content (`git hash-object -w --path` + `update-index --cacheinfo`) so each commit is
+  the snapshot its green run tested, not the working tree.
+
+**The speech bar (06-08)** is always the player's own face and something true of them on that
+screen - the game writes the player no inner monologue, and a status line is not always speech
+("Maya Hassan: Build a dependable voting partnership..." is her goal, not her words), so neither
+is dressed up as a quote. `EpisodeHud.SpeechBar`.
+
+**What remains:** the parts of the mockups the game has no data for - social points, a day count,
+tension between two houseguests, other competitors' live scores, the player's inner lines - are
+left out rather than invented. The creator's preview now renders in batchmode captures (the test
+waits for `StudioPreview.IsBuilding`).
+
+---
+
+## 1. What shipped
+
+Twelve commits, newest last. The last five are the six-track programme's first moves (§2).
+
+| Commit | What it did |
+|---|---|
+| `d587aab` | **Walking animations.** The whole cast ran everywhere. |
+| `bec990e` | **HUD relayout.** Cast strip to the floor, six-item nav rail in the freed gutter. |
+| `c1b2983` | **Cast selection screen.** Portraits were unmasked black squares. |
+| `4b2e1a8` | **Click-to-talk.** Clicking a houseguest only moved the camera. |
+| `2053241` | **Pressability.** ~150 assertions asked a weaker question than they read as. |
+| `9c77154` | **Three guards against misreading a result.** |
+| `27bd14a` | **Track 2 visual guards.** A guard that cannot fail is worse than no guard. |
+| `b8daeea` | **Track 3, first slice.** Intel returns something; deals in "Between you"; a zero outcome says so. |
+| `f1b60be` | **Track 1: CI runs tests.** The simulation's own tests, without Unity, on every push. |
+| `6379520` | **Track 4: `UiTheme.AddGlow`.** The cast screen stops taking the whole glass for a halo. |
+| `b0dffe3` | **Cast strip standing.** Allied / Friendly / Wary / Hostile on every chip. |
+| `cb9a4c5` | **A Talk says each thing once.** The standing is its own line, only when it moved. |
+| `543faac` | **The player's alliance no longer ends in silence** - or on the partner's private score. |
+| `de0802d` | **The final eviction ends the evictee's alliances too**, and says so; the jury rule, investigated, stays. |
+| `9980358` | **Asset packs 1-5 imported**, nothing wired: 397 images with fixed import settings and a manifest. |
+
+### d587aab — walking
+`UmaBodyProvider` filled the `Walk` state by asking UMA's `Locomotion.controller` for a clip called
+`Walk`, then falling back to `Run`. That controller has `Idle`, `Wave`, `Run` and **no walk at all**,
+so the fallback was the only branch and everyone sprinted everywhere. Three Mixamo takes wired in:
+`Walk_loop` on a real Walk state at 2.2 m/s, UMA's run demoted to an actual `Run` state at 4 m/s,
+`WalkStop` so a body plants instead of snapping to idle. Running is now a decision — double-click,
+or a route over 8 m measured **along the path**.
+
+`bb_anim_WalkTurn180.fbx` is committed and deliberately **not wired**: a turn take rotates the body
+through root motion and `applyRootMotion` is off everywhere because the NavMeshAgent owns rotation.
+
+### bec990e — HUD relayout
+Cast strip from a 184-px left column to a full-width bottom row; `IconRail` moved into the freed
+gutter with six items and the open one filled; notebook roster split off the relationship page onto
+its own **Houseguests** page. `LeftColumnX` is now `14 + IconRail.Width + 12`; `RightColumnInset`
+dropped 88 → 24, which also cut the docked panel's overlap of the vibe card from 131 units to 67.
+
+**The floor is three bands and deliberately NOT the reference's order.** Strip lowest and full width;
+status caption and controls box share the band above it side by side; panel and proximity prompt
+above both. The reference puts the caption under the faces and that does not survive here: the
+controls box and the right column both hang into that corner, the vibe card already ends fifteen
+units above the expanded controls box, and a strip that stopped short of them cannot honour the
+larger-text preference with twelve chips.
+
+### c1b2983 — cast selection
+The portrait render is a square crop with an opaque ground, stretched over a round disc with nothing
+clipping it — corners overhanging the rim by 14 px, burying the ring. `CastRail` has masked its
+portraits since it was written; this screen never did. Also: the scrim was 0.97 alpha so the whole
+episode HUD ghosted through; the bottom row of cards was below the fold at 16:9 (676 px of cards in
+a 595 px viewport) and happened to fit at 4:3 where the tests run; cards were `GlassFill` on a scrim
+of `Background`, the same hex under 1 % apart.
+
+New tokens: `UiTheme.CardFill` (a 1.21:1 lift — the reference's own lift is 1.074:1 and failed the
+guard) and `UiTheme.Brass` for portrait rings, deliberately **not** `Gold`, which means power here.
+
+### 4b2e1a8 — click-to-talk
+In reach it opens; out of reach it **runs** you there and opens on arrival, on the houseguest that
+was pointed at. Nineteen defects in this one feature. The ones worth knowing:
+
+- **The chase could not be won.** Player and houseguest both walk at 2.2 m/s. The first fix chose
+  its gait from the *remaining* route, so it dropped to a walk under 8 m — exactly where the gap had
+  to close — and paced the target there until timeout. Hence `TryRunTo`, not `TryWalkTo`.
+- **`ApproachPoint` was a straight line with no wall in it.** `TryApproach` now fans eight candidates
+  and tests each with `NavMesh.Raycast`, because a bake is where this project keeps its walls.
+- **Nothing cancelled the errand.** One `CancelTravel()`, called from all four entry points.
+- **The drift budget (1.6 + 1.2 + 0.15 = 2.95 m) was wider than the 2.8 m talk range.**
+
+### 2053241 — pressability
+`ButtonWithCaption` filtered on `IsActive()` and then callers invoked the handler. ~150 assertions
+across 20 files said "the handler runs" while reading as "the player can do this". Now requires
+`IsInteractable`, on-screen bounds, and a raycast landing on that control or a descendant.
+
+Thirty-six tests failed first run. **None was a game defect.** Getting to that answer took four
+corrections to the instrument (see §4).
+
+### 9c77154 / 27bd14a — the guards
+- Every runtime `event` must be raised by something. Mutation-tested.
+- `Tools/baseline.txt` floors; `FILTERED (not the suite)`; `NO XML` is not a pass; provenance banner.
+- `CaptureFraming` now asserts a frame is not one flat colour.
+- `AssertRegionHasContent` for a flat region in a non-flat frame.
+- Clipped-copy sweep over four panel openers at both text sizes.
+
+---
+
+## 2. The programme's first moves — all committed
+
+Every plan below was drafted by one agent and attacked by another before a line was written, and in
+three of four cases the attack changed the plan. The corrections are recorded because they are the
+kind that will be re-proposed.
+
+### Track 3, first slice (`b8daeea`)
+Three places where the simulation knew and the player was not told. Each test was mutation-killed.
+- **`AskForIntel` returns something.** It spent one of six weekly actions and wrote its only memory
+  with `target.id` as owner - the houseguest remembered being asked, the player learned nothing. Now
+  the target hands over their own read on a third houseguest, the subject chosen from the roll
+  **already drawn** for the trust bump; a second `Roll(s)` would re-roll every season from there.
+- **Active deals appear in "Between you",** with their stakes, in the propose button's vocabulary.
+- **An action that moves nothing says so:** *"No change in trust"* instead of nothing at all.
+
+### Track 1: CI runs tests (`f1b60be`)
+`Gamesim.Simulation` is `noEngineReferences` and so are 37 EditMode test files.
+`Tools/SimulationTests/SimulationTests.csproj` compiles them with the plain .NET SDK - C# 9 and no
+implicit usings, as Unity does; NUnit 3; nothing of Unity's stubbed - and `.github/workflows/ci.yml`
+runs them on ubuntu with a floor from `Tools/baseline.txt` (`Gamesim.SimulationTests`). **Most of
+the count is cases generated from the web fixtures**: the first local run, before the fixtures were
+copied beside the binary, ran 560 instead of 716 and still said green. That is why there is a floor.
+It has only ever run on Windows; the first push is its first Linux run.
+
+**Use it.** `dotnet test Tools/SimulationTests/SimulationTests.csproj --filter FullyQualifiedName~X`
+runs a simulation test class in well under a second. A mutation loop over `HouseDialogue` took
+seconds this way instead of minutes per round through the editor.
+
+### Track 4: `UiTheme.AddGlow` (`6379520`)
+**The planned design did not survive review.** It was an `Emphasis` and fill-alpha parameter on
+`Glass`, with an Active level that never painted the accent edge because
+`Chrome_WearsNoAccentEdge` "would see it through CastSelect's live hidden hierarchy and fail in the
+full suite only". False: every `EpisodePlayModeTests` test reloads the scene and the Chrome test never
+opens the cast screen. The scale was also non-monotonic (the unlabelled default outshouted Active)
+and the fill-alpha had no caller. What the cast screen actually wanted from `Glass` was the halo, so
+`AddGlow` is the halo alone; `Glass` is `Style + AddGlow + AddBorder`, byte for byte what it was. The
+picked card lost two write-backs and a doubled ring. Guarded by `UiThemeGlassPlayModeTests` and a
+one-ring assertion; `cast-select-picked.png` is the frame.
+
+### Track 3: cast strip standing (`b0dffe3`)
+Every chip shows the player's own reading - **Allied / Friendly / Wary / Hostile** - as a dark pill
+with a light word at the ring's foot, beside the role pill when there is one (NOM + Allied is exactly
+when the player needs it). Neutral, the player's own chip and anyone out of the house show nothing,
+so the first frame of a season is unchanged. `CastRail.StandingOf` reads `RelationshipWeb.KindOf`:
+the player's outbound score and alliances only. Two leaks sit under that record and are **not** the
+strip's to fix - a weekly NPC settle can dissolve the player's alliance silently on the NPC's
+private score, and NPC-initiated acts move the player's outbound score by the reciprocal draw. A
+task chip was raised for the first.
+
+The pair shares one row, so it is fitted to its measured words and kept a unit clear of the chip's
+border; at scale 0.75 the font rounds 7.5 up to 8 and the widest pair (VETO + Friendly) drops a
+point. `cast-strip-standing-combos.png` shows every pair on real faces.
+
+### Track 5: a Talk says each thing once (`cb9a4c5`)
+**The planned design was a free follow-up question** ("Ask where I stand") and review found it hid
+the one readout of a Talk's random half behind a button, scrolled the speaker off-screen after a real
+mouse click, and relied on "no category pill means free" when three committing rows have no pill.
+Taken instead: the reply to *Spend time together* is the shipped acknowledgement alone
+(`HouseDialogue.TalkAcknowledgement`, moved verbatim), and where the houseguest stands is a second
+line **only when the talk moved it** - compared against the same sentence read before the command.
+Nothing hidden, no control added, no roll, no saved field. The question beat is still available as a
+design; it is an owner's call because of the trade above.
+
+### The player's alliance no longer ends in silence (`543faac`)
+`NpcAlliances.Dissolve` ended the player's alliance, in the weekly settle, when the PARTNER's private
+score toward the player fell under -20, or when the partner left the house - and logged nothing, so
+"Allied" vanished from the web, the header and the strip. Confirmed first by a characterisation test,
+then decided with the owner:
+- **Rule, matched to the web.** The player's alliance sours only on the player's own score toward
+  the partner. The web's `checkForDissolution` (`D:\gamesim-main\gamesim-main\src\systems\alliance-system.ts`)
+  reads each pair once, earlier member toward later, with the player first. Houseguests' own pacts
+  still read both directions.
+- **Notice, logged last.** The step that opens the social week captures the player's active
+  alliances before the settle and, after `NarrateHouse`, logs one `"alliance"` event per alliance that
+  ended, audience (player, partner): *"Your alliance with X has fallen apart."* or *"X has left the
+  house, and your alliance has ended."* No number, no direction, no roll, no saved field, no id
+  minted in the step moves; it is the status line. Nothing once the player is out of the house.
+- **Not done, deliberately:** no -15 penalty or grudge (Unity's "no ledger" choice stands), no
+  memory (a player memory is what `ShareInformation` passes on as gossip), no schema boundary (no
+  recorded walk ends a player alliance while the player is in the house).
+- 13 tests, 16 mutations killed. An adversarial review found four test gaps in correct code - an
+  earlier-ended alliance re-announced, a stray roll or memory, only the first of two told, the line
+  at exactly -20 - and each now has a test that kills its mutant.
+- **Then fixed (below):** a partner evicted at the final eviction never had the alliance ended.
+
+### The final eviction ends the evictee's alliances (`de0802d`)
+`FinalEvict` goes straight to the jury, so the weekly settle that ends an evictee's alliances never
+followed it: the final three's evictee kept an active alliance with the finalist, printed "active" in
+the notebook, never told, and read by the jury as current - `WebJuryVoting.AllianceLoyalty` 100 for
+that one juror, 25 for every other former ally. Proven across 1,920 real seasons (every one of 289
+hundreds was the final-3 evictee). Now `NpcAlliances.EndBroken` - the half of `Dissolve` that needs
+no week, sharing its `Intact` rule - runs in `FinalEvict` behind the same autonomy boundary, and
+`TellThePlayerWhichAlliancesEnded` is the step's last statement: *"X has left the house, and your
+alliance has ended."* Souring is not judged at the finale. No roll (the finale's draws are already
+pinned by `FinalEvictionPersistsQuestionAndExactlyTwoSourceDraws`), no field, no recorded walk moved.
+Cost, accepted by the owner: an ally-heavy player in a house of 4-5 loses a win they have today in
+about 4 of 600 seasons; none in houses of 6-12. 8 tests, 13 mutations killed - four of them from an
+adversarial review that found the finale path untested for old endings and for a houseguest Head of
+Household evicting the player's ally.
+
+**The jury rule was investigated and kept.** Unity's 100 / 25 / 0 is its own design (`ac00ee6`), not
+the web's. The web function it follows, `calculateJuryScore`, is never called in live web play; its
+alliance term always returns 0 (it calls a method `AllianceSystem` does not have); the live web jury
+votes on relationship plus a random ten. Kept deliberately; the doc comment now says so.
+
+**Worth knowing:** when a houseguest holds the final Head of Household with the player in the final
+three, they evict the player in 164 of 167 sampled seasons. Not investigated.
+
+### Asset packs 1-5 imported, nothing wired (`9980358`)
+Five UI/house art packs the owner supplied: 397 images now in the project with fixed import settings,
+and **`Assets/Plans/ASSET-PACKS.md`** saying where every file is meant to go - read it before wiring
+any of them. UI sprites (packs 1-4, pack 5's broadcast cards) are in `Resources/Packs` because the UI
+loads by path; pack 5's world textures are in `Art/Packs`, outside Resources, so the build ships only
+what the house uses. `UiPackImporter` applies `UiPackCatalogue` (generated by
+`ArtSource/ui-packs/tools/bb_ui_packs.py`, 9-slice borders measured from the pixels); `UiPackImportTests`
+holds all 397 to it. The manifest's per-category destinations were mapped against the code and checked
+by a second agent; its standing cautions: this UI draws chrome procedurally and tests pin it, most
+pack sprites bake colour and glow that `UiTheme` tokens and `HudEmphasis` cannot reach, several
+buttons carry ~40 px of glow that shrinks them in a 57-unit row, and four destinations do not exist
+yet (minimap, neon signs, particles, SVG). The owner's art-direction plan for the house (12 rooms,
+master materials, lighting modes) is a separate, larger programme than these textures.
+
+## 3. What remains — the six-track programme
+
+From a six-agent brainstorm (four lenses, a fact-checking critic, a synthesis). Tracks 1 and 2 are
+done; 3, 4 and 5 have their first moves in (§2). **Track 3 is still where the player-facing value is.**
+
+### Track 3 — say what the simulation already knows *(continue)*
+The project's signature failure: systems that exist and never reach a pixel.
+- `WebRelationshipArcs` classifies every relationship with intensity 0–100 and five escalation
+  labels, persisted through **eleven save versions** — `grep Arc` over the presentation layer returns
+  **zero hits**. ⚠️ **But see §5: the "these are the player's own arcs" premise was checked and is
+  FALSE.** Drawing them naively leaks NPC-to-NPC state.
+- `ThreatAssessment` — who considers you dangerous — six simulation callers, zero runtime.
+- Active deals now show in "Between you" (`b8daeea`), but **`RenderNotebookStory` still lists
+  promises, alliances, oaths and memories and no deals.**
+- ~~**The player's alliance could end without a word.**~~ Done - see §2, "The player's alliance".
+- ~~The cast strip returns the same grey chip for a five-week ally and a stranger.~~ Done (§2).
+- ~~`OutcomeChips` draws nothing when the delta rounds to zero.~~ Done (`b8daeea`).
+
+### Track 4 — one product, not nine screens
+`UiTheme.Glass` has seven direct callers and two through `HudPrimitives.Glass`, and six more
+surfaces *look* like glass without calling it (`EpisodeHud.Chrome` at .94, `RelationshipWeb`'s
+column, `CastRail` chips, the cast screen's frame, cards and pills) - fill alphas .851/.94/.949/1.0
+and edges from .30 to 1.0 across five hues. `AddGlow` was the first move (§2). **Do not** revive the
+`Emphasis`-parameter design without reading why it died. Next candidates: route `EpisodeHud.Chrome`'s
+.94 and the four ceremony `CardGlass` sites together (converting one breaks it from its siblings,
+and `CeremonyGlassPlayModeTests.AssertGlass` wants a Glow on each). On the cast screen's card ground,
+`Edge(Resting)` measures 1.204:1 and `Edge(Interactive)` 1.53:1 against today's cyan hairlines at
+1.69 and 2.25 - moving those edges is a design decision, not a cleanup. Do not regenerate the twelve
+reference captures as a pinned baseline first.
+
+### Track 5 — a conversation is a scene
+~70 controls in one 900×300 panel whose viewport is ~174 units tall, of which ~50 are four verbs
+repeated per houseguest. You get six actions a week. The Talk reply is done (§2). Six other verbs
+have no reply writing of their own and answer with the standing sentence alone - the same one the
+greeting ended on. Next: the two-step picker (`ChooseNominationPair` shows the shape), and move the
+caption constants and their tests in one deliberate change. The conversation viewport is ~448 units
+at standard text on the batchmode canvas (not 174 - that is the notebook).
+
+### Track 6 — blocked on you (answer first, none is agent-schedulable)
+1. **What is a season?** `DefaultHouseSize` is 8, the shipped scenario is seven people, and it ends
+   at **week 4**. Several estimates in the brainstorm were costed for a twelve-person, seven-week
+   season that does not ship. Upstream of at least six themes.
+2. **Unity licence in CI secrets?** Determines whether CI gets a real test job or compile-only.
+3. **Two Mixamo takes** (a dejected beat covering nomination and eviction; a relief beat with an
+   upward move) and **one attentive Listen take**.
+4. **An afternoon on the 24 UMA looks.**
+
+⚠️ Everything in (3) and (4) lands only under `GAMESIM_UMA`, which **must never be committed**. A
+fresh clone and every review build sees the Quaternius cast.
+
+### Explicitly NOT doing, with reasons
+- **The arc surface as proposed** — premise false, see §5.
+- **Adding the player to the NPC meeting pool** — excluded by construction at `NpcSocial.cs:77`;
+  including them changes reservation, approach and facing against 53 timing-sensitive tests.
+- **"Social Goals"** — named in VISUAL-TARGET as if it were a card to draw. `grep goal` returns four
+  hits, all web-save field names. There is no system.
+- **Audio, career/multi-season, competitions, localisation, save slots, performance work** — all real,
+  all deferred with reasons; see the brainstorm.
+
+### Nobody had looked at
+~~CI runs **no tests**.~~ It runs the simulation subset now (§2); the full suites still need a licence. `Assets/Gamesim/Audio/` is empty
+and every sound is synthesised at 22050 Hz. No localisation table ships, so `Localisation.Text` has
+been an identity function in every run ever made and the caption contract has never been exercised.
+
+---
+
+## 4. Traps this session fell into — read this part
+
+**Green is not correct.** The broken version of click-to-talk passed PlayMode **293/293** an hour
+before an audit found a blocker. If a feature's tests pass on the first run, mutation-test them.
+
+**A guard that cannot fail is worse than no guard.** The new clipped-copy sweep passed immediately
+and a mutation *survived* it: `SpeakerTitle` falls back to a wrapping `PanelTitle` when the portrait
+is null, portraits load asynchronously, and asserting on the frame a panel opens exercises the one
+layout incapable of clipping. **Let async content land before measuring anything visual.** This bit
+three times: a capture photographed twelve empty discs; a click test lost its target during a camera
+settle; and this.
+
+**Verify the file, not the script's exit status.** `4b2e1a8` shipped `DestinationChosen` declared,
+subscribed and **never raised** — dead code — because an edit script printed "ok" and the file was
+not re-read. The PlayMode test correctly reporting it was deleted as unreliable. `9c77154` now
+guards this class.
+
+**Never chain `offline-compile.ps1` into a run with `&&`.** `grep` exits 0 when it *finds* an error,
+so the tests run against a broken build and print `crashes: 0` with no XML. Happened twice. The
+harness now says `NO XML — this is NOT a pass` and exits 3.
+
+**A filtered run is not the suite.** Read as one three times in a day. The harness now says so.
+
+**`isTextOverflowing` cannot see overlap.** It answers "does this text fit its own box". Two
+elements in the same place both fit their own boxes. One tag collided with three different things in
+three successive captured frames — its own bounds, the chevron `Action()` pins at −16, and the trust
+reading a portrait row spends its right-hand end on.
+
+**Takeover-panel captures are distorted.** `CaptureFraming` renders 16:9 while the batchmode canvas
+is 4:3, and `SetActivityLayout` writes a fixed `sizeDelta` no layout pass recomputes. Do not measure
+pixel positions of activity panels in these PNGs. Chrome is anchor-based and photographs correctly.
+
+**A mutation that survives may mean the test checks less than the code promises.** The cast strip's
+geometry test checked that pills stayed off the border; the code promises a unit of clearance, and
+the branch that keeps the widest pair clear survived being deleted. The fix was the test, measured
+against the code's own stated rule - not deleting the branch.
+
+**Mutations in one round can mask each other.** Two cast-strip mutations ran together; one removed
+every pair from the geometry sweep, so it failed on "never drew a pair" and the other was never
+tested. Run mutations that aim at the same test in separate rounds.
+
+**`cp` onto a file under `Assets/` can be refused** ("Permission denied") in this environment while
+`sed -i` and Python writes succeed. A mutation restore that used `cp` left a mutated `WebRules.cs`
+in the tree until `git checkout` put it back. Restore with Python and assert no `MUTATION` marker is
+left.
+
+**Captions are identity.** ~1690 tests find controls by exact words. Decorate *around* a caption.
+When a caption must change, change it in the one helper every caller derives it from — that is how
+the `"Propose a alliance invitation"` article fix corrected the tests and the standalone verification
+for free.
+
+---
+
+## 5. Claims that were checked and found FALSE
+
+Kept because they are load-bearing and plausible enough to be re-proposed.
+
+- **"Relationship arcs are the player's own record."** Inverted. `EpisodeEngine.cs:1647` writes arcs
+  when *neither* party is the player too. A naive arc panel leaks NPC-to-NPC state.
+- **"There is no nominated branch in the diary."** `DiaryRoom.cs:507-515` is that branch.
+- **"`activeModifiers` and `storylines` have zero runtime references."** Both have one, in
+  `PortVerification.Season.Systems.cs`. A verification harness is not a player surface, so the
+  substance survives — the claim as written does not.
+- **"`DealStatus.Accepted` ordinals are pinned by saves."** `DealStatus` is a static class of string
+  constants; there are no ordinals.
+- **"A deal agreed in week 3 is forgotten by week 7."** There is no week 7 in a default season.
+- **"`Chrome_WearsNoAccentEdge` sees the cast screen in the full suite."** Every
+  `EpisodePlayModeTests` test reloads the scene; the Chrome test never opens the cast screen, and
+  `CastSelect` has no children until `NewSeason` shows it.
+- **"Three Talks in a week make a houseguest Friendly."** A Talk is +4 to the player's score and a
+  default week allows three actions: 12, under the threshold of 15. The known-good route to a
+  non-neutral standing is the recorded bloc walk (`ContentCatalog.Create(4)`,
+  `socialBudgetRulesStartWeek = 2`, three Talks and an alliance).
+- **"Unity's jury alliance term ports the web's stability-weighted one."** The web term reads
+  membership and size, never stability, always returns 0 as shipped, and sits in a jury score the
+  live web game never calls. Unity's 100/25/0 is original to this port.
+- **"The web build says nothing when an alliance dissolves."** It toasts and logs it. Two
+  investigators read only the design doc's code appendix, which holds three fragments of the
+  alliance system. **The full web source is at `D:\gamesim-main\gamesim-main`** - read that, not
+  the appendix, before claiming the web does or does not do something.
+- **"The Ask row needs no pill to read as free, because every committing row has one."** The oath
+  declare/decline rows and the deal-decline row commit with no pill.
+
+---
+
+## 6. Housekeeping
+
+- **Never commit** `ProjectSettings/ProjectSettings.asset` while it carries `GAMESIM_UMA`.
+- The four **Inter SDF font atlases** churn ~700k lines; they have been left unstaged all session.
+- `Assets/_Recovery/` is a crash artefact still sitting untracked in the tree.
+- `Tools/baseline.txt` floors: EditMode **1430**, PlayMode **327**, SimulationTests **740**. Raise a floor in the same commit
+  that adds tests; never lower one to make a red run green.
+- A spawned task fixed the `DestinationChosen` raise **in this same working tree**, not a separate
+  worktree. If you spin off tasks, expect concurrent edits to the files you are holding.
+- **Why the synthetic floor click never landed**, answered by a later session and recorded in memory
+  as *synthetic-clicks-need-a-frozen-camera*: a screen point measured before the click goes stale the
+  instant the camera rig is handed a new subject, and `SelectHouseguest` refocuses the rig on the
+  player mid-sequence. `ClearSubject`, then re-verify the point on the press frame. The floor-click
+  test in `EpisodePlayModeTests.NpcClick.cs` was restored on that basis.

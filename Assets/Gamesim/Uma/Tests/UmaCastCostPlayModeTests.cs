@@ -10,8 +10,10 @@ using UnityEngine.TestTools;
 namespace Gamesim.Uma.Tests
 {
     /// <summary>
-    /// Measures what a full house of UMA bodies costs against the same house on the authored
-    /// prefabs, so the decision to put UMA in the shipping episode can be made on a number.
+    /// Measures what a full house of UMA bodies costs against the same house on the primitive rig -
+    /// the body a house gets with no provider registered, and the cheapest one there is - so what
+    /// the UMA cast costs is a number rather than a guess. (Until 2026-09-27 the other side was the
+    /// authored Quaternius prefabs; that cast is gone, so the ratio is now against a floor.)
     ///
     /// Absolute milliseconds from a batchmode run mean little — there is no window to present to, so
     /// everything looks faster than it will in a player. The **ratio** between the two bodies
@@ -47,7 +49,7 @@ namespace Gamesim.Uma.Tests
             var house = ContentCatalog.Create(1).contestants.Take(HouseSize).ToArray();
             Assert.That(house, Has.Length.EqualTo(HouseSize));
 
-            // Phase one: the bodies the episode ships with today. No provider is registered.
+            // Phase one: the primitive rig, which is every body when no provider is registered.
             Assert.That(CharacterBodySource.Provider, Is.Null);
             SpawnHouse(house);
             for (int i = 0; i < SettleFrames; i++) yield return null;

@@ -83,6 +83,14 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(moved, Is.GreaterThan(0), "Seed " + seed + ": asking should build trust.");
                 Assert.That(after.memories.Any(m => m.ownerId == partner && m.isPrivate), Is.True,
                     "The housemate should privately remember being asked.");
+
+                // And the player has to come away with something. This is the whole transaction:
+                // one of six actions for the week is spent on a control captioned "Ask what they
+                // have heard", and for its entire life it wrote its only memory to the HOUSEGUEST -
+                // who duly remembered being asked - while the player learned nothing whatsoever.
+                Assert.That(after.memories.Any(m => m.ownerId == after.playerId
+                        && m.subjectId == partner && m.isPrivate), Is.True,
+                    "Seed " + seed + ": asking someone what they know must tell the PLAYER something.");
             }
         }
 
@@ -215,6 +223,28 @@ namespace Gamesim.Tests.EditMode
             Assert.That(caught, Is.GreaterThan(0), "Listening in should sometimes be noticed.");
             Assert.That(heard, Is.GreaterThan(caught),
                 "The source catches you roughly three times in ten, so success should be the common case.");
+        }
+
+        /// <summary>
+        /// The phase panel's "Listen in on a conversation" names nobody - the engine draws the pair
+        /// it overhears itself - so a command without a target has to be one the engine takes. It
+        /// was refused with "Approach an active housemate": the check every other action needs ran
+        /// before the switch reached the one action that has no housemate to approach, and the row
+        /// that offers it could never succeed.
+        /// </summary>
+        [Test]
+        public void ListeningInNeedsNobodyNamed()
+        {
+            var engine = Engine();
+            var before = engine.Snapshot;
+            var command = Command(before, EpisodeCommandKind.Eavesdrop);
+            command.targetId = null;
+            var result = engine.Apply(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            Assert.That(result.state.events.Where(e => e.sequence >= before.nextSequence).Select(e => e.kind),
+                Does.Contain("eavesdrop"), "Listening in happened.");
+            Assert.That(EpisodeEngine.SocialActionsSpent(result.state),
+                Is.EqualTo(EpisodeEngine.SocialActionsSpent(before) + 1), "and it cost the week's action.");
         }
 
         /// <summary>

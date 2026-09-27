@@ -1,3 +1,4 @@
+using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,6 +21,17 @@ namespace Gamesim.Presentation
     public static class HudPrimitives
     {
         /// <summary>A filled circle. Used for portrait frames, status rings and ceremony marks.</summary>
+        /// <summary>
+        /// A houseguest's name as a list shows it, with "(You)" after the player's - once. A player
+        /// who keeps the default name is already "You", and the competitors' list read "You (You)".
+        /// </summary>
+        public static string WithYou(string name, bool isPlayer, string gap = " ")
+        {
+            if (!isPlayer) return name ?? string.Empty;
+            if (string.IsNullOrEmpty(name) || name == "You") return "You";
+            return name + gap + "(You)";
+        }
+
         public static RectTransform Disc(string name, Transform parent, Color colour)
         {
             var rect = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
@@ -37,6 +49,230 @@ namespace Gamesim.Presentation
         /// with a bare colour and no sprite does not draw, which cost a debugging pass when a
         /// full-screen scrim silently rendered nothing.
         /// </summary>
+        /// <summary>One of the mockups' glass cards: the night ground, a cyan hairline, a soft glow.</summary>
+        public static RectTransform Glass(string name, Transform parent, int radius = UiTheme.GlassRadius)
+        {
+            var rect = Fill(name, parent, UiTheme.GlassFill, radius);
+            UiTheme.Glass(rect, radius);
+            return rect;
+        }
+
+        /// <summary>
+        /// A card heading in the mockups' voice: the semibold weight, tracked. Uppercasing is the
+        /// caller's, after localisation, as the season report already does.
+        /// </summary>
+        public static TMP_Text Heading(string name, Transform parent, float size, Color colour,
+            TextAlignmentOptions alignment = TextAlignmentOptions.Left)
+        {
+            var label = Label(name, parent, size, colour, alignment);
+            var font = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (font != null) label.font = font;
+            label.characterSpacing = 6f;
+            return label;
+        }
+
+        /// <summary>
+        /// One of the mockups' glyphs, sized and centred inside <paramref name="parent"/>'s
+        /// upper-left at <paramref name="position"/>. Returns null when the icon pass has not been
+        /// run, so every caller falls back to the plainer shape it drew before rather than to an
+        /// empty square.
+        /// </summary>
+        public static Image Glyph(string name, Transform parent, string icon, Color tint, Vector2 position, float side)
+        {
+            var sprite = UiTheme.Icon(icon);
+            if (sprite == null) return null;
+            var rect = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(side, side);
+            var image = rect.GetComponent<Image>();
+            image.sprite = sprite;
+            image.color = tint;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// The "there is more behind this" mark at the right-hand end of a card, as every option row
+        /// in mockup-11 carries.
+        ///
+        /// <para>Drawn from two bars rather than from a glyph: the generated set has no chevron, and
+        /// a font character is not an option — the shipped atlas is LiberationSans SDF, which renders
+        /// a dingbat as tofu. It is decoration only; what the row does is in its caption.</para>
+        /// </summary>
+        public static RectTransform Chevron(Transform parent, Color tint, float side)
+        {
+            var mark = new GameObject("Chevron", typeof(RectTransform)).GetComponent<RectTransform>();
+            mark.SetParent(parent, false);
+            mark.anchorMin = new Vector2(1f, .5f);
+            mark.anchorMax = new Vector2(1f, .5f);
+            mark.pivot = new Vector2(1f, .5f);
+            mark.sizeDelta = new Vector2(side, side);
+            float arm = Mathf.Max(2f, side * 0.62f);
+            float thickness = Mathf.Max(1.5f, side * 0.13f);
+            for (int i = 0; i < 2; i++)
+            {
+                var bar = Fill("Arm", mark, tint, 1);
+                Centre(bar, arm, thickness);
+                bar.anchoredPosition = new Vector2(0f, (i == 0 ? 1f : -1f) * arm * 0.25f);
+                bar.localRotation = Quaternion.Euler(0f, 0f, i == 0 ? -45f : 45f);
+            }
+            return mark;
+        }
+
+        /// <summary>
+        /// The mockups' conversation dial (mockup-06, mockup-12): a hub carrying the speaker's face,
+        /// and a ring of seats around it for the petals the screen adds.
+        ///
+        /// <para>Geometry only. The petals are the screen's buttons, with the screen's captions on
+        /// them, because a caption is the contract a test and a screen reader identify a control by
+        /// — the dial decides where a control sits and never what it says.</para>
+        /// </summary>
+        public sealed class Dial
+        {
+            /// <summary>The block the whole dial occupies, for the layout that hosts it.</summary>
+            public RectTransform Root { get; }
+            /// <summary>The speaker's portrait at the centre.</summary>
+            public RectTransform Hub { get; }
+            /// <summary>How large one petal is.</summary>
+            public Vector2 Petal { get; }
+            /// <summary>How many seats the ring has.</summary>
+            public int Seats { get; }
+            /// <summary>How many of them are taken.</summary>
+            public int Taken { get; private set; }
+
+            private readonly float radius;
+
+            internal Dial(RectTransform root, RectTransform hub, int seats, float radius, Vector2 petal)
+            {
+                Root = root; Hub = hub; Seats = seats; Petal = petal; this.radius = radius;
+            }
+
+            /// <summary>Where the seat at <paramref name="index"/> sits, clockwise from the top.</summary>
+            public Vector2 Seat(int index)
+            {
+                float angle = (index % Seats) * Mathf.PI * 2f / Seats;
+                return new Vector2(Mathf.Sin(angle) * radius, Mathf.Cos(angle) * radius);
+            }
+
+            /// <summary>Puts <paramref name="rect"/> on the next free seat and returns it.</summary>
+            public RectTransform Place(RectTransform rect)
+            {
+                var seat = Seat(Taken);
+                Taken++;
+                rect.anchorMin = new Vector2(.5f, .5f);
+                rect.anchorMax = new Vector2(.5f, .5f);
+                rect.pivot = new Vector2(.5f, .5f);
+                rect.anchoredPosition = seat;
+                rect.sizeDelta = Petal;
+                return rect;
+            }
+        }
+
+        /// <summary>The petal's unscaled footprint and the unscaled ring radius, in that order.</summary>
+        public static readonly Vector2 DialPetal = new Vector2(150f, 128f);
+        public const float DialRadius = 205f;
+        public const float DialHub = 112f;
+
+        /// <summary>
+        /// Builds a <see cref="Dial"/> under <paramref name="parent"/> at <paramref name="scale"/>.
+        ///
+        /// <para>The petal is a rectangle rather than the mockups' disc because the captions are
+        /// sentences, not single words, and a disc wide enough to hold "Tell them something personal"
+        /// at seven-around would not fit the panel. The ring, the hub and the order are the mockup's;
+        /// the petal is the shape the words need.</para>
+        /// </summary>
+        public static Dial Radial(string name, Transform parent, Texture face, int seats, float scale)
+        {
+            seats = Mathf.Max(1, seats);
+            scale = Mathf.Max(0.1f, scale);
+            var petal = DialPetal * scale;
+            float radius = DialRadius * scale;
+
+            var root = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            root.SetParent(parent, false);
+            root.anchorMin = new Vector2(.5f, .5f);
+            root.anchorMax = new Vector2(.5f, .5f);
+            root.pivot = new Vector2(.5f, .5f);
+            root.sizeDelta = new Vector2(2f * (radius + petal.x * .5f), 2f * (radius + petal.y * .5f));
+
+            var hub = Portrait(root, face, UiTheme.Hairline, DialHub * scale, 4f * scale, false);
+            hub.name = "Dial hub";
+            hub.anchorMin = new Vector2(.5f, .5f);
+            hub.anchorMax = new Vector2(.5f, .5f);
+            hub.pivot = new Vector2(.5f, .5f);
+            hub.anchoredPosition = Vector2.zero;
+            return new Dial(root, hub, seats, radius, petal);
+        }
+
+        /// <summary>A pill chip: a tinted ground at 18 %, a hairline in the tint, the word in the tint.</summary>
+        public static RectTransform Chip(string name, Transform parent, string text, Color tint, float width, float height)
+            => Chip(name, parent, text, tint, width, height, false);
+
+        /// <summary>
+        /// The same chip, or its filled form: the tint as the ground and the word in whatever
+        /// reads on it.
+        ///
+        /// <para>The outlined form is a label that happens to be enclosed; the filled form is a
+        /// badge. A roster card wants the second - an archetype in an 18 % wash is chrome, and the
+        /// reference makes it the second most prominent thing on the card after the face. The word
+        /// goes through <see cref="UiTheme.OnColor"/> rather than being hard-coded white, because
+        /// white on this palette's saturated tints runs from 1.43:1 to 3.89:1 and none of those
+        /// are readable; against Ink the same tints run 4.36:1 to 9.95:1.</para>
+        /// </summary>
+        public static RectTransform Chip(string name, Transform parent, string text, Color tint,
+            float width, float height, bool filled)
+        {
+            // One short of half the height. UiTheme.Build gives a generated rounded rect a nine-slice
+            // border of radius+1 per side, so a radius of exactly half the height produces borders two
+            // pixels wider than the rect it is slicing and the pill bulges. This is the widest radius
+            // that still leaves a stretchable centre, which is what makes a true capsule.
+            int radius = Mathf.Clamp(Mathf.RoundToInt(Mathf.Min(height, width) * 0.5f) - 1, 4, 31);
+            var ground = filled ? tint : new Color(tint.r, tint.g, tint.b, 0.18f);
+            var rect = Fill(name, parent, ground, radius);
+            rect.sizeDelta = new Vector2(width, height);
+            UiTheme.AddBorder(rect, radius, filled
+                ? new Color(tint.r, tint.g, tint.b, 0f)
+                : new Color(tint.r, tint.g, tint.b, 0.8f));
+            var word = filled ? UiTheme.OnColor(tint) : tint;
+            var label = Label("Word", rect, Mathf.Max(10f, height * 0.5f), word, TextAlignmentOptions.Center);
+            label.text = text;
+            var font = UiTheme.Font(UiTheme.Weight.Medium);
+            if (font != null) label.font = font;
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(8f, 0f);
+            label.rectTransform.offsetMax = new Vector2(-8f, 0f);
+            return rect;
+        }
+
+        /// <summary>
+        /// One of Refinement Kit 6's cards: the kit's card fill tinted the card ground, and its edge
+        /// on a child named "Border" - quiet at rest, the accent when <paramref name="focus"/> - with
+        /// no glow. A resting card that glowed was the notebook's complaint: every room row lit, the
+        /// empty ones too. Falls back to the drawn card where the kit is not installed.
+        /// </summary>
+        public static RectTransform KitCard(string name, Transform parent, bool focus = false, float corner = 12f)
+        {
+            var rect = Fill(name, parent, UiTheme.CardFill, Mathf.RoundToInt(corner));
+            var image = rect.GetComponent<Image>();
+            UiTheme.PackSliced(image, PackArt.KitCardFill, corner, UiTheme.CardFill);
+            var tint = focus ? UiTheme.Edge(UiTheme.Emphasis.Active) : UiTheme.Edge(UiTheme.Emphasis.Interactive);
+            string path = focus ? PackArt.KitCardEdgeFocus : PackArt.KitCardEdge;
+            if (UiTheme.Pack(path) == null) { UiTheme.AddBorder(rect, Mathf.RoundToInt(corner), tint); return rect; }
+            var edge = new GameObject("Border", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            edge.rectTransform.SetParent(rect, false);
+            edge.rectTransform.anchorMin = Vector2.zero; edge.rectTransform.anchorMax = Vector2.one;
+            edge.rectTransform.offsetMin = Vector2.zero; edge.rectTransform.offsetMax = Vector2.zero;
+            edge.raycastTarget = false;
+            UiTheme.PackSliced(edge, path, corner, tint);
+            return rect;
+        }
+
         public static RectTransform Fill(string name, Transform parent, Color colour, int radius)
         {
             var rect = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
@@ -54,9 +290,7 @@ namespace Gamesim.Presentation
             var holder = new GameObject(name, typeof(RectTransform));
             holder.transform.SetParent(parent, false);
             var label = holder.AddComponent<TextMeshProUGUI>();
-            var font = TMP_Settings.defaultFontAsset != null
-                ? TMP_Settings.defaultFontAsset
-                : Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            var font = UiTheme.Font(UiTheme.Weight.Regular);
             if (font != null) label.font = font;
             label.fontSize = size;
             label.color = colour;
@@ -74,7 +308,7 @@ namespace Gamesim.Presentation
         /// persona has no authored art.
         /// </summary>
         public static RectTransform Portrait(
-            Transform parent, Texture face, Color ring, float diameter, float ringWidth, bool dim)
+            Transform parent, Texture face, Color ring, float diameter, float ringWidth, bool dim, ContestantState character = null)
         {
             var rim = Disc("Ring", parent, ring);
             rim.sizeDelta = new Vector2(diameter + ringWidth * 2f, diameter + ringWidth * 2f);
@@ -87,7 +321,7 @@ namespace Gamesim.Presentation
             frame.sizeDelta = new Vector2(diameter, diameter);
             frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
 
-            if (face != null)
+            if (face != null || character != null)
             {
                 var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
                 raw.rectTransform.SetParent(frame, false);
@@ -98,6 +332,7 @@ namespace Gamesim.Presentation
                 raw.texture = face;
                 raw.raycastTarget = false;
                 raw.color = dim ? new Color(.6f, .65f, .7f, 1f) : Color.white;
+                if (character != null) CharacterPortraits.Bind(raw, character);
             }
             else
             {
@@ -125,6 +360,50 @@ namespace Gamesim.Presentation
                 }
             }
             return rim;
+        }
+
+        /// <summary>
+        /// A rectangular photo: the portrait cropped to the rect's shape - never squashed - inside
+        /// rounded corners, bound so a face still being built lands when it is ready. The mockups'
+        /// ceremony screens and ballots frame faces this way rather than in circles.
+        /// </summary>
+        public static RectTransform RectPortrait(Transform parent, string name, Texture face, ContestantState character,
+            Vector2 size, int radius = 8)
+        {
+            var frame = Fill(name, parent, UiTheme.SurfaceRaised, radius);
+            frame.sizeDelta = size;
+            frame.GetComponent<Image>().raycastTarget = false;
+            frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var raw = new GameObject("Face", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+            raw.rectTransform.SetParent(frame, false);
+            raw.rectTransform.anchorMin = Vector2.zero; raw.rectTransform.anchorMax = Vector2.one;
+            raw.rectTransform.offsetMin = Vector2.zero; raw.rectTransform.offsetMax = Vector2.zero;
+            raw.texture = face;
+            raw.raycastTarget = false;
+            // The render is square; take the middle column of it at the rect's own shape.
+            float share = size.y > 0f ? Mathf.Clamp01(size.x / size.y) : 1f;
+            raw.uvRect = new Rect((1f - share) * .5f, 0f, share, 1f);
+            if (character != null) CharacterPortraits.Bind(raw, character);
+            return frame;
+        }
+
+        /// <summary>
+        /// The broadcast vignette the ceremonies play over: the house darkened at the frame's edges
+        /// and left to be seen in the middle, instead of a near-opaque scrim that blacked out the
+        /// room the ceremony was happening in. Falls back to a light dim without the pack.
+        /// </summary>
+        public static RectTransform Vignette(Transform parent)
+        {
+            var art = UiTheme.Pack(PackArt.Vignette);
+            var rect = new GameObject("Vignette", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero;
+            var image = rect.GetComponent<Image>();
+            image.sprite = art;
+            image.color = art != null ? new Color(1f, 1f, 1f, .9f) : new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .35f);
+            image.raycastTarget = false;
+            return rect;
         }
 
         /// <summary>Which role badge sits on a portrait, if any.</summary>

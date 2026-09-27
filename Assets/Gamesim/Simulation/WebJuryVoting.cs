@@ -58,12 +58,20 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// What an alliance with this finalist is worth to this juror.
+        /// What an alliance with this finalist is worth to this juror: 100 for an alliance still
+        /// standing, 25 for one that ended, 0 for none.
         ///
-        /// <para>The source keeps a stability figure per alliance; this port does not, so an active
-        /// shared alliance is worth its full weight and a dissolved one is worth nothing. That is
-        /// the honest reading of what is recorded rather than a stability number invented to fill
-        /// the shape.</para>
+        /// <para>These tiers are this port's own. The reference function it follows,
+        /// <c>calculateAllianceLoyalty</c>, scores by membership and alliance size and never reads
+        /// stability - and as the reference ships it always returns 0 (it asks the alliance system
+        /// for a method that does not exist), inside a jury score the live reference game never
+        /// calls: its real jury votes on relationship and a random ten either way. Kept deliberately
+        /// on 2026-09-22 rather than zeroed to match a dead function.</para>
+        ///
+        /// <para>An alliance ends when a member is evicted - at the next weekly settle, or at the
+        /// final eviction itself - so every juror's former ally scores the same 25. Until the final
+        /// eviction ended alliances too, its evictee was the one juror whose former ally still read
+        /// as current and scored 100.</para>
         /// </summary>
         public static double AllianceLoyalty(EpisodeState state, string jurorId, string finalistId)
         {
@@ -126,7 +134,10 @@ namespace Gamesim.Simulation
                    + AllianceLoyalty(state, jurorId, finalistId) * LoyaltyWeight
                    // Normalised from the source's -50..50 into 0..100 before weighting, exactly as
                    // it does — otherwise the term would drag every score down by a fixed amount.
-                   + (Obligations(state, jurorId, finalistId) + 50) * ObligationWeight;
+                   + (Obligations(state, jurorId, finalistId) + 50) * ObligationWeight
+                   // Native: a bitter juror is not noise. A grudge, a kept or betrayed showmance, a
+                   // nemesis. Zero on an empty story state, so every jury fixture holds.
+                   + StoryConsumers.JuryStory(state, jurorId, finalistId);
         }
 
         /// <summary>
@@ -170,6 +181,14 @@ namespace Gamesim.Simulation
                 return Say(state, jurorId, "They played the better game, whatever I think of them.", "I don't like them. They played the better game, and this vote is about the game.", "The better game wins, even when I would rather it didn't.");
             if (respectOther > respectChosen && likedChosen > likedOther)
                 return Say(state, jurorId, "I know what they did in here, and I am voting with my gut anyway.", "My gut says this, and I have stopped arguing with it.", "I could list what they did. I am going with my gut instead.");
+            // What a story left between them, when it is what tipped it: a grudge the juror carried
+            // into the jury house, or a bond that held.
+            double storyChosen = StoryConsumers.JuryStory(state, jurorId, chosen.id);
+            double storyOther = StoryConsumers.JuryStory(state, jurorId, other.id);
+            if (storyOther <= -8 && storyChosen > storyOther)
+                return Say(state, jurorId, "Some things you do not get over in a jury house.", "I remember how it went between me and the other one. So do they.", "I had weeks to think about what happened. It did not get better.");
+            if (storyChosen >= 8)
+                return Say(state, jurorId, "What we had in there was real. I am not pretending otherwise.", "They never turned on me. I am not turning on them.", "Some people you keep, whatever the game says.");
             if (state.Allied(jurorId, chosen.id))
                 return Say(state, jurorId, "We were in this together and I am not walking away from that now.", "We had an alliance, and I am keeping my end of it tonight.", "I do not abandon people I made plans with. This is that.");
             if (Obligations(state, jurorId, chosen.id) > 10)

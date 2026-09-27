@@ -77,7 +77,14 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             AssertEquivalent(after, director.Snapshot);
             yield return OpenDiaryFixturePanel();
+            // Beside the ways to study, and as the record's own row.
+            ButtonWithCaption(EpisodeDirector.DiaryPendingTabCaption).onClick.Invoke();
+            yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain("Study preparation: 1/5"));
+            ButtonWithCaption(EpisodeDirector.DiaryRecordTabCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(ActiveRect(EpisodeHud.DiaryRecordRowPrefix + "Study preparation").GetComponentsInChildren<TMPro.TMP_Text>()
+                .Select(label => label.text), Does.Contain("1 / 5"));
         }
 
         [UnityTest]

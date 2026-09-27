@@ -52,7 +52,7 @@ namespace Gamesim.Simulation
             return new Breakdown(
                 CompetitionThreat(target),
                 SocialThreat(state, target),
-                AllianceThreat(state, targetId),
+                AllianceThreat(state, evaluatorId, targetId),
                 PotentialThreat(target),
                 ReputationThreat(state, evaluatorId, targetId));
         }
@@ -93,10 +93,15 @@ namespace Gamesim.Simulation
             return Math.Min(30, Math.Max(0, (average + 100) * 0.15));
         }
 
-        /// <summary>Every bloc they sit in, four points a head, capped at twenty.</summary>
-        private static double AllianceThreat(EpisodeState state, string targetId) =>
+        /// <summary>
+        /// Every bloc they sit in that the evaluator knows about, four points a head, capped at
+        /// twenty. Knowledge-gated past the story system's bonds rules: an alliance counts once the
+        /// evaluator is in it or knows of it, which is how blindsides and backdoors emerge instead of
+        /// being scripted. Every alliance without a story fact is known to all, as it always was.
+        /// </summary>
+        private static double AllianceThreat(EpisodeState state, string evaluatorId, string targetId) =>
             Math.Min(20, state.alliances
-                .Where(a => a.active && a.members.Contains(targetId))
+                .Where(a => a.active && a.members.Contains(targetId) && Knowledge.AllianceVisibleTo(state, a, evaluatorId))
                 .Sum(a => a.members.Count * 4));
 
         /// <summary>

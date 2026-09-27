@@ -18,8 +18,8 @@ namespace Gamesim.Tests.PlayMode
     /// nothing, so if this stopped holding, those tests would be silently exercising a different
     /// character system than the one they were written against.</para>
     ///
-    /// <para>With a provider registered, it is actually consulted — first, before the authored
-    /// prefab — and it is told about palette changes.</para>
+    /// <para>With a provider registered, it is actually consulted — first, before the primitive
+    /// rig — and it is told about palette changes.</para>
     ///
     /// The fake provider here deliberately does not reference UMA. The seam is the contract; UMA is
     /// one implementation of it.
@@ -143,10 +143,8 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Asserts the presentation built a body of its own. Deliberately does not name which one:
-        /// the fallback is an authored prefab from <c>Resources/GamesimCharacters/</c> when the
-        /// persona has one and the primitive rig when it does not, and both are correct answers.
-        /// What matters is that no provider supplied it.
+        /// Asserts the presentation built a body of its own - the primitive rig, the only body it
+        /// has - and that no provider supplied it.
         /// </summary>
         private void AssertBuiltWithoutAProvidedBody()
         {

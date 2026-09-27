@@ -83,8 +83,10 @@ namespace Gamesim.Simulation
         private static WebOathSnapshot OathSnapshot(EpisodeState s) => new WebOathSnapshot
         {
             week = s.week,
+            // The web has no removal: to an oath a contestant production removed is simply out of the house.
             actors = s.contestants.Select(c => new WebOathActor { id = c.id, name = c.name, isPlayer = c.isPlayer,
-                status = c.status == ContestantStatus.RunnerUp ? "Runner-Up" : c.status.ToString() }).ToList(),
+                status = c.status == ContestantStatus.RunnerUp ? "Runner-Up"
+                    : c.status == ContestantStatus.Expelled ? "Evicted" : c.status.ToString() }).ToList(),
             oaths = s.loyaltyOaths.Select(o => new WebOathRecord { playerId = o.playerId, targetId = o.targetId, week = o.week, timestamp = o.timestamp }).ToList(),
             relationships = s.relationships.Select(r => new WebOathEdge { fromId = r.fromId, toId = r.toId, score = r.score }).ToList()
         };
@@ -103,6 +105,9 @@ namespace Gamesim.Simulation
             }
             foreach (var arc in plan.arcChanges) Arc(s, arc.npcId, arc.delta, arc.reason);
             Log(s, plan.factType, plan.logDescription);
+            // The web fold's broken-oath grudge (70, scaled by the breaker's threat) and, when the
+            // player is one of the two, a reckoning. Behind the story boundary; nothing before it.
+            StoryWordBroken(s, plan.victimId, plan.actorId, GrudgeCauses.OathBroken, 70);
         }
     }
 }

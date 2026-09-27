@@ -1,5 +1,11 @@
 # U08 acceptance matrix
 
+**20 September 2026 candidate update:** schema 13, modular character creation, UI/house and
+competition changes are in integrated verification. The V6/V7 results below are retained historical
+evidence. They do not certify this working tree; a new source manifest, suite results, standalone
+captures and performance run must be attached before this candidate is marked passed. E1–E5 still
+require actual participants. Do not use the old pinned executable to accept the new functionality.
+
 U08's gate is "one pinned build passes the agreed acceptance matrix." That matrix was never written
 down, which left the gate unfalsifiable — there was no list a build could be checked against. This is
 that list.
@@ -114,7 +120,7 @@ The expected headless result is **678/0/0** Edit Mode, **111/0/0** Play Mode and
 | B8 | UMA does not regress the suite | Full Edit + Play suites with UMA installed | A1 and A2 still hold | **passed** — 678/0/0 and 114/0/0 with UMA installed |
 | B9 | The seam defaults to the project's own body | `CharacterBodyProviderPlayModeTests` | no provided body appears unless a provider supplied one, and no test leaks a provider | **passed** |
 | B10 | The episode runs on UMA bodies | `Gamesim/UMA/Use UMA bodies in the episode`, then the full suite | suite stays green with UMA live in `EpisodeHouse.unity` | **passed** — 114/0/0 |
-| B11 | No pop-in while UMA assembles | `Houseguest_IsNeverInvisibleWhileUmaAssemblesTheBody` | a body is drawable from the attach frame; the stand-in is retired once the real body exists | **passed** |
+| B11 | Nobody stands in while UMA assembles | `Houseguest_IsOnlyEverTheirOwnBodyWhileUmaAssemblesIt` | no other body is ever under the houseguest; they read as assembling from the attach frame until their body can draw, which is counted once | **passed** |
 
 B3's threshold is two bounds rather than one because the card descends into place: it is never lower
 than where it settles, but it is deliberately part-way above the screen edge for the 0.22 s entrance.
@@ -152,9 +158,15 @@ zooming in from there. B6c is therefore closed as a deliberate choice rather tha
 it is the assumption the playtest is most likely to test, so E2 should note whether participants find
 the zoom without being told.
 
-B9 says "the project's own body", not "the primitive rig", on purpose. The fallback is an authored
-prefab from `Resources/GamesimCharacters/` when the persona has one and the primitive rig when it
-does not. Both are correct; what the seam guarantees is that no provider supplied it.
+B9 says "the project's own body". Since 2026-09-27 that is the primitive rig, the only body the
+project builds itself; before then it was an authored Quaternius prefab where the persona had one.
+What the seam guarantees is unchanged: no provider supplied it.
+
+B11 was "no pop-in while UMA assembles" until 2026-09-27, met by putting an authored Quaternius body
+in place from the attach frame. The Quaternius cast is gone. The stand-in was somebody else's body
+on screen for half a second, and the cast is UMA's alone. So a houseguest now draws nothing for the
+half-second UMA takes, and the opening's loading gate waits for them. The row now asserts the
+opposite of what it used to: that nothing stands in.
 
 ## C — Performance
 
@@ -182,8 +194,13 @@ identical conditions — once on the authored prefabs, once on UMA — and compa
 gave **1.52×** (0.265 → 0.404 ms) and **1.24×** (0.418 → 0.520 ms). Report it as roughly **1.2×–1.5×**
 and do not treat either figure as precise: the spread across runs is comparable to the effect being
 measured, which is the honest state of a sub-millisecond batchmode measurement. The ratio is the
-meaningful part; the absolute numbers carry this section's batchmode caveat. The profiled season
-itself still ran on the prefabs, because no scene carries `GamesimUmaCast` yet.
+meaningful part; the absolute numbers carry this section's batchmode caveat. The 2026-09-19 profiled
+season still ran on the prefabs; the committed scene has carried `GamesimUmaCast` since.
+
+Since 2026-09-27 the other side of that comparison is the primitive rig, because the authored
+prefabs are gone and a house with no provider is built of primitives. The first two runs against it
+gave **1.67×** (0.244 → 0.409 ms) and **1.49×** (0.271 → 0.402 ms). The UMA side is where it was,
+and the spread is the same batchmode noise as above.
 
 Together with the **+768 MB** of build size, that is the cost side of the decision to put UMA in the
 shipping episode. Both numbers are now known rather than guessed.
@@ -246,8 +263,9 @@ recorded as passing without a number behind it are indistinguishable once the bl
 optimistically, so they stay empty until a real session fills them.
 
 - **Build under test:** `D:\GamesimAcceptance\Builds\Port-Windows-V7\Gamesim.exe`
-- **Cast configuration:** authored prefabs (the committed scene). Note it here if the UMA cast is
-  substituted — E5 answers differently for each.
+- **Cast configuration:** UMA, the committed scene's cast and since 2026-09-27 the only one. A build
+  made without UMA shows the primitive rig instead; note it here if so, because E5 answers
+  differently.
 - **Date:** —
 - **Participants:** 0 of the 3 E2 requires
 
@@ -294,12 +312,68 @@ it: `EpisodeHouse` has eight rooms and `HousePrototype` — the U02 reference sc
 NPC motion suite loads — still has five. Demanding all eight made the query work in the shipping
 scene and fail in the one the tests run against.
 
-Two things this pass changed that affect other sections:
+Four things this pass changed that affect other sections:
 
 - **The camera now ships at 24, not 48.** C and D figures taken at 48 are stale; the cast reads at
   roughly 2.7%–4.6% of frame height rather than 1.8%–2.2%. See `PLAYTEST_PROTOCOL.md`.
 - **The first-run tour changes what E2 measures.** It is the intervention that criterion exists to
-  detect the absence of. Run E2 with it off, or record that it was on.
+  detect the absence of. Run E2 with it off, or record that it was on. It now plays at every
+  season's opening, so "off" means skipping it on sight (see `PLAYTEST_PROTOCOL.md`).
+- **The key ceremony and the vote reveal now hold the house while they play (26 September).** B2
+  still passes as written: the cards themselves take no raycasts. But the chrome steps aside, and the
+  house's shortcuts and the UI's Submit wait, until the reveal ends or the player skips it. One press
+  jumps a reveal to its result and a second closes it. Reveals default to a suspenseful pace. The two
+  take 30 to 50 seconds in an early week, by house size, which is 20 to 30 seconds more than the
+  quick pace they had before.
+  E1 figures from before are not comparable. Record the pace setting, and whether the participant
+  skipped reveals (see `PLAYTEST_PROTOCOL.md`).
+- **New seasons play competition rules 4 (26 September).** There are five kinds (skill, mental,
+  endurance, luck, social), with a dice game and a word game for the two new ones. Full marks are
+  worth three points, and a throw loses about nine times in ten.
+  - They also name Have-Nots, the last out of each Head of Household competition, and play the veto
+    for a prize and a punishment.
+  - A season saved before, and the pinned V7 build, play rules 1–3 with neither.
+  - Record which a participant played.
+- **New seasons open the strategy windows (26 September).** The Head of Household can be talked to
+  before nominations, and the veto holder and the Head of Household before the veto meeting. A plea
+  costs a conversation, and the decisions now weigh deals, alliances and pleas. A houseguest who
+  confronts the player or pleads with them, or is found out gossiping about them, puts a reply card
+  on the free-time or campaign panel.
+  - This adds decisions to the week. Tasks timed across a Nomination or Veto phase (E1) are not
+    comparable with earlier runs. Record whether the participant lobbied.
+  - A season saved before, and the V7 build, play without them.
+- **The finale reads the jury one juror at a time (26 September).** It used to be a card naming the
+  winner. At the suspenseful pace a six-juror finale takes about 20 seconds, 25 with its pauses;
+  it can be sped up or skipped like the other reveals. Cards now mark the final three and the final
+  Head of Household's choice. Record the pace setting for any finale timing.
+- **The evicted walk out through the front door (26 September).** Once an eviction's cards end,
+  the evicted walks across the yard and out through the opening's door, about 15 to 20 seconds,
+  with a goodbye line on the strip. The week's recap opens after it. A press skips it, and reduced
+  motion never plays it.
+  - Tasks timed across an eviction (E1) include the walk unless it was skipped: record which.
+  - On finale night the jurors stand in the living room.
+
+## G — The visual target (VISUAL-TARGET.md, added 2026-09-19)
+
+The mockups are the game's own screens drawn photoreal; the plan measures progress toward them in
+pictures and pins each phase's plumbing with a suite. The look sheet is the picture; the rows below
+are the suites. None of these are V7 gates, and section E is unchanged by them.
+
+| # | What | Verified by |
+|---|---|---|
+| G1 | Look sheet — twelve captures of the mockups' moments from a graphical build, with a reason beside any moment the walk could not reach | `Tools/build-and-verify.sh --look-sheet` writes `ArtSource/reference/after/after-NN.png` and `look-sheet.json`; exit 4 under twelve captures |
+| G2 | The house lit for the night — lightmaps, probes, a reflection probe per room, the sky, the moon, mixed practicals, SMAA, the grade, the close-up volume at rest | `Lighting_TheEpisodeSceneShipsItsBakedNight` |
+| G3 | The chrome's tokens — the five action colours, the glow and the accent read on the glass ground | `UiThemeContrastTests.TheMockupsTokens_ClearTheirMinimumsOnGlass` |
+| G4 | Poly Haven pieces — four maps with the right import settings, a URP material matched by name, the budget, the floor, a script naming the source | `PolyHavenPieceTests` |
+| G5 | The camera's shots — the overview frames all eight rooms through an orthographic lens and puts the lens back; the two-shot lands and weights depth of field in and out; the diary chair holds the middle from over the shoulder | `Shots_TheOverviewFramesEveryRoomAndKeepsTheCastMoving`, `Shots_AConversationTakesATwoShotAndBlendsDepthOfFieldInAndOut`, `Shots_TheDiaryRoomFramesTheChairOverTheShoulder` |
+| G6 | The live feed — a second, untagged, hand-rendered camera; a caption of the room and the count unless witnessed; a card in the fixed chrome | `LiveFeed_WatchesTheHouseFromASecondCameraAndNamesTheRoom`; the overlap suite includes 'Live feed' |
+| G7 | The room turns to look — the crowd's heads turn to the nominee, the nominees' do not | `Reactions_TheNomineesAndTheEvictedAreAskedToActTheBeatOut` |
+
+G1's latest run (2026-09-19, 1920x1080, a twelve-person house): twelve captures, twelve moments
+reached, the player exiting clean. Five carry a note about what the mockup still has and the build
+does not - the speech bubble over a pair, the roofless cutaway, the night's sleeping houseguests,
+the conflict meter and the vibe bars, the competition's lanes and neon stage, and the nomination
+discussion's threat bars. Those are the remainder of V2, V4 and V6, not failures of the walk.
 
 ## Out of scope for this matrix
 

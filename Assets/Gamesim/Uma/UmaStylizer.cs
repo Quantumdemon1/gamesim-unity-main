@@ -1,3 +1,4 @@
+using Gamesim.Presentation;
 using UnityEngine;
 
 namespace Gamesim.Uma
@@ -27,17 +28,51 @@ namespace Gamesim.Uma
         private static readonly int OcclusionStrengthId = Shader.PropertyToID("_OcclusionStrength");
         private static readonly int SpecularId = Shader.PropertyToID("_SpecColor");
 
+        private static readonly int SmoothnessRemapId = Shader.PropertyToID("_Smoothness_Remap");
+        private static readonly int DetailGlossId = Shader.PropertyToID("_Detail_Gloss_Scale");
+        private static readonly int SubsurfaceColourId = Shader.PropertyToID("_SubsurfaceColor");
+        private static readonly int SubsurfaceBlendId = Shader.PropertyToID("_SSSBlend");
+
+        /// <summary>The skin shader's own subsurface tint, tuned for a light complexion, and a deep one's.</summary>
+        private static readonly Color LightSubsurface = new Color(0.93f, 0.375f, 0.313f), DeepSubsurface = new Color(0.5f, 0.27f, 0.2f);
+
         /// <summary>Flattens every material under <paramref name="root"/>. Safe to call repeatedly.</summary>
-        public static void Apply(GameObject root)
+        public static void Apply(GameObject root) => Apply(root, null);
+
+        /// <summary>
+        /// Flattens every material under <paramref name="root"/>, and tunes the skin for its tone.
+        ///
+        /// <para>The skin shader takes none of the properties the flattening writes, so it kept UMA's
+        /// photographic gloss: a specular sheen that reads as grey on a dark albedo - the ashy look a
+        /// deep complexion had - and a subsurface glow tuned pink for light skin that tinted every
+        /// face the same. Its own gloss range is brought down for everyone, and the subsurface
+        /// deepens and softens with the tone.</para>
+        /// </summary>
+        public static void Apply(GameObject root, Color? skin)
         {
             if (root == null) return;
+            float depth = skin.HasValue ? 1f - Mathf.Clamp01(.2126f * skin.Value.r + .7152f * skin.Value.g + .0722f * skin.Value.b) : .3f;
             foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
             {
+                // Hair and accessories built in code carry finishes of their own - a chrome visor
+                // is meant to shine.
+                if (renderer.GetComponent<GrownPiece>() != null) continue;
                 foreach (var material in renderer.sharedMaterials)
                 {
-                    if (material != null) Flatten(material);
+                    if (material == null) continue;
+                    Flatten(material);
+                    if (material.HasProperty(SmoothnessRemapId)) TuneSkin(material, depth);
                 }
             }
+        }
+
+        private static void TuneSkin(Material material, float depth)
+        {
+            material.SetVector(SmoothnessRemapId, new Vector4(0f, Mathf.Lerp(.34f, .26f, depth), 0f, 0f));
+            if (material.HasProperty(DetailGlossId)) material.SetFloat(DetailGlossId, .3f);
+            float deep = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(.25f, .85f, depth));
+            if (material.HasProperty(SubsurfaceColourId)) material.SetColor(SubsurfaceColourId, Color.Lerp(LightSubsurface, DeepSubsurface, deep));
+            if (material.HasProperty(SubsurfaceBlendId)) material.SetFloat(SubsurfaceBlendId, Mathf.Lerp(.5f, .28f, deep));
         }
 
         private static void Flatten(Material material)

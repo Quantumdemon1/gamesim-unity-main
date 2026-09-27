@@ -72,28 +72,30 @@ namespace Gamesim.Tests.EditMode
         // ---------------------------------------------------------------- the meet and greet
 
         /// <summary>
-        /// The one beat with a consequence: the player stops being a stranger to everybody.
+        /// The meet-and-greet is bookkeeping like every other beat. The introductions move people,
+        /// one chosen approach at a time (<see cref="IntroductionTests"/>); a mark that also warmed
+        /// the whole house would pay everybody for an introduction, and pay twice for every one the
+        /// player actually made.
         /// </summary>
         [Test]
-        public void TheMeetAndGreetWarmsTheWholeHouseToYou()
+        public void MarkingTheMeetAndGreetMovesNobody()
         {
             var engine = new EpisodeEngine(Season());
             var before = engine.Snapshot;
             var strangers = before.Active.Where(c => !c.isPlayer).Select(c => c.id).ToList();
-            Assert.That(strangers.All(id => before.Score(before.playerId, id) == 0), Is.True,
-                "Nobody has met anybody yet.");
+            int eventsBefore = before.relationships.Sum(r => r.events.Count);
 
-            Mark(engine, OpeningBeat.MeetAndGreet);
+            Assert.That(Mark(engine, OpeningBeat.MeetAndGreet).accepted, Is.True);
 
             var after = engine.Snapshot;
             foreach (var id in strangers)
             {
-                Assert.That(after.Score(after.playerId, id),
-                    Is.EqualTo(EpisodeEngine.FirstImpressionImpact).Within(0.001), id);
-                Assert.That(after.Score(id, after.playerId),
-                    Is.EqualTo(EpisodeEngine.FirstImpressionImpact).Within(0.001),
-                    "Meeting is mutual, and symmetric because there is no roll here.");
+                Assert.That(after.Score(after.playerId, id), Is.EqualTo(0), id);
+                Assert.That(after.Score(id, after.playerId), Is.EqualTo(0), id);
             }
+            Assert.That(after.relationships.Sum(r => r.events.Count), Is.EqualTo(eventsBefore),
+                "Marking a beat puts nothing on anybody's record.");
+            Assert.That(after.relationshipArcs, Is.Empty);
         }
 
         /// <summary>
@@ -108,37 +110,6 @@ namespace Gamesim.Tests.EditMode
             uint before = engine.Snapshot.randomState;
             foreach (var beat in OpeningBeat.InOrder) Mark(engine, beat);
             Assert.That(engine.Snapshot.randomState, Is.EqualTo(before));
-        }
-
-        [Test]
-        public void MeetingTheHouseHappensOnceHoweverOftenItIsAsked()
-        {
-            var engine = new EpisodeEngine(Season());
-            Mark(engine, OpeningBeat.MeetAndGreet);
-            var once = engine.Snapshot;
-            Mark(engine, OpeningBeat.MeetAndGreet);
-
-            var twice = engine.Snapshot;
-            foreach (var other in twice.Active.Where(c => !c.isPlayer))
-                Assert.That(twice.Score(twice.playerId, other.id),
-                    Is.EqualTo(once.Score(once.playerId, other.id)).Within(0.001));
-        }
-
-        [Test]
-        public void MeetingSomeoneIsOnTheRecordAndFades()
-        {
-            var engine = new EpisodeEngine(Season());
-            Mark(engine, OpeningBeat.MeetAndGreet);
-
-            var state = engine.Snapshot;
-            var other = state.Active.First(c => !c.isPlayer);
-            var met = state.relationships
-                .Single(r => r.fromId == state.playerId && r.toId == other.id)
-                .events.Where(e => e.type == "met").ToList();
-
-            Assert.That(met, Has.Count.EqualTo(1));
-            Assert.That(met[0].decayable, Is.True,
-                "Having been introduced is ordinary social traffic, not something anybody did to anybody.");
         }
 
         // ---------------------------------------------------------------- fixtures

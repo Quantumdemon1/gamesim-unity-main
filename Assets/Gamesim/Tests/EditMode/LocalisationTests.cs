@@ -53,5 +53,20 @@ namespace Gamesim.Tests.EditMode
             Assert.That(into["Quote \"x\""], Is.EqualTo("Zitat \"x\""));
             Assert.That(into.Count, Is.EqualTo(3));
         }
+
+        /// <summary>
+        /// A composed line is translated as its pattern and filled afterwards, so a table carries
+        /// "{0} of {1}" once rather than every count the game will ever show. Filling first and
+        /// looking up after would miss the table for every value, and the line would stay English.
+        /// </summary>
+        [Test]
+        public void AFormatTranslatesItsPatternThenFillsIt()
+        {
+            Localisation.Use("xx", new Dictionary<string, string> { { "{0} of {1}", "{0} sur {1}" } });
+            Assert.That(Localisation.Format("{0} of {1}", 2, 7), Is.EqualTo("2 sur 7"));
+
+            Localisation.Use(null, null);
+            Assert.That(Localisation.Format("{0} of {1}", 2, 7), Is.EqualTo("2 of 7"), "Without a table the pattern is its own translation.");
+        }
     }
 }

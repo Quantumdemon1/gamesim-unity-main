@@ -17,6 +17,7 @@ namespace Gamesim.Episode
         private int frameCap;
         private bool fullscreen;
         private bool edgePan = true;
+        private bool compactHud;
         private bool reducedAudio;
         /// <summary>Reduced audio: the room tone off and the cues and music at half, the sound's reduced motion.</summary>
         public bool ReducedAudio => reducedAudio;
@@ -27,6 +28,14 @@ namespace Gamesim.Episode
         public int FrameCap => frameCap;
         public bool Fullscreen => fullscreen;
         public bool EdgePanOn => edgePan;
+        public bool CompactHud => compactHud;
+
+        public void SetCompactHud(bool compact)
+        {
+            compactHud=compact;
+            ApplyPreferences();
+            Render();
+        }
 
         public static string QualityName(int tier)
         {
@@ -58,6 +67,7 @@ namespace Gamesim.Episode
             if (System.Array.IndexOf(FrameCaps, frameCap) < 0) frameCap = 0;
             fullscreen = prefs ? PlayerPrefs.GetInt("Gamesim.Fullscreen", Screen.fullScreen ? 1 : 0) == 1 : Screen.fullScreen;
             edgePan = !prefs || PlayerPrefs.GetInt("Gamesim.EdgePan", 1) == 1;
+            compactHud = prefs && PlayerPrefs.GetInt("Gamesim.CompactHud", 0) == 1;
             language = prefs ? PlayerPrefs.GetString("Gamesim.Language", Localisation.DefaultLanguage) : Localisation.DefaultLanguage;
             Localisation.Load(language);
             language = Localisation.Language;
@@ -74,6 +84,7 @@ namespace Gamesim.Episode
             // The editor and a batchmode run ignore this, so the field is the record of the choice.
             if (!Application.isEditor && Screen.fullScreen != fullscreen) Screen.fullScreen = fullscreen;
             if (cameraRig != null) cameraRig.EdgePan = edgePan;
+            if (hud != null) hud.Compact = compactHud;
             if (Localisation.Language != language) { Localisation.Load(language); language = Localisation.Language; }
             if (SaveRootOverride == null)
             {
@@ -82,6 +93,7 @@ namespace Gamesim.Episode
                 PlayerPrefs.SetInt("Gamesim.FrameCap", frameCap);
                 PlayerPrefs.SetInt("Gamesim.Fullscreen", fullscreen ? 1 : 0);
                 PlayerPrefs.SetInt("Gamesim.EdgePan", edgePan ? 1 : 0);
+                PlayerPrefs.SetInt("Gamesim.CompactHud", compactHud ? 1 : 0);
             }
         }
 
@@ -89,6 +101,8 @@ namespace Gamesim.Episode
         private void DisplaySettings()
         {
             hud.Heading("Display");
+            hud.Action(compactHud ? "Show full HUD" : "Use compact HUD",()=>SetCompactHud(!compactHud));
+            hud.Paragraph("Compact HUD keeps the cast, next objective and controls visible. House details stay in the notebook and Overview.");
             hud.Action("Quality: " + QualityName(qualityTier) + "  (change)", () =>
             {
                 qualityTier = (qualityTier + 1) % Mathf.Max(1, QualitySettings.names.Length); ApplyPreferences(); Render();

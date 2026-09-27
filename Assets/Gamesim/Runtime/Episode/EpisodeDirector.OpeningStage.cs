@@ -322,23 +322,51 @@ namespace Gamesim.Episode
             public void OpenDoor() { if (set != null) set.Open(director.reducedMotion); }
             public void CloseDoor() { if (set != null) set.Close(director.reducedMotion); }
 
-            /// <summary>Turned to the lens, greeting it: the reference build only ever walked its people, which a real body can do better than.</summary>
+            /// <summary>
+            /// Turned to the lens, greeting it with their own move while the name comes up: the
+            /// dancers dance in their own style, from past its wind-up, and everyone else strikes a
+            /// pose for the camera, one a body of their build strikes - the two people through the
+            /// door before and after them strike other ones. A body with neither dances the house's
+            /// steps if it can and otherwise cheers. The reference build only ever walked its people,
+            /// which a real body can do better than.
+            /// </summary>
             public void Present(string id)
             {
                 var visual = Visual(id);
                 if (visual == null) return;
                 visual.SetFacing(90f);
                 if (director.cameraRig != null && director.cameraRig.ViewCamera != null) visual.LookAtPoint(director.cameraRig.ViewCamera.transform, 2f);
-                // A little dance on the mark while the name comes up; a body with no dance cheers.
-                if (visual.CanAct(CharacterPresentation.BodyActivity.Dancing)) visual.SetActivity(CharacterPresentation.BodyActivity.Dancing);
+                var who = director.projected?.contestants?.FirstOrDefault(person => person.id == id);
+                bool dancer = CastMoves.DancesIn(who);
+                if (dancer && visual.CanAct(CharacterPresentation.BodyActivity.Dancing))
+                {
+                    var style = CastMoves.DanceFor(who);
+                    visual.SetDanceStyle(style, CastMoves.Lively(style));
+                    visual.SetActivity(CharacterPresentation.BodyActivity.Dancing);
+                }
+                else if (visual.CanAct(CharacterPresentation.BodyActivity.Posing))
+                {
+                    var pose = CastMoves.PoseFor(visual.Frame, id, lastPose);
+                    lastPose = pose;
+                    visual.SetPose(pose);
+                    visual.SetActivity(CharacterPresentation.BodyActivity.Posing);
+                }
+                else if (visual.CanAct(CharacterPresentation.BodyActivity.Dancing)) visual.SetActivity(CharacterPresentation.BodyActivity.Dancing);
                 else if (id != director.projected.playerId) director.React(id, CharacterPresentation.Reaction.Cheered);
                 else visual.React(CharacterPresentation.Reaction.Cheered);
             }
 
-            /// <summary>Stops a dance on the mark, and only a dance: whatever else the body is doing is not the stage's.</summary>
+            /// <summary>The pose the last person on the mark struck, so the next one strikes another.</summary>
+            private CharacterPresentation.Pose? lastPose;
+
+            /// <summary>
+            /// Lets go of the move on the mark, and only that: a dance or a pose. Whatever else the
+            /// body is doing is not the stage's.
+            /// </summary>
             private static void StopDancing(CharacterPresentation visual)
             {
-                if (visual != null && visual.Activity == CharacterPresentation.BodyActivity.Dancing)
+                if (visual != null && (visual.Activity == CharacterPresentation.BodyActivity.Dancing
+                                       || visual.Activity == CharacterPresentation.BodyActivity.Posing))
                     visual.SetActivity(CharacterPresentation.BodyActivity.None);
             }
 

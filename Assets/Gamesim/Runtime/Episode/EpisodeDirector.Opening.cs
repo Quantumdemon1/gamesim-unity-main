@@ -202,12 +202,17 @@ namespace Gamesim.Episode
                 {
                     var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                     if (visual != null) { visual.SetFacing(float.NaN); visual.LookAt(null, 0f); }
-                    // A dance for an introduction that landed ends with the opening, not in free time.
-                    if (visual != null && visual.Activity == CharacterPresentation.BodyActivity.Dancing)
+                    // A dance for an introduction that landed ends with the opening, not in free time,
+                    // and so does a pose struck on the mark.
+                    if (visual != null && (visual.Activity == CharacterPresentation.BodyActivity.Dancing
+                                           || visual.Activity == CharacterPresentation.BodyActivity.Posing))
                         visual.SetActivity(CharacterPresentation.BodyActivity.None);
                 }
             var own = player != null ? player.GetComponentInChildren<CharacterPresentation>() : null;
             if (own != null) { own.SetFacing(float.NaN); own.LookAt(null, 0f); }
+            if (own != null && (own.Activity == CharacterPresentation.BodyActivity.Dancing
+                                || own.Activity == CharacterPresentation.BodyActivity.Posing))
+                own.SetActivity(CharacterPresentation.BodyActivity.None);
             lastIntroduced = null;
             if (cameraRig != null && player != null) cameraRig.FocusSubject(player.transform, reframe: false);
             Project();
@@ -392,6 +397,13 @@ namespace Gamesim.Episode
             {
                 React(id, CharacterPresentation.Reaction.Cheered);
                 return;
+            }
+            // A landed introduction dances the houseguest's own dance, from past its wind-up: the
+            // beat is a second and a half long and the takes are six to eighteen.
+            if (visual != null && outcome == WebIntroductions.Outcome.Match)
+            {
+                var style = CastMoves.DanceFor(projected?.contestants?.FirstOrDefault(person => person.id == id));
+                visual.SetDanceStyle(style, CastMoves.Lively(style));
             }
             if (visual != null) StartCoroutine(ReactFor(visual, outcome));
         }

@@ -13,6 +13,8 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+#if GAMESIM_UMA
+        // UMA only: the chair's clap is a mocap take on the humanoid controller, which only a UMA body wears.
         /// <summary>
         /// A sitting body answers a cheer from its seat - the clap captured sitting - where the
         /// standing reactions cannot be played at all, and stands up out of it.
@@ -39,5 +41,6 @@ namespace Gamesim.Tests.PlayMode
             visual.SetSeated(false);
             yield return WaitFor(() => animator.GetCurrentAnimatorStateInfo(0).IsName("Idle"), 3f, "and stands up out of the clap.");
         }
+#endif
     }
 }

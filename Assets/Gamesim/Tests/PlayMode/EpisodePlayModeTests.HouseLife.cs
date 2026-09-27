@@ -90,6 +90,8 @@ namespace Gamesim.Tests.PlayMode
                 "The player's list has places the cast's does not.");
         }
 
+#if GAMESIM_UMA
+        // UMA only: the house's activities and changes of clothes play on a UMA body's humanoid controller and wardrobe.
         [UnityTest]
         public IEnumerator HouseLife_LyingDownOnABedAndGettingUp()
         {
@@ -142,6 +144,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(fill.intensity, Is.EqualTo(lit), "And the light comes back exactly as it was.");
             AssertPlayerSeasonUnchanged(before, director.Snapshot);
         }
+#endif
 
         /// <summary>
         /// Asleep, a click on the floor is the plainest way to say "get up": the player gets up and
@@ -185,6 +188,8 @@ namespace Gamesim.Tests.PlayMode
             finally { UnityEngine.InputSystem.InputSystem.RemoveDevice(mouse); }
         }
 
+#if GAMESIM_UMA
+        // UMA only: the house's activities and changes of clothes play on a UMA body's humanoid controller and wardrobe.
         [UnityTest]
         public IEnumerator HouseLife_SwimmingLengthsWithTheRootAtTheSide()
         {
@@ -219,7 +224,10 @@ namespace Gamesim.Tests.PlayMode
             director.FinishPlayerHouseActivity();
             yield return null;
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: the house's activities and changes of clothes play on a UMA body's humanoid controller and wardrobe.
         /// <summary>
         /// Into swimwear for the pool and back out after, and the player is never missing while
         /// the new look is made: the old body stands until the new one is ready.
@@ -277,7 +285,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(missing, Is.Zero, "The player went missing for " + missing + " frames while changing back.");
             if (everyday != null) Assert.That(presentation.AppearanceSnapshot.activeOutfit, Is.EqualTo(everyday));
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: the house's activities and changes of clothes play on a UMA body's humanoid controller and wardrobe.
         /// <summary>
         /// A change of clothes while seated keeps the body seated: the new body takes over in the
         /// state and at the moment the old one was in, rather than standing up out of Idle for a
@@ -328,7 +339,10 @@ namespace Gamesim.Tests.PlayMode
             director.FinishPlayerHouseActivity();
             yield return null;
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: the house's activities and changes of clothes play on a UMA body's humanoid controller and wardrobe.
         [UnityTest]
         public IEnumerator HouseLife_SoakingInTheHotTub()
         {
@@ -343,7 +357,10 @@ namespace Gamesim.Tests.PlayMode
             director.FinishPlayerHouseActivity();
             yield return null;
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: the house's activities and changes of clothes play on a UMA body's humanoid controller and wardrobe.
         /// <summary>A click on the hob is the stove's; a click on the middle of the run is still the counter's.</summary>
         [UnityTest]
         public IEnumerator HouseLife_CookingAtTheStove()
@@ -366,7 +383,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPlayerHouseActivityActive, Is.False);
             AssertPlayerSeasonUnchanged(before, director.Snapshot);
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: the house's activities and changes of clothes play on a UMA body's humanoid controller and wardrobe.
         /// <summary>Dancing in the middle of the living room, from the House Activities menu's own row.</summary>
         [UnityTest]
         public IEnumerator HouseLife_DancingInTheLivingRoom()
@@ -385,6 +405,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(director.IsPlayerHouseActivityActive, Is.False);
         }
+#endif
 
         /// <summary>The HoH suite's bed is the Head of Household's, and nobody else lies down on it.</summary>
         [UnityTest]

@@ -11,6 +11,8 @@ namespace Gamesim.Tests.PlayMode
 {
     public sealed partial class EpisodePlayModeTests
     {
+#if GAMESIM_UMA
+        // UMA only: the counter's gesture plays on a UMA body's humanoid controller.
         [UnityTest]
         public IEnumerator HouseActivities_AuthoredCounterMenuWalksGesturesAndFinishesWithoutSeasonEffects()
         {
@@ -42,6 +44,7 @@ namespace Gamesim.Tests.PlayMode
             AssertEquivalent(before,director.Snapshot);
             director.ClosePanels();Assert.That(player.InputEnabled,Is.True);
         }
+#endif
 
         [UnityTest]
         public IEnumerator DiaryApproach_RemovingSeatPresentationCancelsItsMovementOwner()

@@ -360,16 +360,23 @@ namespace Gamesim.Tests.PlayMode
 
         private IEnumerator ReloadEpisode()
         {
-            // This exact informational startup line is expected on every successful load.
-            // Keep strict teardown checks sensitive to every unrelated log and warning.
-            LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex(
-                "^Gamesim episode ready: [0-9]+ contestants, validated simulation, local recovery and accessible HUD connected\\.$"));
+            // The expectations go in the order the logs arrive, because that is the order LogAssert
+            // matches them in. Each pass over the logs offers every unhandled log to the expectation
+            // at the head of the queue only, and a new pass runs only when a new log arrives. The
+            // missing-script warning comes first, from the load itself, before the director's Start
+            // writes its ready line. Registered behind the ready line, the warning was matched only
+            // when some later log happened to trigger another pass, which stopped happening, and
+            // every UMA-free SetUp failed with the warning sitting in the log.
 #if !GAMESIM_UMA
             // The shipping scene retains its optional UMA-cast component. In the UMA-free
             // configuration Unity reports exactly this missing-script warning on scene load;
             // account for it explicitly so strict teardown checks still catch every other log.
             LogAssert.Expect(LogType.Warning, "The referenced script (Unknown) on this Behaviour is missing!");
 #endif
+            // This exact informational startup line is expected on every successful load.
+            // Keep strict teardown checks sensitive to every unrelated log and warning.
+            LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex(
+                "^Gamesim episode ready: [0-9]+ contestants, validated simulation, local recovery and accessible HUD connected\\.$"));
             yield return SceneManager.LoadSceneAsync(EpisodeScene, LoadSceneMode.Single);
             director = SceneComponents<EpisodeDirector>().Single();
             var deadline = Time.realtimeSinceStartup + 10f;

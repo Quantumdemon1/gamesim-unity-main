@@ -93,6 +93,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(problems, Is.Empty, where);
         }
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         [UnityTest]
         public IEnumerator Creator_ColourSwatchesWriteTheColourTheyShow()
         {
@@ -133,7 +135,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             AssertSameColour(AppearanceEditing.ColorValue(creator.Draft.Appearance, "Brows", Color.clear), shown, "brows set apart");
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>
         /// The Colors page names what is worn: the tone in its heading, the brows by the whole hair
         /// palette - a dyed colour the hair handed on is "matches hair", not "custom" - and "custom"
@@ -188,7 +193,10 @@ namespace Gamesim.Tests.PlayMode
             events.SetSelectedGameObject(null);
             Assert.That(Heading("Skin"), Does.Contain("PORCELAIN").And.Not.Contain("SAND"), "Focus moving off names the worn tone again.");
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>
         /// A starting look's garment colour - the one in its photo, seldom a swatch - is on its row,
         /// ringed at the end, and stays there to be picked again after trying another; the row's way
@@ -232,6 +240,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Tinted(out _), Is.False, "The garment's own colour comes back.");
             Assert.That(Row(), Has.Count.EqualTo(13), "And the photo's colour is still there to go back to.");
         }
+#endif
 
         /// <summary>
         /// The six category tiles stay on their panel however short a wide screen leaves it: at a
@@ -289,6 +298,8 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>
         /// Face details - freckles, makeup, an older face - are the person's, not the outfit's: worn
         /// from the Face page on every outfit and taken off every outfit, left alone by the Hair
@@ -343,7 +354,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(Worn(), Is.All.EqualTo(details[1].Id), "The Face page's reset puts the look's own face detail back on every outfit.");
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>
         /// Changing body takes off a face detail the other body has nothing like, and says so:
         /// makeup, drawn for one body alone, came back from the change as whichever face detail the
@@ -389,7 +403,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(kept.StyleGroup, Is.EqualTo("face.age"), "It is still an older face.");
             Assert.That(kept.Fits(other.Id), Is.True);
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>
         /// Accessories are picked from their own page, worn with the outfit being edited, undone and
         /// redone like any edit, and put back as they were by that page's reset - taken off a look
@@ -448,7 +465,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(Worn("Eyewear"), Is.EqualTo(ProceduralAccessories.Prefix + "glasses"), "Reset puts the starting look's glasses back on.");
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>
         /// Randomize rolls the accessories too - most often to none - unless their page's lock is
         /// on, and colours a random houseguest from the skin out: hair and eyes weighted by the
@@ -511,7 +531,10 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(CastButtons("Unlock Accessories"), Is.Not.Empty, "The lock says it is on.");
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         /// <summary>The face page offers its features under headings, the jaw among them.</summary>
         [UnityTest]
         public IEnumerator Creator_TheFaceGroupsItsFeaturesUnderHeadings()
@@ -526,6 +549,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (string feature in new[] { "Jaw width", "Cheekbones", "Eye tilt", "Nose bridge" })
                 Assert.That(creator.GetComponentsInChildren<Slider>().Any(slider => slider.name == feature + " slider"), Is.True, feature);
         }
+#endif
 
         /// <summary>
         /// Handed to a camera of another shape - what a review capture does, and what a window resize
@@ -584,6 +608,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(CastButtons("Next starting look"), Is.Not.Empty, "It opens on the appearance step.");
         }
 
+#if GAMESIM_UMA
+        // UMA only: these pages dress a modular body, and only UMA builds one.
         [UnityTest]
         public IEnumerator Creator_ALockedCategoryKeepsItsLookThroughRandomize()
         {
@@ -609,6 +635,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(creator.Draft.Appearance.ContentKey(), Is.Not.EqualTo(look), "Randomize changed what was not locked.");
             Assert.That(CastButtons("Unlock Hair"), Is.Not.Empty, "The lock says it is on.");
         }
+#endif
 
         /// <summary>
         /// Looking at a saved houseguest does not load it: the bar's Delete reaches any card while the

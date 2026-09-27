@@ -30,7 +30,10 @@ namespace Gamesim.Tests.PlayMode
             var maya = SceneComponents<HouseNpc>().Single(npc => npc.Id == ContentCatalog.MayaId);
             var rail = director.GetComponentsInChildren<RectTransform>().First(t => t.name == CastRail.RootName);
             var entry = rail.Cast<Transform>().Select(t => t.GetComponent<Button>()).First(b => b != null && b.name == maya.DisplayName);
+            string first = maya.DisplayName.Split(' ')[0];
+            // The chip opens its houseguest's card (playtest, 2026-09-27); following is one of its ways on.
             entry.onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.CastFollowCaption(first, false)).onClick.Invoke();
             // Reference equality throughout: NUnit would otherwise compare two Transforms as the
             // collections of children they enumerate, and every body has the same children.
             Assert.That(cameraRig.FocusedSubject, Is.SameAs(maya.transform), "The camera follows the portrait's houseguest.");
@@ -61,9 +64,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(chip, Is.Not.Null, "and a chip names them");
             Assert.That(chip.GetComponentInChildren<TMP_Text>().text, Does.Contain(maya.DisplayName.ToUpperInvariant()));
 
+            rail = director.GetComponentsInChildren<RectTransform>().Last(t => t.name == CastRail.RootName);
+            entry = rail.Cast<Transform>().Select(t => t.GetComponent<Button>()).Last(b => b != null && b.name == maya.DisplayName);
             entry.onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.CastFollowCaption(first, true)).onClick.Invoke();
             yield return null;
-            Assert.That(cameraRig.FocusedSubject, Is.Null, "The same portrait again lets go.");
+            Assert.That(cameraRig.FocusedSubject, Is.Null, "Stop following, from the same card, lets go.");
             Assert.That(GameObject.Find(FollowRing.RingName), Is.Null, "and the ring goes with it");
             Assert.That(GameObject.Find(FollowRing.SpotlightName), Is.Null, "and so does the spotlight");
             Assert.That(director.GetComponentsInChildren<RectTransform>().Any(t => t.name == EpisodeHud.FollowChipName), Is.False, "and so does the chip");

@@ -74,6 +74,9 @@ namespace Gamesim.Tests.PlayMode
             {
                 badge.ForceMeshUpdate();
                 Assert.That(badge.isTextOverflowing, Is.False, "The badge's word fits its pill.");
+                // Truncation is not overflow: the wide chip's fixed 46 drew "HAVE-N" and read as fitting.
+                Assert.That(badge.GetPreferredValues(badge.text).x, Is.LessThanOrEqualTo(badge.rectTransform.rect.width + .5f),
+                    "The pill is as wide as its word: " + badge.rectTransform.rect.width.ToString("0") + " for \"" + badge.text + "\".");
             }
         }
 

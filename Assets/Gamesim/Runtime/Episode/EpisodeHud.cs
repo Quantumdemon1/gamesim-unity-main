@@ -251,7 +251,8 @@ namespace Gamesim.Episode
             // The cast strip runs along the bottom of the frame, above the lower third. Every face
             // on screen at all times is what makes the rest of the HUD able to say "the replacement
             // nominee" and have that mean a person rather than a name.
-            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.FollowHouseguest,
+            // A chip opens its houseguest's card (EpisodeDirector.PressCastChip), drawn over the strip.
+            CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.PressCastChip,
                 director.FollowedId);
             FollowChip(director.FollowedName);
 
@@ -331,7 +332,13 @@ namespace Gamesim.Episode
             promptCaption.gameObject.SetActive(false);
             promptRoot.gameObject.SetActive(false);
             content = null;
-            if (!open && !recovery) { modalWasOpen = false; return; }
+            if (!open && !recovery)
+            {
+                modalWasOpen = false;
+                // A chip's card, last of the chrome so it draws over it.
+                if (director.CastMenuFor != null) CastMenu(state, director.CastMenuFor);
+                return;
+            }
             // Low and wide, not centred (VISUAL-TARGET.md V2, mockup-04). The panel used to be a
             // 790x680 block in the middle of the screen, which covered 63% of the frame's height
             // and put the house - the thing every one of these decisions is about - behind it. The

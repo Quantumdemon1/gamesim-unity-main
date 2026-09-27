@@ -718,6 +718,10 @@ namespace Gamesim.Presentation
                 var badge = Label(badgeChip, standing.Badge, 10, UiTheme.Ink, scale, font, TextAlignmentOptions.Center);
                 badge.rectTransform.anchorMin = Vector2.zero; badge.rectTransform.anchorMax = Vector2.one;
                 badge.rectTransform.offsetMin = Vector2.zero; badge.rectTransform.offsetMax = Vector2.zero;
+                // As wide as its word, up to the photo's own width: a fixed 46 cut "HAVE-NOT" to
+                // "HAVE-N" on every Have-Not's chip (playtest, 2026-09-27).
+                float word = badge.GetPreferredValues(badge.text).x + 8f * scale;
+                badgeChip.sizeDelta = new Vector2(Mathf.Min(WidePhotoWidth * scale, Mathf.Max(BadgeWidth * scale, word)), BadgeHeight * scale);
             }
 
             string given = actor.name ?? string.Empty;
@@ -885,7 +889,17 @@ namespace Gamesim.Presentation
             RectTransform entry, RectTransform role, TMP_Text roleWord, RectTransform tag, TMP_Text tagWord, float scale)
         {
             float inner = entry.sizeDelta.x - 2f * ChipInsetX - 2f * (UiTheme.BorderThickness + 1f);
-            if (tag == null) return;
+            if (tag == null)
+            {
+                // A role alone is as wide as its word too, inside the border: a fixed 46 cut
+                // "HAVE-NOT" to "HAVE-N" (playtest, 2026-09-27).
+                if (role != null && roleWord != null)
+                {
+                    float alone = roleWord.GetPreferredValues(roleWord.text).x + 8f * scale;
+                    role.sizeDelta = new Vector2(Mathf.Min(inner, Mathf.Max(BadgeWidth * scale, alone)), role.sizeDelta.y);
+                }
+                return;
+            }
             if (role == null)
             {
                 float measured = tagWord.GetPreferredValues(tagWord.text).x;

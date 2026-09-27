@@ -35,3 +35,7 @@
 # Baked navigation data is binary even when Unity uses Force Text serialization.
 Assets/Gamesim/Data/HousePrototypeNavMesh.asset binary
 Assets/Gamesim/Data/EpisodeHouseNavMesh.asset binary
+
+# So is baked lighting data. Stored as text, the CR-LF byte pairs inside it came back as LF,
+# and every fresh clone got a copy four bytes short that Unity cannot load.
+LightingData.asset binary

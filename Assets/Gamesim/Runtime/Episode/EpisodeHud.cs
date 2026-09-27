@@ -335,8 +335,9 @@ namespace Gamesim.Episode
             if (!open && !recovery)
             {
                 modalWasOpen = false;
-                // A chip's card, last of the chrome so it draws over it.
+                // A chip's card, last of the chrome so it draws over it: a houseguest's, or your moves.
                 if (director.CastMenuFor != null) CastMenu(state, director.CastMenuFor);
+                else if (director.EmoteMenuOpen) EmoteMenu(state);
                 return;
             }
             // Low and wide, not centred (VISUAL-TARGET.md V2, mockup-04). The panel used to be a

@@ -28,36 +28,13 @@ namespace Gamesim.Episode
         {
             var actor = state?.Find(id);
             if (actor == null || canvas == null) return;
-            // The chip it belongs to: the last of that name on the strip, since a rebuild in the same
-            // frame leaves the old strip under the canvas until it is destroyed.
-            Transform rail = null;
-            for (int i = canvas.transform.childCount - 1; i >= 0 && rail == null; i--)
-                if (canvas.transform.GetChild(i).name == CastRail.RootName && canvas.transform.GetChild(i).gameObject.activeSelf)
-                    rail = canvas.transform.GetChild(i);
-            RectTransform chip = null;
-            if (rail != null)
-                foreach (Transform child in rail)
-                    if (child.name == actor.name) chip = (RectTransform)child;
+            var chip = CastChip(actor.name);
             if (chip == null) return;
 
             string first = (actor.name ?? "").Split(' ')[0];
             float scale = FontScale, width = CastMenuWidth * scale;
             float height = (CastMenuHead + 4f * (CastMenuRow + CastMenuGap) + 8f) * scale;
-            var frame = (RectTransform)canvas.transform;
-            var corners = new Vector3[4];
-            chip.GetWorldCorners(corners);
-            // The chip's top-left, in the canvas's own units, measured from its bottom-left.
-            Vector2 at = frame.InverseTransformPoint(corners[1]);
-            at += frame.rect.size * .5f;
-            float x = Mathf.Clamp(at.x, 12f, Mathf.Max(12f, frame.rect.width - width - 12f));
-            float y = Mathf.Min(at.y + 8f, frame.rect.height - height - 12f);
-
-            var menu = Chrome(CastMenuName, canvas.transform, UiTheme.Emphasis.Active);
-            menu.anchorMin = menu.anchorMax = Vector2.zero;
-            menu.pivot = Vector2.zero;
-            menu.anchoredPosition = new Vector2(x, y);
-            menu.sizeDelta = new Vector2(width, height);
-            menu.SetAsLastSibling();
+            var menu = CardOverChip(CastMenuName, chip, width, height);
 
             var name = FixedText(menu, actor.name, 17, UiTheme.Heading, new Vector2(14f * scale, -8f * scale), new Vector2(width - 28f * scale, 22f * scale));
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
@@ -88,6 +65,44 @@ namespace Gamesim.Episode
             foreach (var row in rows) onTheCard |= row.caption == preferredSelection;
             if (!onTheCard) preferredSelection = rows[0].caption;
             restoreSelection = true;
+        }
+
+        /// <summary>
+        /// A houseguest's chip on the cast strip, by name: the last of that name on the strip, since
+        /// a rebuild in the same frame leaves the old strip under the canvas until it is destroyed.
+        /// </summary>
+        private RectTransform CastChip(string name)
+        {
+            Transform rail = null;
+            for (int i = canvas.transform.childCount - 1; i >= 0 && rail == null; i--)
+                if (canvas.transform.GetChild(i).name == CastRail.RootName && canvas.transform.GetChild(i).gameObject.activeSelf)
+                    rail = canvas.transform.GetChild(i);
+            RectTransform chip = null;
+            if (rail != null)
+                foreach (Transform child in rail)
+                    if (child.name == name) chip = (RectTransform)child;
+            return chip;
+        }
+
+        /// <summary>A card standing on a chip, kept inside the frame, over the rest of the chrome.</summary>
+        private RectTransform CardOverChip(string name, RectTransform chip, float width, float height)
+        {
+            var frame = (RectTransform)canvas.transform;
+            var corners = new Vector3[4];
+            chip.GetWorldCorners(corners);
+            // The chip's top-left, in the canvas's own units, measured from its bottom-left.
+            Vector2 at = frame.InverseTransformPoint(corners[1]);
+            at += frame.rect.size * .5f;
+            float x = Mathf.Clamp(at.x, 12f, Mathf.Max(12f, frame.rect.width - width - 12f));
+            float y = Mathf.Min(at.y + 8f, frame.rect.height - height - 12f);
+
+            var menu = Chrome(name, canvas.transform, UiTheme.Emphasis.Active);
+            menu.anchorMin = menu.anchorMax = Vector2.zero;
+            menu.pivot = Vector2.zero;
+            menu.anchoredPosition = new Vector2(x, y);
+            menu.sizeDelta = new Vector2(width, height);
+            menu.SetAsLastSibling();
+            return menu;
         }
     }
 }

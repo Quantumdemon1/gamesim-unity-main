@@ -18,19 +18,27 @@ namespace Gamesim.Episode
         public string CastMenuFor => castMenuFor;
 
         /// <summary>
-        /// A chip pressed. Its menu - the same chip again closes it; your own chip, somebody who has
-        /// left the house, or a chip pressed with a panel open is the follow it always was.
+        /// A chip pressed. Its menu - the same chip again closes it; your own chip is your moves
+        /// (<see cref="ToggleEmoteMenu"/>), and somebody who has left the house, or a chip pressed
+        /// with a panel open, is the follow it always was.
         /// </summary>
         public void PressCastChip(string id)
         {
             var actor = projected?.Find(id);
             if (actor == null) return;
+            if (id == projected.playerId && actor.status == ContestantStatus.Active && !IsPanelOpen)
+            {
+                ToggleEmoteMenu();
+                return;
+            }
             if (id == projected.playerId || actor.status != ContestantStatus.Active || IsPanelOpen)
             {
                 castMenuFor = null;
+                emoteMenuOpen = false;
                 FollowHouseguest(id);
                 return;
             }
+            emoteMenuOpen = false;
             castMenuFor = castMenuFor == id ? null : id;
             Render();
         }

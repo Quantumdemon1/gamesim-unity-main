@@ -370,7 +370,10 @@ namespace Gamesim.Episode
                 else if (actions.Previous.WasPressedThisFrame()) FollowNext(true);
                 else if (nothingFocused && Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame)
                     FollowNext(Keyboard.current.shiftKey.isPressed);
+                // G is your moves: the card over your own chip.
+                else if (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame && !OpeningOwnsHouse) ToggleEmoteMenu();
             }
+            if (IsReady) { TickEmote(); TickAnswers(); }
             // The chip follows the subject however it was chosen: a click on a body sets the
             // camera without a render, so the chip is redrawn on its own when the name changes.
             if (IsReady && hud != null && FollowedName != lastFollowed)
@@ -632,7 +635,7 @@ namespace Gamesim.Episode
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
-            castMenuFor = null; campaignMore = false;
+            castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
             ClearLobbyDraft();
             if (sceneCardOpen) { sceneCardOpen = false; sceneCardCycle = null; ClearStoryStep(); }
             // Escape cancels without committing, so the run goes with the panel. Leaving it would

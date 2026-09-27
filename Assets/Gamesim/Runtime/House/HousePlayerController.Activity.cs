@@ -25,6 +25,9 @@ namespace Gamesim.House
             ApplyPauseState();return true;
         }
 
+        /// <summary>Whether something - an activity, the diary chair, a competition station - owns the player's movement now.</summary>
+        public bool HasActivityOwner => activityOwner!=null;
+
         public bool IsActivityMoveValid(object owner)
             => ReferenceEquals(owner,activityOwner) && owner!=null && isActiveAndEnabled && Agent!=null
                 && Agent.enabled && Agent.isOnNavMesh && (Agent.hasPath || NearActivityDestination());

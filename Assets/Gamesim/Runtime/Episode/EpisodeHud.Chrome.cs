@@ -546,7 +546,10 @@ namespace Gamesim.Episode
                 top += RecentEventsCard(canvas.transform, state, top) + RightColumnGap;
             }
             HouseVibeCard(canvas.transform, top, state);
-            if (director.CanListenIn) NearbyCard(canvas.transform, top);
+            // Built whether or not listening in is on offer this moment: the director's Nearby tick
+            // decides when it shows. Built only by a render that found it on offer, it did not exist
+            // until the next render - and the first render comes before the house is ready.
+            NearbyCard(canvas.transform, top);
             if (EpisodeEngine.StoryOn(state)) PullCard(canvas.transform, top);
         }
 

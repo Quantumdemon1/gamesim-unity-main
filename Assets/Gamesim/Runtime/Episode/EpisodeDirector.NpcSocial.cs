@@ -66,6 +66,16 @@ namespace Gamesim.Episode
             if (!CanListenIn || IsPanelOpen) return;
             Commit(projected, EpisodeCommandKind.Eavesdrop);
         }
+
+        /// <summary>
+        /// The Nearby card is up exactly while a conversation is being witnessed, listening in is on
+        /// offer and no panel is open. Update runs it every frame and Render right after rebuilding
+        /// the chrome, which builds the card hidden; the HUD keeps a story's Pull ahead of it.
+        /// </summary>
+        private void TickNearby()
+        {
+            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation) && CanListenIn);
+        }
         public string NpcAutonomyDiagnostic => npcWorldFailure;
         /// <summary>Read-only proof for explicit QA; never a command or UI knowledge source.</summary>
         public bool IsNpcConversationPhysicallyReady(long sequence) => npcMeetings != null

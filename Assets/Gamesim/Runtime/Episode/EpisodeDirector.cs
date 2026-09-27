@@ -357,7 +357,7 @@ namespace Gamesim.Episode
             // while a conversation is being witnessed and no Pull has the week card's place.
             TickStoryPull();
             TickSceneStage();
-            if (hud != null) hud.SetNearby(!IsPanelOpen && !string.IsNullOrEmpty(ObservedNpcConversation) && CanListenIn);
+            TickNearby();
             // ] and [ (or the shoulders) cycle who the camera follows, out in the house with no panel
             // open. Tab does the same only when no HUD control is focused - a mouse player who
             // clicked the house - because with one focused, Tab is the keyboard ring's, and the HUD
@@ -1059,10 +1059,12 @@ namespace Gamesim.Episode
             var run = challengeRun;
             CastRail.PlayerProgress = CastRail.CompetitionField != null && run != null ? () => ProgressWord(run) : (System.Func<string>)null;
             hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen);
-            // The Pull's card is rebuilt hidden with the rest of the chrome, and a render that Update
-            // orders (a body finishing assembly) comes after this frame's TickStoryPull: put it back
-            // now, or it is gone for the rest of the frame and a press on it lands on nothing.
+            // The Pull's card and the Nearby card are rebuilt hidden with the rest of the chrome, and a
+            // render that Update orders (a body finishing assembly) comes after this frame's ticks: put
+            // them back now, or they are gone for the rest of the frame and a press on one lands on
+            // nothing. The Pull first, as in Update: it outranks the Nearby card for the week card's place.
             TickStoryPull();
+            TickNearby();
             // Committed state, not the projection: a projected eviction is not a fact, and telling
             // someone they are out of the game is the last claim that should run ahead of the save.
             if (Spectating(engine.Snapshot)) hud.SpectatorNote(SpectatorDetail(engine.Snapshot));

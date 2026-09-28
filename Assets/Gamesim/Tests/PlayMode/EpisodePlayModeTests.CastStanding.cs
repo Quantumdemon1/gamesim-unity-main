@@ -354,7 +354,8 @@ namespace Gamesim.Tests.PlayMode
         private IEnumerator WaitForBodies()
         {
             float deadline = Time.realtimeSinceStartup + 30f;
-            while (SceneComponents<CharacterPresentation>().Any(body => body.IsBodyAssembling)
+            // Only bodies in the house: one on an inactive actor never finishes.
+            while (SceneComponents<CharacterPresentation>().Any(body => body.gameObject.activeInHierarchy && body.IsBodyAssembling)
                    && Time.realtimeSinceStartup < deadline) yield return null;
             yield return null;
         }

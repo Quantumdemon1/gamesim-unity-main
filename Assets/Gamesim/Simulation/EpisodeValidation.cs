@@ -192,7 +192,8 @@ namespace Gamesim.Simulation
             // Both lists are this week's: the lobbying clears as the week turns, and a reply card is
             // answered in the phase it arrived in or not at all.
             if (s.lobbies == null || s.lobbies.Count > 32 || s.lobbies.Any(l => l == null || l.week != s.week
-                    || (l.phase != EpisodePhase.Nomination && l.phase != EpisodePhase.VetoMeeting)
+                    // A plea for a vote is the campaign's (STRATEGY-LOOP-PLAN.md section 3).
+                    || (l.phase != EpisodePhase.Nomination && l.phase != EpisodePhase.VetoMeeting && l.phase != EpisodePhase.Campaign)
                     || s.Find(l.deciderId) == null || l.deciderId == s.playerId || !LobbyAsk.IsKnown(l.ask)
                     || !LobbyApproach.IsKnown(l.approach) || !LobbyResponse.IsKnown(l.response)
                     || (l.subjectId != null && s.Find(l.subjectId) == null)

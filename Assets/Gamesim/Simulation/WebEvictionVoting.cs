@@ -105,6 +105,8 @@ namespace Gamesim.Simulation
     [Serializable] public sealed class WebVoteObligation
     {
         public string nomineeId;
+        /// <summary>The factor it becomes: "obligation" for a deal, "plea" for a plea heard.</summary>
+        public string code = "obligation";
         public double value;
         public List<string> evidenceIds = new List<string>();
     }
@@ -179,7 +181,7 @@ namespace Gamesim.Simulation
                     grudge = StoryConsumers.VoteGrudge(state, voterId, id),
                     bond = StoryConsumers.VoteBond(state, voterId, id),
                 }).Where(t => t.grudge != 0 || t.bond != 0).ToList(),
-                obligations = EpisodeEngine.Obligations(state, voterId),
+                obligations = EpisodeEngine.LeverTerms(state, voterId),
             };
             return options;
         }
@@ -240,6 +242,7 @@ namespace Gamesim.Simulation
                 case "grudge": return "I haven't forgotten what " + target.name + " did.";
                 case "bond": return "I'm not turning on " + saved.name + ".";
                 case "obligation": return "I gave my word on this vote, and I keep my word.";
+                case "plea": return "You asked me to keep you, and I heard you.";
                 default: return "Keeping " + saved.name + " is better for my game right now.";
             }
         }
@@ -438,11 +441,11 @@ namespace Gamesim.Simulation
             var story = o.storyTerms?.FirstOrDefault(t => t.nomineeId == nominee.id);
             if (story != null && story.grudge != 0) factors.Add(Factor("grudge", story.grudge, "private", "grudge:" + o.voter.id + ":" + nominee.id));
             if (story != null && story.bond != 0) factors.Add(Factor("bond", story.bond, "private", "bond:" + o.voter.id + ":" + nominee.id));
-            // The levers' term: what this voter owes the player on this nominee, known to the player
-            // because it is their own deal. Present only where there is one.
-            var obligation = o.obligations?.FirstOrDefault(t => t.nomineeId == nominee.id);
-            if (obligation != null && obligation.value != 0)
-                factors.Add(Factor("obligation", obligation.value, "playerKnown", obligation.evidenceIds.ToArray()));
+            // The levers' terms: what this voter owes the player on this nominee, and how they
+            // answered a plea, known to the player because they are the player's own doing.
+            // Present only where there is one.
+            foreach (var term in (o.obligations ?? new List<WebVoteObligation>()).Where(t => t.nomineeId == nominee.id && t.value != 0))
+                factors.Add(Factor(term.code ?? "obligation", term.value, "playerKnown", term.evidenceIds.ToArray()));
             return new WebNomineeEvaluation { nomineeId = nominee.id, factors = factors, score = factors.Sum(f => f.value) };
         }
 

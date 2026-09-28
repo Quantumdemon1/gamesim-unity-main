@@ -26,6 +26,7 @@ namespace Gamesim.Simulation
             Require(SocialActionsSpent(s) < SocialActionBudget(s), "You have no conversations left this week.");
 
             var decider = s.Find(c.targetId);
+            var read = ask == LobbyAsk.Vote ? LeverRead(s, decider.id) : null;
             double chance = StrategyRules.Chance(s, decider.id, ask, c.secondTargetId, approach);
             var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
             s.lobbies.Add(new LobbyState
@@ -43,7 +44,21 @@ namespace Gamesim.Simulation
                 s.playerId, decider.id);
             // A plea made with a deal is a deal: the reference's card promises "real obligations", and
             // one that lands writes them - a safety agreement that binds the player next week too.
-            if (approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
+            // For the vote it is the voter's word on the vote itself: a vote to keep the player,
+            // their obligation in the ballot and judged at the reveal like any vote deal.
+            if (ask == LobbyAsk.Vote && approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
+                && s.deals.Count < NpcDeals.DealCeiling
+                && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
+            {
+                s.deals.Add(new DealState
+                {
+                    id = "deal-lobby-" + s.nextSequence, type = DealKind.VoteSave,
+                    proposerId = decider.id, recipientId = s.playerId, targetId = s.playerId, status = DealStatus.Active,
+                    week = s.week, expiresWeek = s.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave),
+                });
+                Log(s, "deal", decider.name + " has given you their vote: a vote to keep you, judged at the reveal.", s.playerId, decider.id);
+            }
+            else if (approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
                 && s.deals.Count < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
             {
@@ -55,6 +70,7 @@ namespace Gamesim.Simulation
                 });
                 Log(s, "deal", "You and " + decider.name + " have a safety agreement through next week.", s.playerId, decider.id);
             }
+            if (ask == LobbyAsk.Vote) LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
             SpendSocialAction(s);
         }
 

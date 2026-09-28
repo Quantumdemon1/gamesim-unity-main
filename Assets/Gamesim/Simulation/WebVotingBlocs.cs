@@ -17,6 +17,12 @@ namespace Gamesim.Simulation
         public string id, name, status, founderId;
         public double? stability;
         public List<string> members = new List<string>();
+        /// <summary>
+        /// A call made in this alliance (STRATEGY-LOOP-PLAN.md §3): the caller, the nominee they
+        /// named, and who decided at the time to follow. Native only; the source never had it.
+        /// </summary>
+        public string calledTargetId, callerId;
+        public List<string> followedIds = new List<string>();
     }
     public sealed class WebBlocScore { public string fromId, toId; public double score; }
     public sealed class WebBlocGrudge
@@ -78,8 +84,13 @@ namespace Gamesim.Simulation
                 // Source truthiness: empty/missing status is accepted, defined non-Active skipped.
                 if (!string.IsNullOrEmpty(alliance.status) && alliance.status != "Active") continue;
                 var eligible = alliance.members.Where(id => active.Contains(id) && !snapshot.nomineeIds.Contains(id) && id != hoh).ToList();
-                if (eligible.Count < 2) continue;
-                string caller = !string.IsNullOrEmpty(alliance.founderId) && eligible.Contains(alliance.founderId) ? alliance.founderId : null;
+                // A call already made stands: the caller and the target are the call's, and who
+                // follows was decided when it was made. Otherwise the source's own round.
+                bool called = !string.IsNullOrEmpty(alliance.calledTargetId) && snapshot.nomineeIds.Contains(alliance.calledTargetId)
+                    && !string.IsNullOrEmpty(alliance.callerId) && alliance.members.Contains(alliance.callerId);
+                if (eligible.Count < (called ? 1 : 2)) continue;
+                string caller = called ? alliance.callerId
+                    : !string.IsNullOrEmpty(alliance.founderId) && eligible.Contains(alliance.founderId) ? alliance.founderId : null;
                 if (caller == null)
                 {
                     double best = double.NegativeInfinity;
@@ -91,7 +102,8 @@ namespace Gamesim.Simulation
                     }
                 }
                 if (caller == null) continue;
-                var target = Score(snapshot, caller, nominees[0].id) <= Score(snapshot, caller, nominees[1].id) ? nominees[0] : nominees[1];
+                var target = called ? nominees.First(n => n.id == alliance.calledTargetId)
+                    : Score(snapshot, caller, nominees[0].id) <= Score(snapshot, caller, nominees[1].id) ? nominees[0] : nominees[1];
                 var result = new WebBlocResult
                 {
                     allianceId = alliance.id, allianceName = alliance.name, shotCallerId = caller,
@@ -101,19 +113,8 @@ namespace Gamesim.Simulation
                 foreach (var voterId in eligible)
                 {
                     var actor = snapshot.actors.Single(a => a.id == voterId);
-                    var grudge = snapshot.grudges.FirstOrDefault(g => g.holderId == voterId && g.targetId == target.id && !g.forgiven);
-                    double personal = Score(snapshot, voterId, target.id);
-                    double loyalty = Trust(voterId, caller) * .4 + (alliance.stability ?? 50) * .3
-                        - (grudge?.severity ?? 0) * .2 - (personal > 0 ? personal * .1 : 0);
-                    Finite(loyalty, "loyalty");
-                    bool complies = loyalty > 50;
-                    if (!complies && loyalty >= 30)
-                    {
-                        double roll = nextRoll(); Finite(roll, "roll");
-                        if (roll < 0 || roll >= 1) throw new ArgumentOutOfRangeException(nameof(nextRoll), "Roll must be in [0,1).");
-                        bool sneaky = actor.traits.Contains("Sneaky") || actor.traits.Contains("Strategic");
-                        complies = roll > (sneaky ? .65 : .5);
-                    }
+                    bool complies = called ? voterId == caller || alliance.followedIds.Contains(voterId)
+                        : Complies(Loyalty(snapshot, alliance, voterId, caller, target.id, Trust), actor.traits, nextRoll);
                     (complies ? result.compliantVoters : result.defectors).Add(voterId);
                     result.directives.Add(new WebBlocDirective
                     {
@@ -128,6 +129,37 @@ namespace Gamesim.Simulation
             }
             return results;
         }
+
+        /// <summary>
+        /// The source's loyalty of a member to the caller on this target: trust in the caller,
+        /// the pact's stability (fifty where none is known), a grudge against the target, and
+        /// liking the target. The call lever asks it at call time with the player as the caller.
+        /// </summary>
+        public static double Loyalty(WebBlocSnapshot snapshot, WebBlocAlliance alliance, string voterId, string callerId, string targetId,
+            Func<string, string, double> getTrust)
+        {
+            var grudge = snapshot.grudges.FirstOrDefault(g => g.holderId == voterId && g.targetId == targetId && !g.forgiven);
+            double personal = Score(snapshot, voterId, targetId);
+            double loyalty = getTrust(voterId, callerId) * .4 + (alliance.stability ?? 50) * .3
+                - (grudge?.severity ?? 0) * .2 - (personal > 0 ? personal * .1 : 0);
+            Finite(loyalty, "loyalty");
+            return loyalty;
+        }
+
+        /// <summary>Whether a member of that loyalty follows: above fifty always, thirty to fifty on a roll (harder for the Sneaky and the Strategic), below never.</summary>
+        public static bool Complies(double loyalty, IList<string> traits, Func<double> nextRoll)
+        {
+            if (loyalty > 50) return true;
+            if (loyalty < 30) return false;
+            double roll = nextRoll(); Finite(roll, "roll");
+            if (roll < 0 || roll >= 1) throw new ArgumentOutOfRangeException(nameof(nextRoll), "Roll must be in [0,1).");
+            bool sneaky = traits.Contains("Sneaky") || traits.Contains("Strategic");
+            return roll > (sneaky ? .65 : .5);
+        }
+
+        /// <summary>The round's trust proxy: fifty plus half the raw score, clamped to 0-100.</summary>
+        public static Func<string, string, double> ProxyTrust(WebBlocSnapshot snapshot) =>
+            (from, to) => Math.Max(0, Math.Min(100, 50 + Score(snapshot, from, to) * .5));
 
         public static List<WebBlocDirective> Flatten(IEnumerable<WebBlocResult> results)
         {
@@ -160,15 +192,17 @@ namespace Gamesim.Simulation
         {
             var result = new WebBlocRound { seed = RoundSeed(snapshot) };
             var random = new SeededRandom(result.seed);
-            result.results = Resolve(snapshot, (from, to) => Math.Max(0, Math.Min(100, 50 + Score(snapshot, from, to) * .5)),
+            result.results = Resolve(snapshot, ProxyTrust(snapshot),
                 () => { result.randomDraws++; return random.NextDouble(); });
             result.directives = Flatten(result.results);
             return result;
         }
 
         /// <summary>
-        /// Supported native scenario adapter: copies actual pact membership, no invented
-        /// founder or stability. Native grudges are not yet stored, so explicitly empty.
+        /// Supported native scenario adapter: copies actual pact membership, no invented founder.
+        /// Before the levers, no stability and no grudges either, as it always was. Under them
+        /// (STRATEGY-LOOP-PLAN.md §3) a pact's stability is its members' warmth for each other,
+        /// the story's grudges are the round's, and a call the player made this week stands.
         /// No ballots, phase state, sequence, revision or persisted RNG are changed.
         /// </summary>
         public static WebBlocSnapshot FromNative(EpisodeState state)
@@ -180,12 +214,33 @@ namespace Gamesim.Simulation
                 actors = state.contestants.Select(a => new WebBlocActor
                 { id = a.id, name = a.name, status = a.status == ContestantStatus.Active ? "Active" : a.status.ToString(),
                     isHoH = a.id == state.hohId, traits = new List<string>(a.traits) }).ToList(),
-                alliances = state.alliances.Select(a => new WebBlocAlliance
-                { id = a.id, name = a.name, status = a.active ? "Active" : "Broken", members = new List<string>(a.members) }).ToList(),
+                alliances = state.alliances.Select(a =>
+                {
+                    var call = EpisodeEngine.CallThisWeek(state, a.id);
+                    return new WebBlocAlliance
+                    {
+                        id = a.id, name = a.name, status = a.active ? "Active" : "Broken", members = new List<string>(a.members),
+                        stability = EpisodeEngine.LeverRulesOn(state) ? Stability(state, a) : (double?)null,
+                        calledTargetId = call?.targetId, callerId = call?.callerId,
+                        followedIds = call != null ? new List<string>(call.followed) : new List<string>(),
+                    };
+                }).ToList(),
                 nomineeIds = new List<string>(state.nominees),
                 relationships = state.relationships.Select(r => new WebBlocScore { fromId = r.fromId, toId = r.toId, score = r.score }).ToList(),
-                grudges = new List<WebBlocGrudge>()
+                grudges = EpisodeEngine.LeverRulesOn(state) && state.story != null
+                    ? state.story.grudges.Select(g => new WebBlocGrudge { holderId = g.holderId, targetId = g.targetId, severity = g.severity }).ToList()
+                    : new List<WebBlocGrudge>()
             };
+        }
+
+        /// <summary>A pact's stability under the levers: fifty plus half its active members' average warmth for each other, 0-100.</summary>
+        public static double Stability(EpisodeState state, AllianceState alliance)
+        {
+            var members = alliance.members.Where(id => state.Find(id)?.status == ContestantStatus.Active).ToList();
+            if (members.Count < 2) return 50;
+            double total = 0; int pairs = 0;
+            foreach (var from in members) foreach (var to in members.Where(id => id != from)) { total += state.Score(from, to); pairs++; }
+            return Math.Max(0, Math.Min(100, 50 + total / pairs * .5));
         }
 
         public static double Score(WebBlocSnapshot snapshot, string from, string to) =>

@@ -1015,6 +1015,7 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.SchemeAgainst: SchemeAgainst(s, target); break;
                 case EpisodeCommandKind.ProposeDeal: ProposeDeal(s, target, c); break;
+                case EpisodeCommandKind.CallTheVote: CallTheVote(s, target, c); break;
                 case EpisodeCommandKind.SmallTalk:
                     Converse(s, target, WebSocialVocabulary.SmallTalk(Roll(s)),
                         "You passed the time with " + target.name + "."); break;
@@ -1638,6 +1639,9 @@ namespace Gamesim.Simulation
                 return;
             }
 
+            // Under the levers a call-out reaches whoever happens to be there, not the first two
+            // or three houseguests by id every time.
+            if (LeverRulesOn(s)) Shuffle(audience, () => Roll(s));
             int reach = Math.Min(audience.Count, WebSocialVocabulary.CalloutAudience(Roll(s)));
             for (int i = 0; i < reach; i++)
             {

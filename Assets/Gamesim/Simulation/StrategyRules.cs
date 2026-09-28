@@ -154,6 +154,16 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- the pleas
 
+        /// <summary>
+        /// Whether this houseguest can be asked for their vote: the levers on, the campaign, the
+        /// player on the block, and them voting. A plea from the block, one per voter, that the
+        /// voter's ballot answers (<see cref="EpisodeEngine.Pleas"/>).
+        /// </summary>
+        public static bool CanBeAskedForTheirVote(EpisodeState s, string voterId) =>
+            s != null && EpisodeEngine.LeverRulesOn(s) && Apply(s) && s.phase == EpisodePhase.Campaign && !s.evictionResolved
+            && s.nominees.Contains(s.playerId) && s.Find(s.playerId)?.status == ContestantStatus.Active
+            && Npc(s, voterId) && EpisodeEngine.Voters(s).Any(v => v.id == voterId);
+
         /// <summary>Whether the player has already had their plea with this houseguest in this phase: one each.</summary>
         public static bool AlreadyAsked(EpisodeState s, string deciderId) =>
             s.lobbies.Any(l => l.week == s.week && l.phase == s.phase && l.deciderId == deciderId);
@@ -178,7 +188,8 @@ namespace Gamesim.Simulation
         public static bool CanLobby(EpisodeState s, string deciderId, string ask, string subjectId, out string reason)
         {
             reason = null;
-            if (!IsDecider(s, deciderId)) return Refuse(out reason, "Nobody is deciding anything you could change right now.");
+            if (!IsDecider(s, deciderId) && !CanBeAskedForTheirVote(s, deciderId))
+                return Refuse(out reason, "Nobody is deciding anything you could change right now.");
             if (!LobbyAsk.IsKnown(ask)) return Refuse(out reason, "That is not something you can ask.");
             if (AlreadyAsked(s, deciderId)) return Refuse(out reason, s.Find(deciderId).name + " has already heard you out.");
             var subject = subjectId == null ? null : s.Find(subjectId);
@@ -188,7 +199,16 @@ namespace Gamesim.Simulation
             switch (ask)
             {
                 case LobbyAsk.Spare:
-                    if (deciderId != s.hohId || subjectId != s.playerId) return Refuse(out reason, "Only the Head of Household decides who goes up.");
+                    if (deciderId != s.hohId) return Refuse(out reason, "Only the Head of Household decides who goes up.");
+                    // Under the levers a third person can be kept off the block too: the reluctance
+                    // always honoured any subject; only the ask was missing.
+                    if (subjectId != s.playerId)
+                    {
+                        if (!EpisodeEngine.LeverRulesOn(s) || subjectId == null || subjectId == deciderId
+                            || !(naming ? EpisodeEngine.NominationCandidates(s) : EpisodeEngine.ReplacementCandidates(s)).Any(c => c.id == subjectId))
+                            return Refuse(out reason, "Only the Head of Household decides who goes up.");
+                        return true;
+                    }
                     if (!naming && !EpisodeEngine.ReplacementCandidates(s).Any(c => c.id == s.playerId))
                         return Refuse(out reason, "You could not be named in anybody's place.");
                     return true;
@@ -206,6 +226,10 @@ namespace Gamesim.Simulation
                     if (naming || deciderId != s.vetoHolderId) return Refuse(out reason, "Only the veto holder decides whether to use it.");
                     if (subjectId != null) return Refuse(out reason, "Keeping the nominations is about nobody in particular.");
                     if (s.nominees.Contains(s.playerId)) return Refuse(out reason, "You are on the block: nobody would believe you wanted it left as it is.");
+                    return true;
+                case LobbyAsk.Vote:
+                    if (!CanBeAskedForTheirVote(s, deciderId)) return Refuse(out reason, "Only a voter can be asked to keep you, and only while you are on the block.");
+                    if (subjectId != s.playerId) return Refuse(out reason, "A plea for your vote is for yourself.");
                     return true;
             }
             return Refuse(out reason, "That is not something you can ask.");
@@ -233,6 +257,14 @@ namespace Gamesim.Simulation
             if (NpcDeals.Between(s, deciderId, s.playerId).Count > 0) chance += 10;
             switch (ask)
             {
+                case LobbyAsk.Vote:
+                    // A voter in your alliance is easier; one in the other nominee's, or close to
+                    // them, is harder: the vote is between the two of you.
+                    if (s.Allied(deciderId, s.playerId)) chance += 15;
+                    string other = s.nominees.FirstOrDefault(id => id != s.playerId);
+                    if (other != null && s.Allied(deciderId, other)) chance -= 20;
+                    else if (other != null && s.Score(deciderId, other) > 30) chance -= 15;
+                    break;
                 case LobbyAsk.Target:
                     if (s.Allied(deciderId, subjectId)) chance -= 40;
                     double toTarget = s.Score(deciderId, subjectId);
@@ -282,7 +314,11 @@ namespace Gamesim.Simulation
             switch (ask)
             {
                 case LobbyAsk.Spare:
+                    if (subjectId != null && subjectId != s.playerId)
+                        return s.phase == EpisodePhase.Nomination ? "to keep " + about + " off the block" : "not to name " + about + " in a saved nominee's place";
                     return s.phase == EpisodePhase.Nomination ? "to leave you off the block" : "not to name you in a saved nominee's place";
+                case LobbyAsk.Vote:
+                    return "to vote to keep you";
                 case LobbyAsk.Target:
                     return s.phase == EpisodePhase.Nomination ? "to nominate " + about : "to name " + about + " as the replacement";
                 case LobbyAsk.Save:
@@ -299,7 +335,17 @@ namespace Gamesim.Simulation
             bool self = subjectId == s.playerId;
             switch (ask)
             {
+                case LobbyAsk.Vote:
+                    return approach == LobbyApproach.Emotional ? "Please. I need your vote this week. I can't go out like this."
+                        : approach == LobbyApproach.Strategic ? "Keep me and you keep a shield. Send me out and you're the next name up."
+                        : approach == LobbyApproach.Deal ? "Vote to keep me and I owe you: my vote, my word, whatever you need."
+                        : "Vote me out and everyone will know exactly whose vote it was.";
                 case LobbyAsk.Spare:
+                    if (!self)
+                        return approach == LobbyApproach.Emotional ? "Please don't put " + about + " up. They're not who you think."
+                            : approach == LobbyApproach.Strategic ? "Putting " + about + " up wastes your week. Look somewhere else."
+                            : approach == LobbyApproach.Deal ? "Keep " + about + " off the block and you've got me next week."
+                            : "Put " + about + " up and you'll answer for it.";
                     return approach == LobbyApproach.Emotional ? "Please don't put me up. I need this week."
                         : approach == LobbyApproach.Strategic ? "Put me up and you lose your best shield. Think about it."
                         : approach == LobbyApproach.Deal ? "Keep me off the block and I'm with you. Safety next week, whatever you need."
@@ -336,7 +382,8 @@ namespace Gamesim.Simulation
                 case LobbyResponse.Receptive:
                     switch (ask)
                     {
-                        case LobbyAsk.Spare: return "You're not the one I'm looking at this week.";
+                        case LobbyAsk.Spare: return subjectId == s.playerId ? "You're not the one I'm looking at this week." : about + "? Fine. Not this week.";
+                        case LobbyAsk.Vote: return "You've got my vote. Don't make me regret it.";
                         case LobbyAsk.Target: return about + "? You might be onto something.";
                         case LobbyAsk.Save: return subjectId == s.playerId ? "Okay. I hear you. I think I know what I'm doing with it."
                             : about + "... yeah. That might be the right call.";
@@ -416,8 +463,10 @@ namespace Gamesim.Simulation
         public const string Save = "save";
         /// <summary>To the veto holder: keep the nominations the same.</summary>
         public const string Keep = "keep";
+        /// <summary>To a voter, from the block: vote to keep me (STRATEGY-LOOP-PLAN.md §3).</summary>
+        public const string Vote = "vote";
 
-        public static readonly string[] All = { Spare, Target, Save, Keep };
+        public static readonly string[] All = { Spare, Target, Save, Keep, Vote };
         public static bool IsKnown(string ask) => ask != null && Array.IndexOf(All, ask) >= 0;
 
         /// <summary>A plea travels in a command's text as "ask/approach".</summary>

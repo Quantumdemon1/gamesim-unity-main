@@ -539,7 +539,7 @@ namespace Gamesim.Simulation
         /// <summary>Asking a voter, <c>targetId</c>, straight where their vote is. They may lie.</summary>
         AskVote,
         /// <summary>Reading a houseguest, <c>targetId</c>: on a hit, how they see you becomes known.</summary>
-        ReadPerson
+        ReadPerson, CallTheVote
     }
 
     /// <summary>

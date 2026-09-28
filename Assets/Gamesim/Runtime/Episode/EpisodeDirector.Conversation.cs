@@ -269,6 +269,7 @@ namespace Gamesim.Episode
                     return "risky";
                 case EpisodeCommandKind.StrategicDiscussion:
                 case EpisodeCommandKind.ReadPerson:
+                case EpisodeCommandKind.CallTheVote:
                 case EpisodeCommandKind.BuyActionPoint:
                     return "strategic";
                 // Their own category on purpose. These are the actions that can rebound on you, and

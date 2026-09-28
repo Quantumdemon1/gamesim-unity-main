@@ -23,9 +23,9 @@ namespace Gamesim.Episode
             && EpisodeEngine.Voters(state).Any(v => !v.isPlayer);
 
         /// <summary>
-        /// Asks, then reads, a voter with a body the walk can reach. Returns true when a command was
-        /// committed; false when nothing could be done this step, so the caller falls through to the
-        /// campaign's own decision. Either way each chance is taken once a season.
+        /// Asks, then reads, a voter with a body the walk can reach: a step of the walk's own, outside
+        /// the one-decision accounting, because the approach is free roam. Each chance is taken once a
+        /// season whether or not it could be taken; a campaign with no reachable voter is noted.
         /// </summary>
         private IEnumerator ExerciseSeasonRead(EpisodeState state, bool graphical)
         {
@@ -61,6 +61,8 @@ namespace Gamesim.Episode
             yield return ClickSeasonButton(caption);
             var after = seasonDirector.Snapshot;
             RequireSeason(after.revision == before.revision + 1, "The read's control must commit exactly one command: " + caption);
+            RequireSeason(EpisodeValidation.TryValidate(after, out var reason), "The projected season must remain valid after the read: " + reason);
+            seasonReport.commands++;
             RequireSeason(EpisodeEngine.SocialActionsSpent(after) == EpisodeEngine.SocialActionsSpent(before), "Asking and reading are free.");
             if (asking)
             {
@@ -72,6 +74,35 @@ namespace Gamesim.Episode
             yield return CloseSeasonPanel();
         }
 
-        private bool seasonReadCommitted;
+        private bool seasonReadCommitted, seasonPlayTaken;
+
+        /// <summary>
+        /// Takes the play the Pull offers, once a season, and checks the notebook's Story section
+        /// lists it under PLAYS. The play's first step opens on the scene card, where the walk's
+        /// next decision answers it off the lapse like any story step.
+        /// </summary>
+        private IEnumerator TakeSeasonPlay(bool graphical)
+        {
+            seasonPlayTaken = true;
+            var before = seasonDirector.Snapshot;
+            yield return CaptureSeason("play-offered", graphical);
+            yield return ClickSeasonButton(EpisodeHud.TakeItOnCaption);
+            var after = seasonDirector.Snapshot;
+            RequireSeason(after.revision > before.revision, "Taking a play on must commit.");
+            RequireSeason(after.storylines.Any(x => EpisodeEngine.TakenOn(x)), "A play taken on is a play taken on.");
+            seasonReport.playsTaken++;
+            seasonReport.commands++;
+            yield return CloseSeasonPanel();
+            seasonDirector.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
+            yield return null;
+            RequireSeason(SeasonTextOnScreen(EpisodeDirector.PlaysHeading),
+                "The notebook's Story section must list the play under " + EpisodeDirector.PlaysHeading + ".");
+            yield return CaptureSeason("play-in-notebook", graphical);
+            yield return CloseSeasonPanel();
+        }
+
+        /// <summary>Whether a label with exactly these words is on screen.</summary>
+        private bool SeasonTextOnScreen(string words) => seasonDirector.GetComponentsInChildren<TMPro.TMP_Text>(true)
+            .Any(text => text.isActiveAndEnabled && text.text == words);
     }
 }

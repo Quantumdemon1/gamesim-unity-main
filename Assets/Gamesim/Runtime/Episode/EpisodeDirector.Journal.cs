@@ -569,6 +569,7 @@ namespace Gamesim.Episode
                 case "bond": return "a bond";
                 case "history": return "your history with them";
                 case "obligation": return "your deal with them";
+                case "plea": return "your plea to them";
                 default: return code;
             }
         }

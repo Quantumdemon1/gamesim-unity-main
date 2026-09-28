@@ -143,6 +143,7 @@ namespace Gamesim.Simulation
                 case "relationship": return StandingKnown(s, voterId, nomineeId);
                 case "history": return true;
                 case "obligation": return true;
+                case "plea": return true;
                 case "alliance":
                     return factor.evidenceIds.All(id => AllianceKnown(s, id));
                 case "blocPressure":

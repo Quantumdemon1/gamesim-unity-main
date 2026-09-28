@@ -19,11 +19,14 @@ namespace Gamesim.Episode
 
         /// <summary>The heading over a plea: which decision it comes before.</summary>
         public static string LobbyHeading(EpisodeState state) =>
-            state.phase == EpisodePhase.Nomination ? "A WORD BEFORE THE NOMINATIONS" : "A WORD BEFORE THE VETO MEETING";
+            state.phase == EpisodePhase.Nomination ? "A WORD BEFORE THE NOMINATIONS"
+            : state.phase == EpisodePhase.Campaign ? "A WORD BEFORE THE VOTE" : "A WORD BEFORE THE VETO MEETING";
 
         /// <summary>What this houseguest is deciding, and what a plea costs.</summary>
         public static string LobbyLine(EpisodeState state, ContestantState npc)
         {
+            if (state.phase == EpisodePhase.Campaign)
+                return npc.name + " votes on eviction night. You get one plea before the vote, and it costs one of your conversations.";
             string decides = state.phase == EpisodePhase.Nomination ? npc.name + " decides who goes up this week."
                 : npc.id == state.vetoHolderId && npc.id == state.hohId ? npc.name + " holds the veto, and names the replacement if it is used."
                 : npc.id == state.vetoHolderId ? npc.name + " decides whether to use the veto."

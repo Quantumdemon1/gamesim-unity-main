@@ -139,6 +139,18 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void UnderAgencyItTakesThePactThresholdToWhisper([Values(true, false)] bool agency)
+        {
+            var s = At(x => AfterEviction(x, 2));
+            NoBlocs(s);
+            if (agency) EpisodeEngine.EnableAgency(s, s.week);
+            var npcs = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
+            Both(s, npcs[0].id, npcs[1].id, 22);
+            Assert.That(StoryCatalog.ProximityCast(s, "walked-in-whispering", npcs[0].id, npcs[1].id) != null, Is.EqualTo(!agency),
+                agency ? "Where warm pairs are common, twenty-two is not close enough to whisper." : "Without agency, twenty whispers.");
+        }
+
+        [Test]
         public void TheBlockNamesTheNomineeStillInTheHouse([Values(true, false)] bool reach)
         {
             var s = At(x => AfterEviction(x, 2) && x.nominees.Count == 2 && !x.nominees.Contains(x.playerId) && x.hohId != x.playerId,

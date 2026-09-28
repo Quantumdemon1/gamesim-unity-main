@@ -308,8 +308,11 @@ namespace Gamesim.Simulation
         public static ArcBinding ProximityCast(EpisodeState s, string arcId, string a, string b)
         {
             if (s == null || a == null || b == null || a == b) return null;
+            // Where the houseguests have their own agency, warm pairs are common and pact pairs climb
+            // to seventy: there it takes the pact threshold (twenty-five) to whisper, so arguing stays common.
+            double warm = EpisodeEngine.AgencyOn(s) ? 25 : 20;
             bool close = s.Score(a, b) >= HouseEventSources.UnspokenPairWarmth
-                         || (EpisodeEngine.StoryAt(s, StoryRules.Reach) && (s.Allied(a, b) || StoryPeople.Mutual(s, a, b) >= 20));
+                         || (EpisodeEngine.StoryAt(s, StoryRules.Reach) && (s.Allied(a, b) || StoryPeople.Mutual(s, a, b) >= warm));
             switch (arcId)
             {
                 case "kitchen-blowup":

@@ -266,12 +266,15 @@ namespace Gamesim.Episode
             {
                 if (state.Active.Any(actor => actor.isPlayer) && !state.finalSpeeches.Any(speech => speech.speakerId == state.playerId))
                 {
-                    var field = seasonDirector.GetComponentsInChildren<InputField>().Single(input => input.isActiveAndEnabled && input.name == "Final speech draft");
+                    // The HUD's speech field is an EpisodeSpeechInputField, a TMP_InputField. This looked
+                    // for the legacy uGUI InputField, missed when the HUD moved to TextMeshPro (the PlayMode
+                    // helper was caught then; this one only runs when the walk makes the player a finalist).
+                    var field = seasonDirector.GetComponentsInChildren<TMPro.TMP_InputField>().Single(input => input.isActiveAndEnabled && input.name == "Final speech draft");
                     field.Select(); field.ActivateInputField(); yield return null; yield return null;
                     foreach (char character in VerificationSpeech)
                         field.ProcessEvent(new Event { type = EventType.KeyDown, character = character, keyCode = character == '\n' ? KeyCode.Return : KeyCode.None });
                     field.ForceLabelUpdate();
-                    RequireSeason(field.text == VerificationSpeech,"The actual uGUI speech field must retain the typed QA draft.");
+                    RequireSeason(field.text == VerificationSpeech,"The actual speech field must retain the typed QA draft.");
                     yield return CaptureSeason("final-speech-draft",graphical);
                     yield return ClickSeasonButton(EpisodeHud.SpeechSubmitCaption);
                     RequireSeason(seasonDirector.Snapshot.finalSpeeches.Any(speech => speech.speakerId == state.playerId

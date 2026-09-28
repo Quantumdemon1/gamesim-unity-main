@@ -20,6 +20,8 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+#if GAMESIM_UMA
+        // UMA only: your moves are mocap takes on the humanoid controller, which only a UMA body wears.
         /// <summary>
         /// Your chip is your moves: a card of them over it, with nothing committed and no panel
         /// opened. A pose holds until you walk off, a dance until a panel opens, and G opens and
@@ -80,6 +82,7 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(2);
             Assert.That(director.EmoteMenuOpen, Is.False, "and closes them.");
         }
+#endif
 
         /// <summary>
         /// Presses a move and waits for it to be made, asserting that neither the press nor the
@@ -102,6 +105,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(last), caption + ": making the move commits nothing.");
         }
 
+#if GAMESIM_UMA
+        // UMA only: your moves are mocap takes on the humanoid controller, which only a UMA body wears.
         /// <summary>
         /// With motion reduced, a move is a moment: your pose, eased in and out, whatever you asked
         /// for - and the status line says what you did.
@@ -128,7 +133,10 @@ namespace Gamesim.Tests.PlayMode
                 "after a beat, not at once.");
             Assert.That(director.PlayerEmote, Is.Null);
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: your moves are mocap takes on the humanoid controller, which only a UMA body wears.
         /// <summary>
         /// The house answers a cheer: whoever is near enough and standing still turns to you and
         /// answers by what your own record says they are to you - a cheer back, a shrug or a look -
@@ -170,5 +178,6 @@ namespace Gamesim.Tests.PlayMode
             foreach (var id in far)
                 Assert.That(director.LastAnswers.Any(answer => answer.id == id), Is.False, id + " is across the house and does not answer.");
         }
+#endif
     }
 }

@@ -88,6 +88,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(effects.Steam.isEmitting, Is.False, "Off the hob, the steam stops.");
         }
 
+#if GAMESIM_UMA
+        // UMA only: a length of the pool is swum by a UMA body's humanoid controller.
         [UnityTest]
         public IEnumerator Effects_ASwimmerSplashes()
         {
@@ -122,5 +124,6 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(effects.Splash.isEmitting, Is.False, "Out of the water, no more splashes.");
         }
+#endif
     }
 }

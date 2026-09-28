@@ -33,10 +33,21 @@ namespace Gamesim.Tests.PlayMode
             // Each frame shows the portrait of the contestant it is bound to. Asserted against the
             // exact texture rather than merely "something is assigned", because every frame sharing
             // one face would satisfy the weaker check and be the more likely bug.
+            //
+            // Without UMA there is no portrait to show. The cast is UMA's alone (2026-09-27), and a
+            // look nobody can build is no face, never somebody else's. So a clone without the package
+            // asserts exactly that, and goes on to the eviction, which the frame's tint carries.
+            bool facesAreBuilt = CharacterBodySource.Provider is IModularCharacterBodyProvider;
             double portraitDeadline = Time.realtimeSinceStartupAsDouble + 60;
             for (int i = 0; i < frames.Length; i++)
             {
                 var actor = state.contestants[i];
+                if (!facesAreBuilt)
+                {
+                    Assert.That(CharacterPortraits.Get(actor), Is.Null, actor.name + " has no portrait without UMA.");
+                    Assert.That(PortraitTexture(frames[i]), Is.Null, "Frame " + i + " shows no face, not somebody else's.");
+                    continue;
+                }
                 Texture expected = null;
                 while (expected == null && Time.realtimeSinceStartupAsDouble < portraitDeadline)
                 {

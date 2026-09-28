@@ -75,6 +75,13 @@ namespace Gamesim.Editor
             material.SetOverrideTag("RenderType", "Transparent");
             material.renderQueue = (int)RenderQueue.Transparent;
             material.SetColor("_BaseColor", Color.white);
+            // What URP's own validation writes for a transparent surface drawn on both faces, set
+            // here so the asset is born in that state. Left for URP, the first editor to validate
+            // it rewrote the committed asset in the middle of a test run, and the review pipeline's
+            // audit rightly failed on a product input that changed under it (2026-09-27).
+            material.doubleSidedGI = true;
+            material.SetShaderPassEnabled("DepthOnly", false);
+            material.SetShaderPassEnabled("SHADOWCASTER", false);
         }
 
         private static Texture2D Texture(string path)

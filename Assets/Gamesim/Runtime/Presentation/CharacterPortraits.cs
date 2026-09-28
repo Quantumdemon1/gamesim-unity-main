@@ -114,7 +114,13 @@ namespace Gamesim.Presentation
             { name = key, hideFlags = HideFlags.DontSave, filterMode = FilterMode.Bilinear };
             target.Create();
             // The studio image is 4:5. Crop to a square rather than stretching the face.
+            // Blit leaves its destination as the active render target, so whatever was active is put
+            // back. Otherwise the next ScreenCapture in the frame reads this 384-pixel portrait
+            // instead of the screen. The standalone check's first screenshot did, and the season
+            // walk stopped on the error (2026-09-27).
+            var active = RenderTexture.active;
             Graphics.Blit(source, target, new Vector2(1f, .8f), new Vector2(0f, .1f));
+            RenderTexture.active = active;
             CachePortrait(key, target);
         }
 

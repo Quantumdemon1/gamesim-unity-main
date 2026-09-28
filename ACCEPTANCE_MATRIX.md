@@ -116,7 +116,7 @@ The expected headless result is **678/0/0** Edit Mode, **111/0/0** Play Mode and
 | B6 | UMA shading matches the set | `BuiltBody_IsFlattenedTowardTheHouseLook` | smoothness ≤ 0.1, metallic 0, bump scale 0 | **passed** |
 | B6b | UMA proportions match the set | `Houseguest_BuildsARiggedBodyOfHumanProportions` | stylised height 1.5–1.85 m, every house DNA value applied | **passed** — 1.72 m, from 2.05 m un-stylised |
 | B6c | The cast reads at gameplay distance | `Accessibility_ReportsHowLargeTheCastReadsOnScreen` | houseguests legible at the default camera | **measured; default kept at 24 by decision** — see below |
-| B7 | UMA is genuinely optional | Clone without `Assets/UMA`, committed settings | project compiles, Edit Mode green, define stays off | **passed** — 0 errors, 678/678 |
+| B7 | UMA is genuinely optional | Clone without `Assets/UMA`, committed settings | project compiles, Edit and Play Mode green, define stays off | **passed** — 0 errors; Edit Mode 1711/1711, Play Mode 575/575 (2026-09-27; the 27 tests of UMA-only features compile only with `GAMESIM_UMA`) |
 | B8 | UMA does not regress the suite | Full Edit + Play suites with UMA installed | A1 and A2 still hold | **passed** — 678/0/0 and 114/0/0 with UMA installed |
 | B9 | The seam defaults to the project's own body | `CharacterBodyProviderPlayModeTests` | no provided body appears unless a provider supplied one, and no test leaks a provider | **passed** |
 | B10 | The episode runs on UMA bodies | `Gamesim/UMA/Use UMA bodies in the episode`, then the full suite | suite stays green with UMA live in `EpisodeHouse.unity` | **passed** — 114/0/0 |

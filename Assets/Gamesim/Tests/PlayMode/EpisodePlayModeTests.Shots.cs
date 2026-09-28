@@ -166,9 +166,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.GetComponent<HouseSeatPresentation>().Settled,Is.True);
             // Into the lens (playtest, 2026-09-27): the head was told to look 1.5 m over the camera,
             // a person's standing height, and sat with its chin at the ceiling and its eyes over it.
+            // A UMA body sits with its eyes at the lens, so it looks nearly level. The primitive rig
+            // of a clone without UMA sits with its head lower and tilts some 15 degrees up to find
+            // the lens. What neither may do is look over it, which pinned the head at the limit.
             var confessing = player.GetComponent<CharacterPresentation>();
             Assert.That(confessing.LookTarget, Is.SameAs(cameraRig.ViewCamera.transform), "The confessional looks at the camera,");
-            Assert.That(Mathf.Abs(confessing.LookPitch), Is.LessThan(10f), "into the lens, not over it: the head pitched " + confessing.LookPitch + " degrees.");
+            float level = CharacterBodySource.Provider != null ? 10f : CharacterPresentation.LookPitchLimit - 1f;
+            Assert.That(Mathf.Abs(confessing.LookPitch), Is.LessThan(level), "into the lens, not over it: the head pitched " + confessing.LookPitch + " degrees.");
             var seen = cameraRig.ViewCamera.WorldToViewportPoint(seating.FacePosition);
             Assert.That(seen.z > 0f && seen.x > 0.3f && seen.x < 0.7f && seen.y > 0.3f && seen.y < 0.7f, Is.True, "The actual seated face holds the frame: " + seen);
             Assert.That(Vector3.Dot(player.transform.forward,(cameraRig.ViewCamera.transform.position-player.transform.position).normalized),Is.GreaterThan(.5f),

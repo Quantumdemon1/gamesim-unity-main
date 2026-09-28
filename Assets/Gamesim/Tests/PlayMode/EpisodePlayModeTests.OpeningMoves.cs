@@ -11,6 +11,8 @@ namespace Gamesim.Tests.PlayMode
 {
     public sealed partial class EpisodePlayModeTests
     {
+#if GAMESIM_UMA
+        // UMA only: a move on the mark is a mocap take on the humanoid controller, which only a UMA body wears.
         /// <summary>
         /// On the mark, as the name comes up, the dancers dance their own dance and everyone else
         /// strikes a pose a body of their build strikes - and two people revealed one after the
@@ -71,5 +73,6 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(visual.Activity, Is.Not.EqualTo(CharacterPresentation.BodyActivity.Dancing)
                     .And.Not.EqualTo(CharacterPresentation.BodyActivity.Posing), id + "'s move ended with the show.");
         }
+#endif
     }
 }

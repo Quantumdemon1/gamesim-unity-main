@@ -41,6 +41,8 @@ namespace Gamesim.Tests.PlayMode
             yield return Frames(3);
         }
 
+#if GAMESIM_UMA
+        // UMA only: an introduction's dance is a mocap take on the humanoid controller, which only a UMA body wears.
         /// <summary>
         /// A houseguest who dances because an introduction landed stops when the opening ends, even
         /// when the introductions are skipped in the middle of the dance: the dance's own clock ran on
@@ -68,6 +70,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(visual.Activity, Is.Not.EqualTo(CharacterPresentation.BodyActivity.Dancing),
                 "The dance ended with the opening, not a second and a half into free time.");
         }
+#endif
 
         /// <summary>
         /// The disc under the player goes down for the opening with the name plates and comes back

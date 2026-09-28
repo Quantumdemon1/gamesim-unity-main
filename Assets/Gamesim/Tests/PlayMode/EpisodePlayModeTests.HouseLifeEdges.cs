@@ -92,6 +92,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+#if GAMESIM_UMA
+        // UMA only: a change of body mid-climb is a UMA body's change of clothes.
         /// <summary>
         /// A new body arriving while the player climbs out - the change back out of the swimwear
         /// starts as they get up, and often finishes on the way - climbs on from where the old one
@@ -130,6 +132,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Vector3.Distance(Flat(presentation.VisualRoot.position), Flat(player.transform.position)), Is.LessThan(.05f),
                 "On the deck, where the player stands.");
         }
+#endif
 
         private static Vector3 Flat(Vector3 point) => new Vector3(point.x, 0f, point.z);
 

@@ -46,6 +46,8 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>When the house entry is complete: its card is in by 0.9 s and the season's arrival line by 2.5 s; the card itself goes at 4 s.</summary>
         private const float HouseEntryArrivedSeconds = 2.6f;
 
+#if GAMESIM_UMA
+        // UMA only: these frames are judged on the faces in them, and only UMA builds a face (2026-09-27).
         /// <summary>
         /// The staged opening, beat by beat, as it plays in the house: the front door built in the
         /// west yard, everybody walked through it, the walk-in's crane, and the introductions framed
@@ -279,7 +281,10 @@ namespace Gamesim.Tests.PlayMode
             yield return CaptureFraming("opening-staged-13-after", settle: true);
             Object.Destroy(watcher.gameObject);
         }
+#endif
 
+#if GAMESIM_UMA
+        // UMA only: these frames are judged on the faces in them, and only UMA builds a face (2026-09-27).
         /// <summary>
         /// The opening without the front door - reduced motion, a house that cannot be staged - where
         /// every reveal is a portrait on a card, the reference build's own reveal for a houseguest with
@@ -346,6 +351,7 @@ namespace Gamesim.Tests.PlayMode
             opening.Skip();
             yield return WaitFor(() => !opening.IsPlaying, 3f, "The opening ends when it is skipped.");
         }
+#endif
 
         // ---------------------------------------------------------------- helpers
 

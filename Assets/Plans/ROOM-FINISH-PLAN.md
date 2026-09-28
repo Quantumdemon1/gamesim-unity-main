@@ -211,7 +211,11 @@ entry `-executeMethod Gamesim.Editor.HouseRoomFinish.Apply`.
     saved dimmer copy of the same material (`Neon Gold (dim)` …), so the perimeter drops to
     supporting brightness room by room without touching the prototype's materials.
 - **Nothing under `Room Finish` carries a collider**, casts shadows or contributes to GI: it is probe-lit
-  dressing on a lightmapped set. The NavMesh is therefore untouched, and so are the anchors. A slice
+  dressing on a lightmapped set. Measured 2026-09-28: away from a lamp's direct light a probe-lit rug
+  gets only the night's ambient and reads black from above, so the pass's flat materials - rugs,
+  bands, decals, labels - carry a low self-illumination from their own texture (`Finish`'s `glow`,
+  0.2-0.4; the dark rug designs also a 1.6 base-colour lift), the guide's "emissive presentation"
+  rather than a bake change. The NavMesh is therefore untouched, and so are the anchors. A slice
   that adds solid furniture (the game room's pool table, a bench at the HoH bed's foot) is the
   exception: it places an authored piece with its `_col`, then FitCollision → Resolve → Rebake, in the
   same run, and says so in its commit.
@@ -495,11 +499,11 @@ blue / rose / cream; nomination = navy + gold; yard = green + neon lanes.
 | 2 | Kitchen | §5.2 | built 2026-09-28: `HouseRoomFinish.Kitchen` - the run's top in marble, the backsplash band from the counter to the wall's top, three appliance panels, coffee and pantry clusters and a towel on the counter, the navy rug under the long table, the pack-5 KITCHEN sign on the east wall; capture reviewed (the backsplash line, the rug and the sign read from above; the panels and the clusters are counter-scale, for the room camera) |
 | 3 | Living | §5.3 | built 2026-09-28: `HouseRoomFinish.LivingRoom` - oak slat bands on the north partition, a lit strip either side of the screen's place, the house mark, the rug between the sofa and the coffee table (the neutral abstract: the teal read as a black patch from above under the room's light), the table's cluster, two framed prints on the south wall, a corner plant; the seats stay where their anchors are, so the guide's tighter conversation group waits for the collision slice (§9) |
 | 4 | HoH | §5.4 | built 2026-09-28: `HouseRoomFinish.HohSuite` - the bed in cream (its duvet and headboard share one authored material) with a throw at its foot, the luxury geometric and brass inlay bands, the cream-and-gold rug under the lounge, the reward station on the television console and the wall above it, the crown, the HoH neon by the door; capture reviewed: the rug, the lounge and the neon read from above, but the suite is lit cyan by the perimeter trim so the cream bed reads blue-grey - the §7 dimming is what fixes that, not another texture; the bench at the bed's foot waits for the collision slice (§9) |
-| 5 | Nomination | §5.5 + the idle display | planned |
-| 6 | Games | §5.6 | planned |
-| 7 | Bedroom | §5.7 | planned |
-| 8 | Yard | §5.8 | planned |
-| 9 | Balance | §7 dimming, the final capture sheet, `ROOM-FINISH-PLAN.md` status | planned |
+| 5 | Nomination | §5.5 + the idle display | built 2026-09-28: `HouseRoomFinish.NominationRoom`; the idle display hangs under the screen prop and `ScreenSurface` hides it under a card, and `ScreenSurface` now measures the board as its glow sub-mesh (the old fallback measured the whole set); captures reviewed: the ring under the table and the NOMINATIONS display on the face read from above |
+| 6 | Games | §5.6 | built 2026-09-28: `HouseRoomFinish.GameRoom` (no pool table: it needs a piece and the collision slice, §9); capture reviewed: one marquee, the sofa on its circle rug, the boxes on the table |
+| 7 | Bedroom | §5.7 | built 2026-09-28: `HouseRoomFinish.Bedroom` with `SkinEach` for one duvet per bed; capture reviewed: five beds in their colours, boxes at their feet, the rug between |
+| 8 | Yard | §5.8 | built 2026-09-28: `HouseRoomFinish.CompetitionYard` (the display, the lane lines, three cases; no towers yet, §9); capture reviewed: the cases by the west fence, the display under the signs, the centre open |
+| 9 | Balance | §7 dimming, the final capture sheet, `ROOM-FINISH-PLAN.md` status | built 2026-09-28: `Dim` with `NeonBalance`, dimmed copies of the prototype's neon materials as assets, and the pass's flat dressing self-lit (§4.3). What the dimming cannot do: the trim's cyan **bounce is baked into the lightmaps**, so the suite's cream bed still reads blue-grey until the house is baked again - a rebake is its own slice (§9), because it rewrites the lighting assets the review candidate audits |
 
 Estimate: half a day for slice 0, half a day to a day per room, with the diary and the kitchen the
 longest. Captures are the clock: a slice whose capture does not show the fingerprint is not done.
@@ -522,3 +526,7 @@ longest. Captures are the clock: a slice whose capture does not show the fingerp
   (`CEREMONY-CUTSCENES-PLAN.md` §6); the ceremonial floor ring is placed under where it will stand.
 - **Editor markers as gizmos:** `HouseInteractionAnchorAuthoring` drawing the pack's SIT/COOK/OBSERVE
   icons at each anchor is a development aid; the files are imported for it, the gizmo is not written.
+- **The rebake:** the perimeter trim's bounce was baked at full brightness, so a room dimmed to a
+  half still carries the old cyan in its lightmaps (the HoH bed). Re-running
+  `HouseCinematicLighting` with the dimmed materials and the finish in place is minutes on the GPU
+  and rewrites the lighting assets; it lands as its own slice, verified by the audited pipeline.

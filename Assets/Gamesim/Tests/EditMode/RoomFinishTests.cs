@@ -313,6 +313,187 @@ namespace Gamesim.Tests.EditMode
             finally { EditorSceneManager.ClosePreviewScene(scene); }
         }
 
+        [Test]
+        public void TheNominationRoomFramesItsScreenRingsItsFloorAndCarriesTheIdleDisplay()
+        {
+            var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
+            try
+            {
+                var all = scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true)).ToArray();
+                var floor = all.First(t => t.name == "Nomination floor").GetComponent<Renderer>().bounds;
+                var root = Root(scene);
+                var nomination = root.Find("Nomination room");
+                Assert.That(nomination, Is.Not.Null);
+                var renderers = nomination.GetComponentsInChildren<Renderer>(true);
+                Bounds BoundsOf(Transform t) => t.GetComponentsInChildren<Renderer>(true).Select(r => r.bounds).Aggregate((a, b) => { a.Encapsulate(b); return a; });
+
+                var screen = all.Single(t => t.name == "bb_set_ceremonyscreen");
+                var face = Gamesim.Presentation.ScreenSurface.Measure(screen, "Nomination", floor.center);
+                Assert.That(face, Is.Not.Null);
+                var frame = renderers.Single(r => r.name == "Ceremony frame");
+                Assert.That(frame.bounds.size.x, Is.GreaterThan(face.Width + 0.3f), "The gold linework is wider than the board, so it shows round its edge,");
+                Assert.That(Vector3.Dot(frame.bounds.center - face.Centre, face.Normal), Is.LessThan(0f), "and stands behind the face.");
+                Assert.That(frame.sharedMaterial.renderQueue, Is.GreaterThanOrEqualTo((int)RenderQueue.Transparent), "lit.");
+                var idle = screen.GetComponentsInChildren<Renderer>(true).Single(r => r.name == Gamesim.Presentation.ScreenSurface.IdleDisplayName);
+                Assert.That(idle.enabled, Is.True, "The idle display shows when no card does.");
+                Assert.That(Vector3.Dot(idle.bounds.center - face.Centre, face.Normal), Is.InRange(0.001f, 0.012f), "It sits on the face, inside a card's stand-off.");
+                Assert.That(idle.bounds.size.x, Is.LessThan(face.Width), "and inside the board's width.");
+                Assert.That(renderers.Count(r => r.name == "Stage ornament"), Is.EqualTo(1));
+                var stageSlots = screen.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).Where(m => m != null).Select(m => m.name).ToList();
+                Assert.That(stageSlots, Does.Contain("bb_mat_p6_nomination_stage_marble"), "The stage is dark marble.");
+
+                var table = all.Single(t => t.name == "tableRound" && floor.Contains(new Vector3(t.position.x, floor.center.y, t.position.z)));
+                var tb = BoundsOf(table);
+                var ring = renderers.Single(r => r.name == "Ceremony ring");
+                Assert.That(Vector2.Distance(new Vector2(ring.bounds.center.x, ring.bounds.center.z), new Vector2(tb.center.x, tb.center.z)), Is.LessThan(0.1f), "The ring is centred on the table.");
+                Assert.That(ring.bounds.size.x, Is.EqualTo(4.6f).Within(0.05f));
+                Assert.That(renderers.Count(r => r.name == "Wall emblem"), Is.EqualTo(2), "An emblem on each divider.");
+                Assert.That(renderers.Count(r => r.name == "Band · South wing south wall"), Is.EqualTo(1), "The presentation wall behind the board.");
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
+        [Test]
+        public void TheGameRoomGetsOneMarqueeItsBoxesRugPostersAndFridge()
+        {
+            var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
+            try
+            {
+                var all = scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true)).ToArray();
+                var floor = all.First(t => t.name == "Games floor").GetComponent<Renderer>().bounds;
+                var games = Root(scene).Find("Game room");
+                Assert.That(games, Is.Not.Null);
+                var renderers = games.GetComponentsInChildren<Renderer>(true);
+                Assert.That(renderers.Count(r => r.name == "Arcade marquee"), Is.EqualTo(1), "One neon focal piece, not six.");
+                Assert.That(renderers.Count(r => r.sharedMaterial != null && r.sharedMaterial.renderQueue >= (int)RenderQueue.Transparent), Is.EqualTo(1), "and nothing else in the room glows.");
+                Assert.That(renderers.Count(r => r.name == "Game box"), Is.EqualTo(3), "Three game boxes on the coffee table,");
+                var boxes = renderers.Where(r => r.name == "Game box").OrderBy(r => r.bounds.min.y).ToList();
+                Assert.That(boxes[1].bounds.min.y, Is.EqualTo(boxes[0].bounds.max.y).Within(0.01f), "stacked.");
+                Assert.That(renderers.Count(r => r.name == "Game poster"), Is.EqualTo(2), "Two posters,");
+                Assert.That(renderers.Count(r => r.name == "Game poster frame"), Is.EqualTo(2), "framed.");
+                Assert.That(renderers.Count(r => r.name == "Trophy plaque"), Is.EqualTo(1));
+                Assert.That(renderers.Count(r => r.name == "Mini fridge"), Is.EqualTo(1));
+                Assert.That(renderers.Count(r => r.name == "Game room pattern"), Is.EqualTo(1));
+                var rug = renderers.Single(r => r.name == "Game rug");
+                Assert.That(floor.Contains(new Vector3(rug.bounds.center.x, floor.center.y, rug.bounds.center.z)), Is.True);
+                Assert.That(renderers.Count(r => r.name.StartsWith("Band · South wing divider 2", StringComparison.Ordinal)), Is.EqualTo(2), "Charcoal geometric on the west divider.");
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
+        [Test]
+        public void TheBedroomGivesEveryBedItsOwnDuvetAndAStorageBoxAtItsFoot()
+        {
+            var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
+            try
+            {
+                var all = scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true)).ToArray();
+                var floor = all.First(t => t.name == "Bedroom floor").GetComponent<Renderer>().bounds;
+                var bedroom = Root(scene).Find("Bedroom");
+                Assert.That(bedroom, Is.Not.Null);
+                var renderers = bedroom.GetComponentsInChildren<Renderer>(true);
+                bool InRoom(Transform t) => floor.Contains(new Vector3(t.position.x, floor.center.y, t.position.z));
+                var singles = all.Where(t => t.name == "bedSingle" && InRoom(t)).ToList();
+                Assert.That(singles.Count, Is.EqualTo(3), "Three singles.");
+                var duvets = singles.Select(b => b.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials)
+                    .First(m => m != null && m.name.StartsWith("bb_mat_p6_duvet_", StringComparison.Ordinal)).name).ToList();
+                Assert.That(duvets.Distinct().Count(), Is.EqualTo(3), "each in its own duvet: " + string.Join(", ", duvets));
+                var bunks = all.Where(t => t.name == "bedBunk" && InRoom(t)).ToList();
+                Assert.That(bunks.Count, Is.EqualTo(2));
+                foreach (var bunk in bunks)
+                {
+                    var names = bunk.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).Where(m => m != null).Select(m => m.name).ToList();
+                    Assert.That(names.Count(n => n.StartsWith("bb_mat_p6_duvet_", StringComparison.Ordinal)), Is.EqualTo(2), "a bunk's two beds in two duvets");
+                    Assert.That(names, Does.Not.Contain("bb_mat_velvet_teal").And.Not.Contain("bb_mat_cushion_coral"));
+                }
+                Assert.That(renderers.Count(r => r.name == "Storage box"), Is.EqualTo(3), "A storage box at every single's foot,");
+                Assert.That(renderers.Count(r => r.name == "Shoe box"), Is.EqualTo(2), "a shoe box at each bunk's.");
+                foreach (var box in renderers.Where(r => r.name == "Storage box"))
+                    Assert.That(singles.Any(b => Mathf.Abs(b.position.x - box.bounds.center.x) < 0.3f), Is.True, "each box under its bed's line.");
+                var rug = renderers.Single(r => r.name == "Bedroom rug");
+                Assert.That(rug.bounds.size.x, Is.EqualTo(5.2f).Within(0.05f), "One big rug joins the beds.");
+                Assert.That(renderers.Count(r => r.name == "Laundry basket"), Is.EqualTo(1));
+                Assert.That(renderers.Count(r => r.name == "Suitcase"), Is.EqualTo(1));
+                Assert.That(renderers.Count(r => r.name == "Book"), Is.EqualTo(2));
+                Assert.That(renderers.Count(r => r.name == "Toiletry"), Is.EqualTo(3), "toiletries on the three drawers");
+                Assert.That(renderers.Count(r => r.name == "Corkboard"), Is.EqualTo(1));
+                Assert.That(renderers.Count(r => r.name == "Polaroid"), Is.EqualTo(3));
+                Assert.That(renderers.Count(r => r.name == "Framed print"), Is.EqualTo(2));
+                Assert.That(renderers.Count(r => r.name == "Magazine"), Is.EqualTo(1));
+                Assert.That(renderers.Select(r => r.name).Where(n => n.StartsWith("Band · ", StringComparison.Ordinal)),
+                    Is.EquivalentTo(new[] { "Band · House / yard left", "Band · West wall" }), "Blue behind the singles, rose behind the bunks.");
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
+        [Test]
+        public void TheYardGetsItsDisplayItsLinesAndItsCasesAndKeepsItsCentreOpen()
+        {
+            var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
+            try
+            {
+                var all = scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true)).ToArray();
+                var floor = all.First(t => t.name == "Competition yard floor").GetComponent<Renderer>().bounds;
+                var yard = Root(scene).Find("Competition yard");
+                Assert.That(yard, Is.Not.Null);
+                var renderers = yard.GetComponentsInChildren<Renderer>(true);
+                var display = renderers.Single(r => r.name == "Yard display");
+                Assert.That(display.bounds.center.z, Is.GreaterThan(floor.max.z - 1.5f), "The display is on the backdrop at the head of the yard.");
+                Assert.That(renderers.Count(r => r.name == "Start line"), Is.EqualTo(3), "A start line per lane,");
+                Assert.That(renderers.Count(r => r.name == "Finish line"), Is.EqualTo(3), "a finish line per lane.");
+                foreach (var line in renderers.Where(r => r.name == "Start line" || r.name == "Finish line"))
+                    Assert.That(line.bounds.max.y, Is.LessThan(floor.max.y + 0.05f), line.name + " lies on the floor.");
+                Assert.That(renderers.Count(r => r.name == "Flight case"), Is.EqualTo(3), "Three cases by the west fence,");
+                foreach (var thing in renderers.Where(r => r.name == "Flight case"))
+                    Assert.That(thing.bounds.center.x, Is.LessThan(floor.min.x + 3f), "at the edge, never in the middle.");
+                // The centre stays open: nothing the yard's finish placed stands within four metres of its middle.
+                var middle = new Vector2(floor.center.x, floor.center.z);
+                foreach (var renderer in renderers.Where(r => r.name != "Start line" && r.name != "Finish line"))
+                    Assert.That(Vector2.Distance(new Vector2(renderer.bounds.center.x, renderer.bounds.center.z), middle), Is.GreaterThan(4f), renderer.name + " crowds the yard's centre.");
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
+        /// <summary>Pass 8: the perimeter neon inside each room wears a dimmed copy of its material; the yard keeps its own.</summary>
+        [Test]
+        public void ThePerimeterNeonComesDownRoomByRoomAndTheYardKeepsItsOwn()
+        {
+            var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
+            try
+            {
+                var world = scene.GetRootGameObjects().First(go => go.name == "House Architecture").transform;
+                var root = Root(scene);
+                // The perimeter neon: the prototype's transplanted trim and the south wing's own strips.
+                var trim = world.GetComponentsInChildren<Renderer>(true)
+                    .Where(r => !r.transform.IsChildOf(root) && r.sharedMaterial != null
+                        && (r.sharedMaterial.name.StartsWith("Neon ", StringComparison.Ordinal) || r.sharedMaterial.name.StartsWith("bb_mat_p6_dim_neon", StringComparison.Ordinal)))
+                    .ToList();
+                Assert.That(trim.Count, Is.GreaterThan(50), "Precondition: the house has its neon trim.");
+                foreach (var (floorName, factor) in HouseRoomFinish.NeonBalance)
+                {
+                    var floor = world.GetComponentsInChildren<Transform>(true).First(t => t.name == floorName).GetComponent<Renderer>().bounds;
+                    var inside = trim.Where(r => r.bounds.center.x > floor.min.x - 0.15f && r.bounds.center.x < floor.max.x + 0.15f
+                        && r.bounds.center.z > floor.min.z - 0.15f && r.bounds.center.z < floor.max.z + 0.15f).ToList();
+                    Assert.That(inside, Is.Not.Empty, floorName + " has trim to dim.");
+                    foreach (var piece in inside)
+                    {
+                        Assert.That(piece.sharedMaterial.name, Does.StartWith("bb_mat_p6_dim_neon").And.EndWith("_" + Mathf.RoundToInt(factor * 100f)),
+                            floorName + ": " + piece.name + " wears " + piece.sharedMaterial.name);
+                        Assert.That(AssetDatabase.GetAssetPath(piece.sharedMaterial), Does.StartWith(HouseRoomFinish.MaterialFolder + "/"));
+                    }
+                }
+                var yard = world.GetComponentsInChildren<Transform>(true).First(t => t.name == "Competition yard floor").GetComponent<Renderer>().bounds;
+                var yardTrim = trim.Where(r => r.bounds.center.z > yard.min.z + 0.5f).ToList();
+                Assert.That(yardTrim.All(r => r.sharedMaterial.name.StartsWith("Neon ", StringComparison.Ordinal)), Is.True, "The yard's neon is untouched: it is the competition's own.");
+                var dim = AssetDatabase.LoadAssetAtPath<Material>(HouseRoomFinish.MaterialFolder + "/bb_mat_p6_dim_neon_gold_50.mat");
+                var full = AssetDatabase.LoadAssetAtPath<Material>("Assets/Gamesim/Art/Prototype/Emissive/Neon Gold.mat");
+                Assert.That(dim, Is.Not.Null); Assert.That(full, Is.Not.Null);
+                Assert.That(dim.GetColor("_EmissionColor").maxColorComponent, Is.EqualTo(full.GetColor("_EmissionColor").maxColorComponent * 0.5f).Within(0.01f),
+                    "Half the emission, the same colour.");
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
         /// <summary>The pass is idempotent: run on the saved scene it rebuilds the same root.</summary>
         [Test]
         public void RunningThePassAgainRebuildsTheSameRoot()

@@ -37,6 +37,13 @@ namespace Gamesim.Presentation
         /// <summary>The lens the screen and the reaction shots share, so a cut never eases the lens.</summary>
         public const float FieldOfView = 40f;
 
+        /// <summary>
+        /// The idle graphic the room finish pass hangs on the face (ROOM-FINISH-PLAN.md §5.5), under
+        /// the prop so the living room's clone carries it too. A card covers it while it shows.
+        /// </summary>
+        public const string IdleDisplayName = "Idle display";
+        private static readonly Dictionary<Canvas, List<Renderer>> hiddenIdle = new Dictionary<Canvas, List<Renderer>>();
+
         public Transform Prop { get; }
         public string Room { get; }
         /// <summary>The middle of the face, in the world.</summary>
@@ -66,23 +73,48 @@ namespace Gamesim.Presentation
         public static ScreenSurface Measure(Transform prop, string room, Vector3 roomCentre)
         {
             if (prop == null) return null;
+            // Not the idle graphic the room finish hangs on the face: it is drawn on the board, and
+            // measuring it as the board would size the next one to it.
             var renderers = prop.GetComponentsInChildren<Renderer>().Where(r => r.enabled && r.GetComponent<Canvas>() == null
-                && r.GetComponentInParent<Canvas>() == null).ToList();
+                && r.GetComponentInParent<Canvas>() == null && r.name != IdleDisplayName).ToList();
             if (renderers.Count == 0) return null;
             // The board, not the stage it stands on: the set's screen is a 2.6 × 1.5 board on a
-            // 4 m stage (bb_set_ceremonyscreen.py), and the card belongs on the board. Its part is
-            // named for it and lit by the screen's material; failing both, the widest face off
-            // the floor; failing that, the whole prop.
-            var board = renderers.FirstOrDefault(r => r.name.IndexOf("board", System.StringComparison.OrdinalIgnoreCase) >= 0
-                || (r.sharedMaterial != null && r.sharedMaterial.name.IndexOf("screen", System.StringComparison.OrdinalIgnoreCase) >= 0));
-            if (board == null)
-                board = renderers.Where(r => r.bounds.min.y > 0.5f).OrderByDescending(r => r.bounds.size.x * r.bounds.size.y).FirstOrDefault();
-            Bounds bounds;
-            if (board != null) bounds = board.bounds;
-            else
+            // 4 m stage (bb_set_ceremonyscreen.py), and the card belongs on the board. The authored
+            // piece is one mesh, so the board is the sub-mesh the screen's glow material lights,
+            // measured in the prop's own space and turned into the world; failing that, a part
+            // named for it or lit by that material; failing that, the widest face off the floor;
+            // failing that, the whole prop.
+            Bounds bounds = default;
+            bool found = false;
+            foreach (var renderer in renderers)
             {
-                bounds = renderers[0].bounds;
-                for (int i = 1; i < renderers.Count; i++) bounds.Encapsulate(renderers[i].bounds);
+                var filter = renderer.GetComponent<MeshFilter>();
+                var mesh = filter != null ? filter.sharedMesh : null;
+                if (mesh == null) continue;
+                var slots = renderer.sharedMaterials;
+                for (int i = 0; i < slots.Length && i < mesh.subMeshCount; i++)
+                {
+                    if (slots[i] == null || !slots[i].name.StartsWith("bb_mat_glow_screen", System.StringComparison.Ordinal)) continue;
+                    var local = mesh.GetSubMesh(i).bounds;
+                    if (local.size.sqrMagnitude <= 0f) continue;
+                    bounds = WorldBounds(local, renderer.transform);
+                    found = true;
+                    break;
+                }
+                if (found) break;
+            }
+            if (!found)
+            {
+                var board = renderers.FirstOrDefault(r => r.name.IndexOf("board", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || (r.sharedMaterial != null && r.sharedMaterial.name.IndexOf("screen", System.StringComparison.OrdinalIgnoreCase) >= 0));
+                if (board == null)
+                    board = renderers.Where(r => r.bounds.min.y > 0.5f).OrderByDescending(r => r.bounds.size.x * r.bounds.size.y).FirstOrDefault();
+                if (board != null) bounds = board.bounds;
+                else
+                {
+                    bounds = renderers[0].bounds;
+                    for (int i = 1; i < renderers.Count; i++) bounds.Encapsulate(renderers[i].bounds);
+                }
             }
             bool facesZ = bounds.size.z <= bounds.size.x;
             var axis = facesZ ? Vector3.forward : Vector3.right;
@@ -92,6 +124,16 @@ namespace Gamesim.Presentation
             var normal = Vector3.Dot(toRoom, axis) >= 0f ? axis : -axis;
             var centre = bounds.center + normal * (thickness * 0.5f);
             return new ScreenSurface(prop, room, centre, normal, width, bounds.size.y);
+        }
+
+        /// <summary>A local-space box turned into the world's axis-aligned box round its eight corners.</summary>
+        private static Bounds WorldBounds(Bounds local, Transform space)
+        {
+            var min = local.min; var max = local.max;
+            var world = new Bounds(space.TransformPoint(local.center), Vector3.zero);
+            for (int i = 0; i < 8; i++)
+                world.Encapsulate(space.TransformPoint(new Vector3((i & 1) == 0 ? min.x : max.x, (i & 2) == 0 ? min.y : max.y, (i & 4) == 0 ? min.z : max.z)));
+            return world;
         }
 
         /// <summary>
@@ -140,6 +182,12 @@ namespace Gamesim.Presentation
             root.sizeDelta = new Vector2(ReferenceWidth, ReferenceHeight);
             root.localScale = Vector3.one * Scale;
             root.SetPositionAndRotation(Centre + Normal * Standoff, Quaternion.LookRotation(-Normal, Vector3.up));
+            // The idle graphic goes dark under the card and comes back when the card comes down.
+            var idle = new List<Renderer>();
+            if (Prop != null)
+                foreach (var renderer in Prop.GetComponentsInChildren<Renderer>(true))
+                    if (renderer.name == IdleDisplayName && renderer.enabled) { renderer.enabled = false; idle.Add(renderer); }
+            if (idle.Count > 0) hiddenIdle[canvas] = idle;
         }
 
         /// <summary>Takes a canvas back off the screen: the HUD's own overlay, at the HUD's own size.</summary>
@@ -150,6 +198,11 @@ namespace Gamesim.Presentation
             root.localScale = Vector3.one;
             root.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            if (hiddenIdle.TryGetValue(canvas, out var idle))
+            {
+                foreach (var renderer in idle) if (renderer != null) renderer.enabled = true;
+                hiddenIdle.Remove(canvas);
+            }
         }
 
         /// <summary>

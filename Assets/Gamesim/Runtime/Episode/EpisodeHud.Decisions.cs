@@ -106,58 +106,16 @@ namespace Gamesim.Episode
         public void EventChoices(System.Collections.Generic.IList<(string Caption, string Description, string Risk, Action Choose)> choices)
         {
             DecisionText(content, "How should you respond?", 16, UiTheme.Muted).alignment = TextAlignmentOptions.Center;
-            int columns = choices.Count > 1 ? 2 : 1;
-            float spacing = 10f * FontScale;
-            float cellWidth = (ContentWidth() - spacing * (columns - 1)) / columns;
-            // Tall enough for a caption and two lines under it at the player's text size.
-            float cellHeight = 78f * FontScale;
-            int rows = Mathf.CeilToInt(choices.Count / (float)columns);
-            var grid = new GameObject(EventChoicesName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
-            grid.SetParent(content, false);
-            var layout = grid.GetComponent<GridLayoutGroup>();
-            layout.cellSize = new Vector2(cellWidth, cellHeight);
-            layout.spacing = new Vector2(spacing, spacing);
-            layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            layout.constraintCount = columns;
-            var size = grid.GetComponent<LayoutElement>();
-            size.minHeight = size.preferredHeight = rows * cellHeight + (rows - 1) * spacing;
-
+            // The same tiles the free-time screen draws its moves as (EpisodeHud.FreeTime.cs), the
+            // risk word in the corner in the web's colour and the glyph read from the caption.
+            var tiles = new System.Collections.Generic.List<MoveTile>();
             foreach (var choice in choices)
-            {
-                var rect = Chrome(choice.Caption, grid, UiTheme.Emphasis.Interactive);
-                HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
-                var button = Pressable(rect, choice.Choose);
-                var colours = button.colors;
-                colours.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
-                colours.selectedColor = colours.highlightedColor;
-                button.colors = colours;
-
-                float s = FontScale;
-                var tile = Panel("Choice tile", rect, UiTheme.SurfaceRaised, 8);
-                Anchor(tile, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(12f * s, 0f), new Vector2(40f * s, 40f * s));
-                tile.GetComponent<Image>().raycastTarget = false;
-                var glyph = HudPrimitives.Glyph("Choice mark", tile, ChoiceGlyph(choice.Caption), Accent, new Vector2(8f * s, -8f * s), 24f * s);
-
-                var tint = RiskTint(choice.Risk);
-                var riskWord = FixedText(rect, choice.Risk, 11, tint, Vector2.zero, new Vector2(78f * s, 16f * s));
-                Anchor(riskWord.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-10f * s, -8f * s), new Vector2(78f * s, 16f * s));
-                riskWord.alignment = TextAlignmentOptions.Right;
-
-                float text = 64f * s;
-                var caption = NewText(rect, choice.Caption, 16, Paper);
-                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
-                if (semibold != null) caption.font = semibold;
-                AutoSize(caption, 11);
-                Anchor(caption.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -8f * s),
-                    new Vector2(cellWidth - text - 92f * s, 22f * s));
-                if (!string.IsNullOrEmpty(choice.Description))
+                tiles.Add(new MoveTile
                 {
-                    var line = NewText(rect, choice.Description, 13, UiTheme.Muted);
-                    AutoSize(line, 10);
-                    Anchor(line.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -32f * s),
-                        new Vector2(cellWidth - text - 12f * s, 40f * s));
-                }
-            }
+                    Caption = choice.Caption, Description = choice.Description, Corner = choice.Risk,
+                    CornerTint = RiskTint(choice.Risk), Glyph = ChoiceGlyph(choice.Caption), Choose = choice.Choose,
+                });
+            ChoiceTiles(EventChoicesName, tiles);
         }
 
         /// <summary>The glyph a response is drawn with, from the words of its caption.</summary>

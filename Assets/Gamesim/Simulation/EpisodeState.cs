@@ -201,7 +201,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 18;
+        public int schemaVersion = 19;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -228,6 +228,10 @@ namespace Gamesim.Simulation
         public int readRulesStartWeek;
         /// <summary>Schema 18: the week the levers begin (STRATEGY-LOOP-PLAN.md §3); 0 for a save that never reached them.</summary>
         public int leverRulesStartWeek;
+        /// <summary>Schema 19: the week the windows begin (STRATEGY-LOOP-PLAN.md §4); 0 for a save that never reached them.</summary>
+        public int weekRulesStartWeek;
+        /// <summary>Schema 19: the conversations spent in each of the week's four windows, reset as the week turns.</summary>
+        public List<int> windowActions = new List<int> { 0, 0, 0, 0 };
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();
@@ -461,6 +465,7 @@ namespace Gamesim.Simulation
             // Deep, like every list above: a rejected candidate command must leave nothing behind.
             copy.story = story?.Clone();
             copy.ledger = ledger?.Clone();
+            copy.windowActions = windowActions == null ? null : new List<int>(windowActions);
             return copy;
         }
     }

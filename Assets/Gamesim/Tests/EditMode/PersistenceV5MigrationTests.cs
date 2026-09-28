@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         public void FreshGamesStartInWeekOneAndThePrimitiveIsDetachedInEverySnapshot()
         {
             var input = ContentCatalog.Create(501);
-            Assert.That(input.schemaVersion, Is.EqualTo(18));
+            Assert.That(input.schemaVersion, Is.EqualTo(19));
             Assert.That(input.blocRulesStartWeek, Is.EqualTo(1));
             var engine = new EpisodeEngine(input);
             var copy = engine.Snapshot; copy.blocRulesStartWeek = 2; input.blocRulesStartWeek = 2;
@@ -37,7 +37,7 @@ namespace Gamesim.Tests.EditMode
             var v4 = version < 4 ? EpisodeSaveMigrations.PrepareV4Payload(original, out _) : original;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(original, out bool changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(18));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(19));
             Assert.That((int)migrated["blocRulesStartWeek"], Is.EqualTo(8));
             Assert.That((uint)migrated["randomState"], Is.Zero);
             // Without schema 7's card copy: see the note on the v4 twin.
@@ -289,7 +289,8 @@ namespace Gamesim.Tests.EditMode
                     "strategyRulesStartWeek", "lobbies", "replyCards",
                     "story",
                     "ledger", "readRulesStartWeek",
-                    "leverRulesStartWeek" }.Contains(field);
+                    "leverRulesStartWeek",
+                    "weekRulesStartWeek", "windowActions" }.Contains(field);
                 case "state.contestants[]": return new[] { "occupation", "archetype", "age", "hometown", "bio", "sourceTemplateId", "appearance" }.Contains(field);
                 default: return false;
             }

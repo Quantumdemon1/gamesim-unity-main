@@ -206,6 +206,7 @@ namespace Gamesim.Simulation
                         StoryWeekTurn(s);
                     }
                     s.socialActions = 0; s.outOfPhaseSocialActions = 0; s.competitionResolved = false;
+                    ResetWindows(s);
                     s.replyCards.Clear();
                     // The finale has no Have-Nots: the last week's end with its three, and so do any
                     // passes and punishments the final four's veto left behind.
@@ -626,7 +627,8 @@ namespace Gamesim.Simulation
             // What the week gives, what was bought, and what a storyline left behind — which can be
             // negative — less a conversation for a Have-Not, so the whole thing is floored at one. A
             // week with no interactions at all would be a week the player cannot play.
-            Math.Max(1, EarnedSocialActionBudget(s) + Math.Max(0, s.boughtActionPoints)
+            WeekRulesOn(s) ? WindowBudget(s)
+            : Math.Max(1, EarnedSocialActionBudget(s) + Math.Max(0, s.boughtActionPoints)
                         + Storylines.SocialActions(s) - HaveNots.ActionCost(s));
 
         /// <summary>The allowance before anything is bought: what the week gives you for free.</summary>
@@ -645,7 +647,7 @@ namespace Gamesim.Simulation
         public const int LegacySocialActionBudget = 18;
 
         /// <summary>What the player has spent this week, in the social window and outside it.</summary>
-        public static int SocialActionsSpent(EpisodeState s) => s.socialActions + s.outOfPhaseSocialActions;
+        public static int SocialActionsSpent(EpisodeState s) => WeekRulesOn(s) ? WindowSpent(s) : s.socialActions + s.outOfPhaseSocialActions;
 
         /// <summary>
         /// At Final 4 a veto holder who is not on the block may not use the veto.
@@ -980,9 +982,19 @@ namespace Gamesim.Simulation
                 // From the strategy windows the Head of Household can be reached before nominations,
                 // and the veto holder before the meeting. Everybody else, and everything that is not
                 // a word with them, still waits for free time.
-                Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
-                string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
-                Require(refusal == null, refusal);
+                if (WeekRulesOn(s) && Window(s) != Windows.None)
+                {
+                    // The week's windows (STRATEGY-LOOP-PLAN.md section 4): free roam and every word said
+                    // to somebody, in every window; the strategy windows' own rule still keeps listening
+                    // in, rumours and scheming for the free time.
+                    Require(StrategyRules.IsWindowConversation(c.kind), "That can wait for free time. Right now there is a decision to be made.");
+                }
+                else
+                {
+                    Require(StrategyRules.WindowOpen(s), "Social actions are available during free time and campaigning.");
+                    string refusal = StrategyRules.WindowRefusal(s, c.targetId, c.kind);
+                    Require(refusal == null, refusal);
+                }
             }
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
@@ -1068,6 +1080,7 @@ namespace Gamesim.Simulation
         {
             if (s.phase == EpisodePhase.Social) s.socialActions++;
             else s.outOfPhaseSocialActions++;
+            SpendInWindow(s);
         }
 
         // ---------------------------------------------------------------- the rest of the vocabulary

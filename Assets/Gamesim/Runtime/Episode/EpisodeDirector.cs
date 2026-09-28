@@ -1159,7 +1159,9 @@ namespace Gamesim.Episode
                 // that read as a mood - and the week's budget is not on it, because nothing here
                 // spends it. The exception is a strategy window: whoever is deciding has time.
                 bool window = state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign;
-                if (window && !StrategyRules.IsDecider(state, npc.id))
+                // Under the week's windows every houseguest has time for a word wherever a window is open;
+                // the notice is for the phases with no seats, and for the strategy windows before them.
+                if (window && !StrategyRules.IsDecider(state, npc.id) && !(EpisodeEngine.WeekRulesOn(state) && EpisodeEngine.Window(state) != Windows.None))
                 {
                     double trust = state.Score(state.playerId, npc.id);
                     var identity = new List<string>();

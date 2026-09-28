@@ -201,6 +201,19 @@ between the story's anchors, which keep their meaning and order.
 The engine change is in `Advance` and the budget; the story's anchors fire where they fire today, and
 the story side reviews the sequence before it lands.
 
+**As built (R5, 2026-09-28; reviewed by the story side).** `EpisodeEngine.Window(state)` maps the
+phases: Nomination → after the HoH (2 seats); VetoSelection, Veto and VetoMeeting → after the
+nominations (1); Campaign → after the veto (2); Social → after the eviction (ceil(active/2) + 2 − 5,
+floored at 1); competitions, ceremonies and eviction night → none. Four counters
+(`EpisodeState.windowActions`, schema 19) reset at the week turn; `weekRulesStartWeek` is the
+boundary. The extras (bought time, `Storylines.SocialActions`, less a Have-Not's conversation) are one
+weekly pool spent after a window's own seats by whichever window overspends first; a negative pool
+comes off the window after the HoH. `SocialActionBudget`/`SocialActionsSpent` keep their signatures
+and return the open window's figures. Free roam and every conversation said to somebody are open in
+all four windows; `IsWindowConversation` still keeps listening in, rumours and scheming for the free
+time. Deferred to R5b: walk-ins for a player HoH, badges and the objective chip's line, the dial's
+grouping.
+
 ## 5. The Verdict
 
 **Name.** The owner asked for a game-IQ score under another name. Recommended: **Game Sense**, scored

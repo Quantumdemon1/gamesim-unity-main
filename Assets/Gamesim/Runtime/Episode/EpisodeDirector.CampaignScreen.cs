@@ -42,14 +42,8 @@ namespace Gamesim.Episode
             hud.Action(campaignMore ? CampaignLessCaption : CampaignMoreCaption, () => { campaignMore = !campaignMore; Render(); });
             if (!campaignMore) return;
             CurrentLocation(state);
-            HouseWideActions(state);
-            if (state.Active.Count(actor => !actor.isPlayer) >= 2)
-            {
-                hud.Paragraph("You can also try to overhear a conversation you are not part of. "
-                    + "It works about seven times in ten; the rest of the time somebody notices.");
-                hud.Tag(hud.Action("Listen in on a conversation", () => Commit(state, EpisodeCommandKind.Eavesdrop)),
-                    Category(EpisodeCommandKind.Eavesdrop));
-            }
+            // The whole house's moves and listening in, as the tiles free time draws them.
+            HouseMoves(state);
         }
 
         /// <summary>Walk over and talk, from a voter's card: the panel closes, then the walk.</summary>

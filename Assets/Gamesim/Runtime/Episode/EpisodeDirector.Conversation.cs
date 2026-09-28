@@ -589,48 +589,9 @@ namespace Gamesim.Episode
             FrameHouseEvent(item);
         }
 
-        /// <summary>
-        /// The two things you can do to the whole house at once, and the two ways to buy more time.
-        ///
-        /// <para>These live in the phase panel rather than in a conversation because neither is
-        /// addressed to a person. A house meeting is addressed to the room, and buying an action is
-        /// addressed to nobody — it is a trade with the week itself.</para>
-        ///
-        /// <para>Each control says what it costs before it is pressed. A purchase that only revealed
-        /// its price afterwards would be a trap rather than a decision.</para>
-        /// </summary>
-        private void HouseWideActions(EpisodeState state)
-        {
-            bool room = state.Active.Any(c => !c.isPlayer);
-            if (!room) return;
-
-            hud.Heading("THE WHOLE HOUSE");
-            hud.Paragraph("A meeting moves everybody at once. Rallying the room is mostly positive "
-                + "with one sceptic; airing everything has no middle ground — each housemate either "
-                + "comes down with you or against you.");
-            hud.Tag(hud.Action(EpisodeHud.RallyHouseCaption,
-                    () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops)),
-                Category(EpisodeCommandKind.HouseMeeting));
-            hud.Tag(hud.Action(EpisodeHud.AirLaundryCaption,
-                    () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry)),
-                Category(EpisodeCommandKind.HouseMeeting));
-
-            int left = WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints;
-            if (left <= 0)
-            {
-                hud.Paragraph("You have bought as much time as the house will give you this " + (EpisodeEngine.LeverRulesOn(state) ? "week" : "season") + ".");
-                return;
-            }
-            hud.Paragraph("Out of interactions? You can buy another, and it is paid for in goodwill: "
-                + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost) + " points with one housemate, or "
-                + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost) + " with every one of them. "
-                + left + (left == 1 ? " purchase" : " purchases") + " left.");
-            hud.Tag(hud.Action(EpisodeHud.BuyBurnOneCaption,
-                    () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.BurnOne)),
-                Category(EpisodeCommandKind.BuyActionPoint));
-            hud.Tag(hud.Action(EpisodeHud.BuySpreadCaption,
-                    () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.SpreadAll)),
-                Category(EpisodeCommandKind.BuyActionPoint));
-        }
+        // The whole house's moves and the two ways of buying time are tiles on the free-time and
+        // campaign screens now (EpisodeDirector.FreeTimeScreen.cs, HouseMoves): neither is addressed
+        // to a person, so they live on the screen rather than in a conversation, and each says what
+        // it costs before it is pressed.
     }
 }

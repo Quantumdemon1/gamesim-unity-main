@@ -319,9 +319,15 @@ namespace Gamesim.Editor
         /// <para>The hip-hop dance is one too: its six seconds carry the hips 1.49 m forward and
         /// the loop starts them back where they began, so baked into the pose a dancer would stride
         /// off their spot and snap back to it every cycle. As root motion it dances where it stands.</para>
+        ///
+        /// <para>And the walk itself, which was never in-place (playtest, 2026-09-28: "broken for
+        /// all characters"): its hips travel 1.78 m over the 1.03 s cycle, so baked into the pose
+        /// every body walked nearly two metres ahead of its agent each second and snapped back to
+        /// it. Measured by sampling the take on its own skeleton (the hips from z -0.02 to -1.80).
+        /// As root motion, which nothing applies, the body walks on the spot the agent carries.</para>
         /// </summary>
         public static readonly System.Collections.Generic.ISet<string> TravellingTakes =
-            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal) { "WalkStop", "WalkTurn180", "DanceHipHop_loop" };
+            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal) { "Walk_loop", "WalkStop", "WalkTurn180", "DanceHipHop_loop" };
 
         /// <summary>
         /// Humanoid takes whose body lies or swims, where "Based Upon: Body Orientation" means

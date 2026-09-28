@@ -214,6 +214,27 @@ all four windows; `IsWindowConversation` still keeps listening in, rumours and s
 time. Deferred to R5b: walk-ins for a player HoH, badges and the objective chip's line, the dial's
 grouping.
 
+### 4.5 As built: free time as a screen, and the notebook's own page (2026-09-28)
+
+The owner's playtest: the free-time screen ("Make your next move") was too cluttered and wordy,
+and "Notebook [J]" opened the relationships, which the rail already had a row for.
+
+- **Free time** (`EpisodeDirector.FreeTimeScreen.cs`) is drawn as the campaign is: the location and
+  the meter, one line of the window's rule under it, then the house as cards (`EpisodeHud.HouseCards`:
+  those in the room with you first, the week's role on the photo, where you stand, the latest thing
+  you have on them, and "Talk to X" walks over), then the moves that name nobody as tiles
+  (`EpisodeHud.MoveTiles`, the house event's tiles generalised): the two meetings, listening in and
+  the two ways of buying time, each saying in a line what it does and costs, its category in the
+  corner. The paragraphs are gone; every rule they stated is on the tile it belongs to. The
+  campaign's "More ways to campaign" shows the same tiles.
+- **The notebook** opens on its own page, **Your notes** (`EpisodeDirector.Notes.cs`,
+  `HouseguestNotes` in the simulation): a card a houseguest with what your character has on them
+  from the season's own records, newest first: their word (promises, offers, your calls, shared
+  pacts), what they told you about the vote and whether it held, what you read of them (with what
+  they are up to, from this week's read), what they put to you and how you answered, and what you
+  remember. Filters: everyone, in the house, their word, the vote, your reads. Nothing you have not
+  learned. The rail's rows are unchanged; "Relationships" is still the web.
+
 ## 5. The Verdict
 
 **Name.** The owner asked for a game-IQ score under another name. Recommended: **Game Sense**, scored

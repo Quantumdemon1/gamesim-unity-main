@@ -423,6 +423,22 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void UnderAgencyOnePlayIsOfferedAWeek()
+        {
+            var s = At(AfterEviction);
+            EpisodeEngine.EnableAgency(s, s.week);
+            Assert.That(EpisodeEngine.AgencyOn(s), Is.True, "The fixture's house has its own agency.");
+            Assert.That(EpisodeEngine.PlayOffersFor(s), Is.EqualTo(EpisodeEngine.PlayOffersAWeekUnderAgency));
+            OneFriend(s);
+            Assert.That(EpisodeEngine.StartStory(s, "their-word", StoryAnchors.EvictionNight), Is.True);
+            s = Answer(s, "their-word", PlayOptions.NotNow);
+            Assert.That(EpisodeEngine.AirtimeFor(s, StorySurfaces.Approach, false, true, false), Is.False,
+                "A house that takes to people casts a play whenever one may come: one new offer a week holds the density.");
+            Assert.That(EpisodeEngine.AirtimeFor(s, StorySurfaces.Approach, false, true, true), Is.True,
+                "A step of a play taken on is still held back by no weekly count.");
+        }
+
+        [Test]
         public void TenSocialPointsBankedBuyAConversation([Values(true, false)] bool underThePlaysRules)
         {
             var s = At(AfterEviction);

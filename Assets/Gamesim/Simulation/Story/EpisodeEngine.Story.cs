@@ -146,6 +146,15 @@ namespace Gamesim.Simulation
         /// <summary>Most new play offers a week: their own budget, beside the arcs' asks rather than out of them.</summary>
         public const int PlayOffersAWeek = 2;
 
+        /// <summary>
+        /// Where the houseguests have their own agency (the other session's R6) a warmer house casts a
+        /// chapter or a play almost every time one may come, so one new offer a week holds D1's density.
+        /// </summary>
+        public const int PlayOffersAWeekUnderAgency = 1;
+
+        /// <summary>This season's weekly play offers: <see cref="PlayOffersAWeek"/>, or one under agency.</summary>
+        public static int PlayOffersFor(EpisodeState s) => AgencyOn(s) ? PlayOffersAWeekUnderAgency : PlayOffersAWeek;
+
         /// <summary>Whether a beat belongs to a play: plays keep their own airtime.</summary>
         private static bool IsPlayBeat(EpisodeState s, HouseEventState e) =>
             e.cycleId != null && StoryCatalog.Find(s.storylines.FirstOrDefault(x => x.id == e.cycleId)?.templateId)?.play != null;
@@ -193,7 +202,7 @@ namespace Gamesim.Simulation
             if (s.houseEvents.Count >= HouseEvents.Ceiling) return false;
             if (s.Find(s.playerId)?.status != ContestantStatus.Active) return false;
             if (surface == StorySurfaces.Npc) return true;
-            if (play) return OpenPlayAsk(s) == null && (playStep || PlayOffersThisWeek(s) < PlayOffersAWeek);
+            if (play) return OpenPlayAsk(s) == null && (playStep || PlayOffersThisWeek(s) < PlayOffersFor(s));
             if (surface == StorySurfaces.Summons)
                 return OpenSummons(s) == null && (mustFire || SummonsesThisWeek(s) < SummonsesAWeek);
             return OpenArcAsk(s) == null && (mustFire || AsksThisWeek(s) < AsksAWeek);
@@ -351,6 +360,13 @@ namespace Gamesim.Simulation
         public const double PlayNothingWeight = 20;
 
         /// <summary>
+        /// The same where the houseguests have their own agency (the other session's R6): a house that
+        /// takes to people casts far more plays, which took a skilled player to nineteen story decisions
+        /// a season against D1's ten to fifteen, so the pause is longer there.
+        /// </summary>
+        public const double PlayNothingWeightUnderAgency = 30;
+
+        /// <summary>
         /// Plays draw from their own pool (plan 30 §5): at most one new offer an anchor, on a roll of
         /// their own and within their own budget, so plays neither crowd out the house's arcs nor
         /// wait behind them. A season before the plays rules casts none, so its pool is untouched.
@@ -367,7 +383,8 @@ namespace Gamesim.Simulation
                 if (weight > 0) candidates.Add((template, binding, weight));
             }
             if (candidates.Count == 0) return;
-            double roll = StoryRandom.Unit(s, "w" + s.week + ":" + ctx.anchor + ":plays") * (candidates.Sum(c => c.weight) + PlayNothingWeight);
+            double nothing = AgencyOn(s) ? PlayNothingWeightUnderAgency : PlayNothingWeight;
+            double roll = StoryRandom.Unit(s, "w" + s.week + ":" + ctx.anchor + ":plays") * (candidates.Sum(c => c.weight) + nothing);
             foreach (var candidate in candidates.OrderBy(c => c.template.id, StringComparer.Ordinal))
             {
                 if (roll < candidate.weight)

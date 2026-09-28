@@ -338,3 +338,24 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
   9.4 for random; win rates 61% against 37%. ReachReport: unchanged but for the-house-turns' usual
   flicker.
 - Floors: EditMode 1818, PlayMode 614, Uma 64, Sim 1021.
+
+## Retune for the other session's agency (R6, 2026-09-28)
+- R6 (7f398b9) gives the houseguests temperaments, first impressions and agendas, under its own
+  boundary (`EpisodeEngine.AgencyOn`). Its numbers:
+  - NPC-only pacts go from 0.06 a season to 1.2, under a cap of one per three houseguests;
+  - warm pairs are common;
+  - the house's view of the player warms from -8.5 to -4.3 at week 3.
+- On it the story's measures moved:
+  - the reader's story decisions rose to 18.8 a season (D1 is 10-15), with 4.9 plays offered, most as
+    thread chapters;
+  - the skill gap narrowed to 20 points, because a warmer house makes every check easier;
+  - reach improved: only on-notice never came round in 480 seasons.
+- Retuned, all keyed to AgencyOn so a season without agency keeps its numbers:
+  - one play offer a week (`PlayOffersAWeekUnderAgency`, read through `EpisodeEngine.PlayOffersFor`);
+    a step of a play taken on stays free;
+  - the plays' pool pauses a little longer (nothing-weight 30, was 20);
+  - walked-in-whispering needs the pact threshold, mutual 25, where warm pairs are common.
+- PlaysReport after: the reader makes 14.8 decisions a season with 3.5 plays offered; win rates 62%
+  against 40% (22 points). ThreadsReport: 2.6 threads a season; 112 of the 113 seasons that pass week
+  one have two or three; every thread ends at its climax or a stated end.
+- Floors: EditMode 1857, PlayMode 615, Uma 64, Sim 1052.

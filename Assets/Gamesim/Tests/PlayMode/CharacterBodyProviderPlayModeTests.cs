@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -154,6 +155,48 @@ namespace Gamesim.Tests.PlayMode
                 Is.False, "No provided body may appear when no provider supplied one.");
             Assert.That(visual.GetComponentsInChildren<Renderer>(true), Is.Not.Empty,
                 "The houseguest still needs a body of some kind.");
+        }
+
+        /// <summary>
+        /// A provider's body that never becomes drawable is given up on: after the bound the
+        /// houseguest wears the primitive rig, reads as no longer assembling, counts as a finished
+        /// body for the HUD's redraw, and the log says who it was. Without this, a UMA look that
+        /// cannot be built was an invisible houseguest all session, with the opening waiting on them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ABodyThatNeverArrives_IsGivenUpOnForThePrimitiveRig()
+        {
+            provider = new RecordingProvider(); // deferred, never Ready, never a renderer
+            CharacterBodySource.Register(provider);
+            float previous = CharacterPresentation.AssemblyTimeoutSeconds;
+            CharacterPresentation.AssemblyTimeoutSeconds = 0.5f;
+            try
+            {
+                int before = CharacterPresentation.BodiesCompleted;
+                LogAssert.Expect(LogType.Warning, new Regex("body was still not drawable after 0\\.5 s"));
+                var presentation = CharacterPresentation.Attach(actor, Houseguest(), Color.green);
+                yield return null;
+                Assert.That(presentation.IsBodyAssembling, Is.True, "Assembling, while the provider's body is nothing yet,");
+                Assert.That(actor.GetComponentsInChildren<Transform>(true).Any(t => t.name == "Head pivot"), Is.False,
+                    "and nothing stands in.");
+
+                float deadline = Time.realtimeSinceStartup + 10f;
+                while (presentation.IsBodyAssembling && Time.realtimeSinceStartup < deadline) yield return null;
+                Assert.That(presentation.IsBodyAssembling, Is.False, "After the bound the houseguest is no longer assembling,");
+                yield return null;
+                var visual = actor.transform.Find(VisualName);
+                Assert.That(visual, Is.Not.Null);
+                Assert.That(visual.GetComponentsInChildren<Transform>(true).Any(t => t.name == "Head pivot"), Is.True,
+                    "wears the primitive rig,");
+                Assert.That(visual.GetComponentsInChildren<Transform>(true).Any(t => t.name == RecordingProvider.BodyName), Is.False,
+                    "in place of the provider's body,");
+                Assert.That(visual.GetComponentsInChildren<Renderer>(true).Any(renderer => renderer.enabled), Is.True, "and is drawn.");
+                Assert.That(CharacterPresentation.BodiesCompleted - before, Is.EqualTo(1), "The HUD hears of one finished body.");
+            }
+            finally
+            {
+                CharacterPresentation.AssemblyTimeoutSeconds = previous;
+            }
         }
 
         private static ContestantState Houseguest() =>

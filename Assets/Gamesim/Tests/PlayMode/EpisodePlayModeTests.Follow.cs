@@ -244,10 +244,11 @@ namespace Gamesim.Tests.PlayMode
             // still assembling has a render still coming; none assembling means none is coming.
             cameraRig.ClearSubject();
             float bodyDeadline = Time.realtimeSinceStartup + 30f;
-            while (SceneComponents<CharacterPresentation>().Any(body => body.IsBodyAssembling)
+            // Only bodies in the house: one on an inactive actor never finishes, and never renders.
+            while (SceneComponents<CharacterPresentation>().Any(body => body.gameObject.activeInHierarchy && body.IsBodyAssembling)
                 && Time.realtimeSinceStartup < bodyDeadline) yield return null;
-            Assert.That(SceneComponents<CharacterPresentation>().Where(body => body.IsBodyAssembling).Select(body => body.name),
-                Is.Empty, "The cast never finished assembling, so every frame here still has a render coming.");
+            Assert.That(SceneComponents<CharacterPresentation>().Where(body => body.gameObject.activeInHierarchy && body.IsBodyAssembling)
+                .Select(body => body.name), Is.Empty, "The cast never finished assembling, so every frame here still has a render coming.");
             yield return null;
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
             yield return null;

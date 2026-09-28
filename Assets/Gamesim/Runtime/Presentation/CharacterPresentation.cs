@@ -194,6 +194,16 @@ namespace Gamesim.Presentation
         private CharacterBody providedBody;
         /// <summary>A provider's body asked for and not yet drawable: see <see cref="BodyArrived"/>.</summary>
         private bool awaitingBody;
+        /// <summary>
+        /// How long a provider may take to make a body drawable, in real seconds, before the
+        /// houseguest gets the primitive rig instead (<see cref="FallBackToPrimitive"/>), and how
+        /// long a change of clothes may take before it is called off. UMA takes about half a second.
+        /// A body that is still nothing after this long is not coming - a look its index cannot
+        /// build, say - and an invisible houseguest with the opening waiting on them is the worse
+        /// outcome. Public so a test can shorten it.
+        /// </summary>
+        public static float AssemblyTimeoutSeconds = 30f;
+        private float assemblyDeadline, dressingDeadline;
         private RuntimeAnimatorController inspectedController;
         private bool hasSpeedParam, hasSeatedParam, hasTalkingParam, hasListeningParam, hasArguingParam;
         private bool hasRunningParam;
@@ -205,15 +215,16 @@ namespace Gamesim.Presentation
         public Transform VisualRoot => visual;
 
         /// <summary>
-        /// How many deferred bodies have finished assembling this session. Monotonic; readers keep
-        /// their own last-seen value.
+        /// How many deferred bodies have finished assembling this session, or been given up on for
+        /// the primitive rig. Monotonic; readers keep their own last-seen value.
         /// </summary>
         public static int BodiesCompleted { get; private set; }
 
         /// <summary>
         /// True while the provider is still assembling this body, which is not drawn until it is.
-        /// Read-only proof for tests that must not be interrupted by the render a finished body
-        /// triggers; never a source of game knowledge and never a command.
+        /// Bounded by <see cref="AssemblyTimeoutSeconds"/>. Read-only proof for tests that must not
+        /// be interrupted by the render a finished body triggers; never a source of game knowledge
+        /// and never a command.
         /// </summary>
         public bool IsBodyAssembling => awaitingBody;
         private static int deferredCloneBuilds;
@@ -343,6 +354,7 @@ namespace Gamesim.Presentation
                 return;
             }
             dressingRoom = room; dressing = created; dressingAs = character.Clone(); dressingKey = key;
+            dressingDeadline = Time.realtimeSinceStartup + AssemblyTimeoutSeconds;
         }
 
         /// <summary>Copies every parameter the shown body's animator holds onto the one being made.</summary>
@@ -376,6 +388,16 @@ namespace Gamesim.Presentation
         {
             if (dressingRoom == null) return;
             if (!dressing.Exists) { CancelDressing(); return; }
+            // A change that never becomes drawable is called off, and the body on show keeps its
+            // clothes; otherwise the houseguest read as changing for the rest of the session.
+            if (Time.realtimeSinceStartup > dressingDeadline)
+            {
+                Debug.LogWarning("[Gamesim] " + CharacterId + "'s change of clothes was still not drawable after "
+                    + AssemblyTimeoutSeconds.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
+                    + " s; they keep what they have on.");
+                CancelDressing();
+                return;
+            }
             // The Animator the new body has now, looked up every time: UMA replaces the one the
             // body was created with while it assembles, so the handle taken at creation is a
             // destroyed object within a frame - and cues sent to it, and the hand-over below,
@@ -620,7 +642,7 @@ namespace Gamesim.Presentation
             visual.localScale = Vector3.one * heightScale;
 
             if (!TryBuildProvidedBody(appearanceId, palette))
-                BuildPrimitiveBody(appearanceId, palette, diplomat, athlete, caregiver, wildcard, analyst);
+                BuildPrimitiveBodyFor(appearanceId, palette);
 
             // U02's body/head are replaceable visual placeholders. Keep every collider and marker.
             foreach (string oldName in new[] { "Body", "Head" })
@@ -657,7 +679,11 @@ namespace Gamesim.Presentation
 
             // A deferred body has no skeleton yet; LateUpdate picks the head up once it exists.
             if (!created.Deferred) ResolveModelHead();
-            else awaitingBody = true;
+            else
+            {
+                awaitingBody = true;
+                assemblyDeadline = Time.realtimeSinceStartup + AssemblyTimeoutSeconds;
+            }
             return true;
         }
 
@@ -678,6 +704,33 @@ namespace Gamesim.Presentation
             // The director redraws the HUD when a body arrives, for what it can show of a houseguest
             // who is finally there. A counter rather than an event: the director polls it, which
             // cannot leave a subscription behind on a scene that has been unloaded.
+            BodiesCompleted++;
+        }
+
+        /// <summary>
+        /// Gives up on a provider's body that never became drawable and builds the primitive rig in
+        /// its place, saying so once. The houseguest is then on screen, the opening's gate and the
+        /// HUD's redraw see a finished body, and the log names who could not be built. Without this
+        /// a UMA look its index cannot build was an invisible houseguest all session, and the
+        /// opening waited its full cap on them (found in review, 2026-09-27).
+        /// </summary>
+        private void FallBackToPrimitive()
+        {
+            Debug.LogWarning("[Gamesim] " + CharacterId + "'s body was still not drawable after "
+                + AssemblyTimeoutSeconds.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
+                + " s; the primitive rig stands in for the rest of the session.");
+            if (providedBody.Exists)
+            {
+                providedBody.Root.name = "Retired provided body";
+                providedBody.Root.SetActive(false);
+                Destroy(providedBody.Root);
+            }
+            providedBody = default;
+            animator = null; modelHead = null; inspectedController = null;
+            hasSpeedParam = hasSeatedParam = hasTalkingParam = hasListeningParam = hasArguingParam = false;
+            hasRunningParam = hasPaceParam = false; activityParams = 0;
+            awaitingBody = false;
+            BuildPrimitiveBodyFor(AppearanceId(definition, CharacterId), wardrobeColor);
             BodiesCompleted++;
         }
 
@@ -787,6 +840,13 @@ namespace Gamesim.Presentation
             if (accentMaterial != null && !fixedGoldAccent)
                 accentMaterial.color = Color.Lerp(palette, Color.white, 0.55f);
         }
+
+        /// <summary>The primitive rig for a persona: the five shipped looks by key, and a sixth for anyone else.</summary>
+        private void BuildPrimitiveBodyFor(string appearanceId, Color palette) =>
+            BuildPrimitiveBody(appearanceId, palette,
+                diplomat: appearanceId == "maya-hassan", athlete: appearanceId == "taylor-kim",
+                caregiver: appearanceId == "jamie-roberts", wildcard: appearanceId == "casey-wilson",
+                analyst: appearanceId == "riley-johnson");
 
         private void BuildPrimitiveBody(string appearanceId, Color palette,
             bool diplomat, bool athlete, bool caregiver, bool wildcard, bool analyst)
@@ -911,6 +971,7 @@ namespace Gamesim.Presentation
         private void AnimateProvidedBody()
         {
             BodyArrived();
+            if (awaitingBody && Time.realtimeSinceStartup > assemblyDeadline) { FallBackToPrimitive(); return; }
             if (animator == null)
             {
                 animator = providedBody.Root.GetComponentInChildren<Animator>(true);

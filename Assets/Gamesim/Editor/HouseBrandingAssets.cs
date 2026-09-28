@@ -82,6 +82,9 @@ namespace Gamesim.Editor
             material.doubleSidedGI = true;
             material.SetShaderPassEnabled("DepthOnly", false);
             material.SetShaderPassEnabled("SHADOWCASTER", false);
+            // URP also switches motion vectors off for a shader with _AddPrecomputedVelocity, and the
+            // committed asset carries that too; a rebuilt asset must, or its first validation dirties it.
+            material.SetShaderPassEnabled("MotionVectors", false);
         }
 
         private static Texture2D Texture(string path)

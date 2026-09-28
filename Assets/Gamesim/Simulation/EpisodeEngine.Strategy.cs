@@ -119,14 +119,18 @@ namespace Gamesim.Simulation
             if (theirs != null)
             {
                 theirs.members.Add(s.playerId);
+                // Joining is learning: the alliance's fact, if it has one, gains the player as a knower.
+                if (ReadRulesOn(s)) Knowledge.AddKnower(s, Knowledge.Of(s, FactKinds.Alliance, theirs.id), s.playerId);
                 Log(s, "alliance", npc.name + " brought you into " + theirs.name + ".", s.playerId, npcId);
                 return;
             }
-            s.alliances.Add(new AllianceState
+            var pact = new AllianceState
             {
                 id = "alliance-" + s.nextSequence, name = "The " + npc.name.Split(' ')[0] + " Pact",
                 members = new List<string> { s.playerId, npcId },
-            });
+            };
+            s.alliances.Add(pact);
+            AllianceFormedUnderRead(s, pact);
             Log(s, "alliance", "You and " + npc.name + " formed a private alliance.", s.playerId, npcId);
         }
     }

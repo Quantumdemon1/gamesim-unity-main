@@ -562,8 +562,8 @@ namespace Gamesim.Episode
         /// Mockup-06's Nearby card: two houseguests are talking where the player can see them, and
         /// listening in is on offer - the house's own Eavesdrop, with its real cost and odds. Built
         /// hidden in the week card's place and swapped in by <see cref="SetNearby"/> while a
-        /// conversation is being witnessed. It names nobody: what is overheard is the house's to
-        /// decide, not the pair's on screen.
+        /// conversation is being witnessed. The card names nobody, but listening in takes the pair
+        /// being witnessed: what is overheard is theirs (STRATEGY-LOOP-PLAN.md section 2).
         /// </summary>
         private void NearbyCard(Transform parent, float top)
         {

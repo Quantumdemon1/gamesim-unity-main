@@ -28,6 +28,14 @@ namespace Gamesim.Episode
         public const string SpeechSkipCaption = "Skip my final speech";
         public const string SpeechContinueCaption = "Continue to jury voting";
         public const string DiaryTravelCaption = "Go to diary room [R]";
+        /// <summary>The read (STRATEGY-LOOP-PLAN.md section 2): a question and a look, both free, once a week each.</summary>
+        public const string AskVoteCaption = "Where's your head at on the vote?";
+        public const string ReadPersonCaption = "Read them";
+        /// <summary>The vote page's read tab, its whip count, the prefix of each voter's card, and the board's line per voter.</summary>
+        public const string VoteReadTabCaption = "The read";
+        public const string WhipCountName = "Whip count";
+        public const string VoteReadCardPrefix = "Read \u00b7 ";
+        public const string VoteReadLineName = "Read";
         public const string DiaryReviewNominationsCaption = "Review nominations";
         public const string DiaryConfirmCaption = "Confirm diary decision";
         public const string DiaryCancelCaption = "Back to diary (discard choice)";

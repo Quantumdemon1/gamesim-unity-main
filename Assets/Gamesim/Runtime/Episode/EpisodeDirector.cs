@@ -1260,6 +1260,16 @@ namespace Gamesim.Episode
                     Category(EpisodeCommandKind.ShareInformation));
                 hud.Tag(hud.Action("Ask what they have heard", () => Commit(state, EpisodeCommandKind.AskForIntel, npc.id)),
                     Category(EpisodeCommandKind.AskForIntel));
+                // The read (STRATEGY-LOOP-PLAN.md section 2): free, once a week each, and the play itself.
+                // The question is for a voter while there is a vote to ask about; the look is for anyone,
+                // in free time or the campaign.
+                if (VoteRead.Available(state) && EpisodeEngine.Voters(state).Any(v => v.id == npc.id)
+                    && !state.ledger.claims.Any(k => k.week == state.week && k.voterId == npc.id && k.source == ClaimSource.Told))
+                    hud.Tag(hud.Action(EpisodeHud.AskVoteCaption, () => Commit(state, EpisodeCommandKind.AskVote, npc.id)),
+                        Category(EpisodeCommandKind.AskVote));
+                if (!window && !state.ledger.standings.Any(r => r.week == state.week && r.fromId == npc.id && r.toId == state.playerId && r.source == ClaimSource.Read))
+                    hud.Tag(hud.Action(EpisodeHud.ReadPersonCaption, () => Commit(state, EpisodeCommandKind.ReadPerson, npc.id)),
+                        Category(EpisodeCommandKind.ReadPerson));
                 // Both of these need a third person, so they are offered per subject rather than as
                 // one control that would then have to ask "about whom?" after being clicked.
                 foreach (var subject in state.Active.Where(c => !c.isPlayer && c.id != npc.id))

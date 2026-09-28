@@ -125,9 +125,12 @@ leanings only.
   stated leanings as overheard claims.
 - **An ally reports**: a voter in an alliance with the player shares what they have heard at the
   alliance meeting (the existing room act), one claim per meeting.
-- **The reveal explains itself**: story and bloc terms count as player-known when the player caused,
-  witnessed or was told them, so the revealed reason can say "I haven't forgotten what you did" or
-  "the Pact voted together".
+- **The reveal explains itself**: story and alliance terms count as player-known when the player
+  caused, witnessed or was told them, so the revealed reason can say "I haven't forgotten what you
+  did" or "Taylor is in my alliance". A bloc's plan is never spoken, known or not: coordination is
+  the bloc's business and a voter who followed it gives another reason (the bloc tests' contract).
+  For the player an alliance is known when they are in it or hold its fact (`VoteRead.AllianceKnown`);
+  the evaluators' legacy rule (no fact, everyone sees it) is the voters', not the player's.
 
 ## 3. The Levers
 

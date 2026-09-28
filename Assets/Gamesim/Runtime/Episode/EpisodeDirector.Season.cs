@@ -268,6 +268,7 @@ namespace Gamesim.Episode
                 // arcs, grudges, lore, bonds and production. Seasons built directly by tests and
                 // the default scene engine stay off unless they switch it on themselves.
                 EpisodeEngine.EnableStory(fresh);
+                EpisodeEngine.EnableRead(fresh);
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

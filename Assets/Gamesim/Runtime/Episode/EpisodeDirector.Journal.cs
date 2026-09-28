@@ -463,7 +463,7 @@ namespace Gamesim.Episode
             string.IsNullOrEmpty(name) ? string.Empty : name.Split(' ')[0];
 
         /// <summary>Which half of the vote page is showing. View state, like the filters.</summary>
-        private enum VotesTab { Results, Ballots }
+        private enum VotesTab { Results, Ballots, Read }
         private VotesTab votesTab;
 
         /// <summary>
@@ -480,19 +480,94 @@ namespace Gamesim.Episode
         private void RenderNotebookVotes(EpisodeState state)
         {
             var book = VoteRecords.Read(state);
+            // The read has a tab of its own while there is a vote to read; outside a campaign the
+            // tab is not there, and a page left on it opens on the results.
+            bool readable = VoteRead.Available(state);
+            if (!readable && votesTab == VotesTab.Read) votesTab = VotesTab.Results;
             var tabs = new List<(string, bool, Action)>
             {
                 ("Eviction results", votesTab == VotesTab.Results, () => { votesTab = VotesTab.Results; Render(); }),
                 ("Known ballots", votesTab == VotesTab.Ballots, () => { votesTab = VotesTab.Ballots; Render(); }),
             };
+            if (readable) tabs.Add((EpisodeHud.VoteReadTabCaption, votesTab == VotesTab.Read, () => { votesTab = VotesTab.Read; Render(); }));
             hud.FilterRow("Vote tabs", tabs);
             // The mark exists in every state: it is what the rail scrolls to, and an absent one is
             // the difference between an empty page and no page at all.
             hud.Mark(NotebookSection.Votes);
-            if (votesTab == VotesTab.Results) RenderEvictionResults(book);
+            if (votesTab == VotesTab.Read) RenderVoteRead(state);
+            else if (votesTab == VotesTab.Results) RenderEvictionResults(book);
             else RenderKnownBallots(state, book);
             hud.NotebookFooter("Every eviction ballot is made public when its vote is revealed. Until then the only ballot you know is your own.",
                 "House activities", OpenHouseActivities);
+        }
+
+        /// <summary>
+        /// The read (STRATEGY-LOOP-PLAN.md section 2): the whip count and one card per voter, built
+        /// from the vote model's own terms and stripped of what the player has not learned. A read
+        /// is what you have learned, not a ballot; the lock line says so.
+        /// </summary>
+        private void RenderVoteRead(EpisodeState state)
+        {
+            var sheet = VoteRead.Read(state);
+            var first = state.Find(sheet.nomineeIds[0]);
+            var second = state.Find(sheet.nomineeIds[1]);
+            int voters = sheet.voters.Count + (EpisodeEngine.Voters(state).Any(v => v.isPlayer) ? 1 : 0);
+            var lines = new List<string>
+            {
+                "Evict " + first.name + " " + sheet.evictFirst + " \u00b7 Evict " + second.name + " " + sheet.evictSecond + " \u00b7 Unknown " + sheet.unknown,
+                voters + (voters == 1 ? " vote" : " votes") + " this week; a tie goes to the Head of Household.",
+            };
+            string headline = sheet.predictedEvicteeId != null ? "The house is leaning " + state.Find(sheet.predictedEvicteeId).name
+                : sheet.unknown == sheet.voters.Count ? "No read on the house yet" : "Too close to call";
+            hud.RecordCard(EpisodeHud.WhipCountName, "THIS WEEK \u00b7 THE READ", headline, UiTheme.Paper, lines);
+            foreach (var read in sheet.voters)
+            {
+                var voter = state.Find(read.voterId);
+                if (voter == null) continue;
+                bool blank = read.confidence == VoteRead.Unknown && read.saysId == null;
+                hud.RecordCard(EpisodeHud.VoteReadCardPrefix + voter.name, voter.name.ToUpperInvariant(), ReadHeadline(state, read),
+                    blank ? UiTheme.Muted : UiTheme.Paper, ReadLines(state, read));
+            }
+            hud.LockNote(EpisodeHud.VotesPrivacyName, "A read is what you have learned, not a ballot. Ask them straight, read them, listen in, or hear it from an ally.");
+        }
+
+        /// <summary>What the read says of a voter, in a line: their lean and how sure it is, or what they said, or nothing yet.</summary>
+        public static string ReadHeadline(EpisodeState state, VoteRead.VoterRead read)
+        {
+            if (read.confidence == VoteRead.Unknown)
+                return read.saysId != null ? "Says: evict " + state.Find(read.saysId).name : "No read yet";
+            string lean = read.confidence == VoteRead.Torn ? "Torn"
+                : (read.confidence == VoteRead.Firm ? "Firm: evict " : "Leaning: evict ") + state.Find(read.leaningId).name
+                    + (read.exact ? " by " + read.knownMargin.ToString("0") : "");
+            // What they said is worth a word when it is not what the read says.
+            return read.saysId != null && read.saysId != read.leaningId ? lean + " \u00b7 says " + state.Find(read.saysId).name : lean;
+        }
+
+        private static List<string> ReadLines(EpisodeState state, VoteRead.VoterRead read)
+        {
+            var lines = new List<string>();
+            foreach (var claim in read.claims)
+                lines.Add((claim.source == ClaimSource.Told ? "Told you: evict " : claim.source == ClaimSource.Overheard ? "Overheard: evict " : "An ally heard: evict ")
+                    + state.Find(claim.targetId).name + " (week " + claim.week + ")");
+            if (read.knownTerms.Count > 0) lines.Add("You know: " + string.Join(", ", read.knownTerms.Select(TermWords)) + ".");
+            if (read.unknownTerms > 0)
+                lines.Add(read.unknownTerms == 1 ? "1 thing you don't know could change this." : read.unknownTerms + " things you don't know could change this.");
+            return lines;
+        }
+
+        private static string TermWords(string code)
+        {
+            switch (code)
+            {
+                case "relationship": return "how they see the nominees";
+                case "alliance": return "their alliances";
+                case "blocPressure": return "their alliance votes as one";
+                case "deal": return "their deals";
+                case "grudge": return "a grudge";
+                case "bond": return "a bond";
+                case "history": return "your history with them";
+                default: return code;
+            }
         }
 
         private void RenderEvictionResults(VoteRecords.Book book)

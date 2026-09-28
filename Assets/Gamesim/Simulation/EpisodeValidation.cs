@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 16) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 17) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -29,6 +29,8 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Invalid session counters or phase.");
             if (s.blocRulesStartWeek < 1 || s.blocRulesStartWeek > 101 || s.blocRulesStartWeek > s.week + 1)
                 return Fail(out error, "Voting-bloc activation week must be within the saved season boundary.");
+            if (s.readRulesStartWeek < 0 || s.readRulesStartWeek > 101 || s.readRulesStartWeek > s.week + 1)
+                return Fail(out error, "Read-rules activation week must be within the saved season boundary.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
@@ -256,7 +258,7 @@ namespace Gamesim.Simulation
             }
             if (s.phase == EpisodePhase.Jury && s.votes.Any(v => !Live(v.targetId) || Live(v.voterId))) return Fail(out error, "Invalid jury ballot eligibility.");
             return TryValidateV2(s, out error) && TryValidateV3(s, out error) && TryValidateNpcSocial(s, out error)
-                && TryValidateStory(s, out error);
+                && TryValidateStory(s, out error) && TryValidateLedger(s, out error);
         }
 
         /// <summary>

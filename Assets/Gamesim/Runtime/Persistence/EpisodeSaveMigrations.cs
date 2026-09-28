@@ -21,6 +21,36 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 17) return (JObject)original.DeepClone();
+            if (version < 1 || version > 16) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV16ToV17(version == 16 ? original : PrepareV16Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds the season ledger, empty, and the read rules from the week after the save's: the
+        /// rule boundary once more. An older save recorded no chances and no reads, and the verdict
+        /// will say so; the week it was in plays under the rules it was played under.
+        /// </summary>
+        public static JObject UpgradeV16ToV17(JObject original)
+        {
+            FrozenEpisodeV16.Validate(original);
+            int week = (int)original["week"];
+            var result = (JObject)original.DeepClone();
+            result.Add("ledger", JObject.FromObject(new SeasonLedger(), SaveJson.Serializer()));
+            result.Add("readRulesStartWeek", checked(week + 1));
+            result["schemaVersion"] = 17;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v15-to-v16 dispatch.</summary>
+        public static JObject PrepareV16Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 16) return (JObject)original.DeepClone();
             if (version < 1 || version > 15) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV15ToV16(version == 15 ? original : PrepareV15Payload(original, out _));

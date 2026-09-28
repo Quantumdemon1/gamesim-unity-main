@@ -96,6 +96,7 @@ namespace Gamesim.Simulation
                     Require(s.evictionStage == EvictionStage.Voting || s.evictionStage == EvictionStage.Tiebreaker,
                         "The nominees are still speaking. The house votes after that.");
                     Require(Voters(s).Any(x => x.id == s.playerId) || NeedsPlayerTieBreak(s), "You are not eligible to vote now.");
+                    RecordPlayerBallot(s, c.targetId);
                     Vote(s, s.playerId, c.targetId, "Player's decision"); break;
                 case EpisodeCommandKind.SubmitEvictionSpeech:
                     Require(s.phase == EpisodePhase.Eviction && s.evictionStage == EvictionStage.Speeches,
@@ -157,6 +158,9 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.Lobby: Lobby(s, c); break;
                 // Not a social action: the houseguest came to the player, as an offer does.
                 case EpisodeCommandKind.ReplyToHouseguest: ReplyToHouseguest(s, c); break;
+                // Free, like a reply: a question is not an action, and the read is the play.
+                case EpisodeCommandKind.AskVote: AskVote(s, c); break;
+                case EpisodeCommandKind.ReadPerson: ReadPerson(s, c); break;
                 default: Social(s, c); break;
             }
         }
@@ -347,7 +351,7 @@ namespace Gamesim.Simulation
                     foreach (var voter in missingNpcVoters)
                     {
                         var evaluation = coordinatedVotes == null ? WebEvictionVoting.EvaluateNative(s, voter.id) : coordinatedVotes[voter.id];
-                        Vote(s, voter.id, evaluation.selectedNomineeId, WebEvictionVoting.ExplainNative(s, evaluation));
+                        Vote(s, voter.id, evaluation.selectedNomineeId, ExplainKnown(s, evaluation));
                     }
                     if (!Voters(s).All(c => s.votes.Any(v => v.voterId == c.id)))
                     {
@@ -393,6 +397,7 @@ namespace Gamesim.Simulation
                         + "the jury.");
                     foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict "
                         + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason);
+                    SettleVoteRead(s, evicted);
                     PreparePostEvictionDiary(s, evicted);
                     break;
                 case EpisodePhase.FinalEviction:
@@ -1003,7 +1008,7 @@ namespace Gamesim.Simulation
                     Remember(s, target.id, known.subjectId, "Heard from you: " + known.text, true);
                     Change(s, s.playerId, target.id, 3); Log(s, "information", "You shared something you personally knew with " + target.name + ".", s.playerId, target.id); break;
                 case EpisodeCommandKind.AskForIntel: AskForIntel(s, target); break;
-                case EpisodeCommandKind.Eavesdrop: Eavesdrop(s); break;
+                case EpisodeCommandKind.Eavesdrop: Eavesdrop(s, c); break;
                 case EpisodeCommandKind.SpreadLie: SpreadLie(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.SchemeAgainst: SchemeAgainst(s, target); break;
@@ -1101,6 +1106,7 @@ namespace Gamesim.Simulation
 
             var subject = about[Math.Min(about.Count - 1, (int)(roll * about.Count))];
             double between = s.Score(target.id, subject.id);
+            AddStanding(s, target.id, subject.id, ClaimSource.Told, between);
             string reading = between >= 25 ? "is solid with"
                 : between <= -25 ? "does not trust"
                 : "is still working out";
@@ -1120,15 +1126,26 @@ namespace Gamesim.Simulation
         /// must not become narration of things the player's character was not there for, and it must
         /// not become a fact the rest of the house suddenly shares.</para>
         /// </summary>
-        private static void Eavesdrop(EpisodeState s)
+        private static void Eavesdrop(EpisodeState s, EpisodeCommand c)
         {
-            var others = s.Active.Where(c => !c.isPlayer).ToList();
+            var others = s.Active.Where(x => !x.isPlayer).ToList();
             Require(others.Count >= 2, "There is nobody to overhear right now.");
 
-            // Drawn before the outcome roll, so the pair is the same whether or not you are caught:
-            // the conversation was happening either way.
-            var first = Draw(s, others);
-            var second = Draw(s, others.Where(c => c.id != first.id).ToList());
+            // The pair on screen when the house names one (STRATEGY-LOOP-PLAN.md section 2);
+            // otherwise drawn, before the outcome roll, so the pair is the same whether or not you
+            // are caught: the conversation was happening either way. A recorded season names
+            // nobody and draws exactly as it always did.
+            var named = s.Find(c.targetId);
+            var namedSecond = s.Find(c.secondTargetId);
+            ContestantState first, second;
+            if (named != null && namedSecond != null && named.id != namedSecond.id && !named.isPlayer && !namedSecond.isPlayer
+                && named.status == ContestantStatus.Active && namedSecond.status == ContestantStatus.Active)
+            { first = named; second = namedSecond; }
+            else
+            {
+                first = Draw(s, others);
+                second = Draw(s, others.Where(x => x.id != first.id).ToList());
+            }
 
             if (Roll(s) >= EavesdropSuccessChance)
             {
@@ -1144,9 +1161,11 @@ namespace Gamesim.Simulation
             string reading = between >= 25 ? "sounded close"
                 : between <= -25 ? "sounded like they cannot stand each other"
                 : "sounded careful with each other";
+            AddStanding(s, first.id, second.id, ClaimSource.Overheard, between);
+            string vote = OverheardVote(s, first, second);
             Remember(s, s.playerId, first.id, "I overheard " + first.name + " and " + second.name
-                + " in week " + s.week + ". They " + reading + ".", true);
-            Log(s, "eavesdrop", "You overheard " + first.name + " and " + second.name + ". They " + reading + ".",
+                + " in week " + s.week + ". They " + reading + "." + vote, true);
+            Log(s, "eavesdrop", "You overheard " + first.name + " and " + second.name + ". They " + reading + "." + vote,
                 s.playerId);
         }
 

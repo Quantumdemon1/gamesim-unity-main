@@ -60,11 +60,16 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>The Nearby card's control: the house's Eavesdrop, committed as the episode screen commits it.</summary>
+        /// <summary>
+        /// The Nearby card's control: the house's Eavesdrop, committed as the episode screen commits
+        /// it, on the pair being witnessed (STRATEGY-LOOP-PLAN.md section 2): what you overhear is
+        /// theirs. The engine draws its own pair when there is none to name.
+        /// </summary>
         public void ListenInNearby()
         {
             if (!CanListenIn || IsPanelOpen) return;
-            Commit(projected, EpisodeCommandKind.Eavesdrop);
+            var witnessed = npcShownLease;
+            Commit(projected, EpisodeCommandKind.Eavesdrop, witnessed?.FirstId, witnessed?.SecondId);
         }
 
         /// <summary>

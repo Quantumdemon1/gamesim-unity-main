@@ -153,6 +153,8 @@ namespace Gamesim.Simulation
                 int taken = 0;
                 if (NpcAlliances.TryPropose(state, npc.id, joined)) taken++;
                 if (taken < turns && NpcPromises.TryGive(state, npc.id)) taken++;
+                // Under agency the first free turn goes to the agenda (NPC-AGENCY-PLAN.md §4).
+                if (taken < turns && Pursue(state, npc)) taken++;
 
                 foreach (var kind in Repertoire(LeadTrait(npc)))
                 {
@@ -182,19 +184,28 @@ namespace Gamesim.Simulation
                                      && state.nominees.Contains(c.id))
                          .ToList())
             {
-                var voter = EpisodeEngine.Voters(state)
-                    // Desperation reads as urgency: the veto holder first, then the player, then
-                    // whoever is left, in cast order.
-                    .OrderByDescending(candidate => candidate.id == state.vetoHolderId)
-                    .ThenByDescending(candidate => candidate.isPlayer)
-                    .ThenBy(candidate => candidate.id, StringComparer.Ordinal)
-                    .FirstOrDefault();
-                if (voter == null) continue;
-
-                Act(state, npc.id, voter.id, CampaignImpact,
-                    npc.name + " campaigned to stay", "campaign");
-                if (voter.isPlayer)
+                // Under agency, the voters worth the visit: the persuadable, closest to torn first
+                // (NPC-AGENCY-PLAN.md §5.2). With nobody persuadable, or without agency, the old
+                // order, one visit.
+                var visits = EpisodeEngine.PersuadableVoters(state, npc.id).Take(EpisodeEngine.CampaignVisits).ToList();
+                if (visits.Count == 0)
                 {
+                    var voter = EpisodeEngine.Voters(state)
+                        // Desperation reads as urgency: the veto holder first, then the player, then
+                        // whoever is left, in cast order.
+                        .OrderByDescending(candidate => candidate.id == state.vetoHolderId)
+                        .ThenByDescending(candidate => candidate.isPlayer)
+                        .ThenBy(candidate => candidate.id, StringComparer.Ordinal)
+                        .FirstOrDefault();
+                    if (voter == null) continue;
+                    visits.Add(voter);
+                }
+
+                foreach (var voter in visits)
+                {
+                    Act(state, npc.id, voter.id, CampaignImpact,
+                        npc.name + " campaigned to stay", "campaign");
+                    if (!voter.isPlayer) continue;
                     EpisodeEngine.Log(state, "campaign",
                         npc.name + " came to you asking to stay this week.", state.playerId);
                     ReplyCards.Offer(state, ReplyCards.Plea, npc.id, state.nominees.FirstOrDefault(id => id != npc.id));
@@ -235,11 +246,68 @@ namespace Gamesim.Simulation
             var target = WeightedTarget(state, npc.id);
             if (target == null) return false;
 
-            Act(state, npc.id, target.id, TalkImpact,
+            Act(state, npc.id, target.id, EpisodeEngine.TalkWarmth(state, npc.id, target.id),
                 npc.name + " spent time with " + Named(state, target), "talk");
             if (target.isPlayer)
                 EpisodeEngine.Log(state, "conversation", npc.name + " sought you out this week.", state.playerId);
             return true;
+        }
+
+        /// <summary>
+        /// The agenda's turn (NPC-AGENCY-PLAN.md §4): a houseguest building, holding or courting
+        /// spends it with the person their agenda points at, and a hunt spends it with a pact-mate,
+        /// against the threat. Survive and Reign have their moments elsewhere (the campaign, the
+        /// nominations) and a drifter has nobody in mind, so neither spends a turn here. Nothing
+        /// without agency, where there is no agenda.
+        /// </summary>
+        private static bool Pursue(EpisodeState state, ContestantState npc)
+        {
+            var agenda = NpcAgendas.Of(state, npc.id);
+            var partner = agenda?.partnerId == null ? null : state.Find(agenda.partnerId);
+            if (partner == null || partner.status != ContestantStatus.Active || !NpcAgendas.StillWorking(state, npc.id, agenda)) return false;
+            switch (agenda.kind)
+            {
+                case Agendas.Build:
+                case Agendas.Court:
+                case Agendas.Hold:
+                    Act(state, npc.id, partner.id, EpisodeEngine.TalkWarmth(state, npc.id, partner.id),
+                        npc.name + " spent time with " + Named(state, partner), "talk");
+                    if (partner.isPlayer)
+                        EpisodeEngine.Log(state, "conversation", npc.name + " sought you out this week.", state.playerId);
+                    return true;
+                case Agendas.Hunt:
+                    var threat = state.Find(agenda.targetId);
+                    if (threat == null || threat.status != ContestantStatus.Active || threat.id == partner.id) return false;
+                    Act(state, npc.id, partner.id, EpisodeEngine.TalkWarmth(state, npc.id, partner.id),
+                        npc.name + " and " + Named(state, partner) + " talked about " + Named(state, threat), "talk");
+                    Act(state, partner.id, threat.id, EpisodeEngine.HuntImpact,
+                        "What " + Named(state, partner) + " heard from " + npc.name + " about " + Named(state, threat), "rumor");
+                    if (partner.isPlayer)
+                        EpisodeEngine.Log(state, "information", npc.name + " told you " + threat.name + " has to go.", state.playerId);
+                    // Talk about the player reaches them as a rumour does: the reference's roll, from the strategy windows.
+                    if (threat.isPlayer && StrategyRules.Apply(state) && EpisodeEngine.Roll(state) < ReplyCards.GossipDiscoveryChance)
+                    {
+                        EpisodeEngine.Log(state, "gossip", "You found out " + npc.name + " has been talking about you to "
+                            + partner.name + ".", state.playerId);
+                        ReplyCards.Offer(state, ReplyCards.Gossip, npc.id, partner.id);
+                    }
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Courting the Head of Household as the nominations open (NPC-AGENCY-PLAN.md §4): a word
+        /// with them, worth what a talk is worth, which their ranking of the house feels. Public for
+        /// the engine's nomination hook.
+        /// </summary>
+        public static void Court(EpisodeState state, ContestantState npc, ContestantState hoh)
+        {
+            if (npc == null || hoh == null || npc.id == hoh.id) return;
+            Act(state, npc.id, hoh.id, EpisodeEngine.TalkWarmth(state, npc.id, hoh.id),
+                npc.name + " courted " + Named(state, hoh) + " before the nominations", "talk");
+            if (hoh.isPlayer)
+                EpisodeEngine.Log(state, "conversation", npc.name + " came to see you before the nominations.", state.playerId, npc.id);
         }
 
         /// <summary>

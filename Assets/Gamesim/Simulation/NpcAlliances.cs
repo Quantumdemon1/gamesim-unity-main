@@ -79,7 +79,23 @@ namespace Gamesim.Simulation
                    + sharedThreats * 15
                    + strategicValue * 0.15
                    + (trust - ThreatAssessment.NeutralTrust) * 0.3
-                   - carried * 10;
+                   - carried * 10
+                   // Under agency, who they take to (NPC-AGENCY-PLAN.md §3.3): temperament, on top of the web's terms.
+                   + (EpisodeEngine.AgencyOn(state) ? EpisodeEngine.DesirePerPoint * TraitAffinity.Compatibility(state.Find(npcId), target) : 0);
+        }
+
+        /// <summary>The pact cap under agency (NPC-AGENCY-PLAN.md §3.4): one pact among houseguests per three houseguests in the house.</summary>
+        public static int PactCap(EpisodeState state) => state.Active.Count(c => !c.isPlayer) / 3;
+
+        /// <summary>The active pacts with no player in them and two members still in the house.</summary>
+        public static List<AllianceState> NpcOnlyPacts(EpisodeState state) =>
+            state.alliances.Where(a => a.active && !a.members.Contains(state.playerId) && Intact(state, a)).ToList();
+
+        /// <summary>Whether two houseguests may start a pact under the cap: neither already in one of their own, and the house below its share.</summary>
+        public static bool PactRoom(EpisodeState state, string npcId, string targetId)
+        {
+            var pacts = NpcOnlyPacts(state);
+            return pacts.Count < PactCap(state) && !pacts.Any(a => a.members.Contains(npcId) || a.members.Contains(targetId));
         }
 
         /// <summary>Whether this houseguest would put the idea to that one.</summary>
@@ -95,6 +111,10 @@ namespace Gamesim.Simulation
             // hold forty or more against. Behind the story boundary, where grudges exist at all.
             if (EpisodeEngine.StoryAt(state, StoryRules.Grudges)
                 && (Grudges.Severity(state, npcId, targetId) >= 40 || Grudges.Severity(state, targetId, npcId) >= 40))
+                return false;
+            // The pact cap (NPC-AGENCY-PLAN.md §3.4): pacts among houseguests stay few enough to read.
+            // The player's pacts are outside it, as a story's are.
+            if (EpisodeEngine.AgencyOn(state) && npcId != state.playerId && targetId != state.playerId && !PactRoom(state, npcId, targetId))
                 return false;
             return state.Score(npcId, targetId) >= MinimumRelationship
                    && Desire(state, npcId, targetId) > ProposeThreshold;

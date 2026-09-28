@@ -201,7 +201,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 19;
+        public int schemaVersion = 20;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -232,6 +232,8 @@ namespace Gamesim.Simulation
         public int weekRulesStartWeek;
         /// <summary>Schema 19: the conversations spent in each of the week's four windows, reset as the week turns.</summary>
         public List<int> windowActions = new List<int> { 0, 0, 0, 0 };
+        /// <summary>Schema 20: the week NPC agency begins (NPC-AGENCY-PLAN.md §2); 0 for a save that never reached it.</summary>
+        public int agencyRulesStartWeek;
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();

@@ -54,6 +54,9 @@
     <Compile Include="$(EditMode)GameSenseTests.cs" />
     <Compile Include="$(EditMode)GameSenseHarnessTests.cs" />
     <Compile Include="$(EditMode)WeekRulesTests.cs" />
+    <Compile Include="$(EditMode)TraitAffinityTests.cs" />
+    <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
+    <Compile Include="$(EditMode)NpcAgencyTests.cs" />
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />
@@ -86,6 +89,7 @@
     <Compile Include="$(EditMode)StoryPacingTests.cs" />
     <Compile Include="$(EditMode)StoryPlayTests.cs" />
     <Compile Include="$(EditMode)StoryReachTests.cs" />
+    <Compile Include="$(EditMode)StoryThreadTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
     <Compile Include="$(EditMode)WebIntroductionsTests.cs" />

@@ -169,8 +169,9 @@ namespace Gamesim.Episode
         private void StorylinesBlock(EpisodeState state)
         {
             PlaysBlock(state, finished: false);
+            ThreadsBlock(state, finished: false);
             var running = state.storylines.Where(x => x.beatId != null && StorylineStatus.Running(x.status)
-                                                      && StoryCatalog.Find(x.templateId)?.play == null)
+                                                      && StoryCatalog.Find(x.templateId)?.play == null && x.lane != StoryLanes.Thread)
                 .OrderBy(x => x.week).ThenBy(x => x.id, StringComparer.Ordinal).ToList();
             var mine = state.activeModifiers.Where(m => m.weeksLeft > 0 && string.IsNullOrEmpty(m.ownerId)).ToList();
             if (running.Count == 0 && mine.Count == 0) return;
@@ -206,6 +207,36 @@ namespace Gamesim.Episode
             if (plays.Count == 0) return;
             hud.Heading(PlaysHeading);
             foreach (var play in plays) hud.StoryLine(play.title, PlayLine(play));
+        }
+
+        /// <summary>The heading the season's threads sit under, in the free-time panel and on the plays page (plan 31).</summary>
+        public const string ThreadsHeading = "THREADS";
+
+        /// <summary>
+        /// The season's threads, one line each (plan 31 §3): the ones still going and, on the plays page,
+        /// how the finished ones ended too.
+        /// </summary>
+        private void ThreadsBlock(EpisodeState state, bool finished)
+        {
+            var threads = EpisodeEngine.Threads(state).Where(t => finished || t.ending == null).ToList();
+            if (threads.Count == 0) return;
+            hud.Heading(ThreadsHeading);
+            foreach (var thread in threads) hud.StoryLine(thread.label, ThreadLine(thread));
+        }
+
+        /// <summary>
+        /// A thread in a line: how it ended; or the chapter it is on and how that went; or, before its
+        /// first chapter, what it is about.
+        /// </summary>
+        public static string ThreadLine(EpisodeEngine.ThreadView thread)
+        {
+            if (thread.ending != null) return thread.outcome ?? thread.ending;
+            if (thread.chapters.Count == 0) return thread.premise;
+            var last = thread.chapters[thread.chapters.Count - 1];
+            string how = last.result == ThreadChapterResults.Open ? "under way"
+                : last.result == ThreadChapterResults.Landed ? "went your way"
+                : last.result == ThreadChapterResults.Missed ? "did not go your way" : "never came to anything";
+            return "Chapter " + thread.chapters.Count + ", " + last.title + " · " + how;
         }
 
         /// <summary>A play in a line: what it pays, then the goal and how far along it is, or how it went.</summary>

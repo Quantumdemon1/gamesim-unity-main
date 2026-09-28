@@ -324,6 +324,9 @@ namespace Gamesim.Tests.EditMode
         public void ADecisionWeighsTheWindowsAndTheStoryOnceEach()
         {
             var s = Season(43, 8);
+            // Agency weighs threat as well (NPC-AGENCY-PLAN.md §5.1); off here, so the windows' and
+            // the story's terms show on their own.
+            s.agencyRulesStartWeek = 0;
             var npcs = Npcs(s);
             string hoh = npcs[0].id, target = npcs[1].id;
             double score = s.Score(hoh, target);

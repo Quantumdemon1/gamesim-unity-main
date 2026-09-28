@@ -281,9 +281,11 @@ namespace Gamesim.Simulation
         /// block names the nominee still in the house.
         /// </summary>
         public const int Reach = 8;
+        /// <summary>Threads (plan 31): two or three season-long stories seeded from the cast, told in chapters.</summary>
+        public const int Threads = 9;
 
         /// <summary>What a season switched on today plays under.</summary>
-        public const int Current = Reach;
+        public const int Current = Threads;
 
         public const int Lenient = 0, Standard = 1;
     }
@@ -298,9 +300,11 @@ namespace Gamesim.Simulation
     public static class StoryLanes
     {
         public const string Personal = "personal", Conflict = "conflict", Game = "game", Production = "production";
-        public const string Moment = "moment", Play = "play";
+        public const string Moment = "moment", Play = "play", Thread = "thread";
         public const int MaxPlays = 3;
-        public static readonly string[] All = { Personal, Conflict, Game, Production, Moment, Play };
+        /// <summary>A season's threads (plan 31): the bond, the rivalry and the numbers, one of each at most.</summary>
+        public const int MaxThreads = 3;
+        public static readonly string[] All = { Personal, Conflict, Game, Production, Moment, Play, Thread };
         public static bool IsKnown(string lane) => lane != null && Array.IndexOf(All, lane) >= 0;
     }
 

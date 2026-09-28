@@ -35,7 +35,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
             s.strategyRulesStartWeek = 1; s.blocRulesStartWeek = 1;
-            EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s);
+            EpisodeEngine.EnableStory(s); EpisodeEngine.EnableRead(s); EpisodeEngine.EnableLevers(s); EpisodeEngine.EnableAgency(s);
             return s;
         }
 

@@ -229,11 +229,15 @@ namespace Gamesim.Simulation
             StorySystemsAt(s, anchor);
             // Plays first: one decided here opens nothing further below.
             DecidePlays(s, anchor);
+            // A season's threads are seeded at its first eviction nights (plan 31).
+            SeedThreads(s, anchor);
 
             foreach (var cycle in RunningCycles(s).ToList())
             {
                 var template = StoryCatalog.Find(cycle.templateId);
                 if (template == null || s.houseEvents.Any(e => !e.resolved && e.cycleId == cycle.id)) continue;
+                // A thread asks nothing itself: it runs its chapters and its climax (plan 31).
+                if (template.thread != null) { ThreadPulse(s, new StoryCycle(cycle, template), anchor); continue; }
                 // A play taken on with nothing scheduled is waiting for its goal or its deadline,
                 // which DecidePlays settles: it neither blows over nor goes stale meanwhile.
                 if (template.play != null && TakenOn(cycle) && cycle.nextAnchor == null) continue;
@@ -884,6 +888,12 @@ namespace Gamesim.Simulation
                     var role = template.roles.FirstOrDefault(x => x.key == r.role);
                     return (role == null || (!role.optional && !role.departed)) && s.Find(r.contestantId)?.status != ContestantStatus.Active;
                 });
+                // A thread outlives its people - they go on to the jury - but not the player (plan 31).
+                if (template.thread != null)
+                {
+                    if (s.Find(s.playerId)?.status != ContestantStatus.Active) EndThread(s, new StoryCycle(cycle, template), template.thread.onPlayerExit);
+                    continue;
+                }
                 if (gone || s.Find(s.playerId)?.status != ContestantStatus.Active) EndCycle(s, cycle, "left-house");
             }
         }

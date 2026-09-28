@@ -23,6 +23,10 @@ namespace Gamesim.Tests.EditMode
             // every alliance is a private fact at birth. Never in SeasonBuilder, whose recorded seasons
             // and seeded fixtures would shift.
             EpisodeEngine.EnableRead(state);
+            // NPC agency, as the director switches it on for every season it starts: first
+            // impressions by temperament, agendas, a Head of Household who weighs threat. Never in
+            // SeasonBuilder, for the same reason as the read.
+            EpisodeEngine.EnableAgency(state);
             return state;
         }
 
@@ -361,6 +365,57 @@ namespace Gamesim.Tests.EditMode
                 .Select(p => p.Key + " " + p.Value)));
             TestContext.WriteLine("arcs started a season: " + (counts.Where(p => StoryCatalog.Find(p.Key)?.play == null).Sum(p => p.Value) / (double)seasons).ToString("0.0")
                 + ", plays: " + (counts.Where(p => StoryCatalog.Find(p.Key)?.play != null).Sum(p => p.Value) / (double)seasons).ToString("0.0"));
+        }
+
+        /// <summary>
+        /// Plan 31's P3a check: every season seeds two or three threads, and each reaches its climax or a
+        /// stated end. Played by the skilled player over the regular eight, twelve and sixteen. A report.
+        /// </summary>
+        [Test, Explicit("A report: run it by name.")]
+        public void ThreadsReport()
+        {
+            var seededPerSeason = new Dictionary<int, int>();
+            var endings = new SortedDictionary<string, int>(StringComparer.Ordinal);
+            var chapters = new SortedDictionary<string, int[]>(StringComparer.Ordinal);
+            int seasons = 0, threads = 0, stillRunning = 0, chapterCount = 0, survived = 0, survivedWithTwo = 0;
+            foreach (var size in new[] { 8, 12, 16 })
+                for (uint seed = 1; seed <= 40; seed++)
+                {
+                    var engine = new EpisodeEngine(StorySeason(seed * 23 + (uint)size, size));
+                    bool pastWeekOne = false;
+                    for (int i = 0; i < 5000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+                    {
+                        var s = engine.Snapshot;
+                        pastWeekOne |= s.week >= 2 && s.Find(s.playerId).status == ContestantStatus.Active;
+                        var command = SkilledNext(s, (int)seed);
+                        if (!engine.Apply(command).accepted) Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(s)).accepted, Is.True);
+                    }
+                    var final = engine.Snapshot;
+                    Assert.That(EpisodeValidation.TryValidate(final, out var error), Is.True, error);
+                    seasons++;
+                    var views = EpisodeEngine.Threads(final);
+                    if (pastWeekOne) { survived++; if (views.Count >= 2) survivedWithTwo++; }
+                    seededPerSeason[views.Count] = seededPerSeason.TryGetValue(views.Count, out var n) ? n + 1 : 1;
+                    foreach (var view in views)
+                    {
+                        threads++;
+                        if (view.ending == null) stillRunning++;
+                        string key = view.kind + " -> " + (view.ending ?? "still running");
+                        endings[key] = endings.TryGetValue(key, out var e) ? e + 1 : 1;
+                        foreach (var chapter in view.chapters)
+                        {
+                            chapterCount++;
+                            if (!chapters.TryGetValue(view.kind + " " + chapter.arcId, out var row)) chapters[view.kind + " " + chapter.arcId] = row = new int[4];
+                            row[Array.IndexOf(new[] { ThreadChapterResults.Open, ThreadChapterResults.Landed, ThreadChapterResults.Missed, ThreadChapterResults.Never }, chapter.result)]++;
+                        }
+                    }
+                }
+            TestContext.WriteLine("seasons " + seasons + ", threads " + threads + " (" + (threads / (double)seasons).ToString("0.0") + " a season), still running at the end " + stillRunning
+                + ", chapters " + (chapterCount / (double)Math.Max(1, threads)).ToString("0.0") + " a thread");
+            TestContext.WriteLine("threads a season: " + string.Join(", ", seededPerSeason.OrderBy(p => p.Key).Select(p => p.Key + ": " + p.Value))
+                + "; seasons the player saw week two " + survived + ", of them with two or three threads " + survivedWithTwo);
+            foreach (var pair in endings) TestContext.WriteLine("    " + pair.Key.PadRight(28) + pair.Value);
+            foreach (var pair in chapters) TestContext.WriteLine("    " + pair.Key.PadRight(34) + "open " + pair.Value[0] + ", landed " + pair.Value[1] + ", missed " + pair.Value[2] + ", never " + pair.Value[3]);
         }
 
         // For the Unity-free run: Unity's batch runner executes an [Explicit] test.

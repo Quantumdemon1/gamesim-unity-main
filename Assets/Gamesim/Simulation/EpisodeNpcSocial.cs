@@ -168,7 +168,10 @@ namespace Gamesim.Simulation
                     memory = SourceNpcMemory(FindNpcMemory(social, row.firstId, row.secondId)),
                     allNpcIds = state.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList()
                 }, () => NpcRoll(state));
-                if (completion.delta != 0) ChangeWithRoll(state, row.firstId, row.secondId, completion.delta, () => NpcRoll(state));
+                // Under agency the pair's temperaments bias the outcome (NPC-AGENCY-PLAN.md §3.1):
+                // kindred pairs never come out of a chat colder, oil and water rarely warmer.
+                int delta = completion.delta + ConversationBias(state, row.firstId, row.secondId);
+                if (delta != 0) ChangeWithRoll(state, row.firstId, row.secondId, delta, () => NpcRoll(state));
                 if (completion.gossipTarget != null)
                 {
                     ChangeWithRoll(state, row.firstId, completion.gossipTarget.id, completion.gossipTarget.delta, () => NpcRoll(state));

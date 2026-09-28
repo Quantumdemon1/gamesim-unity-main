@@ -119,7 +119,10 @@ namespace Gamesim.Presentation
             Glyph(card, TraitIcons.TryGetValue(name, out var icon) ? icon : "star", held ? UiTheme.Glow : UiTheme.Accent,
                 new Rect((r.width - glyph) * .5f, r.height * .5f - 10f - glyph, glyph, glyph), "Trait glyph");
             var boost = WebTraits.Boosts[name];
-            var effect = Words(card, "+" + WebTraits.PrimaryBoost + " " + Capitalised(boost.Primary) + "  ·  +" + WebTraits.SecondaryBoost + " " + Capitalised(boost.Secondary),
+            // What the house makes of it (NPC-AGENCY-PLAN.md §1): a trait the house takes to, or is
+            // wary of, says so where it is picked, or the first impressions would feel arbitrary.
+            string reception = TraitAffinity.Reception.TryGetValue(name, out int liked) ? (liked > 0 ? "  ·  liked" : "  ·  disliked") : "";
+            var effect = Words(card, "+" + WebTraits.PrimaryBoost + " " + Capitalised(boost.Primary) + "  ·  +" + WebTraits.SecondaryBoost + " " + Capitalised(boost.Secondary) + reception,
                 12f, held ? UiTheme.Paper : UiTheme.Muted, new Rect(8f, r.height * .5f + 22f, r.width - 16f, 18f), TextAlignmentOptions.Center, "Trait effect");
             effect.textWrappingMode = TextWrappingModes.NoWrap; effect.enableAutoSizing = true; effect.fontSizeMax = 12f; effect.fontSizeMin = 10f;
             if (held)

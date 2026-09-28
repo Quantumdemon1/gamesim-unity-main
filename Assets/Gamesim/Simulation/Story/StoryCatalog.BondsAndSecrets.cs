@@ -53,8 +53,9 @@ namespace Gamesim.Simulation
             {
                 bool Open(ContestantState x) => Lore.RomanceOpen(c.state, x.id) && Bonds.ShowmancePartner(c.state, x.id) == null
                     && Mutual(c, P(c), x.id) >= 25 && (c.state.story.contacts.FirstOrDefault(k => k.npcId == x.id)?.rapport ?? 0) >= 4;
-                string partner = c.talkingTo != null && c.Find(c.talkingTo) is ContestantState talked && Open(talked)
-                    ? talked.id : Warmest(c, Open);
+                string partner = c.focus != null
+                    ? Among(c).Where(Open).OrderByDescending(x => Mutual(c, P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault()?.id
+                    : c.talkingTo != null && c.Find(c.talkingTo) is ContestantState talked && Open(talked) ? talked.id : Warmest(c, Open);
                 if (partner == null || Bonds.ShowmancePartner(c.state, P(c)) != null) return null;
                 string gossip = Npcs(c).Where(x => x.id != partner && !c.state.Allied(P(c), x.id))
                     .OrderByDescending(x => Personality.Of(x).Sociable).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault()?.id;
@@ -464,7 +465,7 @@ namespace Gamesim.Simulation
                 if (Npcs(c).Any(x => Bonds.Holds(c.state, P(c), x.id, BondKinds.RideOrDie) && FinalTwoWith(c, x.id))) return null;
                 // Fifty both ways was almost nobody's closest ally; under the reach rules thirty-five.
                 double bond = c.AtLeast(StoryRules.Reach) ? 35 : 50;
-                var partner = Npcs(c).Where(x => (Bonds.Holds(c.state, P(c), x.id, BondKinds.RideOrDie)
+                var partner = Among(c).Where(x => (Bonds.Holds(c.state, P(c), x.id, BondKinds.RideOrDie)
                                                   || c.state.loyaltyOaths.Any(o => (o.playerId == P(c) && o.targetId == x.id) || (o.targetId == P(c) && o.playerId == x.id))
                                                   || c.state.Allied(P(c), x.id))
                                                  && Mutual(c, P(c), x.id) >= bond && !FinalTwoWith(c, x.id))

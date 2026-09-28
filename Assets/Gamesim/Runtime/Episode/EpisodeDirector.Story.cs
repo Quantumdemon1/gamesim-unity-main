@@ -75,7 +75,7 @@ namespace Gamesim.Episode
         {
             bool costsTooMuch = choice.costsAction && !CanSpendAction(state);
             string note = choice.locked ? choice.lockReason
-                : costsTooMuch ? "No actions left this week"
+                : costsTooMuch ? (EpisodeEngine.WeekRulesOn(state) ? "No conversations left in this window" : "No actions left this week")
                 : choice.conduct ? RuleBreakTag(state)
                 : choice.costsAction ? "Costs an action"
                 : choice.pickPerson ? "You choose who"
@@ -94,7 +94,7 @@ namespace Gamesim.Episode
         }
 
         private static bool CanSpendAction(EpisodeState state) =>
-            (state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
+            (EpisodeEngine.WeekRulesOn(state) ? EpisodeEngine.Window(state) != Windows.None : state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
             && EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
 
         /// <summary>

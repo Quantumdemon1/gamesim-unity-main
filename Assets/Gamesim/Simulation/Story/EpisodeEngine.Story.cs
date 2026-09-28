@@ -693,7 +693,9 @@ namespace Gamesim.Simulation
             }
             if (choice.costsAction)
             {
-                Require(s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign,
+                // Under the week's windows (STRATEGY-LOOP-PLAN.md section 4) any open window has seats;
+                // before them, actions belong to free time or campaigning.
+                Require(WeekRulesOn(s) ? Window(s) != Windows.None : s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign,
                     "That takes a social action, and actions belong to free time or campaigning.");
                 Require(SocialActionsSpent(s) < SocialActionBudget(s), "You have no actions left this week.");
             }

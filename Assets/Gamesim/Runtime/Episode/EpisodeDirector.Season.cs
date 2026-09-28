@@ -270,6 +270,7 @@ namespace Gamesim.Episode
                 EpisodeEngine.EnableStory(fresh);
                 EpisodeEngine.EnableRead(fresh);
                 EpisodeEngine.EnableLevers(fresh);
+                EpisodeEngine.EnableWeek(fresh);
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.

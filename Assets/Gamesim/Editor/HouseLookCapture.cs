@@ -28,10 +28,24 @@ namespace Gamesim.Editor
         {
             string scene = Argument("-gamesimScene") ?? "Assets/Gamesim/Scenes/HousePrototype.unity";
             string shot = Argument("-gamesimShot") ?? "house-look.png";
-            Capture(scene, shot, Argument("-gamesimFocus"));
+            // -gamesimFrom x,y,z: the direction the camera looks in from, for a room that reads
+            // from one side (the game's overview looks from the south-west; a wall's inner face is
+            // only seen from inside its room).
+            Vector3? from = null;
+            string fromText = Argument("-gamesimFrom");
+            if (!string.IsNullOrEmpty(fromText))
+            {
+                var parts = fromText.Split(',');
+                if (parts.Length == 3
+                    && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x)
+                    && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y)
+                    && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float z))
+                    from = new Vector3(x, y, z);
+            }
+            Capture(scene, shot, Argument("-gamesimFocus"), from);
         }
 
-        public static void Capture(string scenePath, string outputName, string focusName = null)
+        public static void Capture(string scenePath, string outputName, string focusName = null, Vector3? from = null)
         {
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
 
@@ -66,7 +80,8 @@ namespace Gamesim.Editor
             camera.fieldOfView = 40f;
 
             float reach = bounds.extents.magnitude;
-            var direction = string.IsNullOrEmpty(focusName)
+            var direction = from.HasValue && from.Value.sqrMagnitude > 0f ? from.Value.normalized
+                : string.IsNullOrEmpty(focusName)
                 ? new Vector3(0.62f, 0.72f, -0.62f).normalized
                 : new Vector3(1f, 0.22f, -0.28f).normalized;
             rig.transform.position = bounds.center + direction * (reach * 2.35f);

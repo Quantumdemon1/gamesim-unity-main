@@ -21,8 +21,18 @@ namespace Gamesim.Editor
         public const string Folder = "Assets/Gamesim/Art/Branding";
         public const string GlowMaterialPath = Folder + "/bb_mat_branding_glow.mat";
         private const string Pack5 = UiPackImporter.WorldRoot + "Pack5_HouseBroadcast/";
+        private const string Pack6 = UiPackImporter.WorldRoot + "Pack6_RoomFinish/";
         public const string DiaryHaloPath = Pack5 + "EnvironmentWallGraphics/diary_room_halo.png";
         public const string DiaryNeonPath = Pack5 + "NeonMasks/neon_diary_room_mask.png";
+        public const string DiaryPaddedWallPath = Pack6 + "DiaryRoom/diary_violet_padded_wall.png";
+        public const string DiarySlatsPath = Pack6 + "DiaryRoom/diary_dark_wood_slats.png";
+        public const string DiaryOnCameraPath = Pack6 + "DiaryRoom/on_camera_sign.png";
+        public const string DiaryTallyPath = Pack6 + "DiaryRoom/camera_tally_light.png";
+        /// <summary>Every texture the palette names, for the test that holds a build to exactly these.</summary>
+        public static readonly string[] TexturePaths =
+        {
+            DiaryHaloPath, DiaryNeonPath, DiaryPaddedWallPath, DiarySlatsPath, DiaryOnCameraPath, DiaryTallyPath,
+        };
 
         [MenuItem("Gamesim/Branding/Build the house branding palette")]
         public static void Build()
@@ -50,6 +60,10 @@ namespace Gamesim.Editor
             palette.glowTemplate = glow;
             palette.diaryHalo = Texture(DiaryHaloPath);
             palette.diaryNeon = Texture(DiaryNeonPath);
+            palette.diaryPaddedWall = Texture(DiaryPaddedWallPath);
+            palette.diarySlats = Texture(DiarySlatsPath);
+            palette.diaryOnCamera = Texture(DiaryOnCameraPath);
+            palette.diaryTally = Texture(DiaryTallyPath);
             EditorUtility.SetDirty(palette);
             AssetDatabase.SaveAssets();
             Debug.Log("[Gamesim] House branding palette built: " + PalettePath);

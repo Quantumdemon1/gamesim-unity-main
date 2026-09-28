@@ -26,6 +26,16 @@ namespace Gamesim.Presentation
         public Texture2D diaryHalo;
         public Texture2D diaryNeon;
 
+        [Header("Diary Room (Room Finish Pack 6)")]
+        /// <summary>The padded violet the interview wall wears; tiles.</summary>
+        public Texture2D diaryPaddedWall;
+        /// <summary>The dark slats either side of it; tiles.</summary>
+        public Texture2D diarySlats;
+        /// <summary>The ON CAMERA sign beside the chair.</summary>
+        public Texture2D diaryOnCamera;
+        /// <summary>The red tally light opposite it.</summary>
+        public Texture2D diaryTally;
+
         private static HouseBrandingPalette current;
 
         /// <summary>The palette, or null on a clone that has not built it - callers then dress nothing.</summary>

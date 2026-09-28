@@ -50,6 +50,21 @@ namespace Gamesim.Tests.PlayMode
             var wash = studio.GetComponentsInChildren<Light>(true).SingleOrDefault(l => l.name == DiaryStudioBranding.WashName);
             Assert.That(wash, Is.Not.Null, "The violet wash that lifts the wall out of black.");
 
+            // Pack 6: the wall is padded, slatted at its edges, and the seat is flanked by the sign and the tally.
+            var wall = Piece(DiaryStudioBranding.WallName);
+            Assert.That(wall.sharedMaterial.GetTexture("_BaseMap"), Is.SameAs(palette.diaryPaddedWall), "The interview wall wears the pack's padded violet.");
+            Assert.That(wall.sharedMaterial.GetTextureScale("_BaseMap").x, Is.GreaterThan(2f), "tiled to the wall's metres, not stretched once across it.");
+            var slats = studio.GetComponentsInChildren<Renderer>(true).Where(r => r.name == DiaryStudioBranding.SlatName).ToList();
+            Assert.That(slats.Count, Is.EqualTo(2), "A slat panel at each edge of the wall.");
+            Assert.That(slats.All(s => s.sharedMaterial.GetTexture("_BaseMap") == palette.diarySlats), Is.True, "in the pack's dark wood.");
+            Assert.That(slats.All(s => s.sharedMaterial.renderQueue < 3000), Is.True, "Wood is lit, not glowing.");
+            var onCamera = Piece(DiaryStudioBranding.OnCameraName);
+            var tally = Piece(DiaryStudioBranding.TallyName);
+            Assert.That(onCamera.sharedMaterial.GetTexture("_BaseMap"), Is.SameAs(palette.diaryOnCamera), "ON CAMERA, beside the seat.");
+            Assert.That(tally.sharedMaterial.GetTexture("_BaseMap"), Is.SameAs(palette.diaryTally), "and the tally opposite.");
+            Assert.That(Mathf.Sign(onCamera.transform.localPosition.x), Is.Not.EqualTo(Mathf.Sign(tally.transform.localPosition.x)),
+                "one each side of the chair.");
+
             var camera = cameraRig.ViewCamera;
             void InFrame(Renderer piece, string what)
             {

@@ -45,8 +45,8 @@ namespace Gamesim.Tests.EditMode
             projection["schemaVersion"] = 14;
             Assert.That(JToken.DeepEquals(projection, old), Is.True, "Every schema 14 field is carried unchanged, Have-Nots included.");
             Assert.That(old.ToString(), Is.EqualTo(original), "The original payload is not touched.");
-            // Validated as the save it becomes: the live contract is schema 16's.
-            var state = EpisodeSaveMigrations.UpgradeV15ToV16(migrated).ToObject<EpisodeState>(Serializer());
+            // Validated as the save it becomes: the live contract is schema 17's.
+            var state = EpisodeSaveMigrations.UpgradeV16ToV17(EpisodeSaveMigrations.UpgradeV15ToV16(migrated)).ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
             var repeated = EpisodeSaveMigrations.PrepareV15Payload(migrated, out changed);
             Assert.That(changed, Is.False);
@@ -126,7 +126,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 12;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(16), "The whole chain, not one step.");
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(17), "The whole chain, not one step.");
             Assert.That(EpisodeSaveMigrations.PrepareV15Payload(old, out _)["schemaVersion"].Value<int>(), Is.EqualTo(15),
                 "The frozen dispatch still stops at fifteen.");
             Assert.That((int)migrated["haveNotRulesStartWeek"], Is.Zero);

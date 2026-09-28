@@ -47,6 +47,7 @@
     <Compile Include="$(EditMode)CompetitionRulesV4Tests.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />
     <Compile Include="$(EditMode)StrategyRulesTests.cs" />
+    <Compile Include="$(EditMode)VoteReadTests.cs" />
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />
@@ -77,6 +78,7 @@
     <Compile Include="$(EditMode)StoryStagingTests.cs" />
     <Compile Include="$(EditMode)StoryRoomActTests.cs" />
     <Compile Include="$(EditMode)StoryPacingTests.cs" />
+    <Compile Include="$(EditMode)StoryPlayTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
     <Compile Include="$(EditMode)WebIntroductionsTests.cs" />

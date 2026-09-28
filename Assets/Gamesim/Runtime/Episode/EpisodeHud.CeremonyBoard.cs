@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using TMPro;
@@ -97,7 +98,7 @@ namespace Gamesim.Episode
         public void CampaignVoters(IReadOnlyList<string> ids, System.Action<string> talk, float cardWidth = 150f)
         {
             if (ids == null || ids.Count == 0 || content == null) return;
-            float s = FontScale, width = cardWidth * s, photo = width * .9f, height = photo + 100f * s, gap = 14f * s;
+            float s = FontScale, width = cardWidth * s, photo = width * .9f, height = photo + 118f * s, gap = 14f * s;
             int columns = Mathf.Max(1, Mathf.Min(ids.Count, Mathf.FloorToInt((ContentWidth() + gap) / (width + gap))));
             int rows = Mathf.CeilToInt(ids.Count / (float)columns);
             var grid = new GameObject(CampaignVotersName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
@@ -112,6 +113,8 @@ namespace Gamesim.Episode
             size.minHeight = size.preferredHeight = rows * height + (rows - 1) * gap;
             var state = director != null ? director.Snapshot : null;
             if (state == null) return;
+            // Each voter's read, from the notebook's own sheet (STRATEGY-LOOP-PLAN.md section 2).
+            var sheet = VoteRead.Read(state);
             foreach (var id in ids)
             {
                 var actor = state.Find(id);
@@ -128,9 +131,15 @@ namespace Gamesim.Episode
                     kind == RelationshipWeb.Kind.Neutral ? UiTheme.Muted : RelationshipWeb.StandingColour(kind),
                     new Vector2(6f * s, -(photo + 32f * s)), new Vector2(width - 12f * s, 16f * s));
                 standing.alignment = TextAlignmentOptions.Center;
+                var read = sheet.voters.FirstOrDefault(r => r.voterId == id);
+                bool blank = read == null || (read.confidence == VoteRead.Unknown && read.saysId == null);
+                var lean = FixedText(card, read == null ? "" : EpisodeDirector.ReadHeadline(state, read), 12, blank ? UiTheme.Muted : Paper,
+                    new Vector2(6f * s, -(photo + 48f * s)), new Vector2(width - 12f * s, 16f * s));
+                lean.alignment = TextAlignmentOptions.Center;
+                lean.name = VoteReadLineName;
                 string first = (actor.name ?? "").Split(' ')[0];
                 string captured = id;
-                var button = FixedButton(card, CastTalkCaption(first), new Vector2(8f * s, -(photo + 54f * s)),
+                var button = FixedButton(card, CastTalkCaption(first), new Vector2(8f * s, -(photo + 70f * s)),
                     new Vector2(width - 16f * s, 36f * s), () => talk(captured));
                 var words = button.GetComponentInChildren<TMP_Text>();
                 if (words != null) { words.fontSize = 15; words.fontSizeMax = 15; words.alignment = TextAlignmentOptions.Center; }

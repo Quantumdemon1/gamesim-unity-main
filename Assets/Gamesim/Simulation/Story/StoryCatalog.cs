@@ -28,6 +28,7 @@ namespace Gamesim.Simulation
             list.AddRange(KnowThem());
             list.AddRange(BondsAndSecrets());
             list.AddRange(ProductionArcs());
+            list.AddRange(PlayArcs());
             return list;
         }
 

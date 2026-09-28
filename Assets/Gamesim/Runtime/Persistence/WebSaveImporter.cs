@@ -204,6 +204,7 @@ namespace Gamesim.Persistence
             // The story system switches on at the same boundary the voting blocs use: the week after
             // the import, so the week the web save was in plays under the rules it was written under.
             EpisodeEngine.EnableStory(result, checked(week + 1));
+            EpisodeEngine.EnableRead(result, checked(week + 1));
             return result;
         }
 

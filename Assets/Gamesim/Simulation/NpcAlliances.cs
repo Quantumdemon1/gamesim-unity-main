@@ -123,6 +123,7 @@ namespace Gamesim.Simulation
                 members = ids, active = true,
             };
             state.alliances.Add(alliance);
+            EpisodeEngine.AllianceFormedUnderRead(state, alliance);
             for (int i = 0; i < ids.Count; i++)
                 for (int j = i + 1; j < ids.Count; j++)
                     RelationshipLedger.Record(state, ids[i], ids[j], "alliance-formed", 30, alliance.name + " was formed");
@@ -205,13 +206,15 @@ namespace Gamesim.Simulation
         {
             string name = "The " + state.Find(first).name.Split(' ')[0]
                           + " and " + state.Find(second).name.Split(' ')[0] + " Pact";
-            state.alliances.Add(new AllianceState
+            var alliance = new AllianceState
             {
                 id = "alliance-npc-" + state.nextSequence,
                 name = name,
                 members = new List<string> { first, second },
                 active = true,
-            });
+            };
+            state.alliances.Add(alliance);
+            EpisodeEngine.AllianceFormedUnderRead(state, alliance);
             RelationshipLedger.Record(state, first, second, "alliance-formed", 30, name + " was formed");
         }
 

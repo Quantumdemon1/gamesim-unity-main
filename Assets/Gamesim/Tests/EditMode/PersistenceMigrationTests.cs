@@ -48,9 +48,21 @@ namespace Gamesim.Tests.EditMode
         /// storylines and modifiers, turning a capture of the current runtime state into a schema 15
         /// payload. Every older helper composes it.
         /// </summary>
+        /// <summary>
+        /// Removes schema 17's season ledger and read boundary, turning a capture of the current
+        /// runtime state into a schema 16 payload. Every older helper composes it.
+        /// </summary>
+        public static JObject StripSchema17(JObject payload)
+        {
+            if (payload == null) return null;
+            foreach (var field in new[] { "ledger", "readRulesStartWeek" }) payload.Remove(field);
+            return payload;
+        }
+
         public static JObject StripSchema16(JObject payload)
         {
             if (payload == null) return null;
+            StripSchema17(payload);
             payload.Remove("story");
             foreach (var item in (payload["houseEvents"] as JArray ?? new JArray()).OfType<JObject>())
             {
@@ -286,13 +298,13 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, original, new UTF8Encoding(false));
             var before = File.ReadAllBytes(fixture.Store.SavePath);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(16));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(17));
             Assert.That(loaded.randomState, Is.Zero);
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.Exists(fixture.Store.BackupPath), Is.False);
             fixture.Store.Save(loaded);
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
-            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(16));
+            Assert.That((int)JObject.Parse(File.ReadAllText(fixture.Store.SavePath))["state"]["schemaVersion"], Is.EqualTo(17));
         }
 
         [Test]
@@ -318,7 +330,7 @@ namespace Gamesim.Tests.EditMode
             File.WriteAllText(fixture.Store.SavePath, "damaged primary");
             var before = File.ReadAllBytes(fixture.Store.BackupPath);
             Assert.That(fixture.Store.TryRecoverBackup(out var recovered, out var message), Is.True, message);
-            Assert.That(recovered.schemaVersion, Is.EqualTo(16));
+            Assert.That(recovered.schemaVersion, Is.EqualTo(17));
             Assert.That(File.ReadAllBytes(fixture.Store.SavePath), Is.EqualTo(before));
             Assert.That(File.ReadAllBytes(fixture.Store.BackupPath), Is.EqualTo(before));
             Assert.That(File.ReadAllText(Directory.GetFiles(fixture.DirectoryPath, "*.before-recovery-*.json").Single()),
@@ -381,7 +393,7 @@ namespace Gamesim.Tests.EditMode
             var original = Envelope(payload);
             File.WriteAllText(fixture.Store.SavePath, original);
             Assert.That(fixture.Store.TryLoad(out var loaded, out var message), Is.True, message);
-            Assert.That(loaded.schemaVersion, Is.EqualTo(16));
+            Assert.That(loaded.schemaVersion, Is.EqualTo(17));
             Assert.That((int)loaded.phase, Is.EqualTo(phase));
             Assert.That(loaded.juryExchanges, Is.Empty);
             Assert.That(loaded.finalSpeeches, Is.Empty);

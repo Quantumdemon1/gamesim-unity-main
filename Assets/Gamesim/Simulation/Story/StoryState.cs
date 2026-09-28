@@ -273,9 +273,11 @@ namespace Gamesim.Simulation
         public const int Bonds = 5;
         /// <summary>Production: conduct, Have-Nots and removal (M6).</summary>
         public const int Production = 6;
+        /// <summary>Plays: arcs with a goal you win or lose, and the receipts that say what they changed (plan 30).</summary>
+        public const int Plays = 7;
 
         /// <summary>What a season switched on today plays under.</summary>
-        public const int Current = Production;
+        public const int Current = Plays;
 
         public const int Lenient = 0, Standard = 1;
     }
@@ -284,13 +286,15 @@ namespace Gamesim.Simulation
     /// The lanes an arc runs in. At most one arc per lane at a time; production sits outside.
     /// <see cref="Moment"/> is the one-beat lane: the web's phase beats, the ported legacy
     /// situations and the Ringer's set pieces, which answer in one card and never hold a lane the
-    /// longer arcs need.
+    /// longer arcs need. <see cref="Play"/> holds up to <see cref="MaxPlays"/> at once, because a
+    /// player chasing two goals in a week is the point of plays (plan 30 §5).
     /// </summary>
     public static class StoryLanes
     {
         public const string Personal = "personal", Conflict = "conflict", Game = "game", Production = "production";
-        public const string Moment = "moment";
-        public static readonly string[] All = { Personal, Conflict, Game, Production, Moment };
+        public const string Moment = "moment", Play = "play";
+        public const int MaxPlays = 3;
+        public static readonly string[] All = { Personal, Conflict, Game, Production, Moment, Play };
         public static bool IsKnown(string lane) => lane != null && Array.IndexOf(All, lane) >= 0;
     }
 

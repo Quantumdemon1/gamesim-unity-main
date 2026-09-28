@@ -246,6 +246,7 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.Talk:
                 case EpisodeCommandKind.ShareInformation:
                 case EpisodeCommandKind.AskForIntel:
+                case EpisodeCommandKind.AskVote:
                 case EpisodeCommandKind.VentAbout:
                 case EpisodeCommandKind.SmallTalk:
                 case EpisodeCommandKind.PersonalChat:
@@ -267,6 +268,7 @@ namespace Gamesim.Episode
                 case EpisodeCommandKind.HouseMeeting:
                     return "risky";
                 case EpisodeCommandKind.StrategicDiscussion:
+                case EpisodeCommandKind.ReadPerson:
                 case EpisodeCommandKind.BuyActionPoint:
                     return "strategic";
                 // Their own category on purpose. These are the actions that can rebound on you, and

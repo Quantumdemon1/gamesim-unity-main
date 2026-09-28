@@ -168,7 +168,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void StorylinesBlock(EpisodeState state)
         {
-            var running = state.storylines.Where(x => x.beatId != null && StorylineStatus.Running(x.status))
+            PlaysBlock(state, finished: false);
+            var running = state.storylines.Where(x => x.beatId != null && StorylineStatus.Running(x.status)
+                                                      && StoryCatalog.Find(x.templateId)?.play == null)
                 .OrderBy(x => x.week).ThenBy(x => x.id, StringComparer.Ordinal).ToList();
             var mine = state.activeModifiers.Where(m => m.weeksLeft > 0 && string.IsNullOrEmpty(m.ownerId)).ToList();
             if (running.Count == 0 && mine.Count == 0) return;
@@ -189,6 +191,35 @@ namespace Gamesim.Episode
                 hud.StoryLine(modifier.name, (effect.Length == 0 ? "" : effect + ", ")
                     + modifier.weeksLeft + (modifier.weeksLeft == 1 ? " week left" : " weeks left"));
             }
+        }
+
+        /// <summary>The heading the plays sit under, in the free-time panel and on the plays page.</summary>
+        public const string PlaysHeading = "PLAYS";
+
+        /// <summary>
+        /// The plays, one line each (plan 30 §4): the ones on offer and in play, and on the plays page
+        /// how the finished ones went too.
+        /// </summary>
+        private void PlaysBlock(EpisodeState state, bool finished)
+        {
+            var plays = EpisodeEngine.Plays(state).Where(p => finished || p.ending == null).ToList();
+            if (plays.Count == 0) return;
+            hud.Heading(PlaysHeading);
+            foreach (var play in plays) hud.StoryLine(play.title, PlayLine(play));
+        }
+
+        /// <summary>A play in a line: what it pays, then the goal and how far along it is, or how it went.</summary>
+        public static string PlayLine(EpisodeEngine.PlayView play)
+        {
+            string currency = PlayCurrencies.Label(play.currency);
+            if (play.ending != null)
+                return currency + " · " + (play.ending == PlayEndings.Won ? "won" : play.ending == PlayEndings.Part ? "part of the way" : "lost")
+                       + " · " + play.outcome;
+            string until = "until " + StoryText.ClosesAt(play.deadline);
+            if (!play.takenOn) return currency + " · on offer, " + until + " · " + play.goal;
+            string progress = play.progress.need > 1 ? play.progress.have + " of " + play.progress.need
+                : play.progress.Met ? "done" : "not yet";
+            return currency + " · " + play.goal + " · " + progress + ", " + until;
         }
 
         /// <summary>
@@ -304,6 +335,8 @@ namespace Gamesim.Episode
         {
             string eventId = item.id, room = VenueRoom(item.venue);
             string stakes = "It won't wait past " + StoryText.ClosesAt(item.closesAnchor) + ".";
+            var play = PlayPull(state, item);
+            if (play != null) return play;
             switch (item.surface)
             {
                 case StorySurfaces.Approach:
@@ -335,6 +368,50 @@ namespace Gamesim.Episode
                 default:
                     return null;
             }
+        }
+
+        /// <summary>
+        /// A play's Pull (plan 30 §4): its offer, with what it pays and until when, taken on in one
+        /// press; or a later step of a play already taken on, which opens where the player stands.
+        /// Null for a beat that is not a play's.
+        /// </summary>
+        private EpisodeHud.StoryPull? PlayPull(EpisodeState state, HouseEventState item)
+        {
+            var cycle = state.storylines.FirstOrDefault(x => x.id == item.cycleId);
+            var arc = StoryCatalog.Find(cycle?.templateId);
+            var play = arc?.play;
+            if (play == null) return null;
+            string eventId = item.id;
+            string until = StoryText.ClosesAt(play.deadline);
+            string goal = StoryText.Fill(state, play.goal, cycle.cast);
+            bool offer = !EpisodeEngine.TakenOn(cycle);
+            return new EpisodeHud.StoryPull
+            {
+                Key = eventId,
+                Primary = offer ? EpisodeHud.TakeItOnCaption : EpisodeHud.StepInCaption,
+                Secondary = EpisodeHud.NotNowCaption,
+                Eyebrow = PlayCurrencies.Label(play.currency).ToUpperInvariant() + (offer ? " · A PLAY" : " · YOUR PLAY")
+                    + " · UNTIL " + until.ToUpperInvariant(),
+                Title = arc.title,
+                Stakes = goal,
+                Accept = offer ? () => TakePlay(eventId) : () => OpenSceneCard(eventId),
+                Decline = () => declinedPulls.Add(eventId),
+            };
+        }
+
+        /// <summary>
+        /// Takes a play on from its Pull, then opens its first step where the player stands: the
+        /// offer's own option through <see cref="EpisodeCommandKind.ProgressStoryline"/>, never a label.
+        /// </summary>
+        private void TakePlay(string eventId)
+        {
+            var state = projected;
+            var offer = state?.houseEvents.FirstOrDefault(e => e.id == eventId && !e.resolved);
+            if (offer == null) return;
+            string cycleId = offer.cycleId;
+            ChooseStoryOption(state, eventId, PlayOptions.TakeItOn);
+            var next = projected?.houseEvents.FirstOrDefault(e => e.cycleId == cycleId && !e.resolved);
+            if (next != null) OpenSceneCard(next.id);
         }
 
         /// <summary>
@@ -525,6 +602,8 @@ namespace Gamesim.Episode
             ClosePanels();
             sceneCardOpen = true;
             sceneCardCycle = item.cycleId ?? item.id;
+            // What the card will say changed is what is logged from here on.
+            sceneCardSince = state.events.Count == 0 ? 0 : state.events.Max(e => e.sequence);
             player.SetInputEnabled(false);
             if (cameraRig != null) cameraRig.ControlsEnabled = false;
             Render();
@@ -542,11 +621,41 @@ namespace Gamesim.Episode
                 return;
             }
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
+            if (PlayCameOfIt(state)) return;
             hud.Heading("WHAT CAME OF IT");
             var outcome = state.events.LastOrDefault(e => e.kind == StoryLog.Outcome
                 && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId)));
             hud.Paragraph(outcome != null ? StoryText.Log(state, outcome) : "The moment has passed.");
             hud.Action(SceneCardDoneCaption, ClosePanels);
+        }
+
+        /// <summary>The event sequence when the scene card opened: its receipts are the ones logged after it.</summary>
+        private int sceneCardSince;
+
+        /// <summary>
+        /// A play's end of the card (plan 30 §4): won, part-won, lost or still in play; what the last
+        /// step did; and the receipts, one line for each thing that changed. False for a card whose
+        /// story is not a play.
+        /// </summary>
+        private bool PlayCameOfIt(EpisodeState state)
+        {
+            var cycle = state.storylines.FirstOrDefault(x => x.id == sceneCardCycle);
+            var play = StoryCatalog.Find(cycle?.templateId)?.play;
+            if (play == null) return false;
+            string ending = StorylineStatus.Running(cycle.status) ? null : cycle.endingId;
+            hud.Heading(ending == PlayEndings.Won ? "PLAY WON" : ending == PlayEndings.Part ? "PART OF THE WAY"
+                : ending == PlayEndings.Lost ? "PLAY LOST" : "STILL IN PLAY");
+            bool Mine(EpisodeEvent e) => e.sequence > sceneCardSince && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId));
+            var step = state.events.LastOrDefault(e => e.kind == StoryLog.Outcome && Mine(e));
+            if (step != null) hud.Paragraph(StoryText.Log(state, step));
+            var decided = ending == null ? null : state.events.LastOrDefault(e => e.kind == StoryLog.Play && Mine(e));
+            if (decided != null) hud.Paragraph(decided.text);
+            else if (ending == null)
+                hud.Paragraph("Goal: " + StoryText.Fill(state, play.goal, cycle.cast) + " It is decided by " + StoryText.ClosesAt(play.deadline) + ".");
+            foreach (var receipt in state.events.Where(e => e.kind == StoryLog.Receipt && Mine(e)))
+                hud.Paragraph(receipt.text);
+            hud.Action(SceneCardDoneCaption, ClosePanels);
+            return true;
         }
     }
 }

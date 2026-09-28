@@ -210,6 +210,10 @@ namespace Gamesim.Simulation
         public const string Whisper = "story-whisper";
         /// <summary>Production: warnings, and the ladder's steps before the penalty and removal have their own.</summary>
         public const string Production = "story-production";
+        /// <summary>A play decided: won, part-won or lost, in the play's own words with names (plan 30).</summary>
+        public const string Play = "story-play";
+        /// <summary>What a play changed, one line per effect the player would know about (plan 30 §4).</summary>
+        public const string Receipt = "story-receipt";
 
         // Fallout (plan §5.1): the moments the house gives a ceremony card, each its own kind so the
         // card, the recap and the recent-events card can tell them apart from an ordinary line.

@@ -201,7 +201,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 16;
+        public int schemaVersion = 17;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -218,6 +218,14 @@ namespace Gamesim.Simulation
         public List<string> nominees = new List<string>();
         public List<string> vetoPlayers = new List<string>();
         public List<VoteState> votes = new List<VoteState>();
+        /// <summary>The season's record of chances and reads (schema 17): see <see cref="SeasonLedger"/>.</summary>
+        public SeasonLedger ledger = new SeasonLedger();
+        /// <summary>
+        /// The first week the read rules run (schema 17), or zero for never. Under them every
+        /// alliance is a private fact at birth, so a voter weighs only the ones it knows of and
+        /// the player learns them through the read. A season from before keeps its outcomes.
+        /// </summary>
+        public int readRulesStartWeek;
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();
@@ -450,6 +458,7 @@ namespace Gamesim.Simulation
             copy.replyCards = replyCards.Select(x => x.Clone()).ToList();
             // Deep, like every list above: a rejected candidate command must leave nothing behind.
             copy.story = story?.Clone();
+            copy.ledger = ledger?.Clone();
             return copy;
         }
     }
@@ -523,7 +532,12 @@ namespace Gamesim.Simulation
         /// <summary>Practising in the backyard for the next competition, with <c>targetId</c> running it.</summary>
         CompPractice,
         /// <summary>A game in the game room with <c>targetId</c>.</summary>
-        PlayAGame
+        PlayAGame,
+        // The read (STRATEGY-LOOP-PLAN.md section 2). Free, like a reply, and once per person a week.
+        /// <summary>Asking a voter, <c>targetId</c>, straight where their vote is. They may lie.</summary>
+        AskVote,
+        /// <summary>Reading a houseguest, <c>targetId</c>: on a hit, how they see you becomes known.</summary>
+        ReadPerson
     }
 
     /// <summary>

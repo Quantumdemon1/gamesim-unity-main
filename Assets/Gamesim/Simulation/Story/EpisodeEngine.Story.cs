@@ -289,10 +289,22 @@ namespace Gamesim.Simulation
             Fire(s, cycle, beat, anchor, true);
         }
 
+        /// <summary>
+        /// Where a beat put off at this anchor tries again: the next anchor round the week. The close
+        /// of the social window lapses beats but fires none (StoryAnchor never runs there), so a beat
+        /// put off at eviction night waited there until it went stale, holding its lane; under the
+        /// reach rules it tries again at the next Head of Household.
+        /// </summary>
+        public static string RetryAnchor(EpisodeState s, string anchor)
+        {
+            string next = NextAnchor(anchor);
+            return next == StoryAnchors.SocialClose && StoryAt(s, StoryRules.Reach) ? StoryAnchors.HohCrowned : next;
+        }
+
         /// <summary>A scheduled beat that cannot fire yet tries again at the next anchor.</summary>
         private static void Postpone(EpisodeState s, StorylineState cycle, string anchor)
         {
-            string next = NextAnchor(anchor);
+            string next = RetryAnchor(s, anchor);
             cycle.nextAnchor = next;
             cycle.nextWeek = LaterThisWeek(anchor, next) ? s.week : s.week + 1;
         }
@@ -313,7 +325,11 @@ namespace Gamesim.Simulation
                 candidates.Add((template, binding, weight));
             }
             if (candidates.Count == 0) return;
-            double nothing = ctx.anchor == StoryAnchors.EvictionNight ? 40 : 60;
+            // How much "nothing new" weighs. The strategy windows took six arcs out of the house's pool,
+            // which left seasons at three asks against the plan's four to six (§5.2): under the reach
+            // rules the pause is shorter. The airtime's ceilings are unchanged.
+            bool reach = StoryAt(s, StoryRules.Reach);
+            double nothing = ctx.anchor == StoryAnchors.EvictionNight ? (reach ? 25 : 40) : (reach ? 40 : 60);
             double total = candidates.Sum(c => c.weight) + nothing;
             double roll = StoryRandom.Unit(s, "w" + s.week + ":" + ctx.anchor + ":pool") * total;
             foreach (var candidate in candidates.OrderBy(c => c.template.id, StringComparer.Ordinal))

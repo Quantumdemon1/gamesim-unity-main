@@ -146,6 +146,9 @@ namespace Gamesim.Simulation
                     {
                         foreach (var alliance in s.alliances.Where(a => a.members.Contains(from.id) && a.members.Contains(to.id)).ToList())
                         {
+                            // An alliance with no fact is known to everyone already: under the reach
+                            // rules one more person hearing of it does not make it a secret from the rest.
+                            if (Knowledge.Of(s, FactKinds.Alliance, alliance.id) == null && e.thirdId != null && StoryAt(s, StoryRules.Reach)) continue;
                             if (Knowledge.Of(s, FactKinds.Alliance, alliance.id) == null) Knowledge.AllianceFormed(s, alliance);
                             var fact = Knowledge.Of(s, FactKinds.Alliance, alliance.id);
                             // Named listener: one more person knows, and it is out as a whisper.
@@ -188,9 +191,11 @@ namespace Gamesim.Simulation
                 {
                     if (to == null || !StoryAt(s, StoryRules.Lore)) return;
                     var fact = Lore.Facet(s, to.id, e.type);
-                    // RevealMore: the facet, or failing that the next thing not yet known about them.
+                    // RevealMore: the facet, or failing that the next thing not yet known about them -
+                    // never a secret, and never deeper than a good conversation reaches (depth two):
+                    // the unforgivable thing and the secret keep their own ways in.
                     if (e.amount > 0 && (fact == null || Lore.Knows(s, fact.id)))
-                        fact = Lore.FactsOf(s, to.id).Where(f => !Lore.Knows(s, f.id))
+                        fact = Lore.FactsOf(s, to.id).Where(f => !Lore.Knows(s, f.id) && f.depth <= 2 && f.facet != Lore.Facets.Secret)
                             .OrderBy(f => f.depth).ThenBy(f => f.id, StringComparer.Ordinal).FirstOrDefault();
                     if (fact != null && Lore.Learn(s, fact.id))
                         Log(s, "story-lore", "You learned something about " + to.name + ": " + fact.text, s.playerId, to.id);

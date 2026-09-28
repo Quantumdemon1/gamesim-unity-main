@@ -269,7 +269,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void BuildTheNumbers_ThePlayersOwnAlliancesCount()
+        public void BuildTheNumbers_TwoPactsAreNotNumbersButOneAllianceOfThreeIs()
         {
             var s = At(AfterEviction);
             var npcs = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
@@ -277,11 +277,14 @@ namespace Gamesim.Tests.EditMode
             foreach (var npc in npcs) Score(s, npc.id, s.playerId, 0);
             Score(s, npcs[0].id, s.playerId, 40); Score(s, npcs[1].id, s.playerId, 35);
             Score(s, npcs[0].id, npcs[1].id, 20); Score(s, npcs[1].id, npcs[0].id, 20);
-            Assert.That(EpisodeEngine.StartStory(s, "build-the-numbers", StoryAnchors.EvictionNight), Is.True, "Build the Numbers casts.");
+            // A pact of two with each of them already: where the play starts, not numbers.
+            foreach (var npc in npcs.Take(2))
+                s.alliances.Add(new AllianceState { id = "alliance-pair-" + npc.id, name = "A Pact", active = true, members = new[] { s.playerId, npc.id }.ToList() });
+            Assert.That(EpisodeEngine.StartStory(s, "build-the-numbers", StoryAnchors.EvictionNight), Is.True, "Build the Numbers casts over two pacts of two.");
             s = Answer(s, "build-the-numbers", PlayOptions.TakeItOn);
             var cycle = Cycle(s, "build-the-numbers");
-            Assert.That(EpisodeEngine.ProgressOf(s, cycle).need, Is.EqualTo(2));
-            // An alliance the player made their own way, before the pitch: it counts all the same.
+            Assert.That(EpisodeEngine.ProgressOf(s, cycle).Met, Is.False, "Two pacts of two are not three votes moving together.");
+            // An alliance of all three, made the player's own way before the pitch: it counts all the same.
             s.alliances.Add(new AllianceState
             {
                 id = "alliance-fixture", name = "The Fixture Pact", active = true,
@@ -554,7 +557,7 @@ namespace Gamesim.Tests.EditMode
         /// best odds it is shown (a certain option counts as a sure thing), never a lapse while
         /// something else is open. Null when there is nothing to answer.
         /// </summary>
-        private static EpisodeCommand ReaderNext(EpisodeState s, int salt)
+        internal static EpisodeCommand ReaderNext(EpisodeState s, int salt)
         {
             if (s.Find(s.playerId).status != ContestantStatus.Active) return null;
             bool socialTime = s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign;

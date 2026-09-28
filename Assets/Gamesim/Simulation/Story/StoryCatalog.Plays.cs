@@ -394,9 +394,10 @@ namespace Gamesim.Simulation
             roles = new[] { Role("FIRST"), Role("SECOND") },
             cast = c =>
             {
-                // Only for a player without numbers: no alliance of three or more yet.
+                // Only for a player without numbers: no alliance of three or more yet. A pact of two
+                // with either of them is not numbers; bringing both into one is the play.
                 if (c.state.alliances.Any(a => a.active && a.members.Contains(P(c)) && a.members.Count >= 3)) return null;
-                var warm = Npcs(c).Where(x => c.Score(x.id, P(c)) >= 12 && !c.state.Allied(P(c), x.id))
+                var warm = Npcs(c).Where(x => c.Score(x.id, P(c)) >= 12)
                     .OrderByDescending(x => c.Score(x.id, P(c))).ThenBy(x => x.id, StringComparer.Ordinal).ToList();
                 // The warmest pair who can stand each other.
                 for (int i = 0; i < warm.Count; i++)
@@ -409,11 +410,12 @@ namespace Gamesim.Simulation
             play = new PlayTemplate
             {
                 currency = PlayCurrencies.Alliance, deadline = StoryAnchors.EvictionNight,
-                goal = "Bring {FIRST} and {SECOND} into an alliance with you before the next eviction.",
-                progress = (c, x) => new PlayProgress(new[] { x.Role("FIRST"), x.Role("SECOND") }
-                    .Count(id => id != null && c.state.Allied(P(c), id)), 2),
+                goal = "Bring {FIRST} and {SECOND} into one alliance with you before the next eviction.",
+                // All three in one alliance: a pact with one of them already, or two separate pacts, is
+                // where the play starts, not a part of the way.
+                progress = (c, x) => PlayProgress.Done(c.state.alliances.Any(a => a.active && a.members.Contains(P(c))
+                    && a.members.Contains(x.Role("FIRST")) && a.members.Contains(x.Role("SECOND")))),
                 wonOutcome = "You, {FIRST} and {SECOND} are an alliance now.",
-                partOutcome = "You have one of them, but not both.",
                 lostOutcome = "The three of you never came together.",
             },
             beats = new[]

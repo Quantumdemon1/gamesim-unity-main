@@ -275,9 +275,15 @@ namespace Gamesim.Simulation
         public const int Production = 6;
         /// <summary>Plays: arcs with a goal you win or lose, and the receipts that say what they changed (plan 30).</summary>
         public const int Plays = 7;
+        /// <summary>
+        /// Reach (plan 30 P4): the fixes that let arcs a season could never cast come round - a beat
+        /// postponed at eviction night tries again, NPC pairs count as blocs, allies whisper, the
+        /// block names the nominee still in the house.
+        /// </summary>
+        public const int Reach = 8;
 
         /// <summary>What a season switched on today plays under.</summary>
-        public const int Current = Plays;
+        public const int Current = Reach;
 
         public const int Lenient = 0, Standard = 1;
     }

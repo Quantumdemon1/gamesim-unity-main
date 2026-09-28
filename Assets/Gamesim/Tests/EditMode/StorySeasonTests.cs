@@ -19,6 +19,10 @@ namespace Gamesim.Tests.EditMode
         {
             var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = houseSize, Roster = roster }, seed);
             EpisodeEngine.EnableStory(state);
+            // The read rules, as the director switches them on for every season it starts: under them
+            // every alliance is a private fact at birth. Never in SeasonBuilder, whose recorded seasons
+            // and seeded fixtures would shift.
+            EpisodeEngine.EnableRead(state);
             return state;
         }
 
@@ -159,6 +163,206 @@ namespace Gamesim.Tests.EditMode
         }
 
 #if !UNITY_5_3_OR_NEWER
+        // ---------------------------------------------------------------- reach (plan 30 §5, P4)
+
+        /// <summary>
+        /// The arcs that step aside where the strategy windows play (the owner's decision and the
+        /// windows' own reply cards). They come back as plays that use the windows as their steps (P2);
+        /// until then the reach sweep reports them apart.
+        /// </summary>
+        internal static readonly string[] WindowStepAsides =
+            { "after-the-comp", "hoh-room", "veto-dilemma", "confronted", "campaign-pitch", "caught-talking" };
+
+        private static readonly EpisodeCommandKind[] SkilledVerbs =
+        {
+            EpisodeCommandKind.PersonalChat, EpisodeCommandKind.RelationshipBuilding, EpisodeCommandKind.DiscussGame,
+            EpisodeCommandKind.ShareSecret, EpisodeCommandKind.PersonalChat, EpisodeCommandKind.RelationshipBuilding,
+            EpisodeCommandKind.SmallTalk, EpisodeCommandKind.Talk, EpisodeCommandKind.VentAbout,
+        };
+
+        /// <summary>
+        /// A skilled player, for the reach sweep (plan 30 §5): the reader's answers to the story, and a
+        /// social game with a shape instead of the harness's scatter - a circle of the three it gets on
+        /// with best, alliances only with people who like it back and two at most, a final two with its
+        /// closest ally once the house is down to eight, loyalty sworn when it is offered, the circle's
+        /// offers taken, the bedroom's talk with somebody open to it, and - a quarter of the times one
+        /// is on offer - a rule bent when it pays.
+        /// </summary>
+        internal static EpisodeCommand SkilledNext(EpisodeState s, int salt)
+        {
+            var player = s.Find(s.playerId);
+            if (player.status != ContestantStatus.Active
+                || (EpisodeEngine.IntroductionsOpen(s) && !s.openingBeatsSeen.Contains(OpeningBeat.MeetAndGreet)))
+                return StoryNext(s, salt);
+            // A player who bends a rule when it pays, now and then: production's own stories need somebody to.
+            foreach (var beat in EpisodeEngine.OpenStoryBeats(s))
+            {
+                var conduct = beat.choices.FirstOrDefault(c => c.conduct && !c.locked && !c.pickPerson && !c.costsAction);
+                if (conduct == null || Mix(s, salt, 17) >= 250) continue;
+                var rule = EpisodeEngineTests.Command(s, EpisodeCommandKind.ProgressStoryline);
+                rule.targetId = beat.id;
+                rule.secondTargetId = conduct.optionId;
+                return rule;
+            }
+            var answer = StoryPlayTests.ReaderNext(s, salt);
+            if (answer != null) return answer;
+
+            string me = s.playerId;
+            bool socialTime = s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign;
+            bool actionsLeft = EpisodeEngine.SocialActionsSpent(s) < EpisodeEngine.SocialActionBudget(s);
+            var npcs = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
+            double Mutual(string a, string b) => Math.Min(s.Score(a, b), s.Score(b, a));
+            var circle = npcs.OrderByDescending(c => Mutual(me, c.id)).ThenBy(c => c.id, StringComparer.Ordinal).Take(3).ToList();
+
+            // Walking in on people: a social player notices who keeps company, half the time the closest pair.
+            if (s.phase == EpisodePhase.Social && s.pendingDiary == null && npcs.Count >= 2 && Mix(s, salt, 8) < 60)
+            {
+                string a, b;
+                if (Mix(s, salt, 13) < 500)
+                {
+                    var pair = (from x in npcs from y in npcs where string.CompareOrdinal(x.id, y.id) < 0
+                                orderby Mutual(x.id, y.id) descending, x.id, y.id select new[] { x.id, y.id }).First();
+                    a = pair[0]; b = pair[1];
+                }
+                else
+                {
+                    a = npcs[Mix(s, salt, 9) % npcs.Count].id;
+                    var rest = npcs.Where(n => n.id != a).ToList();
+                    b = rest[Mix(s, salt, 10) % rest.Count].id;
+                }
+                if (EpisodeEngine.ProximityOpen(s, a, b))
+                {
+                    var walk = EpisodeEngineTests.Command(s, EpisodeCommandKind.WitnessProximity);
+                    walk.targetId = a; walk.secondTargetId = b; walk.text = "the kitchen";
+                    return walk;
+                }
+            }
+
+            if (socialTime && s.pendingDiary == null)
+            {
+                // Not actions: loyalty offered by the circle is sworn, and the circle's offers are taken.
+                string oath = s.oathOpportunities.FirstOrDefault(id => circle.Any(c => c.id == id));
+                if (oath != null)
+                {
+                    var swear = EpisodeEngineTests.Command(s, EpisodeCommandKind.SwearLoyalty);
+                    swear.targetId = oath;
+                    return swear;
+                }
+                var offer = s.deals.Where(d => d.status == DealStatus.Proposed && d.recipientId == me && circle.Any(c => c.id == d.proposerId))
+                    .OrderBy(d => d.id, StringComparer.Ordinal).FirstOrDefault();
+                if (offer != null)
+                {
+                    var accept = EpisodeEngineTests.Command(s, EpisodeCommandKind.RespondToDeal);
+                    accept.targetId = offer.id;
+                    accept.text = EpisodeEngine.AcceptDeal;
+                    return accept;
+                }
+            }
+
+            if (socialTime && actionsLeft && s.pendingDiary == null && npcs.Count >= 2)
+            {
+                // A final two with the closest ally once the house is down to eight, once.
+                if (s.Active.Count() <= 8 && !s.promises.Any(p => p.fromId == me && p.kind == PromiseKind.FinalTwo))
+                {
+                    var partner = circle.FirstOrDefault(c => s.Allied(me, c.id));
+                    if (partner != null)
+                    {
+                        var finalTwo = EpisodeEngineTests.Command(s, EpisodeCommandKind.PromiseFinalTwo);
+                        finalTwo.targetId = partner.id;
+                        return finalTwo;
+                    }
+                }
+                // Alliances only with people who like you back, and two at most.
+                if (s.alliances.Count(a => a.active && a.members.Contains(me)) < 2 && Mix(s, salt, 11) < 300)
+                {
+                    var mate = circle.FirstOrDefault(c => !s.Allied(me, c.id) && Mutual(me, c.id) >= 20);
+                    if (mate != null)
+                    {
+                        var form = EpisodeEngineTests.Command(s, EpisodeCommandKind.FormAlliance);
+                        form.targetId = mate.id;
+                        return form;
+                    }
+                }
+                // Now and then, safety promised to somebody in the circle who has none from you.
+                if (Mix(s, salt, 12) < 60)
+                {
+                    var promised = circle.FirstOrDefault(c => !s.promises.Any(p => p.status == PromiseStatus.Active && p.fromId == me
+                                                                                  && p.toId == c.id && p.kind == PromiseKind.Safety));
+                    if (promised != null)
+                    {
+                        var promise = EpisodeEngineTests.Command(s, EpisodeCommandKind.PromiseSafety);
+                        promise.targetId = promised.id;
+                        return promise;
+                    }
+                }
+                // Conversation, mostly with the circle.
+                if (Mix(s, salt, 4) < 600)
+                {
+                    var target = circle.Count > 0 && Mix(s, salt, 6) < 700 ? circle[Mix(s, salt, 14) % circle.Count] : npcs[Mix(s, salt, 15) % npcs.Count];
+                    var verb = EpisodeEngine.RoomActsOpen(s) && Lore.RomanceOpen(s, target.id) && Mutual(me, target.id) >= 15 && Mix(s, salt, 16) < 400
+                        ? EpisodeCommandKind.PillowTalk : SkilledVerbs[Mix(s, salt, 5) % SkilledVerbs.Length];
+                    var talk = EpisodeEngineTests.Command(s, verb);
+                    talk.targetId = target.id;
+                    if (verb == EpisodeCommandKind.VentAbout)
+                        talk.secondTargetId = npcs.Where(n => n.id != target.id).OrderBy(n => Mutual(me, n.id)).ThenBy(n => n.id, StringComparer.Ordinal).First().id;
+                    return talk;
+                }
+            }
+
+            var next = EpisodeEngineTests.NextCommand(s);
+            if (next.kind == EpisodeCommandKind.CastVote && s.phase == EpisodePhase.Jury && player.status == ContestantStatus.Expelled)
+                next.kind = EpisodeCommandKind.Advance;
+            return next;
+        }
+
+        /// <summary>
+        /// Plan 30 P4's reach: every arc must come round for a skilled player. The sweep plays what the
+        /// director ships (the read rules on) across the regular eight, twelve and sixteen and the
+        /// All-Stars eight, with <see cref="SkilledNext"/>. A report; the window step-asides are listed apart.
+        /// </summary>
+        [Test, Explicit("A report: run it by name.")]
+        public void ReachReport()
+        {
+            var groups = new List<(int size, CastTemplates.Roster roster, int seasons)>
+            {
+                (8, CastTemplates.Roster.Regular, 160), (12, CastTemplates.Roster.Regular, 160),
+                (16, CastTemplates.Roster.Regular, 80), (8, CastTemplates.Roster.AllStars, 80),
+            };
+            var counts = StoryCatalog.All.ToDictionary(a => a.id, a => 0, StringComparer.Ordinal);
+            int seasons = 0, commands = 0, refused = 0;
+            var refusals = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var group in groups)
+                for (uint seed = 1; seed <= group.seasons; seed++)
+                {
+                    var engine = new EpisodeEngine(StorySeason(seed * 17 + (uint)group.size, group.size, group.roster));
+                    for (int i = 0; i < 5000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+                    {
+                        var s = engine.Snapshot;
+                        var command = SkilledNext(s, (int)seed);
+                        commands++;
+                        var result = engine.Apply(command);
+                        if (result.accepted) continue;
+                        refused++;
+                        string key = command.kind + ": " + result.reason;
+                        refusals[key] = refusals.TryGetValue(key, out var r) ? r + 1 : 1;
+                        Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(s)).accepted, Is.True);
+                    }
+                    seasons++;
+                    foreach (var cycle in engine.Snapshot.storylines.Where(x => x.templateId != null && counts.ContainsKey(x.templateId)))
+                        counts[cycle.templateId]++;
+                }
+            TestContext.WriteLine("seasons " + seasons + ", commands " + commands + ", refused " + refused);
+            foreach (var pair in refusals.OrderByDescending(p => p.Value).Take(8)) TestContext.WriteLine("    refused " + pair.Value + "x  " + pair.Key);
+            TestContext.WriteLine("never: " + string.Join(", ", counts.Where(p => p.Value == 0 && !WindowStepAsides.Contains(p.Key)).Select(p => p.Key).OrderBy(k => k, StringComparer.Ordinal)));
+            TestContext.WriteLine("window step-asides: " + string.Join(", ", WindowStepAsides.Select(id => id + " " + counts[id])));
+            TestContext.WriteLine("rare (1-3): " + string.Join(", ", counts.Where(p => p.Value > 0 && p.Value <= 3).OrderBy(p => p.Value).ThenBy(p => p.Key, StringComparer.Ordinal)
+                .Select(p => p.Key + " " + p.Value)));
+            TestContext.WriteLine("most: " + string.Join(", ", counts.OrderByDescending(p => p.Value).ThenBy(p => p.Key, StringComparer.Ordinal).Take(16)
+                .Select(p => p.Key + " " + p.Value)));
+            TestContext.WriteLine("arcs started a season: " + (counts.Where(p => StoryCatalog.Find(p.Key)?.play == null).Sum(p => p.Value) / (double)seasons).ToString("0.0")
+                + ", plays: " + (counts.Where(p => StoryCatalog.Find(p.Key)?.play != null).Sum(p => p.Value) / (double)seasons).ToString("0.0"));
+        }
+
         // For the Unity-free run: Unity's batch runner executes an [Explicit] test.
         /// <summary>A report, not a check: which arcs a sweep of seasons reaches, how often, and how they end.</summary>
         [Test, Explicit("Diagnostic: prints arc coverage for tuning.")]

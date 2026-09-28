@@ -47,6 +47,15 @@ namespace Gamesim.Simulation
         {
             var roles = HouseEvents.Roles(c.state);
             if (roles.Count == 0 || !placeholders.All(roles.ContainsKey)) return null;
+            // At eviction night the block still names the evictee, who has gone: under the reach rules
+            // the situation is about the nominee still in the house, or does not come round.
+            if (c.AtLeast(StoryRules.Reach) && roles.TryGetValue(HouseEvents.Nominee, out var named)
+                && c.Find(named)?.status != ContestantStatus.Active && c.state.nominees.Contains(named))
+            {
+                string stayed = c.state.nominees.FirstOrDefault(id => c.Find(id) is ContestantState x && !x.isPlayer && x.status == ContestantStatus.Active);
+                if (stayed == null) return null;
+                roles[HouseEvents.Nominee] = stayed;
+            }
             var binding = Bind();
             foreach (var placeholder in placeholders.Concat(moved).Distinct())
                 if (roles.TryGetValue(placeholder, out var id)) binding.With(RoleKey(placeholder), id);
@@ -143,7 +152,8 @@ namespace Gamesim.Simulation
         {
             id = id, lane = StoryLanes.Moment, eyebrow = "In the House", title = title,
             origin = "native: HouseEventSources.Emergent (the reference's emergent arc trigger)",
-            rulesVersion = StoryRules.Spine, startAnchors = new[] { StoryAnchors.EvictionNight }, cooldownWeeks = 3,
+            // From the reach rules the campaign's free time is a second chance a week (weight below).
+            rulesVersion = StoryRules.Spine, startAnchors = new[] { StoryAnchors.EvictionNight, StoryAnchors.BlockSet }, cooldownWeeks = 3,
             oncePerHeadliner = false,
             roles = new[] { Role("THEM") },
             cast = c =>
@@ -155,7 +165,7 @@ namespace Gamesim.Simulation
                     .ThenBy(a => a.npcId, StringComparer.Ordinal).FirstOrDefault();
                 return arc == null ? null : Bind().With("THEM", arc.npcId).Headlining(arc.npcId);
             },
-            weight = (c, b) => 20,
+            weight = (c, b) => c.anchor == StoryAnchors.BlockSet && !c.AtLeast(StoryRules.Reach) ? 0 : 20,
             beats = new[]
             {
                 new BeatTemplate
@@ -177,14 +187,17 @@ namespace Gamesim.Simulation
         {
             id = "unspoken-pair", lane = StoryLanes.Moment, eyebrow = "In the House", title = "Nobody has said it out loud",
             origin = "native: HouseEventSources.Emergent (the reference's unspoken-pair trigger)",
-            rulesVersion = StoryRules.Spine, startAnchors = new[] { StoryAnchors.EvictionNight }, cooldownWeeks = 3,
+            rulesVersion = StoryRules.Spine, startAnchors = new[] { StoryAnchors.EvictionNight, StoryAnchors.BlockSet }, cooldownWeeks = 3,
             roles = new[] { Role("THEM") },
             cast = c =>
             {
-                string them = Warmest(c, x => c.Score(P(c), x.id) >= HouseEventSources.UnspokenPairWarmth && !c.state.Allied(P(c), x.id));
+                // Sixty was a skilled player's closest friend in one season in ten; under the reach
+                // rules forty-five, still somebody the player has spent the season with.
+                double warmth = c.AtLeast(StoryRules.Reach) ? 45 : HouseEventSources.UnspokenPairWarmth;
+                string them = Warmest(c, x => c.Score(P(c), x.id) >= warmth && !c.state.Allied(P(c), x.id));
                 return them == null ? null : Bind().With("THEM", them).Headlining(them);
             },
-            weight = (c, b) => 15,
+            weight = (c, b) => c.anchor == StoryAnchors.BlockSet && !c.AtLeast(StoryRules.Reach) ? 0 : 15,
             beats = new[]
             {
                 new BeatTemplate
@@ -289,10 +302,14 @@ namespace Gamesim.Simulation
         /// <summary>
         /// How a walk-in casts each arc it can become: a real grudge or bad blood between the two is
         /// a kitchen blow-up, warmth of sixty or more is whispering, anything else an argument.
+        /// Houseguests' warmth rarely passes thirty, so from the reach rules two allies, or two who
+        /// like each other (twenty both ways), whisper too.
         /// </summary>
         public static ArcBinding ProximityCast(EpisodeState s, string arcId, string a, string b)
         {
             if (s == null || a == null || b == null || a == b) return null;
+            bool close = s.Score(a, b) >= HouseEventSources.UnspokenPairWarmth
+                         || (EpisodeEngine.StoryAt(s, StoryRules.Reach) && (s.Allied(a, b) || StoryPeople.Mutual(s, a, b) >= 20));
             switch (arcId)
             {
                 case "kitchen-blowup":
@@ -304,9 +321,9 @@ namespace Gamesim.Simulation
                     return Bind().With("HOTHEAD", hothead).With("TARGET", target).Headlining(hothead);
                 }
                 case "walked-in-arguing":
-                    return s.Score(a, b) >= HouseEventSources.UnspokenPairWarmth ? null : Bind().With("FIRST", a).With("SECOND", b).Headlining(a);
+                    return close ? null : Bind().With("FIRST", a).With("SECOND", b).Headlining(a);
                 case "walked-in-whispering":
-                    return s.Score(a, b) >= HouseEventSources.UnspokenPairWarmth ? Bind().With("FIRST", a).With("SECOND", b).Headlining(a) : null;
+                    return close ? Bind().With("FIRST", a).With("SECOND", b).Headlining(a) : null;
                 default:
                     return null;
             }

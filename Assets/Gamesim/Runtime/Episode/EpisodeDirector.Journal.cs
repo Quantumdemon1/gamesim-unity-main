@@ -152,6 +152,8 @@ namespace Gamesim.Episode
             hud.Heading("THE STORY SO FAR", UiTheme.Heading);
             hud.Eyebrow("PREVIOUSLY ON GAMESIM", UiTheme.Muted);
             hud.Mark(NotebookSection.Story);
+            // The plays page (plan 30 §4): what the player is chasing, then how the finished ones went.
+            PlaysBlock(state, finished: true);
 
             var visible = state.events
                 .Where(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))

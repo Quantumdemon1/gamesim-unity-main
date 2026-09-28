@@ -21,6 +21,38 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 18) return (JObject)original.DeepClone();
+            if (version < 1 || version > 17) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV17ToV18(version == 17 ? original : PrepareV17Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds the ledger's two schema 18 lists, empty, and the levers from the week after the save's:
+        /// the rule boundary once more. An older save's deals named nobody and were never judged at a
+        /// vote; the week it was in plays under the rules it was played under.
+        /// </summary>
+        public static JObject UpgradeV17ToV18(JObject original)
+        {
+            FrozenEpisodeV17.Validate(original);
+            int week = (int)original["week"];
+            var result = (JObject)original.DeepClone();
+            var ledger = (JObject)result["ledger"];
+            ledger.Add("replies", new JArray());
+            ledger.Add("calls", new JArray());
+            result.Add("leverRulesStartWeek", checked(week + 1));
+            result["schemaVersion"] = 18;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v16-to-v17 dispatch.</summary>
+        public static JObject PrepareV17Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 17) return (JObject)original.DeepClone();
             if (version < 1 || version > 16) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV16ToV17(version == 16 ? original : PrepareV16Payload(original, out _));
@@ -38,7 +70,14 @@ namespace Gamesim.Persistence
             FrozenEpisodeV16.Validate(original);
             int week = (int)original["week"];
             var result = (JObject)original.DeepClone();
-            result.Add("ledger", JObject.FromObject(new SeasonLedger(), SaveJson.Serializer()));
+            // Schema 17's ledger, written as schema 17 wrote it: seven lists and a drop count. Never
+            // from the live type, which schema 18 has since given two lists more; a frozen step
+            // that serialised the live shape would fail its own freeze the day the shape moved.
+            var ledger = new JObject();
+            foreach (var name in new[] { "opportunities", "competitions", "power", "ballots", "claims", "alliances", "standings" })
+                ledger.Add(name, new JArray());
+            ledger.Add("dropped", 0);
+            result.Add("ledger", ledger);
             result.Add("readRulesStartWeek", checked(week + 1));
             result["schemaVersion"] = 17;
             return result;

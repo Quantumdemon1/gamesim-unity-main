@@ -65,6 +65,7 @@ namespace Gamesim.Simulation
         /// an empty story state and for every imported web round, so the ten-factor parity holds.
         /// </summary>
         public List<WebVoteStoryTerm> storyTerms = new List<WebVoteStoryTerm>();
+        public List<WebVoteObligation> obligations = new List<WebVoteObligation>();
     }
 
     /// <summary>A voter's grudge against a nominee and the bond between them, as vote factors.</summary>
@@ -95,6 +96,17 @@ namespace Gamesim.Simulation
         public List<WebNomineeEvaluation> nomineeEvaluations = new List<WebNomineeEvaluation>();
         public List<string> publicReasonCodes = new List<string>();
         public List<string> privateReasonCodes = new List<string>();
+    }
+
+    /// <summary>
+    /// What a voter owes the player on a nominee (STRATEGY-LOOP-PLAN.md §3): the levers' native
+    /// term, absent on an empty store so the web's factors stay exactly the web's.
+    /// </summary>
+    [Serializable] public sealed class WebVoteObligation
+    {
+        public string nomineeId;
+        public double value;
+        public List<string> evidenceIds = new List<string>();
     }
 
     /// <summary>
@@ -166,7 +178,8 @@ namespace Gamesim.Simulation
                     nomineeId = id,
                     grudge = StoryConsumers.VoteGrudge(state, voterId, id),
                     bond = StoryConsumers.VoteBond(state, voterId, id),
-                }).Where(t => t.grudge != 0 || t.bond != 0).ToList()
+                }).Where(t => t.grudge != 0 || t.bond != 0).ToList(),
+                obligations = EpisodeEngine.Obligations(state, voterId),
             };
             return options;
         }
@@ -226,6 +239,7 @@ namespace Gamesim.Simulation
                 case "persona": return target.name + "'s reputation makes them dangerous to keep.";
                 case "grudge": return "I haven't forgotten what " + target.name + " did.";
                 case "bond": return "I'm not turning on " + saved.name + ".";
+                case "obligation": return "I gave my word on this vote, and I keep my word.";
                 default: return "Keeping " + saved.name + " is better for my game right now.";
             }
         }
@@ -424,6 +438,11 @@ namespace Gamesim.Simulation
             var story = o.storyTerms?.FirstOrDefault(t => t.nomineeId == nominee.id);
             if (story != null && story.grudge != 0) factors.Add(Factor("grudge", story.grudge, "private", "grudge:" + o.voter.id + ":" + nominee.id));
             if (story != null && story.bond != 0) factors.Add(Factor("bond", story.bond, "private", "bond:" + o.voter.id + ":" + nominee.id));
+            // The levers' term: what this voter owes the player on this nominee, known to the player
+            // because it is their own deal. Present only where there is one.
+            var obligation = o.obligations?.FirstOrDefault(t => t.nomineeId == nominee.id);
+            if (obligation != null && obligation.value != 0)
+                factors.Add(Factor("obligation", obligation.value, "playerKnown", obligation.evidenceIds.ToArray()));
             return new WebNomineeEvaluation { nomineeId = nominee.id, factors = factors, score = factors.Sum(f => f.value) };
         }
 

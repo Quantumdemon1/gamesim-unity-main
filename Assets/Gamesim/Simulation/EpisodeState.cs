@@ -201,7 +201,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 17;
+        public int schemaVersion = 18;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -226,6 +226,8 @@ namespace Gamesim.Simulation
         /// the player learns them through the read. A season from before keeps its outcomes.
         /// </summary>
         public int readRulesStartWeek;
+        /// <summary>Schema 18: the week the levers begin (STRATEGY-LOOP-PLAN.md §3); 0 for a save that never reached them.</summary>
+        public int leverRulesStartWeek;
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();

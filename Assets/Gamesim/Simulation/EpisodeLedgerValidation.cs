@@ -3,7 +3,7 @@ using System.Linq;
 namespace Gamesim.Simulation
 {
     /// <summary>
-    /// Schema 17's invariants: the season ledger. Every list is bounded by its cap, every id names a
+    /// Schema 17's invariants, and schema 18's two lists: the season ledger. Every list is bounded by its cap, every id names a
     /// houseguest, every week is one the season has reached, and every vocabulary word is one the
     /// ledger knows, so a save cannot carry a claim from nobody, about nobody, made never.
     /// </summary>
@@ -50,6 +50,14 @@ namespace Gamesim.Simulation
             if (l.alliances == null || l.alliances.Count > most || l.alliances.Any(a => a == null || !Text(a.id, 160)
                     || !ShortOrAbsent(a.why, 160) || !Week(a.startedWeek) || (a.endedWeek != 0 && !Week(a.endedWeek))))
                 return Fail(out error, "Invalid alliance record data.");
+            if (l.replies == null || l.replies.Count > most || l.replies.Any(r => r == null || !Text(r.cardId, 160) || !ShortOrAbsent(r.kind, 64)
+                    || !Id(r.fromId) || !OptionalId(r.listenerId) || !ShortOrAbsent(r.replyKey, 64) || !Week(r.week)
+                    || !Finite(r.toThem) || r.toThem < -100 || r.toThem > 100))
+                return Fail(out error, "Invalid reply record data.");
+            if (l.calls == null || l.calls.Count > most || l.calls.Any(c => c == null || !Text(c.allianceId, 160) || !Id(c.callerId) || !Id(c.targetId)
+                    || !Week(c.week) || c.followed == null || c.followed.Count > MaximumCast || c.followed.Any(id => !Id(id))
+                    || c.defected == null || c.defected.Count > MaximumCast || c.defected.Any(id => !Id(id))))
+                return Fail(out error, "Invalid bloc call record data.");
             return true;
         }
     }

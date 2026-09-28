@@ -301,6 +301,13 @@ namespace Gamesim.Episode
                 seasonReport.blockSpeeches++;
                 yield break;
             }
+            // The read, once a season: ask a voter straight, then read them, before the campaign closes.
+            if (SeasonReadDue(state))
+            {
+                yield return ExerciseSeasonRead(state, graphical);
+                if (seasonReadCommitted) yield break;
+                yield return OpenSeasonStation();
+            }
             yield return ClickSeasonButton(state.phase == EpisodePhase.Social ? "Begin the next competition"
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode");
         }
@@ -554,6 +561,8 @@ namespace Gamesim.Episode
             public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks, blockSpeeches;
             public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
             public int replyCardsAnswered;
+            public int votesAsked, peopleRead;
+            public string readNote;
             public string minigameKind, dealKind, dealOutcome, dealNote;
             public double minigameScore;
             public List<string> houseEventKinds = new List<string>();

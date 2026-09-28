@@ -54,7 +54,11 @@ namespace Gamesim.Simulation
             UsesBlocVoting(s) ? WebNativeEvictionRound.Evaluate(s, new[] { voterId }).evaluations.Single()
                 : WebEvictionVoting.EvaluateNative(s, voterId);
 
-        /// <summary>"Where's your head at on the vote?" They answer with their leaning, or a lie, or nothing.</summary>
+        /// <summary>
+        /// "Where's your head at on the vote?" They answer with their leaning, or a lie, or nothing.
+        /// The claim is the record; no memory is written, because a memory naming "you" counts for
+        /// the player in every ballot they are on the block for (the web's memory term matches names).
+        /// </summary>
         private static void AskVote(EpisodeState s, EpisodeCommand c)
         {
             Require(VoteRead.Available(s), "There is no vote to ask about yet.");
@@ -68,7 +72,6 @@ namespace Gamesim.Simulation
             // A strategist who is not close to you keeps it to themselves. No roll: nothing to keep.
             if (target.traits.Contains("Strategic") && !target.traits.Contains("Loyal") && view < 25)
             {
-                Remember(s, target.id, s.playerId, "You asked me straight how I'd vote in week " + s.week + ". I kept it to myself.", true);
                 Log(s, "vote-read", target.name + " wouldn't say where their vote is. \"Ask me after.\"", s.playerId, target.id);
                 return;
             }
@@ -78,7 +81,6 @@ namespace Gamesim.Simulation
             bool honest = Roll(s) < honesty;
             string stated = honest ? truth.selectedNomineeId : s.nominees.First(id => id != truth.selectedNomineeId);
             SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = target.id, targetId = stated, source = ClaimSource.Told });
-            Remember(s, target.id, s.playerId, "You asked me straight how I'd vote in week " + s.week + ".", true);
             Log(s, "vote-read", "You asked " + target.name + " where their head is at. \"" + Name(s, stated) + ".\"", s.playerId, target.id);
         }
 
@@ -169,7 +171,7 @@ namespace Gamesim.Simulation
         /// the sentence chosen for the log changes, so a vote the player saw coming is explained by
         /// what they saw.
         /// </summary>
-        internal static string ExplainKnown(EpisodeState s, WebVoteEvaluation evaluation)
+        public static string ExplainKnown(EpisodeState s, WebVoteEvaluation evaluation)
         {
             var selected = evaluation.nomineeEvaluations.FirstOrDefault(n => n.nomineeId == evaluation.selectedNomineeId);
             var saved = evaluation.nomineeEvaluations.FirstOrDefault(n => n.nomineeId == evaluation.savedNomineeId);

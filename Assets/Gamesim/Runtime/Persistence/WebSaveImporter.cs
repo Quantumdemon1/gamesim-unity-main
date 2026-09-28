@@ -205,6 +205,7 @@ namespace Gamesim.Persistence
             // the import, so the week the web save was in plays under the rules it was written under.
             EpisodeEngine.EnableStory(result, checked(week + 1));
             EpisodeEngine.EnableRead(result, checked(week + 1));
+            EpisodeEngine.EnableLevers(result, checked(week + 1));
             return result;
         }
 

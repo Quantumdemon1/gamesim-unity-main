@@ -26,6 +26,9 @@ namespace Gamesim.Simulation
         public List<ClaimRow> claims = new List<ClaimRow>();
         public List<AllianceRow> alliances = new List<AllianceRow>();
         public List<StandingRow> standings = new List<StandingRow>();
+        /// <summary>Schema 18: every reply card answered, typed, and every call the player made to a bloc.</summary>
+        public List<ReplyRow> replies = new List<ReplyRow>();
+        public List<BlocCallRow> calls = new List<BlocCallRow>();
         /// <summary>Rows the caps dropped, oldest first, so a long season still says how much it forgot.</summary>
         public int dropped;
 
@@ -39,6 +42,8 @@ namespace Gamesim.Simulation
             copy.claims = claims.Select(x => x.Clone()).ToList();
             copy.alliances = alliances.Select(x => x.Clone()).ToList();
             copy.standings = standings.Select(x => x.Clone()).ToList();
+            copy.replies = replies.Select(x => x.Clone()).ToList();
+            copy.calls = calls.Select(x => x.Clone()).ToList();
             return copy;
         }
 
@@ -147,6 +152,41 @@ namespace Gamesim.Simulation
         public string fromId, toId, source;
         public double score;
         public StandingRow Clone() => (StandingRow)MemberwiseClone();
+    }
+
+    /// <summary>
+    /// A reply card answered (STRATEGY-LOOP-PLAN.md §8): which card, from whom, which reply, and
+    /// whether it promised a vote. The story's plays listen for it at the anchors; the verdict
+    /// reads it as a chance taken or passed.
+    /// </summary>
+    [Serializable]
+    public sealed class ReplyRow
+    {
+        public int week;
+        public string cardId, kind, fromId, listenerId, replyKey;
+        public bool promised;
+        public double toThem;
+        public ReplyRow Clone() => (ReplyRow)MemberwiseClone();
+    }
+
+    /// <summary>
+    /// The player calling a bloc's target at an alliance meeting: who followed and who did not.
+    /// Written by the alliance lever; read by the vote and the verdict.
+    /// </summary>
+    [Serializable]
+    public sealed class BlocCallRow
+    {
+        public int week;
+        public string allianceId, callerId, targetId;
+        public List<string> followed = new List<string>();
+        public List<string> defected = new List<string>();
+        public BlocCallRow Clone()
+        {
+            var copy = (BlocCallRow)MemberwiseClone();
+            copy.followed = new List<string>(followed);
+            copy.defected = new List<string>(defected);
+            return copy;
+        }
     }
 
     /// <summary>Where a claim or a standing came from.</summary>

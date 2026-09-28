@@ -63,6 +63,9 @@ namespace Gamesim.Episode
         public const string DealAcceptCaption = "Accept this offer";
         public const string DealDeclineCaption = "Turn this offer down";
         public static string DealProposeCaption(string title) => "Propose " + Article(title) + title;
+        /// <summary>A vote deal names who it is about: "Propose a vote to keep Jo", "Propose a vote to evict Jo".</summary>
+        public static string VoteDealCaption(string kind, string who) =>
+            DealProposeCaption((kind == Gamesim.Simulation.DealKind.VoteSave ? "vote to keep " : "vote to evict ") + who);
 
         /// <summary>
         /// "a " or "an ", so a caption built from a deal's own title reads as English.

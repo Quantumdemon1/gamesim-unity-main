@@ -126,6 +126,14 @@ namespace Gamesim.Simulation
             return read;
         }
 
+        /// <summary>A read in a few words, for a lever's line: no read, torn, or the lean and how sure it is.</summary>
+        public static string Describe(EpisodeState s, VoterRead read)
+        {
+            if (read == null || read.confidence == Unknown) return "no read";
+            if (read.confidence == Torn) return "torn";
+            return (read.confidence == Firm ? "firm evict " : "leaning evict ") + (s.Find(read.leaningId)?.name ?? read.leaningId);
+        }
+
         /// <summary>Whether the player has learned this term of a voter's evaluation of a nominee.</summary>
         public static bool FactorKnown(EpisodeState s, string voterId, string nomineeId, WebVoteFactor factor)
         {
@@ -134,6 +142,7 @@ namespace Gamesim.Simulation
             {
                 case "relationship": return StandingKnown(s, voterId, nomineeId);
                 case "history": return true;
+                case "obligation": return true;
                 case "alliance":
                     return factor.evidenceIds.All(id => AllianceKnown(s, id));
                 case "blocPressure":

@@ -196,6 +196,8 @@ namespace Gamesim.Simulation
                         s.backdoorTargetId = null;   // A plan for a week that has ended is not a plan.
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
                         s.lobbies.Clear();
+                        // Under the levers, bought time is the week's: the counter that never reset.
+                        if (LeverRulesOn(s)) s.boughtActionPoints = 0;
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
                         if (StoryAt(s, StoryRules.Bonds)) MoodsSettle(s);
@@ -384,7 +386,7 @@ namespace Gamesim.Simulation
                             SettlePromise(s, promise, promise.targetId == vote.targetId ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
                         ApplyOathPlan(s, WebLoyaltyOaths.EvictionVote(OathSnapshot(s), vote.voterId, vote.targetId));
                     }
-                    SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null));
+                    SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null, voteDeals: LeverRulesOn(s)));
                     StoryVotesRevealed(s, evicted);
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
                     // Off the block by the house's vote is saved too.
@@ -1187,7 +1189,9 @@ namespace Gamesim.Simulation
             double damage = -(5 + Math.Floor(Roll(s) * 8));
             Change(s, recipient.id, about.id, damage,
                 "You told " + recipient.name + " something about " + about.name, "lie");
-            Remember(s, recipient.id, about.id, "You told me something about " + about.name
+            // Under the levers the memory sounds like what it is, so the ballot's memory term reads
+            // it as a lie about that person rather than as a neutral mention of their name.
+            Remember(s, recipient.id, about.id, "You told me something " + (LeverRulesOn(s) ? "suspicious " : "") + "about " + about.name
                 + " in week " + s.week + ". I have not checked it.", true);
 
             bool discovered = Roll(s) < LieDiscoveryChance;
@@ -1766,6 +1770,7 @@ namespace Gamesim.Simulation
 
             if (accepted)
             {
+                var read = LeverRead(s, target.id);
                 s.deals.Add(PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence));
                 Change(s, s.playerId, target.id, PlayerDeals.AcceptedImpact,
                     "Agreed a " + title + " with you.", "deal_accepted");
@@ -1773,6 +1778,7 @@ namespace Gamesim.Simulation
                 Log(s, "deal", target.name + " agreed a " + title + ". “" + said + "”",
                     s.playerId, target.id);
                 if (type == DealKind.AllianceInvite) AllyThroughInvitation(s, target.id);
+                if (type == DealKind.VoteEvict || type == DealKind.VoteSave) LeverLine(s, target.id, read, WantsOut(s, type, about), "your deal");
                 return;
             }
 

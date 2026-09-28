@@ -84,6 +84,10 @@ namespace Gamesim.Simulation
                 case DealKind.VoteTogether:
                     if (state.evictionResolved || state.nominees.Count == 0)
                         return Refuse(out reason, "There is no vote to bargain over yet.");
+                    // Under the levers a vote deal names who it is about, so it can enter a voter's
+                    // ballot and be judged at the reveal. Before them it named nobody, as it always had.
+                    if (EpisodeEngine.LeverRulesOn(state) && type != DealKind.VoteTogether && (aboutId == null || !state.nominees.Contains(aboutId)))
+                        return Refuse(out reason, "Say who the vote is about: somebody on the block.");
                     break;
                 case DealKind.TargetAgreement:
                     if (state.Find(aboutId) == null || aboutId == state.playerId || aboutId == toId
@@ -110,7 +114,9 @@ namespace Gamesim.Simulation
         public static List<string> Available(EpisodeState state, string toId) =>
             DealKind.All.Where(type => type == DealKind.TargetAgreement
                     ? Subjects(state, toId).Any()
-                    : CanPropose(state, toId, type, null, out _))
+                    : EpisodeEngine.LeverRulesOn(state) && (type == DealKind.VoteSave || type == DealKind.VoteEvict)
+                        ? state.nominees.Any(id => CanPropose(state, toId, type, id, out _))
+                        : CanPropose(state, toId, type, null, out _))
                 .ToList();
 
         /// <summary>Everybody a deal with this houseguest could legitimately be about.</summary>

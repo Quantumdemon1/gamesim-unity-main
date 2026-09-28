@@ -465,6 +465,20 @@ namespace Gamesim.Episode
                     }
                     continue;
                 }
+                // Under the levers a vote deal names who it is about, one row per nominee, so it can
+                // enter a voter's ballot as an obligation and be judged at the reveal.
+                if (EpisodeEngine.LeverRulesOn(state) && (kind == DealKind.VoteSave || kind == DealKind.VoteEvict))
+                {
+                    foreach (string nomineeId in state.nominees)
+                    {
+                        string about = nomineeId;
+                        if (!PlayerDeals.CanPropose(state, npc.id, kind, about, out _)) continue;
+                        hud.Tag(hud.ActionFor(about, EpisodeHud.VoteDealCaption(kind, about == state.playerId ? "you" : state.Find(about).name),
+                                () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, about, text: kind)),
+                            Stakes(kind) + " · " + Chance(state, npc.id, kind, about), EpisodeHud.TagSeat.PastReading);
+                    }
+                    continue;
+                }
                 hud.Tag(hud.ActionFor(kind, EpisodeHud.DealProposeCaption(DealKind.Title(kind).ToLowerInvariant()),
                         () => Commit(state, EpisodeCommandKind.ProposeDeal, npc.id, text: kind)),
                     Stakes(kind) + " · " + Chance(state, npc.id, kind, null));
@@ -603,7 +617,7 @@ namespace Gamesim.Episode
             int left = WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints;
             if (left <= 0)
             {
-                hud.Paragraph("You have bought as much time as the house will give you this season.");
+                hud.Paragraph("You have bought as much time as the house will give you this " + (EpisodeEngine.LeverRulesOn(state) ? "week" : "season") + ".");
                 return;
             }
             hud.Paragraph("Out of interactions? You can buy another, and it is paid for in goodwill: "

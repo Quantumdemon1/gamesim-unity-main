@@ -568,6 +568,7 @@ namespace Gamesim.Episode
                 case "grudge": return "a grudge";
                 case "bond": return "a bond";
                 case "history": return "your history with them";
+                case "obligation": return "your deal with them";
                 default: return code;
             }
         }

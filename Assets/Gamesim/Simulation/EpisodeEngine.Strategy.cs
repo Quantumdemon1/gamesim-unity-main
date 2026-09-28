@@ -74,6 +74,15 @@ namespace Gamesim.Simulation
             Require(reply != null, "Choose one of the answers you were offered.");
 
             s.replyCards.Remove(card);
+            // Typed, for the story's plays and the verdict (STRATEGY-LOOP-PLAN.md §8): which card,
+            // from whom, which answer, and whether it promised a vote.
+            SeasonLedger.Append(s.ledger, s.ledger.replies, new ReplyRow
+            {
+                week = s.week, cardId = card.id, kind = card.kind, fromId = from.id, listenerId = card.aboutId,
+                replyKey = reply.Key, toThem = reply.ToThem,
+                promised = reply.Promises && s.phase == EpisodePhase.Campaign && Voters(s).Any(v => v.id == s.playerId)
+                    && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? ""),
+            });
             if (reply.ToThem != 0)
                 Change(s, s.playerId, from.id, reply.ToThem, ReplyCards.Note(card.kind, reply.Label), "reply");
             // Gossiping back reaches whoever they were talking to, which is the point of it.

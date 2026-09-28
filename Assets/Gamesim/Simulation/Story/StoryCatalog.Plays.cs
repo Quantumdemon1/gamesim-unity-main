@@ -102,16 +102,23 @@ namespace Gamesim.Simulation
                             "Ask {INSIDER} directly who else is in it.",
                             "{INSIDER} looked at you for a long moment, then told you who else is in it.",
                             LeakAlliance("INSIDER", "PARTNER", Player))
-                            .Checked(40, "INSIDER", "{INSIDER} laughed it off, and by dinner {PARTNER} knew you had been asking.",
+                            .Checked(50, "INSIDER", "{INSIDER} laughed it off, and by dinner {PARTNER} knew you had been asking.",
                                 Told("PARTNER", Player, -4, StoryReceipts.TooNosy))
                             .Then(Waits),
                         Opt("watch-them", "Watch who they talk to", Low, Calculated,
                             "Spend some of your time watching who {INSIDER} and {PARTNER} huddle with.",
                             "You watched long enough to see who else they huddle with.",
                             LeakAlliance("INSIDER", "PARTNER", Player))
-                            .Checked(55, "PARTNER", "{PARTNER} caught you watching, and they went quiet around you.",
+                            .Checked(50, "PARTNER", "{PARTNER} caught you watching, and they went quiet around you.",
                                 Move(Player, "PARTNER", -3))
                             .CostsAction().Then(Waits),
+                        Opt("over-a-game", "Get it out of them over a game", Low, Playful,
+                            "Deal {INSIDER} into a card game and let the talk wander where you want it.",
+                            "Three hands in, {INSIDER} let slip who else is in it.",
+                            LeakAlliance("INSIDER", "PARTNER", Player))
+                            .Checked(50, "INSIDER", "{INSIDER} saw where the questions were going and folded.",
+                                Move(Player, "INSIDER", -2))
+                            .Then(Waits),
                         Opt("trade-what-you-know", "Trade something you know", Low, Calculated,
                             "Offer {PARTNER} what you know about another alliance in exchange for names.",
                             "{PARTNER} traded names for what you knew.",
@@ -132,32 +139,39 @@ namespace Gamesim.Simulation
         private static ArcTemplate StayOffTheBlock() => new ArcTemplate
         {
             id = "stay-off-the-block", lane = StoryLanes.Play, eyebrow = "Power", title = "Stay Off the Block",
-            origin = "native: plan 30 §2, the Power play: the Head of Household's bottom two, read as hoh-room reads it; decided at the final block",
+            origin = "native: plan 30 §2, the Power play: the Head of Household's bottom two by the ranking the nominations use; lost the moment you are named",
             rulesVersion = StoryRules.Plays, startAnchors = new[] { StoryAnchors.HohCrowned },
             oncePerHeadliner = false, cooldownWeeks = 1,
-            roles = new[] { Role("HOH"), Optional("ALLY"), Optional("TARGET") },
+            roles = new[] { Role("HOH"), Optional("ALLY") },
             cast = c =>
             {
                 string hoh = NpcHoh(c);
-                if (hoh == null || c.state.nominees.Count > 0 || !InBottomTwo(c, hoh)) return null;
-                // Someone the Head of Household listens to who likes you: the one who could put in a word.
-                string ally = Npcs(c).Where(x => x.id != hoh && c.Score(x.id, P(c)) >= 5 && c.Score(hoh, x.id) >= 10)
+                // Really at risk: the Head of Household's own ranking, the one the nominations use.
+                if (hoh == null || c.state.nominees.Count > 0) return null;
+                var ranked = EpisodeEngine.NominationCandidates(c.state)
+                    .OrderBy(x => EpisodeEngine.NominationWeight(c.state, hoh, x.id)).ToList();
+                if (!ranked.Take(2).Any(x => x.isPlayer)) return null;
+                // Someone with nothing against you whom the Head of Household has nothing against: the
+                // one who could put in a word. How well it goes is the check's business, not the cast's.
+                string ally = Npcs(c).Where(x => x.id != hoh && c.Score(x.id, P(c)) >= 0 && c.Score(hoh, x.id) >= 0)
                     .OrderByDescending(x => c.Score(hoh, x.id) + c.Score(x.id, P(c))).ThenBy(x => x.id, StringComparer.Ordinal)
                     .FirstOrDefault()?.id;
-                // Someone the Head of Household would rather see go: a bigger target to point at.
-                string target = Npcs(c).Where(x => x.id != hoh && x.id != ally)
-                    .OrderBy(x => c.Score(hoh, x.id)).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault()?.id;
-                return Bind().With("HOH", hoh).With("ALLY", ally).With("TARGET", target).Headlining(hoh);
+                // Where the windows play, the Head of Household's own ear is the lobby's. With nobody
+                // to work through there is nothing to do here but wait, and waiting is not a play.
+                if (ally == null && StrategyRules.Apply(c.state)) return null;
+                return Bind().With("HOH", hoh).With("ALLY", ally).Headlining(hoh);
             },
             weight = (c, b) => 40,
             play = new PlayTemplate
             {
                 currency = PlayCurrencies.Power, deadline = StoryAnchors.BlockSet,
-                goal = "Be off {HOH}'s block when the veto meeting is over.",
-                // Only the final block counts: a backdoor or the veto can still change the first names.
+                goal = "Stay off {HOH}'s block all week.",
+                // Off the block once the veto meeting is over; named at any point - the nominations or
+                // a backdoor - and it is lost there and then, whatever the veto does after.
                 progress = (c, x) => PlayProgress.Done(c.state.vetoResolved && c.state.nominees.Count > 0 && !c.state.nominees.Contains(P(c))),
-                wonOutcome = "You made it through {HOH}'s week off the block.",
-                lostOutcome = "{HOH}'s week ended with you on the block.",
+                failed = (c, x) => c.state.nominees.Contains(P(c)),
+                wonOutcome = "{HOH}'s week ended without you on the block.",
+                lostOutcome = "{HOH} put you on the block.",
             },
             beats = new[]
             {
@@ -167,6 +181,9 @@ namespace Gamesim.Simulation
                 {
                     id = "angles", surface = StorySurfaces.Approach, venue = Hallway, closes = StoryAnchors.NomsSet,
                     title = "Stay Off the Block", summary = "You work on staying off the block.",
+                    // Every way through lifts you the same distance in the Head of Household's eyes; which
+                    // one lands depends on who you are asking. Pointing at somebody else would not do:
+                    // from the very bottom, one name dropping past you still leaves you in the two.
                     text = "{HOH} decides the nominations. What do you do about being in {HOH.their} bottom two? Anything that changes {HOH.their} mind counts.",
                     lapse = "lay-low",
                     options = new[]
@@ -174,18 +191,32 @@ namespace Gamesim.Simulation
                         Opt("get-a-voucher", "Get someone to vouch for you", Low, Warm,
                             "Ask {ALLY} to put in a word for you with {HOH}.",
                             "{ALLY} put in a word for you with {HOH}.",
-                            View("HOH", Player, 12), Move(Player, "ALLY", 2))
-                            .Checked(55, "ALLY", "{ALLY} would rather not stick {ALLY.their} neck out, and {HOH} noticed you asking.",
+                            View("HOH", Player, 20))
+                            .Checked(50, "ALLY", "{ALLY} would rather not stick {ALLY.their} neck out, and {HOH} noticed you asking.",
                                 View("HOH", Player, -4))
                             .ShowIf((c, x) => x.Role("ALLY") != null).Then(Waits),
-                        Opt("point-elsewhere", "Point them at a bigger target", Medium, Calculated,
-                            "Make the case to {HOH} that {TARGET} is the bigger threat.",
-                            "{HOH} heard you out, and the case against {TARGET} landed.",
-                            View("HOH", "TARGET", -15))
-                            .Checked(45, "HOH", "{HOH} did not like being told who to nominate, and {TARGET} heard about it.",
-                                View("HOH", Player, -6), Grudge("TARGET", Player, 25))
+                        Opt("ask-them-straight", "Ask them to go to bat for you", Medium, Candid,
+                            "Tell {ALLY} straight out that you are in trouble, and ask {ALLY.them} to take it to {HOH}.",
+                            "{ALLY} went to {HOH} that night and made your case.",
+                            View("HOH", Player, 20))
+                            .Checked(50, "ALLY", "{ALLY} said {ALLY.they} would think about it, and did not.",
+                                Move(Player, "ALLY", -2))
+                            .ShowIf((c, x) => x.Role("ALLY") != null).Then(Waits),
+                        Opt("play-you-down", "Have them play you down", Medium, Calculated,
+                            "Get {ALLY} to tell {HOH}, as if in passing, that you are no threat to {HOH.them}.",
+                            "{ALLY} made you sound harmless, and {HOH} seemed to believe it.",
+                            View("HOH", Player, 20))
+                            .Checked(50, "ALLY", "{ALLY} said it too plainly, and {HOH} could tell whose idea it was.",
+                                View("HOH", Player, -4))
+                            .ShowIf((c, x) => x.Role("ALLY") != null).Then(Waits),
+                        Opt("make-your-case", "Make your case", Medium, Bold,
+                            "Tell {HOH} to {HOH.their} face why you are more use to {HOH.them} in the house than out of it.",
+                            "{HOH} heard you out, and the case landed.",
+                            View("HOH", Player, 20))
+                            .Checked(50, "HOH", "{HOH} did not like being told how to play {HOH.their} week.",
+                                View("HOH", Player, -6))
                             // Where the windows play, the lobby is the way to the Head of Household's ear.
-                            .ShowIf((c, x) => x.Role("TARGET") != null && !StrategyRules.Apply(c.state)).Then(Waits),
+                            .ShowIf((c, x) => !StrategyRules.Apply(c.state)).Then(Waits),
                         Opt("promise-safety", "Offer them your safety", Medium, Warm,
                             "Promise {HOH} you will keep {HOH.them} safe next week if {HOH.they} keep you safe now.",
                             "{HOH} took the deal.",
@@ -237,25 +268,25 @@ namespace Gamesim.Simulation
                     lapse = "leave-it",
                     options = new[]
                     {
-                        Opt("ask-for-it", "Ask for their word", Medium, Warm,
+                        Opt("ask-for-it", "Ask for their word", Medium, Candid,
                             "Ask {FRIEND} to promise to keep you safe.",
                             "{FRIEND} gave you {FRIEND.their} word.",
                             Promise("FRIEND", Player, PromiseKind.Safety))
-                            .Checked(45, "FRIEND", "{FRIEND} went vague on you, and it stung a little.",
+                            .Checked(50, "FRIEND", "{FRIEND} went vague on you, and it stung a little.",
                                 Move(Player, "FRIEND", -3))
                             .Then(Waits),
                         Opt("do-a-favour", "Do something for them first", Low, Warm,
                             "Help {FRIEND} with something first, then ask.",
                             "You helped {FRIEND} out, and when you asked, {FRIEND.they} gave you {FRIEND.their} word.",
                             Move(Player, "FRIEND", 4), Promise("FRIEND", Player, PromiseKind.Safety))
-                            .Checked(65, "FRIEND", "{FRIEND} appreciated the help but would not promise anything yet.",
+                            .Checked(50, "FRIEND", "{FRIEND} appreciated the help but would not promise anything yet.",
                                 Move(Player, "FRIEND", 2))
                             .CostsAction().Then(Waits),
                         Opt("trade-promises", "Trade promises", Medium, Calculated,
                             "Offer {FRIEND} your safety for {FRIEND.theirs}.",
                             "You shook on it: you keep each other safe.",
                             Promise("FRIEND", Player, PromiseKind.Safety), Promise(Player, "FRIEND", PromiseKind.Safety))
-                            .Checked(55, "FRIEND", "{FRIEND} took it as a sign you are worried, and backed off.",
+                            .Checked(50, "FRIEND", "{FRIEND} took it as a sign you are worried, and backed off.",
                                 Move(Player, "FRIEND", -2))
                             .Then(Waits),
                         Lapse("leave-it", "Leave it for now", "Let it stay easy company for now.", "You left it for now.").Then(Waits),
@@ -308,38 +339,47 @@ namespace Gamesim.Simulation
             {
                 PlayOffer("Settle It", Living, StoryAnchors.EvictionNight, "approach",
                     "{RIVAL} still will not sit on the same couch as you. A grudge like that turns into a vote."),
-                new BeatTemplate
-                {
-                    id = "approach", surface = StorySurfaces.Approach, venue = Living, closes = StoryAnchors.EvictionNight,
-                    title = "Settle It", summary = "You try to settle a grudge.",
-                    text = "{RIVAL} is sitting alone on the far couch. How do you start?",
-                    lapse = "let-it-ride",
-                    options = new[]
-                    {
-                        Opt("apologise", "Apologise", Low, Yield,
-                            "Tell {RIVAL} you are sorry, and mean it.",
-                            "{RIVAL} accepted the apology, slowly.",
-                            Ease("RIVAL", Player, 30), Move(Player, "RIVAL", 3))
-                            .Checked(50, "RIVAL", "{RIVAL} took the apology as weakness.",
-                                Grudge("RIVAL", Player, 10))
-                            .Then(Waits),
-                        Opt("clear-the-air", "Clear the air", Medium, Hardball,
-                            "Have it out with {RIVAL}, all of it, once.",
-                            "It got loud, and then it got better. {RIVAL} let most of it go.",
-                            Ease("RIVAL", Player, 45))
-                            .Checked(40, "RIVAL", "It got loud and stayed loud.",
-                                Grudge("RIVAL", Player, 15))
-                            .Then(Waits),
-                        Opt("cook-for-them", "Cook them dinner", Low, Warm,
-                            "Make {RIVAL}'s favourite and bring it over.",
-                            "{RIVAL} ate every bite, and some of the grudge went with it.",
-                            Ease("RIVAL", Player, 25), Move(Player, "RIVAL", 4))
-                            .Checked(60, "RIVAL", "{RIVAL} ate it without a word.",
-                                Move(Player, "RIVAL", 1))
-                            .CostsAction().Then(Waits),
-                        Lapse("let-it-ride", "Let it ride", "Give it time.", "You gave it time.").Then(Waits),
-                    },
-                },
+                SettleItTalk("approach", null, "again",
+                    "{RIVAL} is sitting alone on the far couch. How do you start?"),
+                SettleItTalk("again", StoryAnchors.EvictionEve, Waits,
+                    "The vote is tomorrow, and {RIVAL} is still keeping {RIVAL.their} distance. One more try?"),
+            },
+        };
+
+        /// <summary>
+        /// A conversation with somebody holding a grudge: each way in lands differently with different
+        /// people, and any that lands takes half a nomination's grudge with it. A grudge that big
+        /// takes two.
+        /// </summary>
+        private static BeatTemplate SettleItTalk(string id, string anchor, string next, string text) => new BeatTemplate
+        {
+            id = id, anchor = anchor, surface = StorySurfaces.Approach, venue = Living, closes = StoryAnchors.EvictionNight,
+            title = "Settle It", summary = "You try to settle a grudge.", text = text,
+            lapse = "let-it-ride",
+            options = new[]
+            {
+                Opt("apologise", "Apologise", Low, Yield,
+                    "Tell {RIVAL} you are sorry, and mean it.",
+                    "{RIVAL} accepted the apology, slowly.",
+                    Ease("RIVAL", Player, 50), Move(Player, "RIVAL", 2))
+                    .Checked(50, "RIVAL", "{RIVAL} took the apology as weakness.",
+                        Grudge("RIVAL", Player, 10))
+                    .Then(next),
+                Opt("clear-the-air", "Clear the air", Medium, Hardball,
+                    "Have it out with {RIVAL}, all of it, once.",
+                    "It got loud, and then it got better. {RIVAL} let most of it go.",
+                    Ease("RIVAL", Player, 50), Move(Player, "RIVAL", 2))
+                    .Checked(50, "RIVAL", "It got loud and stayed loud.",
+                        Grudge("RIVAL", Player, 15))
+                    .Then(next),
+                Opt("cook-for-them", "Cook them dinner", Low, Warm,
+                    "Make {RIVAL}'s favourite and bring it over.",
+                    "{RIVAL} ate every bite, and some of the grudge went with it.",
+                    Ease("RIVAL", Player, 50), Move(Player, "RIVAL", 2))
+                    .Checked(50, "RIVAL", "{RIVAL} ate it without a word.",
+                        Move(Player, "RIVAL", 1))
+                    .CostsAction().Then(next),
+                Lapse("let-it-ride", "Let it ride", "Give it time.", "You gave it time.").Then(Waits),
             },
         };
 
@@ -392,7 +432,7 @@ namespace Gamesim.Simulation
                             "Put it to {FIRST} and {SECOND} together: the three of you, voting as one.",
                             "{FIRST} looked at {SECOND}, and {SECOND} nodded. The three of you are in it together.",
                             Alliance(Player, "FIRST", "SECOND"))
-                            .Checked(45, "FIRST", "{SECOND} thought it was too soon, and the moment passed.",
+                            .Checked(50, "FIRST", "{SECOND} thought it was too soon, and the moment passed.",
                                 Move(Player, "SECOND", -3))
                             .Then(Waits, "pitch-again"),
                         Opt("win-them-over", "Win them over first", Low, Warm,
@@ -438,7 +478,7 @@ namespace Gamesim.Simulation
             {
                 // Somebody the player gets on with and knows nothing about yet, with things to learn.
                 var strangers = Npcs(c).Where(x => c.Score(P(c), x.id) >= 0 && !c.Real(x.id)
-                                                   && Lore.Learned(c.state, x.id).Count == 0 && Lore.FactsOf(c.state, x.id).Count() >= 2)
+                                                   && Lore.Learned(c.state, x.id).Count == 0 && Lore.FactsOf(c.state, x.id).Count() >= 3)
                     .OrderByDescending(x => c.Score(x.id, P(c))).ThenBy(x => x.id, StringComparer.Ordinal).Take(3).ToList();
                 var subject = Keyed(c, "know-them", strangers);
                 return subject == null ? null : Bind().With("SUBJECT", subject.id).Headlining(subject.id);
@@ -447,9 +487,9 @@ namespace Gamesim.Simulation
             play = new PlayTemplate
             {
                 currency = PlayCurrencies.Intel, deadline = StoryAnchors.EvictionNight,
-                goal = "Learn two things about {SUBJECT} before the next eviction.",
+                goal = "Learn three things about {SUBJECT} before the next eviction.",
                 // Anything learned counts: this play's questions, or an ordinary conversation.
-                progress = (c, x) => new PlayProgress(Lore.Learned(c.state, x.Role("SUBJECT")).Count, 2),
+                progress = (c, x) => new PlayProgress(Lore.Learned(c.state, x.Role("SUBJECT")).Count, 3),
                 wonOutcome = "You know {SUBJECT} a lot better than you did.",
                 partOutcome = "You learned something about {SUBJECT}, but not much.",
                 lostOutcome = "{SUBJECT} stayed a closed book.",
@@ -464,7 +504,11 @@ namespace Gamesim.Simulation
             },
         };
 
-        /// <summary>A chance to learn about somebody: each approach reads differently with different people.</summary>
+        /// <summary>
+        /// A chance to learn about somebody: each approach reads differently with different people,
+        /// and any that lands teaches two things - what was asked about, or failing that whatever
+        /// else there is to know.
+        /// </summary>
         private static BeatTemplate KnowThemTalk(string id, string anchor, string next) => new BeatTemplate
         {
             id = id, anchor = anchor, surface = StorySurfaces.Approach, venue = Kitchen, closes = StoryAnchors.EvictionNight,
@@ -476,20 +520,20 @@ namespace Gamesim.Simulation
                 Opt("ask-about-home", "Ask about home", Low, Warm,
                     "Ask {SUBJECT} about home and the people waiting there.",
                     "{SUBJECT} talked about home for a long time.",
-                    Reveal("SUBJECT", Lore.Facets.Home), Reveal("SUBJECT", Lore.Facets.Origin))
-                    .Checked(55, "SUBJECT", "{SUBJECT} changed the subject.", Move(Player, "SUBJECT", -1))
+                    RevealMore("SUBJECT", Lore.Facets.Home), RevealMore("SUBJECT", Lore.Facets.Origin))
+                    .Checked(50, "SUBJECT", "{SUBJECT} changed the subject.", Move(Player, "SUBJECT", -1))
                     .Then(next),
                 Opt("share-first", "Share something of yours first", Low, Candid,
                     "Tell {SUBJECT} something real about yourself, and see what comes back.",
                     "You went first, and {SUBJECT} met you halfway.",
-                    Reveal("SUBJECT", Lore.Facets.Comfort), Reveal("SUBJECT", Lore.Facets.Work), Move(Player, "SUBJECT", 2))
-                    .Checked(60, "SUBJECT", "{SUBJECT} listened, and kept {SUBJECT.their} own story to {SUBJECT.themselves}.")
+                    RevealMore("SUBJECT", Lore.Facets.Comfort), RevealMore("SUBJECT", Lore.Facets.Work))
+                    .Checked(50, "SUBJECT", "{SUBJECT} listened, and kept {SUBJECT.their} own story to {SUBJECT.themselves}.")
                     .Then(next),
                 Opt("talk-game", "Talk about why they came", Medium, Calculated,
                     "Ask {SUBJECT} what {SUBJECT.they} want out of this game.",
                     "{SUBJECT} told you what {SUBJECT.they} came here for.",
-                    Reveal("SUBJECT", Lore.Facets.Goal), Reveal("SUBJECT", Lore.Facets.Respects))
-                    .Checked(45, "SUBJECT", "{SUBJECT} did not like being asked, and said so.", Move(Player, "SUBJECT", -3))
+                    RevealMore("SUBJECT", Lore.Facets.Goal), RevealMore("SUBJECT", Lore.Facets.Respects))
+                    .Checked(50, "SUBJECT", "{SUBJECT} did not like being asked, and said so.", Move(Player, "SUBJECT", -3))
                     .Then(next),
                 Lapse("leave-it", "Leave it for now", "Let {SUBJECT} drink {SUBJECT.their} coffee in peace.", "You left it for now.").Then(Waits),
             },
@@ -537,8 +581,15 @@ namespace Gamesim.Simulation
                             "Spend your time this week talking the house round for {NOMINEE}.",
                             "You worked the house for {NOMINEE}, and {NOMINEE.they} saw you do it.",
                             Hook(Player, "NOMINEE"), Move(Player, "NOMINEE", 3))
-                            .Checked(55, "NOMINEE", "You tried, but {NOMINEE} never heard about it.", Move(Player, "NOMINEE", 1))
+                            .Checked(50, "NOMINEE", "You tried, but {NOMINEE} never heard about it.", Move(Player, "NOMINEE", 1))
                             .CostsAction().Then(Waits),
+                        Opt("stand-up-for-them", "Stand up for them", Medium, Bold,
+                            "Say it in front of the whole house: {NOMINEE} deserves to stay.",
+                            "You said it where everybody could hear, and {NOMINEE} will remember who did.",
+                            Hook(Player, "NOMINEE"), Move(Player, "NOMINEE", 2))
+                            .Checked(50, "NOMINEE", "The house went quiet, and {NOMINEE} looked more embarrassed than grateful.",
+                                Move(Player, "NOMINEE", -1))
+                            .Then(Waits),
                         Opt("cover-for-them", "Cover for them", Medium, Calculated,
                             "Tell the house the thing {NOMINEE} is being blamed for was not {NOMINEE.their} doing.",
                             "You took the heat for {NOMINEE}, and {NOMINEE.they} will not forget it.",
@@ -599,7 +650,7 @@ namespace Gamesim.Simulation
                     lapse = "leave-them",
                     options = new[]
                     {
-                        Opt("tell-them", "Tell them what was said", High, Calculated,
+                        Opt("tell-them", "Tell them what was said", High, Candid,
                             "Tell {PAWN} what {TARGET} has been saying about {PAWN.them}.",
                             "{PAWN} went very quiet, then very angry.",
                             Grudge("PAWN", "TARGET", 45, GrudgeCauses.Story))
@@ -608,9 +659,15 @@ namespace Gamesim.Simulation
                             .Then(Waits),
                         Opt("plant-a-seed", "Plant a seed", Medium, Calculated,
                             "Wonder aloud whether {TARGET} really has {PAWN}'s back, and leave it there.",
-                            "{PAWN} did not say anything, but {PAWN.they} watched {TARGET} differently after.",
-                            Grudge("PAWN", "TARGET", 25, GrudgeCauses.Story))
-                            .Checked(65, "PAWN", "{PAWN} shrugged it off.", Move(Player, "PAWN", -1))
+                            "{PAWN} did not say anything, but {PAWN.they} watched {TARGET} differently after, and it grew.",
+                            Grudge("PAWN", "TARGET", 45, GrudgeCauses.Story))
+                            .Checked(50, "PAWN", "{PAWN} shrugged it off.", Move(Player, "PAWN", -1))
+                            .Then(Waits),
+                        Opt("joke-about-it", "Joke about it until it stings", Medium, Playful,
+                            "Make {TARGET}'s last win the running joke, and let {PAWN} wonder why {TARGET} is laughing too.",
+                            "The joke stopped being funny to {PAWN} somewhere around the third time.",
+                            Grudge("PAWN", "TARGET", 45, GrudgeCauses.Story))
+                            .Checked(50, "PAWN", "{PAWN} laughed along and thought nothing more of it.", Move(Player, "PAWN", -1))
                             .Then(Waits),
                         Lapse("leave-them", "Leave them be", "Not today.", "You left them to it.").Then(Waits),
                     },

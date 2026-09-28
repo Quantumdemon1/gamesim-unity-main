@@ -188,6 +188,10 @@ namespace Gamesim.Simulation
                 {
                     if (to == null || !StoryAt(s, StoryRules.Lore)) return;
                     var fact = Lore.Facet(s, to.id, e.type);
+                    // RevealMore: the facet, or failing that the next thing not yet known about them.
+                    if (e.amount > 0 && (fact == null || Lore.Knows(s, fact.id)))
+                        fact = Lore.FactsOf(s, to.id).Where(f => !Lore.Knows(s, f.id))
+                            .OrderBy(f => f.depth).ThenBy(f => f.id, StringComparer.Ordinal).FirstOrDefault();
                     if (fact != null && Lore.Learn(s, fact.id))
                         Log(s, "story-lore", "You learned something about " + to.name + ": " + fact.text, s.playerId, to.id);
                     return;
@@ -242,7 +246,12 @@ namespace Gamesim.Simulation
                     int points = (int)Math.Round(e.amount);
                     if (points <= 0) return;
                     if (e.type == "competition") s.phaseEventCompBonus = Math.Min(1000, s.phaseEventCompBonus + points);
-                    else if (e.type == "social") s.phaseEventSocialBonus = Math.Min(1000, s.phaseEventSocialBonus + points);
+                    else if (e.type == "social")
+                    {
+                        int before = s.phaseEventSocialBonus;
+                        s.phaseEventSocialBonus = Math.Min(1000, before + points);
+                        BankSocialPoints(s, before, s.phaseEventSocialBonus);
+                    }
                     return;
                 }
                 case StoryEffects.Trust:
@@ -339,6 +348,23 @@ namespace Gamesim.Simulation
             });
             if (ownerId.Length == 0) Log(s, "storyline-outcome", spec.name + ": " + spec.description, s.playerId);
         }
+
+        /// <summary>The modifier the social bonus buys (owner's decision, plan 30 P4).</summary>
+        public const string GoodStanding = "good-standing";
+
+        /// <summary>
+        /// The social bonus pays (owner's decision, plan 30 P4): every ten points banked, from a
+        /// story choice or the Diary Room, buys the rest of this week and the next with one more
+        /// conversation. It is ten because ten of the reference's social points are worth one
+        /// action everywhere else here (<see cref="StoryModifiers.PointsPerAction"/>). Before the
+        /// plays rules the points are only stored, as the web stores them.
+        /// </summary>
+        internal static void BankSocialPoints(EpisodeState s, int before, int after)
+        {
+            if (!StoryAt(s, StoryRules.Plays)) return;
+            if ((int)(after / StoryModifiers.PointsPerAction) > (int)(before / StoryModifiers.PointsPerAction))
+                StoryModifier(s, s.Find(s.playerId), GoodStanding, 2);
+        }
     }
 
     /// <summary>The modifiers stories leave behind, by id. Append only: a save names them.</summary>
@@ -361,6 +387,7 @@ namespace Gamesim.Simulation
             new Spec { id = "deal_maker", name = "Deal Maker", description = "You bought yourself a week, and everybody knows it.", social = 5 },
             new Spec { id = "clutch_performer", name = "Clutch Performer", description = "Your back is against the wall and it suits you.", competition = 3 },
             new Spec { id = "diary-vent", name = "Got It Off Your Chest", description = "Said it to a camera instead of a houseguest.", social = 0 },
+            new Spec { id = EpisodeEngine.GoodStanding, name = "Good Standing", description = "The way you have been carrying yourself buys you one more conversation.", social = 10 },
         };
 
         public static Spec Find(string id) => All.FirstOrDefault(s => s.id == id);

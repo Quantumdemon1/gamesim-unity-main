@@ -172,3 +172,60 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
     read rules add one (schema 17);
   - Build the Numbers never cast: the harness player forms alliances with anyone it can.
 - Floors: EditMode 1724, PlayMode 605, Uma 64, Sim 939.
+
+## Plays: P4, density and skill (plan 30, 2026-09-27/28)
+- Airtime (plan 30 §5):
+  - plays keep their own: one play card open at a time beside the arcs' one, and
+    `PlayOffersAWeek` = 2 offers a week outside the arcs' two asks;
+  - a step of a play the player took on is held back by no weekly count;
+  - plays draw from their own pool (`TryStartPlayFromPool`, nothing-weight 20, roll key ":plays"),
+    so they no longer crowd the arcs' draw or wait behind it.
+- The social bonus pays (owner's decision, "extra actions"): every ten points banked
+  (`StoryModifiers.PointsPerAction`) buy Good Standing, one more conversation this week and next,
+  through the modifiers' existing term. `SocialActionBudget` is untouched, for the other session's
+  per-window budgets. Only story choices pay points today: the native post-eviction diary's choices
+  carry none.
+- Skill is the point (§6). The first P4 sweep had the density but a 5-point gap, because the options
+  were not reads:
+  - unequal bases, so the best odds were the same option whoever it was aimed at;
+  - passive wins: Stay Off the Block had no option at all where the windows play, and was won 65% of
+    the time by waiting;
+  - steps that could not win: a second good conversation in Know Them re-asked what the first had
+    answered, and one apology could never settle a nomination's 70-84 grudge.
+
+  Fixed with three rules for every step: the same base (50) for every option; a different approach
+  for each, so the person's traits and what you know about them decide which lands; and the same
+  payoff for any that lands. Then per play:
+  - Stay Off the Block:
+    - it is offered only when the Head of Household's real ranking, `NominationWeight`, has you in
+      the bottom two;
+    - it is lost the moment you are named, at the nominations or by a backdoor
+      (`PlayTemplate.failed`), whatever the veto does after;
+    - where the windows play it needs somebody to work through, anybody with nothing against you or
+      the HoH, and offers three ways in (vouch Warm, go to bat Candid, play you down Calculated), each
+      +20 in the HoH's eyes;
+    - "point at somebody else" is gone: from the very bottom one name dropping past you still leaves
+      you in the two.
+  - Know Them needs three things, and a conversation that lands always teaches two: the asked facet
+    or, failing that, the next unknown (`Fx.RevealMore`).
+  - Settle It has two conversations (the second on eviction eve), each easing 50.
+  - The Secret Alliance, The Favour and Stir the Pot gained a third approach.
+- PlaysReport, now 80 seasons (8 and 12, seeds 1-40, as §6 asks):
+
+  | Player | Story decisions a season | Plays offered a season | Won / part / lost | Win rate |
+  |---|---|---|---|---|
+  | Random | 8.5 | 3.0 | 27 / 5 / 44 | 36% |
+  | Reader | 14.1 | 3.2 | 139 / 17 / 64 | 63% |
+
+  The reader leads by 27 points, at D1's density (10-15 decisions).
+  PlaysByOption, a new explicit diagnostic, shows each play's endings follow its steps: a step that
+  lands wins or part-wins, a pass or a backfire loses.
+- PacingReport (1,920 seasons) against c4941ae: the arcs keep their airtime and plays come on top.
+  StoryPacingTests.Measure now counts play offers apart from the arcs' asks, so "asks" is the arcs'
+  alone, where at c4941ae it held the plays too. In the default eight: stories finished rose from 2.3
+  to 3.7 a season, arc asks are 3.0, a card shows in 35% of weeks, and 78% of seasons are pariah-free
+  (79% at c4941ae). The twelve-house's 43% pariah-free and the default eight's asks below 4 predate P4.
+- On 58f8623, the merge of c4941ae with the other session's read (schema 17): PlaysReport is unchanged,
+  because SeasonBuilder never switches the read rules on (only the director does), so no sweep yet has
+  a hidden NPC alliance for The Secret Alliance to find.
+- Floors: EditMode 1746, PlayMode 609, Uma 64, Sim 956.

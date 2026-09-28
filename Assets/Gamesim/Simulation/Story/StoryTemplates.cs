@@ -269,6 +269,11 @@ namespace Gamesim.Simulation
             new Fx { kind = StoryEffects.Fact, from = actor, to = subject, type = factKind, text = visibility, third = knowersRole };
         public static Fx Spread(string factKind, string visibility) => new Fx { kind = StoryEffects.Spread, type = factKind, text = visibility };
         public static Fx Reveal(string about, string facet) => new Fx { kind = StoryEffects.Reveal, to = about, type = facet };
+        /// <summary>
+        /// A reveal that always teaches something while anything is left to learn: the facet if it is
+        /// still unknown, otherwise the next thing about them the player does not know.
+        /// </summary>
+        public static Fx RevealMore(string about, string facet) => new Fx { kind = StoryEffects.Reveal, to = about, type = facet, amount = 1 };
         public static Fx Hook(string holder, string over) => new Fx { kind = StoryEffects.Hook, from = holder, to = over };
         public static Fx Modifier(string owner, string modifierId, int weeks) => new Fx { kind = StoryEffects.Modifier, from = owner, type = modifierId, weeks = weeks };
         public static Fx Stress(string who, int steps) => new Fx { kind = StoryEffects.Stress, from = who, amount = steps };

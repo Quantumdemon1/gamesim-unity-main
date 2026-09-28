@@ -80,7 +80,7 @@ namespace Gamesim.House
         {
             if (lease.actor.motion == null) return;
             if (lease.token != null) lease.actor.motion.Release(lease.token);
-            lease.actor.motion.SetPaused(paused && !OpeningHoldsActor(lease.actor.id) && !DepartureHoldsActor(lease.actor.id));
+            lease.actor.motion.SetPaused(paused && !OpeningHoldsActor(lease.actor.id) && !CeremonyHoldsActor(lease.actor.id) && !DepartureHoldsActor(lease.actor.id));
         }
 
         private bool WanderHoldsActor(string id) => wanderLeases.ContainsKey(id);

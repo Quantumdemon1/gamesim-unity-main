@@ -749,7 +749,7 @@ namespace Gamesim.Episode
             // batchmode — where those beats collapse to nothing — cost exactly one frame.
             yield return null;
             while ((voteReveal != null && voteReveal.IsPlaying) || JuryRevealPlaying || walkingOutId != null
-                   || (takeover != null && takeover.IsPlaying))
+                   || (takeover != null && takeover.IsPlaying) || IsCeremonyStaged)
                 yield return null;
 
             recapWait = null;

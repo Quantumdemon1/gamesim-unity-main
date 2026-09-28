@@ -340,6 +340,9 @@ namespace Gamesim.Episode
             TickTravelDip();
             TickTravelBeacons();
             TickSleepLight();
+            // The staged ceremony before the ceremonies' bookkeeping: its card starts here, and the
+            // hold on the chrome reads whether it is still telling its story.
+            TickCeremonyStage();
             TickCeremonies();
             // The music follows what is on screen every frame, before anything can return early:
             // the opening's loading gate and its closing fade change in the middle of a beat, with
@@ -790,6 +793,10 @@ namespace Gamesim.Episode
                     // over the new one: the nomination's keys sit at sort 110 over the takeover's
                     // 100, so the veto field played underneath a finished nomination ceremony.
                     if (field == null) EndCeremonyCards(includingResult: competition == null);
+                    EndCeremonyStage();
+                    var committed = result.state;
+                    string kind = ceremony.kind;
+                    string text = ceremony.text;
                     // The takeover opens the scene and the sting reports the result, so they play
                     // together rather than instead of each other: the card is over by the time the
                     // strip has finished its own entrance.
@@ -797,39 +804,49 @@ namespace Gamesim.Episode
                     // beat whose outcome is not already inferable, and the commit resolves every
                     // ballot in one frame. If the reveal declines the shape — a block that is not
                     // two, or no ballots — the generic card still plays, so the beat is never silent.
-                    revealed = ceremony.kind == CeremonySting.EvictionKind
-                        && voteReveal != null
-                        && voteReveal.Play(result.state.week, EvictionBlock(result.state),
-                            EvictionBallots(result.state), evictedNow, reducedMotion, ceremonyPace,
-                            NameOf(result.state, result.state.hohId), result.state.hohId == result.state.playerId,
-                            evictedNow != null && evictedNow == result.state.playerId);
-
                     // The nomination gets the key ceremony for the same reason the eviction gets the
                     // vote reveal: the engine decides it in one commit, and the order is the beat.
-                    revealed |= ceremony.kind == CeremonySting.NominationKind
-                        && keyCeremony != null
-                        && keyCeremony.Play(result.state.week, NameOf(result.state, result.state.hohId),
-                            result.state.hohId == result.state.playerId,
-                            SafeHouseguests(result.state), NominatedHouseguests(result.state), reducedMotion, ceremonyPace);
-
-                    // And the season's last beat gets the jury read one juror at a time: the engine
-                    // decides every ballot and the winner in one commit, and the card that named the
-                    // winner at once gave the finale away.
-                    revealed |= ceremony.kind == CeremonySting.WinnerKind
-                        && juryReveal != null
-                        && juryReveal.Play(JuryFinalists(result.state), JuryVotes(result.state), result.state.winnerId,
-                            reducedMotion, ceremonyPace, unchecked((int)result.state.seed));
-                    if (!revealed && takeover != null)
-                        takeover.Play(ceremony.kind, result.state.week,
-                            CeremonySubjects(result.state, ceremony.kind, wasActive, wasNominated), reducedMotion);
-                    // The reveal narrates the eviction itself and outlives the strip by seconds, so
-                    // the strip would only flash under it and vanish mid-tally. Everywhere else the
-                    // two still pair up: card opens the scene, strip reports the result.
-                    if (sting != null && !revealed) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
-                    // The bodies act the beat out in the house while the card and the strip report it,
-                    // and the camera goes to the room the ceremony happens in (Phase 4 presets).
-                    ReactToCeremony(result.state, ceremony.kind, wasActive, wasNominated);
-                    FrameCeremony(ceremony.kind);
+                    // Either reveal plays on a screen when the house stages the ceremony
+                    // (EpisodeDirector.CeremonyStage.cs): the stage gathers the house first and
+                    // plays the card on the set's screen once the seats have filled, so the card is a
+                    // function of the screen it is given - null being the HUD, as it always was.
+                    Func<ScreenSurface, bool> reveal = null;
+                    if (kind == CeremonySting.EvictionKind && voteReveal != null)
+                        reveal = screen => voteReveal.Play(committed.week, EvictionBlock(committed),
+                            EvictionBallots(committed), evictedNow, reducedMotion, ceremonyPace,
+                            NameOf(committed, committed.hohId), committed.hohId == committed.playerId,
+                            evictedNow != null && evictedNow == committed.playerId, screen);
+                    else if (kind == CeremonySting.NominationKind && keyCeremony != null)
+                        reveal = screen => keyCeremony.Play(committed.week, NameOf(committed, committed.hohId),
+                            committed.hohId == committed.playerId,
+                            SafeHouseguests(committed), NominatedHouseguests(committed), reducedMotion, ceremonyPace, screen);
+                    if (reveal != null && TryBeginCeremonyStage(kind, committed,
+                            screen => reveal(screen) || PlayGenericCeremonyCard(committed, kind, text, wasActive, wasNominated)))
+                        revealed = true;
+                    else if (reveal != null)
+                    {
+                        revealed = reveal(null);
+                        // The bodies act the beat out in the house while the card reports it, and the
+                        // camera goes to the room the ceremony happens in (Phase 4 presets).
+                        if (revealed) { ReactToCeremony(committed, kind, wasActive, wasNominated); FrameCeremony(kind); }
+                        else PlayGenericCeremonyCard(committed, kind, text, wasActive, wasNominated);
+                    }
+                    else
+                    {
+                        // And the season's last beat gets the jury read one juror at a time: the engine
+                        // decides every ballot and the winner in one commit, and the card that named the
+                        // winner at once gave the finale away.
+                        revealed = ceremony.kind == CeremonySting.WinnerKind
+                            && juryReveal != null
+                            && juryReveal.Play(JuryFinalists(result.state), JuryVotes(result.state), result.state.winnerId,
+                                reducedMotion, ceremonyPace, unchecked((int)result.state.seed));
+                        if (!revealed) PlayGenericCeremonyCard(result.state, ceremony.kind, ceremony.text, wasActive, wasNominated);
+                        else
+                        {
+                            ReactToCeremony(result.state, ceremony.kind, wasActive, wasNominated);
+                            FrameCeremony(ceremony.kind);
+                        }
+                    }
                     lastCeremonyKind = ceremony.kind;
                     // The week's recap, once the beats that narrate the eviction have had their say.
                     // It waits rather than opening now because the reveal outlives its own strip by
@@ -861,6 +878,22 @@ namespace Gamesim.Episode
                     audioBed.PlayCue(commitCue);
             }
             Render(); return result;
+        }
+
+        /// <summary>
+        /// The generic card for a ceremony: the takeover opens the scene, the strip reports the
+        /// result, the bodies act the beat out where they stand and the camera goes to the room.
+        /// What every ceremony got before the reveals, and what a reveal that declines its shape -
+        /// or a stage that could not gather the house - falls back to. Always true: the beat is
+        /// never silent.
+        /// </summary>
+        private bool PlayGenericCeremonyCard(EpisodeState state, string kind, string text, HashSet<string> wasActive, HashSet<string> wasNominated)
+        {
+            if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion);
+            if (sting != null) sting.Play(kind, text, reducedMotion);
+            ReactToCeremony(state, kind, wasActive, wasNominated);
+            FrameCeremony(kind);
+            return true;
         }
 
         /// <summary>
@@ -1456,6 +1489,7 @@ namespace Gamesim.Episode
             if (juryReveal != null) juryReveal.Cancel();
             if (competitionCard != null) competitionCard.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
+            EndCeremonyStage();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()

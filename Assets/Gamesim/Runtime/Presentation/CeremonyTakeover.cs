@@ -116,6 +116,9 @@ namespace Gamesim.Presentation
             return null;
         }
 
+        /// <summary>The card up and the card down, so a stage in the house can cut with it as it does with the reveals.</summary>
+        public event System.Action<CeremonyBeat> BeatReached;
+
         private RectTransform rule, glassGround;
         private TMP_Text dismiss;
         private CanvasGroup group;
@@ -271,15 +274,18 @@ namespace Gamesim.Presentation
             column.gameObject.SetActive(true);
             scrim.gameObject.SetActive(true);
             Apply(reduced ? 1f : 0f);
+            BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Opened));
         }
 
         /// <summary>Hides the card immediately, for a scene change or a panel that must own the screen.</summary>
         public void Cancel()
         {
+            bool was = playing;
             playing = false;
             if (group != null) group.alpha = 0f;
             if (column != null) column.gameObject.SetActive(false);
             if (scrim != null) scrim.gameObject.SetActive(false);
+            if (was) BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Closed, -1, null, elapsed < FadeIn + Hold));
         }
 
         /// <summary>

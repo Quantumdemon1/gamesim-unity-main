@@ -39,8 +39,7 @@ namespace Gamesim.Tests.EditMode
         public void MigrationAddsTheTwoLedgerListsAndTheLeverBoundaryAndMovesNothingElse()
         {
             var old = V17(); string original = old.ToString();
-            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
-            Assert.That(changed, Is.True);
+            var migrated = EpisodeSaveMigrations.UpgradeV17ToV18(old);
             Assert.That((int)migrated["schemaVersion"], Is.EqualTo(18));
             int week = (int)old["week"];
             Assert.That((int)migrated["leverRulesStartWeek"], Is.EqualTo(week + 1), "The week the save was in keeps its own rules.");
@@ -53,15 +52,18 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JToken.DeepEquals(projection, old), Is.True, "Take the new fields back off and the save is exactly what it was.");
             Assert.That(old.ToString(), Is.EqualTo(original), "The original payload must not be touched.");
 
-            CheckShape(migrated);
-            var state = migrated.ToObject<EpisodeState>(Serializer());
+            var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
+            Assert.That(changed, Is.True);
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(19));
+            CheckShape(current);
+            var state = current.ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
             Assert.That(EpisodeEngine.LeverRulesOn(state), Is.False);
             Assert.That(EpisodeEngine.Obligations(state, state.Active.First(c => !c.isPlayer).id), Is.Empty, "No levers, no obligations.");
 
-            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
+            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(current, out changed);
             Assert.That(changed, Is.False);
-            Assert.That(JToken.DeepEquals(repeated, migrated), Is.True);
+            Assert.That(JToken.DeepEquals(repeated, current), Is.True);
         }
 
         [Test]
@@ -73,7 +75,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(18));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(19));
             Assert.That(migrated["story"], Is.Not.Null);
             Assert.That(migrated["ledger"]["replies"], Is.Not.Null);
             Assert.That((int)migrated["leverRulesStartWeek"], Is.EqualTo((int)old["week"] + 1));

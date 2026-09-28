@@ -21,6 +21,35 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 19) return (JObject)original.DeepClone();
+            if (version < 1 || version > 18) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV18ToV19(version == 18 ? original : PrepareV18Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds the week's four window counters at zero and the windows from the week after the save's:
+        /// the rule boundary once more, so the week the save was in keeps the pool it was played under.
+        /// </summary>
+        public static JObject UpgradeV18ToV19(JObject original)
+        {
+            FrozenEpisodeV18.Validate(original);
+            int week = (int)original["week"];
+            var result = (JObject)original.DeepClone();
+            result.Add("weekRulesStartWeek", checked(week + 1));
+            result.Add("windowActions", new JArray(0, 0, 0, 0));
+            result["schemaVersion"] = 19;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v17-to-v18 dispatch.</summary>
+        public static JObject PrepareV18Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 18) return (JObject)original.DeepClone();
             if (version < 1 || version > 17) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV17ToV18(version == 17 ? original : PrepareV17Payload(original, out _));

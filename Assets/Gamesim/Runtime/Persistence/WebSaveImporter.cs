@@ -206,6 +206,7 @@ namespace Gamesim.Persistence
             EpisodeEngine.EnableStory(result, checked(week + 1));
             EpisodeEngine.EnableRead(result, checked(week + 1));
             EpisodeEngine.EnableLevers(result, checked(week + 1));
+            EpisodeEngine.EnableWeek(result, checked(week + 1));
             return result;
         }
 

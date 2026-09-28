@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 18) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 19) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -33,6 +33,10 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Read-rules activation week must be within the saved season boundary.");
             if (s.leverRulesStartWeek < 0 || s.leverRulesStartWeek > 101 || s.leverRulesStartWeek > s.week + 1)
                 return Fail(out error, "Lever-rules activation week must be within the saved season boundary.");
+            if (s.weekRulesStartWeek < 0 || s.weekRulesStartWeek > 101 || s.weekRulesStartWeek > s.week + 1)
+                return Fail(out error, "Week-rules activation week must be within the saved season boundary.");
+            if (s.windowActions == null || s.windowActions.Count != Windows.Count || s.windowActions.Any(n => n < 0 || n > MostActionsAWeekCanHold))
+                return Fail(out error, "Invalid window action counts.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");

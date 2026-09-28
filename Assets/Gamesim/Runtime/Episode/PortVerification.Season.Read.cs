@@ -15,6 +15,8 @@ namespace Gamesim.Episode
     public sealed partial class PortVerification
     {
         private bool seasonVoteAsked, seasonPersonRead;
+        /// <summary>Approaches that found nobody to talk to: the chance is kept for the next step, three times, then let go.</summary>
+        private int seasonReadMisses;
 
         /// <summary>Whether this step is the read's: a campaign with a vote to read and a question still to ask.</summary>
         private bool SeasonReadDue(EpisodeState state) =>
@@ -30,32 +32,37 @@ namespace Gamesim.Episode
         private IEnumerator ExerciseSeasonRead(EpisodeState state, bool graphical)
         {
             bool asking = !seasonVoteAsked;
-            if (asking) seasonVoteAsked = true; else seasonPersonRead = true;
+            // The chance is taken once the control is pressed, or given up after three approaches that
+            // found nobody: a voter who is not interactable this step may be the next.
+            void Consume() { if (asking) seasonVoteAsked = true; else seasonPersonRead = true; }
+            void Missed() { if (++seasonReadMisses >= 3) { Consume(); seasonReadMisses = 0; } }
             string caption = asking ? EpisodeHud.AskVoteCaption : EpisodeHud.ReadPersonCaption;
             var voterIds = EpisodeEngine.Voters(state).Where(v => !v.isPlayer).Select(v => v.id).ToList();
             var bodies = seasonDirector.gameObject.scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<HouseNpc>(true))
                 .Where(actor => actor.gameObject.activeInHierarchy && voterIds.Contains(actor.Id))
                 .ToList();
-            if (bodies.Count == 0) { seasonReport.readNote = "No voter had a body to approach for the read."; seasonReadCommitted = false; yield break; }
+            if (bodies.Count == 0) { seasonReport.readNote = "No voter had a body to approach for the read."; Missed(); seasonReadCommitted = false; yield break; }
 
             yield return CloseSeasonPanel();
             HouseNpc chosen = null; var approach = Vector3.zero;
             foreach (var candidate in bodies)
                 if (FindSeasonNpcApproach(candidate, out approach)) { chosen = candidate; break; }
-            if (chosen == null) { seasonReport.readNote = "No safe approach to a voter; the read was skipped."; seasonReadCommitted = false; yield break; }
-            if (!seasonPlayer.TryMoveTo(approach)) { seasonReport.readNote = "The read's approach was not accepted."; seasonReadCommitted = false; yield break; }
+            if (chosen == null) { seasonReport.readNote = "No safe approach to a voter; the read was skipped."; Missed(); seasonReadCommitted = false; yield break; }
+            if (!seasonPlayer.TryMoveTo(approach)) { seasonReport.readNote = "The read's approach was not accepted."; Missed(); seasonReadCommitted = false; yield break; }
             yield return WaitSeasonWalk("read conversation", approach, false);
             if (!seasonPlayer.HasArrived || Vector3.Distance(seasonPlayer.transform.position, approach) >= 1.1f)
-            { seasonReport.readNote = "The read's approach did not complete within its route deadline."; seasonReadCommitted = false; yield break; }
-            if (!seasonDirector.TryOpenNpc(chosen.Id)) { seasonReport.readNote = chosen.Id + " was not interactable for the read."; seasonReadCommitted = false; yield break; }
+            { seasonReport.readNote = "The read's approach did not complete within its route deadline."; Missed(); seasonReadCommitted = false; yield break; }
+            if (!seasonDirector.TryOpenNpc(chosen.Id)) { seasonReport.readNote = chosen.Id + " was not interactable for the read."; Missed(); seasonReadCommitted = false; yield break; }
             yield return null; yield return null;
             if (!HasSeasonButtonText(caption))
             {
                 seasonReport.readNote = "The conversation offered no \"" + caption + "\" to " + chosen.Id + ".";
+                Consume();
                 yield return CloseSeasonPanel();
                 seasonReadCommitted = false; yield break;
             }
+            Consume();
             var before = seasonDirector.Snapshot;
             yield return CaptureSeason(asking ? "vote-asked" : "person-read", graphical);
             yield return ClickSeasonButton(caption);

@@ -62,8 +62,9 @@ namespace Gamesim.Tests.PlayMode
         /// Free time on the episode screen: the panel grows with what it holds instead of leaving a
         /// 174-unit strip to scroll, stays clear of the chrome around it, and pins the way on under
         /// the scroll - "Begin the next competition" used to sit under the meter, the house-wide
-        /// actions and Listen in. The rules the panel states (the budget, the odds of listening in)
-        /// are all still said.
+        /// actions and Listen in. The house is a grid of cards, each one press from walking over to
+        /// talk, and the moves that name nobody are tiles (playtest, 2026-09-28); the rules the panel
+        /// states (the budget, the odds of listening in) are all still said, on the tile they belong to.
         /// </summary>
         [UnityTest]
         public IEnumerator PhasePanel_FreeTimePinsTheWayOnAndKeepsItsRules()
@@ -95,11 +96,23 @@ namespace Gamesim.Tests.PlayMode
             var railLabels = director.GetComponentsInChildren<TMP_Text>().Where(text => text.name == "Rail label").Select(text => text.text).ToArray();
             Assert.That(railLabels, Does.Contain("PLAY").And.Contain("NOTEBOOK & SETTINGS"));
             // The column's last control scrolls into view above the pinned row, not under it.
-            ButtonWithCaption("Listen in on a conversation");
+            var listen = ButtonWithCaption("Listen in on a conversation");
+            var moves = ActiveRect(EpisodeHud.HouseMovesName);
+            Assert.That(moves, Is.Not.Null, "The moves that name nobody are tiles,");
+            Assert.That(listen.transform.IsChildOf(moves), Is.True, "listening in among them,");
+            Assert.That(ButtonWithCaption(EpisodeHud.RallyHouseCaption).transform.IsChildOf(moves), Is.True, "and the house meeting.");
+            // The house as cards: everybody still in it, each with a way to walk over and talk.
+            var cards = ActiveRect(EpisodeHud.HouseCardsName);
+            Assert.That(cards, Is.Not.Null, "The house is a grid of cards.");
+            var state = director.Snapshot;
+            foreach (var actor in state.Active.Where(c => !c.isPlayer))
+                Assert.That(ButtonWithCaption(EpisodeHud.CastTalkCaption(actor.name.Split(' ')[0])).transform.IsChildOf(cards), Is.True, actor.name + " is a card with a way to talk to them.");
 
             string words = string.Join("\n", PanelWords(panel));
             Assert.That(words, Does.Contain("seven times in ten"), "Listening in still says its odds.");
-            Assert.That(words, Does.Contain("half its number in actions"), "and the week still says its budget.");
+            Assert.That(words, Does.Contain(EpisodeDirector.BudgetRule(state)), "and the week still says its budget.");
+            Assert.That(words, Does.Not.Contain("Out of interactions?"), "The paragraphs are gone;");
+            Assert.That(words, Does.Contain("goodwill"), "the price of more time is on its tile.");
 
             // The hint says "Scroll for more" exactly when there is more.
             var content = ActiveRect("Episode content");

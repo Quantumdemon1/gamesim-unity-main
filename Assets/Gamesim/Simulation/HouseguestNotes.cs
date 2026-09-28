@@ -1,0 +1,183 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Gamesim.Simulation
+{
+    /// <summary>
+    /// What your character has on a houseguest, gathered from the season's own records into one
+    /// place: their word to you and yours to them, what they told you about the vote and whether it
+    /// held, what you read of them, what they put to you and how you answered, the pacts you share
+    /// and what you remember of them. Nothing you have not learned: every line is a row the engine
+    /// wrote when it happened. The notebook's notes page and the free-time cards read it.
+    /// </summary>
+    public static class HouseguestNotes
+    {
+        /// <summary>What kind of thing a note is, for the page's filters.</summary>
+        public static class Kinds
+        {
+            public const string Word = "word", Vote = "vote", Read = "read", Offer = "offer", Came = "came", Pact = "pact", Memory = "memory";
+        }
+
+        /// <summary>One thing you have on somebody: the week, the kind, the line, and a few words for a card.</summary>
+        public sealed class Note
+        {
+            public int week;
+            public string kind, text, brief;
+            public override string ToString() => "Week " + week + " · " + text;
+        }
+
+        private static readonly string[] KindOrder = { Kinds.Came, Kinds.Vote, Kinds.Read, Kinds.Offer, Kinds.Word, Kinds.Pact, Kinds.Memory };
+
+        /// <summary>Everything on one houseguest, newest first; empty for the player or nobody.</summary>
+        public static List<Note> For(EpisodeState s, string id)
+        {
+            var notes = new List<Note>();
+            var who = s?.Find(id);
+            if (who == null || who.isPlayer) return notes;
+            string first = FirstName(who.name);
+            string Name(string other) => other == s.playerId ? "you" : s.Find(other)?.name ?? "somebody";
+
+            foreach (var promise in s.promises.Where(p => (p.fromId == id && p.toId == s.playerId) || (p.fromId == s.playerId && p.toId == id)))
+            {
+                bool theirs = promise.fromId == id;
+                string standing = PromiseStanding(promise.status);
+                notes.Add(new Note
+                {
+                    week = promise.week, kind = Kinds.Word,
+                    text = (theirs ? first + " promised you " : "You promised " + first + " ") + PromiseWord(promise.kind) + " · " + standing,
+                    brief = (theirs ? "Their word: " : "Your word: ") + standing,
+                });
+            }
+            foreach (var deal in s.deals.Where(d => (d.proposerId == id && d.recipientId == s.playerId) || (d.proposerId == s.playerId && d.recipientId == id)))
+            {
+                bool theirs = deal.proposerId == id;
+                string title = DealKind.Title(deal.type).ToLowerInvariant();
+                string standing = DealStanding(deal.status, theirs);
+                notes.Add(new Note
+                {
+                    week = deal.week, kind = Kinds.Offer,
+                    text = (theirs ? first + " put a " + title + " to you" : "You put a " + title + " to " + first) + " · " + standing,
+                    brief = theirs && deal.status == DealStatus.Proposed ? "An offer waiting on you" : (theirs ? "Their offer: " : "Your offer: ") + standing,
+                });
+            }
+            foreach (var claim in s.ledger.claims.Where(c => c.voterId == id))
+            {
+                string how = claim.source == ClaimSource.Told ? first + " told you: evict "
+                    : claim.source == ClaimSource.Overheard ? "Overheard: " + first + " is voting out "
+                    : "An ally heard " + first + " is voting out ";
+                string verdict = claim.status == ClaimStatus.Kept ? " · and did" : claim.status == ClaimStatus.Lied ? " · a lie" : "";
+                notes.Add(new Note
+                {
+                    week = claim.week, kind = Kinds.Vote, text = how + Name(claim.targetId) + verdict,
+                    brief = claim.status == ClaimStatus.Lied ? "Lied to you about the vote"
+                        : claim.status == ClaimStatus.Kept ? "Told you the truth about the vote"
+                        : "Says: evict " + FirstName(Name(claim.targetId)),
+                });
+            }
+            foreach (var standing in s.ledger.standings.Where(r => r.fromId == id && r.toId == s.playerId))
+            {
+                if (standing.source == ClaimSource.Read)
+                {
+                    string band = standing.score >= 25 ? "warm on you" : standing.score <= -25 ? "cold on you" : "not sure about you";
+                    // What they are up to is this week's read; an older read's agenda is not kept.
+                    string doing = standing.week == s.week ? NpcAgendas.Describe(s, id, NpcAgendas.Of(s, id)) : null;
+                    notes.Add(new Note { week = standing.week, kind = Kinds.Read, text = "You read " + first + ": " + band + (doing != null ? ". " + doing : ""), brief = "Read: " + band });
+                }
+                else if (standing.source == ClaimSource.Missed)
+                    notes.Add(new Note { week = standing.week, kind = Kinds.Read, text = "You couldn't get a read on " + first, brief = "No read on them" });
+                else if (standing.source == ClaimSource.Deflected)
+                    notes.Add(new Note { week = standing.week, kind = Kinds.Vote, text = first + " wouldn't say where their vote is", brief = "Wouldn't say their vote" });
+            }
+            foreach (var reply in s.ledger.replies.Where(r => r.fromId == id))
+            {
+                var answer = ReplyCards.Find(reply.kind, reply.replyKey);
+                string what = reply.kind == ReplyCards.Confrontation ? first + " confronted you"
+                    : reply.kind == ReplyCards.Gossip ? first + " talked about you to " + Name(reply.listenerId)
+                    : first + " asked for your vote";
+                notes.Add(new Note
+                {
+                    week = reply.week, kind = Kinds.Came,
+                    text = what + (answer != null ? " · you: " + answer.Label.ToLowerInvariant() : ""),
+                    brief = reply.kind == ReplyCards.Confrontation ? "Confronted you" : reply.kind == ReplyCards.Gossip ? "Talked about you" : "Asked for your vote",
+                });
+            }
+            foreach (var call in s.ledger.calls.Where(c => c.callerId == s.playerId && (c.followed.Contains(id) || c.defected.Contains(id))))
+            {
+                bool followed = call.followed.Contains(id);
+                notes.Add(new Note
+                {
+                    week = call.week, kind = Kinds.Word,
+                    text = first + (followed ? " followed your call to evict " : " ignored your call to evict ") + Name(call.targetId),
+                    brief = followed ? "Followed your call" : "Ignored your call",
+                });
+            }
+            foreach (var alliance in s.alliances.Where(a => a.members.Contains(s.playerId) && a.members.Contains(id)))
+            {
+                var row = s.ledger.alliances.FirstOrDefault(x => x.id == alliance.id);
+                notes.Add(new Note
+                {
+                    week = row?.startedWeek ?? 0, kind = Kinds.Pact,
+                    text = "You are both in " + alliance.name + (alliance.active ? "" : " · ended"),
+                    brief = alliance.active ? "In " + alliance.name + " with you" : alliance.name + " ended",
+                });
+            }
+            foreach (var memory in s.memories.Where(m => m.ownerId == s.playerId && m.subjectId == id && !string.IsNullOrEmpty(m.text)))
+                notes.Add(new Note { week = memory.week, kind = Kinds.Memory, text = memory.text });
+
+            return notes.OrderByDescending(n => n.week).ThenBy(n => Array.IndexOf(KindOrder, n.kind)).ToList();
+        }
+
+        /// <summary>The latest thing you have on them, in a few words for a card, or null when there is nothing.</summary>
+        public static string Brief(EpisodeState s, string id) => For(s, id).FirstOrDefault(n => n.brief != null)?.brief;
+
+        /// <summary>Whether a note is one of a kind of thing: their word (promises, offers, calls, pacts), the vote, or your reads (reads, what came to you, what you remember).</summary>
+        public static bool IsTheirWord(Note note) => note.kind == Kinds.Word || note.kind == Kinds.Offer || note.kind == Kinds.Pact;
+        public static bool IsTheVote(Note note) => note.kind == Kinds.Vote;
+        public static bool IsYourRead(Note note) => note.kind == Kinds.Read || note.kind == Kinds.Came || note.kind == Kinds.Memory;
+
+        private static string FirstName(string name) => string.IsNullOrEmpty(name) ? "" : name.Split(' ')[0];
+
+        /// <summary>A promise's kind as the notes say it; the notebook's own words, unlocalised here.</summary>
+        public static string PromiseWord(PromiseKind kind)
+        {
+            switch (kind)
+            {
+                case PromiseKind.Safety: return "safety";
+                case PromiseKind.Vote: return "a vote";
+                case PromiseKind.FinalTwo: return "a final two";
+                case PromiseKind.AllianceLoyalty: return "alliance loyalty";
+                case PromiseKind.Information: return "information";
+                default: return kind.ToString();
+            }
+        }
+
+        /// <summary>Where a promise stands, in a word.</summary>
+        public static string PromiseStanding(PromiseStatus status)
+        {
+            switch (status)
+            {
+                case PromiseStatus.Fulfilled: return "kept";
+                case PromiseStatus.Broken: return "broken";
+                case PromiseStatus.Expired: return "expired";
+                default: return "still standing";
+            }
+        }
+
+        /// <summary>Where a deal stands, in a word or two.</summary>
+        public static string DealStanding(string status, bool theirs)
+        {
+            switch (status)
+            {
+                case DealStatus.Proposed: return theirs ? "waiting on you" : "waiting on them";
+                case DealStatus.Accepted:
+                case DealStatus.Active: return "agreed";
+                case DealStatus.Fulfilled: return "honoured";
+                case DealStatus.Broken: return "broken";
+                case DealStatus.Declined: return theirs ? "you declined" : "they declined";
+                case DealStatus.Expired: return "lapsed";
+                default: return status ?? "";
+            }
+        }
+    }
+}

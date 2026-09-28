@@ -668,7 +668,8 @@ namespace Gamesim.Episode
         }
 
         public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
-        public void OpenJournal() => OpenNotebookAt(NotebookSection.Network, scroll: false);
+        /// <summary>The notebook, on its own page: your notes on each houseguest. The rail's rows are the other pages.</summary>
+        public void OpenJournal() => OpenNotebookAt(NotebookSection.Notes, scroll: false);
 
         public CommandResult Submit(EpisodeCommand command)
         {
@@ -916,6 +917,8 @@ namespace Gamesim.Episode
             public const string Rooms = "Section · rooms";
             public const string Votes = "Section · votes";
             public const string Story = "Section · story";
+            /// <summary>The notebook's own page: what you have on each houseguest (EpisodeDirector.Notes.cs). Not a rail row; "Notebook [J]" opens it.</summary>
+            public const string Notes = "Section · notes";
         }
 
         /// <summary>
@@ -1089,7 +1092,7 @@ namespace Gamesim.Episode
                 // house activities in their foot; the others keep the notebook's title and the
                 // command at their top, where the web's layout and the activities tests expect it.
                 bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
-                    || journalSection == NotebookSection.Votes;
+                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes;
                 if (kitPage)
                 {
                     var head = NotebookPageHead(journalSection);
@@ -1124,6 +1127,10 @@ namespace Gamesim.Episode
                 else if (journalSection == NotebookSection.People)
                 {
                     RenderNotebookPeople(state);
+                }
+                else if (journalSection == NotebookSection.Notes)
+                {
+                    RenderNotebookNotes(state);
                 }
                 else
                 {
@@ -1416,39 +1423,8 @@ namespace Gamesim.Episode
                 return;
             }
             if (state.phase == EpisodePhase.Campaign) CampaignScreen(state);
-            else if (state.phase == EpisodePhase.Social)
-            {
-                // Before anything the player chose to do: something has happened to them, and a
-                // situation buried under the ordinary controls is a situation they will not see.
-                // It used to come after the location and the meter, below the fold of the panel.
-                if (!PendingReplyCard(state)) PendingHouseEvent(state);
-                CurrentLocation(state);
-                // The web build draws this as a bar you can watch drain rather than a sentence you
-                // have to read and subtract. The caption still carries the numbers.
-                int budget = EpisodeEngine.SocialActionBudget(state);
-                hud.Meter("Interactions available",
-                    Mathf.Max(0, budget - EpisodeEngine.SocialActionsSpent(state)), budget, UiTheme.Accent);
-                // The stories running and what they left behind, beside the budget they draw on.
-                // (A "+N social bonus" line used to sit here. Nothing in the game reads that
-                // counter - the web stores it and never spends it - so it promised the player a
-                // bonus that did not exist.)
-                StorylinesBlock(state);
-                if (state.playerStudyBonus > 0)
-                    hud.Paragraph("Preparation banked for competitions: " + state.playerStudyBonus + "/5.");
-                // Beside the meter it takes a conversation from.
-                if (HaveNots.Is(state, state.playerId)) hud.Paragraph(HaveNotLine);
-                HouseWideActions(state);
-                hud.Paragraph("Explore and talk freely before continuing. You can finish the window whenever you choose. "
-                    + "The house gives you half its number in actions each week, so the budget tightens as people leave.");
-                // Listening in needs no one to talk to, so it sits here rather than in a conversation.
-                if (state.Active.Count(c => !c.isPlayer) >= 2)
-                {
-                    hud.Paragraph("You can also try to overhear a conversation you are not part of. "
-                        + "It works about seven times in ten; the rest of the time somebody notices.");
-                    hud.Tag(hud.Action("Listen in on a conversation", () => Commit(state, EpisodeCommandKind.Eavesdrop)),
-                        Category(EpisodeCommandKind.Eavesdrop));
-                }
-            }
+            // Free time as a screen: the house as cards and the moves as tiles (EpisodeDirector.FreeTimeScreen.cs).
+            else if (state.phase == EpisodePhase.Social) FreeTimeScreen(state);
             if (state.phase == EpisodePhase.Jury) hud.Paragraph(JuryLine(state));
             string pointer = WindowLine(state);
             if (pointer != null) hud.Paragraph(pointer);

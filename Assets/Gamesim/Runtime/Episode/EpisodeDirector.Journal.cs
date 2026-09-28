@@ -213,6 +213,7 @@ namespace Gamesim.Episode
             if (section == NotebookSection.Rooms) return ("Who is where", "Room directory \u00b7 where everyone in the house is right now");
             if (section == NotebookSection.People) return ("Houseguests", "People, their status, and your own recorded trust in each \u2014 separate at a glance");
             if (section == NotebookSection.Votes) return ("The vote", "Recorded eviction results, and only the ballot information available to your character");
+            if (section == NotebookSection.Notes) return ("Your notes", "What your character has on each houseguest — their word, what they told you, what you read, and what they put to you");
             return (null, null);
         }
 
@@ -671,7 +672,7 @@ namespace Gamesim.Episode
         {
             PauseNpcSocialForPanel(); ClosePanels();
             journalSection = section; journalOpen = true; roomsFilter = HouseMap.Filter.All;
-            peopleFilter = PeopleFilter.All; peopleSearch = string.Empty; profileId = null; votesTab = VotesTab.Results;
+            peopleFilter = PeopleFilter.All; peopleSearch = string.Empty; profileId = null; votesTab = VotesTab.Results; notesFilter = NotesFilter.Everyone;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;
             if (scroll) hud.RequestScrollTo(section);
             Render();
@@ -795,7 +796,7 @@ namespace Gamesim.Episode
         {
             if (weeklyRecap == null) return;
             bool fromNotebook = journalOpen;
-            // Back to the page it was reached from: OpenJournal opens on the relationships.
+            // Back to the page it was reached from: OpenJournal opens on the notes.
             string section = journalSection;
             var committed = Snapshot;
             OpenRecap(() => weeklyRecap.Review(committed, week,

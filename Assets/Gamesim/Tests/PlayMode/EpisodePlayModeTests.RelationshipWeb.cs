@@ -211,7 +211,8 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator RelationshipWeb_DrawsTheHouseAroundThePlayerAndReadsWhoeverIsPressed()
         {
             RelationshipWeb.ClearSelection();
-            director.OpenJournal();
+            // The notebook opens on your notes; the web is the rail's Relationships page.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
             yield return null; yield return null;
             Canvas.ForceUpdateCanvases();
 

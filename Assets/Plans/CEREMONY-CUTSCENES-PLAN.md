@@ -288,11 +288,17 @@ and 3.5 s at quick.
   eviction's nominees, a nomination's or a veto's Head of Household; `SummonsPatience`, three and
   a half summons more) while they are still on their way, because a nominee starting at the far
   end of the yard walks thirty metres and no eviction plays to an empty hot seat; the chrome is
-  held aside from the summons, as it is for a reveal. The evicted stay in the house's world from
-  the commit (which makes them a non-contestant at once) until they have walked out, or the
-  world would unbind their body at the commit and they could take neither the hot seat nor the
-  door (measured on 2026-09-28: the second nominee stood unbound at her start spot through the
-  whole stage).
+  held aside from the summons, as it is for a reveal. The evicted stay in the house's world while
+  the stage holds a place for them (`CeremonyStage.Holds`) and while they walk out; the commit
+  makes them a non-contestant at once, and the world would otherwise unbind their body on the spot
+  so they could take neither the hot seat nor the door (measured on 2026-09-28: the second nominee
+  stood unbound at her start spot through the whole stage). Because the commit's projection runs
+  before the stage exists, the stage reconciles the world once more when it is created, and the
+  summons' retries send them once they are bound again. Outside a stage they go as they always
+  did - unbound at the commit, let go by the walk-out if their body cannot take its navigation
+  back (the walk-out's own test held the wider rule to account). The stage seats the evicted in a
+  hot seat although the committed state no longer counts them active, and looks bodies up by
+  `BodyFor`, since `Housemates()` is the active contestants.
   The cuts: the screen on every beat; for a key, the named face from in front of their chair at
   half the key's hold, the neighbours glancing at them and them at the Head of Household, the
   seated fist pump on the last safe key; before the last key, a push-in on those still waiting;

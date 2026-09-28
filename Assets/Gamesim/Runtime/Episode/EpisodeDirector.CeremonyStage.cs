@@ -53,6 +53,13 @@ namespace Gamesim.Episode
         /// <summary>Whether the staged ceremony is still telling its story: from the summons until its card is down.</summary>
         private bool CeremonyStageNarrating => ceremonyStage != null && ceremonyStage.Narrating;
 
+        /// <summary>
+        /// Whether a staged ceremony has a place for this houseguest: the house's world keeps them
+        /// while it does, which is how the evicted - a non-contestant from the commit - still walk
+        /// to the hot seat and hear the vote read.
+        /// </summary>
+        private bool CeremonyStageHolds(string id) => ceremonyStage != null && ceremonyStage.Holds(id);
+
         /// <summary>How many houseguests the stage has seated so far, the player included. A read for tests.</summary>
         public int CeremonyStageSeated => IsCeremonyStaged ? ceremonyStage.SeatedCount : 0;
 
@@ -80,6 +87,9 @@ namespace Gamesim.Episode
             var stage = CeremonyStage.TryCreate(this, kind, state, playCard, out var reason);
             if (stage == null) { if (reason != null) Debug.Log("Ceremony stage: " + reason); return false; }
             ceremonyStage = stage;
+            // The commit's projection unbound the evicted; now that the stage holds a place for
+            // them the world takes them back, and the summons' retries send them once they are bound.
+            ReconcileNpcSocialWorld();
             stage.Begin();
             return true;
         }
@@ -194,6 +204,8 @@ namespace Gamesim.Episode
             public string StandingId { get; private set; }
             public bool Active => begun && !ended;
             public bool Narrating => Active && Step != CeremonyStageStep.Release;
+            /// <summary>Whether the stage has a place for this houseguest and has not let the house go.</summary>
+            public bool Holds(string id) => !ended && id != null && placeOf.ContainsKey(id);
             public int SeatedCount => seated.Values.Count(seat => seat != null && seat.Active) + (playerSeat != null && playerSeat.Active ? 1 : 0);
 
             private struct Cue { public float At; public Action Do; }

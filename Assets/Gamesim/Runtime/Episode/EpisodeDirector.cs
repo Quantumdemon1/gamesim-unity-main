@@ -1209,7 +1209,7 @@ namespace Gamesim.Episode
                 }
                 else if (state.loyaltyOaths.Any(oath => oath.playerId == state.playerId && oath.targetId == npc.id))
                     hud.Paragraph("Your loyalty declaration is recorded. It does not bind " + npc.name + " to protect you.");
-                if (window) LobbyPanel(state, npc);
+                if (window || StrategyRules.CanBeAskedForTheirVote(state, npc.id)) LobbyPanel(state, npc);
                 // The category is a chip pinned to the button, never part of its caption. Baking it
                 // into the label broke every test that finds a control by the words on it — and the
                 // web build draws it as a separate pill anyway, so the caption was the wrong place.
@@ -1264,12 +1264,24 @@ namespace Gamesim.Episode
                 // The question is for a voter while there is a vote to ask about; the look is for anyone,
                 // in free time or the campaign.
                 if (VoteRead.Available(state) && EpisodeEngine.Voters(state).Any(v => v.id == npc.id)
-                    && !state.ledger.claims.Any(k => k.week == state.week && k.voterId == npc.id && k.source == ClaimSource.Told))
+                    && !EpisodeEngine.AskedThisWeek(state, npc.id))
                     hud.Tag(hud.Action(EpisodeHud.AskVoteCaption, () => Commit(state, EpisodeCommandKind.AskVote, npc.id)),
                         Category(EpisodeCommandKind.AskVote));
-                if (!window && !state.ledger.standings.Any(r => r.week == state.week && r.fromId == npc.id && r.toId == state.playerId && r.source == ClaimSource.Read))
+                if (!window && !EpisodeEngine.ReadThisWeek(state, npc.id))
                     hud.Tag(hud.Action(EpisodeHud.ReadPersonCaption, () => Commit(state, EpisodeCommandKind.ReadPerson, npc.id)),
                         Category(EpisodeCommandKind.ReadPerson));
+                // Calling the vote (STRATEGY-LOOP-PLAN.md section 3): through an ally, once per
+                // alliance a week, naming who the bloc evicts.
+                if (EpisodeEngine.LeverRulesOn(state) && state.phase == EpisodePhase.Campaign && VoteRead.Available(state))
+                    foreach (var pact in state.alliances.Where(a => a.active && a.members.Contains(state.playerId) && a.members.Contains(npc.id)
+                                 && !state.ledger.calls.Any(k => k.week == state.week && k.allianceId == a.id)))
+                        foreach (string nomineeId in state.nominees.Where(id => id != state.playerId))
+                        {
+                            string about = nomineeId, allianceId = pact.id;
+                            hud.Tag(hud.ActionFor(about, EpisodeHud.CallTheVoteCaption(pact.name, state.Find(about).name),
+                                    () => Commit(state, EpisodeCommandKind.CallTheVote, npc.id, about, text: allianceId)),
+                                Category(EpisodeCommandKind.CallTheVote), EpisodeHud.TagSeat.PastReading);
+                        }
                 // Both of these need a third person, so they are offered per subject rather than as
                 // one control that would then have to ask "about whom?" after being clicked.
                 foreach (var subject in state.Active.Where(c => !c.isPlayer && c.id != npc.id))
@@ -1329,6 +1341,8 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.Finished)
             {
                 hud.Paragraph("Winner: " + state.Find(state.winnerId).name + ". Runner-up: " + state.Find(state.runnerUpId).name + ".");
+                // The verdict, in a line; the season report has the whole of it.
+                hud.Paragraph(SeasonReport.GameSenseLine(state));
                 // The jury's reasons, one line each, from the ballots the engine recorded.
                 var ballots = SeasonReport.JuryBallots(state);
                 if (ballots.Count > 0)

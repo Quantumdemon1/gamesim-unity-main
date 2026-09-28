@@ -110,7 +110,10 @@ namespace Gamesim.Episode
             if (item.IsStory)
             {
                 bool actionsLeft = EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
-                index = item.choices.FindIndex(c => !c.locked && !c.pickPerson && !c.conduct && (!c.costsAction || actionsLeft));
+                bool Answers(HouseEventChoice c) => !c.locked && !c.pickPerson && !c.conduct && (!c.costsAction || actionsLeft);
+                // The first answer that is not the lapse: a play's step is played, not let go.
+                index = item.choices.FindIndex(c => !c.lapse && Answers(c));
+                if (index < 0) index = item.choices.FindIndex(c => Answers(c));
                 if (index < 0) index = item.choices.FindIndex(c => c.lapse);
             }
             var choice = item.choices[index];

@@ -63,6 +63,11 @@ namespace Gamesim.Episode
         public const string DealAcceptCaption = "Accept this offer";
         public const string DealDeclineCaption = "Turn this offer down";
         public static string DealProposeCaption(string title) => "Propose " + Article(title) + title;
+        /// <summary>A vote deal names who it is about: "Propose a vote to keep Jo", "Propose a vote to evict Jo".</summary>
+        public static string VoteDealCaption(string kind, string who) =>
+            DealProposeCaption((kind == Gamesim.Simulation.DealKind.VoteSave ? "vote to keep " : "vote to evict ") + who);
+        /// <summary>Calling the vote in an alliance: "Call the vote in The Pact: evict Jo".</summary>
+        public static string CallTheVoteCaption(string alliance, string who) => "Call the vote in " + alliance + ": evict " + who;
 
         /// <summary>
         /// "a " or "an ", so a caption built from a deal's own title reads as English.
@@ -87,7 +92,11 @@ namespace Gamesim.Episode
             bool naming = state != null && state.phase == EpisodePhase.Nomination;
             switch (ask)
             {
-                case LobbyAsk.Spare: return naming ? "Ask " + decider + " to keep you off the block" : "Ask " + decider + " not to name you as the replacement";
+                case LobbyAsk.Spare:
+                    if (subjectId != null && subjectId != state?.playerId)
+                        return naming ? "Ask " + decider + " to keep " + about + " off the block" : "Ask " + decider + " not to name " + about + " as the replacement";
+                    return naming ? "Ask " + decider + " to keep you off the block" : "Ask " + decider + " not to name you as the replacement";
+                case LobbyAsk.Vote: return "Ask " + decider + " to vote to keep you";
                 case LobbyAsk.Target: return naming ? "Ask " + decider + " to nominate " + about : "Ask " + decider + " to name " + about + " as the replacement";
                 case LobbyAsk.Save: return subjectId == state?.playerId ? "Ask " + decider + " to use the veto on you" : "Ask " + decider + " to use the veto on " + about;
                 default: return "Ask " + decider + " to keep the nominations the same";

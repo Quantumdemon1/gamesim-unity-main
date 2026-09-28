@@ -11,8 +11,8 @@ namespace Gamesim.Simulation
     ///
     /// <para>A play's first beat is its offer (<see cref="PlayOptions.TakeItOn"/> or
     /// <see cref="PlayOptions.NotNow"/>). Once taken on, the play is decided the moment its goal
-    /// is met, or at its <see cref="deadline"/> anchor if it never is: won, part-won or lost,
-    /// each with its own consequences. The outcome is the cycle's ending, in the ledger's own
+    /// is met, or at its <see cref="deadline"/> anchor if it never is (or sooner, the moment
+    /// <see cref="failed"/> says it no longer can be): won, part-won or lost, each with its own consequences. The outcome is the cycle's ending, in the ledger's own
     /// words (<see cref="PlayEndings"/>), so a play needs no saved field of its own.</para>
     /// </summary>
     public sealed class PlayTemplate
@@ -28,6 +28,12 @@ namespace Gamesim.Simulation
 
         /// <summary>How far along it is, read from the season. Won the moment <c>have</c> reaches <c>need</c>.</summary>
         public Func<StoryContext, StoryCycle, PlayProgress> progress;
+
+        /// <summary>
+        /// Optional: whether the goal can no longer be met, which decides the play at once, as its
+        /// deadline would. Null: only the deadline ends a play that is not won.
+        /// </summary>
+        public Func<StoryContext, StoryCycle, bool> failed;
 
         /// <summary>Consequences and the line that says what happened, per outcome. Role tokens throughout.</summary>
         public Fx[] won = Array.Empty<Fx>(), part = Array.Empty<Fx>(), lost = Array.Empty<Fx>();

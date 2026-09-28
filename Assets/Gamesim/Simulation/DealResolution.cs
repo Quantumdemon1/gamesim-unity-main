@@ -121,6 +121,33 @@ namespace Gamesim.Simulation
             return proposer.targetId == recipient.targetId ? DealStatus.Fulfilled : DealStatus.Broken;
         }
 
+        /// <summary>
+        /// The eviction vote, against a vote deal (STRATEGY-LOOP-PLAN.md §3). A <c>vote_evict</c> is
+        /// kept by a party who voted out the person it names and broken by one who voted to keep
+        /// them; a <c>vote_save</c> the other way round. A party who did not vote (the Head of
+        /// Household, somebody on the block, somebody already gone) decided nothing. Where both
+        /// parties voted, the first to break it broke it; where nobody did, the first who voted
+        /// kept it. A deal naming nobody on this block is not this vote's to judge.
+        /// </summary>
+        public static string VoteDeal(DealState deal, IReadOnlyList<VoteState> votes, IReadOnlyList<string> nominees, out string actorId)
+        {
+            actorId = null;
+            if (deal == null || votes == null || nominees == null || deal.targetId == null || !nominees.Contains(deal.targetId)) return null;
+            if (deal.type != DealKind.VoteSave && deal.type != DealKind.VoteEvict) return null;
+            string kept = null;
+            foreach (string party in new[] { deal.proposerId, deal.recipientId })
+            {
+                var ballot = votes.FirstOrDefault(v => v.voterId == party);
+                if (ballot == null) continue;
+                bool evictedTarget = ballot.targetId == deal.targetId;
+                if (deal.type == DealKind.VoteEvict ? !evictedTarget : evictedTarget) { actorId = party; return DealStatus.Broken; }
+                if (kept == null) kept = party;
+            }
+            if (kept == null) return null;
+            actorId = kept;
+            return DealStatus.Fulfilled;
+        }
+
         /// <summary>The final Head of Household choosing who to sit beside.</summary>
         public static string FinalSelection(DealState deal, string selectorId, string selectedId)
         {
@@ -141,7 +168,7 @@ namespace Gamesim.Simulation
         /// </summary>
         public static List<Verdict> Verdicts(EpisodeState state, string action, string actorId,
             IReadOnlyList<string> nominees = null, string savedId = null, bool used = false,
-            string selectedId = null)
+            string selectedId = null, bool voteDeals = false)
         {
             var verdicts = new List<Verdict>();
             if (state == null) return verdicts;
@@ -149,6 +176,10 @@ namespace Gamesim.Simulation
             foreach (var deal in state.deals.Where(d => d.status == DealStatus.Active).ToList())
             {
                 string outcome = null;
+                // A voting block is decided by both of them at once, so neither is the one who
+                // acted; a vote deal is kept or broken by whichever party voted; everything else
+                // has somebody whose choice settled it.
+                string decidedBy = action == Votes ? null : actorId;
                 switch (action)
                 {
                     case Nominates:
@@ -164,19 +195,14 @@ namespace Gamesim.Simulation
                         break;
                     case Votes:
                         outcome = VoteTogether(deal, state.votes);
+                        if (outcome == null && voteDeals) outcome = VoteDeal(deal, state.votes, state.nominees, out decidedBy);
                         break;
                     case Selects:
                         outcome = FinalSelection(deal, actorId, selectedId);
                         break;
                 }
                 if (outcome == null) continue;
-                verdicts.Add(new Verdict
-                {
-                    deal = deal, status = outcome,
-                    // A voting block is decided by both of them at once, so neither is the one who
-                    // acted; everything else has somebody whose choice settled it.
-                    actorId = action == Votes ? null : actorId,
-                });
+                verdicts.Add(new Verdict { deal = deal, status = outcome, actorId = decidedBy });
             }
             return verdicts;
         }

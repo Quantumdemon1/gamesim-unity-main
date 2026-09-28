@@ -54,7 +54,11 @@ namespace Gamesim.Simulation
             UsesBlocVoting(s) ? WebNativeEvictionRound.Evaluate(s, new[] { voterId }).evaluations.Single()
                 : WebEvictionVoting.EvaluateNative(s, voterId);
 
-        /// <summary>"Where's your head at on the vote?" They answer with their leaning, or a lie, or nothing.</summary>
+        /// <summary>
+        /// "Where's your head at on the vote?" They answer with their leaning, or a lie, or nothing.
+        /// The claim is the record; no memory is written, because a memory naming "you" counts for
+        /// the player in every ballot they are on the block for (the web's memory term matches names).
+        /// </summary>
         private static void AskVote(EpisodeState s, EpisodeCommand c)
         {
             Require(VoteRead.Available(s), "There is no vote to ask about yet.");
@@ -62,13 +66,13 @@ namespace Gamesim.Simulation
             var target = s.Find(c.targetId);
             Require(target != null && target.status == ContestantStatus.Active && !target.isPlayer && Voters(s).Any(v => v.id == target.id),
                 "Ask somebody who votes this week.");
-            Require(!s.ledger.claims.Any(k => k.week == s.week && k.voterId == target.id && k.source == ClaimSource.Told),
-                "You already asked " + target.name + " this week.");
+            Require(!AskedThisWeek(s, target.id), "You already asked " + target.name + " this week.");
             double view = s.Score(target.id, s.playerId);
             // A strategist who is not close to you keeps it to themselves. No roll: nothing to keep.
             if (target.traits.Contains("Strategic") && !target.traits.Contains("Loyal") && view < 25)
             {
-                Remember(s, target.id, s.playerId, "You asked me straight how I'd vote in week " + s.week + ". I kept it to myself.", true);
+                // The week's ask all the same: on the record as one, or a free question could be put again and again.
+                AddStanding(s, target.id, s.playerId, ClaimSource.Deflected, 0);
                 Log(s, "vote-read", target.name + " wouldn't say where their vote is. \"Ask me after.\"", s.playerId, target.id);
                 return;
             }
@@ -78,7 +82,6 @@ namespace Gamesim.Simulation
             bool honest = Roll(s) < honesty;
             string stated = honest ? truth.selectedNomineeId : s.nominees.First(id => id != truth.selectedNomineeId);
             SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = target.id, targetId = stated, source = ClaimSource.Told });
-            Remember(s, target.id, s.playerId, "You asked me straight how I'd vote in week " + s.week + ".", true);
             Log(s, "vote-read", "You asked " + target.name + " where their head is at. \"" + Name(s, stated) + ".\"", s.playerId, target.id);
         }
 
@@ -89,8 +92,7 @@ namespace Gamesim.Simulation
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);
             Require(target != null && target.status == ContestantStatus.Active && !target.isPlayer, "Read an active housemate.");
-            Require(!s.ledger.standings.Any(r => r.week == s.week && r.fromId == target.id && r.toId == s.playerId && r.source == ClaimSource.Read),
-                "You already read " + target.name + " this week.");
+            Require(!ReadThisWeek(s, target.id), "You already read " + target.name + " this week.");
             var player = s.Find(s.playerId);
             double chance = ReadBaseChance
                 + (player.traits.Contains("Intuitive") || player.traits.Contains("Analytical") ? ReadTraitBonus : 0)
@@ -104,6 +106,9 @@ namespace Gamesim.Simulation
                 Log(s, "vote-read", "You read " + target.name + ": they're " + band + ".", s.playerId, target.id);
                 return;
             }
+            // A miss is still the week's attempt: on the record as one, so it cannot be tried again
+            // until it lands, which a free action otherwise invites.
+            AddStanding(s, target.id, s.playerId, ClaimSource.Missed, 0);
             // The top of the miss range is the miss they notice: one roll, either way.
             if (roll >= 1 - (1 - chance) * ReadNoticeShare)
             {
@@ -112,6 +117,15 @@ namespace Gamesim.Simulation
             }
             else Log(s, "vote-read", "You couldn't get a read on " + target.name + ".", s.playerId, target.id);
         }
+
+        /// <summary>Whether the player has already asked this voter where their head is at this week, answered or not.</summary>
+        public static bool AskedThisWeek(EpisodeState s, string npcId) =>
+            s.ledger.claims.Any(k => k.week == s.week && k.voterId == npcId && k.source == ClaimSource.Told)
+            || s.ledger.standings.Any(r => r.week == s.week && r.fromId == npcId && r.toId == s.playerId && r.source == ClaimSource.Deflected);
+
+        /// <summary>Whether the player has already read this houseguest this week, hit or miss.</summary>
+        public static bool ReadThisWeek(EpisodeState s, string npcId) =>
+            s.ledger.standings.Any(r => r.week == s.week && r.fromId == npcId && r.toId == s.playerId && (r.source == ClaimSource.Read || r.source == ClaimSource.Missed));
 
         /// <summary>Records a standing the player learned, for the read.</summary>
         private static void AddStanding(EpisodeState s, string fromId, string toId, string source, double score) =>
@@ -169,7 +183,7 @@ namespace Gamesim.Simulation
         /// the sentence chosen for the log changes, so a vote the player saw coming is explained by
         /// what they saw.
         /// </summary>
-        internal static string ExplainKnown(EpisodeState s, WebVoteEvaluation evaluation)
+        public static string ExplainKnown(EpisodeState s, WebVoteEvaluation evaluation)
         {
             var selected = evaluation.nomineeEvaluations.FirstOrDefault(n => n.nomineeId == evaluation.selectedNomineeId);
             var saved = evaluation.nomineeEvaluations.FirstOrDefault(n => n.nomineeId == evaluation.savedNomineeId);

@@ -64,6 +64,7 @@ namespace Gamesim.Simulation
             HaveNots.Assign(s);
             HaveNots.AwardVetoPrizes(s);
             LogCompetitionInput(s, 0, true, numericExplanation);
+            RecordCompetition(s, players, category, CompetitionEntry.Simulated, 0);
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + " (simulated).");
         }
     }

@@ -126,6 +126,14 @@ namespace Gamesim.Simulation
             return read;
         }
 
+        /// <summary>A read in a few words, for a lever's line: no read, torn, or the lean and how sure it is.</summary>
+        public static string Describe(EpisodeState s, VoterRead read)
+        {
+            if (read == null || read.confidence == Unknown) return "no read";
+            if (read.confidence == Torn) return "torn";
+            return (read.confidence == Firm ? "firm evict " : "leaning evict ") + (s.Find(read.leaningId)?.name ?? read.leaningId);
+        }
+
         /// <summary>Whether the player has learned this term of a voter's evaluation of a nominee.</summary>
         public static bool FactorKnown(EpisodeState s, string voterId, string nomineeId, WebVoteFactor factor)
         {
@@ -134,6 +142,8 @@ namespace Gamesim.Simulation
             {
                 case "relationship": return StandingKnown(s, voterId, nomineeId);
                 case "history": return true;
+                case "obligation": return true;
+                case "plea": return true;
                 case "alliance":
                     return factor.evidenceIds.All(id => AllianceKnown(s, id));
                 case "blocPressure":
@@ -164,7 +174,7 @@ namespace Gamesim.Simulation
 
         /// <summary>A standing the player holds for the pair, learned recently enough to still be current.</summary>
         public static bool StandingKnown(EpisodeState s, string fromId, string toId) =>
-            s.ledger.standings.Any(row => row.fromId == fromId && row.toId == toId && row.week >= s.week - StandingShelfLife);
+            s.ledger.standings.Any(row => row.fromId == fromId && row.toId == toId && !ClaimSource.IsAttempt(row.source) && row.week >= s.week - StandingShelfLife);
 
         /// <summary>The player is party to a deal by its id, or to a promise by the evaluator's "promise:from:to:type" evidence.</summary>
         private static bool PartyTo(EpisodeState s, string evidence)

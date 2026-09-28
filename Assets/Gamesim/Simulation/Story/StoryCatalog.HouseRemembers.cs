@@ -223,7 +223,9 @@ namespace Gamesim.Simulation
                 if (who == null) return "back-down";
                 string other = y.Role(role == "HOTHEAD" ? "TARGET" : "HOTHEAD");
                 int volatility = Personality.Volatility(c.state, who.id, other);
-                bool mayEscalate = c.AtLeast(StoryRules.Production) && volatility >= 5 && !StoryPeople.IsRealPerson(who)
+                // Five was the regular roster's hottest houseguest and nobody else; under the reach
+                // rules four is enough, which is still a short fuse.
+                bool mayEscalate = c.AtLeast(StoryRules.Production) && volatility >= (c.AtLeast(StoryRules.Reach) ? 4 : 5) && !StoryPeople.IsRealPerson(who)
                                    && string.IsNullOrEmpty(c.state.story.pendingRemovalId);
                 double back = Personality.Weight(who, 3, steady: 0.3);
                 double shout = Personality.Weight(who, 2, bold: 0.2);
@@ -430,7 +432,9 @@ namespace Gamesim.Simulation
         {
             id = "the-house-turns", lane = StoryLanes.Conflict, eyebrow = "House Drama", title = "The House Turns",
             origin = "web:pile_on (grudge-reactions); three holders of forty native",
-            rulesVersion = StoryRules.Grudges, minActive = 5, startAnchors = new[] { StoryAnchors.EvictionEve },
+            // Eviction eve alone is the week's most crowded anchor: from the reach rules the final
+            // block is a second chance, and a house turning on someone then is no less true.
+            rulesVersion = StoryRules.Grudges, minActive = 5, startAnchors = new[] { StoryAnchors.EvictionEve, StoryAnchors.BlockSet },
             roles = new[] { Role("TARGET"), Role("AGGRESSOR1"), Role("AGGRESSOR2"), Role("AGGRESSOR3") },
             cast = c =>
             {
@@ -445,7 +449,7 @@ namespace Gamesim.Simulation
                 }
                 return null;
             },
-            weight = (c, b) => 15,
+            weight = (c, b) => c.anchor == StoryAnchors.BlockSet && !c.AtLeast(StoryRules.Reach) ? 0 : 15,
             beats = new[]
             {
                 new BeatTemplate
@@ -567,20 +571,34 @@ namespace Gamesim.Simulation
         private static ArcTemplate PowerShift() => new ArcTemplate
         {
             id = "power-shift", lane = StoryLanes.Game, eyebrow = "The Power Shift", title = "The Power Shift",
-            origin = "web:src/systems/branching-story-system.ts:253-319 (power_shift); the alliance must be real, native",
+            origin = "web:src/systems/branching-story-system.ts:253-319 (power_shift); the alliance must be real, native; a pair from the reach rules",
             rulesVersion = StoryRules.Grudges, minWeek = 3, minActive = 5, startAnchors = new[] { StoryAnchors.EvictionNight },
             group = "branching", groupCooldownWeeks = 3,
             roles = new[] { Role("LEADER"), Role("MEMBER") },
             cast = c =>
             {
-                foreach (var alliance in c.state.alliances.Where(a => a.active && !a.members.Contains(P(c)) && a.members.Count >= 3)
+                // The houseguests' own pacts are pairs (NpcAlliances.Form), so an NPC alliance of
+                // three never formed and this never came round. Under the reach rules two are a bloc.
+                int least = c.AtLeast(StoryRules.Reach) ? 2 : 3;
+                foreach (var alliance in c.state.alliances.Where(a => a.active && !a.members.Contains(P(c)) && a.members.Count >= least)
                              .OrderByDescending(a => a.members.Count).ThenBy(a => a.id, StringComparer.Ordinal))
                 {
                     var live = alliance.members.Where(id => c.Find(id)?.status == ContestantStatus.Active).OrderBy(id => id, StringComparer.Ordinal).ToList();
                     string leader = live.Where(id => (Arc(c, id)?.intensity ?? 0) >= 60 || c.Grudge(id, P(c)) >= 40)
                         .OrderByDescending(id => Arc(c, id)?.intensity ?? 0).FirstOrDefault();
-                    if (leader == null || live.Count < 3) continue;
+                    if (leader == null || live.Count < least) continue;
                     return Bind().With("LEADER", leader).With("MEMBER", live.First(id => id != leader)).Headlining(leader);
+                }
+                if (!c.AtLeast(StoryRules.Reach)) return null;
+                // Under the reach rules the discovery can be the bloc forming: somebody with a reason to
+                // run the house without you (an intense arc with you, or a grudge), and the houseguest
+                // they get on with best. The discovery's options make the pact.
+                foreach (var candidate in Npcs(c).Where(x => (Arc(c, x.id)?.intensity ?? 0) >= 60 || c.Grudge(x.id, P(c)) >= 40)
+                             .OrderByDescending(x => Arc(c, x.id)?.intensity ?? 0).ThenBy(x => x.id, StringComparer.Ordinal))
+                {
+                    var partner = Npcs(c).Where(x => x.id != candidate.id && !c.state.Allied(P(c), x.id) && Mutual(c, candidate.id, x.id) >= 10)
+                        .OrderByDescending(x => Mutual(c, candidate.id, x.id)).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
+                    if (partner != null) return Bind().With("LEADER", candidate.id).With("MEMBER", partner.id).Headlining(candidate.id);
                 }
                 return null;
             },
@@ -594,10 +612,16 @@ namespace Gamesim.Simulation
                     lapse = "stay-out",
                     options = new[]
                     {
-                        Opt("try-join", "Try to join", High, Warm, "Walk over and pitch yourself as worth having.", "You walked over and pitched yourself.", Move(Player, "LEADER", 3), SocialBonus(2)),
-                        Opt("oppose", "Form a counter-alliance", Medium, Calculated, "Rally the outsiders against the new bloc.", "You started counting outsiders.", SocialBonus(3)),
-                        Opt("sabotage", "Sabotage from within", High, Hardball, "Sow discord among the members.", "You started working on the cracks.", Move(Player, "LEADER", -6)),
-                        Lapse("stay-out", "Stay out of it", "Watch it happen.", "You watched from the patio."),
+                        // Whatever the player does next, the pact is made (a no-op where it already stood) and
+                        // they saw who is in it: the read counts it from here.
+                        Opt("try-join", "Try to join", High, Warm, "Walk over and pitch yourself as worth having.", "You walked over and pitched yourself.", Move(Player, "LEADER", 3), SocialBonus(2),
+                            Alliance("LEADER", "MEMBER"), LeakAlliance("LEADER", "MEMBER", Player)),
+                        Opt("oppose", "Form a counter-alliance", Medium, Calculated, "Rally the outsiders against the new bloc.", "You started counting outsiders.", SocialBonus(3),
+                            Alliance("LEADER", "MEMBER"), LeakAlliance("LEADER", "MEMBER", Player)),
+                        Opt("sabotage", "Sabotage from within", High, Hardball, "Sow discord among the members.", "You started working on the cracks.", Move(Player, "LEADER", -6),
+                            Alliance("LEADER", "MEMBER"), LeakAlliance("LEADER", "MEMBER", Player)),
+                        Lapse("stay-out", "Stay out of it", "Watch it happen.", "You watched from the patio.",
+                            Alliance("LEADER", "MEMBER"), LeakAlliance("LEADER", "MEMBER", Player)),
                     },
                 },
                 new[]

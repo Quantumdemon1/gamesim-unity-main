@@ -43,9 +43,9 @@ namespace Gamesim.Episode
                 {
                     var evaluation = expected.evaluations.Single(item => item.voterId == ballot.voterId);
                     string publicReason = (ballot.voterId == before.hohId ? "HoH tie-break: " : "")
-                        + WebEvictionVoting.ExplainNative(before, evaluation);
+                        + EpisodeEngine.ExplainKnown(before, evaluation);
                     RequireSeason(ballot.targetId == evaluation.selectedNomineeId && ballot.reason == publicReason,
-                        "The actual committed NPC ballot must match the source round and public-only explanation.");
+                        "The actual committed NPC ballot must match the source round and the explanation the player is owed.");
                     // Hold serializer ordering constant: an order-only tie change is not bloc influence.
                     var uncoordinated = WebEvictionVoting.FromNative(before, ballot.voterId);
                     var nominees = uncoordinated.nominees.ToDictionary(item => item.id, StringComparer.Ordinal);

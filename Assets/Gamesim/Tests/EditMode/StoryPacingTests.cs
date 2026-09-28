@@ -25,6 +25,9 @@ namespace Gamesim.Tests.EditMode
             public readonly Dictionary<int, int> asksByWeek = new Dictionary<int, int>();
             public readonly Dictionary<int, int> budgetedByWeek = new Dictionary<int, int>();
             public readonly Dictionary<int, int> summonsByWeek = new Dictionary<int, int>();
+            /// <summary>Plays offered, by week: their own budget (plan 30 §5), outside the arcs' asks.</summary>
+            public int playOffers;
+            public readonly Dictionary<int, int> playOffersByWeek = new Dictionary<int, int>();
             /// <summary>Each week's asks, as "arc/beat (lane, surface)", for a failure to say what asked.</summary>
             public readonly Dictionary<int, List<string>> askedByWeek = new Dictionary<int, List<string>>();
         }
@@ -59,6 +62,17 @@ namespace Gamesim.Tests.EditMode
                     {
                         pace.summons++;
                         pace.summonsByWeek[beat.week] = (pace.summonsByWeek.TryGetValue(beat.week, out var n) ? n : 0) + 1;
+                        continue;
+                    }
+                    if (arc?.play != null)
+                    {
+                        // Plays keep their own airtime (plan 30 §5): an offer counts against the plays'
+                        // budget, and a step of a play taken on against nothing.
+                        if (beat.contentId != null && beat.contentId.EndsWith(":offer", System.StringComparison.Ordinal))
+                        {
+                            pace.playOffers++;
+                            pace.playOffersByWeek[beat.week] = (pace.playOffersByWeek.TryGetValue(beat.week, out var p) ? p : 0) + 1;
+                        }
                         continue;
                     }
                     if (!asked.Add(beat.week + "|" + beat.cycleId + "|" + beat.closesAnchor)) continue;
@@ -108,6 +122,8 @@ namespace Gamesim.Tests.EditMode
                         + string.Join("; ", pace.askedByWeek[week.Key]));
                 foreach (var week in pace.summonsByWeek)
                     Assert.That(week.Value, Is.LessThanOrEqualTo(1), "Seed " + seed + ", week " + week.Key + ": summons.");
+                foreach (var week in pace.playOffersByWeek)
+                    Assert.That(week.Value, Is.LessThanOrEqualTo(EpisodeEngine.PlayOffersAWeek), "Seed " + seed + ", week " + week.Key + ": play offers.");
                 Assert.That(pace.budgetedAsks, Is.LessThanOrEqualTo(9), "Seed " + seed + ": the default eight's ceiling is nine asks.");
             }
         }

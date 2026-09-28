@@ -26,6 +26,7 @@ namespace Gamesim.Simulation
             Require(SocialActionsSpent(s) < SocialActionBudget(s), "You have no conversations left this week.");
 
             var decider = s.Find(c.targetId);
+            var read = ask == LobbyAsk.Vote ? LeverRead(s, decider.id) : null;
             double chance = StrategyRules.Chance(s, decider.id, ask, c.secondTargetId, approach);
             var answer = StrategyRules.Respond(chance, Roll(s), () => Roll(s));
             s.lobbies.Add(new LobbyState
@@ -43,7 +44,21 @@ namespace Gamesim.Simulation
                 s.playerId, decider.id);
             // A plea made with a deal is a deal: the reference's card promises "real obligations", and
             // one that lands writes them - a safety agreement that binds the player next week too.
-            if (approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
+            // For the vote it is the voter's word on the vote itself: a vote to keep the player,
+            // their obligation in the ballot and judged at the reveal like any vote deal.
+            if (ask == LobbyAsk.Vote && approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
+                && s.deals.Count < NpcDeals.DealCeiling
+                && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.VoteSave))
+            {
+                s.deals.Add(new DealState
+                {
+                    id = "deal-lobby-" + s.nextSequence, type = DealKind.VoteSave,
+                    proposerId = decider.id, recipientId = s.playerId, targetId = s.playerId, status = DealStatus.Active,
+                    week = s.week, expiresWeek = s.week, trustImpact = DealKind.DefaultTrust(DealKind.VoteSave),
+                });
+                Log(s, "deal", decider.name + " has given you their vote: a vote to keep you, judged at the reveal.", s.playerId, decider.id);
+            }
+            else if (approach == LobbyApproach.Deal && StrategyRules.Landed(answer.response)
                 && s.deals.Count < NpcDeals.DealCeiling
                 && !NpcDeals.Between(s, s.playerId, decider.id).Any(d => d.type == DealKind.SafetyAgreement))
             {
@@ -55,6 +70,7 @@ namespace Gamesim.Simulation
                 });
                 Log(s, "deal", "You and " + decider.name + " have a safety agreement through next week.", s.playerId, decider.id);
             }
+            if (ask == LobbyAsk.Vote) LeverLine(s, decider.id, read, s.nominees.FirstOrDefault(id => id != s.playerId), "your plea");
             SpendSocialAction(s);
         }
 
@@ -74,6 +90,15 @@ namespace Gamesim.Simulation
             Require(reply != null, "Choose one of the answers you were offered.");
 
             s.replyCards.Remove(card);
+            // Typed, for the story's plays and the verdict (STRATEGY-LOOP-PLAN.md §8): which card,
+            // from whom, which answer, and whether it promised a vote.
+            SeasonLedger.Append(s.ledger, s.ledger.replies, new ReplyRow
+            {
+                week = s.week, cardId = card.id, kind = card.kind, fromId = from.id, listenerId = card.aboutId,
+                replyKey = reply.Key, toThem = reply.ToThem,
+                promised = reply.Promises && s.phase == EpisodePhase.Campaign && Voters(s).Any(v => v.id == s.playerId)
+                    && s.nominees.Contains(from.id) && s.nominees.Contains(card.aboutId ?? ""),
+            });
             if (reply.ToThem != 0)
                 Change(s, s.playerId, from.id, reply.ToThem, ReplyCards.Note(card.kind, reply.Label), "reply");
             // Gossiping back reaches whoever they were talking to, which is the point of it.

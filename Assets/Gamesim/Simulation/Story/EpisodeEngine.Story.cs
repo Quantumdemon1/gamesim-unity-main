@@ -138,7 +138,29 @@ namespace Gamesim.Simulation
         /// cycle's beats that close at the same anchor count once: the budget is interruptions, not cards.
         /// </summary>
         private static int AsksThisWeek(EpisodeState s) =>
-            s.houseEvents.Where(e => e.week == s.week && Asks(e)).Select(e => e.cycleId + "|" + e.closesAnchor).Distinct().Count();
+            s.houseEvents.Where(e => e.week == s.week && Asks(e) && !IsPlayBeat(s, e))
+                .Select(e => e.cycleId + "|" + e.closesAnchor).Distinct().Count();
+
+        // ---------------------------------------------------------------- plays' own airtime (plan 30 §5)
+
+        /// <summary>Most new play offers a week: their own budget, beside the arcs' asks rather than out of them.</summary>
+        public const int PlayOffersAWeek = 2;
+
+        /// <summary>Whether a beat belongs to a play: plays keep their own airtime.</summary>
+        private static bool IsPlayBeat(EpisodeState s, HouseEventState e) =>
+            e.cycleId != null && StoryCatalog.Find(s.storylines.FirstOrDefault(x => x.id == e.cycleId)?.templateId)?.play != null;
+
+        /// <summary>An arc's ask still waiting on the player: plays are left out, as they are of the weekly count.</summary>
+        private static HouseEventState OpenArcAsk(EpisodeState s) =>
+            s.houseEvents.FirstOrDefault(e => !e.resolved && Asks(e) && !IsPlayBeat(s, e));
+
+        /// <summary>A play's beat still waiting on the player: one at a time, like the arcs'.</summary>
+        private static HouseEventState OpenPlayAsk(EpisodeState s) =>
+            s.houseEvents.FirstOrDefault(e => !e.resolved && Asks(e) && IsPlayBeat(s, e));
+
+        /// <summary>The plays offered this week: their offers, not their steps.</summary>
+        private static int PlayOffersThisWeek(EpisodeState s) =>
+            s.houseEvents.Count(e => e.week == s.week && IsPlayBeat(s, e) && e.contentId != null && e.contentId.EndsWith(":offer", StringComparison.Ordinal));
         private static int SummonsesThisWeek(EpisodeState s) =>
             s.houseEvents.Count(e => e.week == s.week && e.IsStory && e.surface == StorySurfaces.Summons);
 
@@ -157,14 +179,24 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool BeforeTheFirstAsk(EpisodeState s) => s != null && s.week <= 1 && !s.evictionResolved;
 
-        public static bool AirtimeFor(EpisodeState s, string surface, bool mustFire = false)
+        public static bool AirtimeFor(EpisodeState s, string surface, bool mustFire = false) =>
+            AirtimeFor(s, surface, mustFire, false, false);
+
+        /// <summary>
+        /// The same, for a play's beat (plan 30 §5): plays have their own open slot and a budget of
+        /// <see cref="PlayOffersAWeek"/> offers, and a play the player has taken on is not held back by
+        /// any weekly count at all - they chose to chase it. An arc's ask and a play's can be open at
+        /// once; each waits only for its own kind.
+        /// </summary>
+        public static bool AirtimeFor(EpisodeState s, string surface, bool mustFire, bool play, bool playStep)
         {
             if (s.houseEvents.Count >= HouseEvents.Ceiling) return false;
             if (s.Find(s.playerId)?.status != ContestantStatus.Active) return false;
             if (surface == StorySurfaces.Npc) return true;
+            if (play) return OpenPlayAsk(s) == null && (playStep || PlayOffersThisWeek(s) < PlayOffersAWeek);
             if (surface == StorySurfaces.Summons)
                 return OpenSummons(s) == null && (mustFire || SummonsesThisWeek(s) < SummonsesAWeek);
-            return OpenStoryAsk(s) == null && (mustFire || AsksThisWeek(s) < AsksAWeek);
+            return OpenArcAsk(s) == null && (mustFire || AsksThisWeek(s) < AsksAWeek);
         }
 
         // ---------------------------------------------------------------- the anchors
@@ -234,6 +266,7 @@ namespace Gamesim.Simulation
             }
 
             TryStartFromPool(s, ctx);
+            TryStartPlayFromPool(s, ctx);
         }
 
         /// <summary>The running story cycles, in id order.</summary>
@@ -247,7 +280,8 @@ namespace Gamesim.Simulation
             if (beat == null) { EndCycle(s, cycle.record, "lost"); return; }
             var ctx = new StoryContext(s, anchor);
             if (beat.ready != null && !beat.ready(ctx, cycle)) { Postpone(s, cycle.record, anchor); return; }
-            if (!beat.NpcHeld && !AirtimeFor(s, beat.surface, cycle.template.lane == StoryLanes.Production || cycle.template.urgent))
+            if (!beat.NpcHeld && !AirtimeFor(s, beat.surface, cycle.template.lane == StoryLanes.Production || cycle.template.urgent,
+                    cycle.template.play != null, TakenOn(cycle.record)))
             {
                 Postpone(s, cycle.record, anchor);
                 return;
@@ -255,10 +289,22 @@ namespace Gamesim.Simulation
             Fire(s, cycle, beat, anchor, true);
         }
 
+        /// <summary>
+        /// Where a beat put off at this anchor tries again: the next anchor round the week. The close
+        /// of the social window lapses beats but fires none (StoryAnchor never runs there), so a beat
+        /// put off at eviction night waited there until it went stale, holding its lane; under the
+        /// reach rules it tries again at the next Head of Household.
+        /// </summary>
+        public static string RetryAnchor(EpisodeState s, string anchor)
+        {
+            string next = NextAnchor(anchor);
+            return next == StoryAnchors.SocialClose && StoryAt(s, StoryRules.Reach) ? StoryAnchors.HohCrowned : next;
+        }
+
         /// <summary>A scheduled beat that cannot fire yet tries again at the next anchor.</summary>
         private static void Postpone(EpisodeState s, StorylineState cycle, string anchor)
         {
-            string next = NextAnchor(anchor);
+            string next = RetryAnchor(s, anchor);
             cycle.nextAnchor = next;
             cycle.nextWeek = LaterThisWeek(anchor, next) ? s.week : s.week + 1;
         }
@@ -270,7 +316,8 @@ namespace Gamesim.Simulation
             var candidates = new List<(ArcTemplate template, ArcBinding binding, double weight)>();
             foreach (var template in StoryCatalog.All)
             {
-                if (Array.IndexOf(template.startAnchors, ctx.anchor) < 0) continue;
+                // Plays draw from their own pool below.
+                if (template.play != null || Array.IndexOf(template.startAnchors, ctx.anchor) < 0) continue;
                 var binding = Castable(s, ctx, template);
                 if (binding == null) continue;
                 double weight = template.weight == null ? 10 : template.weight(ctx, binding);
@@ -278,9 +325,45 @@ namespace Gamesim.Simulation
                 candidates.Add((template, binding, weight));
             }
             if (candidates.Count == 0) return;
-            double nothing = ctx.anchor == StoryAnchors.EvictionNight ? 40 : 60;
+            // How much "nothing new" weighs. The strategy windows took six arcs out of the house's pool,
+            // which left seasons at three asks against the plan's four to six (§5.2): under the reach
+            // rules the pause is shorter. The airtime's ceilings are unchanged.
+            bool reach = StoryAt(s, StoryRules.Reach);
+            double nothing = ctx.anchor == StoryAnchors.EvictionNight ? (reach ? 25 : 40) : (reach ? 40 : 60);
             double total = candidates.Sum(c => c.weight) + nothing;
             double roll = StoryRandom.Unit(s, "w" + s.week + ":" + ctx.anchor + ":pool") * total;
+            foreach (var candidate in candidates.OrderBy(c => c.template.id, StringComparer.Ordinal))
+            {
+                if (roll < candidate.weight)
+                {
+                    StartCycle(s, candidate.template, candidate.binding, ctx.anchor);
+                    return;
+                }
+                roll -= candidate.weight;
+            }
+        }
+
+        /// <summary>How much "no new play" weighs in the plays' pool: low, so a castable play usually comes.</summary>
+        public const double PlayNothingWeight = 20;
+
+        /// <summary>
+        /// Plays draw from their own pool (plan 30 §5): at most one new offer an anchor, on a roll of
+        /// their own and within their own budget, so plays neither crowd out the house's arcs nor
+        /// wait behind them. A season before the plays rules casts none, so its pool is untouched.
+        /// </summary>
+        private static void TryStartPlayFromPool(EpisodeState s, StoryContext ctx)
+        {
+            var candidates = new List<(ArcTemplate template, ArcBinding binding, double weight)>();
+            foreach (var template in StoryCatalog.All)
+            {
+                if (template.play == null || Array.IndexOf(template.startAnchors, ctx.anchor) < 0) continue;
+                var binding = Castable(s, ctx, template);
+                if (binding == null) continue;
+                double weight = template.weight == null ? 10 : template.weight(ctx, binding);
+                if (weight > 0) candidates.Add((template, binding, weight));
+            }
+            if (candidates.Count == 0) return;
+            double roll = StoryRandom.Unit(s, "w" + s.week + ":" + ctx.anchor + ":plays") * (candidates.Sum(c => c.weight) + PlayNothingWeight);
             foreach (var candidate in candidates.OrderBy(c => c.template.id, StringComparer.Ordinal))
             {
                 if (roll < candidate.weight)
@@ -320,7 +403,8 @@ namespace Gamesim.Simulation
             // opener, deciding the tone - the first one after it. An arc the house has no room to
             // put to the player does not start.
             var firstAsk = opener.NpcHeld ? template.beats.FirstOrDefault(b => !b.NpcHeld) : opener;
-            if (firstAsk != null && !AirtimeFor(s, firstAsk.surface, template.lane == StoryLanes.Production || template.urgent)) return null;
+            if (firstAsk != null && !AirtimeFor(s, firstAsk.surface, template.lane == StoryLanes.Production || template.urgent,
+                    template.play != null, false)) return null;
             var binding = template.cast?.Invoke(ctx);
             if (binding == null) return null;
             foreach (var role in template.roles)
@@ -411,7 +495,8 @@ namespace Gamesim.Simulation
                 return;
             }
             if ((BeforeTheFirstAsk(s) && cycle.template.id != FirstNightArc)
-                || !AirtimeFor(s, beat.surface, chained || cycle.template.lane == StoryLanes.Production || cycle.template.urgent))
+                || !AirtimeFor(s, beat.surface, chained || cycle.template.lane == StoryLanes.Production || cycle.template.urgent,
+                    cycle.template.play != null, TakenOn(cycle.record)))
             {
                 Postpone(s, cycle.record, anchor);
                 return;

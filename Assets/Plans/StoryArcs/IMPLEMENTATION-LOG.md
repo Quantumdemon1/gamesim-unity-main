@@ -172,3 +172,111 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
     read rules add one (schema 17);
   - Build the Numbers never cast: the harness player forms alliances with anyone it can.
 - Floors: EditMode 1724, PlayMode 605, Uma 64, Sim 939.
+
+## Plays: P4, density and skill (plan 30, 2026-09-27/28)
+- Airtime (plan 30 §5):
+  - plays keep their own: one play card open at a time beside the arcs' one, and
+    `PlayOffersAWeek` = 2 offers a week outside the arcs' two asks;
+  - a step of a play the player took on is held back by no weekly count;
+  - plays draw from their own pool (`TryStartPlayFromPool`, nothing-weight 20, roll key ":plays"),
+    so they no longer crowd the arcs' draw or wait behind it.
+- The social bonus pays (owner's decision, "extra actions"): every ten points banked
+  (`StoryModifiers.PointsPerAction`) buy Good Standing, one more conversation this week and next,
+  through the modifiers' existing term. `SocialActionBudget` is untouched, for the other session's
+  per-window budgets. Only story choices pay points today: the native post-eviction diary's choices
+  carry none.
+- Skill is the point (§6). The first P4 sweep had the density but a 5-point gap, because the options
+  were not reads:
+  - unequal bases, so the best odds were the same option whoever it was aimed at;
+  - passive wins: Stay Off the Block had no option at all where the windows play, and was won 65% of
+    the time by waiting;
+  - steps that could not win: a second good conversation in Know Them re-asked what the first had
+    answered, and one apology could never settle a nomination's 70-84 grudge.
+
+  Fixed with three rules for every step: the same base (50) for every option; a different approach
+  for each, so the person's traits and what you know about them decide which lands; and the same
+  payoff for any that lands. Then per play:
+  - Stay Off the Block:
+    - it is offered only when the Head of Household's real ranking, `NominationWeight`, has you in
+      the bottom two;
+    - it is lost the moment you are named, at the nominations or by a backdoor
+      (`PlayTemplate.failed`), whatever the veto does after;
+    - where the windows play it needs somebody to work through, anybody with nothing against you or
+      the HoH, and offers three ways in (vouch Warm, go to bat Candid, play you down Calculated), each
+      +20 in the HoH's eyes;
+    - "point at somebody else" is gone: from the very bottom one name dropping past you still leaves
+      you in the two.
+  - Know Them needs three things, and a conversation that lands always teaches two: the asked facet
+    or, failing that, the next unknown (`Fx.RevealMore`).
+  - Settle It has two conversations (the second on eviction eve), each easing 50.
+  - The Secret Alliance, The Favour and Stir the Pot gained a third approach.
+- PlaysReport, now 80 seasons (8 and 12, seeds 1-40, as §6 asks):
+
+  | Player | Story decisions a season | Plays offered a season | Won / part / lost | Win rate |
+  |---|---|---|---|---|
+  | Random | 8.5 | 3.0 | 27 / 5 / 44 | 36% |
+  | Reader | 14.1 | 3.2 | 139 / 17 / 64 | 63% |
+
+  The reader leads by 27 points, at D1's density (10-15 decisions).
+  PlaysByOption, a new explicit diagnostic, shows each play's endings follow its steps: a step that
+  lands wins or part-wins, a pass or a backfire loses.
+- PacingReport (1,920 seasons) against c4941ae: the arcs keep their airtime and plays come on top.
+  StoryPacingTests.Measure now counts play offers apart from the arcs' asks, so "asks" is the arcs'
+  alone, where at c4941ae it held the plays too. In the default eight: stories finished rose from 2.3
+  to 3.7 a season, arc asks are 3.0, a card shows in 35% of weeks, and 78% of seasons are pariah-free
+  (79% at c4941ae). The twelve-house's 43% pariah-free and the default eight's asks below 4 predate P4.
+- On 58f8623, the merge of c4941ae with the other session's read (schema 17): PlaysReport is unchanged,
+  because SeasonBuilder never switches the read rules on (only the director does), so no sweep yet has
+  a hidden NPC alliance for The Secret Alliance to find.
+- Floors: EditMode 1746, PlayMode 609, Uma 64, Sim 956.
+
+## Plays: P4, reach (plan 30, 2026-09-28)
+- Why arcs never came round, from an audit of the 22 the harness never saw:
+  - six step aside where the strategy windows play (after-the-comp, hoh-room, veto-dilemma, and
+    confronted, campaign-pitch and caught-talking, which the windows' reply cards replaced). They come
+    back as plays that use the windows as steps (P2);
+  - the rest needed things that never happened (an NPC alliance of three, NPC warmth of sixty, a
+    deep conversation), had thresholds a skilled player rarely reached, or starved at eviction night,
+    where most arcs start and the pool draws one;
+  - an engine bug: a beat put off at eviction night waited for SocialClose, which fires nothing,
+    and held its lane until it went stale.
+- `StoryRules.Reach` = 8 = Current. Every change below to an arc that existed before holds from it
+  on, so a season stamped earlier plays exactly as it did. No schema change.
+  - `EpisodeEngine.RetryAnchor`: a beat put off at eviction night tries again at the next HoH.
+  - The pool's pause is shorter (nothing 25 at eviction night, 40 elsewhere; was 40/60): the windows
+    took six arcs out of the pool and left the default eight at three asks against §5.2's four to six.
+  - power-shift: a pair is a bloc, and where none exists the discovery can be the bloc forming (a
+    leader with a reason, and whoever they get on with best; the scene makes the pact). Either way the
+    player saw who is in it, so the read counts it.
+  - Leaking an alliance with no fact (known to everyone) no longer makes it a secret from the rest.
+  - walked-in-whispering: two allies, or two who like each other (20 both ways), whisper.
+  - legacy house events name the nominee still in the house at eviction night, not the evictee.
+  - the-house-turns may also come at the final block.
+  - ride-or-die at mutual 35 (was 50), unspoken-pair at 45 (was 60), both with the final block as a
+    second chance, as the emergent friendship and rivalry have.
+  - staged-feud: bold and social between them (three, neither at zero) and mutual 10, not one card.
+  - what-they-left-out: knowing somebody well (three things, one of depth two) is trust enough.
+  - on-notice: a hothead of volatility 4 may escalate (was 5, which only one roster card reached).
+- On the plays rules (not yet played by anyone, so changed in place):
+  - Build the Numbers is won only with all three in one alliance, and casts over pacts of two;
+  - Know Them's fallback reveal stops at depth two and never reaches a secret.
+- The harness:
+  - StorySeasonTests.StorySeason switches the read rules on, as the director does for every season
+    (never SeasonBuilder, whose recorded seasons would shift). The Secret Alliance can now come round.
+  - SkilledNext, a skilled player: the reader's answers, a circle of three, alliances only at mutual
+    20 and two at most, a final two at eight left, loyalty sworn, the circle's offers taken, pillow talk
+    with somebody open to it, and a rule bent a quarter of the times one is on offer.
+  - ReachReport: 480 seasons (the regular eight, twelve and sixteen, and the All-Stars eight).
+- Reach over 480 seasons: every arc but two comes round. The two are on-notice (an NPC's escalated
+  blow-up) and the-accounting (an NPC voting out their own ally). Both wait on houseguests' dealings
+  with each other, which the simulation does not play: the director's NPC world runs NPC
+  conversations in real time, so in the sweep NPC pacts are 0.04 an eviction night and NPC warmth
+  rarely reaches 20. Rare (1-3 in 480): the-secret-alliance, walked-in-whispering, loose-lips,
+  power-shift, the-house-turns, the-reckoning-yours, unspoken-pair. StoryReachTests proves each fix
+  casts where its conditions hold.
+- PlaysReport on reach: the reader wins 60% against random's 36% (24 points) at 13.5 decisions a
+  season; the reader's seasons now see 54 of 73 arcs (51 before).
+- PacingReport on reach (1,920 seasons): arc asks rise to 3.5 in the default eight (3.0), 5.3 in
+  All-Stars and 4.5 in the twelve, the ceilings hold, removals stay at 0%, and 77% of the default
+  eight's seasons are pariah-free (78%).
+- Floors: EditMode 1763, PlayMode 609, Uma 64, Sim 973.

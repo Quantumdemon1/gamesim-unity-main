@@ -26,8 +26,8 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Decides every play taken on whose goal is met and, at its deadline, every one whose goal
-        /// is not. Between anchors (<paramref name="anchor"/> null) only a met goal decides: a play
-        /// is never lost before its deadline comes.
+        /// is not. Before the deadline a play that is not won ends only when its goal can no longer
+        /// be met (<see cref="PlayTemplate.failed"/>): being nominated ends staying off the block.
         /// </summary>
         internal static void DecidePlays(EpisodeState s, string anchor)
         {
@@ -38,9 +38,10 @@ namespace Gamesim.Simulation
                 var play = template?.play;
                 if (play?.progress == null || !TakenOn(cycle)) continue;
                 var view = new StoryCycle(cycle, template);
-                var progress = play.progress(new StoryContext(s, anchor ?? CurrentAnchor(s)), view);
+                var context = new StoryContext(s, anchor ?? CurrentAnchor(s));
+                var progress = play.progress(context, view);
                 if (progress.Met) Decide(s, view, PlayEndings.Won);
-                else if (anchor != null && anchor == play.deadline)
+                else if ((anchor != null && anchor == play.deadline) || play.failed?.Invoke(context, view) == true)
                     Decide(s, view, progress.have > 0 && play.PartCounts ? PlayEndings.Part : PlayEndings.Lost);
             }
         }

@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
         public static bool TryValidate(EpisodeState s, out string error)
         {
             error = null;
-            if (s == null || s.schemaVersion != 17) return Fail(out error, "Unsupported episode schema.");
+            if (s == null || s.schemaVersion != 18) return Fail(out error, "Unsupported episode schema.");
             if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
@@ -31,6 +31,8 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Voting-bloc activation week must be within the saved season boundary.");
             if (s.readRulesStartWeek < 0 || s.readRulesStartWeek > 101 || s.readRulesStartWeek > s.week + 1)
                 return Fail(out error, "Read-rules activation week must be within the saved season boundary.");
+            if (s.leverRulesStartWeek < 0 || s.leverRulesStartWeek > 101 || s.leverRulesStartWeek > s.week + 1)
+                return Fail(out error, "Lever-rules activation week must be within the saved season boundary.");
             if (s.socialBudgetRulesStartWeek < 1 || s.socialBudgetRulesStartWeek > 101 || s.socialBudgetRulesStartWeek > s.week + 1)
                 return Fail(out error, "Social-budget activation week must be within the saved season boundary.");
             if (s.playerStudyBonus < 0 || s.playerStudyBonus > 5) return Fail(out error, "Study preparation must be between zero and five.");
@@ -190,7 +192,8 @@ namespace Gamesim.Simulation
             // Both lists are this week's: the lobbying clears as the week turns, and a reply card is
             // answered in the phase it arrived in or not at all.
             if (s.lobbies == null || s.lobbies.Count > 32 || s.lobbies.Any(l => l == null || l.week != s.week
-                    || (l.phase != EpisodePhase.Nomination && l.phase != EpisodePhase.VetoMeeting)
+                    // A plea for a vote is the campaign's (STRATEGY-LOOP-PLAN.md section 3).
+                    || (l.phase != EpisodePhase.Nomination && l.phase != EpisodePhase.VetoMeeting && l.phase != EpisodePhase.Campaign)
                     || s.Find(l.deciderId) == null || l.deciderId == s.playerId || !LobbyAsk.IsKnown(l.ask)
                     || !LobbyApproach.IsKnown(l.approach) || !LobbyResponse.IsKnown(l.response)
                     || (l.subjectId != null && s.Find(l.subjectId) == null)

@@ -158,6 +158,16 @@ Every lever prints what it moved, in the model's terms: *Riley: torn → leaning
   ask ("put X up" already exists; "keep X off" and "use it on me" complete it).
 - **Web parity** holds as decision 3 of the story plan did: native terms are labelled in code and
   reproduce today's output on an empty store, so the parity fixtures stay.
+- **As built (R2, 2026-09-28).** The obligation is a `playerKnown` term (`obligation`, base 8, view-
+  scaled, Loyal x1.5, Sneaky x0) on top of the web's own deal term, which a vote deal's target now
+  reaches; vote deals are judged at the reveal (`DealResolution.VoteDeal`); the plea to a voter is
+  the lobby's fifth ask (`LobbyAsk.Vote`) and its answer a `plea` term (influence x 0.2, so a hostile
+  hearing counts against you); an all-in plea that lands writes the voter's `vote_save` naming the
+  player; the call is `EpisodeCommandKind.CallTheVote`, decided at call time by the round's own
+  `Loyalty`/`Complies` and honoured by the round; the bloc's stability and grudges are filled under
+  the levers; "keep X off" and the call-out shuffle landed. Everything is keyed to
+  `leverRulesStartWeek`. Deferred: the speech from the block moving every voter by its approach
+  (the speech has no approach yet), and NPC pact formation, which is the owner's call (§9).
 
 ## 4. The Week
 

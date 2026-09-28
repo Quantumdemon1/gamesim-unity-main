@@ -152,6 +152,17 @@ namespace Gamesim.Episode
                 yield return DismissWeeklyRecap(state,graphical);
                 state = seasonDirector.Snapshot;
                 if (state.pendingDiary != null) yield return CompleteSeasonReflection(state,graphical);
+                // A play offered on the Pull is taken on once a season, from free roam, where the
+                // Pull is. Its own step, outside the one-decision accounting: the world may tick
+                // a commit of its own while the Pull is pressed with no panel to pause it.
+                else if (!seasonPlayTaken && state.phase == EpisodePhase.Social && !seasonDirector.IsPanelOpen
+                         && HasSeasonButtonText(EpisodeHud.TakeItOnCaption))
+                { yield return TakeSeasonPlay(graphical); continue; }
+                // The read, once a season: ask a voter straight, then read them, in the campaign. Its
+                // own step as well: the walk to the voter is free roam, where the world's own commits
+                // land, so it keeps its own accounting from the moment the conversation is open.
+                else if (SeasonReadDue(state))
+                { yield return ExerciseSeasonRead(state, graphical); continue; }
                 else
                 {
                     yield return OpenSeasonStation();
@@ -180,6 +191,10 @@ namespace Gamesim.Episode
             seasonReport.phases.Add(EpisodePhase.Finished.ToString());
             seasonReport.winnerId = finale.winnerId; seasonReport.playerFinalStatus = finale.Find(finale.playerId).status.ToString();
             RecordSeasonSystems(finale);
+            seasonReport.playNote = !seasonPlayTaken ? "No play was offered on the Pull this season."
+                : finale.events.Any(e => e.kind == "story-play") ? "The play taken on ended, and the log says how."
+                : finale.storylines.Any(x => EpisodeEngine.TakenOn(x)) ? "The play taken on was still running at the end."
+                : "The play taken on left no ending and no running cycle.";
             yield return OpenSeasonStation();
             yield return CaptureSeason("finale",graphical);
             yield return ClickSeasonButton("Review the season");
@@ -554,6 +569,10 @@ namespace Gamesim.Episode
             public int commands, optionalSocialCommands, diaryReflections, finalistAnswers, jurorQuestions, saveReloadChecks, blockSpeeches;
             public int weeklyRecaps, houseEventsResolved, dealsProposed, dealsAnswered, minigameInputs, storylinesBegun, houseEventsSeen, dealsRecorded, modifiersCarried;
             public int replyCardsAnswered;
+            public int votesAsked, peopleRead;
+            public string readNote;
+            public int playsTaken;
+            public string playNote;
             public string minigameKind, dealKind, dealOutcome, dealNote;
             public double minigameScore;
             public List<string> houseEventKinds = new List<string>();

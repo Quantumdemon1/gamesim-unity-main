@@ -147,46 +147,86 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void StayOffTheBlock_IsDecidedByTheFinalBlock([Values(true, false)] bool winsThemOver)
+        public void StayOffTheBlock_IsLostTheMomentYouAreNamed([Values("kept-off", "named", "backdoored")] string route)
         {
+            bool keptOff = route == "kept-off";
             var s = At(AtNominations);
-            string hoh = s.hohId;
+            string hoh = s.hohId, player = s.playerId;
             var others = s.Active.Where(c => !c.isPlayer && c.id != hoh).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
-            // In the Head of Household's bottom two: a grudge puts the player there.
-            Grudges.Add(s, hoh, s.playerId, 80, GrudgeCauses.Story);
+            // In the Head of Household's bottom two - a grudge puts the player there - with somebody to
+            // work through: where the windows play, the Head of Household's own ear is the lobby's.
+            Grudges.Add(s, hoh, player, 80, GrudgeCauses.Story);
+            Score(s, others[0].id, player, 10); Score(s, hoh, others[0].id, 10);
             Assert.That(EpisodeEngine.StartStory(s, "stay-off-the-block", StoryAnchors.HohCrowned), Is.True, "Stay Off the Block casts.");
             s = Answer(s, "stay-off-the-block", PlayOptions.TakeItOn);
             s = Answer(s, "stay-off-the-block", "lay-low");
 
-            // However the player got there - here, the house simply changing its mind - the final block decides it.
-            Grudges.Ease(s, hoh, s.playerId, 100);
-            if (winsThemOver)
+            // However the player got there - here, the house simply changing its mind - the block decides it.
+            Grudges.Ease(s, hoh, player, 100);
+            if (keptOff)
             {
-                Score(s, hoh, s.playerId, 90);
+                Score(s, hoh, player, 90);
                 foreach (var other in others.Take(2)) Score(s, hoh, other.id, -90);
             }
             else
             {
                 // Nothing shields the player: no shared alliance, deal or promise with the Head of Household.
-                string player = s.playerId;
                 foreach (var alliance in s.alliances.Where(a => a.members.Contains(hoh) && a.members.Contains(player))) alliance.active = false;
                 s.deals.RemoveAll(d => (d.proposerId == hoh && d.recipientId == player) || (d.proposerId == player && d.recipientId == hoh));
                 s.promises.RemoveAll(p => (p.fromId == hoh && p.toId == player) || (p.fromId == player && p.toId == hoh));
                 Score(s, hoh, player, -90);
                 foreach (var other in others) Score(s, hoh, other.id, 60);
+                // A scheming Head of Household backdoors a winner (NpcBackdoorTarget); nobody backdoors
+                // the house's weakest competitor, whom they simply name.
+                if (route == "named")
+                {
+                    var me = s.Find(player);
+                    me.hohWins = me.vetoWins = 0;
+                    me.stats.competition = 0;
+                }
             }
+            // The week to the end of the veto meeting. Named at any point - at the nominations, or by a
+            // backdoor there - and the play is decided against the player, whatever the veto does after.
+            bool named = false, offTheFirstBlock = false;
             for (int i = 0; i < 40 && s.phase != EpisodePhase.Campaign; i++)
             {
                 var next = EpisodeEngineTests.NextCommand(s);
-                // On the losing side the player throws the veto competition: nobody saves them.
-                if (!winsThemOver && next.kind == EpisodeCommandKind.Compete) next.performance = 0;
+                // On the losing side the player throws the veto competition: a veto holder is never the replacement.
+                if (!keptOff && next.kind == EpisodeCommandKind.Compete) next.performance = 0;
                 s = Apply(s, next);
+                if (route == "named" && s.nominees.Count > 0 && !named)
+                {
+                    Assert.That(s.nominees.Contains(player), Is.True, "Named at the nominations.");
+                    Assert.That(Cycle(s, "stay-off-the-block").endingId, Is.EqualTo(PlayEndings.Lost),
+                        "Lost there and then, before the veto is even played.");
+                }
+                named |= s.nominees.Contains(player);
+                if (s.nominees.Count > 0 && !named && !offTheFirstBlock)
+                {
+                    offTheFirstBlock = true;
+                    Assert.That(StorylineStatus.Running(Cycle(s, "stay-off-the-block").status), Is.True,
+                        "Off the first block, the play is still open: a backdoor could yet name you.");
+                }
             }
             Assert.That(s.phase, Is.EqualTo(EpisodePhase.Campaign), "The veto meeting is over.");
-            bool onTheBlock = s.nominees.Contains(s.playerId);
-            Assert.That(Cycle(s, "stay-off-the-block").endingId, Is.EqualTo(onTheBlock ? PlayEndings.Lost : PlayEndings.Won),
-                "The final block decides it.");
-            Assert.That(onTheBlock, Is.EqualTo(!winsThemOver), "This fixture's week goes the way the house leans.");
+            Assert.That(named, Is.EqualTo(!keptOff), "This fixture's week goes the way the house leans.");
+            Assert.That(Cycle(s, "stay-off-the-block").endingId, Is.EqualTo(keptOff ? PlayEndings.Won : PlayEndings.Lost),
+                keptOff ? "Off the block all week: won." : "Named: lost, whatever the veto does after.");
+        }
+
+        [Test]
+        public void StayOffTheBlock_WhereTheWindowsPlayItNeedsSomebodyToWorkThrough()
+        {
+            var s = At(AtNominations);
+            Assert.That(StrategyRules.Apply(s), Is.True, "The fixture's season plays the strategy windows.");
+            string hoh = s.hohId;
+            Grudges.Add(s, hoh, s.playerId, 80, GrudgeCauses.Story);
+            // Everybody holds something against the player: nobody would put in a word.
+            foreach (var npc in s.Active.Where(c => !c.isPlayer && c.id != hoh)) Score(s, npc.id, s.playerId, -10);
+            Assert.That(EpisodeEngine.StartStory(s, "stay-off-the-block", StoryAnchors.HohCrowned), Is.False,
+                "With the Head of Household's ear the lobby's and nobody to work through, all that is left is waiting, and that is not a play.");
+            Score(s, s.Active.First(c => !c.isPlayer && c.id != hoh).id, s.playerId, 5);
+            Assert.That(EpisodeEngine.StartStory(s, "stay-off-the-block", StoryAnchors.HohCrowned), Is.True, "One friendly face is enough.");
         }
 
         [Test]
@@ -229,7 +269,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void BuildTheNumbers_ThePlayersOwnAlliancesCount()
+        public void BuildTheNumbers_TwoPactsAreNotNumbersButOneAllianceOfThreeIs()
         {
             var s = At(AfterEviction);
             var npcs = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).ToList();
@@ -237,11 +277,14 @@ namespace Gamesim.Tests.EditMode
             foreach (var npc in npcs) Score(s, npc.id, s.playerId, 0);
             Score(s, npcs[0].id, s.playerId, 40); Score(s, npcs[1].id, s.playerId, 35);
             Score(s, npcs[0].id, npcs[1].id, 20); Score(s, npcs[1].id, npcs[0].id, 20);
-            Assert.That(EpisodeEngine.StartStory(s, "build-the-numbers", StoryAnchors.EvictionNight), Is.True, "Build the Numbers casts.");
+            // A pact of two with each of them already: where the play starts, not numbers.
+            foreach (var npc in npcs.Take(2))
+                s.alliances.Add(new AllianceState { id = "alliance-pair-" + npc.id, name = "A Pact", active = true, members = new[] { s.playerId, npc.id }.ToList() });
+            Assert.That(EpisodeEngine.StartStory(s, "build-the-numbers", StoryAnchors.EvictionNight), Is.True, "Build the Numbers casts over two pacts of two.");
             s = Answer(s, "build-the-numbers", PlayOptions.TakeItOn);
             var cycle = Cycle(s, "build-the-numbers");
-            Assert.That(EpisodeEngine.ProgressOf(s, cycle).need, Is.EqualTo(2));
-            // An alliance the player made their own way, before the pitch: it counts all the same.
+            Assert.That(EpisodeEngine.ProgressOf(s, cycle).Met, Is.False, "Two pacts of two are not three votes moving together.");
+            // An alliance of all three, made the player's own way before the pitch: it counts all the same.
             s.alliances.Add(new AllianceState
             {
                 id = "alliance-fixture", name = "The Fixture Pact", active = true,
@@ -255,21 +298,48 @@ namespace Gamesim.Tests.EditMode
         public void KnowThem_WhatYouLearnAnyWayCounts()
         {
             var s = At(AfterEviction);
-            // Only one stranger to get to know: every other houseguest is someone the player already knows something about.
-            var npcs = s.Active.Where(c => !c.isPlayer && !StoryPeople.IsRealPerson(s, c.id) && Lore.FactsOf(s, c.id).Count() >= 2)
-                .OrderBy(c => c.id, StringComparer.Ordinal).ToList();
-            var subject = npcs.First();
-            foreach (var other in npcs.Skip(1)) Lore.Learn(s, Lore.FactsOf(s, other.id).First().id);
-            Score(s, s.playerId, subject.id, 10);
+            var subject = OneStranger(s);
             Assert.That(EpisodeEngine.StartStory(s, "know-them", StoryAnchors.EvictionNight), Is.True, "Know Them casts.");
             s = Answer(s, "know-them", PlayOptions.TakeItOn);
             var cycle = Cycle(s, "know-them");
             var facts = Lore.FactsOf(s, subject.id).ToList();
             Lore.Learn(s, facts[0].id);
-            Assert.That(EpisodeEngine.ProgressOf(s, cycle).have, Is.EqualTo(1), "Half way: one thing learned.");
             Lore.Learn(s, facts[1].id);
+            Assert.That(EpisodeEngine.ProgressOf(s, cycle).have, Is.EqualTo(2), "Two of three: chatting alone does not win it.");
+            Assert.That(EpisodeEngine.ProgressOf(s, cycle).Met, Is.False);
+            Lore.Learn(s, facts[2].id);
             s = Answer(s, "know-them", "leave-it");
-            Assert.That(Cycle(s, "know-them").endingId, Is.EqualTo(PlayEndings.Won), "Two things learned, however: won.");
+            Assert.That(Cycle(s, "know-them").endingId, Is.EqualTo(PlayEndings.Won), "Three things learned, however: won.");
+        }
+
+        [Test]
+        public void KnowThem_AConversationThatLandsAlwaysTeaches()
+        {
+            var s = At(AfterEviction);
+            var subject = OneStranger(s, atLeast: 5);
+            Assert.That(EpisodeEngine.StartStory(s, "know-them", StoryAnchors.EvictionNight), Is.True, "Know Them casts.");
+            s = Answer(s, "know-them", PlayOptions.TakeItOn);
+            // What asking about home would teach is known already, the way an ordinary chat teaches it.
+            foreach (var facet in new[] { Lore.Facets.Home, Lore.Facets.Origin })
+                if (Lore.Facet(s, subject.id, facet) is Lore.Fact fact) Lore.Learn(s, fact.id);
+            int before = Lore.Learned(s, subject.id).Count;
+            // It lands: the check is the chance's business, and this test's is what landing pays.
+            Open(s, Cycle(s, "know-them")).choices.Single(c => c.optionId == "ask-about-home").checkBase = -1;
+            s = Answer(s, "know-them", "ask-about-home");
+            Assert.That(Lore.Learned(s, subject.id).Count, Is.EqualTo(before + 2),
+                "Two new things, whatever the conversation turned to: a question already answered teaches something else.");
+        }
+
+        /// <summary>The one houseguest the player knows nothing about, with at least this much to learn: whoever Know Them casts.</summary>
+        private static ContestantState OneStranger(EpisodeState s, int atLeast = 3)
+        {
+            var npcs = s.Active.Where(c => !c.isPlayer && !StoryPeople.IsRealPerson(s, c.id))
+                .OrderByDescending(c => Lore.FactsOf(s, c.id).Count()).ThenBy(c => c.id, StringComparer.Ordinal).ToList();
+            var subject = npcs.First();
+            Assert.That(Lore.FactsOf(s, subject.id).Count(), Is.GreaterThanOrEqualTo(atLeast), "The fixture's stranger has enough to learn.");
+            foreach (var other in npcs.Skip(1).Where(o => Lore.FactsOf(s, o.id).Any())) Lore.Learn(s, Lore.FactsOf(s, other.id).First().id);
+            Score(s, s.playerId, subject.id, 10);
+            return subject;
         }
 
         [Test]
@@ -329,6 +399,53 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void PlaysKeepTheirOwnAirtime()
+        {
+            var s = At(AfterEviction);
+            OneFriend(s);
+            Assert.That(EpisodeEngine.StartStory(s, "their-word", StoryAnchors.EvictionNight), Is.True);
+            Assert.That(EpisodeEngine.AirtimeFor(s, StorySurfaces.Approach, false, true, false), Is.False, "One play's card open at a time.");
+            Assert.That(EpisodeEngine.AirtimeFor(s, StorySurfaces.Approach), Is.True, "An open play does not hold up the arcs.");
+            s = Answer(s, "their-word", PlayOptions.NotNow);
+
+            // A second offer this week, taken on: its first step opens at once.
+            var rival = s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal).Last();
+            Grudges.Add(s, rival.id, s.playerId, 60, GrudgeCauses.Story);
+            Assert.That(EpisodeEngine.StartStory(s, "settle-it", StoryAnchors.EvictionNight), Is.True);
+            s = Answer(s, "settle-it", PlayOptions.TakeItOn);
+            s = Answer(s, "settle-it", "let-it-ride");
+
+            Assert.That(EpisodeEngine.AirtimeFor(s, StorySurfaces.Approach, false, true, false), Is.False,
+                "Two offers a week: a third waits for next week.");
+            Assert.That(EpisodeEngine.AirtimeFor(s, StorySurfaces.Approach, false, true, true), Is.True,
+                "A step of a play taken on is held back by no weekly count: the player chose to chase it.");
+            Assert.That(EpisodeEngine.AirtimeFor(s, StorySurfaces.Approach), Is.True, "Plays leave the arcs' two asks alone.");
+        }
+
+        [Test]
+        public void TenSocialPointsBankedBuyAConversation([Values(true, false)] bool underThePlaysRules)
+        {
+            var s = At(AfterEviction);
+            OneFriend(s);
+            Assert.That(EpisodeEngine.StartStory(s, "their-word", StoryAnchors.EvictionNight), Is.True);
+            s = Answer(s, "their-word", PlayOptions.TakeItOn);
+            // A story choice that lands and pays two of the reference's social points, one short of ten before it.
+            var ask = Open(s, Cycle(s, "their-word")).choices.Single(c => c.optionId == "ask-for-it");
+            ask.checkBase = -1;
+            ask.effects.Add(new StoryEffectState { kind = StoryEffects.PhaseBonus, type = "social", amount = 2 });
+            s.phaseEventSocialBonus = 9;
+            // A season from before the plays rules stores the points and nothing more.
+            if (!underThePlaysRules) s.story.rulesVersion = StoryRules.Production;
+            int budget = EpisodeEngine.SocialActionBudget(s);
+            s = Answer(s, "their-word", "ask-for-it");
+            Assert.That(s.phaseEventSocialBonus, Is.EqualTo(11), "The points are stored either way.");
+            bool standing = s.activeModifiers.Any(m => m.id == EpisodeEngine.GoodStanding && m.ownerId == string.Empty);
+            Assert.That(standing, Is.EqualTo(underThePlaysRules),
+                underThePlaysRules ? "Ten banked points buy Good Standing." : "Before the plays rules the points are only stored, as the web stores them.");
+            Assert.That(EpisodeEngine.SocialActionBudget(s), Is.EqualTo(budget + (underThePlaysRules ? 1 : 0)), "Good Standing is one more conversation.");
+        }
+
+        [Test]
         public void PlaysBelongToThePlaysRules()
         {
             var s = At(AfterEviction);
@@ -357,7 +474,7 @@ namespace Gamesim.Tests.EditMode
                 var fired = new System.Collections.Generic.HashSet<string>();
                 var byPlay = new System.Collections.Generic.SortedDictionary<string, int[]>(StringComparer.Ordinal);
                 foreach (int size in new[] { 8, 12 })
-                    for (uint seed = 1; seed <= 20; seed++)
+                    for (uint seed = 1; seed <= 40; seed++)
                     {
                         var engine = new EpisodeEngine(StorySeasonTests.StorySeason(seed * 13 + (uint)size, size));
                         for (int i = 0; i < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
@@ -393,6 +510,45 @@ namespace Gamesim.Tests.EditMode
                 foreach (var pair in byPlay)
                     TestContext.WriteLine("    " + pair.Key.PadRight(22) + " offered " + pair.Value[0] + ", taken " + pair.Value[1]
                                           + ", won " + pair.Value[2] + ", lost " + pair.Value[3]);
+                TestContext.WriteLine("    never fired: " + string.Join(", ", StoryCatalog.All.Select(a => a.id).Where(id => !fired.Contains(id))
+                    .OrderBy(id => id, StringComparer.Ordinal)));
+            }
+        }
+
+        /// <summary>
+        /// Where plays are decided: for each play taken on, every step's option and how its check
+        /// went, against how the play ended. A play whose endings do not follow its options is won
+        /// or lost by something else. A diagnostic for tuning.
+        /// </summary>
+        [Test, Explicit("A diagnostic: run it by name.")]
+        public void PlaysByOption()
+        {
+            foreach (bool reader in new[] { false, true })
+            {
+                var rows = new System.Collections.Generic.SortedDictionary<string, System.Collections.Generic.SortedDictionary<string, int>>(StringComparer.Ordinal);
+                foreach (int size in new[] { 8, 12 })
+                    for (uint seed = 1; seed <= 40; seed++)
+                    {
+                        var engine = new EpisodeEngine(StorySeasonTests.StorySeason(seed * 13 + (uint)size, size));
+                        for (int i = 0; i < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; i++)
+                        {
+                            var s = engine.Snapshot;
+                            var command = reader ? ReaderNext(s, (int)seed) ?? StorySeasonTests.StoryNext(s, (int)seed) : StorySeasonTests.StoryNext(s, (int)seed);
+                            if (!engine.Apply(command).accepted) Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(s)).accepted, Is.True);
+                        }
+                        foreach (var cycle in engine.Snapshot.storylines.Where(x => StoryCatalog.Find(x.templateId)?.play != null && EpisodeEngine.TakenOn(x)))
+                        {
+                            string ending = cycle.endingId ?? "open";
+                            // The steps after the offer: which option, and whether its check held.
+                            string steps = string.Join(" > ", cycle.path.Skip(1).Select(p => p.optionId + (p.result == StoryResults.Success ? "+" : p.result == StoryResults.Backfire ? "-" : p.result == StoryResults.Lapsed ? "~" : "")));
+                            string key = cycle.templateId + " | " + (steps.Length == 0 ? "(no step)" : steps);
+                            if (!rows.TryGetValue(key, out var endings)) rows[key] = endings = new System.Collections.Generic.SortedDictionary<string, int>(StringComparer.Ordinal);
+                            endings[ending] = (endings.TryGetValue(ending, out var n) ? n : 0) + 1;
+                        }
+                    }
+                TestContext.WriteLine(reader ? "READER" : "RANDOM");
+                foreach (var pair in rows)
+                    TestContext.WriteLine("    " + pair.Key.PadRight(70) + " " + string.Join(", ", pair.Value.Select(e => e.Key + " " + e.Value)));
             }
         }
 
@@ -401,7 +557,7 @@ namespace Gamesim.Tests.EditMode
         /// best odds it is shown (a certain option counts as a sure thing), never a lapse while
         /// something else is open. Null when there is nothing to answer.
         /// </summary>
-        private static EpisodeCommand ReaderNext(EpisodeState s, int salt)
+        internal static EpisodeCommand ReaderNext(EpisodeState s, int salt)
         {
             if (s.Find(s.playerId).status != ContestantStatus.Active) return null;
             bool socialTime = s.phase == EpisodePhase.Social || s.phase == EpisodePhase.Campaign;

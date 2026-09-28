@@ -375,8 +375,12 @@ namespace Gamesim.Simulation
                 {
                     var secret = Lore.Facet(c.state, x.id, Lore.Facets.Secret);
                     if (secret == null || Lore.Knows(c.state, secret.id)) return false;
+                    var learned = Lore.Learned(c.state, x.id);
+                    // Under the reach rules knowing someone well - three things, one of them past
+                    // small talk, which Know Them is for - is trust enough to be told the rest.
                     return Bonds.Holds(c.state, P(c), x.id, BondKinds.Confidant)
-                           || Lore.Learned(c.state, x.id).Any(f => f.depth >= 3);
+                           || learned.Any(f => f.depth >= 3)
+                           || (c.AtLeast(StoryRules.Reach) && learned.Count >= 3 && learned.Any(f => f.depth >= 2));
                 }
                 string confidant = c.talkingTo != null && c.Find(c.talkingTo) is ContestantState talked && Ready(talked) ? talked.id : Warmest(c, Ready);
                 if (confidant == null) return null;
@@ -453,19 +457,21 @@ namespace Gamesim.Simulation
         {
             id = "ride-or-die", lane = StoryLanes.Personal, eyebrow = "Ride or Die", title = "Ride or Die",
             origin = "native: completes the loyalty oath (WebLoyaltyOaths) with a final-two promise and a bond",
-            rulesVersion = StoryRules.Bonds, minWeek = 3, minActive = 4, startAnchors = new[] { StoryAnchors.EvictionNight },
+            rulesVersion = StoryRules.Bonds, minWeek = 3, minActive = 4, startAnchors = new[] { StoryAnchors.EvictionNight, StoryAnchors.BlockSet },
             roles = new[] { Role("PARTNER") },
             cast = c =>
             {
                 if (Npcs(c).Any(x => Bonds.Holds(c.state, P(c), x.id, BondKinds.RideOrDie) && FinalTwoWith(c, x.id))) return null;
+                // Fifty both ways was almost nobody's closest ally; under the reach rules thirty-five.
+                double bond = c.AtLeast(StoryRules.Reach) ? 35 : 50;
                 var partner = Npcs(c).Where(x => (Bonds.Holds(c.state, P(c), x.id, BondKinds.RideOrDie)
                                                   || c.state.loyaltyOaths.Any(o => (o.playerId == P(c) && o.targetId == x.id) || (o.targetId == P(c) && o.playerId == x.id))
                                                   || c.state.Allied(P(c), x.id))
-                                                 && Mutual(c, P(c), x.id) >= 50 && !FinalTwoWith(c, x.id))
+                                                 && Mutual(c, P(c), x.id) >= bond && !FinalTwoWith(c, x.id))
                     .OrderByDescending(x => Mutual(c, P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
                 return partner == null ? null : Bind().With("PARTNER", partner.id).Headlining(partner.id);
             },
-            weight = (c, b) => 12,
+            weight = (c, b) => c.anchor == StoryAnchors.BlockSet && !c.AtLeast(StoryRules.Reach) ? 0 : 12,
             beats = new[]
             {
                 new BeatTemplate
@@ -557,8 +563,16 @@ namespace Gamesim.Simulation
             roles = new[] { Role("SHOWRUNNER", StoryPeople.Sensitivity.Conduct) },
             cast = c =>
             {
-                var showrunner = Npcs(c).Where(x => !StoryPeople.IsRealPerson(x) && Personality.Of(x).Bold >= 2 && Personality.Of(x).Sociable >= 2
-                                                    && Mutual(c, P(c), x.id) >= 20 && !c.state.Allied(P(c), x.id))
+                // Bold two and Sociable two was one card in the regular roster. Under the reach rules
+                // anybody bold and social enough between them (three, neither at zero) who likes you.
+                bool reach = c.AtLeast(StoryRules.Reach);
+                bool Showy(ContestantState x)
+                {
+                    var axes = Personality.Of(x);
+                    return reach ? axes.Bold >= 1 && axes.Sociable >= 1 && axes.Bold + axes.Sociable >= 3 : axes.Bold >= 2 && axes.Sociable >= 2;
+                }
+                var showrunner = Npcs(c).Where(x => !StoryPeople.IsRealPerson(x) && Showy(x)
+                                                    && Mutual(c, P(c), x.id) >= (reach ? 10 : 20) && !c.state.Allied(P(c), x.id))
                     .OrderByDescending(x => Mutual(c, P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
                 return showrunner == null ? null : Bind().With("SHOWRUNNER", showrunner.id).Headlining(showrunner.id);
             },

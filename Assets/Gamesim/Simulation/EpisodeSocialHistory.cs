@@ -48,7 +48,10 @@ namespace Gamesim.Simulation
             s.playerPersona = plan.persona;
             // These source counters are stored cumulatively. Normal native competitions/social
             // interactions do not invent a use/reset for bonuses the normal web route does not use.
+            int socialBefore = s.phaseEventSocialBonus;
             s.phaseEventSocialBonus = checked(s.phaseEventSocialBonus + plan.socialBonusDelta.GetValueOrDefault());
+            // Under the plays rules the bonus pays: ten points banked buy a conversation (plan 30 P4).
+            BankSocialPoints(s, socialBefore, s.phaseEventSocialBonus);
             s.phaseEventCompBonus = checked(s.phaseEventCompBonus + plan.competitionBonusDelta.GetValueOrDefault());
             if (plan.juryDelta.HasValue)
                 s.jurySentiment = WebJurySentiment.ShiftAllJurorSentiment(s.jurySentiment, plan.juryDelta.Value, plan.juryReason, s.week);

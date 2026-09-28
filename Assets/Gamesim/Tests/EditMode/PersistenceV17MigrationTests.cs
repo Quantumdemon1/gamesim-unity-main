@@ -11,7 +11,8 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// Schema 17: the season ledger and the read rules. A v16 save gains an empty ledger and the read
-    /// switched on from the week after its own; nothing else in the save moves.
+    /// switched on from the week after its own; nothing else in the save moves. The frozen step is
+    /// checked on its own, and the chain is checked to reach the current schema.
     /// </summary>
     public sealed class PersistenceV17MigrationTests
     {
@@ -33,35 +34,42 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void MigrationAddsAnEmptyLedgerAndTheReadBoundaryAndMovesNothingElse()
+        public void TheFrozenStepAddsAnEmptyLedgerAndTheReadBoundaryAndMovesNothingElse()
         {
             var old = V16(); string original = old.ToString();
-            var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
-            Assert.That(changed, Is.True);
+            var migrated = EpisodeSaveMigrations.UpgradeV16ToV17(old);
             Assert.That((int)migrated["schemaVersion"], Is.EqualTo(17));
             int week = (int)old["week"];
             Assert.That((int)migrated["readRulesStartWeek"], Is.EqualTo(week + 1), "The week the save was in keeps its own rules.");
             foreach (var list in new[] { "opportunities", "competitions", "power", "ballots", "claims", "alliances", "standings" })
                 Assert.That(((JArray)migrated["ledger"][list]).Count, Is.Zero, list);
             Assert.That((int)migrated["ledger"]["dropped"], Is.Zero);
+            Assert.That(migrated["ledger"]["replies"], Is.Null, "Schema 17 wrote seven lists; the eighth and ninth are schema 18's.");
 
             var projection = PersistenceMigrationTests.StripSchema17((JObject)migrated.DeepClone());
             projection["schemaVersion"] = 16;
             Assert.That(JToken.DeepEquals(projection, old), Is.True, "Take the new fields back off and the save is exactly what it was.");
             Assert.That(old.ToString(), Is.EqualTo(original), "The original payload must not be touched.");
-
-            CheckShape(migrated);
-            var state = migrated.ToObject<EpisodeState>(Serializer());
-            Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
-            Assert.That(EpisodeEngine.ReadRulesOn(state), Is.False);
-
-            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(migrated, out changed);
-            Assert.That(changed, Is.False);
-            Assert.That(JToken.DeepEquals(repeated, migrated), Is.True);
         }
 
         [Test]
-        public void TheWholeChainFromV15ReachesSeventeen()
+        public void AV16SaveReachesTheCurrentSchemaWithTheReadOffForItsOwnWeek()
+        {
+            var old = V16();
+            var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
+            Assert.That(changed, Is.True);
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(18));
+            CheckShape(current);
+            var state = current.ToObject<EpisodeState>(Serializer());
+            Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
+            Assert.That(EpisodeEngine.ReadRulesOn(state), Is.False);
+            var repeated = EpisodeSaveMigrations.PrepareCurrentPayload(current, out changed);
+            Assert.That(changed, Is.False);
+            Assert.That(JToken.DeepEquals(repeated, current), Is.True);
+        }
+
+        [Test]
+        public void TheWholeChainFromV15ReachesTheCurrentSchema()
         {
             var engine = new EpisodeEngine(ContentCatalog.Create(823));
             for (int i = 0; i < 40 && engine.Snapshot.week < 2; i++) Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
@@ -69,7 +77,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(17));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(18));
             Assert.That(migrated["story"], Is.Not.Null);
             Assert.That(migrated["ledger"], Is.Not.Null);
             CheckShape(migrated);

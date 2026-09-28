@@ -38,6 +38,7 @@ namespace Gamesim.Simulation
             {
                 Execute(next, command);
                 CancelInvalidNpcConversations(next);
+                ReconcileAllianceRows(next);
                 next.revision = checked(current.revision + 1);
                 next.acceptedCommandIds.Add(command.id);
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
@@ -195,7 +196,10 @@ namespace Gamesim.Simulation
                         s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear(); s.evictionSpeeches.Clear();
                         s.backdoorTargetId = null;   // A plan for a week that has ended is not a plan.
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
+                        RecordPleas(s);
                         s.lobbies.Clear();
+                        // Under the levers, bought time is the week's: the counter that never reset.
+                        if (LeverRulesOn(s)) s.boughtActionPoints = 0;
                         foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.expiresWeek > 0 && p.expiresWeek < s.week))
                             promise.status = PromiseStatus.Expired;
                         if (StoryAt(s, StoryRules.Bonds)) MoodsSettle(s);
@@ -384,7 +388,7 @@ namespace Gamesim.Simulation
                             SettlePromise(s, promise, promise.targetId == vote.targetId ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
                         ApplyOathPlan(s, WebLoyaltyOaths.EvictionVote(OathSnapshot(s), vote.voterId, vote.targetId));
                     }
-                    SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null));
+                    SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Votes, null, voteDeals: LeverRulesOn(s)));
                     StoryVotesRevealed(s, evicted);
                     s.Find(evicted).status = ContestantStatus.Jury; s.evictionResolved = true;
                     // Off the block by the house's vote is saved too.
@@ -398,6 +402,9 @@ namespace Gamesim.Simulation
                     foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict "
                         + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason);
                     SettleVoteRead(s, evicted);
+                    RecordReveal(s, evicted, tally.Select(x => x.count).ToList());
+                    RecordJurorStanding(s, evicted);
+                    ReconcileOpportunities(s);
                     PreparePostEvictionDiary(s, evicted);
                     break;
                 case EpisodePhase.FinalEviction:
@@ -584,6 +591,7 @@ namespace Gamesim.Simulation
                     + Math.Round(performance * 2, 2).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + (s.phase == EpisodePhase.FinalHoHPart1
                         ? " effective endurance points (capped at 10)." : " performance bonus points.")
                     + " Character statistics and seeded competition rolls also determine placement; full performance does not guarantee a win.");
+            RecordCompetition(s, players, category, thrown ? CompetitionEntry.Thrown : CompetitionEntry.Played, performance);
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + ".");
         }
 
@@ -850,6 +858,7 @@ namespace Gamesim.Simulation
             if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
                 new List<string> { replacement }));
             s.vetoResolved = true;
+            RecordVeto(s, use, saved, replacement);
             // A question about a decision already taken is no longer on the table.
             if (StrategyRules.Apply(s))
                 foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && d.type == DealKind.VetoUse))
@@ -897,6 +906,8 @@ namespace Gamesim.Simulation
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == s.hohId).ToArray())
                 SettlePromise(s, promise, promise.toId == selected ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Selects, s.hohId, selectedId: selected));
+            RecordFinalEviction(s, target, s.Active.Where(c => c.id != s.hohId).Select(c => c.id).ToList());
+            RecordJurorStanding(s, target);
             s.Find(target).status = ContestantStatus.Jury;
             if (StoryOn(s)) Bonds.Apart(s, target);
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
@@ -916,6 +927,7 @@ namespace Gamesim.Simulation
             // Last in the step, as at the weekly settle: nothing minted above moves, and it is the
             // line the status bar shows.
             TellThePlayerWhichAlliancesEnded(s, ended.Where(a => a.members.Contains(s.playerId)).ToList());
+            ReconcileOpportunities(s);
         }
 
         private static void ResolveJury(EpisodeState s)
@@ -958,6 +970,7 @@ namespace Gamesim.Simulation
             s.winnerId = ordered[0].id; s.runnerUpId = ordered[1].id;
             ordered[0].status = ContestantStatus.Winner; ordered[1].status = ContestantStatus.RunnerUp;
             Phase(s, EpisodePhase.Finished); Log(s, "winner", "Gamesim winner: " + ordered[0].name + "!");
+            ReconcileOpportunities(s);
         }
 
         private static void Social(EpisodeState s, EpisodeCommand c)
@@ -1013,6 +1026,7 @@ namespace Gamesim.Simulation
                 case EpisodeCommandKind.VentAbout: VentAbout(s, target, c.secondTargetId); break;
                 case EpisodeCommandKind.SchemeAgainst: SchemeAgainst(s, target); break;
                 case EpisodeCommandKind.ProposeDeal: ProposeDeal(s, target, c); break;
+                case EpisodeCommandKind.CallTheVote: CallTheVote(s, target, c); break;
                 case EpisodeCommandKind.SmallTalk:
                     Converse(s, target, WebSocialVocabulary.SmallTalk(Roll(s)),
                         "You passed the time with " + target.name + "."); break;
@@ -1187,7 +1201,9 @@ namespace Gamesim.Simulation
             double damage = -(5 + Math.Floor(Roll(s) * 8));
             Change(s, recipient.id, about.id, damage,
                 "You told " + recipient.name + " something about " + about.name, "lie");
-            Remember(s, recipient.id, about.id, "You told me something about " + about.name
+            // Under the levers the memory sounds like what it is, so the ballot's memory term reads
+            // it as a lie about that person rather than as a neutral mention of their name.
+            Remember(s, recipient.id, about.id, "You told me something " + (LeverRulesOn(s) ? "suspicious " : "") + "about " + about.name
                 + " in week " + s.week + ". I have not checked it.", true);
 
             bool discovered = Roll(s) < LieDiscoveryChance;
@@ -1634,6 +1650,9 @@ namespace Gamesim.Simulation
                 return;
             }
 
+            // Under the levers a call-out reaches whoever happens to be there, not the first two
+            // or three houseguests by id every time.
+            if (LeverRulesOn(s)) Shuffle(audience, () => Roll(s));
             int reach = Math.Min(audience.Count, WebSocialVocabulary.CalloutAudience(Roll(s)));
             for (int i = 0; i < reach; i++)
             {
@@ -1766,6 +1785,7 @@ namespace Gamesim.Simulation
 
             if (accepted)
             {
+                var read = LeverRead(s, target.id);
                 s.deals.Add(PlayerDeals.Draft(s, target.id, type, about, "deal-player-" + s.nextSequence));
                 Change(s, s.playerId, target.id, PlayerDeals.AcceptedImpact,
                     "Agreed a " + title + " with you.", "deal_accepted");
@@ -1773,6 +1793,7 @@ namespace Gamesim.Simulation
                 Log(s, "deal", target.name + " agreed a " + title + ". “" + said + "”",
                     s.playerId, target.id);
                 if (type == DealKind.AllianceInvite) AllyThroughInvitation(s, target.id);
+                if (type == DealKind.VoteEvict || type == DealKind.VoteSave) LeverLine(s, target.id, read, WantsOut(s, type, about), "your deal");
                 return;
             }
 

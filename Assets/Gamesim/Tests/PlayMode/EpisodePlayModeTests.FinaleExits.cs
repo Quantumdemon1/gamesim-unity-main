@@ -75,8 +75,8 @@ namespace Gamesim.Tests.PlayMode
 
             FinaleControl(SeasonReport.ReviewCaption).onClick.Invoke();
             yield return null;
-            Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Network),
-                "The panel's 'Review the season' opens the notebook.");
+            Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Notes),
+                "The panel's 'Review the season' opens the notebook, on your notes.");
 
             yield return OpenFinalePanel();
             FinaleControl(SeasonReport.MainMenuCaption).onClick.Invoke();
@@ -117,8 +117,8 @@ namespace Gamesim.Tests.PlayMode
             ReportButtons(SeasonReport.ReviewCaption)[0].onClick.Invoke();
             yield return null;
             Assert.That(director.IsSeasonReportOpen, Is.False, "Leaving closes the report.");
-            Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Network),
-                "The report's 'Review the season' opens the notebook.");
+            Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Notes),
+                "The report's 'Review the season' opens the notebook, on your notes.");
 
             yield return OpenFinalePanel();
             director.ShowSeasonReport();

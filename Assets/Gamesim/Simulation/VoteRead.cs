@@ -174,7 +174,7 @@ namespace Gamesim.Simulation
 
         /// <summary>A standing the player holds for the pair, learned recently enough to still be current.</summary>
         public static bool StandingKnown(EpisodeState s, string fromId, string toId) =>
-            s.ledger.standings.Any(row => row.fromId == fromId && row.toId == toId && row.week >= s.week - StandingShelfLife);
+            s.ledger.standings.Any(row => row.fromId == fromId && row.toId == toId && !ClaimSource.IsAttempt(row.source) && row.week >= s.week - StandingShelfLife);
 
         /// <summary>The player is party to a deal by its id, or to a promise by the evaluator's "promise:from:to:type" evidence.</summary>
         private static bool PartyTo(EpisodeState s, string evidence)

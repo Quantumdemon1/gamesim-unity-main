@@ -1264,10 +1264,10 @@ namespace Gamesim.Episode
                 // The question is for a voter while there is a vote to ask about; the look is for anyone,
                 // in free time or the campaign.
                 if (VoteRead.Available(state) && EpisodeEngine.Voters(state).Any(v => v.id == npc.id)
-                    && !state.ledger.claims.Any(k => k.week == state.week && k.voterId == npc.id && k.source == ClaimSource.Told))
+                    && !EpisodeEngine.AskedThisWeek(state, npc.id))
                     hud.Tag(hud.Action(EpisodeHud.AskVoteCaption, () => Commit(state, EpisodeCommandKind.AskVote, npc.id)),
                         Category(EpisodeCommandKind.AskVote));
-                if (!window && !state.ledger.standings.Any(r => r.week == state.week && r.fromId == npc.id && r.toId == state.playerId && r.source == ClaimSource.Read))
+                if (!window && !EpisodeEngine.ReadThisWeek(state, npc.id))
                     hud.Tag(hud.Action(EpisodeHud.ReadPersonCaption, () => Commit(state, EpisodeCommandKind.ReadPerson, npc.id)),
                         Category(EpisodeCommandKind.ReadPerson));
                 // Calling the vote (STRATEGY-LOOP-PLAN.md section 3): through an ally, once per
@@ -1341,6 +1341,8 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.Finished)
             {
                 hud.Paragraph("Winner: " + state.Find(state.winnerId).name + ". Runner-up: " + state.Find(state.runnerUpId).name + ".");
+                // The verdict, in a line; the season report has the whole of it.
+                hud.Paragraph(SeasonReport.GameSenseLine(state));
                 // The jury's reasons, one line each, from the ballots the engine recorded.
                 var ballots = SeasonReport.JuryBallots(state);
                 if (ballots.Count > 0)

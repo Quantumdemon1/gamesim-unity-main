@@ -193,7 +193,15 @@ namespace Gamesim.Simulation
     public static class ClaimSource
     {
         public const string Told = "told", Overheard = "overheard", Ally = "ally", Read = "read";
-        public static readonly string[] All = { Told, Overheard, Ally, Read };
+        /// <summary>A juror's view of the player as they left, kept for the verdict.</summary>
+        public const string Juror = "juror";
+        /// <summary>A read that missed: the attempt is on the record (once a week is once a week), and nothing was learned.</summary>
+        public const string Missed = "missed";
+        /// <summary>A voter asked straight who kept it to themselves: the week's ask, on the record, and nothing learned.</summary>
+        public const string Deflected = "deflected";
+        public static readonly string[] All = { Told, Overheard, Ally, Read, Juror, Missed, Deflected };
+        /// <summary>Whether a standing row of this source taught the player nothing: an attempt on the record, not a standing.</summary>
+        public static bool IsAttempt(string source) => source == Missed || source == Deflected;
         public static bool IsKnown(string source) => source != null && Array.IndexOf(All, source) >= 0;
     }
 

@@ -50,6 +50,9 @@
     <Compile Include="$(EditMode)VoteReadTests.cs" />
     <Compile Include="$(EditMode)VoteLeverTests.cs" />
     <Compile Include="$(EditMode)VotePleaAndCallTests.cs" />
+    <Compile Include="$(EditMode)SeasonLedgerWriterTests.cs" />
+    <Compile Include="$(EditMode)GameSenseTests.cs" />
+    <Compile Include="$(EditMode)GameSenseHarnessTests.cs" />
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />
     <Compile Include="$(EditMode)DealResolutionTests.cs" />

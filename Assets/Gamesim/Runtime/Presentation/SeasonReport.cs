@@ -47,6 +47,9 @@ namespace Gamesim.Presentation
         public const string MainMenuCaption = "Main menu";
         public const string ReviewCaption = "Review the season";
         public const string CloseCaption = "Close";
+        /// <summary>The verdict's heading (STRATEGY-LOOP-PLAN.md section 5), and the names of its parts.</summary>
+        public const string GameSenseHeading = "Game Sense", GameSenseCardName = "Game Sense card",
+            MomentsHeading = "The moments that made the difference", MissedHeading = "The chances missed";
 
         /// <summary>The line at the head of the season saying how to move through it without a mouse.</summary>
         public const string ScrollHint = "Page Up and Page Down, or a pad's right stick, scroll the season";
@@ -294,6 +297,7 @@ namespace Gamesim.Presentation
             Winner(state, portrait);
             WinnersJourney(state);
             YourJourney(state);
+            GameSenseSection(state);
             YourCareer(shownCareer);
             HowTheJuryVoted(state);
             Standings(state);
@@ -581,6 +585,51 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>The player's own season, which is the part they actually came for.</summary>
+        /// <summary>One line for the finished panel: the number and its three faces.</summary>
+        public static string GameSenseLine(EpisodeState state)
+        {
+            var report = GameSense.Evaluate(state);
+            return "Game Sense " + report.score + ": competitions " + report.competitions + ", strategy " + report.strategy + ", social " + report.social + ".";
+        }
+
+        /// <summary>
+        /// GAME SENSE (STRATEGY-LOOP-PLAN.md section 5): the number, its three faces, how many of the
+        /// season's chances were taken, then the three moments that made the difference and the three
+        /// chances missed, each a ledger row in words. Not all wins are equal: the verdict says how
+        /// this one was played.
+        /// </summary>
+        private void GameSenseSection(EpisodeState state)
+        {
+            var report = GameSense.Evaluate(state);
+            Heading(GameSenseHeading);
+            var card = Panel(132f, UiTheme.Surface);
+            card.name = GameSenseCardName;
+            int offered = state.ledger.opportunities.Count;
+            int taken = state.ledger.opportunities.Count(o => o.response == OpportunityResponse.Taken);
+            Stat(card, 0, "GAME SENSE", report.score.ToString(), UiTheme.Accent);
+            Stat(card, 1, "COMPETITIONS", report.competitions.ToString(), UiTheme.Gold);
+            Stat(card, 2, "STRATEGY", report.strategy.ToString(), UiTheme.Positive);
+            Stat(card, 3, "SOCIAL", report.social.ToString(), UiTheme.Accent);
+            Stat(card, 4, "CHANCES TAKEN", taken + " of " + offered, offered == 0 || taken * 2 >= offered ? UiTheme.Positive : UiTheme.Danger);
+            var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
+            note.text = "Skill, not luck: every point is a row in the notebook. Competitions against the odds you had; strategy weighed against what was offered; social as the house sees you.";
+            Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
+            if (report.moments.Count > 0)
+            {
+                Space(10f);
+                Text(MomentsHeading, 14f, UiTheme.Heading, 22f, TextAlignmentOptions.Left);
+                foreach (var moment in report.moments)
+                    Text("+" + moment.points.ToString("0") + "  " + moment.text, 15f, UiTheme.Paper, 24f, TextAlignmentOptions.Left);
+            }
+            if (report.missed.Count > 0)
+            {
+                Space(10f);
+                Text(MissedHeading, 14f, UiTheme.Heading, 22f, TextAlignmentOptions.Left);
+                foreach (var missed in report.missed)
+                    Text(missed.points.ToString("0") + "  " + missed.text, 15f, UiTheme.Muted, 24f, TextAlignmentOptions.Left);
+            }
+        }
+
         private void YourJourney(EpisodeState state)
         {
             var you = state.Find(state.playerId);

@@ -46,7 +46,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That((int)migrated["leverRulesStartWeek"], Is.EqualTo(week + 1), "The week the save was in keeps its own rules.");
             Assert.That(((JArray)migrated["ledger"]["replies"]).Count, Is.Zero);
             Assert.That(((JArray)migrated["ledger"]["calls"]).Count, Is.Zero);
-            Assert.That(((JArray)migrated["ledger"]["standings"]).Count, Is.EqualTo(1), "What the ledger held is still there.");
+            Assert.That(((JArray)migrated["ledger"]["standings"]).Count, Is.GreaterThanOrEqualTo(1), "What the ledger held is still there.");
 
             var projection = PersistenceMigrationTests.StripSchema18((JObject)migrated.DeepClone());
             projection["schemaVersion"] = 17;

@@ -38,6 +38,7 @@ namespace Gamesim.Simulation
             {
                 Execute(next, command);
                 CancelInvalidNpcConversations(next);
+                ReconcileAllianceRows(next);
                 next.revision = checked(current.revision + 1);
                 next.acceptedCommandIds.Add(command.id);
                 if (next.acceptedCommandIds.Count > 256) next.acceptedCommandIds.RemoveAt(0);
@@ -195,6 +196,7 @@ namespace Gamesim.Simulation
                         s.nominees.Clear(); s.vetoPlayers.Clear(); s.votes.Clear(); s.evictionSpeeches.Clear();
                         s.backdoorTargetId = null;   // A plan for a week that has ended is not a plan.
                         s.evictionResolved = false; s.vetoResolved = false; s.competitionScores.Clear();
+                        RecordPleas(s);
                         s.lobbies.Clear();
                         // Under the levers, bought time is the week's: the counter that never reset.
                         if (LeverRulesOn(s)) s.boughtActionPoints = 0;
@@ -400,6 +402,9 @@ namespace Gamesim.Simulation
                     foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict "
                         + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason);
                     SettleVoteRead(s, evicted);
+                    RecordReveal(s, evicted, tally.Select(x => x.count).ToList());
+                    RecordJurorStanding(s, evicted);
+                    ReconcileOpportunities(s);
                     PreparePostEvictionDiary(s, evicted);
                     break;
                 case EpisodePhase.FinalEviction:
@@ -586,6 +591,7 @@ namespace Gamesim.Simulation
                     + Math.Round(performance * 2, 2).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + (s.phase == EpisodePhase.FinalHoHPart1
                         ? " effective endurance points (capped at 10)." : " performance bonus points.")
                     + " Character statistics and seeded competition rolls also determine placement; full performance does not guarantee a win.");
+            RecordCompetition(s, players, category, thrown ? CompetitionEntry.Thrown : CompetitionEntry.Played, performance);
             Log(s, "competition", "Competition winner: " + Name(s, winner) + " · " + category + ".");
         }
 
@@ -852,6 +858,7 @@ namespace Gamesim.Simulation
             if (use) SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Nominates, s.hohId,
                 new List<string> { replacement }));
             s.vetoResolved = true;
+            RecordVeto(s, use, saved, replacement);
             // A question about a decision already taken is no longer on the table.
             if (StrategyRules.Apply(s))
                 foreach (var offer in s.deals.Where(d => d.status == DealStatus.Proposed && d.type == DealKind.VetoUse))
@@ -899,6 +906,8 @@ namespace Gamesim.Simulation
             foreach (var promise in s.promises.Where(p => p.status == PromiseStatus.Active && p.kind == PromiseKind.FinalTwo && p.fromId == s.hohId).ToArray())
                 SettlePromise(s, promise, promise.toId == selected ? PromiseStatus.Fulfilled : PromiseStatus.Broken);
             SettleDeals(s, DealResolution.Verdicts(s, DealResolution.Selects, s.hohId, selectedId: selected));
+            RecordFinalEviction(s, target, s.Active.Where(c => c.id != s.hohId).Select(c => c.id).ToList());
+            RecordJurorStanding(s, target);
             s.Find(target).status = ContestantStatus.Jury;
             if (StoryOn(s)) Bonds.Apart(s, target);
             s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, target, Name(s, target), s.Score(s.playerId, target));
@@ -918,6 +927,7 @@ namespace Gamesim.Simulation
             // Last in the step, as at the weekly settle: nothing minted above moves, and it is the
             // line the status bar shows.
             TellThePlayerWhichAlliancesEnded(s, ended.Where(a => a.members.Contains(s.playerId)).ToList());
+            ReconcileOpportunities(s);
         }
 
         private static void ResolveJury(EpisodeState s)
@@ -960,6 +970,7 @@ namespace Gamesim.Simulation
             s.winnerId = ordered[0].id; s.runnerUpId = ordered[1].id;
             ordered[0].status = ContestantStatus.Winner; ordered[1].status = ContestantStatus.RunnerUp;
             Phase(s, EpisodePhase.Finished); Log(s, "winner", "Gamesim winner: " + ordered[0].name + "!");
+            ReconcileOpportunities(s);
         }
 
         private static void Social(EpisodeState s, EpisodeCommand c)

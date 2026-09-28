@@ -33,23 +33,52 @@ namespace Gamesim.Episode
         /// </summary>
         public const float OverviewLift = 3.3f;
 
-        private bool overviewOpen;
+        /// <summary>The briefing's way back to the map, and the map's way back to the briefing (STRATEGY-LOOP-PLAN.md §4.6).</summary>
+        public const string ShowMapCaption = "Show the map";
+        public const string ShowBriefingCaption = "Show the briefing";
+
+        private bool overviewOpen, briefingOpen;
         private RoomLabels roomLabels;
 
         public bool IsOverview => overviewOpen;
+        /// <summary>
+        /// The strategic briefing (the owner's screen #3) standing over the labelled house. The rail's
+        /// Overview row opens the overview with it; "Show the map" puts it away and leaves the map -
+        /// the chips and the floor still a way there - and "Show the briefing" brings it back.
+        /// </summary>
+        public bool IsBriefing => overviewOpen && briefingOpen;
 
-        /// <summary>Shows the overview, or leaves it when it is up. False when the house cannot be looked at right now.</summary>
+        /// <summary>Opens the overview with its briefing, or leaves the overview when it is up. False when the house cannot be looked at right now.</summary>
         public bool ToggleOverview()
         {
             if (overviewOpen) { EndOverview(); return false; }
-            return ShowOverview();
+            return ShowBriefing();
         }
 
+        /// <summary>The overview with the briefing over it: what the rail's Overview row opens.</summary>
+        public bool ShowBriefing()
+        {
+            if (!ShowOverview()) return false;
+            briefingOpen = true;
+            Render();
+            return true;
+        }
+
+        /// <summary>Puts the briefing away and leaves the map: the overview stays, its chips and floor a way there.</summary>
+        public void HideBriefing()
+        {
+            if (!briefingOpen) return;
+            briefingOpen = false;
+            Render();
+        }
+
+        /// <summary>The overview as the house's map, with no briefing over it.</summary>
         public bool ShowOverview()
         {
             if (!IsReady || blockedRecovery || challengeActive || cameraRig == null) return false;
             if (IsPanelOpen) ClosePanels();
             overviewOpen = true;
+            briefingOpen = false;
             cameraRig.MoveTo(new HouseCameraRig.Shot
             {
                 Focus = cameraRig.HouseCenter - Quaternion.Euler(0f, cameraRig.Yaw, 0f) * Vector3.forward * OverviewLift,
@@ -75,6 +104,7 @@ namespace Gamesim.Episode
         private void LeaveOverview()
         {
             overviewOpen = false;
+            briefingOpen = false;
             if (roomLabels != null) roomLabels.Hide();
         }
 

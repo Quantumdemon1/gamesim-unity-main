@@ -235,6 +235,50 @@ and "Notebook [J]" opened the relationships, which the rail already had a row fo
   remember. Filters: everyone, in the house, their word, the vote, your reads. Nothing you have not
   learned. The rail's rows are unchanged; "Relationships" is still the web.
 
+### 4.6 As built: free time as three screens (2026-09-28)
+
+The owner's review of three mockups: information and decisions no longer compete for one screen.
+The "1 ACTION LEFT" mockup is the Free Time root, the "Spend your last action" mockup is a
+houseguest's screen behind their card, and the "Make your next move" dashboard is the Overview.
+
+- **Free Time** (`EpisodeDirector.FreeTimeScreen.cs`, `EpisodeHud.FreeTime.cs`): the head says
+  FREE TIME and how many actions are left, large, with one line of what to do here and the week's
+  rule under it. Two columns (`BeginColumns`): the main one holds "WHO DO YOU WANT TO TALK TO?" -
+  the house as cards, the name a control of its own that opens their screen, "Talk to X" the
+  shortcut that walks over - and "OTHER WAYS TO SPEND YOUR TIME", the moves that name nobody as
+  cards (`TileStyle.Cards`) with their risk word, their line and "Cost: 1 action" at the foot; the
+  side column holds CURRENT LOCATION (the room, private or shared, who is there), CURRENT PLAY (the
+  play in motion with its progress as a bar and its goal) and THREADS & STORYLINES (the story's own
+  `StorylinesBlock`, one call, so a play on offer and the threads stay in view while actions are
+  spent). The way on stays pinned, its caption unchanged, with "N unused actions will be lost."
+  under it. Nothing a test found by caption or grid name changed.
+- **A houseguest's screen** opens from a card's name (`OpenHouseguestScreen`): "Back to free time",
+  the head (SPEND YOUR LAST ACTION / SPEND AN ACTION), the house as a strip to change your mind,
+  "TALK TO X" with three tiles - "Talk privately", "Ask for information", "Pitch a deal", each with
+  its cost and risk - "WHOLE HOUSE MOVES" under them, and beside: YOUR CONTEXT (your role, the
+  actions left, the objective), ABOUT X (the play about them as a bar, where you stand, the threads
+  they are in, the latest note) and the story's blocks. Talking walks over and opens the
+  conversation as before; asking and pitching (`TalkWithIntent`) do the same and the conversation
+  puts what you came for first - "WHAT YOU CAME TO ASK" with the asking rows, or "WHAT YOU CAME TO
+  PUT TO THEM" with the promises, the alliance and the deal table - drawn there and not again
+  below. Closing the panel forgets the screen; closing the conversation forgets the intent.
+- **The overview** (`EpisodeHud.Overview.cs`, `EpisodeDirector.Dashboard.cs`) keeps its camera
+  and its room list and adds the dashboard between the rail and the column: the week in a line,
+  the roles on a band, the house at a glance with the standing legend (a face opens the profile),
+  STRATEGIC CONTEXT (plays, threads, the phase's rule) and RECOMMENDED ACTIONS as tiles with a
+  value and a risk each - the houseguest worth talking to (the running play's subject, else
+  whoever has an offer waiting, else the warmest not yet an ally), listening in and the house
+  meeting in free time with an action left, and "Head to the episode screen". Each ends the
+  overview and does what the free-time control does. The overview is still the house's map
+  (`EpisodeDirector.Overview.cs`): the rail's Overview row opens it with the briefing over it
+  (`ShowBriefing`), "Show the map" at the briefing's head puts the briefing away and leaves the
+  chips and the floor a way there, "Show the briefing" at the foot of the room list brings it back,
+  and `ShowOverview()` alone is the map, so every test that clicks the map keeps its ground.
+- **Tests:** `EpisodePlayModeTests.FreeTimeScreens` (the root's head, columns and pinned note; a
+  houseguest's screen and the way back; the conversation opening on the ask; the overview's
+  dashboard beside its room list) and captures free-time-screen, houseguest-screen and
+  overview-dashboard for the look sheet.
+
 ## 5. The Verdict
 
 **Name.** The owner asked for a game-IQ score under another name. Recommended: **Game Sense**, scored

@@ -157,7 +157,7 @@ namespace Gamesim.Episode
         /// Where the player is being sent next, named as the rail's button and the room icon name
         /// it: the episode screen (HOUSE-LIFE-PLAN §6, decision 13), not the ceremony screen.
         /// </summary>
-        private string NextStop(EpisodeState state) =>
+        public string NextStop(EpisodeState state) =>
             state.pendingDiary != null
                 ? (director != null && director.IsDiaryOpen ? "Here: your private reflection" : "Next stop: private diary room")
             // Production, or a story's Diary Room moment: the one call that names its own room.
@@ -533,6 +533,10 @@ namespace Gamesim.Episode
                 float at = RightColumnTop;
                 if (!Compact && director.LiveFeedTexture != null) at += LiveFeedCard(canvas.transform, at) + RightColumnGap;
                 OverviewColumn(canvas.transform, at);
+                // The strategic briefing over the labelled house, between the rail and the column
+                // (EpisodeHud.Overview.cs), while it is asked for; the map with its chips and its
+                // floor to click is what is left when it is put away.
+                if (!Compact && director.IsBriefing) OverviewDashboard(state, director.Dashboard(state));
                 return;
             }
             if(Compact)return;

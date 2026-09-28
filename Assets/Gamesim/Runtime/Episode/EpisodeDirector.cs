@@ -636,6 +636,10 @@ namespace Gamesim.Episode
         {
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
+            // What the player came into a conversation for goes with the conversation; a houseguest's
+            // screen over free time goes with the panel.
+            if (focusedNpc != null) conversationIntent = null;
+            moveScreenId = null;
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -1242,6 +1246,20 @@ namespace Gamesim.Episode
                     + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
+                // What the player came for, first (their screen's "Ask for information" or "Pitch a
+                // deal"): the rows it names are drawn here and not again below.
+                bool cameToAsk = conversationIntent == IntentAsk, cameToDeal = conversationIntent == IntentDeal;
+                if (cameToAsk)
+                {
+                    hud.Heading("WHAT YOU CAME TO ASK");
+                    AskRows(state, npc, window);
+                }
+                else if (cameToDeal)
+                {
+                    hud.Heading("WHAT YOU CAME TO PUT TO THEM");
+                    DealRows(state, npc, allied: state.Allied(state.playerId, npc.id));
+                    DealPanel(state, npc);
+                }
                 if (state.oathOpportunities.Contains(npc.id))
                 {
                     hud.Heading("A PERSONAL LOYALTY DECLARATION");
@@ -1291,27 +1309,10 @@ namespace Gamesim.Episode
                 // What this room offers that no other does (decision D-E): pillow talk in a bedroom,
                 // an invitation in the suite, cooking in the kitchen.
                 RoomActs(state, npc);
-                hud.Tag(hud.Action("Promise safety", () => Commit(state, EpisodeCommandKind.PromiseSafety, npc.id)),
-                    Category(EpisodeCommandKind.PromiseSafety));
-                hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
-                    Category(EpisodeCommandKind.PromiseFinalTwo));
-                hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
-                        () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
-                    Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+                if (!cameToDeal) DealRows(state, npc, allied);
                 hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
                     Category(EpisodeCommandKind.ShareInformation));
-                hud.Tag(hud.Action("Ask what they have heard", () => Commit(state, EpisodeCommandKind.AskForIntel, npc.id)),
-                    Category(EpisodeCommandKind.AskForIntel));
-                // The read (STRATEGY-LOOP-PLAN.md section 2): free, once a week each, and the play itself.
-                // The question is for a voter while there is a vote to ask about; the look is for anyone,
-                // in free time or the campaign.
-                if (VoteRead.Available(state) && EpisodeEngine.Voters(state).Any(v => v.id == npc.id)
-                    && !EpisodeEngine.AskedThisWeek(state, npc.id))
-                    hud.Tag(hud.Action(EpisodeHud.AskVoteCaption, () => Commit(state, EpisodeCommandKind.AskVote, npc.id)),
-                        Category(EpisodeCommandKind.AskVote));
-                if (!window && !EpisodeEngine.ReadThisWeek(state, npc.id))
-                    hud.Tag(hud.Action(EpisodeHud.ReadPersonCaption, () => Commit(state, EpisodeCommandKind.ReadPerson, npc.id)),
-                        Category(EpisodeCommandKind.ReadPerson));
+                if (!cameToAsk) AskRows(state, npc, window);
                 // Calling the vote (STRATEGY-LOOP-PLAN.md section 3): through an ally, once per
                 // alliance a week, naming who the bloc evicts.
                 if (EpisodeEngine.LeverRulesOn(state) && state.phase == EpisodePhase.Campaign && VoteRead.Available(state))
@@ -1351,7 +1352,7 @@ namespace Gamesim.Episode
                 if (!window)
                     hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
                         Category(EpisodeCommandKind.SchemeAgainst));
-                DealPanel(state, npc);
+                if (!cameToDeal) DealPanel(state, npc);
                 if (state.phase == EpisodePhase.Campaign)
                     foreach (var nominee in state.nominees) { string id = nominee; hud.Tag(hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)), Category(EpisodeCommandKind.PromiseVote)); }
                 return;
@@ -1467,7 +1468,12 @@ namespace Gamesim.Episode
             // Pinned under the scroll, where it is always seen - except under a house event, whose
             // choices keep the panel and the priority; the way on stays inline after them there.
             if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage)
+            {
                 hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
+                // What free time's way on costs, under it: the actions that go unused.
+                string unused = UnusedActionsNote(state);
+                if (unused != null) hud.PinnedNote(unused);
+            }
             else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
         }
 
@@ -1534,7 +1540,7 @@ namespace Gamesim.Episode
         {
             switch (phase)
             {
-                case EpisodePhase.Social: return "MAKE YOUR NEXT MOVE";
+                case EpisodePhase.Social: return "FREE TIME";
                 case EpisodePhase.HoH: return "HEAD OF HOUSEHOLD";
                 case EpisodePhase.VetoSelection: return "VETO PLAYER SELECTION";
                 case EpisodePhase.VetoMeeting: return "VETO CEREMONY";

@@ -77,6 +77,9 @@ namespace Gamesim.Simulation
         /// <summary>Structural exemptions from the castability sweep, each with its reason: "cast:reason".</summary>
         public string[] exemptions = Array.Empty<string>();
 
+        /// <summary>A play's goal, deadline and outcomes (plan 30), or null for an arc that is not a play.</summary>
+        public PlayTemplate play;
+
         public BeatTemplate Beat(string beatId) => beats.FirstOrDefault(b => b.id == beatId);
 
         /// <summary>The same arc cast another way: the engine's walk-in casts the two people the player found.</summary>

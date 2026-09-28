@@ -126,3 +126,49 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
 - Migrated saves keep the story on from week + 1, the plan's default, unchanged.
 - The walk-out's length is unchanged: it can be skipped, and it is off under reduced motion.
 - Floors: EditMode 1711, PlayMode 602, Uma 64, Sim 926.
+
+## Plays: P0 and P1 (plan 30, 2026-09-27)
+- The model (StoryPlays.cs, EpisodeEngine.Plays.cs), off the schema:
+  - an arc's PlayTemplate holds the currency, the goal, the anchor deadline, progress read from the
+    season, and won/part/lost effects and lines;
+  - "taken on" is the offer's take-it-on step in the cycle's path, and the outcome is the cycle's
+    endingId, in the ledger's own words (won/part/lost, plus declined);
+  - DecidePlays runs first at every anchor and after every answer. A play is won the moment its goal
+    is met, however it was met, and never lost before its deadline;
+  - a first refusal cools one week, so it may come back once (D2);
+  - the play lane holds three at once;
+  - StoryRules.Plays = 7 = Current, so seasons stamped earlier never see a play.
+- Receipts (StoryLog.Receipt, the player's alone) come from the effects a play's steps and outcome ran,
+  never a paraphrase. Promises, deals, alliances and lore keep their own lines.
+- Eight plays (StoryCatalog.Plays.cs):
+  - The Secret Alliance and Know Them (Intel);
+  - Stay Off the Block, The Favour and Stir the Pot (Power);
+  - Their Word and Settle It (Trust);
+  - Build the Numbers (Alliance).
+
+  Stay Off the Block is decided at the final block, so a backdoor or the veto can still change it. Its
+  two Head of Household conversations show only where the strategy windows do not play; there, the
+  lobby is the way in and counts.
+- In the house:
+  - the Pull offers a play with Take it on, eyebrow "INTEL · A PLAY · UNTIL EVICTION NIGHT", and the
+    goal as its stakes. Take it on opens the first step on the scene card;
+  - the card ends with the play won, part-won, lost or still in play, the last step's line, and that
+    card's receipts;
+  - PLAYS heads the free-time panel's story block and the notebook's Story section.
+- Tests: StoryPlayTests (13) and EpisodePlayModeTests.Plays (the whole loop through the real HUD).
+- P0 baseline, from PlaysReport (explicit, dotnet only; 40 seasons of 8 and 12):
+
+  | Player | Story decisions a season | Plays offered a season | Won / part / lost | Win rate |
+  |---|---|---|---|---|
+  | Random | 5.4 | 0.9 | 4 / 3 / 9 | 25% |
+  | Reader | 7.8 | 1.2 | 25 / 2 / 12 | 64% |
+
+  The reader, who takes every play and picks the best odds shown, leads by 39 points (§6 asks for 20).
+  Arcs fired: 43 of 73.
+- Gaps the baseline shows:
+  - plays are sparse: about one a season against D1's one to three most weeks. That is P4: airtime for
+    offers, and steps outside the ask cap;
+  - The Secret Alliance never cast: NPC-formed alliances have no knowledge fact yet. The other session's
+    read rules add one (schema 17);
+  - Build the Numbers never cast: the harness player forms alliances with anyone it can.
+- Floors: EditMode 1724, PlayMode 605, Uma 64, Sim 939.

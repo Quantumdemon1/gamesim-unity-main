@@ -195,11 +195,16 @@ namespace Gamesim.Simulation
             var ctx = new StoryContext(s, anchor);
             EndDepartedCycles(s);
             StorySystemsAt(s, anchor);
+            // Plays first: one decided here opens nothing further below.
+            DecidePlays(s, anchor);
 
             foreach (var cycle in RunningCycles(s).ToList())
             {
                 var template = StoryCatalog.Find(cycle.templateId);
                 if (template == null || s.houseEvents.Any(e => !e.resolved && e.cycleId == cycle.id)) continue;
+                // A play taken on with nothing scheduled is waiting for its goal or its deadline,
+                // which DecidePlays settles: it neither blows over nor goes stale meanwhile.
+                if (template.play != null && TakenOn(cycle) && cycle.nextAnchor == null) continue;
                 var view = new StoryCycle(cycle, template);
                 if (cycle.nextAnchor == anchor && cycle.nextWeek <= s.week)
                 {
@@ -299,8 +304,12 @@ namespace Gamesim.Simulation
             if (s.week < template.minWeek || s.Active.Count() < template.minActive) return null;
             if (s.Find(s.playerId)?.status != ContestantStatus.Active) return null;
             if (s.storylines.Any(x => x.templateId == template.id && StorylineStatus.Running(x.status))) return null;
-            if (template.lane != StoryLanes.Production
-                && RunningCycles(s).Any(x => x.lane == template.lane)) return null;
+            if (template.lane == StoryLanes.Play)
+            {
+                if (RunningCycles(s).Count(x => x.lane == StoryLanes.Play) >= StoryLanes.MaxPlays) return null;
+            }
+            else if (template.lane != StoryLanes.Production
+                     && RunningCycles(s).Any(x => x.lane == template.lane)) return null;
             if (Cooling(s, "tpl:" + template.id)) return null;
             if (template.group != null && Cooling(s, "grp:" + template.group)) return null;
             if (!StoryPeople.PlayerAllowed(s, template.playerNeeds)) return null;
@@ -601,6 +610,8 @@ namespace Gamesim.Simulation
             }
             ResolveStoryBeat(s, item, index, false, picked);
             if (choice.costsAction) SpendSocialAction(s);
+            // An answer can win a play on the spot: the alliance found out, the word given.
+            DecidePlays(s, null);
         }
 
         /// <summary>
@@ -655,9 +666,13 @@ namespace Gamesim.Simulation
 
             var effects = result == StoryResults.Backfire ? choice.backfire : choice.effects;
             string key = item.id + ":" + choice.optionId;
+            var applied = new List<StoryEffectState>();
             foreach (var effect in effects.ToList())
-                ApplyStoryEffect(s, Substitute(effect, picked), cycleRecord, subject?.id, key, reception,
-                    result == StoryResults.Backfire);
+            {
+                var resolved = Substitute(effect, picked);
+                ApplyStoryEffect(s, resolved, cycleRecord, subject?.id, key, reception, result == StoryResults.Backfire);
+                applied.Add(resolved);
+            }
 
             string outcome = result == StoryResults.Backfire ? option?.backfireOutcome ?? option?.outcome : option?.outcome;
             item.outcome = Trim(StoryText.Neutral(outcome) ?? choice.label, 2000);
@@ -676,6 +691,8 @@ namespace Gamesim.Simulation
                     + " can't stand.", s.playerId, subject.id);
             if (!lapsed && subject != null)
                 Remember(s, s.playerId, subject.id, (item.title ?? "A moment") + ": " + choice.label + ".", true);
+            // A play's step says what it changed (plan 30 §4); other arcs keep to their outcome line.
+            if (template.play != null) Receipts(s, applied);
 
             string next = result == StoryResults.Backfire ? choice.nextOnBackfire ?? choice.next : choice.next;
             AdvanceCycle(s, cycle, next, CurrentAnchor(s));
@@ -753,7 +770,8 @@ namespace Gamesim.Simulation
             }
             var template = StoryCatalog.Find(cycle.templateId);
             if (template == null) return;
-            Cool(s, "tpl:" + template.id, s.week + template.cooldownWeeks);
+            // A play turned down for the first time may come round again next week (plan 30 D2).
+            Cool(s, "tpl:" + template.id, s.week + (FirstRefusal(s, cycle, template, ending) ? 1 : template.cooldownWeeks));
             if (template.group != null && template.groupCooldownWeeks > 0)
                 Cool(s, "grp:" + template.group, s.week + template.groupCooldownWeeks);
             var ids = cycle.cast.Select(r => r.contestantId).Distinct().OrderBy(id => id, StringComparer.Ordinal).ToList();

@@ -149,6 +149,8 @@ namespace Gamesim.Episode
         public const string HearThemOutCaption = "Hear them out";
         public const string JoinMeetingCaption = "Join the meeting";
         public const string NotNowCaption = "Not now";
+        /// <summary>A play's offer (plan 30): the engine's own option label, so the button and the option agree.</summary>
+        public const string TakeItOnCaption = Gamesim.Simulation.PlayOptions.TakeItOnLabel;
 
         /// <summary>
         /// What the Pull offers, as the director has worked it out: the kind of moment and where, one
@@ -158,7 +160,7 @@ namespace Gamesim.Episode
         public struct StoryPull
         {
             public string Key;
-            /// <summary><see cref="StepInCaption"/>, <see cref="HearThemOutCaption"/> or <see cref="JoinMeetingCaption"/>.</summary>
+            /// <summary><see cref="StepInCaption"/>, <see cref="HearThemOutCaption"/>, <see cref="JoinMeetingCaption"/> or <see cref="TakeItOnCaption"/>.</summary>
             public string Primary;
             /// <summary><see cref="StayOutCaption"/> or <see cref="NotNowCaption"/>.</summary>
             public string Secondary;
@@ -208,7 +210,7 @@ namespace Gamesim.Episode
             AutoSize(pullStakes, 10);
 
             float inner = width - 28f, gap = 8f, wide = Mathf.Round((inner - gap) * .56f), narrow = inner - gap - wide;
-            foreach (var caption in new[] { StepInCaption, HearThemOutCaption, JoinMeetingCaption })
+            foreach (var caption in new[] { StepInCaption, HearThemOutCaption, JoinMeetingCaption, TakeItOnCaption })
             {
                 var button = FixedButton(pullCard, caption, new Vector2(14f, -104f), new Vector2(wide, 36f), () => pullAccept?.Invoke());
                 button.GetComponent<Image>().color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f);

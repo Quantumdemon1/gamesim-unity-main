@@ -138,6 +138,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(AuthoredAssetImporter.TravellingTakes, Does.Contain("WalkStop"), "the stop take walks two steps as it stops");
             Assert.That(AuthoredAssetImporter.TravellingTakes, Does.Contain("DanceHipHop_loop"),
                 "the hip-hop dance carries its hips 1.49 m forward a cycle and starts each one back where it began");
+            Assert.That(AuthoredAssetImporter.TravellingTakes, Does.Contain("Walk_loop"),
+                "the walk was never in place: its hips travel 1.78 m a cycle, and baked into the pose every body lurched ahead of its agent each second");
             foreach (var take in HumanoidClipWiring.Takes)
             {
                 bool walks = AuthoredAssetImporter.TravellingTakes.Contains(take);

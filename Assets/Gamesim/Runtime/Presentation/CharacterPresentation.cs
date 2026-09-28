@@ -24,10 +24,16 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The ground each take covers in a second as captured: what a body's own speed is divided
         /// by, so a walk at the house's 2.2 m/s plays its steps fast enough to cover 2.2 m.
-        /// Measured by <c>UmaFacingPlayModeTests</c> from the planted foot: 1.36 and 4.83 m/s. The
-        /// plan's 1.7 was read off a probe that averaged the lifted foot in with the planted one.
+        ///
+        /// <para>The walk is the take's own root motion as Unity reads it (averageSpeed 1.678 m/s:
+        /// the hips travel 1.845 m over the 1.033 s cycle, sampled on the take's own skeleton on
+        /// 2026-09-28, now that the travel is root motion rather than baked into the pose). It was
+        /// 1.36, read off the planted foot while the take still carried the body away from its
+        /// root, so the walk played 1.62 times over at 2.2 m/s and the feet skated backwards faster
+        /// than the floor went by. The run is <c>UmaFacingPlayModeTests</c>' 4.83 from the planted
+        /// foot.</para>
         /// </summary>
-        public const float WalkTakeSpeed = 1.36f, RunTakeSpeed = 4.83f;
+        public const float WalkTakeSpeed = 1.68f, RunTakeSpeed = 4.83f;
         /// <summary>
         /// How far a take may be sped up or slowed down. The house walks briskly - 2.2 m/s against
         /// the take's 1.36 - so the walk is let run to 1.65, which covers it with steps that still

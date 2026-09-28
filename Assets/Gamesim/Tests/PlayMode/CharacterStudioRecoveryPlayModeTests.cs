@@ -132,6 +132,33 @@ namespace Gamesim.Tests.PlayMode
             finally { Object.Destroy(view); }
         }
 
+        /// <summary>
+        /// Storing a portrait leaves the active render target as it found it. Graphics.Blit leaves
+        /// its destination active, and a ScreenCapture later in the same frame then read the 384-pixel
+        /// portrait instead of the screen. The standalone check's season walk stopped on exactly that.
+        /// </summary>
+        [Test]
+        public void StoringAPortraitLeavesTheActiveRenderTargetAlone()
+        {
+            var store = typeof(CharacterPortraits).GetMethod("StoreAppearance", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(store, Is.Not.Null);
+            var elsewhere = new RenderTexture(64, 64, 0);
+            try
+            {
+                RenderTexture.active = null;
+                store.Invoke(null, new object[] { "active-target-fixture-screen", Texture2D.whiteTexture });
+                Assert.That(RenderTexture.active == null, Is.True, "The screen is still the target after a portrait is stored,");
+                RenderTexture.active = elsewhere;
+                store.Invoke(null, new object[] { "active-target-fixture-other", Texture2D.whiteTexture });
+                Assert.That(RenderTexture.active == elsewhere, Is.True, "and so is any other target that was active.");
+            }
+            finally
+            {
+                RenderTexture.active = null;
+                Object.Destroy(elsewhere);
+            }
+        }
+
         [UnityTest]
         public IEnumerator TimedOutBuildUsesFallbackAndRetryRecoversTheSameSavedAppearance()
         {

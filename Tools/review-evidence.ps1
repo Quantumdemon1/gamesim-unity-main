@@ -140,6 +140,11 @@ function Compare-ReviewInputs {
         $reason = ''; $allowed = $false; $kind = 'unexpected-product-drift'
         if ($path.StartsWith('Tools/')) {
             $allowed = $true; $kind = 'workflow-change'; $reason = 'Workflow evidence is retained separately from product inputs.'
+        } elseif ($old -and $new -and $path -match '^Assets/Gamesim/Resources/Fonts/Inter-(Bold|Medium|Regular|SemiBold) SDF\.asset$') {
+            # These atlases are dynamic with clear-on-build: the editor writes their glyph cache back
+            # after any play, and the build clears it, so the cached glyphs reach no player. Before
+            # this allowance a test run after an editor session failed the audit on them (2026-09-27).
+            $allowed = $true; $kind = 'dynamic-font-atlas'; $reason = 'A dynamic TextMeshPro atlas with clear-on-build; its glyph cache is editor state that the build clears, not a product input.'
         } elseif ($old -and $new -and $AllowShippingGpu -and $path -eq 'Assets/Settings/PC_RPAsset.asset' -and
             $old.gpuResidentDrawer -eq 0 -and $new.gpuResidentDrawer -eq 1 -and
             $old.shippingSha256 -eq $new.shippingSha256) {

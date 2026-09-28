@@ -117,7 +117,7 @@ The expected headless result is **678/0/0** Edit Mode, **111/0/0** Play Mode and
 | B6b | UMA proportions match the set | `Houseguest_BuildsARiggedBodyOfHumanProportions` | stylised height 1.5–1.85 m, every house DNA value applied | **passed** — 1.72 m, from 2.05 m un-stylised |
 | B6c | The cast reads at gameplay distance | `Accessibility_ReportsHowLargeTheCastReadsOnScreen` | houseguests legible at the default camera | **measured; default kept at 24 by decision** — see below |
 | B7 | UMA is genuinely optional | Clone without `Assets/UMA`, committed settings | project compiles, Edit and Play Mode green, define stays off | **passed** — 0 errors; Edit Mode 1711/1711, Play Mode 575/575 (2026-09-27; the 27 tests of UMA-only features compile only with `GAMESIM_UMA`) |
-| B8 | UMA does not regress the suite | Full Edit + Play suites with UMA installed | A1 and A2 still hold | **passed** — 678/0/0 and 114/0/0 with UMA installed |
+| B8 | UMA does not regress the suite | Full Edit + Play suites with UMA installed | A1 and A2 still hold | **passed** — 1711/0/0, 603/0/0 and Uma 64/0/0 with UMA installed (2026-09-27, `2c1f45d`; 678/0/0 and 114/0/0 at V7) |
 | B9 | The seam defaults to the project's own body | `CharacterBodyProviderPlayModeTests` | no provided body appears unless a provider supplied one, and no test leaks a provider | **passed** |
 | B10 | The episode runs on UMA bodies | `Gamesim/UMA/Use UMA bodies in the episode`, then the full suite | suite stays green with UMA live in `EpisodeHouse.unity` | **passed** — 114/0/0 |
 | B11 | Nobody stands in while UMA assembles | `Houseguest_IsOnlyEverTheirOwnBodyWhileUmaAssemblesIt` | no other body is ever under the houseguest; they read as assembling from the attach frame until their body can draw, which is counted once | **passed** |
@@ -186,6 +186,12 @@ presenting to a window: 946,359 frames in 300 s is roughly 3,150 fps against V6'
 difference is mostly the absent present and vsync path, not the game getting four times faster. The
 thresholds were derived from a windowed run and must be re-measured in one. The column is recorded
 because it is real evidence of *stability* — 300 s unbroken with zero runtime errors — not of speed.
+
+The same batchmode stability evidence for the UMA cast, since the V7 column was the prefabs':
+review candidate `2c1f45d` (2026-09-27), six houseguests, `-batchmode` standalone, three runs of
+300 s each. Median 1.89–2.06 ms, p95 4.21–4.44 ms, p99 5.27–5.62 ms over 118k–123k frames, zero
+runtime errors, and the season walk passed every time. The same caveat applies: batchmode presents
+nothing, so these are not the windowed figures the thresholds want.
 
 **The windowed column is the first honest measurement, and it is over the proposed thresholds.** Captured 2026-09-19 in a 1600×900 window on the reference machine with the full authored house — the shell, the textured floors, 158 authored props, the furnishing pass and 12 bodies — after the sixteen-houseguest request was clamped to the roster's twelve (a roster seats twelve; the builder will not pad a season with the other roster). Median 3.20 ms, p95 4.32 ms, p99 6.28 ms over 300.1 s and 84,833 frames, uncapped by the verifier (the display preference defaults to VSync, which a benchmark must not inherit). The 2 / 3 / 4 ms thresholds were proposed from the primitive prototype at six; the dressed house costs more and still runs at roughly 312 fps. Either the thresholds are restated for this scene (a 60 fps target is 16.7 ms a frame) or the frame is profiled and trimmed; the plan carries that decision. The standalone season walk on the same build: Passed, 89 commands, finished with a winner.
 

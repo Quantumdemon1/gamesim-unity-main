@@ -16,6 +16,12 @@ if ($busy) { throw 'The acceptance editor is still running; nothing was copied.'
 if ($WithoutUma -and (Test-Path -LiteralPath (Join-Path $destinationRoot 'Assets\UMA'))) {
     throw 'Use the existing UMA-free acceptance copy; this option never removes an installed package.'
 }
+# The converse: Assets\UMA is gitignored, so a worktree or fresh clone has none, and /MIR from one
+# would delete it from an acceptance copy that has it. That is a 6,100-file reimport to undo.
+if (-not $WithoutUma -and (Test-Path -LiteralPath (Join-Path $destinationRoot 'Assets\UMA')) -and
+    -not (Test-Path -LiteralPath (Join-Path $sourceRoot 'Assets\UMA'))) {
+    throw 'The source has no Assets\UMA and the acceptance copy does; mirroring would remove UMA from it. Run from the main checkout, or use -WithoutUma into the UMA-free copy.'
+}
 foreach ($folder in @('Assets','ProjectSettings','ArtSource','Packages')) {
     $sourcePath = [IO.Path]::GetFullPath((Join-Path $sourceRoot $folder))
     $destinationPath = [IO.Path]::GetFullPath((Join-Path $destinationRoot $folder))

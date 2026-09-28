@@ -207,6 +207,8 @@ namespace Gamesim.Persistence
             EpisodeEngine.EnableRead(result, checked(week + 1));
             EpisodeEngine.EnableLevers(result, checked(week + 1));
             EpisodeEngine.EnableWeek(result, checked(week + 1));
+            // From the week after, too, and never seeded: the web house's standings are its own.
+            EpisodeEngine.EnableAgency(result, checked(week + 1));
             return result;
         }
 

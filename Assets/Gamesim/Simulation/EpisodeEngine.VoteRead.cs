@@ -103,7 +103,10 @@ namespace Gamesim.Simulation
                 double view = s.Score(target.id, s.playerId);
                 AddStanding(s, target.id, s.playerId, ClaimSource.Read, view);
                 string band = view >= 25 ? "warm on you" : view <= -25 ? "cold on you" : "not sure about you";
-                Log(s, "vote-read", "You read " + target.name + ": they're " + band + ".", s.playerId, target.id);
+                // Under agency the read says what they are up to as well as what they think of you
+                // (NPC-AGENCY-PLAN.md §4): information about what people are doing.
+                string doing = NpcAgendas.Describe(s, target.id, NpcAgendas.Of(s, target.id));
+                Log(s, "vote-read", "You read " + target.name + ": they're " + band + "." + (doing != null ? " " + doing + "." : ""), s.playerId, target.id);
                 return;
             }
             // A miss is still the week's attempt: on the record as one, so it cannot be tried again

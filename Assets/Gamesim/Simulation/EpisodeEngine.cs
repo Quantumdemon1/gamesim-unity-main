@@ -231,6 +231,9 @@ namespace Gamesim.Simulation
                     s.competitionResolved = false; Phase(s, next);
                     // A nominee asks the player for the veto while it is still theirs to use.
                     if (next == EpisodePhase.VetoMeeting) NpcDeals.AskForTheVeto(s);
+                    // Under agency, whoever has no claim on the new Head of Household courts them
+                    // before the nominations (NPC-AGENCY-PLAN.md §4).
+                    if (next == EpisodePhase.Nomination) CourtTheHoH(s);
                     if (crossed != null) StoryAnchor(s, crossed);
                     break;
                 case EpisodePhase.Nomination:
@@ -690,7 +693,9 @@ namespace Gamesim.Simulation
         /// so the sum is the score in a season that plays neither.
         /// </summary>
         public static double NominationWeight(EpisodeState s, string hohId, string id) =>
-            StrategyRules.NominationReluctance(s, hohId, id) + StoryConsumers.NominationPreference(s, hohId, id) - s.Score(hohId, id);
+            StrategyRules.NominationReluctance(s, hohId, id) + StoryConsumers.NominationPreference(s, hohId, id) - s.Score(hohId, id)
+            // Under agency, how dangerous they are, as the Head of Household and their pact read it (NPC-AGENCY-PLAN.md §5.1).
+            - ThreatTerm(s, hohId, id);
 
         /// <summary>How much a veto holder wants to save a nominee: the strategy windows' willingness plus the story's terms.</summary>
         public static double SaveWeight(EpisodeState s, string holderId, string id) =>

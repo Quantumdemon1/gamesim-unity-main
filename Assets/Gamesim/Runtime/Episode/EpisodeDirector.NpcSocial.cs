@@ -237,7 +237,14 @@ namespace Gamesim.Episode
             for (int first = 0; first < idle.Length; first++)
             {
                 if (unavailable.Contains(idle[first].id)) continue;
-                for (int second = first + 1; second < idle.Length; second++)
+                // Under agency each houseguest tries the one their agenda points at before the next
+                // idle body in cast order (NPC-AGENCY-PLAN.md §4); without it, cast order as always.
+                var order = new List<int>();
+                string wanted = NpcAgendas.PreferredPartner(state, idle[first].id);
+                int at = wanted == null ? -1 : Array.FindIndex(idle, actor => actor.id == wanted);
+                if (at >= 0 && at != first) order.Add(at);
+                for (int second = first + 1; second < idle.Length; second++) if (second != at) order.Add(second);
+                foreach (int second in order)
                 {
                     if (unavailable.Contains(idle[second].id)) continue;
                     string token = NpcWorldGeneration + ":approach:" + (++npcLeaseCounter).ToString(CultureInfo.InvariantCulture);

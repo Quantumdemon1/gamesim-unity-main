@@ -23,6 +23,10 @@ namespace Gamesim.Tests.EditMode
             // every alliance is a private fact at birth. Never in SeasonBuilder, whose recorded seasons
             // and seeded fixtures would shift.
             EpisodeEngine.EnableRead(state);
+            // NPC agency, as the director switches it on for every season it starts: first
+            // impressions by temperament, agendas, a Head of Household who weighs threat. Never in
+            // SeasonBuilder, for the same reason as the read.
+            EpisodeEngine.EnableAgency(state);
             return state;
         }
 

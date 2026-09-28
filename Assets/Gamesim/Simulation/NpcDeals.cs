@@ -122,6 +122,14 @@ namespace Gamesim.Simulation
             if (partnership && safety && warmth > UpgradeWarmth && !allied)
                 return DealKind.AllianceInvite;
 
+            // Under agency a houseguest looking for a partner asks the one they want, when that is
+            // the player (NPC-AGENCY-PLAN.md §5.3); between houseguests the alliance pass does the
+            // asking. The same bar the pass sets: warm enough, wanting it enough, no grudge.
+            if (target.isPlayer && !allied && EpisodeEngine.AgencyOn(state)
+                && NpcAgendas.Of(state, npcId) is NpcAgenda agenda && agenda.kind == Agendas.Build && agenda.partnerId == targetId
+                && NpcAlliances.WouldPropose(state, npcId, targetId))
+                return DealKind.AllianceInvite;
+
             // On the block, which outranks every comfortable arrangement below.
             if (!state.evictionResolved && state.nominees.Contains(npcId) && !state.nominees.Contains(targetId))
             {

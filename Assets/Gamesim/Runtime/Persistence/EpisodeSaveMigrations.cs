@@ -21,6 +21,35 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 20) return (JObject)original.DeepClone();
+            if (version < 1 || version > 19) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV19ToV20(version == 19 ? original : PrepareV19Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds the agency boundary from the week after the save's (NPC-AGENCY-PLAN.md §2): the rule
+        /// boundary once more, so the week the save was in keeps the house it was played with, and a
+        /// season under way is never seeded with first impressions.
+        /// </summary>
+        public static JObject UpgradeV19ToV20(JObject original)
+        {
+            FrozenEpisodeV19.Validate(original);
+            int week = (int)original["week"];
+            var result = (JObject)original.DeepClone();
+            result.Add("agencyRulesStartWeek", checked(week + 1));
+            result["schemaVersion"] = 20;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v18-to-v19 dispatch.</summary>
+        public static JObject PrepareV19Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 19) return (JObject)original.DeepClone();
             if (version < 1 || version > 18) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV18ToV19(version == 18 ? original : PrepareV18Payload(original, out _));

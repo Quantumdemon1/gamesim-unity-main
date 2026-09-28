@@ -488,7 +488,9 @@ namespace Gamesim.Tests.EditMode
                         foreach (var cycle in final.storylines.Where(x => x.templateId != null))
                         {
                             fired.Add(cycle.templateId);
-                            decisions += cycle.path.Count(p => p.result != StoryResults.Lapsed && p.result != StoryResults.Npc);
+                            // A thread's path records its chapters, not choices: its chapters' own cycles hold those.
+                            if (cycle.lane != StoryLanes.Thread)
+                                decisions += cycle.path.Count(p => p.result != StoryResults.Lapsed && p.result != StoryResults.Npc);
                             if (StoryCatalog.Find(cycle.templateId)?.play == null) continue;
                             offered++;
                             if (!byPlay.TryGetValue(cycle.templateId, out var row)) byPlay[cycle.templateId] = row = new int[4];

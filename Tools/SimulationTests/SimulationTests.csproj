@@ -85,6 +85,7 @@
     <Compile Include="$(EditMode)StoryPacingTests.cs" />
     <Compile Include="$(EditMode)StoryPlayTests.cs" />
     <Compile Include="$(EditMode)StoryReachTests.cs" />
+    <Compile Include="$(EditMode)StoryThreadTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
     <Compile Include="$(EditMode)WebIntroductionsTests.cs" />

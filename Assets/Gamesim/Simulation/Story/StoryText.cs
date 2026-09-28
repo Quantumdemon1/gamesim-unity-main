@@ -214,6 +214,8 @@ namespace Gamesim.Simulation
         public const string Play = "story-play";
         /// <summary>What a play changed, one line per effect the player would know about (plan 30 §4).</summary>
         public const string Receipt = "story-receipt";
+        /// <summary>A thread's turn: it begins, a chapter opens or closes, it ends (plan 31). The player's alone.</summary>
+        public const string Thread = "story-thread";
 
         // Fallout (plan §5.1): the moments the house gives a ceremony card, each its own kind so the
         // card, the recap and the recent-events card can tell them apart from an ordinary line.

@@ -367,6 +367,8 @@ namespace Gamesim.Simulation
             if (state == null) return;
             foreach (var story in state.storylines.Where(x => StorylineStatus.Running(x.status)).ToList())
             {
+                // A thread (plan 31) runs all season and never has a card of its own: its own rules end it.
+                if (story.lane == StoryLanes.Thread) continue;
                 if (state.week - story.week < StaleWeeks) continue;
                 var chapter = state.houseEvents.FirstOrDefault(e => e.id == story.eventId);
                 if (chapter != null && chapter.resolved) continue;

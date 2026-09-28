@@ -80,6 +80,9 @@ namespace Gamesim.Simulation
         /// <summary>A play's goal, deadline and outcomes (plan 30), or null for an arc that is not a play.</summary>
         public PlayTemplate play;
 
+        /// <summary>A thread's chapters and climax (plan 31), or null for an arc that is not a thread.</summary>
+        public ThreadTemplate thread;
+
         public BeatTemplate Beat(string beatId) => beats.FirstOrDefault(b => b.id == beatId);
 
         /// <summary>The same arc cast another way: the engine's walk-in casts the two people the player found.</summary>
@@ -325,8 +328,15 @@ namespace Gamesim.Simulation
         /// <summary>For a conversation about somebody - venting, a rumour - who it was about.</summary>
         public readonly string about;
 
-        public StoryContext(EpisodeState state, string anchor, string talkingTo = null, EpisodeCommandKind? topic = null, string about = null)
-        { this.state = state; this.anchor = anchor; this.talkingTo = talkingTo; this.topic = topic; this.about = about; }
+        /// <summary>
+        /// For a thread's chapter (plan 31): who it is aimed at. A cast that honours it considers only
+        /// these people for its lead, and keeps every condition of its own; null for anything else.
+        /// </summary>
+        public readonly IReadOnlyList<string> focus;
+
+        public StoryContext(EpisodeState state, string anchor, string talkingTo = null, EpisodeCommandKind? topic = null, string about = null,
+            IReadOnlyList<string> focus = null)
+        { this.state = state; this.anchor = anchor; this.talkingTo = talkingTo; this.topic = topic; this.about = about; this.focus = focus; }
 
         public string Player => state.playerId;
         public ContestantState Find(string id) => state.Find(id);

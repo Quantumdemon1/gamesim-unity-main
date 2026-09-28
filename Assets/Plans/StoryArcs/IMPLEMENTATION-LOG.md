@@ -280,3 +280,61 @@ all milestones M0-M6, owner decisions = the recommended defaults in 20 §9 and 2
   All-Stars and 4.5 in the twelve, the ceilings hold, removals stay at 0%, and 77% of the default
   eight's seasons are pariah-free (78%).
 - Floors: EditMode 1763, PlayMode 609, Uma 64, Sim 973.
+
+## Threads: P3 (plan 31, 2026-09-28)
+- Integration: port/story-arcs was fast-forwarded to 9a46c1f, the other session's R2-R4 (the levers,
+  the ledger's writers and Game Sense), before this work began.
+- The design is 31-threads.md. A thread is a season-long story in its own lane (`StoryLanes.Thread`,
+  three at most), carried on the story cycle saves already hold, so there is no schema change:
+  - its cast is who it is about;
+  - its path has one step per chapter, with the chapter cycle's id and how it went, rewritten when the
+    chapter ends;
+  - its ending is how the season came out for it.
+
+  `StoryRules.Threads` = 9 = Current: seasons stamped earlier seed none.
+- Seeding happens at the first eviction nights (weeks 1-3), each kind at most once:
+  - the bond: your warmest houseguest both ways who holds nothing much against you;
+  - the rivalry: whoever holds the most against you, or else the coldest both ways, never the bond's
+    friend;
+  - the numbers: your own alliance, or else the two warmest who could be one.
+- Chapters are the catalogue's own plays and arcs, aimed at the thread's people through
+  `StoryContext.focus` (`StoryCatalog.Among`: a cast chooses its lead only from them and keeps every
+  condition of its own). How one ends picks the next:
+  - the bond: Settle It if they hold a grudge; Know Them; Their Word; Ride or Die or Late Nights;
+  - the rivalry: Settle It, then Stir the Pot if that fails;
+  - the numbers: Build the Numbers until the allies are one alliance, then The Secret Alliance, Stay
+    Off the Block and The Favour, week to week.
+
+  A chapter starts only at its arc's own anchors, and it spends the airtime like any story. A play the
+  pool casts for a thread's person is taken as that thread's chapter.
+- Climaxes and stated ends:
+  - the numbers end at the final four: held (you and an ally), or broken;
+  - the rivalry ends when either of you leaves: won, made peace (if Settle It landed), or lost;
+  - the bond ends at the finale, read from the jury (`StoryFinale`, one call in `ResolveJury`): to the
+    end, for you, against you, or parted;
+  - a thread with nothing it could play for a month fades (the numbers wait for their final four
+    instead);
+  - one whose player left ends as they left it.
+
+  The climax comes at its point even with a chapter under way.
+- Two things silently ended threads, and neither may touch one now:
+  - the legacy `Storylines.AbandonStale` gave up on any story three weeks old whose card was not
+    answered, and a thread has no card;
+  - the final-three sweep in `StorySocialClose` ended every running story before the jury.
+- In the house:
+  - THREADS (`EpisodeDirector.ThreadsHeading`) follows PLAYS in the free-time panel and on the notebook's
+    plays page. Each thread shows its label with names ("Your bond with Alex"), then the chapter it is on
+    and how that went, or how it ended;
+  - the recap's "Previously on" and "Next time on" lead with the threads, by name.
+- Tests: StoryThreadTests (14) cover seeding, focus, chapter records, every climax, the player's exit,
+  both sweeps and the rules gate; EpisodePlayModeTests.Threads covers the plays page. Five mutants are
+  each caught.
+- ThreadsReport (explicit; 120 skilled seasons of 8, 12 and 16):
+  - every season whose player saw week two has two or three threads (96 of 96; the other 24 lost their
+    player at the first eviction);
+  - every thread reaches its climax or a stated end;
+  - chapters average 1.2 a thread, most often Their Word, Settle It, Stay Off the Block and The Favour.
+- PlaysReport with threads: 15.4 story decisions a season for the reader (at the top of D1's 10-15),
+  9.4 for random; win rates 61% against 37%. ReachReport: unchanged but for the-house-turns' usual
+  flicker.
+- Floors: EditMode 1818, PlayMode 614, Uma 64, Sim 1021.

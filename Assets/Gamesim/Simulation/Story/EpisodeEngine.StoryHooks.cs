@@ -290,8 +290,9 @@ namespace Gamesim.Simulation
             StoryLapse(s, StoryAnchors.SocialClose);
             if (StoryAt(s, StoryRules.Production) && !string.IsNullOrEmpty(s.story.pendingRemovalId))
                 Expel(s, s.story.pendingRemovalId);
+            // A thread (plan 31) is heading for the jury: it ends at the finale, not here.
             if (s.Active.Count() <= 3)
-                foreach (var cycle in RunningCycles(s).ToList()) EndCycle(s, cycle, "final-three");
+                foreach (var cycle in RunningCycles(s).Where(x => x.lane != StoryLanes.Thread).ToList()) EndCycle(s, cycle, "final-three");
         }
 
         /// <summary>

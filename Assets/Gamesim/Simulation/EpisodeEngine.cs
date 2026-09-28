@@ -969,6 +969,8 @@ namespace Gamesim.Simulation
                 Log(s, "jury-tie", "Jury tie: the source game's tie rule awards the win to the second finalist in cast order.");
             s.winnerId = ordered[0].id; s.runnerUpId = ordered[1].id;
             ordered[0].status = ContestantStatus.Winner; ordered[1].status = ContestantStatus.RunnerUp;
+            // The story's threads end here, reading the jury they were heading for (plan 31).
+            StoryFinale(s);
             Phase(s, EpisodePhase.Finished); Log(s, "winner", "Gamesim winner: " + ordered[0].name + "!");
             ReconcileOpportunities(s);
         }

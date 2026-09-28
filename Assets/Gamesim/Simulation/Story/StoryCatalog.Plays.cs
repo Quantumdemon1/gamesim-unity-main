@@ -242,7 +242,7 @@ namespace Gamesim.Simulation
             cast = c =>
             {
                 // Someone who likes you and has promised you nothing yet this week.
-                var friends = Npcs(c).Where(x => c.Score(x.id, P(c)) >= 10 && !PromisedSafe(c, x.id))
+                var friends = Among(c).Where(x => c.Score(x.id, P(c)) >= 10 && !PromisedSafe(c, x.id))
                     .OrderByDescending(x => c.Score(x.id, P(c))).ThenBy(x => x.id, StringComparer.Ordinal).Take(3).ToList();
                 var friend = Keyed(c, "their-word", friends);
                 return friend == null ? null : Bind().With("FRIEND", friend.id).Headlining(friend.id);
@@ -315,7 +315,7 @@ namespace Gamesim.Simulation
             cast = c =>
             {
                 // The houseguest holding the heaviest grudge against the player.
-                var rival = Npcs(c).Where(x => c.Grudge(x.id, P(c)) >= 40)
+                var rival = Among(c).Where(x => c.Grudge(x.id, P(c)) >= 40)
                     .OrderByDescending(x => c.Grudge(x.id, P(c))).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
                 return rival == null ? null : Bind().With("RIVAL", rival.id).Headlining(rival.id);
             },
@@ -397,7 +397,7 @@ namespace Gamesim.Simulation
                 // Only for a player without numbers: no alliance of three or more yet. A pact of two
                 // with either of them is not numbers; bringing both into one is the play.
                 if (c.state.alliances.Any(a => a.active && a.members.Contains(P(c)) && a.members.Count >= 3)) return null;
-                var warm = Npcs(c).Where(x => c.Score(x.id, P(c)) >= 12)
+                var warm = Among(c).Where(x => c.Score(x.id, P(c)) >= 12)
                     .OrderByDescending(x => c.Score(x.id, P(c))).ThenBy(x => x.id, StringComparer.Ordinal).ToList();
                 // The warmest pair who can stand each other.
                 for (int i = 0; i < warm.Count; i++)
@@ -479,7 +479,7 @@ namespace Gamesim.Simulation
             cast = c =>
             {
                 // Somebody the player gets on with and knows nothing about yet, with things to learn.
-                var strangers = Npcs(c).Where(x => c.Score(P(c), x.id) >= 0 && !c.Real(x.id)
+                var strangers = Among(c).Where(x => c.Score(P(c), x.id) >= 0 && !c.Real(x.id)
                                                    && Lore.Learned(c.state, x.id).Count == 0 && Lore.FactsOf(c.state, x.id).Count() >= 3)
                     .OrderByDescending(x => c.Score(x.id, P(c))).ThenBy(x => x.id, StringComparer.Ordinal).Take(3).ToList();
                 var subject = Keyed(c, "know-them", strangers);
@@ -618,7 +618,7 @@ namespace Gamesim.Simulation
             {
                 // The target: the player's strongest competitor. The pawn: somebody who trusts the
                 // player and has no quarrel with the target yet.
-                var target = Npcs(c).OrderByDescending(x => x.hohWins + x.vetoWins).ThenByDescending(x => x.stats.competition)
+                var target = Among(c).OrderByDescending(x => x.hohWins + x.vetoWins).ThenByDescending(x => x.stats.competition)
                     .ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
                 if (target == null) return null;
                 var pawn = Npcs(c).Where(x => x.id != target.id && c.Score(x.id, P(c)) >= 5 && c.Grudge(x.id, target.id) < 20)

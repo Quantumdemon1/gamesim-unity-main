@@ -119,8 +119,9 @@ namespace Gamesim.Presentation
                 && (e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId)));
 
             // Previously on: the last step before this week of each of the player's stories still
-            // going when the week began.
-            foreach (var cycle in state.storylines.Where(Mine).OrderBy(x => x.week).ThenBy(x => x.id, StringComparer.Ordinal))
+            // going when the week began - the season's threads first (plan 31).
+            foreach (var cycle in state.storylines.Where(Mine).OrderByDescending(x => x.lane == StoryLanes.Thread)
+                         .ThenBy(x => x.week).ThenBy(x => x.id, StringComparer.Ordinal))
             {
                 if (!StorylineStatus.Running(cycle.status) && cycle.endedWeek < week) continue;
                 var before = cycle.path.LastOrDefault(step => step.week < week && step.result != StoryResults.Npc);
@@ -141,8 +142,17 @@ namespace Gamesim.Presentation
             // a teaser, not a spoiler.
             recap.nextTime = state.storylines
                 .Where(cycle => StorylineStatus.Running(cycle.status) && Mine(cycle) && cycle.week <= week)
-                .Select(cycle => (StoryCatalog.Find(cycle.templateId)?.title ?? cycle.title) + ": to be continued.")
+                .OrderByDescending(cycle => cycle.lane == StoryLanes.Thread)
+                .Select(cycle => NextTimeTitle(state, cycle) + ": to be continued.")
                 .Distinct(StringComparer.Ordinal).Take(LineLimit).ToList();
+        }
+
+        /// <summary>A story's name for "next time": a thread's names its people ("Your bond with Alex").</summary>
+        private static string NextTimeTitle(EpisodeState state, StorylineState cycle)
+        {
+            var template = StoryCatalog.Find(cycle.templateId);
+            if (template?.thread?.label != null) return StoryText.Fill(state, template.thread.label, cycle.cast);
+            return template?.title ?? cycle.title;
         }
 
         /// <summary>Every week the season has played, oldest first.</summary>

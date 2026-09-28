@@ -29,6 +29,7 @@ namespace Gamesim.Simulation
             list.AddRange(BondsAndSecrets());
             list.AddRange(ProductionArcs());
             list.AddRange(PlayArcs());
+            list.AddRange(ThreadArcs());
             return list;
         }
 
@@ -154,6 +155,12 @@ namespace Gamesim.Simulation
         internal static string P(StoryContext c) => c.state.playerId;
         internal static ContestantState PlayerOf(StoryContext c) => c.state.Find(c.state.playerId);
         internal static List<ContestantState> Npcs(StoryContext c) => StoryPeople.ActiveNpcs(c.state);
+        /// <summary>
+        /// Who a cast may choose its lead from: the houseguests in the house, or - for a thread's chapter -
+        /// only the ones the thread is about (<see cref="StoryContext.focus"/>).
+        /// </summary>
+        internal static List<ContestantState> Among(StoryContext c) =>
+            c.focus == null ? Npcs(c) : Npcs(c).Where(x => c.focus.Contains(x.id)).ToList();
         internal static string NpcHoh(StoryContext c) => StoryPeople.NpcHoh(c.state)?.id;
         internal static bool PlayerIsHoh(StoryContext c) => c.state.hohId == c.state.playerId;
         internal static bool PlayerNominated(StoryContext c) => c.state.nominees.Contains(c.state.playerId);

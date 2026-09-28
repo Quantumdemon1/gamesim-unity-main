@@ -91,6 +91,8 @@ namespace Gamesim.Editor
                 {
                     case "Diary room": count += DiaryRoom(house, group); break;
                     case "Kitchen": count += Kitchen(house, group); break;
+                    case "Living room": count += LivingRoom(house, group); break;
+                    case "HoH suite": count += HohSuite(house, group); break;
                 }
             }
             return count;
@@ -217,6 +219,175 @@ namespace Gamesim.Editor
             return count;
         }
 
+        /// <summary>
+        /// The living room (plan §5.3): the north partition - the wall the eviction's screen stands
+        /// against - becomes the feature wall in warm oak slats with a lit strip either side of the
+        /// screen's place and the house mark beside it; the teal rug binds the sofa and the coffee
+        /// table; the table gets its cluster; two framed prints hang on the south wall; a plant takes
+        /// the empty corner. The seats do not move: they are anchors.
+        /// </summary>
+        private static int LivingRoom(House house, Transform group)
+        {
+            var room = house.Room("Living room floor");
+            if (room == null) { Debug.LogWarning("[Gamesim] room finish · no living room floor"); return 0; }
+            int count = 0;
+            const string oak = Pack6 + "WallTreatments/wall_warm_oak_slats.png";
+            var left = Band(house, room, group, "Living / bedroom left", oak, 1.0f);
+            var right = Band(house, room, group, "Living / bedroom right", oak, 1.0f);
+            count += 2;
+
+            // The screen's place is the prototype television's: its box stands at the partition, and
+            // the cut scene's clone stands where it stood. The strips flank it symmetrically, one on
+            // each segment, across the doorway between them.
+            var television = house.PiecesMatching(room, name => name == "Television").FirstOrDefault();
+            float screenX = television != null ? television.position.x : room.Bounds.center.x + 2f;
+            if (left.HasValue && Strip(group, "Feature strip", left.Value, screenX - 3.6f - left.Value.Centre.x, 0.75f, 1.35f) != null) count++;
+            if (right.HasValue && Strip(group, "Feature strip", right.Value, screenX + 3.6f - right.Value.Centre.x, 0.75f, 1.35f) != null) count++;
+            if (right.HasValue)
+            {
+                var f = right.Value;
+                var centre = new Vector3(screenX + 2.6f, f.Bottom + 0.72f, f.Centre.z) + f.Normal * SignLift;
+                if (Decal(group, "House mark", Pack5 + "EnvironmentWallGraphics/gamesim_house_geometry.png", centre, 0.7f, f.Normal) != null) count++;
+            }
+
+            // The conversation group: the sofa and the coffee table on one rug.
+            var sofa = house.Pieces(room, "loungeDesignSofa").FirstOrDefault();
+            var table = house.PiecesMatching(room, name => name == "Coffee table (model)" || name == "tableCoffee").FirstOrDefault();
+            if (sofa != null)
+            {
+                var sb = Measure(sofa.gameObject);
+                var centre = new Vector2(sb.center.x, sb.center.z);
+                if (table != null)
+                {
+                    var tb = Measure(table.gameObject);
+                    centre = (centre + new Vector2(tb.center.x, tb.center.z)) * 0.5f;
+                    // Its cluster, on the table's top.
+                    float top = tb.max.y - room.FloorTop;
+                    float x = (tb.center.x - room.Bounds.center.x) / room.Bounds.size.x, z = (tb.center.z - room.Bounds.center.z) / room.Bounds.size.z;
+                    float dx = 0.22f / room.Bounds.size.x, dz = 0.16f / room.Bounds.size.z;
+                    if (Piece(house, room, group, "bb_set_bookstack", x - dx, z + dz * 0.5f, 15f, 0f, top) != null) count++;
+                    if (Piece(house, room, group, "bb_set_candle", x + dx * 0.6f, z - dz, 0f, 0f, top) != null) count++;
+                    if (Piece(house, room, group, "bb_set_tray", x + dx * 0.9f, z + dz, 100f, 0f, top) != null) count++;
+                }
+                // The neutral abstract rather than the teal: under the room's own light the teal read
+                // as a black patch from above, and the rug is there to be seen from above.
+                count += HideRugsUnder(house, room, centre, 4.4f);
+                if (Rug(group, "Living rug", room, Pack6 + "Rugs/rug_living_neutral_abstract.png", 4.4f, centre, 0f) != null) count++;
+            }
+
+            // Two framed prints on the south wall, at a wall 1.1 m tall's own height.
+            var south = WallFace(house, room, "South wing link left");
+            if (south.HasValue)
+            {
+                var s = south.Value;
+                if (Poster(group, "Framed print", s, Pack6 + "WallArt/wall_art_01.png", Pack6 + "PhotoFrames/frame_portrait_single.png", 0.6f, room.Bounds.center.x - 4.5f - s.Centre.x, 0.6f) != null) count++;
+                if (Poster(group, "Framed print", s, Pack6 + "WallArt/wall_art_05.png", Pack6 + "PhotoFrames/frame_portrait_single.png", 0.6f, room.Bounds.center.x + 2.5f - s.Centre.x, 0.6f) != null) count++;
+            }
+
+            if (Piece(house, room, group, "bb_set_ph_plant", 0.44f, -0.44f, 30f, 0f) != null) count++;
+            return count;
+        }
+
+        /// <summary>
+        /// The HoH suite (plan §5.4): status. The bed wears cream linen and a channelled cream
+        /// headboard with a throw across its foot; the wall behind it is the luxury geometric, the
+        /// west wall brass inlay; the cream-and-gold rug lies under the lounge; the reward station
+        /// stands on the television console against the south wall - the plaque and four gold
+        /// photo frames on the wall, the envelope, the letter, the gift, the snacks and the drink
+        /// on the console, the mini fridge beside it; the crown beside the bed and the HoH neon by
+        /// the door. Gold, because the suite is a power state.
+        /// </summary>
+        private static int HohSuite(House house, Transform group)
+        {
+            var room = house.Room("HoH floor");
+            if (room == null) { Debug.LogWarning("[Gamesim] room finish · no HoH floor"); return 0; }
+            int count = 0;
+
+            // The bed: the velvet slot is the duvet and the headboard together (bb_set_hohbed.py
+            // joins them on one material), so both go cream; the linen slot - mattress, pillows,
+            // turnback - takes the cream weave.
+            count += Skin(house, room, "bb_set_hohbed", "bb_mat_velvet_teal",
+                Finish("bb_mat_p6_hoh_duvet", Pack6 + "Bedding/duvet_hoh_cream.png", new Vector2(1.2f, 1.2f), Color.white, 0.15f, 0f, false));
+            count += Skin(house, room, "bb_set_hohbed", "bb_mat_linen_white",
+                Finish("bb_mat_p6_hoh_linen", Pack6 + "Upholstery/fabric_cream_weave.png", new Vector2(2f, 2f), Color.white, 0.12f, 0f, false));
+            var bed = house.Pieces(room, "bb_set_hohbed").FirstOrDefault();
+            if (bed != null)
+            {
+                var bb = Measure(bed.gameObject);
+                var throwOver = Finish("bb_mat_p6_hoh_throw", Pack6 + "Bedding/throw_blanket_hoh.png", Vector2.one, Color.white, 0.12f, 0f, true);
+                // The foot of the bed is its end away from the wall it stands against.
+                bool headNorth = Mathf.Abs(bb.max.z - room.Bounds.max.z) < Mathf.Abs(bb.min.z - room.Bounds.min.z);
+                float footZ = headNorth ? bb.min.z + 0.45f : bb.max.z - 0.45f;
+                // On the duvet, whose top is 0.57 m up (platform 0.25, mattress 0.22, duvet 0.10).
+                if (throwOver != null)
+                { Quad(group, "Bed throw", throwOver, new Vector3(bb.center.x, room.FloorTop + 0.575f, footZ), new Vector2(bb.size.x * 0.9f, 0.7f), Vector3.up, Vector3.forward); count++; }
+            }
+
+            // The walls: the geometric behind the bed, brass inlay on the west.
+            var north = Band(house, room, group, "South wing link left", Pack6 + "WallTreatments/hoh_luxury_geometric.png", 1.0f);
+            Band(house, room, group, "South wing west wall", Pack6 + "WallTreatments/wall_brass_inlay.png", 1.0f);
+            count += 2;
+            if (north.HasValue && bed != null)
+            {
+                var bb = Measure(bed.gameObject);
+                var f = north.Value;
+                float x = bb.min.x - 0.9f > room.Bounds.min.x + 0.6f ? bb.min.x - 0.9f : bb.max.x + 0.9f;
+                var centre = new Vector3(x, f.Bottom + 0.72f, f.Centre.z) + f.Normal * SignLift;
+                if (Decal(group, "Crown", Pack5 + "EnvironmentWallGraphics/hoh_crown_wall.png", centre, 0.5f, f.Normal) != null) count++;
+            }
+
+            // The lounge's rug, under the sofa, the chair and the table together.
+            var lounge = new[] { "loungeDesignSofa", "loungeChairRelax", "tableCoffee" }
+                .Select(name => house.Pieces(room, name).FirstOrDefault()).Where(t => t != null).ToList();
+            if (lounge.Count > 0)
+            {
+                var centre = Vector2.zero;
+                foreach (var piece in lounge) { var b = Measure(piece.gameObject); centre += new Vector2(b.center.x, b.center.z); }
+                centre /= lounge.Count;
+                count += HideRugsUnder(house, room, centre, 3.6f);
+                if (Rug(group, "HoH rug", room, Pack6 + "Rugs/rug_hoh_cream_gold.png", 3.6f, centre, 0f) != null) count++;
+            }
+
+            // The reward station: on the console against the south wall, and on the wall above it.
+            var console = house.Pieces(room, "cabinetTelevision").FirstOrDefault();
+            var south = WallFace(house, room, "South wing south wall");
+            if (console != null && south.HasValue)
+            {
+                var cb = Measure(console.gameObject);
+                var s = south.Value;
+                const float consoleTop = 0.45f;   // bb_set_tvconsole.py: H 0.45, the screen standing on it
+                float top = room.FloorTop + consoleTop;
+                float along = cb.center.x - s.Centre.x;
+                // The plaque, then the four photo frames under it, all above the console's top edge.
+                if (Decal(group, "Reward plaque", Pack6 + "HOHRewards/reward_plaque.png", new Vector3(cb.center.x, s.Bottom + 0.88f, s.Centre.z) + s.Normal * SignLift, 0.6f, s.Normal) != null) count++;
+                for (int i = 0; i < 4; i++)
+                {
+                    float x = cb.center.x + (i - 1.5f) * 0.30f;
+                    var at = new Vector3(x, s.Bottom + 0.52f, s.Centre.z) + s.Normal * SignLift;
+                    if (Decal(group, "HoH photo", Pack6 + "HOHRewards/photo_placeholder_" + (i + 1) + ".png", at, 0.2f, s.Normal) != null) count++;
+                    Decal(group, "HoH photo frame", Pack6 + "PhotoFrames/frame_hoh_gold.png", at + s.Normal * 0.002f, 0.26f, s.Normal);
+                }
+                // On the console: the letter and its envelope flat, the gift, the snacks, the drink.
+                var envelope = Finish("bb_mat_p6_decal_hoh_envelope", Pack6 + "HOHRewards/hoh_envelope.png", Vector2.one, Color.white, 0.2f, 0f, true);
+                if (envelope != null) { Quad(group, "HoH envelope", envelope, new Vector3(cb.min.x + 0.22f, top + 0.004f, cb.center.z - 0.05f), new Vector2(0.24f, 0.15f), Vector3.up, Quaternion.Euler(0f, 12f, 0f) * Vector3.forward); count++; }
+                var letter = Finish("bb_mat_p6_decal_hoh_letter_sheet", Pack6 + "HOHRewards/hoh_letter_sheet.png", Vector2.one, Color.white, 0.2f, 0f, true);
+                if (letter != null) { Quad(group, "HoH letter", letter, new Vector3(cb.min.x + 0.40f, top + 0.006f, cb.center.z + 0.08f), new Vector2(0.21f, 0.16f), Vector3.up, Quaternion.Euler(0f, -6f, 0f) * Vector3.forward); count++; }
+                if (Carton(group, "Gift box", Pack6 + "HOHRewards/gift_wrap_gold.png", new Vector3(0.22f, 0.16f, 0.16f), new Vector3(cb.max.x - 0.22f, top, cb.center.z), 15f) != null) count++;
+                if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_gold.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.48f, top, cb.center.z - 0.08f), -10f) != null) count++;
+                if (Carton(group, "Snack bag", Pack6 + "HOHRewards/snack_bag_blue.png", new Vector3(0.14f, 0.20f, 0.05f), new Vector3(cb.max.x - 0.64f, top, cb.center.z + 0.04f), 25f) != null) count++;
+                if (Tin(group, "HoH drink", Pack6 + "HOHRewards/drink_label_hoh.png", 0.035f, 0.22f, new Vector3(cb.max.x - 0.36f, top, cb.center.z + 0.12f)) != null) count++;
+                // The mini fridge, on the floor beside the console, toward the room's middle.
+                float fridgeX = cb.max.x + 0.40f < room.Bounds.max.x - 0.5f ? cb.max.x + 0.40f : cb.min.x - 0.40f;
+                if (Carton(group, "Mini fridge", Pack6 + "GameRoom/mini_fridge_graphic.png", new Vector3(0.50f, 0.70f, 0.50f), new Vector3(fridgeX, room.FloorTop, cb.center.z), 0f) != null) count++;
+            }
+
+            // The HoH neon by the door, on the divider's south segment.
+            var divider = WallFace(house, room, "South wing divider 1 south");
+            if (divider.HasValue && Sign(group, "HoH neon", divider.Value, Pack5 + "NeonMasks/neon_hoh_suite_mask.png",
+                new Color(1.00f, 0.82f, 0.40f) * 1.5f, 1.0f, 0f, 0.72f) != null) count++;
+            return count;
+        }
+
         // ---------------------------------------------------------------- the vocabulary
 
         /// <summary>A wall band's face, for hanging signs on: where it is, which way it looks, how far it runs.</summary>
@@ -287,6 +458,46 @@ namespace Gamesim.Editor
                 ? new Vector3((min + max) * 0.5f, low + h * 0.5f, faceAt + normal.z * WallLift)
                 : new Vector3(faceAt + normal.x * WallLift, low + h * 0.5f, (min + max) * 0.5f);
             return new Face(centre, normal, alongX ? Vector3.right : Vector3.forward, length, h, low);
+        }
+
+        /// <summary>A lit strip on a band: a plain glow quad <paramref name="width"/> wide and <paramref name="height"/> tall, standing on the band's foot.</summary>
+        private static GameObject Strip(Transform group, string name, Face face, float along, float height, float tint)
+        {
+            var material = Glow("bb_mat_p6_glow_strip", null, new Color(0.62f, 0.70f, 1.00f) * tint);
+            if (material == null) return null;
+            float h = Mathf.Min(height, face.Height - 0.1f);
+            var centre = new Vector3(face.Centre.x, face.Bottom + 0.05f + h * 0.5f, face.Centre.z) + face.Along * along + face.Normal * SignLift;
+            return Quad(group, name, material, centre, new Vector2(0.06f, h), face.Normal, Vector3.up);
+        }
+
+        /// <summary>A framed print: the art quad on a band and its frame a hair in front, both lit and cut to their edges.</summary>
+        private static GameObject Poster(Transform group, string name, Face face, string art, string frame, float width, float along, float centreHeight)
+        {
+            var image = AssetDatabase.LoadAssetAtPath<Texture2D>(art);
+            if (image == null) { Debug.LogWarning("[Gamesim] room finish · missing texture " + art); return null; }
+            float h = width * image.height / image.width;
+            float y = face.Bottom + Mathf.Min(centreHeight, face.Height - h * 0.5f - 0.02f);
+            var centre = new Vector3(face.Centre.x, y, face.Centre.z) + face.Along * along + face.Normal * SignLift;
+            var print = Decal(group, name, art, centre, width, face.Normal);
+            if (print == null) return null;
+            Decal(group, name + " frame", frame, centre + face.Normal * 0.002f, width, face.Normal);
+            return print;
+        }
+
+        /// <summary>Disables every rug in the room whose footprint the new rug's would cover, so rugs never stack.</summary>
+        private static int HideRugsUnder(House house, Room room, Vector2 centre, float metres)
+        {
+            int count = 0;
+            float half = metres * 0.5f;
+            foreach (var piece in house.PiecesMatching(room, name => name.IndexOf("rug", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                var b = Measure(piece.gameObject);
+                bool overlaps = b.max.x > centre.x - half && b.min.x < centre.x + half && b.max.z > centre.y - half && b.min.z < centre.y + half;
+                if (!overlaps) continue;
+                foreach (var renderer in piece.GetComponentsInChildren<Renderer>(true))
+                    if (renderer.enabled) { renderer.enabled = false; count++; }
+            }
+            return count;
         }
 
         /// <summary>A flat graphic on a piece's face: a lit quad, clipped to its own edge, <paramref name="width"/> across at its image's aspect.</summary>

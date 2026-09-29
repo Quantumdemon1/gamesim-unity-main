@@ -195,9 +195,9 @@ namespace Gamesim.Presentation
         public static RectTransform Build(
             Transform parent, EpisodeState state, float fontScale, TMP_FontAsset font,
             System.Func<string, Texture> portrait, System.Action<string> onSelect = null,
-            string followedId = null)
+            string followedId = null, bool foldDeparted = false)
         {
-            var order = Order(state);
+            var order = Order(state, foldDeparted);
             bool wide = Wide(parent as RectTransform, order.Count, fontScale);
             float scale = wide ? fontScale : Fit(parent as RectTransform, order.Count, fontScale);
 
@@ -317,7 +317,7 @@ namespace Gamesim.Presentation
         /// makes it worth having, so only an eviction moves anyone. Left to right now rather than
         /// top to bottom, which is the reading order of the row it became.</para>
         /// </summary>
-        private static List<ContestantState> Order(EpisodeState state)
+        private static List<ContestantState> Order(EpisodeState state, bool foldDeparted = false)
         {
             var active = new List<ContestantState>();
             var gone = new List<ContestantState>();
@@ -326,7 +326,10 @@ namespace Gamesim.Presentation
             foreach (var actor in state.contestants)
             {
                 if (actor.isPlayer || actor.id == state.playerId) { player = actor; continue; }
-                if (actor.status == ContestantStatus.Active) active.Add(actor); else gone.Add(actor);
+                if (actor.status == ContestantStatus.Active) active.Add(actor);
+                // At the endgame the strip is the few who are left (ENDGAME-PLAN F1): the jury has
+                // a card of its own in the column, and the winner and runner-up keep their chips.
+                else if (!foldDeparted || actor.status == ContestantStatus.Winner || actor.status == ContestantStatus.RunnerUp) gone.Add(actor);
             }
 
             var order = new List<ContestantState>();

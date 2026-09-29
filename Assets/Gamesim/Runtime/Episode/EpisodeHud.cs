@@ -271,7 +271,7 @@ namespace Gamesim.Episode
             // nominee" and have that mean a person rather than a name.
             // A chip opens its houseguest's card (EpisodeDirector.PressCastChip), drawn over the strip.
             CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.PressCastChip,
-                director.FollowedId);
+                director.FollowedId, IsEndgame(state));
             FollowChip(director.FollowedName);
 
             // The top bar (mockup-01): the brand, the week, the objective, the house's numbers

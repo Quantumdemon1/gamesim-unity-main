@@ -32,6 +32,11 @@ namespace Gamesim.Presentation
     /// raycasting graphic, and it ends on a timer rather than on acknowledgement, so an automated
     /// season is never held up behind it. The presses that speed it up and skip it are read straight
     /// off the devices.</para>
+    ///
+    /// <para>It plays in one of two frames: the HUD's card in the middle of the screen, or - for the
+    /// ceremony cut scenes - the living room's own screen (<see cref="ScreenSurface"/>), the same
+    /// card at the screen's shape with the two faces and their counts large enough to read from
+    /// the sofa. Every child keeps its name in both.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class VoteReveal : MonoBehaviour
@@ -82,6 +87,14 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<HouseAudio.Cue> CueRequested;
 
+        /// <summary>
+        /// Each beat as the card reaches it - the card up, a vote on the board, the beat before the
+        /// last, a tie and the vote that breaks it, the result, the card down - so the house can cut
+        /// to the hot seats and act each out in time with the screen. A skip reports every vote it
+        /// puts up at once, marked as skipped.
+        /// </summary>
+        public event System.Action<CeremonyBeat> BeatReached;
+
         private CanvasGroup group;
         private RectTransform column, scrim, dotRow, banner, tiePip, tieMark;
         private TMP_Text eyebrow, title, progress, bannerText, host, controls, speedMark;
@@ -96,6 +109,8 @@ namespace Gamesim.Presentation
         private float elapsed, upFor, speed = 1f;
         private int shown = -1;
         private bool playing, reduced, hohIsPlayer, evictedIsPlayer, lastVotePending, tieCalled, tieBroken, usingPad;
+        private Frame frame;
+        private ScreenSurface surface;
 
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -111,6 +126,21 @@ namespace Gamesim.Presentation
 
         /// <summary>How many ballots are on the board: the house's so far, and the Head of Household's once it is cast.</summary>
         public int VotesShown => Mathf.Max(0, shown) + (tieBroken ? 1 : 0);
+
+        /// <summary>How long each vote holds at the pace played, in seconds of the card's clock.</summary>
+        public float VoteHoldSeconds => VoteHold;
+
+        /// <summary>The beat before the house's last vote, at the pace played.</summary>
+        public float LastVoteBeatSeconds => LastVoteWait;
+
+        /// <summary>How long the result holds once it is read, at the pace played.</summary>
+        public float ResultHoldSeconds => CeremonyPacing.ResultHold(pace);
+
+        /// <summary>Who is leaving, as the card was told; null before it plays.</summary>
+        public string EvictedId => evictedId;
+
+        /// <summary>The screen the card is playing on, or null while it plays on the HUD.</summary>
+        public ScreenSurface Surface => playing ? surface : null;
 
         /// <summary>
         /// How long the reveal takes at its own speed, start to finish: the fade, the block, a hold on
@@ -164,11 +194,12 @@ namespace Gamesim.Presentation
         /// ballot; anything else is a shape this card cannot narrate, and it declines rather than
         /// drawing a broken tally. <paramref name="hohName"/> is who breaks a tie, and the two flags
         /// say when the Head of Household or the evicted houseguest is the player, who is spoken to
-        /// rather than named.
+        /// rather than named. With a <paramref name="screen"/> the card plays on that screen's face
+        /// instead of the HUD.
         /// </summary>
         public bool Play(int week, IList<Nominee> block, IList<Ballot> votes, string evicted, bool reducedMotion,
             CeremonyPace pace = CeremonyPace.Suspenseful, string hohName = null, bool hohIsPlayer = false,
-            bool evictedIsPlayer = false)
+            bool evictedIsPlayer = false, ScreenSurface screen = null)
         {
             if (block == null || block.Count != 2 || votes == null || votes.Count == 0) return false;
 
@@ -189,6 +220,8 @@ namespace Gamesim.Presentation
             this.hohName = hohName;
             this.hohIsPlayer = hohIsPlayer;
             this.evictedIsPlayer = evictedIsPlayer;
+            surface = screen;
+            frame = screen != null ? Frame.OnScreen() : Frame.Hud(Mathf.Max(0.5f, FontScale));
 
             Build();
             reduced = reducedMotion;
@@ -210,15 +243,18 @@ namespace Gamesim.Presentation
             column.gameObject.SetActive(true);
             scrim.gameObject.SetActive(true);
             group.alpha = reduced ? 1f : 0f;
+            Beat(new CeremonyBeat(CeremonyBeatKind.Opened));
             return true;
         }
 
         public void Cancel()
         {
+            bool was = playing;
             playing = false;
             if (group != null) group.alpha = 0f;
             if (column != null) column.gameObject.SetActive(false);
             if (scrim != null) scrim.gameObject.SetActive(false);
+            if (was) Beat(new CeremonyBeat(CeremonyBeatKind.Closed, -1, evictedId, !ShowingResult));
         }
 
         /// <summary>
@@ -314,6 +350,8 @@ namespace Gamesim.Presentation
 
         private void Raise(HouseAudio.Cue cue) => CueRequested?.Invoke(cue);
 
+        private void Beat(CeremonyBeat beat) => BeatReached?.Invoke(beat);
+
         /// <summary>How many of the house's first <paramref name="count"/> ballots name <paramref name="id"/>.</summary>
         private int HouseVotes(string id, int count)
         {
@@ -334,6 +372,7 @@ namespace Gamesim.Presentation
             shown = count;
             lastVotePending = pending;
             if (announce) for (int b = before; b < count; b++) Raise(HouseAudio.Cue.Vote);
+            for (int b = before; b < count; b++) Beat(new CeremonyBeat(CeremonyBeatKind.VoteShown, b, house[b].TargetId, !announce));
 
             for (int i = 0; i < nominees.Count; i++)
                 counts[i].text = HouseVotes(nominees[i].Id, count).ToString();
@@ -345,6 +384,7 @@ namespace Gamesim.Presentation
             progress.text = pending ? "One vote left"
                 : count == 0 ? (house.Count == 1 ? "1 vote to reveal" : house.Count + " votes to reveal")
                 : "Revealing vote " + count + " of " + house.Count;
+            if (pending) Beat(new CeremonyBeat(CeremonyBeatKind.LastVotePending, house.Count - 1));
         }
 
         /// <summary>
@@ -366,6 +406,7 @@ namespace Gamesim.Presentation
                 tiePip.gameObject.SetActive(true);
                 tiePip.GetComponent<Image>().color = UiTheme.Outline;
             }
+            Beat(new CeremonyBeat(CeremonyBeatKind.TieCalled));
         }
 
         /// <summary>
@@ -385,6 +426,7 @@ namespace Gamesim.Presentation
             if (tieMark != null) tieMark.gameObject.SetActive(true);
             progress.text = hohIsPlayer ? "You have cast the deciding vote."
                 : "The Head of Household has cast the deciding vote.";
+            Beat(new CeremonyBeat(CeremonyBeatKind.TieBroken, -1, tieBreak?.TargetId, !announce));
         }
 
         /// <summary>The result stage: the block dims apart from whoever is leaving, and the host reads it.</summary>
@@ -404,6 +446,7 @@ namespace Gamesim.Presentation
             progress.text = "All votes are in";
             host.text = Verdict();
             Raise(HouseAudio.Cue.Eviction);
+            Beat(new CeremonyBeat(CeremonyBeatKind.ResultShown, -1, evictedId, elapsed < ResultAt));
         }
 
         /// <summary>
@@ -428,9 +471,71 @@ namespace Gamesim.Presentation
                 + ", " + evictee;
         }
 
+        /// <summary>
+        /// The card's frame: how big its parts are and where they sit, in canvas units, with the type
+        /// sizes that fit their boxes (Inter's line is 1.21 of its size; every box here is at least
+        /// 1.3). The HUD's is the 880-wide card in the middle of the screen, scaled by the large-text
+        /// preference; the screen's is the screen's whole face at 3:2, the faces and their counts
+        /// large enough to read from the sofa.
+        /// </summary>
+        private readonly struct Frame
+        {
+            public readonly bool Screen;
+            public readonly float Width, Height, Portrait, Slot;
+            public readonly float EyebrowY, EyebrowH, EyebrowPt, TitleY, TitleH, TitlePt, RimY, NameY, NameH, NamePt,
+                CountY, CountH, CountPt, CaptionY, CaptionH, CaptionPt, VersusSize, VersusY, VersusPt, DotsY, DotsH, Pip, Step,
+                TieMarkY, TieMarkW, TieMarkH, TieMarkDx, TiePt, ProgressY, ProgressH, ProgressPt, HostY, HostH, HostPt,
+                BannerY, BannerW, BannerH, BannerPt, ControlsY, ControlsH, ControlsPt, GlassX, GlassY, Ring;
+
+            private Frame(bool screen, float width, float height, float portrait, float slot, float eyebrowY, float eyebrowH,
+                float eyebrowPt, float titleY, float titleH, float titlePt, float rimY, float nameY, float nameH, float namePt,
+                float countY, float countH, float countPt, float captionY, float captionH, float captionPt, float versusSize,
+                float versusY, float versusPt, float dotsY, float dotsH, float pip, float step, float tieMarkY, float tieMarkW,
+                float tieMarkH, float tieMarkDx, float tiePt, float progressY, float progressH, float progressPt, float hostY,
+                float hostH, float hostPt, float bannerY, float bannerW, float bannerH, float bannerPt, float controlsY,
+                float controlsH, float controlsPt, float glassX, float glassY, float ring)
+            {
+                Screen = screen; Width = width; Height = height; Portrait = portrait; Slot = slot;
+                EyebrowY = eyebrowY; EyebrowH = eyebrowH; EyebrowPt = eyebrowPt; TitleY = titleY; TitleH = titleH; TitlePt = titlePt;
+                RimY = rimY; NameY = nameY; NameH = nameH; NamePt = namePt; CountY = countY; CountH = countH; CountPt = countPt;
+                CaptionY = captionY; CaptionH = captionH; CaptionPt = captionPt; VersusSize = versusSize; VersusY = versusY; VersusPt = versusPt;
+                DotsY = dotsY; DotsH = dotsH; Pip = pip; Step = step; TieMarkY = tieMarkY; TieMarkW = tieMarkW; TieMarkH = tieMarkH;
+                TieMarkDx = tieMarkDx; TiePt = tiePt; ProgressY = progressY; ProgressH = progressH; ProgressPt = progressPt;
+                HostY = hostY; HostH = hostH; HostPt = hostPt; BannerY = bannerY; BannerW = bannerW; BannerH = bannerH; BannerPt = bannerPt;
+                ControlsY = controlsY; ControlsH = controlsH; ControlsPt = controlsPt; GlassX = glassX; GlassY = glassY; Ring = ring;
+            }
+
+            /// <summary>The HUD's card: 880 wide, the two faces 104 across at the standard text size.</summary>
+            public static Frame Hud(float s)
+            {
+                const float portrait = 104f;
+                float top = 100f + portrait;
+                return new Frame(false, 880f * s, (top + 296f) * s, portrait * s, 300f * s,
+                    0f, 22f * s, 15f * s, -26f * s, 60f * s, 48f * s, -100f * s,
+                    -(top + 14f) * s, 24f * s, 19f * s, -(top + 36f) * s, 72f * s, 58f * s, -(top + 104f) * s, 18f * s, 12f * s,
+                    62f * s, -(100f + portrait * 0.4f) * s, 22f * s, -(top + 130f) * s, 20f * s, 11f * s, 20f * s,
+                    -(top + 60f) * s, 56f * s, 24f * s, 70f * s, 12f * s, -(top + 156f) * s, 22f * s, 16f * s,
+                    -(top + 184f) * s, 26f * s, 18f * s, -(top + 218f) * s, 560f * s, 44f * s, 22f * s,
+                    -(top + 272f) * s, 18f * s, 12f * s, 34f * s, 26f * s, 4f * s);
+            }
+
+            /// <summary>The living room's screen: its whole face, the two faces 240 across and the counts 96 high.</summary>
+            public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 240f, 560f,
+                -16f, 36f, 26f, -52f, 84f, 64f, -146f,
+                -396f, 44f, 32f, -446f, 130f, 96f, float.NaN, 0f, 0f,
+                120f, -242f, 40f, -590f, 40f, 24f, 40f,
+                -500f, 120f, 44f, 150f, 30f, -636f, 36f, 26f,
+                -676f, 40f, 30f, -724f, 720f, 56f, 40f,
+                -782f, 18f, 13f, 0f, 0f, 8f);
+        }
+
         private void Build()
         {
             var root = (RectTransform)transform;
+            var canvas = GetComponent<Canvas>();
+            if (surface != null) surface.Mount(canvas);
+            else ScreenSurface.Unmount(canvas);
+
             if (column != null)
             {
                 foreach (Transform child in column) Destroy(child.gameObject);
@@ -461,23 +566,22 @@ namespace Gamesim.Presentation
                 column.pivot = new Vector2(.5f, .5f);
             }
 
-            float scale = Mathf.Max(0.5f, FontScale);
-            float portrait = 104f * scale;
-            // Tall enough for the host's line and the controls under the banner.
-            column.sizeDelta = new Vector2(880f * scale, (100f + portrait + 296f) * scale);
-            CardGlass(column, scale);
+            var f = frame;
+            float width = f.Width, portrait = f.Portrait;
+            column.sizeDelta = new Vector2(width, f.Height);
+            CardGlass(column, f.GlassX, f.GlassY);
 
-            eyebrow = HudPrimitives.Label("Week", column, 15f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
+            eyebrow = HudPrimitives.Label("Week", column, f.EyebrowPt, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.characterSpacing = 14f;
-            Place(eyebrow.rectTransform, 880f * scale, 22f * scale, 0f);
+            Place(eyebrow.rectTransform, width, f.EyebrowH, f.EyebrowY);
 
             // A broadcast's fast-forward bug in the card's corner, up only while the count is sped up.
-            speedMark = HudPrimitives.Label("Speed", column, 14f * scale, UiTheme.Glow, TextAlignmentOptions.Right);
+            speedMark = HudPrimitives.Label("Speed", column, f.EyebrowPt, UiTheme.Glow, TextAlignmentOptions.Right);
             speedMark.text = CeremonyTakeover.SpeedCaption;
-            Place(speedMark.rectTransform, 170f * scale, 22f * scale, 0f, 345f * scale);
+            Place(speedMark.rectTransform, width * 0.2f, f.EyebrowH, f.EyebrowY, width * 0.39f);
             speedMark.gameObject.SetActive(false);
 
-            title = HudPrimitives.Label("Title", column, 48f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
+            title = HudPrimitives.Label("Title", column, f.TitlePt, UiTheme.Paper, TextAlignmentOptions.Center);
             title.text = "LIVE EVICTION";
             // The bold cut, lit from above, as the ceremony cards set their titles.
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
@@ -485,47 +589,49 @@ namespace Gamesim.Presentation
             title.characterSpacing = 2f;
             title.enableVertexGradient = true;
             title.colorGradient = new VertexGradient(Color.white, Color.white, UiTheme.Glow, UiTheme.Glow);
-            Place(title.rectTransform, 880f * scale, 60f * scale, -26f * scale);
+            Place(title.rectTransform, width, f.TitleH, f.TitleY);
 
             // The two columns, with the tally between them.
-            float slot = 300f * scale;
+            float slot = f.Slot;
             for (int i = 0; i < nominees.Count; i++)
             {
                 float x = (i == 0 ? -1f : 1f) * slot * 0.5f;
 
-                var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, 4f * scale, false, nominees[i].Character);
+                var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, f.Ring, false, nominees[i].Character);
 
                 // Both faces here are on the block, so both carry the target the web build uses.
                 HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, portrait);
                 rim.anchorMin = new Vector2(.5f, 1f); rim.anchorMax = new Vector2(.5f, 1f); rim.pivot = new Vector2(.5f, 1f);
-                rim.anchoredPosition = new Vector2(x, -100f * scale);
+                rim.anchoredPosition = new Vector2(x, f.RimY);
                 rims.Add(rim);
 
-                var name = HudPrimitives.Label("Nominee", column, 19f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
+                var name = HudPrimitives.Label("Nominee", column, f.NamePt, UiTheme.Paper, TextAlignmentOptions.Center);
                 name.text = nominees[i].Name;
-                Place(name.rectTransform, slot, 24f * scale, -(100f + portrait + 14f) * scale, x);
+                Place(name.rectTransform, slot, f.NameH, f.NameY, x);
 
-                var count = HudPrimitives.Label("Votes", column, 58f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
+                var count = HudPrimitives.Label("Votes", column, f.CountPt, UiTheme.Paper, TextAlignmentOptions.Center);
                 count.text = "0";
                 // Taller than the figure's line: Inter's line is 1.21 of its size, and a 58-point
                 // figure in a 66 box was truncated whole - the tally counted to nothing on screen.
-                Place(count.rectTransform, slot, 72f * scale, -(100f + portrait + 36f) * scale, x);
+                Place(count.rectTransform, slot, f.CountH, f.CountY, x);
                 counts.Add(count);
 
-                var caption = HudPrimitives.Label("Votes caption", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-                caption.text = "VOTES";
-                caption.characterSpacing = 8f;
-                Place(caption.rectTransform, slot, 18f * scale, -(100f + portrait + 104f) * scale, x);
+                if (!f.Screen)
+                {
+                    var caption = HudPrimitives.Label("Votes caption", column, f.CaptionPt, UiTheme.Muted, TextAlignmentOptions.Center);
+                    caption.text = "VOTES";
+                    caption.characterSpacing = 8f;
+                    Place(caption.rectTransform, slot, f.CaptionH, f.CaptionY, x);
+                }
             }
 
             // A filled red disc with the word inside it, not red lettering on the ground. The web
             // build makes this the one solid mark between the two faces, and it is what stops the
             // eye reading the pair as a row of portraits rather than as an opposition.
-            float versusSize = 62f * scale;
             var versusDisc = HudPrimitives.Disc("Versus disc", column, UiTheme.Danger);
-            Place(versusDisc, versusSize, versusSize, -(100f + portrait * 0.4f) * scale);
+            Place(versusDisc, f.VersusSize, f.VersusSize, f.VersusY);
 
-            var versus = HudPrimitives.Label("Versus", versusDisc, 22f * scale, UiTheme.OnColor(UiTheme.Danger),
+            var versus = HudPrimitives.Label("Versus", versusDisc, f.VersusPt, UiTheme.OnColor(UiTheme.Danger),
                 TextAlignmentOptions.Center);
             versus.text = "VS";
             versus.rectTransform.anchorMin = Vector2.zero;
@@ -536,9 +642,9 @@ namespace Gamesim.Presentation
             // One pip per ballot the house cast, filling as the votes come in.
             dotRow = new GameObject("Dots", typeof(RectTransform)).GetComponent<RectTransform>();
             dotRow.SetParent(column, false);
-            Place(dotRow, 880f * scale, 20f * scale, -(100f + portrait + 130f) * scale);
+            Place(dotRow, width, f.DotsH, f.DotsY);
 
-            float pip = 11f * scale, step = 20f * scale;
+            float pip = f.Pip, step = f.Step;
             float first = -(house.Count - 1) * step * 0.5f;
             for (int i = 0; i < house.Count; i++)
             {
@@ -569,8 +675,8 @@ namespace Gamesim.Presentation
                     float x = (named == 0 ? -1f : 1f) * slot * 0.5f;
                     tieMark = HudPrimitives.Fill("Tie-break vote", column, UiTheme.Gold, UiTheme.ControlRadius);
                     // Beside the figure, level with its middle, clear of a two-digit count.
-                    Place(tieMark, 56f * scale, 24f * scale, -(100f + portrait + 60f) * scale, x + 70f * scale);
-                    var chip = HudPrimitives.Label("Tie-break", tieMark, 12f * scale, UiTheme.OnColor(UiTheme.Gold),
+                    Place(tieMark, f.TieMarkW, f.TieMarkH, f.TieMarkY, x + f.TieMarkDx);
+                    var chip = HudPrimitives.Label("Tie-break", tieMark, f.TiePt, UiTheme.OnColor(UiTheme.Gold),
                         TextAlignmentOptions.Center);
                     if (bold != null) chip.font = bold;
                     chip.text = "HOH";
@@ -582,22 +688,22 @@ namespace Gamesim.Presentation
                 }
             }
 
-            progress = HudPrimitives.Label("Progress", column, 16f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-            Place(progress.rectTransform, 880f * scale, 22f * scale, -(100f + portrait + 156f) * scale);
+            progress = HudPrimitives.Label("Progress", column, f.ProgressPt, UiTheme.Muted, TextAlignmentOptions.Center);
+            Place(progress.rectTransform, width, f.ProgressH, f.ProgressY);
 
             // The host's line: whose vote breaks a tie, and then the result, the way the format reads
             // it out.
-            host = HudPrimitives.Label("Host", column, 18f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
+            host = HudPrimitives.Label("Host", column, f.HostPt, UiTheme.Paper, TextAlignmentOptions.Center);
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) host.font = medium;
             // One line, drawn smaller rather than cut: a long name would wrap the verdict onto a second
             // line the box truncates, and "...Jordan Taylor, you" is not a result.
-            host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = 12f * scale;
-            Place(host.rectTransform, 880f * scale, 26f * scale, -(100f + portrait + 184f) * scale);
+            host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = f.HostPt * 0.66f;
+            Place(host.rectTransform, width, f.HostH, f.HostY);
 
             banner = HudPrimitives.Fill("Result banner", column, UiTheme.Danger, UiTheme.ControlRadius);
-            Place(banner, 560f * scale, 44f * scale, -(100f + portrait + 218f) * scale);
-            bannerText = HudPrimitives.Label("Result", banner, 22f * scale, UiTheme.Ink, TextAlignmentOptions.Center);
+            Place(banner, f.BannerW, f.BannerH, f.BannerY);
+            bannerText = HudPrimitives.Label("Result", banner, f.BannerPt, UiTheme.Ink, TextAlignmentOptions.Center);
             bannerText.rectTransform.anchorMin = Vector2.zero;
             bannerText.rectTransform.anchorMax = Vector2.one;
             bannerText.rectTransform.offsetMin = Vector2.zero;
@@ -606,25 +712,26 @@ namespace Gamesim.Presentation
 
             // What the card answers to: the count can be sped up, or skipped to the result. The keys
             // named follow the device last used on the card.
-            controls = HudPrimitives.Label("Controls", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
+            controls = HudPrimitives.Label("Controls", column, f.ControlsPt, UiTheme.Muted, TextAlignmentOptions.Center);
             controls.text = CeremonyTakeover.ControlsFor(usingPad);
-            Place(controls.rectTransform, 880f * scale, 18f * scale, -(100f + portrait + 272f) * scale);
+            Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
         }
 
         /// <summary>
         /// The mockups' glass ground behind the card's column (VISUAL-TARGET.md §4, mockup-08 and
         /// -10): the night background at 85 %, a cyan hairline on the edge and a soft glow outside
         /// it. Built as the column's first child so every piece of the ceremony draws over it, and
-        /// stretched to the column so it grows with the large-text preference.
+        /// stretched to the column so it grows with the large-text preference. On a screen it is
+        /// the screen's own ground, flush with the face.
         /// </summary>
-        private static RectTransform CardGlass(RectTransform column, float scale)
+        private static RectTransform CardGlass(RectTransform column, float marginX, float marginY)
         {
             var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
             glass.SetAsFirstSibling();
             glass.anchorMin = Vector2.zero;
             glass.anchorMax = Vector2.one;
-            glass.offsetMin = new Vector2(-34f * scale, -26f * scale);
-            glass.offsetMax = new Vector2(34f * scale, 26f * scale);
+            glass.offsetMin = new Vector2(-marginX, -marginY);
+            glass.offsetMax = new Vector2(marginX, marginY);
             UiTheme.Glass(glass, UiTheme.GlassRadius);
             return glass;
         }

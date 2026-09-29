@@ -262,8 +262,9 @@ namespace Gamesim.House
                     if (DropFailedCandidate(actor)) continue;
                     return Fail(out reason, actor.motion.FailureReason ?? "NPC binding failed; explicit recovery is required.");
                 }
-                // The opening's cast walks while the house is paused around it.
-                actor.motion.SetPaused(paused && !OpeningHoldsActor(actor.id) && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id));
+                // The opening's cast walks while the house is paused around it, and so does a ceremony's.
+                actor.motion.SetPaused(paused && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id)
+                    && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id));
             }
             LastFailure = null;
             return true;
@@ -439,7 +440,7 @@ namespace Gamesim.House
         {
             if (disposed || paused == value) return;
             paused = value;
-            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id) && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id));
+            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id) && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id));
             foreach (var lease in leases.Values) lease.Status = value ? HouseMeetingStatus.Paused : HouseMeetingStatus.Travelling;
         }
         public bool Release(HouseMeetingLease lease) => Current(lease) && Retire(lease,HouseMeetingStatus.Released,null);
@@ -448,6 +449,7 @@ namespace Gamesim.House
             ReleaseActivities();
             EndCompetitionStage();
             EndOpeningStage();
+            EndCeremonyStage();
             EndSceneStage();
             EndDeparture();
             EndWandering();
@@ -480,6 +482,7 @@ namespace Gamesim.House
             if (ActivityOwnsMotion(motion)) return true;
             if (CompetitionOwnsMotion(motion)) return true;
             if (OpeningOwnsMotion(motion)) return true;
+            if (CeremonyOwnsMotion(motion)) return true;
             if (SceneOwnsMotion(motion)) return true;
             if (DepartureOwnsMotion(motion)) return true;
             if (WanderOwnsMotion(motion)) return true;

@@ -399,9 +399,10 @@ namespace Gamesim.Editor
 
         /// <summary>
         /// Instantiates a kit model, turned and scaled to the intended height, with its colliders
-        /// stripped. Returns null and warns when the model is missing.
+        /// stripped. Returns null and warns when the model is missing. Internal so the room finish
+        /// pass (<see cref="HouseRoomFinish"/>) places its clutter the way the plan rows do.
         /// </summary>
-        private static GameObject Model(string model, Transform parent, float yaw, float height)
+        internal static GameObject Model(string model, Transform parent, float yaw, float height)
         {
             var source = HouseCatalogue.Resolve(model, out var tier);
             if (source == null) { Debug.LogWarning("[Gamesim] set pieces · missing model: " + model); return null; }

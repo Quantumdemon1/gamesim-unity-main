@@ -132,8 +132,14 @@ namespace Gamesim.Episode
         {
             if (npcMeetings == null || projected == null) return;
             var cast = projected.contestants.Where(actor => !actor.isPlayer).ToArray();
+            // The evicted stay in the house's world while a staged ceremony holds a place for them
+            // (the commit makes them a non-contestant at once, and a body unbound at the commit could
+            // not take its hot seat) and while they walk out; otherwise they go as they always did -
+            // unbound at the commit, and let go by the walk-out if their body cannot take its
+            // navigation back.
             if (!npcMeetings.Reconcile(NpcWorldGeneration, housemates, cast.Select(actor => actor.id).ToArray(),
-                cast.Where(actor => actor.status == ContestantStatus.Active || actor.id == walkingOutId).Select(actor => actor.id), out var reason))
+                cast.Where(actor => actor.status == ContestantStatus.Active || actor.id == walkingOutId || CeremonyStageHolds(actor.id))
+                    .Select(actor => actor.id), out var reason))
             { StopNpcWorld(reason); return; }
             foreach (long sequence in npcPendingWorld.Keys.ToArray())
                 if (!projected.npcSocial.pending.Any(row => row.sequence == sequence))

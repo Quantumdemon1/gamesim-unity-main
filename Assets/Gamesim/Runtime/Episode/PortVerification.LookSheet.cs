@@ -78,6 +78,9 @@ namespace Gamesim.Episode
             seasonPlayer = seasonDirector.gameObject.scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<HousePlayerController>(true)).First();
             seasonReport = seasonReport ?? new SeasonReport { artifactId = Guid.NewGuid().ToString("N") };
+            // The sheet photographs the cards, on the budgets the cards keep: a staged ceremony
+            // gathers the house first, and its summons would outlast the key ceremony's wait.
+            seasonDirector.CeremonyStages = false;
             yield return SkipOpening();
 
             // The whole Regular roster, so the mockups' eight faces are all in the house.

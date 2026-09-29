@@ -211,6 +211,7 @@ namespace Gamesim.Episode
         private void GiveUpOnWalk(HouseNpc npc)
         {
             CancelTravel();
+            conversationIntent = null;
             player.StopHere();
             message = npc == null
                 ? "You lost track of who you were going to see."

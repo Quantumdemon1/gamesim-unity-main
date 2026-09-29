@@ -256,8 +256,9 @@ namespace Gamesim.Episode
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
-            fitToContent = false; pinnedAction = null; contentCap = 0f; nearbyCard = null; nearbyBar = null;
+            fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
+            ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
@@ -608,6 +609,8 @@ namespace Gamesim.Episode
         /// <summary>The width a line in the panel's column has, past its padding and scrollbar.</summary>
         private float ContentWidth()
         {
+            // A screen's own column, while its rows are being laid in it (EpisodeHud.FreeTime.cs).
+            if (contentWidthOverride > 0f) return contentWidthOverride;
             if (conversationColumn != null) return conversationColumn.sizeDelta.x - 14f - 10f - 18f - 16f;
             float width = modal != null ? modal.sizeDelta.x - 40f - 18f - 16f : 420f;
             return contentCap > 0f ? Mathf.Min(width, contentCap) : width;
@@ -826,12 +829,19 @@ namespace Gamesim.Episode
             // Two lines a room, closer together when the live feed above leaves less than eight
             // full rows between it and the help card.
             var root = (RectTransform)canvas.transform;
-            float space = (root.rect.height > 0 ? root.rect.height : 900f) - top - 40f - (CastRail.Bottom + CastRail.Height + 64f);
+            // With the briefing put away, its way back is a row at the foot of the list, out of the
+            // rows' own space so the card still clears the help card.
+            bool briefingRow = !Compact && director.IsOverview && !director.IsBriefing;
+            float footer = briefingRow ? 44f : 0f;
+            float space = (root.rect.height > 0 ? root.rect.height : 900f) - top - 40f - footer - (CastRail.Bottom + CastRail.Height + 64f);
             float rowHeight = rooms.Count > 0 ? Mathf.Clamp(space / rooms.Count, 38f, 44f) : 44f;
             var column = Chrome(OverviewColumnName, parent);
             Anchor(column, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
-                new Vector2(RightColumnWidth, 40 + rooms.Count * rowHeight));
+                new Vector2(RightColumnWidth, 40 + rooms.Count * rowHeight + footer));
             CardHeading(column, "Who Is Where");
+            if (briefingRow)
+                FixedButton(column, EpisodeDirector.ShowBriefingCaption, new Vector2(14f, -(40f + rooms.Count * rowHeight)),
+                    new Vector2(RightColumnWidth - 28f, 36f), () => director.ShowBriefing());
             for (int i = 0; i < rooms.Count; i++)
             {
                 var room = rooms[i];

@@ -29,6 +29,12 @@ namespace Gamesim.Presentation
     /// acknowledgement, and every name is read from committed state so the ceremony cannot disagree
     /// with the save. The presses that speed it up and skip it are read straight off the devices,
     /// never through the event system.</para>
+    ///
+    /// <para>It plays in one of two frames. On the HUD it is the board under the top bar, 420 wide,
+    /// as mockup-10 draws it. On the set's ceremony screen (<see cref="ScreenSurface"/>, the
+    /// ceremony cut scenes) it is the screen's whole face: the same card at the screen's own shape,
+    /// the face at most of the screen's height and the keys along its foot at key size, so a camera
+    /// cut to the screen reads it the way the room does. Every child keeps its name in both.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class KeyCeremony : MonoBehaviour
@@ -62,6 +68,13 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<HouseAudio.Cue> CueRequested;
 
+        /// <summary>
+        /// Each beat as the card reaches it - the card up, a key out, the beat before the last, the
+        /// block, the card down - so the house can cut to whoever it is about and act it out in time
+        /// with the screen. A skip reports every key it hands out at once, marked as skipped.
+        /// </summary>
+        public event System.Action<CeremonyBeat> BeatReached;
+
         private CanvasGroup group;
         private RectTransform column, scrim, slotRow, stage;
         private TMP_Text eyebrow, title, hohLine, progress, controls, speedMark;
@@ -72,6 +85,8 @@ namespace Gamesim.Presentation
         private int shown = -1;
         private float elapsed, upFor, speed = 1f;
         private bool playing, reduced, blockShown, lastKeyPending, usingPad;
+        private Frame frame;
+        private ScreenSurface surface;
 
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -87,6 +102,18 @@ namespace Gamesim.Presentation
 
         /// <summary>How many keys have been handed out so far.</summary>
         public int KeysShown => Mathf.Max(0, shown);
+
+        /// <summary>How long each key holds the stage at the pace played, in seconds of the card's clock.</summary>
+        public float KeyHoldSeconds => KeyHold;
+
+        /// <summary>The beat before the last key, at the pace played.</summary>
+        public float LastKeyBeatSeconds => LastKeyWait;
+
+        /// <summary>How long the block holds once the keys are out, at the pace played.</summary>
+        public float BlockHoldSeconds => CeremonyPacing.BlockHold(pace);
+
+        /// <summary>The screen the card is playing on, or null while it plays on the HUD.</summary>
+        public ScreenSurface Surface => playing ? surface : null;
 
         /// <summary>
         /// How long the ceremony takes at its own speed, start to finish: the fade, the Head of
@@ -133,16 +160,19 @@ namespace Gamesim.Presentation
         /// Plays the ceremony at <paramref name="pace"/>. Declines a shape it cannot narrate — no keys
         /// to hand out, or nobody on the block — and the generic card plays instead, so the beat is
         /// never silent. The keys come out in the order given, so the caller decides that order; it
-        /// must not be one that says who is safe before the card does.
+        /// must not be one that says who is safe before the card does. With a <paramref name="screen"/>
+        /// the card plays on that screen's face instead of the HUD.
         /// </summary>
         public bool Play(int week, string hohName, bool hohIsPlayer, IList<Person> safeHouseguests,
-            IList<Person> block, bool reducedMotion, CeremonyPace pace = CeremonyPace.Suspenseful)
+            IList<Person> block, bool reducedMotion, CeremonyPace pace = CeremonyPace.Suspenseful, ScreenSurface screen = null)
         {
             if (safeHouseguests == null || block == null || block.Count == 0) return false;
 
             safe = new List<Person>(safeHouseguests);
             nominated = new List<Person>(block);
             this.pace = pace;
+            surface = screen;
+            frame = screen != null ? Frame.OnScreen(safe.Count) : Frame.Hud(Mathf.Max(0.5f, FontScale));
 
             Build();
             reduced = reducedMotion;
@@ -168,15 +198,18 @@ namespace Gamesim.Presentation
             column.gameObject.SetActive(true);
             scrim.gameObject.SetActive(true);
             group.alpha = reduced ? 1f : 0f;
+            Beat(new CeremonyBeat(CeremonyBeatKind.Opened));
             return true;
         }
 
         public void Cancel()
         {
+            bool was = playing;
             playing = false;
             if (group != null) group.alpha = 0f;
             if (column != null) column.gameObject.SetActive(false);
             if (scrim != null) scrim.gameObject.SetActive(false);
+            if (was) Beat(new CeremonyBeat(CeremonyBeatKind.Closed, -1, null, !blockShown));
         }
 
         /// <summary>
@@ -206,7 +239,7 @@ namespace Gamesim.Presentation
                 if (blockShown) { Cancel(); return; }
                 elapsed = Mathf.Max(elapsed, KeysEnd);
                 Show(safe.Count, false, false);
-                Block();
+                Block(true);
                 return;
             }
 
@@ -230,7 +263,7 @@ namespace Gamesim.Presentation
             bool pending = LastKeyPendingAt(elapsed);
             if (!blockShown && (due != shown || pending != lastKeyPending)) Show(due, pending, true);
 
-            if (elapsed >= KeysEnd && !blockShown) Block();
+            if (elapsed >= KeysEnd && !blockShown) Block(false);
         }
 
         private static float Eased(float t) => 1f - (1f - t) * (1f - t);
@@ -270,6 +303,8 @@ namespace Gamesim.Presentation
 
         private void Raise(HouseAudio.Cue cue) => CueRequested?.Invoke(cue);
 
+        private void Beat(CeremonyBeat beat) => BeatReached?.Invoke(beat);
+
         /// <summary>
         /// Puts the first <paramref name="count"/> keys out - whoever holds the last of them is safe
         /// - or, while <paramref name="pending"/>, holds the last key up with nobody on the stage.
@@ -281,6 +316,7 @@ namespace Gamesim.Presentation
             shown = count;
             lastKeyPending = pending;
             if (announce) for (int key = before; key < count; key++) Raise(HouseAudio.Cue.Save);
+            for (int key = before; key < count; key++) Beat(new CeremonyBeat(CeremonyBeatKind.KeyShown, key, safe[key].Id, !announce));
 
             for (int i = 0; i < slots.Count; i++)
                 slots[i].GetComponent<Image>().color = i < count ? UiTheme.Positive
@@ -292,6 +328,7 @@ namespace Gamesim.Presentation
                 // alike - so the card says that one is left, and never whose.
                 progress.text = "One key left";
                 StageLastKey();
+                Beat(new CeremonyBeat(CeremonyBeatKind.LastKeyPending, safe.Count - 1));
                 return;
             }
 
@@ -322,7 +359,7 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>The close: the two who never heard their name.</summary>
-        private void Block()
+        private void Block(bool skipped)
         {
             blockShown = true;
             lastKeyPending = false;
@@ -331,11 +368,75 @@ namespace Gamesim.Presentation
             hohLine.text = nominated.Count == 1 ? "Tonight's Nominee" : "Tonight's Nominees";
             StageBlock();
             Raise(HouseAudio.Cue.Nomination);
+            Beat(new CeremonyBeat(CeremonyBeatKind.BlockShown, -1, nominated.Count > 0 ? nominated[0].Id : null, skipped));
+        }
+
+        /// <summary>
+        /// The card's frame: how big its parts are and where they sit, in canvas units. The HUD's
+        /// is the board under the top bar at the standard text size, scaled by the large-text
+        /// preference; the screen's is the screen's whole face at 3:2, the face at most of its
+        /// height, the keys along the foot at key size - each about a twelfth of the width, closer
+        /// together only when more keys are in play than that leaves room for.
+        /// </summary>
+        private readonly struct Frame
+        {
+            public readonly bool Screen;
+            /// <summary>The column's size, and how far under the top of the canvas it hangs.</summary>
+            public readonly float Width, Height, Top;
+            /// <summary>One face on the stage; the block's faces, side by side, and their spacing.</summary>
+            public readonly float SlotW, SlotH, BlockW, BlockH, BlockStep;
+            /// <summary>A key's size and the spacing of the row.</summary>
+            public readonly float Pip, Step;
+            /// <summary>The type's scale relative to the HUD's at the standard size.</summary>
+            public readonly float Text;
+            /// <summary>Where the rows sit, from the top, and how tall each is.</summary>
+            public readonly float EyebrowY, EyebrowH, TitleY, TitleH, Trophy, HohY, HohH, StageY, KeysY, KeysH,
+                ProgressY, ProgressH, RuleY, DismissY, DismissH, ControlsY, ControlsH, TaglineY, Glass, Neon;
+
+            private Frame(bool screen, float width, float height, float top, float slotW, float slotH, float blockW, float blockH,
+                float blockStep, float pip, float step, float text, float eyebrowY, float eyebrowH, float titleY, float titleH,
+                float trophy, float hohY, float hohH, float stageY, float keysY, float keysH, float progressY, float progressH,
+                float ruleY, float dismissY, float dismissH, float controlsY, float controlsH, float taglineY, float glass, float neon)
+            {
+                Screen = screen; Width = width; Height = height; Top = top; SlotW = slotW; SlotH = slotH;
+                BlockW = blockW; BlockH = blockH; BlockStep = blockStep; Pip = pip; Step = step; Text = text;
+                EyebrowY = eyebrowY; EyebrowH = eyebrowH; TitleY = titleY; TitleH = titleH; Trophy = trophy; HohY = hohY; HohH = hohH;
+                StageY = stageY; KeysY = keysY; KeysH = keysH; ProgressY = progressY; ProgressH = progressH; RuleY = ruleY;
+                DismissY = dismissY; DismissH = dismissH; ControlsY = controlsY; ControlsH = controlsH; TaglineY = taglineY;
+                Glass = glass; Neon = neon;
+            }
+
+            /// <summary>The HUD's board: 420 × 330 under the top bar, a 104 × 134 face, 16-unit keys.</summary>
+            public static Frame Hud(float scale)
+            {
+                const float slotH = SlotHeight;
+                return new Frame(false, CardWidth * scale, CardHeight * scale, CardTop * scale, SlotWidth * scale, slotH * scale,
+                    SlotWidth * scale, slotH * scale, (SlotWidth + 44f) * scale, 16f * scale, 24f * scale, scale,
+                    -10f * scale, 16f * scale, -26f * scale, 30f * scale, 24f * scale, -58f * scale, 22f * scale, -88f * scale,
+                    -(96f + slotH) * scale, 20f * scale, -(120f + slotH) * scale, 18f * scale, -(144f + slotH) * scale,
+                    -(150f + slotH) * scale, 16f * scale, -(168f + slotH) * scale, 16f * scale, -(CardHeight + 22f) * scale,
+                    12f * scale, 30f * scale);
+            }
+
+            /// <summary>The set's screen: its whole face, the safe face over half its height, the keys at key size.</summary>
+            public static Frame OnScreen(int keys)
+            {
+                const float text = 2.4f;
+                float step = keys > 0 ? Mathf.Min(96f, 1100f / keys) : 96f;
+                return new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 0f, 330f, 425f, 300f, 386f, 380f,
+                    Mathf.Min(76f, step * 0.8f), step, text,
+                    -22f, 38f, -60f, 72f, 58f, -136f, 52f, -194f, -630f, 88f, -720f, 40f, float.NaN, float.NaN, 0f, -762f, 36f,
+                    float.NaN, 0f, 16f);
+            }
         }
 
         private void Build()
         {
             var root = (RectTransform)transform;
+            var canvas = GetComponent<Canvas>();
+            if (surface != null) surface.Mount(canvas);
+            else ScreenSurface.Unmount(canvas);
+
             if (column != null)
             {
                 foreach (Transform child in column) Destroy(child.gameObject);
@@ -367,21 +468,22 @@ namespace Gamesim.Presentation
                 column.pivot = new Vector2(.5f, 1f);
             }
 
-            float scale = Mathf.Max(0.5f, FontScale);
-            const float width = CardWidth;
-            column.anchoredPosition = new Vector2(0f, -CardTop * scale);
-            column.sizeDelta = new Vector2(width * scale, CardHeight * scale);
-            CardGlass(column, scale);
+            var f = frame;
+            float scale = f.Text;
+            float width = f.Width;
+            column.anchoredPosition = new Vector2(0f, -f.Top);
+            column.sizeDelta = new Vector2(width, f.Height);
+            CardGlass(column, f.Glass, f.Neon);
 
             eyebrow = HudPrimitives.Label("Week", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.characterSpacing = 10f;
-            Place(eyebrow.rectTransform, width * scale, 16f * scale, -10f * scale);
+            Place(eyebrow.rectTransform, width, f.EyebrowH, f.EyebrowY);
 
             // A broadcast's fast-forward bug in the screen's corner, up only while the reveal is sped
             // up, so a player who pressed Space by accident can see why the keys are hurrying.
             speedMark = HudPrimitives.Label("Speed", column, 11f * scale, UiTheme.Glow, TextAlignmentOptions.Right);
             speedMark.text = CeremonyTakeover.SpeedCaption;
-            Place(speedMark.rectTransform, 150f * scale, 16f * scale, -10f * scale, (width * .5f - 87f) * scale);
+            Place(speedMark.rectTransform, 150f * scale, f.EyebrowH, f.EyebrowY, width * .5f - 87f * scale);
             speedMark.gameObject.SetActive(false);
 
             // A trophy and the title in the display weight, in the glow blue the board is lit in.
@@ -390,33 +492,33 @@ namespace Gamesim.Presentation
             if (bold != null) title.font = bold;
             title.characterSpacing = 3f;
             title.text = "NOMINATION CEREMONY";
-            Place(title.rectTransform, width * scale, 30f * scale, -26f * scale);
+            Place(title.rectTransform, width, f.TitleH, f.TitleY);
             float titleWidth = title.GetPreferredValues(title.text).x;
-            var trophy = HudPrimitives.Glyph("Title mark", column, "trophy", UiTheme.Glow, Vector2.zero, 24f * scale);
+            var trophy = HudPrimitives.Glyph("Title mark", column, "trophy", UiTheme.Glow, Vector2.zero, f.Trophy);
             if (trophy != null)
             {
                 var mark = trophy.rectTransform;
                 mark.anchorMin = mark.anchorMax = new Vector2(.5f, 1f);
                 mark.pivot = new Vector2(1f, 1f);
-                mark.anchoredPosition = new Vector2(-(titleWidth * .5f) - 8f * scale, -29f * scale);
+                mark.anchoredPosition = new Vector2(-(titleWidth * .5f) - 8f * scale, f.TitleY - 3f * scale);
             }
 
             hohLine = HudPrimitives.Label("HoH", column, 15f * scale, UiTheme.Accent, TextAlignmentOptions.Center);
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) hohLine.font = medium;
-            Place(hohLine.rectTransform, width * scale, 22f * scale, -58f * scale);
+            Place(hohLine.rectTransform, width, f.HohH, f.HohY);
 
             // The stage: whichever faces the ceremony is on right now.
             stage = new GameObject("Stage", typeof(RectTransform)).GetComponent<RectTransform>();
             stage.SetParent(column, false);
-            Place(stage, width * scale, SlotHeight * scale, -88f * scale);
+            Place(stage, width, f.SlotH, f.StageY);
 
             // One key per houseguest who draws, lit as each is handed out.
             slotRow = new GameObject("Keys", typeof(RectTransform)).GetComponent<RectTransform>();
             slotRow.SetParent(column, false);
-            Place(slotRow, width * scale, 20f * scale, -(96f + SlotHeight) * scale);
+            Place(slotRow, width, f.KeysH, f.KeysY);
 
-            float pip = 16f * scale, step = 24f * scale;
+            float pip = f.Pip, step = f.Step;
             float first = -(safe.Count - 1) * step * 0.5f;
             var key = UiTheme.Icon("key");
             for (int i = 0; i < safe.Count; i++)
@@ -438,34 +540,40 @@ namespace Gamesim.Presentation
             }
 
             progress = HudPrimitives.Label("Progress", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-            Place(progress.rectTransform, width * scale, 18f * scale, -(120f + SlotHeight) * scale);
+            Place(progress.rectTransform, width, f.ProgressH, f.ProgressY);
 
-            // A hairline rule and a quiet instruction close the card, as the web build closes
-            // every phase card.
-            var rule = HudPrimitives.Fill("Rule", column,
-                new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);
-            Place(rule, 96f * scale, 1f, -(144f + SlotHeight) * scale);
-            rule.GetComponent<Image>().raycastTarget = false;
+            if (!f.Screen)
+            {
+                // A hairline rule and a quiet instruction close the card, as the web build closes
+                // every phase card.
+                var rule = HudPrimitives.Fill("Rule", column,
+                    new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);
+                Place(rule, 96f * scale, 1f, f.RuleY);
+                rule.GetComponent<Image>().raycastTarget = false;
 
-            var dismiss = HudPrimitives.Label("Dismiss", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-            dismiss.text = CeremonyTakeover.DismissCaption;
-            Place(dismiss.rectTransform, width * scale, 16f * scale, -(150f + SlotHeight) * scale);
+                var dismiss = HudPrimitives.Label("Dismiss", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
+                dismiss.text = CeremonyTakeover.DismissCaption;
+                Place(dismiss.rectTransform, width, f.DismissH, f.DismissY);
+            }
 
             // And what else it answers to: the reveal can be sped up, or skipped to the block. The
             // keys named follow the device last used on the card.
             controls = HudPrimitives.Label("Controls", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             controls.text = CeremonyTakeover.ControlsFor(usingPad);
-            Place(controls.rectTransform, width * scale, 16f * scale, -(168f + SlotHeight) * scale);
+            Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
 
-            // The show's line under the screen, the way mockup-10 writes it on the wall below the
-            // board.
-            var tagline = HudPrimitives.Label("Tagline", column, 12f * scale, UiTheme.Glow, TextAlignmentOptions.Center);
-            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
-            if (semibold != null) tagline.font = semibold;
-            tagline.fontStyle = FontStyles.Italic;
-            tagline.characterSpacing = 12f;
-            tagline.text = "SAME HOUSE.  DIFFERENT STORIES.";
-            Place(tagline.rectTransform, width * 1.4f * scale, 18f * scale, -(CardHeight + 22f) * scale);
+            if (!f.Screen)
+            {
+                // The show's line under the screen, the way mockup-10 writes it on the wall below the
+                // board. On the set's screen the wall is the wall.
+                var tagline = HudPrimitives.Label("Tagline", column, 12f * scale, UiTheme.Glow, TextAlignmentOptions.Center);
+                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (semibold != null) tagline.font = semibold;
+                tagline.fontStyle = FontStyles.Italic;
+                tagline.characterSpacing = 12f;
+                tagline.text = "SAME HOUSE.  DIFFERENT STORIES.";
+                Place(tagline.rectTransform, width * 1.4f, 18f * scale, f.TaglineY);
+            }
         }
 
         /// <summary>The screen's size and where it hangs, in reference units at the standard text size.</summary>
@@ -481,8 +589,8 @@ namespace Gamesim.Presentation
             for (int i = stage.childCount - 1; i >= 0; i--) Destroy(stage.GetChild(i).gameObject);
             if (person == null) return;
 
-            float scale = Mathf.Max(0.5f, FontScale);
-            var slot = Slot(person.Value, 0f, scale, tint, "Name");
+            float scale = frame.Text;
+            var slot = Slot(person.Value, 0f, frame.SlotW, frame.SlotH, tint, "Name");
             if (string.IsNullOrEmpty(badge)) return;
             // The word the key means, pinned to the photo's shoulder.
             var chip = HudPrimitives.Fill("Badge", slot, tint, 4);
@@ -507,8 +615,7 @@ namespace Gamesim.Presentation
         private void StageLastKey()
         {
             Stage(null, null, UiTheme.Accent);
-            float scale = Mathf.Max(0.5f, FontScale);
-            var held = HudPrimitives.Glyph("Last key", stage, "key", UiTheme.Gold, Vector2.zero, 64f * scale);
+            var held = HudPrimitives.Glyph("Last key", stage, "key", UiTheme.Gold, Vector2.zero, 64f * frame.Text);
             if (held == null) return;
             var rect = held.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
@@ -521,11 +628,10 @@ namespace Gamesim.Presentation
         {
             for (int i = stage.childCount - 1; i >= 0; i--) Destroy(stage.GetChild(i).gameObject);
 
-            float scale = Mathf.Max(0.5f, FontScale);
-            float step = (SlotWidth + 44f) * scale;
+            float step = frame.BlockStep;
             float start = -(nominated.Count - 1) * step * 0.5f;
             for (int i = 0; i < nominated.Count; i++)
-                Slot(nominated[i], start + i * step, scale, UiTheme.Conflict, "Nominee");
+                Slot(nominated[i], start + i * step, frame.BlockW, frame.BlockH, UiTheme.Conflict, "Nominee");
         }
 
         /// <summary>
@@ -533,23 +639,24 @@ namespace Gamesim.Presentation
         /// across the photo's foot. The plate's label is named <paramref name="label"/> - the block's
         /// are "Nominee", which is how the suite counts who is on it.
         /// </summary>
-        private RectTransform Slot(Person person, float x, float scale, Color tint, string label)
+        private RectTransform Slot(Person person, float x, float slotWidth, float slotHeight, Color tint, string label)
         {
+            float scale = frame.Text;
             var slot = new GameObject("Nominee slot", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
             slot.SetParent(stage, false);
-            Place(slot, SlotWidth * scale, SlotHeight * scale, 0f, x);
-            var frame = slot.GetComponent<Image>();
-            frame.raycastTarget = false;
+            Place(slot, slotWidth, slotHeight, 0f, x);
+            var frameImage = slot.GetComponent<Image>();
+            frameImage.raycastTarget = false;
             // The block's frame is the pack's, red hairline and all; a houseguest handed a key is
             // framed in the colour of what the key means instead.
-            if (tint != UiTheme.Conflict || !UiTheme.PackSliced(frame, PackArt.Nominee, 12f * scale))
+            if (tint != UiTheme.Conflict || !UiTheme.PackSliced(frameImage, PackArt.Nominee, 12f * scale))
             {
-                UiTheme.Style(frame, UiTheme.SurfaceRaised, 8);
+                UiTheme.Style(frameImage, UiTheme.SurfaceRaised, 8);
                 UiTheme.AddBorder(slot, 8, tint);
             }
 
             var photo = HudPrimitives.RectPortrait(slot, "Photo", person.Portrait, person.Character,
-                new Vector2((SlotWidth - 8f) * scale, (SlotHeight - 8f) * scale), 6);
+                new Vector2(slotWidth - 8f * scale, slotHeight - 8f * scale), 6);
             photo.anchorMin = photo.anchorMax = new Vector2(.5f, .5f);
             photo.pivot = new Vector2(.5f, .5f);
             photo.anchoredPosition = Vector2.zero;
@@ -563,9 +670,9 @@ namespace Gamesim.Presentation
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) name.font = semibold;
             name.text = person.Name;
-            name.enableAutoSizing = true; name.fontSizeMax = name.fontSize; name.fontSizeMin = Mathf.Min(10f, name.fontSize);
+            name.enableAutoSizing = true; name.fontSizeMax = name.fontSize; name.fontSizeMin = Mathf.Min(10f * scale, name.fontSize);
             name.rectTransform.anchorMin = Vector2.zero; name.rectTransform.anchorMax = Vector2.one;
-            name.rectTransform.offsetMin = new Vector2(4f, 0f); name.rectTransform.offsetMax = new Vector2(-4f, 0f);
+            name.rectTransform.offsetMin = new Vector2(4f * scale, 0f); name.rectTransform.offsetMax = new Vector2(-4f * scale, 0f);
             return slot;
         }
 
@@ -575,26 +682,27 @@ namespace Gamesim.Presentation
         /// it. Built as the column's first child so every piece of the ceremony draws over it, and
         /// stretched to the column so it grows with the large-text preference. Its name deliberately
         /// does not begin with "Key ": that prefix is how the suite counts the ceremony's key slots.
+        /// On the set's screen the glass is the screen's own ground, flush with the face.
         /// </summary>
-        private static RectTransform CardGlass(RectTransform column, float scale)
+        private static RectTransform CardGlass(RectTransform column, float glassMargin, float neonMargin)
         {
             var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
             glass.SetAsFirstSibling();
             glass.anchorMin = Vector2.zero;
             glass.anchorMax = Vector2.one;
-            glass.offsetMin = new Vector2(-12f * scale, -12f * scale);
-            glass.offsetMax = new Vector2(12f * scale, 12f * scale);
+            glass.offsetMin = new Vector2(-glassMargin, -glassMargin);
+            glass.offsetMax = new Vector2(glassMargin, glassMargin);
             UiTheme.Glass(glass, UiTheme.GlassRadius);
             // The board's neon: the pack's danger frame, its baked glow outside the glass's edge.
             var neon = new GameObject("Screen frame", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
             neon.SetParent(column, false);
             neon.SetSiblingIndex(glass.GetSiblingIndex() + 1);
             neon.anchorMin = Vector2.zero; neon.anchorMax = Vector2.one;
-            neon.offsetMin = new Vector2(-30f * scale, -30f * scale);
-            neon.offsetMax = new Vector2(30f * scale, 30f * scale);
+            neon.offsetMin = new Vector2(-neonMargin, -neonMargin);
+            neon.offsetMax = new Vector2(neonMargin, neonMargin);
             var image = neon.GetComponent<Image>();
             image.raycastTarget = false;
-            if (UiTheme.PackSliced(image, PackArt.PanelDanger, 36f * scale))
+            if (UiTheme.PackSliced(image, PackArt.PanelDanger, Mathf.Max(12f, neonMargin * 1.2f)))
             {
                 // Only its edge and glow: the glass under it is the screen's ground.
                 image.fillCenter = false;

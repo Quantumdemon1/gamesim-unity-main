@@ -6,14 +6,16 @@ using UnityEngine;
 namespace Gamesim.Editor
 {
     /// <summary>
-    /// Fixed import settings for the five UI/art asset packs, so nobody sets 397 textures by hand and
-    /// a re-import cannot drift them. <see cref="UiPackCatalogue"/> says what each file is; this says
-    /// what that means to the importer.
+    /// Fixed import settings for the UI/art asset packs, so nobody sets six hundred textures by hand
+    /// and a re-import cannot drift them. <see cref="UiPackCatalogue"/> says what each file is; this
+    /// says what that means to the importer.
     ///
-    /// <para>Two homes. A UI sprite lives under <see cref="UiRoot"/>, because the UI is built in code
-    /// and loads what it draws by path. A pack-5 world texture lives under <see cref="WorldRoot"/>,
-    /// outside Resources: the house is dressed by editor scripts that put texture references into the
-    /// saved scene, so it ships only what the house actually uses.</para>
+    /// <para>Three homes. A UI sprite lives under <see cref="UiRoot"/>, because the UI is built in code
+    /// and loads what it draws by path. A world texture (pack 5, Room Finish Pack 6) lives under
+    /// <see cref="WorldRoot"/>, outside Resources: the house is dressed by editor scripts that put
+    /// texture references into the saved scene, so it ships only what the house actually uses. An
+    /// editor marker (pack 6's interaction markers) lives under <see cref="GizmoRoot"/>, an Editor
+    /// folder, so it can never ship at all.</para>
     ///
     /// <para>The rules, by kind:</para>
     /// <list type="bullet">
@@ -23,6 +25,8 @@ namespace Gamesim.Editor
     /// high-quality compression above that, where a full-screen card would otherwise cost 8 MB.</item>
     /// <item>World colour and particles - Default textures with mipmaps, because the overhead camera
     /// sees them small and at an angle; clamped, sRGB, high-quality compression.</item>
+    /// <item>World tiles - the same, wrapped Repeat: a wall treatment, a fabric or a backsplash
+    /// covers metres of surface from one metre of image.</item>
     /// <item>Neon and detail masks - data, not colour, so linear rather than sRGB; a neon mask is
     /// clamped to its sign and a detail mask repeats across a surface.</item>
     /// </list>
@@ -31,14 +35,18 @@ namespace Gamesim.Editor
     {
         public const string UiRoot = "Assets/Gamesim/Resources/Packs/";
         public const string WorldRoot = "Assets/Gamesim/Art/Packs/";
+        public const string GizmoRoot = "Assets/Gamesim/Editor/Gizmos/";
         /// <summary>The largest side imported without compression.</summary>
         public const int UncompressedLimit = 1024;
 
-        public override uint GetVersion() => 1;
+        // 2: WorldTile and the gizmo root. A pack-6 file imported in the refresh that compiled this
+        // rule was imported by version 1 and is re-imported by the version change.
+        public override uint GetVersion() => 2;
 
         public static bool IsPack(string path) => path != null
             && path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-            && (path.StartsWith(UiRoot, StringComparison.Ordinal) || path.StartsWith(WorldRoot, StringComparison.Ordinal));
+            && (path.StartsWith(UiRoot, StringComparison.Ordinal) || path.StartsWith(WorldRoot, StringComparison.Ordinal)
+                || path.StartsWith(GizmoRoot, StringComparison.Ordinal));
 
         private void OnPreprocessTexture()
         {
@@ -59,7 +67,12 @@ namespace Gamesim.Editor
                 case "NeonMasks": return name.EndsWith("_mask.png", StringComparison.Ordinal) ? UiPackCatalogue.Kind.NeonMask : UiPackCatalogue.Kind.WorldColour;
                 case "SurfaceDecals": return UiPackCatalogue.Kind.DetailMask;
                 case "VFXTextures": return UiPackCatalogue.Kind.Particle;
-                default: return UiPackCatalogue.Kind.WorldColour;
+                // Pack 6 (bb_room_pack6.py): a mask anywhere is data; the two folders that are all
+                // repeating surfaces tile. Its per-file tiles (duvets, backsplashes, the diary
+                // surfaces) are the catalogue's business, which is why the catalogue comes first.
+                case "WallTreatments":
+                case "Upholstery": return UiPackCatalogue.Kind.WorldTile;
+                default: return name.EndsWith("_mask.png", StringComparison.Ordinal) ? UiPackCatalogue.Kind.NeonMask : UiPackCatalogue.Kind.WorldColour;
             }
         }
 
@@ -75,7 +88,8 @@ namespace Gamesim.Editor
             importer.alphaSource = TextureImporterAlphaSource.FromInput;
             importer.alphaIsTransparency = true;
             importer.mipmapEnabled = !ui;
-            importer.wrapMode = kind == UiPackCatalogue.Kind.DetailMask ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+            importer.wrapMode = kind == UiPackCatalogue.Kind.DetailMask || kind == UiPackCatalogue.Kind.WorldTile
+                ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             importer.filterMode = FilterMode.Bilinear;
             importer.isReadable = false;
             importer.npotScale = TextureImporterNPOTScale.None;

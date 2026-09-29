@@ -95,7 +95,7 @@ namespace Gamesim.Episode
         {
             if (pinnedAction == null || modalScroll == null) return;
             var scroll = (RectTransform)modalScroll.transform;
-            scroll.offsetMin = new Vector2(scroll.offsetMin.x, PinnedMargin + PinnedHeight * FontScale + 10f);
+            scroll.offsetMin = new Vector2(scroll.offsetMin.x, PinnedMargin + pinnedNoteHeight + PinnedHeight * FontScale + 10f);
         }
 
         /// <summary>The pinned action, if the render has one and it can take the focus.</summary>

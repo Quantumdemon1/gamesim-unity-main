@@ -25,6 +25,16 @@ namespace Gamesim.Tests.EditMode
             Assert.That(UiPackCatalogue.TryGet(HouseBrandingAssets.DiaryHaloPath, out var halo) && halo.Kind == UiPackCatalogue.Kind.WorldColour, Is.True);
             Assert.That(UiPackCatalogue.TryGet(HouseBrandingAssets.DiaryNeonPath, out var neon) && neon.Kind == UiPackCatalogue.Kind.NeonMask, Is.True);
             Assert.That(AssetDatabase.GetAssetPath(palette.glowTemplate), Is.EqualTo(HouseBrandingAssets.GlowMaterialPath));
+            // Pack 6's diary surfaces: the two that tile import as tiles, the sign and the tally as colour.
+            Assert.That(AssetDatabase.GetAssetPath(palette.diaryPaddedWall), Is.EqualTo(HouseBrandingAssets.DiaryPaddedWallPath));
+            Assert.That(AssetDatabase.GetAssetPath(palette.diarySlats), Is.EqualTo(HouseBrandingAssets.DiarySlatsPath));
+            Assert.That(AssetDatabase.GetAssetPath(palette.diaryOnCamera), Is.EqualTo(HouseBrandingAssets.DiaryOnCameraPath));
+            Assert.That(AssetDatabase.GetAssetPath(palette.diaryTally), Is.EqualTo(HouseBrandingAssets.DiaryTallyPath));
+            Assert.That(UiPackCatalogue.TryGet(HouseBrandingAssets.DiaryPaddedWallPath, out var padded) && padded.Kind == UiPackCatalogue.Kind.WorldTile, Is.True,
+                "The padded wall repeats across the interview wall.");
+            Assert.That(UiPackCatalogue.TryGet(HouseBrandingAssets.DiarySlatsPath, out var slats) && slats.Kind == UiPackCatalogue.Kind.WorldTile, Is.True);
+            Assert.That(UiPackCatalogue.TryGet(HouseBrandingAssets.DiaryOnCameraPath, out var onCamera) && onCamera.Kind == UiPackCatalogue.Kind.WorldColour, Is.True);
+            Assert.That(UiPackCatalogue.TryGet(HouseBrandingAssets.DiaryTallyPath, out var tally) && tally.Kind == UiPackCatalogue.Kind.WorldColour, Is.True);
         }
 
         /// <summary>
@@ -38,7 +48,8 @@ namespace Gamesim.Tests.EditMode
             var textures = AssetDatabase.GetDependencies(HouseBrandingAssets.PalettePath, true)
                 .Where(path => AssetDatabase.GetMainAssetTypeAtPath(path) == typeof(Texture2D))
                 .OrderBy(path => path).ToArray();
-            Assert.That(textures, Is.EqualTo(new[] { HouseBrandingAssets.DiaryHaloPath, HouseBrandingAssets.DiaryNeonPath }.OrderBy(path => path).ToArray()));
+            Assert.That(textures, Is.EqualTo(HouseBrandingAssets.TexturePaths.OrderBy(path => path).ToArray()),
+                "Exactly the pack-5 diary halo and neon and the pack-6 diary surfaces ride into a build through the palette.");
         }
 
         [Test]

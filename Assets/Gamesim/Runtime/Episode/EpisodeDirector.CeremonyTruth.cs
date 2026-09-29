@@ -116,8 +116,10 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickCeremonies()
         {
+            // A staged ceremony counts as a reveal from its summons: the chrome is drawn from the
+            // committed result, and the house walking to its seats is the reveal's first beat.
             bool revealing = (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
-                || JuryRevealPlaying;
+                || JuryRevealPlaying || CeremonyStageNarrating;
             if (revealHeld && !revealing)
             {
                 revealHeld = false;
@@ -163,6 +165,7 @@ namespace Gamesim.Episode
         private void ResetCeremonyTruth()
         {
             departingId = null;
+            EndCeremonyStage();
             ResetWalkOut();
             if (revealHeld && hud != null) hud.HoldForReveal(false);
             revealHeld = false;

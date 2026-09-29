@@ -27,6 +27,8 @@ namespace Gamesim.Episode
         private bool BeginCompetitionArena(EpisodeState state)
         {
             EndCompetitionArena();
+            // The show's own stage comes first: a ceremony still holding its seats lets go for the arena.
+            EndCeremonyStage();
             npcMeetings?.ReleaseActivities();
             var floor=gameObject.scene.GetRootGameObjects().SelectMany(root=>root.GetComponentsInChildren<BoxCollider>())
                 .FirstOrDefault(c=>c.name=="Competition yard floor");

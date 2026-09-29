@@ -242,3 +242,96 @@ the same shape.
 4. **How long a ceremony runs at the suspenseful pace:** the keys take about 50 s today; the stage
    adds the summons (up to 6 s) and the reaction cuts (a beat each, inside the card's holds), so
    about a minute. Quick pace halves it as it does the cards.
+
+## 6. What is built (2026-09-28, C1-C3 for the nominations and the eviction)
+
+Built on the plan's own assumptions in §5, none of which were answered: the vote is read in the
+living room on a screen of its own; the dressed chairs are the seats; the player walks with
+everybody and any press (a click, Enter, Escape, the pad's A or B - the cards' own skip, not E,
+which stays the interact key) starts the card early; the summons is 7 s at the suspenseful pace
+and 3.5 s at quick.
+
+- **The sets** (`CeremonySets`, `CeremonySeating`; Runtime/House): dressed at runtime the first
+  time a ceremony is staged, from the props the scene carries, never re-saved. The round table's
+  ring is re-laid for N−1 chairs - the six dressed chairs moved onto it, more cloned from them for
+  a house over seven, the extras struck for a house under seven - with one slot kept empty at the
+  head, the side nearest the screen, and the ring widening when N−1 chairs would sit closer than
+  0.75 m. Each chair is a seated `nomination-seat` anchor approached from behind at 0.70 m; two
+  standing `nomination-head` marks stand a step out from the head slot. The living room gets the
+  set's screen cloned into the prototype television's place (the television struck), two chairs
+  from the table's as the `hot-seat`s facing it, the sofa turned to face it with its cushions and
+  three `sofa-seat`s on it, and `living-mark`s behind the hot seats and beside the screen for the
+  Head of Household, each on the walkable floor and clear of the furniture layer.
+- **The screen** (`ScreenSurface`; Presentation): the screen's face measured from its renderers.
+  A card that plays on it becomes a world-space canvas hung on the face at the screen's own shape
+  (1200 × 800): the same card, the same children by name, laid out for the screen - the key
+  ceremony's safe face 425 high on an 800 frame with the keys along the foot at 76 (closer only
+  when more than eleven are in play), the vote reveal's two faces 240 across with the counts 96
+  high. Nothing is rendered twice, and the HUD's own layout is untouched: the cards' `Play` take
+  the screen as an argument, null being the HUD. `ScreenSurface.Shot` is the head-on cut that
+  fills the frame's height with the face.
+- **The beats** (`CeremonyBeat`): the key ceremony, the vote reveal and the takeover raise
+  `BeatReached` as they reach each beat - opened, a key or a vote with who it is about, the beat
+  before the last, the block, a tie and its breaking, the result, closed - marked skipped when a
+  skip reached them at once. The cards keep the order and the timing.
+- **The stage** (`EpisodeDirector.CeremonyStage.cs`): on a nomination or an eviction commit the
+  reveal is handed to a stage instead of played, when the house can stage it (never under reduced
+  motion, in a batch run unless `StagesInBatchRuns`, over the opening, the arena or a walk-out, on
+  finale night, or with `CeremonyStages` off - the look sheet turns it off). The summons: the strip
+  says the house gathers, the coordinator's ceremony leases
+  (`HouseMeetingCoordinator.CeremonyStaging.cs`, exempt from the house's pause as the opening's
+  are) walk everybody to their place's approach, the player by an activity move, and whoever was
+  left out - a route blocked by somebody still standing on it - is asked again every 1.5 s. Each
+  arrival sits (`HouseSeatPresentation`) or stands facing the way the place faces; the player sits
+  by the diary's sequence. The card plays on the screen once everyone has arrived, the summons has
+  run its course, or a press - and past the summons it waits for the people the card is about (an
+  eviction's nominees, a nomination's or a veto's Head of Household; `SummonsPatience`, three and
+  a half summons more) while they are still on their way, because a nominee starting at the far
+  end of the yard walks thirty metres and no eviction plays to an empty hot seat; the chrome is
+  held aside from the summons, as it is for a reveal. The evicted stay in the house's world while
+  the stage holds a place for them (`CeremonyStage.Holds`) and while they walk out; the commit
+  makes them a non-contestant at once, and the world would otherwise unbind their body on the spot
+  so they could take neither the hot seat nor the door (measured on 2026-09-28: the second nominee
+  stood unbound at her start spot through the whole stage). Because the commit's projection runs
+  before the stage exists, the stage reconciles the world once more when it is created, and the
+  summons' retries send them once they are bound again. Outside a stage they go as they always
+  did - unbound at the commit, let go by the walk-out if their body cannot take its navigation
+  back (the walk-out's own test held the wider rule to account). The stage seats the evicted in a
+  hot seat although the committed state no longer counts them active, and looks bodies up by
+  `BodyFor`, since `Housemates()` is the active contestants.
+  The cuts: the screen on every beat; for a key, the named face from in front of their chair at
+  half the key's hold, the neighbours glancing at them and them at the Head of Household, the
+  seated fist pump on the last safe key; before the last key, a push-in on those still waiting;
+  the block, then each nominee in turn with their head dropping and the room's heads turning; for
+  a vote, the hot seats' two-shot with the one voted against glancing down (every third vote a
+  voter on the sofa looking at their hands), back to the screen before the next; before the last
+  vote, a push-in on the hot seats; the result, then the survivor's seated fist pump and the
+  evicted standing up out of the hot seat into the standing take. Every shot shares the 40°
+  lens, so a cut never eases the lens, and every shot in front of a face stops short of the
+  screen, because the rig's occlusion looks through furniture. The release hands the camera back
+  (`ReleaseShot`) and lets everybody go; after an eviction the house keeps its seats while the
+  evicted walk out and gets up once they are through the door. A new commit, the arena or a
+  season replaced ends a stage at once, and a stage that could not gather the house plays its card
+  on the HUD as before.
+- **Tests:** `CeremonySeatingTests` (EditMode, a preview scene dressed by name at the house's
+  numbers: N−1 seats for 6, 8, 12 and 16 with the head open and room between the chairs, a dressed
+  house left alone and a smaller one striking its extras, the living room's screen, hot seats and
+  turned sofa); `EpisodePlayModeTests.CeremonyStage` (a nomination gathers and seats the house on
+  a director season with the Head of Household standing and the keys on the screen's world-space
+  canvas, an eviction seats the nominees in the hot seats and hands the evicted to the walk-out, a
+  batch run stages nothing unless asked, and the look sheet's captures of the keys on the screen
+  and the block).
+
+**Not built, in the order to build it:**
+
+- C4: the veto meeting (the takeover on the screen: it has the beats, not the screen layout) and
+  the Head of Household's handover after a competition; the finalists in the hot seats.
+- The seated takes (a nervous sit for the hot seats, a seated relief for the keys): the mocap
+  pipeline, adding-a-mocap-take. The keys use a head turn and the seated fist pump meanwhile; the
+  nominees' drop is a look, not a take.
+- The HUD copy of the card in the corner while it plays on the screen (the plan's reduced-size
+  copy), and the screen's idle branding: today the card is only on the screen while the camera
+  is on it, and the face shows its authored emissive material otherwise.
+- Dressing the sets at season start rather than at the first ceremony, once the start-spot audit
+  is proven against the moved sofa and the living room's screen.
+- C5: room tone per set, the summons chime.

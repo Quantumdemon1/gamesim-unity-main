@@ -340,6 +340,9 @@ namespace Gamesim.Episode
             TickTravelDip();
             TickTravelBeacons();
             TickSleepLight();
+            // The staged ceremony before the ceremonies' bookkeeping: its card starts here, and the
+            // hold on the chrome reads whether it is still telling its story.
+            TickCeremonyStage();
             TickCeremonies();
             // The music follows what is on screen every frame, before anything can return early:
             // the opening's loading gate and its closing fade change in the middle of a beat, with
@@ -633,6 +636,10 @@ namespace Gamesim.Episode
         {
             CloseHouseActivities(!render);
             if (focusedNpc != null) focusedNpc.GetComponent<CharacterPresentation>()?.SetTalking(false);
+            // What the player came into a conversation for goes with the conversation; a houseguest's
+            // screen over free time goes with the panel.
+            if (focusedNpc != null) conversationIntent = null;
+            moveScreenId = null;
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -790,6 +797,10 @@ namespace Gamesim.Episode
                     // over the new one: the nomination's keys sit at sort 110 over the takeover's
                     // 100, so the veto field played underneath a finished nomination ceremony.
                     if (field == null) EndCeremonyCards(includingResult: competition == null);
+                    EndCeremonyStage();
+                    var committed = result.state;
+                    string kind = ceremony.kind;
+                    string text = ceremony.text;
                     // The takeover opens the scene and the sting reports the result, so they play
                     // together rather than instead of each other: the card is over by the time the
                     // strip has finished its own entrance.
@@ -797,39 +808,49 @@ namespace Gamesim.Episode
                     // beat whose outcome is not already inferable, and the commit resolves every
                     // ballot in one frame. If the reveal declines the shape — a block that is not
                     // two, or no ballots — the generic card still plays, so the beat is never silent.
-                    revealed = ceremony.kind == CeremonySting.EvictionKind
-                        && voteReveal != null
-                        && voteReveal.Play(result.state.week, EvictionBlock(result.state),
-                            EvictionBallots(result.state), evictedNow, reducedMotion, ceremonyPace,
-                            NameOf(result.state, result.state.hohId), result.state.hohId == result.state.playerId,
-                            evictedNow != null && evictedNow == result.state.playerId);
-
                     // The nomination gets the key ceremony for the same reason the eviction gets the
                     // vote reveal: the engine decides it in one commit, and the order is the beat.
-                    revealed |= ceremony.kind == CeremonySting.NominationKind
-                        && keyCeremony != null
-                        && keyCeremony.Play(result.state.week, NameOf(result.state, result.state.hohId),
-                            result.state.hohId == result.state.playerId,
-                            SafeHouseguests(result.state), NominatedHouseguests(result.state), reducedMotion, ceremonyPace);
-
-                    // And the season's last beat gets the jury read one juror at a time: the engine
-                    // decides every ballot and the winner in one commit, and the card that named the
-                    // winner at once gave the finale away.
-                    revealed |= ceremony.kind == CeremonySting.WinnerKind
-                        && juryReveal != null
-                        && juryReveal.Play(JuryFinalists(result.state), JuryVotes(result.state), result.state.winnerId,
-                            reducedMotion, ceremonyPace, unchecked((int)result.state.seed));
-                    if (!revealed && takeover != null)
-                        takeover.Play(ceremony.kind, result.state.week,
-                            CeremonySubjects(result.state, ceremony.kind, wasActive, wasNominated), reducedMotion);
-                    // The reveal narrates the eviction itself and outlives the strip by seconds, so
-                    // the strip would only flash under it and vanish mid-tally. Everywhere else the
-                    // two still pair up: card opens the scene, strip reports the result.
-                    if (sting != null && !revealed) sting.Play(ceremony.kind, ceremony.text, reducedMotion);
-                    // The bodies act the beat out in the house while the card and the strip report it,
-                    // and the camera goes to the room the ceremony happens in (Phase 4 presets).
-                    ReactToCeremony(result.state, ceremony.kind, wasActive, wasNominated);
-                    FrameCeremony(ceremony.kind);
+                    // Either reveal plays on a screen when the house stages the ceremony
+                    // (EpisodeDirector.CeremonyStage.cs): the stage gathers the house first and
+                    // plays the card on the set's screen once the seats have filled, so the card is a
+                    // function of the screen it is given - null being the HUD, as it always was.
+                    Func<ScreenSurface, bool> reveal = null;
+                    if (kind == CeremonySting.EvictionKind && voteReveal != null)
+                        reveal = screen => voteReveal.Play(committed.week, EvictionBlock(committed),
+                            EvictionBallots(committed), evictedNow, reducedMotion, ceremonyPace,
+                            NameOf(committed, committed.hohId), committed.hohId == committed.playerId,
+                            evictedNow != null && evictedNow == committed.playerId, screen);
+                    else if (kind == CeremonySting.NominationKind && keyCeremony != null)
+                        reveal = screen => keyCeremony.Play(committed.week, NameOf(committed, committed.hohId),
+                            committed.hohId == committed.playerId,
+                            SafeHouseguests(committed), NominatedHouseguests(committed), reducedMotion, ceremonyPace, screen);
+                    if (reveal != null && TryBeginCeremonyStage(kind, committed,
+                            screen => reveal(screen) || PlayGenericCeremonyCard(committed, kind, text, wasActive, wasNominated)))
+                        revealed = true;
+                    else if (reveal != null)
+                    {
+                        revealed = reveal(null);
+                        // The bodies act the beat out in the house while the card reports it, and the
+                        // camera goes to the room the ceremony happens in (Phase 4 presets).
+                        if (revealed) { ReactToCeremony(committed, kind, wasActive, wasNominated); FrameCeremony(kind); }
+                        else PlayGenericCeremonyCard(committed, kind, text, wasActive, wasNominated);
+                    }
+                    else
+                    {
+                        // And the season's last beat gets the jury read one juror at a time: the engine
+                        // decides every ballot and the winner in one commit, and the card that named the
+                        // winner at once gave the finale away.
+                        revealed = ceremony.kind == CeremonySting.WinnerKind
+                            && juryReveal != null
+                            && juryReveal.Play(JuryFinalists(result.state), JuryVotes(result.state), result.state.winnerId,
+                                reducedMotion, ceremonyPace, unchecked((int)result.state.seed));
+                        if (!revealed) PlayGenericCeremonyCard(result.state, ceremony.kind, ceremony.text, wasActive, wasNominated);
+                        else
+                        {
+                            ReactToCeremony(result.state, ceremony.kind, wasActive, wasNominated);
+                            FrameCeremony(ceremony.kind);
+                        }
+                    }
                     lastCeremonyKind = ceremony.kind;
                     // The week's recap, once the beats that narrate the eviction have had their say.
                     // It waits rather than opening now because the reveal outlives its own strip by
@@ -861,6 +882,22 @@ namespace Gamesim.Episode
                     audioBed.PlayCue(commitCue);
             }
             Render(); return result;
+        }
+
+        /// <summary>
+        /// The generic card for a ceremony: the takeover opens the scene, the strip reports the
+        /// result, the bodies act the beat out where they stand and the camera goes to the room.
+        /// What every ceremony got before the reveals, and what a reveal that declines its shape -
+        /// or a stage that could not gather the house - falls back to. Always true: the beat is
+        /// never silent.
+        /// </summary>
+        private bool PlayGenericCeremonyCard(EpisodeState state, string kind, string text, HashSet<string> wasActive, HashSet<string> wasNominated)
+        {
+            if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion);
+            if (sting != null) sting.Play(kind, text, reducedMotion);
+            ReactToCeremony(state, kind, wasActive, wasNominated);
+            FrameCeremony(kind);
+            return true;
         }
 
         /// <summary>
@@ -1209,6 +1246,20 @@ namespace Gamesim.Episode
                     + "  ·  " + ActionsLeft(state) + " left");
                 hud.NpcDialogue(state, npc.id, lastSocialAction, standingLineBefore);
                 if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
+                // What the player came for, first (their screen's "Ask for information" or "Pitch a
+                // deal"): the rows it names are drawn here and not again below.
+                bool cameToAsk = conversationIntent == IntentAsk, cameToDeal = conversationIntent == IntentDeal;
+                if (cameToAsk)
+                {
+                    hud.Heading("WHAT YOU CAME TO ASK");
+                    AskRows(state, npc, window);
+                }
+                else if (cameToDeal)
+                {
+                    hud.Heading("WHAT YOU CAME TO PUT TO THEM");
+                    DealRows(state, npc, allied: state.Allied(state.playerId, npc.id));
+                    DealPanel(state, npc);
+                }
                 if (state.oathOpportunities.Contains(npc.id))
                 {
                     hud.Heading("A PERSONAL LOYALTY DECLARATION");
@@ -1258,27 +1309,10 @@ namespace Gamesim.Episode
                 // What this room offers that no other does (decision D-E): pillow talk in a bedroom,
                 // an invitation in the suite, cooking in the kitchen.
                 RoomActs(state, npc);
-                hud.Tag(hud.Action("Promise safety", () => Commit(state, EpisodeCommandKind.PromiseSafety, npc.id)),
-                    Category(EpisodeCommandKind.PromiseSafety));
-                hud.Tag(hud.Action("Propose a final-two promise", () => Commit(state, EpisodeCommandKind.PromiseFinalTwo, npc.id)),
-                    Category(EpisodeCommandKind.PromiseFinalTwo));
-                hud.Tag(hud.Action(allied ? "Leave our alliance" : "Propose an alliance",
-                        () => Commit(state, allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance, npc.id)),
-                    Category(allied ? EpisodeCommandKind.LeaveAlliance : EpisodeCommandKind.FormAlliance));
+                if (!cameToDeal) DealRows(state, npc, allied);
                 hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
                     Category(EpisodeCommandKind.ShareInformation));
-                hud.Tag(hud.Action("Ask what they have heard", () => Commit(state, EpisodeCommandKind.AskForIntel, npc.id)),
-                    Category(EpisodeCommandKind.AskForIntel));
-                // The read (STRATEGY-LOOP-PLAN.md section 2): free, once a week each, and the play itself.
-                // The question is for a voter while there is a vote to ask about; the look is for anyone,
-                // in free time or the campaign.
-                if (VoteRead.Available(state) && EpisodeEngine.Voters(state).Any(v => v.id == npc.id)
-                    && !EpisodeEngine.AskedThisWeek(state, npc.id))
-                    hud.Tag(hud.Action(EpisodeHud.AskVoteCaption, () => Commit(state, EpisodeCommandKind.AskVote, npc.id)),
-                        Category(EpisodeCommandKind.AskVote));
-                if (!window && !EpisodeEngine.ReadThisWeek(state, npc.id))
-                    hud.Tag(hud.Action(EpisodeHud.ReadPersonCaption, () => Commit(state, EpisodeCommandKind.ReadPerson, npc.id)),
-                        Category(EpisodeCommandKind.ReadPerson));
+                if (!cameToAsk) AskRows(state, npc, window);
                 // Calling the vote (STRATEGY-LOOP-PLAN.md section 3): through an ally, once per
                 // alliance a week, naming who the bloc evicts.
                 if (EpisodeEngine.LeverRulesOn(state) && state.phase == EpisodePhase.Campaign && VoteRead.Available(state))
@@ -1318,7 +1352,7 @@ namespace Gamesim.Episode
                 if (!window)
                     hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
                         Category(EpisodeCommandKind.SchemeAgainst));
-                DealPanel(state, npc);
+                if (!cameToDeal) DealPanel(state, npc);
                 if (state.phase == EpisodePhase.Campaign)
                     foreach (var nominee in state.nominees) { string id = nominee; hud.Tag(hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)), Category(EpisodeCommandKind.PromiseVote)); }
                 return;
@@ -1434,7 +1468,12 @@ namespace Gamesim.Episode
             // Pinned under the scroll, where it is always seen - except under a house event, whose
             // choices keep the panel and the priority; the way on stays inline after them there.
             if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage)
+            {
                 hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
+                // What free time's way on costs, under it: the actions that go unused.
+                string unused = UnusedActionsNote(state);
+                if (unused != null) hud.PinnedNote(unused);
+            }
             else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
         }
 
@@ -1456,6 +1495,7 @@ namespace Gamesim.Episode
             if (juryReveal != null) juryReveal.Cancel();
             if (competitionCard != null) competitionCard.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
+            EndCeremonyStage();
             DisposeNpcSocialWorld();
         }
         private void OnEnable()
@@ -1500,7 +1540,7 @@ namespace Gamesim.Episode
         {
             switch (phase)
             {
-                case EpisodePhase.Social: return "MAKE YOUR NEXT MOVE";
+                case EpisodePhase.Social: return "FREE TIME";
                 case EpisodePhase.HoH: return "HEAD OF HOUSEHOLD";
                 case EpisodePhase.VetoSelection: return "VETO PLAYER SELECTION";
                 case EpisodePhase.VetoMeeting: return "VETO CEREMONY";

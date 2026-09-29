@@ -37,7 +37,7 @@ namespace Gamesim.Episode
         private bool WanderAllowed =>
             IsReady && npcMeetings != null && npcMeetings.IsReady && !npcWorldFailed && !npcDiagnosticsSuspended
             && !IsPanelOpen && !challengeActive && !competitionArenaStaging && !CeremonyOverlays.OnScreen && !TourIsUp
-            && (openingStage == null || !openingStage.Active) && walkingOutId == null && playerIsActive && projected != null
+            && (openingStage == null || !openingStage.Active) && !IsCeremonyStaged && walkingOutId == null && playerIsActive && projected != null
             && projected.phase != EpisodePhase.Social && projected.phase != EpisodePhase.Campaign
             && projected.phase != EpisodePhase.Jury && projected.phase != EpisodePhase.JuryQuestioning
             && projected.phase != EpisodePhase.FinalSpeeches && projected.phase != EpisodePhase.Finished;

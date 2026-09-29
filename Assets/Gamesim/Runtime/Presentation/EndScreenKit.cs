@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
@@ -240,12 +241,57 @@ namespace Gamesim.Presentation
         /// <summary>The first sentence of <paramref name="text"/>, cut at a word under <paramref name="limit"/> characters.</summary>
         public static string Excerpt(string text, int limit = 110)
         {
-            if (string.IsNullOrWhiteSpace(text)) return null;
+            var sentences = Sentences(text);
+            return sentences.Count == 0 ? null : Cut(sentences[0], limit);
+        }
+
+        /// <summary>
+        /// <paramref name="text"/>'s excerpt beside quotes already on the screen, each given by the
+        /// words it was taken from (<paramref name="shown"/>). Two final speeches can open on the
+        /// same sentence, and the runner-up's first line printed under the winner's own read as the
+        /// winner's quote twice. When the first sentence is one a shown quote opens with, the next
+        /// sentence is used instead; when that repeats one too, or there is none, no quote at all.
+        /// The sentences are compared whole, before either is cut to its card.
+        /// </summary>
+        public static string ExcerptBeside(string text, int limit, params string[] shown)
+        {
+            var sentences = Sentences(text);
+            if (sentences.Count == 0) return null;
+            var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var other in shown ?? Array.Empty<string>())
+            {
+                var theirs = Sentences(other);
+                if (theirs.Count > 0) taken.Add(theirs[0]);
+            }
+            if (!taken.Contains(sentences[0])) return Cut(sentences[0], limit);
+            return sentences.Count > 1 && !taken.Contains(sentences[1]) ? Cut(sentences[1], limit) : null;
+        }
+
+        /// <summary>
+        /// The sentences of <paramref name="text"/> in order, on one line each: a sentence ends at a
+        /// full stop, an exclamation or a question mark followed by a space or the end.
+        /// </summary>
+        private static List<string> Sentences(string text)
+        {
+            var sentences = new List<string>();
+            if (string.IsNullOrWhiteSpace(text)) return sentences;
             string clean = text.Replace('\n', ' ').Replace('\r', ' ').Trim();
-            int stop = -1;
+            int start = 0;
             for (int i = 0; i < clean.Length; i++)
-                if ((clean[i] == '.' || clean[i] == '!' || clean[i] == '?') && (i + 1 == clean.Length || clean[i + 1] == ' ')) { stop = i; break; }
-            string sentence = stop >= 0 ? clean.Substring(0, stop + 1) : clean;
+            {
+                if ((clean[i] != '.' && clean[i] != '!' && clean[i] != '?') || (i + 1 < clean.Length && clean[i + 1] != ' ')) continue;
+                string sentence = clean.Substring(start, i + 1 - start).Trim();
+                if (sentence.Length > 0) sentences.Add(sentence);
+                start = i + 1;
+            }
+            string rest = clean.Substring(Math.Min(start, clean.Length)).Trim();
+            if (rest.Length > 0) sentences.Add(rest);
+            return sentences;
+        }
+
+        /// <summary>A sentence cut at a word under <paramref name="limit"/> characters, with an ellipsis where it was cut.</summary>
+        private static string Cut(string sentence, int limit)
+        {
             if (sentence.Length <= limit) return sentence;
             int cut = sentence.LastIndexOf(' ', limit - 1);
             return (cut > limit / 2 ? sentence.Substring(0, cut) : sentence.Substring(0, limit - 1)).TrimEnd(',', ';', ':') + "…";

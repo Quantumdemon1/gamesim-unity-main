@@ -696,24 +696,27 @@ namespace Gamesim.Presentation
             Stat(card, 1, "VETO WINS", champion.vetoWins.ToString(), UiTheme.Gold);
             Stat(card, 2, "NOMINATED", champion.timesNominated.ToString(),
                 champion.timesNominated > 0 ? UiTheme.Danger : UiTheme.Positive);
-            Stat(card, 3, "COMP WINS", (champion.hohWins + champion.vetoWins).ToString(), UiTheme.Positive);
+            // Every competition won, the final Head of Household's first two parts included, as the
+            // finalists' records count them (FinalistRead.Wins); HOH WINS and VETO WINS stay the two.
+            Stat(card, 3, "COMP WINS", FinalistRead.Wins(state, champion).ToString(), UiTheme.Positive);
             Stat(card, 4, "WITH YOU",
                 Math.Round(state.Score(state.playerId, champion.id)).ToString(CultureInfo.InvariantCulture),
                 UiTheme.Muted);
 
             var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-            note.text = WinnerNote(champion);
+            note.text = WinnerNote(state, champion);
             Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
         }
 
         /// <summary>
         /// One line on how the champion played it, from the shape of their own record rather than
         /// from a phrase picked at random — a winner who never won anything and a winner who won
-        /// everything did not have the same season and should not be described the same way.
+        /// everything did not have the same season and should not be described the same way. The
+        /// count is the card's own COMP WINS, so the line and the number beside it agree.
         /// </summary>
-        private static string WinnerNote(ContestantState champion)
+        private static string WinnerNote(EpisodeState state, ContestantState champion)
         {
-            int comps = champion.hohWins + champion.vetoWins;
+            int comps = FinalistRead.Wins(state, champion);
             if (comps == 0 && champion.timesNominated == 0)
                 return "Never on the block, never in charge. Nobody ever thought to move on them.";
             if (comps == 0)
@@ -774,7 +777,7 @@ namespace Gamesim.Presentation
             Stat(card, 2, "VETO WINS", you.vetoWins.ToString(), UiTheme.Gold);
             Stat(card, 3, "NOMINATED", you.timesNominated.ToString(),
                 you.timesNominated > 0 ? UiTheme.Danger : UiTheme.Positive);
-            Stat(card, 4, "COMP WINS", (you.hohWins + you.vetoWins).ToString(), UiTheme.Positive);
+            Stat(card, 4, "COMP WINS", FinalistRead.Wins(state, you).ToString(), UiTheme.Positive);
 
             var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
             note.text = ClosingNote(state, you);
@@ -980,11 +983,13 @@ namespace Gamesim.Presentation
                 case CastSort.Nominations:
                     return cast.OrderByDescending(c => c.timesNominated).ThenBy(c => c.name, StringComparer.CurrentCulture);
                 default:
-                    // How far they got: the order the standings read in, one placement for every screen.
-                    return cast
-                        .OrderBy(c => CareerLedger.Placement(state, c))
-                        .ThenBy(c => PlacementRank(c.status))
-                        .ThenByDescending(c => c.hohWins + c.vetoWins)
+                    // How far they got: the order the standings read in, one placement for every
+                    // screen. Where the placement is the fallback's shared number, the standings
+                    // order the tie by the week each left, and the table follows them rather than
+                    // its own count of wins.
+                    var standing = StandingsOrder(state).Select((entry, index) => (entry.who.id, index))
+                        .ToDictionary(entry => entry.id, entry => entry.index);
+                    return cast.OrderBy(c => standing.TryGetValue(c.id, out int index) ? index : int.MaxValue)
                         .ThenBy(c => c.name, StringComparer.CurrentCulture);
             }
         }
@@ -1047,8 +1052,11 @@ namespace Gamesim.Presentation
                 case ContestantStatus.Active: return "Still in the house";
                 default:
                     // The one placement every screen reads: the order the jury ledger filled, with
-                    // production's removals merged in by the week each left.
-                    int place = CareerLedger.Placement(state, you);
+                    // production's removals merged in by the week each left, and the place the
+                    // standings print, so a fallback's tie broken there is broken here too. The
+                    // career keeps CareerLedger.Placement, the number its saved season holds.
+                    int place = StandingsOrder(state).Where(entry => entry.who.id == you.id)
+                        .Select(entry => entry.place).DefaultIfEmpty(CareerLedger.Placement(state, you)).First();
                     return place + Ordinal(place) + " — " + StatusWord(you.status);
             }
         }

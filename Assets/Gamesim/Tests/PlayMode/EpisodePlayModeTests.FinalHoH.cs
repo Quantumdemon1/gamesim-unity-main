@@ -82,6 +82,24 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption("Continue to the next ceremony").onClick.Invoke();
             yield return Frames(2);
             Assert.That(director.Snapshot.phase, Is.EqualTo(expected));
+            AssertTheStatusLineWordsThePhase(expected);
+        }
+
+        /// <summary>
+        /// The status line after a commit into a new phase says it in words ("Week 4 · Final HoH,
+        /// Part 2 of 3"), never by the enum's own name, which the saved event keeps.
+        /// </summary>
+        private void AssertTheStatusLineWordsThePhase(EpisodePhase phase)
+        {
+            string status = director.StatusMessage;
+            // The names run together from two words or more ("FinalHoHPart2", "VetoMeeting"); "HoH"
+            // alone is a word the line uses itself.
+            foreach (EpisodePhase each in System.Enum.GetValues(typeof(EpisodePhase)))
+                if (each != EpisodePhase.HoH && each.ToString().Skip(1).Any(char.IsUpper))
+                    Assert.That(status, Does.Not.Contain(each.ToString()), "A raw phase name in the status line: " + status);
+            Assert.That(status, Does.StartWith(EpisodeDirector.PhaseLine(phase, director.Snapshot.week)), status);
+            var entry = director.Snapshot.events.Last(e => e.kind == "phase");
+            Assert.That(entry.text, Is.EqualTo("Week " + entry.week + " · " + phase), "The saved event keeps its own text.");
         }
 
         /// <summary>

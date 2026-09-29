@@ -65,6 +65,41 @@ namespace Gamesim.Tests.PlayMode
                     "The warning and what the certainty words mean.");
                 Assert.That(LastActive(EpisodeHud.FinalistColumnsName), Is.Not.Null, "The finalists as columns.");
 
+                // Both controls whole as the screen opens, still before anything is scrolled for the
+                // test: each inside its own column with its caption drawn to the end, and neither cut
+                // by the edge of the view. Side by side they are level, the headlines and warnings
+                // over them too, so the control the screen opens on brings the other into sight.
+                string size = larger ? "larger" : "resting";
+                var controls = others.Select(take => (take, control: (RectTransform)FindButton(
+                    "Evict " + others.Single(other => other.id != take.id).name).transform)).ToList();
+                foreach (var (take, control) in controls)
+                {
+                    var rect = ScreenRect(control);
+                    var own = ScreenRect(LastActive("Finalist column · " + take.name));
+                    Assert.That(rect.yMin >= own.yMin - 1f && rect.yMax <= own.yMax + 1f, Is.True,
+                        take.name + "'s control sits inside its column (" + size + " text).");
+                    foreach (var caption in control.GetComponentsInChildren<TMP_Text>())
+                        Assert.That(ShowsAllOf(caption), Is.True, "The control loses the end of \"" + caption.text + "\" (" + size + " text).");
+                    if (rect.Overlaps(view))
+                        Assert.That(rect.yMin >= view.yMin - 1f && rect.yMax <= view.yMax + 1f, Is.True,
+                            take.name + "'s control is cut by the edge of the view as the screen opens (" + size + " text).");
+                }
+                Assert.That(controls.Any(entry => ScreenRect(entry.control).Overlaps(view)), Is.True,
+                    "A control is in sight as the screen opens (" + size + " text).");
+                if (!larger)
+                {
+                    var left = ScreenRect(controls[0].control);
+                    var right = ScreenRect(controls[1].control);
+                    Assert.That(Mathf.Abs(left.yMin - right.yMin), Is.LessThan(1f), "The two controls are level.");
+                    Assert.That(left.Overlaps(view) && right.Overlaps(view), Is.True, "Level, both are in sight as the screen opens.");
+                    foreach (var part in new[] { EpisodeHud.FinalistHeadlineName, EpisodeHud.FinalistWarningName })
+                    {
+                        var baselines = others.Select(take => ScreenRect(LastActive("Finalist column · " + take.name)
+                            .GetComponentsInChildren<TMP_Text>().Single(text => text.name == part).rectTransform).yMin).ToList();
+                        Assert.That(Mathf.Abs(baselines[0] - baselines[1]), Is.LessThan(1f), "The " + part + " lines share a baseline.");
+                    }
+                }
+
                 foreach (var take in others)
                 {
                     var cut = others.Single(other => other.id != take.id);

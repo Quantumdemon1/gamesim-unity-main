@@ -797,13 +797,25 @@ namespace Gamesim.Episode
         /// Whether the Final 3's tagline heads the card: for a finalist, while the competition or
         /// the decision it names is still theirs to come. A finalist who lost the final Head of
         /// Household has neither left, and the line would not be true of them.
+        ///
+        /// <para>Part 3 is the Part 1 and Part 2 winners' (EpisodeEngine.CompetitionPlayers), so
+        /// a finalist beaten in Part 2 has played their last competition from the moment Part 2 is
+        /// decided, and sits Part 3 out. Once Part 3 is decided the decision is its winner's alone,
+        /// though the phase holds until the house moves on.</para>
         /// </summary>
-        private static bool ObjectivesTaglineShows(EpisodeState state)
+        public static bool ObjectivesTaglineShows(EpisodeState state)
         {
             if (!IsFinalThree(state)) return false;
             var me = state.Find(state.playerId);
             if (me == null || me.status != ContestantStatus.Active) return false;
-            return state.phase != EpisodePhase.FinalEviction || state.hohId == state.playerId;
+            bool inPartThree = state.playerId == state.finalPart1WinnerId || state.playerId == state.finalPart2WinnerId;
+            switch (state.phase)
+            {
+                case EpisodePhase.FinalHoHPart2: return !state.competitionResolved || inPartThree;
+                case EpisodePhase.FinalHoHPart3: return inPartThree && (!state.competitionResolved || state.hohId == state.playerId);
+                case EpisodePhase.FinalEviction: return state.hohId == state.playerId;
+                default: return true;
+            }
         }
 
         /// <summary>

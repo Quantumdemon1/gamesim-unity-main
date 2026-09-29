@@ -311,6 +311,34 @@ namespace Gamesim.Tests.PlayMode
             three.hohId = three.Active.First(actor => !actor.isPlayer).id;
             Assert.That(EpisodeDirector.PhaseTitle(three), Is.EqualTo("THE FINAL EVICTION"), "Somebody else decides.");
 
+            // The objectives card's tagline, a finalist's only while the competition or the decision
+            // it names is still theirs to come: Part 3 is the Part 1 and Part 2 winners', and the
+            // decision is the Part 3 winner's.
+            var parts = three.Clone();
+            var rivals = parts.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList();
+            parts.hohId = null; parts.competitionResolved = false; parts.finalPart1WinnerId = null; parts.finalPart2WinnerId = null;
+            parts.phase = EpisodePhase.FinalHoHPart1;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Every finalist plays Part 1.");
+            parts.phase = EpisodePhase.FinalHoHPart2; parts.finalPart1WinnerId = rivals[0];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Beaten in Part 1, the player plays Part 2.");
+            parts.competitionResolved = true; parts.finalPart2WinnerId = rivals[1];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "Beaten in Part 2, the player has played their last competition,");
+            parts.phase = EpisodePhase.FinalHoHPart3; parts.competitionResolved = false;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and sits Part 3 out.");
+            parts.finalPart2WinnerId = parts.playerId;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 2's winner has Part 3 ahead,");
+            parts.competitionResolved = true; parts.hohId = rivals[0];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and nothing left once Part 3 goes to somebody else.");
+            parts.hohId = parts.playerId;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 3's winner has the decision to come.");
+            parts.phase = EpisodePhase.FinalHoHPart2; parts.hohId = null;
+            parts.finalPart1WinnerId = parts.playerId; parts.finalPart2WinnerId = rivals[1];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 1's winner sits Part 2 out with Part 3 still ahead.");
+            parts.phase = EpisodePhase.FinalEviction; parts.competitionResolved = false; parts.hohId = parts.playerId;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "The final Head of Household makes the decision,");
+            parts.hohId = rivals[0];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and nobody else does.");
+
             // The strap: the season's size through the weeks, the finale all finale night, by its
             // number wherever the career record gives one (review correction 22).
             Assert.That(EpisodeHud.BrandStrap(state, 3), Is.EqualTo("THE HOUSE  |  " + state.contestants.Count + "-PERSON SEASON"));

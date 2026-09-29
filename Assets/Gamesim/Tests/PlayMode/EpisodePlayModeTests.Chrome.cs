@@ -268,6 +268,10 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator Chrome_RecentEventsViewAllOpensTheStory()
         {
             director.ClosePanels();
+            // Opening any panel banks the house's elapsed free time as an NPC tick, a commit of its
+            // own once a second has built up, and the part-second carries in from set-up. The house
+            // holds still, so the revision below measures the link and the page alone.
+            director.SuspendNpcAutonomyForDiagnostics();
             yield return null;
 
             var card = ActiveRect(EpisodeHud.RecentEventsCardName);

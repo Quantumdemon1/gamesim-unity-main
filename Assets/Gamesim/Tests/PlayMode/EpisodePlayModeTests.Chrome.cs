@@ -261,6 +261,32 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// MOCKUP-PASS M3: the Recent Events card's corner link, captioned apart from the
+        /// relationships card's 'See all', opens the notebook's Story page and commits nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Chrome_RecentEventsViewAllOpensTheStory()
+        {
+            director.ClosePanels();
+            yield return null;
+
+            var card = ActiveRect(EpisodeHud.RecentEventsCardName);
+            Assert.That(card, Is.Not.Null);
+            Assert.That(EpisodeHud.ViewAllEventsCaption, Is.Not.EqualTo(EpisodeHud.SeeAllRelationshipsCaption),
+                "Two corner links, two captions: a lookup by caption finds one control.");
+            var link = ButtonWithCaption(EpisodeHud.ViewAllEventsCaption);
+            Assert.That(link.transform.IsChildOf(card), Is.True, "The link is the card's own.");
+            long revision = director.Snapshot.revision;
+            link.onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(director.IsPanelOpen, Is.True, "The notebook opens,");
+            Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Story), "at the story so far.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "Opening a page commits nothing.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
         /// The playtest's week-2 conversation with the Head of Household (2026-09-27). Its plea rows
         /// carry a portrait, a trust reading and a tag, and in the fixed 340-unit column their
         /// captions were left 20 units or less: the words stood one letter a line in rows grown 860

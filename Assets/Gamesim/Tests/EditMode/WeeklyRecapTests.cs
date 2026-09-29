@@ -40,7 +40,14 @@ namespace Gamesim.Tests.EditMode
                 else
                 {
                     Assert.That(recap.evicted, Is.Not.Null, "week " + recap.week + ": " + evictedThisWeek[0].text);
-                    Assert.That(evictedThisWeek[0].text, Does.StartWith(recap.evicted));
+                    // A week's eviction line opens with the evictee; the final eviction's opens with the
+                    // Head of Household who chose, and names the evictee in its second sentence.
+                    if (evictedThisWeek[0].kind == "final-eviction")
+                    {
+                        Assert.That(evictedThisWeek[0].text, Does.Contain(". " + recap.evicted), "week " + recap.week + ": the second sentence's.");
+                        Assert.That(recap.evictedId, Is.EqualTo(state.ledger.power.Single(p => p.week == recap.week).evicteeId), "and the ledger's.");
+                    }
+                    else Assert.That(evictedThisWeek[0].text, Does.StartWith(recap.evicted));
                     Assert.That(state.contestants.Any(c => c.name == recap.evicted), Is.True);
                 }
 
@@ -250,6 +257,107 @@ namespace Gamesim.Tests.EditMode
             var moments = WeeklyRecap.Build(state, 1).moments;
             Assert.That(moments, Has.Count.EqualTo(1));
             Assert.That(moments[0], Is.EqualTo("Something the house saw."));
+        }
+
+        /// <summary>
+        /// A deal or an alliance between two other houseguests is logged to them alone, and the
+        /// recap's Deals and Alliances were the one place it could still reach the player.
+        /// </summary>
+        [Test]
+        public void ADealOrAllianceBetweenTwoOtherHouseguestsNeverReachesTheRecap()
+        {
+            var state = Season(5u, 8);
+            var cast = state.contestants.Where(c => !c.isPlayer).ToList();
+            foreach (var kind in new[] { "deal-outcome", "deal", "alliance" })
+            {
+                var theirs = Line(state, 1, EpisodePhase.Social, kind, "Their " + kind + ".");
+                theirs.audienceIds.Add(cast[0].id);
+                theirs.audienceIds.Add(cast[1].id);
+                state.events.Add(theirs);
+                var yours = Line(state, 1, EpisodePhase.Social, kind, "Your " + kind + ".");
+                yours.audienceIds.Add(state.playerId);
+                state.events.Add(yours);
+            }
+            var recap = WeeklyRecap.Build(state, 1);
+            Assert.That(recap.deals, Is.EqualTo(new[] { "Your deal-outcome.", "Your deal." }));
+            Assert.That(recap.alliances, Is.EqualTo(new[] { "Your alliance." }));
+        }
+
+        /// <summary>
+        /// Looking back at a week from the jury is not the week the season ended: the end is said in
+        /// the week the ledger says the player left, and the veto that saved them is that week's.
+        /// </summary>
+        [Test]
+        public void LookingBackAtAWeekSaysWhatHappenedThatWeek()
+        {
+            var state = Season(5u, 8);
+            var you = state.Find(state.playerId);
+            var cast = state.contestants.Where(c => !c.isPlayer).ToList();
+            state.week = 3;
+            you.status = ContestantStatus.Jury;
+            you.nominationWeeks.Add(1);
+            you.nominationWeeks.Add(3);
+            state.ledger.power.Add(new PowerRow { week = 1, hohId = cast[0].id, vetoHolderId = cast[1].id, vetoUsed = true, savedId = you.id,
+                replacementId = cast[2].id, nominees = new List<string> { cast[2].id, cast[3].id }, evicteeId = cast[3].id, tally = new List<int> { 4, 2 } });
+            state.ledger.power.Add(new PowerRow { week = 3, hohId = cast[1].id, nominees = new List<string> { you.id, cast[4].id }, evicteeId = you.id, tally = new List<int> { 5, 1 } });
+            string first = WeeklyRecap.Build(state, 1).yourWeek;
+            Assert.That(first, Does.Contain("the veto took you back down"), "Week one's veto saved them.");
+            Assert.That(first, Does.Not.Contain("Your season ended here."), "Week one was not the end.");
+            Assert.That(WeeklyRecap.Build(state, 3).yourWeek, Does.Contain("Your season ended here."));
+        }
+
+        /// <summary>
+        /// The redesigned recap's facts come from the ledger's row for the week: the ids, the block,
+        /// the evictee and their place, the vote split, the key moments, and the house named from
+        /// what the player saw - never a number the player could not know.
+        /// </summary>
+        [Test]
+        public void TheWeeksLedgerGivesTheRecapItsFacts()
+        {
+            var state = PlayedSeason(5u);
+            foreach (var recap in WeeklyRecap.Season(state))
+            {
+                var power = state.ledger.power.FirstOrDefault(p => p.week == recap.week);
+                if (power == null) continue;
+                Assert.That(recap.hohId, Is.EqualTo(power.hohId), "week " + recap.week);
+                Assert.That(recap.evictedId, Is.EqualTo(power.evicteeId), "week " + recap.week);
+                Assert.That(recap.block, Is.EqualTo(power.nominees), "week " + recap.week);
+                if (recap.evictedId != null)
+                {
+                    Assert.That(recap.placement, Is.EqualTo(Gamesim.Persistence.CareerLedger.Placement(state, state.Find(recap.evictedId))), "week " + recap.week);
+                    Assert.That(recap.keyMoments.Last().kind, Is.EqualTo("eviction"), "week " + recap.week);
+                    Assert.That(recap.exitRecord, Is.Not.Empty, "week " + recap.week);
+                }
+                var (against, others) = WeeklyRecap.Split(recap);
+                if (recap.votes.Count > 0 && !recap.votes.Any(v => v.tieBreak) && power.tally.Count > 0)
+                    Assert.That(against + others, Is.EqualTo(power.tally.Sum()), "week " + recap.week + ": every ballot the reveal read.");
+                Assert.That(recap.temperature, Is.Not.Empty, "week " + recap.week);
+                foreach (var reading in recap.temperature)
+                    Assert.That(reading.evidence, Is.Not.Empty, "week " + recap.week + ": " + reading.label + " rests on something the player saw.");
+                if (recap.evicteeQuote != null)
+                    Assert.That(state.events.Any(e => e.week == recap.week && e.kind == "eviction-speech" && e.text.Contains(recap.evicteeQuote))
+                        || state.evictionSpeeches.Any(x => x.text == recap.evicteeQuote), Is.True, "week " + recap.week + ": their own words from the block.");
+                if (recap.finalDecision)
+                    Assert.That(recap.nominated, Is.Empty, "week " + recap.week + ": the last Head of Household chose between two; nobody was nominated.");
+            }
+            Assert.That(WeeklyRecap.Season(state).Last().remaining, Is.EqualTo(2), "The season's last week leaves its two finalists in the house.");
+        }
+
+        /// <summary>
+        /// How the house took to the player is the house's: the record keeps it, and the week's
+        /// story tells only the player's own feelings.
+        /// </summary>
+        [Test]
+        public void HowTheHouseTookToYouStaysOutOfTheWeeksStory()
+        {
+            var state = Season(5u, 8);
+            var npc = state.contestants.First(c => !c.isPlayer);
+            Move(state, npc.id, state.playerId, 1, 40);
+            var recap = WeeklyRecap.Build(state, 1);
+            Assert.That(recap.relationships.Single().aboutYou, Is.True, "The record keeps it.");
+            Assert.That(recap.yourWeek ?? "", Does.Not.Contain("warm").And.Not.Contain("liked").And.Not.Contain("enemies"));
+            Move(state, state.playerId, npc.id, 1, 40);
+            Assert.That(WeeklyRecap.Build(state, 1).yourWeek, Does.Contain("You warmed to the house this week."));
         }
 
         [Test]

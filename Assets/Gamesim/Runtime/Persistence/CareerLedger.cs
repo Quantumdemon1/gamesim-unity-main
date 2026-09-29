@@ -265,7 +265,11 @@ namespace Gamesim.Persistence
             // Production's removals are exits too, merged into the eviction order by week: a removal
             // happens as its week's social window closes, after that week's eviction.
             var removals = state.story?.removals ?? new List<RemovalState>();
-            int JoinedWeek(WebJurorSentiment juror) => juror.events.Count == 0 ? 0 : juror.events[0].week;
+            // The week a juror left is the power row that names them as its evictee: the sentiment
+            // ledger's first event was always week 0, which ordered every removal before every juror
+            // (ENDGAME-PLAN F6). An older save without the ledger's rows keeps that reading.
+            int JoinedWeek(WebJurorSentiment juror) => JuryHouseRead.LeftWeek(state, juror.jurorId)
+                ?? (juror.events.Count == 0 ? 0 : juror.events[0].week);
             if (you.status == ContestantStatus.Expelled)
             {
                 int week = removals.FirstOrDefault(r => r.contestantId == you.id)?.week ?? state.week;

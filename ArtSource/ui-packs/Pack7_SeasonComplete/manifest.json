@@ -1,0 +1,98 @@
+{
+  "pack": "GameSim Season Complete Pack 7",
+  "folders": {
+    "Shells": [
+      "quote_panel_9slice.png",
+      "season_complete_shell_9slice.png",
+      "section_panel_9slice.png",
+      "section_panel_selected_9slice.png"
+    ],
+    "WinnerHero": [
+      "runnerup_hero_frame_9slice.png",
+      "runnerup_nameplate_9slice.png",
+      "winner_crown.png",
+      "winner_hero_frame_9slice.png",
+      "winner_nameplate_9slice.png",
+      "winner_trophy.png"
+    ],
+    "StatCards": [
+      "stat_card_neutral_9slice.png",
+      "stat_chances_9slice.png",
+      "stat_competitions_9slice.png",
+      "stat_game_sense_9slice.png",
+      "stat_social_9slice.png",
+      "stat_strategy_9slice.png"
+    ],
+    "Standings": [
+      "standing_jury_9slice.png",
+      "standing_prejury_9slice.png",
+      "standing_runnerup_9slice.png",
+      "standing_third_9slice.png",
+      "standing_winner_9slice.png"
+    ],
+    "JuryVotes": [
+      "jury_quote_chip_9slice.png",
+      "jury_vote_row_neutral_9slice.png",
+      "jury_vote_row_runnerup_9slice.png",
+      "jury_vote_row_winner_9slice.png",
+      "jury_vote_summary_bar_9slice.png"
+    ],
+    "Timeline": [
+      "timeline_node_eviction.png",
+      "timeline_node_normal.png",
+      "timeline_node_power.png",
+      "timeline_shell_9slice.png",
+      "week_row_9slice.png",
+      "week_row_eviction_9slice.png",
+      "week_row_power_9slice.png"
+    ],
+    "Career": [
+      "career_best_9slice.png",
+      "career_neutral_9slice.png",
+      "career_strip_9slice.png",
+      "career_summary_9slice.png",
+      "career_zero_9slice.png"
+    ],
+    "FiltersTabs": [
+      "filter_active_9slice.png",
+      "filter_inactive_9slice.png",
+      "tab_active_9slice.png",
+      "tab_inactive_9slice.png"
+    ],
+    "Badges": [
+      "badge_comp_beast.png",
+      "badge_jury.png",
+      "badge_legacy.png",
+      "badge_runnerup.png",
+      "badge_social.png",
+      "badge_strategist.png",
+      "badge_winner.png"
+    ],
+    "Charts": [
+      "bar_blue.png",
+      "bar_gold.png",
+      "bar_green.png",
+      "bar_purple.png",
+      "bar_red.png",
+      "jury_vote_stacked_bar.png"
+    ],
+    "Buttons": [
+      "button_close_9slice.png",
+      "button_continue_legacy_9slice.png",
+      "button_main_menu_9slice.png",
+      "button_new_season_9slice.png",
+      "button_review_season_9slice.png",
+      "button_review_story_9slice.png"
+    ],
+    "Icons": [
+      "stat_chances_icon.png",
+      "stat_competitions_icon.png",
+      "stat_game_sense_icon.png",
+      "stat_social_icon.png",
+      "stat_strategy_icon.png"
+    ],
+    "Preview": [
+      "gamesim_season_complete_pack7_preview.png"
+    ]
+  }
+}

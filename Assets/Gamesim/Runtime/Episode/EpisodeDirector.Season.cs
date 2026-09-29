@@ -413,6 +413,7 @@ namespace Gamesim.Episode
             if (tutorial != null) { tutorial.FontScale = largeText ? 1.2f : 1; tutorial.ReducedMotion = reducedMotion; }
             if (opening != null) opening.FontScale = largeText ? 1.2f : 1;
             if (seasonReport != null) seasonReport.FontScale = largeText ? 1.2f : 1;
+            if (weeklyRecap != null) weeklyRecap.FontScale = largeText ? 1.2f : 1;
             if (castSelect != null) { castSelect.FontScale = largeText ? 1.2f : 1; castSelect.ReducedMotion = reducedMotion; }
             if (characterCreator != null) characterCreator.FontScale = largeText ? 1.2f : 1;
             if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;

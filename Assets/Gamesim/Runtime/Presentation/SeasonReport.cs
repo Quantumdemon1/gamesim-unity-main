@@ -24,6 +24,14 @@ namespace Gamesim.Presentation
     /// already record, so it cannot disagree with the save. That also means it required no
     /// simulation change to add, and cannot regress a season.</para>
     ///
+    /// <para><b>A dashboard first</b> (the owner's Season Complete mockup, Pack 7): the winner and
+    /// the runner-up, the five Game Sense cards, then the final standings, the jury's ballots and the
+    /// season week by week side by side, and the career under them - the result at a glance on the
+    /// first screen (<c>SeasonReport.Dashboard.cs</c>). The detail follows in the same scroll: the
+    /// champion's road, the player's own season, Game Sense's moments and misses, and the house
+    /// table with its sort and filter chips. Three tabs under the title jump the scroll to each part;
+    /// they hide nothing, so every line of the season stays on the page to be read.</para>
+    ///
     /// <para>Every way on is at the top, under the title, and stays there while the season scrolls
     /// beneath it - a new season, the main menu, the notebook, close - as the web game's game-over
     /// screen puts them straight under its winner. They were once only at the very bottom, below
@@ -32,15 +40,21 @@ namespace Gamesim.Presentation
     /// who opened it had no way out but to quit. The whole report takes the mouse now, and a
     /// scrollbar shows how much there is.</para>
     ///
-    /// <para>The mouse is not the only way through it. The keyboard's ring holds the ways on at the
-    /// top and the table's chips at the foot, and nothing between, so Page Up and Page Down, Home
-    /// and End, and a pad's right stick scroll the season itself.</para>
+    /// <para>The mouse is not the only way through it. The keyboard's ring holds the ways on and the
+    /// tabs at the top and the table's chips at the foot, and nothing between, so Page Up and Page
+    /// Down, Home and End, and a pad's right stick scroll the season itself.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class SeasonReport : MonoBehaviour
+    public sealed partial class SeasonReport : MonoBehaviour
     {
-        private const float Width = 1180f;
         private const float Pad = 28f;
+
+        /// <summary>
+        /// The width the season is laid out at, inside the card: the room the screen gives it, from
+        /// the canvas the report is drawn on, so the dashboard fills a wide screen and still fits a
+        /// 4:3 one and the larger text.
+        /// </summary>
+        private float Width = 1180f;
 
         /// <summary>The ways on, at the top of the report. Tests and screen readers find them by these words.</summary>
         public const string NewSeasonCaption = "Start a new season";
@@ -50,6 +64,14 @@ namespace Gamesim.Presentation
         /// <summary>The verdict's heading (STRATEGY-LOOP-PLAN.md section 5), and the names of its parts.</summary>
         public const string GameSenseHeading = "Game Sense", GameSenseCardName = "Game Sense card",
             MomentsHeading = "The moments that made the difference", MissedHeading = "The chances missed";
+
+        /// <summary>The tabs under the title. Each scrolls the season to its part; none hides anything.</summary>
+        public const string OverviewTabCaption = "Season at a glance", DetailTabCaption = "Your game in detail",
+            HouseTabCaption = "The house table";
+
+        /// <summary>The parts of the dashboard, by name, for a test and a screen reader.</summary>
+        public const string HeroName = "Season hero", StandingsName = "Final standings", JuryColumnName = "Jury votes",
+            TimelineName = "Season timeline", CareerStripName = "Career strip";
 
         /// <summary>The line at the head of the season saying how to move through it without a mouse.</summary>
         public const string ScrollHint = "Page Up and Page Down, or a pad's right stick, scroll the season";
@@ -126,6 +148,12 @@ namespace Gamesim.Presentation
         // and the corners it measures with, kept rather than made again on every reveal.
         private GameObject revealed;
         private readonly Vector3[] selectedCorners = new Vector3[4], viewCorners = new Vector3[4];
+
+        // Where each tab's part of the season starts in the scroll, and the tabs' art to light the
+        // one being read.
+        private readonly float[] sectionTops = new float[3];
+        private readonly List<(Image art, TMP_Text label)> tabs = new List<(Image, TMP_Text)>();
+        private int litTab = -1;
 
         /// <summary>How far the season can scroll: its height past the window it is read through.</summary>
         private float Travel => content != null && viewport != null
@@ -219,9 +247,23 @@ namespace Gamesim.Presentation
             group.interactable = true;
         }
 
+        /// <summary>The canvas the report is drawn on, in reference units; the reference itself before the first layout.</summary>
+        private Vector2 Room()
+        {
+            var size = ((RectTransform)transform).rect.size;
+            if (size.x >= 200f && size.y >= 200f) return size;
+            return scaler != null ? scaler.referenceResolution : new Vector2(1920f, 1080f);
+        }
+
         private void Rebuild(EpisodeState state, Func<string, Texture> portrait, Action onReview)
         {
             foreach (Transform child in transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
+            tabs.Clear();
+            litTab = -1;
+
+            var room = Room();
+            float sheetWidth = Mathf.Clamp(room.x - 64f, 860f, 1760f);
+            Width = sheetWidth - 40f;
 
             // The house dimmed behind the season rather than blacked out, and the season on a
             // glass card, as the mockups set every summary over the room it is about. Both take
@@ -235,20 +277,19 @@ namespace Gamesim.Presentation
             sheet.anchorMin = new Vector2(0.5f, 0f);
             sheet.anchorMax = new Vector2(0.5f, 1f);
             sheet.pivot = new Vector2(0.5f, 0.5f);
-            sheet.sizeDelta = new Vector2(Width + 40f, -96f);
+            sheet.sizeDelta = new Vector2(sheetWidth, -64f);
             sheet.anchoredPosition = Vector2.zero;
             UiTheme.Glass(sheet, UiTheme.GlassRadius);
             sheet.GetComponent<Image>().raycastTarget = true;
 
-            // The title and the ways on, fixed at the top of the card.
+            // The title, the ways on and the tabs, fixed at the top of the card.
             content = new GameObject("Fixed header", typeof(RectTransform)).GetComponent<RectTransform>();
             content.SetParent(sheet, false);
             content.anchorMin = content.anchorMax = new Vector2(.5f, 1f);
             content.pivot = new Vector2(.5f, 1f);
             content.anchoredPosition = Vector2.zero;
             cursor = 0f;
-            Header(state);
-            ActionBar(onReview);
+            Header(state, onReview);
             float band = cursor + 6f;
             content.sizeDelta = new Vector2(Width, band);
             var divider = new GameObject("Header rule", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
@@ -289,22 +330,20 @@ namespace Gamesim.Presentation
             scroller = scroll;
 
             cursor = 0f;
-            Space(12f);
-            // Said once, at the head of the season: the scrollbar tells a mouse there is more, and
-            // nothing else would tell a keyboard or a pad how to reach it.
-            Text(ScrollHint, 13f, UiTheme.Muted, 20f, TextAlignmentOptions.Center);
-            Space(6f);
-            Winner(state, portrait);
+            Space(14f);
+            sectionTops[0] = 0f;
+            Dashboard(state, portrait);
+
+            // The detail, under the dashboard in the same scroll.
+            sectionTops[1] = cursor + 8f;
             WinnersJourney(state);
             YourJourney(state);
             GameSenseSection(state);
-            YourCareer(shownCareer);
-            HowTheJuryVoted(state);
-            Standings(state);
-            WeekByWeek(state);
+            sectionTops[2] = cursor + 8f;
             Cast(state, portrait);
 
             content.sizeDelta = new Vector2(0f, cursor + Pad);
+            LightTab(0);
         }
 
         /// <summary>
@@ -333,28 +372,6 @@ namespace Gamesim.Presentation
             bar.direction = UnityEngine.UI.Scrollbar.Direction.BottomToTop;
             bar.navigation = new Navigation { mode = Navigation.Mode.None };
             return bar;
-        }
-
-        /// <summary>
-        /// The ways on, under the title: a new season first, as the web game's primary action is,
-        /// then the notebook, the main menu, and close. Only the ones given are drawn.
-        /// </summary>
-        private void ActionBar(Action onReview)
-        {
-            Space(4f);
-            var bar = Panel(52f, new Color(0f, 0f, 0f, 0f));
-            var actions = new List<(string caption, Action act, bool primary)>();
-            if (shownNewSeason != null) actions.Add((NewSeasonCaption, () => { Hide(); shownNewSeason(); }, true));
-            if (onReview != null) actions.Add((ReviewCaption, () => { Hide(); onReview(); }, shownNewSeason == null));
-            if (shownMainMenu != null) actions.Add((MainMenuCaption, () => { Hide(); shownMainMenu(); }, false));
-            actions.Add((CloseCaption, Close, actions.Count == 0));
-            const float buttonWidth = 250f, gap = 16f;
-            float x = -(actions.Count * buttonWidth + (actions.Count - 1) * gap) * .5f + buttonWidth * .5f;
-            foreach (var action in actions)
-            {
-                Button(bar, action.caption, x, action.act, action.primary, buttonWidth);
-                x += buttonWidth + gap;
-            }
         }
 
         /// <summary>Closes the report, and lets the house behind it redraw.</summary>
@@ -390,11 +407,11 @@ namespace Gamesim.Presentation
         /// <summary>
         /// Page Up and Page Down, Home and End, and the right stick, scroll the season.
         ///
-        /// <para>The keyboard's ring has the ways on at the top and the table's chips at the foot,
-        /// and nothing in between: the winner's road, the jury's ballots, the standings and the
-        /// weeks sat between the first screen and the last, where a player without a mouse could
-        /// not get. None of these keys is anything else's while the report is up, and the stick
-        /// only scrolls - it takes no step round the ring while it does.</para>
+        /// <para>The keyboard's ring has the ways on and the tabs at the top and the table's chips
+        /// at the foot, and nothing in between: the winner's road, the jury's ballots, the standings
+        /// and the weeks sat between the first screen and the last, where a player without a mouse
+        /// could not get. None of these keys is anything else's while the report is up, and the
+        /// stick only scrolls - it takes no step round the ring while it does.</para>
         /// </summary>
         private void Update()
         {
@@ -422,7 +439,8 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// Brings the keyboard's selection into view when it moves: Tab onto the sort chips at the
-        /// foot of the house table and the report scrolls down to them.
+        /// foot of the house table and the report scrolls down to them. And lights the tab of the
+        /// part of the season being read.
         ///
         /// <para>Once per selection, not every frame. It used to run every frame for as long as a
         /// chip was selected, and a chip stays selected after a click or a press-and-drag, so the
@@ -432,6 +450,7 @@ namespace Gamesim.Presentation
         private void LateUpdate()
         {
             if (!IsShowing || scroller == null || content == null || viewport == null) return;
+            LightTab(ReadingTab());
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             if (selected == revealed) return;
             revealed = selected;
@@ -453,89 +472,210 @@ namespace Gamesim.Presentation
             content.anchoredPosition = position;
         }
 
-        // ---------------------------------------------------------------- sections
+        // ---------------------------------------------------------------- the header and the tabs
 
-        private void Header(EpisodeState state)
+        /// <summary>
+        /// The title, what the season was in a line, and the ways on: beside the title on a wide
+        /// card, under it on a narrow one. Then the tabs, and the line saying how to scroll.
+        /// </summary>
+        private void Header(EpisodeState state, Action onReview)
         {
-            Space(Pad);
-            var title = Text("SEASON COMPLETE", 34f, Color.white, 44f, TextAlignmentOptions.Center);
-            var bold = UiTheme.Font(UiTheme.Weight.Bold);
-            if (bold != null) title.font = bold;
+            var box = EndScreenKit.Box("Header", content, 0f, 0f, Width, 10f);
+            var you = state.Find(state.playerId);
+            bool spectator = you != null && you.status != ContestantStatus.Winner && you.status != ContestantStatus.RunnerUp;
+
+            var actions = new List<(string caption, Action act, bool primary, string icon, string fallback)>();
+            if (shownNewSeason != null) actions.Add((NewSeasonCaption, () => { Hide(); shownNewSeason(); }, true, PackArt.KitIconRefresh, "star"));
+            if (onReview != null) actions.Add((ReviewCaption, () => { Hide(); onReview(); }, shownNewSeason == null, PackArt.KitIconBook, "journal"));
+            if (shownMainMenu != null) actions.Add((MainMenuCaption, () => { Hide(); shownMainMenu(); }, false, PackArt.KitIconHome, "house"));
+            actions.Add((CloseCaption, Close, actions.Count == 0, PackArt.KitIconCross, "exit"));
+            var widths = actions.Select(a => ActionWidth(a.caption, a.primary)).ToList();
+            const float gap = 12f, buttonHeight = 50f;
+            float buttonsWidth = widths.Sum() + gap * (actions.Count - 1);
+
+            // The title block: trophy, title, the season in a line, and the spectator's line.
+            float titleWidth = 560f;
+            bool beside = Width - Pad * 2f >= titleWidth + buttonsWidth + 24f;
+            float top = 18f;
+            float left = Pad;
+            if (!beside) left = Mathf.Max(Pad, (Width - titleWidth) * .5f);
+            var trophy = EndScreenKit.Picture("Trophy", box, PackArt.SeasonTrophy, "trophy", UiTheme.Gold, new Vector2(left + 28f, -(top + 30f)), 50f);
+            float textX = trophy != null ? left + 70f : left;
+            var title = EndScreenKit.Text("Title", box, "SEASON COMPLETE", 38f, Color.white, textX, top, titleWidth, 48f,
+                TextAlignmentOptions.Left, UiTheme.Weight.Bold);
             title.characterSpacing = 3f;
             title.enableVertexGradient = true;
             title.colorGradient = new VertexGradient(UiTheme.Glow, UiTheme.Glow, UiTheme.Heading, UiTheme.Heading);
-            Text(state.week + (state.week == 1 ? " week" : " weeks") + " · "
+            EndScreenKit.Text("Summary", box, state.week + (state.week == 1 ? " week" : " weeks") + " · "
                 + state.contestants.Count + " houseguests · "
                 + state.contestants.Count(c => c.status == ContestantStatus.Jury) + " on the jury",
-                17f, UiTheme.Muted, 26f, TextAlignmentOptions.Center);
+                17f, UiTheme.Muted, textX, top + 48f, titleWidth, 24f);
+            float titleBottom = top + 76f;
             // The web build shows "You watched this season as a spectator" on this screen when the
             // player was evicted. Same statement, drawn from status rather than a stored flag.
-            var you = state.Find(state.playerId);
-            if (you != null && you.status != ContestantStatus.Winner && you.status != ContestantStatus.RunnerUp)
+            if (spectator)
             {
-                Text("YOU WATCHED THE REST OF THIS SEASON AS A SPECTATOR",
-                    14f, UiTheme.Warning, 22f, TextAlignmentOptions.Center);
+                EndScreenKit.Text("Spectator", box, "YOU WATCHED THE REST OF THIS SEASON AS A SPECTATOR", 13f, UiTheme.Warning,
+                    textX, titleBottom, titleWidth, 20f);
+                titleBottom += 22f;
             }
 
-            Space(10f);
-        }
-
-        private void Winner(EpisodeState state, Func<string, Texture> portrait)
-        {
-            var winner = state.Find(state.winnerId);
-            var runnerUp = state.Find(state.runnerUpId);
-            if (winner == null) return;
-
-            var card = Panel(216f, UiTheme.SurfaceRaised);
-            // The winner lit in gold: this is where the season is won.
-            var gold = UiTheme.Pack(PackArt.GlowGold);
-            if (gold != null)
+            // The ways on: a new season first, as the web game's primary action is, then the
+            // notebook, the main menu, and close. Only the ones given are drawn.
+            float buttonsTop = beside ? top + 4f : titleBottom + 10f;
+            float x = beside ? Width - Pad - buttonsWidth : (Width - buttonsWidth) * .5f;
+            for (int i = 0; i < actions.Count; i++)
             {
-                var light = new GameObject("Winner glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-                light.rectTransform.SetParent(card, false);
-                light.rectTransform.anchorMin = light.rectTransform.anchorMax = new Vector2(.5f, .5f);
-                light.rectTransform.sizeDelta = new Vector2(240f, 240f);
-                light.rectTransform.anchoredPosition = new Vector2(runnerUp != null ? -180f : 0f, 38f);
-                light.sprite = gold; light.color = new Color(1f, 1f, 1f, .55f); light.preserveAspect = true; light.raycastTarget = false;
+                ActionButton(box, actions[i].caption, x, buttonsTop, widths[i], buttonHeight, actions[i].act, actions[i].primary,
+                    actions[i].icon, actions[i].fallback);
+                x += widths[i] + gap;
             }
-            var row = new GameObject("Finalists", typeof(RectTransform)).GetComponent<RectTransform>();
-            row.SetParent(card, false);
-            row.anchorMin = new Vector2(0.5f, 0.5f);
-            row.anchorMax = new Vector2(0.5f, 0.5f);
-            row.pivot = new Vector2(0.5f, 0.5f);
-            row.anchoredPosition = new Vector2(0f, 6f);
+            float bottom = Mathf.Max(titleBottom, buttonsTop + buttonHeight) + 12f;
 
-            Finalist(row, -180f, winner, portrait, "WINNER", UiTheme.Gold, 108f);
-            if (runnerUp != null)
-                Finalist(row, 180f, runnerUp, portrait, "RUNNER-UP", UiTheme.Muted, 84f);
-
-            var label = HudPrimitives.Label("Crown", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-            label.text = runnerUp != null
-                ? winner.name + " beat " + runnerUp.name + " in the jury vote."
-                : winner.name + " wins the season.";
-            Place(label.rectTransform, Width - Pad * 4f, 22f, -186f);
+            // The tabs, and the line saying how to move through the season without a mouse - said
+            // once, at the head of the season: the scrollbar tells a mouse there is more, and
+            // nothing else would tell a keyboard or a pad how to reach it.
+            var tabCaptions = new[] { OverviewTabCaption, DetailTabCaption, HouseTabCaption };
+            float tabX = Pad;
+            for (int i = 0; i < tabCaptions.Length; i++)
+            {
+                int index = i;
+                float w = TabWidth(tabCaptions[i]);
+                Tab(box, tabCaptions[i], tabX, bottom, w, 36f, () => ScrollTo(index));
+                tabX += w + 10f;
+            }
+            float hintX = tabX + 16f;
+            bool hintBeside = Width - Pad - hintX >= 420f;
+            var hint = EndScreenKit.Text("Scroll hint", box, ScrollHint, 13f, UiTheme.Muted,
+                hintBeside ? hintX : Pad, hintBeside ? bottom + 9f : bottom + 44f, hintBeside ? Width - Pad - hintX : Width - Pad * 2f, 20f,
+                hintBeside ? TextAlignmentOptions.Right : TextAlignmentOptions.Left);
+            hint.enableAutoSizing = true; hint.fontSizeMax = 13f; hint.fontSizeMin = 10f;
+            cursor = bottom + (hintBeside ? 44f : 68f);
+            box.sizeDelta = new Vector2(Width, cursor);
         }
 
-        private void Finalist(Transform parent, float x, ContestantState who,
-            Func<string, Texture> portrait, string badge, Color tint, float size)
+        private static float ActionWidth(string caption, bool primary)
         {
-            var holder = new GameObject(badge, typeof(RectTransform)).GetComponent<RectTransform>();
-            holder.SetParent(parent, false);
-            holder.anchoredPosition = new Vector2(x, 0f);
-
-            var face = HudPrimitives.Portrait(holder, portrait(who.id), tint, size, 4f, false, who);
-            face.anchoredPosition = new Vector2(0f, 26f);
-
-            var name = HudPrimitives.Label("Name", holder, 19f, UiTheme.Paper, TextAlignmentOptions.Center);
-            name.text = who.name;
-            name.rectTransform.sizeDelta = new Vector2(300f, 26f);
-            name.rectTransform.anchoredPosition = new Vector2(0f, -38f);
-
-            var tag = HudPrimitives.Label("Badge", holder, 13f, tint, TextAlignmentOptions.Center);
-            tag.text = badge;
-            tag.rectTransform.sizeDelta = new Vector2(300f, 20f);
-            tag.rectTransform.anchoredPosition = new Vector2(0f, -60f);
+            float words = caption.Length * 9.2f + 64f;
+            return Mathf.Clamp(words, primary ? 210f : 150f, 260f);
         }
+
+        private static float TabWidth(string caption) => Mathf.Clamp(caption.Length * 8.2f + 36f, 140f, 220f);
+
+        /// <summary>
+        /// One of the ways on: the panel named by its caption and the caption on it word for word,
+        /// the pack's button behind it and a glyph to its left. The panel is the control, as it
+        /// always was; the art and the glyph are decoration.
+        /// </summary>
+        private static void ActionButton(RectTransform parent, string caption, float x, float y, float width, float height,
+            Action action, bool primary, string icon, string fallbackIcon)
+        {
+            var panel = HudPrimitives.Fill(caption, parent, primary ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 10);
+            EndScreenKit.Place(panel, x, y, width, height);
+            var ground = panel.GetComponent<Image>();
+            ground.raycastTarget = true;
+            var art = EndScreenKit.Frame(panel, primary ? PackArt.SeasonButtonPrimary : PackArt.SeasonButton, 14f,
+                primary ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, primary ? UiTheme.Glow : UiTheme.Outline, 10);
+            bool packed = EndScreenKit.Packed(art);
+            Graphic target = ground;
+            if (packed)
+            {
+                // The pack's button is the face; the panel keeps catching the mouse, clear.
+                ground.color = new Color(0f, 0f, 0f, 0f);
+                target = art;
+            }
+            else if (primary) UiTheme.AddGlow(panel, 10);
+
+            float glyphSide = 20f;
+            var glyph = EndScreenKit.Picture("Glyph", panel, icon, fallbackIcon, primary ? Color.white : UiTheme.Paper,
+                new Vector2(22f, -height * .5f), glyphSide);
+            if (glyph != null && glyph.sprite == UiTheme.Pack(icon)) glyph.color = primary ? Color.white : UiTheme.Paper;
+
+            var label = HudPrimitives.Label("Label", panel, 17f, primary ? Color.white : UiTheme.Paper, TextAlignmentOptions.Center);
+            var weight = UiTheme.Font(primary ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
+            if (weight != null) label.font = weight;
+            label.text = Localisation.Text(caption);
+            label.enableAutoSizing = true; label.fontSizeMax = 17f; label.fontSizeMin = 12f;
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(glyph != null ? 36f : 10f, 0f);
+            label.rectTransform.offsetMax = new Vector2(-10f, 0f);
+
+            var button = panel.gameObject.AddComponent<SeasonReportControl>();
+            button.targetGraphic = target;
+            var colours = button.colors;
+            colours.highlightedColor = new Color(1.18f, 1.18f, 1.18f);
+            colours.selectedColor = colours.highlightedColor;
+            button.colors = colours;
+            button.onClick.AddListener(() => action());
+        }
+
+        /// <summary>A tab: a control named by its caption that scrolls the season to its part.</summary>
+        private void Tab(RectTransform parent, string caption, float x, float y, float width, float height, Action press)
+        {
+            var panel = HudPrimitives.Fill(caption, parent, UiTheme.SurfaceRaised, 10);
+            EndScreenKit.Place(panel, x, y, width, height);
+            var ground = panel.GetComponent<Image>();
+            ground.raycastTarget = true;
+            var art = EndScreenKit.Frame(panel, PackArt.SeasonTabInactive, 12f, UiTheme.SurfaceRaised, UiTheme.Outline, 10);
+            bool packed = EndScreenKit.Packed(art);
+            if (packed) ground.color = new Color(0f, 0f, 0f, 0f);
+            var label = HudPrimitives.Label("Label", panel, 14f, UiTheme.Muted, TextAlignmentOptions.Center);
+            label.text = Localisation.Text(caption);
+            label.enableAutoSizing = true; label.fontSizeMax = 14f; label.fontSizeMin = 10f;
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(8f, 0f); label.rectTransform.offsetMax = new Vector2(-8f, 0f);
+            var button = panel.gameObject.AddComponent<SeasonReportControl>();
+            button.targetGraphic = packed ? (Graphic)art : ground;
+            var colours = button.colors;
+            colours.highlightedColor = new Color(1.18f, 1.18f, 1.18f);
+            colours.selectedColor = colours.highlightedColor;
+            button.colors = colours;
+            button.onClick.AddListener(() => press());
+            tabs.Add((packed ? art : ground, label));
+        }
+
+        /// <summary>Scrolls the season to a tab's part. Nothing is hidden and nothing is committed.</summary>
+        private void ScrollTo(int index)
+        {
+            if (scroller == null || content == null || index < 0 || index >= sectionTops.Length) return;
+            Canvas.ForceUpdateCanvases();
+            scroller.StopMovement();
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, Mathf.Clamp(sectionTops[index], 0f, Travel));
+            LightTab(index);
+        }
+
+        /// <summary>The part of the season at the top of the window: the last whose start is above its middle.</summary>
+        private int ReadingTab()
+        {
+            if (content == null || viewport == null) return 0;
+            float reading = content.anchoredPosition.y + viewport.rect.height * .35f;
+            int at = 0;
+            for (int i = 0; i < sectionTops.Length; i++) if (sectionTops[i] <= reading) at = i;
+            if (Travel > 0f && content.anchoredPosition.y >= Travel - 1f) at = sectionTops.Length - 1;
+            return at;
+        }
+
+        private void LightTab(int index)
+        {
+            if (index == litTab) return;
+            litTab = index;
+            for (int i = 0; i < tabs.Count; i++)
+            {
+                bool lit = i == index;
+                var (art, label) = tabs[i];
+                if (art == null || label == null) continue;
+                if (EndScreenKit.Packed(art) && UiTheme.Pack(PackArt.SeasonFilterActive) != null)
+                {
+                    var sprite = UiTheme.Pack(lit ? PackArt.SeasonFilterActive : PackArt.SeasonTabInactive);
+                    if (sprite != null) art.sprite = sprite;
+                }
+                else art.color = lit ? UiTheme.ActionBlue : UiTheme.SurfaceRaised;
+                label.color = lit ? Color.white : UiTheme.Muted;
+            }
+        }
+
+        // ---------------------------------------------------------------- the detail, below the dashboard
 
         /// <summary>
         /// How the champion got there: the three numbers that describe a winning season.
@@ -584,7 +724,6 @@ namespace Gamesim.Presentation
                    + (champion.timesNominated == 1 ? " time." : " times.");
         }
 
-        /// <summary>The player's own season, which is the part they actually came for.</summary>
         /// <summary>One line for the finished panel: the number and its three faces.</summary>
         public static string GameSenseLine(EpisodeState state)
         {
@@ -593,27 +732,17 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// GAME SENSE (STRATEGY-LOOP-PLAN.md section 5): the number, its three faces, how many of the
-        /// season's chances were taken, then the three moments that made the difference and the three
-        /// chances missed, each a ledger row in words. Not all wins are equal: the verdict says how
-        /// this one was played.
+        /// GAME SENSE (STRATEGY-LOOP-PLAN.md section 5), in detail: what the number is, then the three
+        /// moments that made the difference and the three chances missed, each a ledger row in words.
+        /// The number and its faces are the dashboard's stat cards. Not all wins are equal: the
+        /// verdict says how this one was played.
         /// </summary>
         private void GameSenseSection(EpisodeState state)
         {
             var report = GameSense.Evaluate(state);
             Heading(GameSenseHeading);
-            var card = Panel(132f, UiTheme.Surface);
-            card.name = GameSenseCardName;
-            int offered = state.ledger.opportunities.Count;
-            int taken = state.ledger.opportunities.Count(o => o.response == OpportunityResponse.Taken);
-            Stat(card, 0, "GAME SENSE", report.score.ToString(), UiTheme.Accent);
-            Stat(card, 1, "COMPETITIONS", report.competitions.ToString(), UiTheme.Gold);
-            Stat(card, 2, "STRATEGY", report.strategy.ToString(), UiTheme.Positive);
-            Stat(card, 3, "SOCIAL", report.social.ToString(), UiTheme.Accent);
-            Stat(card, 4, "CHANCES TAKEN", taken + " of " + offered, offered == 0 || taken * 2 >= offered ? UiTheme.Positive : UiTheme.Danger);
-            var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-            note.text = "Skill, not luck: every point is a row in the notebook. Competitions against the odds you had; strategy weighed against what was offered; social as the house sees you.";
-            Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
+            Text("Skill, not luck: every point is a row in the notebook. Competitions against the odds you had; strategy weighed against what was offered; social as the house sees you.",
+                15f, UiTheme.Muted, 24f, TextAlignmentOptions.Left);
             if (report.moments.Count > 0)
             {
                 Space(10f);
@@ -630,6 +759,7 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>The player's own season, which is the part they actually came for.</summary>
         private void YourJourney(EpisodeState state)
         {
             var you = state.Find(state.playerId);
@@ -651,28 +781,6 @@ namespace Gamesim.Presentation
             Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
         }
 
-        /// <summary>
-        /// The player's record across seasons, when there is one. Sits beside "Your season"
-        /// because that is the question it answers next: this one, and then all of them.
-        /// </summary>
-        private void YourCareer(CareerSummary career)
-        {
-            if (career == null || career.Seasons == 0) return;
-
-            Heading("Your career");
-            var card = Panel(132f, UiTheme.Surface);
-
-            Stat(card, 0, "SEASONS", career.Seasons.ToString(), UiTheme.Paper);
-            Stat(card, 1, "WINS", career.Wins.ToString(), UiTheme.Gold);
-            Stat(card, 2, "MEDIAN FINISH", CareerSummary.PlaceWord(career.MedianPlacement), UiTheme.Accent);
-            Stat(card, 3, "BEST FINISH", CareerSummary.PlaceWord(career.BestPlacement), UiTheme.Positive);
-            Stat(card, 4, "COMP WINS", (career.HohWins + career.VetoWins).ToString(), UiTheme.Positive);
-
-            var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-            note.text = career.Note();
-            Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
-        }
-
         /// <summary>One juror's ballot as the screens say it: who, for whom, and the recorded why.</summary>
         public readonly struct JuryBallot
         {
@@ -681,10 +789,13 @@ namespace Gamesim.Presentation
             /// <summary>The engine's recorded reason; null for the player's own ballot, which needs none.</summary>
             public readonly string Reason;
             public readonly bool IsPlayer;
+            /// <summary>Who cast it and for whom, by id: what the screens draw a face from.</summary>
+            public readonly string JurorId, FinalistId;
 
-            public JuryBallot(string juror, string finalist, string reason, bool isPlayer)
+            public JuryBallot(string juror, string finalist, string reason, bool isPlayer, string jurorId = null, string finalistId = null)
             {
                 Juror = juror; Finalist = finalist; Reason = reason; IsPlayer = isPlayer;
+                JurorId = jurorId; FinalistId = finalistId;
             }
 
             /// <summary>The one-line form the finale panel shows.</summary>
@@ -711,121 +822,9 @@ namespace Gamesim.Presentation
                 if (juror == null || finalist == null) continue;
                 if (juror.status != ContestantStatus.Jury && juror.status != ContestantStatus.Evicted) continue;
                 if (finalist.status != ContestantStatus.Winner && finalist.status != ContestantStatus.RunnerUp) continue;
-                ballots.Add(new JuryBallot(juror.name, finalist.name, juror.isPlayer ? null : vote.reason, juror.isPlayer));
+                ballots.Add(new JuryBallot(juror.name, finalist.name, juror.isPlayer ? null : vote.reason, juror.isPlayer, juror.id, finalist.id));
             }
             return ballots;
-        }
-
-        /// <summary>
-        /// Why the season ended the way it did: each juror, their pick, and the recorded reason,
-        /// so a player learns whether they lost the jury on competitions, on the block, on a broken
-        /// promise or on the person they were.
-        /// </summary>
-        private void HowTheJuryVoted(EpisodeState state)
-        {
-            var ballots = JuryBallots(state);
-            if (ballots.Count == 0) return;
-
-            Heading("How the jury voted");
-            var winner = state.Find(state.winnerId);
-            var runnerUp = state.Find(state.runnerUpId);
-            if (winner != null && runnerUp != null)
-                Text(winner.name + " " + ballots.Count(b => b.Finalist == winner.name)
-                     + " · " + runnerUp.name + " " + ballots.Count(b => b.Finalist == runnerUp.name),
-                    15f, UiTheme.Muted, 24f, TextAlignmentOptions.Left);
-
-            for (int i = 0; i < ballots.Count; i++)
-            {
-                var ballot = ballots[i];
-                var line = Panel(36f, i % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
-                Cell(line, 22f, 230f, HudPrimitives.WithYou(ballot.Juror, ballot.IsPlayer, "  "), 15f,
-                    ballot.IsPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
-                Cell(line, 260f, 230f, "voted for " + ballot.Finalist, 14f,
-                    winner != null && ballot.Finalist == winner.name ? UiTheme.Gold : UiTheme.Muted,
-                    TextAlignmentOptions.Left);
-                Cell(line, 500f, 600f, ballot.IsPlayer ? "Your ballot" : ballot.Reason, 13f, UiTheme.Paper,
-                    TextAlignmentOptions.Left);
-            }
-        }
-
-        private void Standings(EpisodeState state)
-        {
-            Heading("Final standings");
-
-            var order = new List<ContestantState>();
-            var winner = state.Find(state.winnerId);
-            var runnerUp = state.Find(state.runnerUpId);
-            if (winner != null) order.Add(winner);
-            if (runnerUp != null) order.Add(runnerUp);
-
-            // Jury, then pre-jury, each most-recently-evicted first. Eviction order is read from the
-            // event log rather than stored as a ranking, so a season that ended early still orders.
-            var evictionOrder = EvictionOrder(state);
-            foreach (var status in new[] { ContestantStatus.Jury, ContestantStatus.Evicted })
-            {
-                order.AddRange(state.contestants
-                    .Where(c => c.status == status && c != winner && c != runnerUp)
-                    .OrderByDescending(c => evictionOrder.TryGetValue(c.id, out int w) ? w : 0));
-            }
-
-            for (int i = 0; i < order.Count; i++)
-            {
-                var who = order[i];
-                var line = Panel(34f, i % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
-
-                Cell(line, 22f, 44f, (i + 1).ToString(), 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-                Cell(line, 78f, 320f, HudPrimitives.WithYou(who.name, who.isPlayer, "  "), 16f,
-                    who.isPlayer ? UiTheme.Accent : UiTheme.Paper, TextAlignmentOptions.Left);
-                Cell(line, 420f, 200f, StatusWord(who.status), 15f, PlacementTint(who.status),
-                    TextAlignmentOptions.Left);
-                Cell(line, 640f, 460f,
-                    who.hohWins + " HoH · " + who.vetoWins + " veto · nominated " + who.timesNominated,
-                    14f, UiTheme.Muted, TextAlignmentOptions.Left);
-            }
-        }
-
-        /// <summary>
-        /// The season laid out by week: who held power, who was nominated, who went home.
-        ///
-        /// <para>Nominations and evictions are exact — nomination weeks are stored per contestant and
-        /// eviction events carry their week. <b>The Head of Household is inferred</b>: the HoH and
-        /// veto competitions log the same event type through the same resolver, so the first
-        /// competition recorded in a week is taken as the HoH and the second as the veto. That holds
-        /// because the weekly phase order is fixed; if that order ever changes, this column is the
-        /// thing that quietly goes wrong.</para>
-        /// </summary>
-        private void WeekByWeek(EpisodeState state)
-        {
-            Heading("Week by week");
-
-            var header = Panel(30f, UiTheme.Ink);
-            Cell(header, 22f, 90f, "WEEK", 13f, UiTheme.Muted, TextAlignmentOptions.Left);
-            Cell(header, 120f, 260f, "HEAD OF HOUSEHOLD", 13f, UiTheme.Muted, TextAlignmentOptions.Left);
-            Cell(header, 400f, 380f, "NOMINEES", 13f, UiTheme.Muted, TextAlignmentOptions.Left);
-            Cell(header, 800f, 300f, "EVICTED", 13f, UiTheme.Muted, TextAlignmentOptions.Left);
-
-            for (int week = 1; week <= state.week; week++)
-            {
-                var comps = state.events
-                    .Where(e => e.week == week && e.kind == "competition" && e.phase == EpisodePhase.HoH)
-                    .OrderBy(e => e.sequence)
-                    .ToList();
-                string hoh = comps.Count > 0 ? WinnerName(comps[0].text) : "—";
-
-                string nominees = string.Join(", ", state.contestants
-                    .Where(c => c.nominationWeeks != null && c.nominationWeeks.Contains(week))
-                    .Select(c => c.name));
-                if (string.IsNullOrEmpty(nominees)) nominees = "—";
-
-                var gone = state.events.FirstOrDefault(e => e.week == week && e.kind == "eviction");
-                string evicted = gone != null ? FirstName(gone.text, state) : "—";
-
-                var row = Panel(32f, week % 2 == 0 ? UiTheme.Surface : UiTheme.SurfaceRaised);
-                Cell(row, 22f, 90f, week.ToString(), 15f, UiTheme.Paper, TextAlignmentOptions.Left);
-                Cell(row, 120f, 260f, hoh, 15f, UiTheme.Accent, TextAlignmentOptions.Left);
-                Cell(row, 400f, 380f, nominees, 15f, UiTheme.Paper, TextAlignmentOptions.Left);
-                Cell(row, 800f, 300f, evicted, 15f, UiTheme.Danger, TextAlignmentOptions.Left);
-            }
         }
 
         /// <summary>
@@ -981,9 +980,10 @@ namespace Gamesim.Presentation
                 case CastSort.Nominations:
                     return cast.OrderByDescending(c => c.timesNominated).ThenBy(c => c.name, StringComparer.CurrentCulture);
                 default:
-                    // How far they got, which is the order the standings above already read in.
+                    // How far they got: the order the standings read in, one placement for every screen.
                     return cast
-                        .OrderBy(c => PlacementRank(c.status))
+                        .OrderBy(c => CareerLedger.Placement(state, c))
+                        .ThenBy(c => PlacementRank(c.status))
                         .ThenByDescending(c => c.hohWins + c.vetoWins)
                         .ThenBy(c => c.name, StringComparer.CurrentCulture);
             }
@@ -1001,7 +1001,7 @@ namespace Gamesim.Presentation
             }
         }
 
-        /// <summary>A pill control, the same shape the cast screen and the creator use.</summary>
+        /// <summary>A pill control, the same shape the cast screen and the creator use, in the pack's filter art.</summary>
         private static Button Chip(Transform parent, string text, float x, float width, bool active, Action action)
         {
             var pill = HudPrimitives.Fill(text, parent, active ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 16);
@@ -1010,10 +1010,17 @@ namespace Gamesim.Presentation
             pill.pivot = new Vector2(0.5f, 0.5f);
             pill.sizeDelta = new Vector2(width, 34f);
             pill.anchoredPosition = new Vector2(x, 0f);
-            UiTheme.AddBorder(pill, 16, active ? UiTheme.Accent : UiTheme.Outline);
 
             var image = pill.GetComponent<Image>();
             image.raycastTarget = true;
+            Graphic target = image;
+            var art = EndScreenKit.Frame(pill, active ? PackArt.SeasonFilterActive : PackArt.SeasonFilterInactive, 11f,
+                active ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, active ? UiTheme.Accent : UiTheme.Outline, 16);
+            if (EndScreenKit.Packed(art))
+            {
+                image.color = new Color(0f, 0f, 0f, 0f);
+                target = art;
+            }
 
             var label = HudPrimitives.Label("Label", pill, 12f, active ? Color.white : UiTheme.Muted,
                 TextAlignmentOptions.Center);
@@ -1024,38 +1031,12 @@ namespace Gamesim.Presentation
             label.rectTransform.offsetMax = new Vector2(-5f, 0f);
 
             var button = pill.gameObject.AddComponent<SeasonReportControl>();
-            button.targetGraphic = image;
+            button.targetGraphic = target;
             button.onClick.AddListener(() => action());
             return button;
         }
 
         // ---------------------------------------------------------------- derivation
-
-        /// <summary>Contestant id to the week they were evicted, read from the event log.</summary>
-        private static Dictionary<string, int> EvictionOrder(EpisodeState state)
-        {
-            var order = new Dictionary<string, int>();
-            foreach (var e in state.events.Where(e => e.kind == "eviction").OrderBy(e => e.sequence))
-            {
-                var who = state.contestants.FirstOrDefault(
-                    c => !order.ContainsKey(c.id) && e.text.StartsWith(c.name, StringComparison.Ordinal));
-                if (who != null) order[who.id] = e.sequence;
-            }
-            return order;
-        }
-
-        /// <summary>Pulls the name out of "Competition winner: NAME · category."</summary>
-        // Both of these used to be parsed here. WeeklyRecap needs the same two answers out of the
-        // same two sentences, and two parsers for one sentence is one too many — the second is
-        // always the one that drifts when the log's wording changes. The em dash stays here,
-        // because a table cell wants something to show and a recap wants to know there was nothing.
-
-        private static string WinnerName(string description) =>
-            WeeklyRecap.WinnerName(description) ?? "—";
-
-        /// <summary>The cast member an eviction line opens with.</summary>
-        private static string FirstName(string description, EpisodeState state) =>
-            WeeklyRecap.Subject(state, description) ?? "—";
 
         private static string Placement(EpisodeState state, ContestantState you)
         {
@@ -1063,14 +1044,11 @@ namespace Gamesim.Presentation
             {
                 case ContestantStatus.Winner: return "1st — Winner";
                 case ContestantStatus.RunnerUp: return "2nd — Runner-up";
-                case ContestantStatus.Expelled:
-                    // The career's exit order, which merges production's removals in by week.
-                    int removedAt = Gamesim.Persistence.CareerLedger.Placement(state, you);
-                    return removedAt + Ordinal(removedAt) + " — " + StatusWord(you.status);
+                case ContestantStatus.Active: return "Still in the house";
                 default:
-                    int below = state.contestants.Count(c => c.status == ContestantStatus.Evicted)
-                        - (you.status == ContestantStatus.Evicted ? 1 : 0);
-                    int place = state.contestants.Count - below;
+                    // The one placement every screen reads: the order the jury ledger filled, with
+                    // production's removals merged in by the week each left.
+                    int place = CareerLedger.Placement(state, you);
                     return place + Ordinal(place) + " — " + StatusWord(you.status);
             }
         }
@@ -1125,6 +1103,8 @@ namespace Gamesim.Presentation
                     return "You were evicted with a vote still to cast, and you cast it.";
                 case ContestantStatus.Expelled:
                     return "Production removed you from the house. The season went on without your vote.";
+                case ContestantStatus.Active:
+                    return "The season is still being played.";
                 default:
                     return you.hohWins + you.vetoWins > 0
                         ? "You went out before jury, but not before winning something."
@@ -1170,6 +1150,8 @@ namespace Gamesim.Presentation
             var label = HudPrimitives.Label("Text", content, size, colour, align);
             label.text = Localisation.Text(value);
             Place(label.rectTransform, Width - Pad * 2f, height, -cursor);
+            if (height > 0f && label.GetPreferredValues(label.text, Width - Pad * 2f, 0f).y > height + 1f)
+                height = EndScreenKit.Wrapped(label, Width - Pad * 2f);
             cursor += height;
             return label;
         }
@@ -1196,33 +1178,6 @@ namespace Gamesim.Presentation
             rect.pivot = new Vector2(0f, 0.5f);
             rect.sizeDelta = new Vector2(width, 22f);
             rect.anchoredPosition = new Vector2(x, y);
-        }
-
-        /// <summary>The report's controls: the one the player most likely wants in the action blue.</summary>
-        private static void Button(Transform parent, string text, float x, Action action, bool primary, float width = 260f)
-        {
-            var panel = HudPrimitives.Fill(text, parent, primary ? UiTheme.ActionBlue : UiTheme.SurfaceRaised, 10);
-            panel.anchorMin = new Vector2(0.5f, 0.5f);
-            panel.anchorMax = new Vector2(0.5f, 0.5f);
-            panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(width, 48f);
-            panel.anchoredPosition = new Vector2(x, 0f);
-            panel.GetComponent<Image>().raycastTarget = true;
-            UiTheme.AddBorder(panel, 10, primary ? UiTheme.Glow : UiTheme.Outline);
-            if (primary) UiTheme.AddGlow(panel, 10);
-
-            var label = HudPrimitives.Label("Label", panel, 17f, primary ? Color.white : UiTheme.Paper, TextAlignmentOptions.Center);
-            var weight = UiTheme.Font(primary ? UiTheme.Weight.SemiBold : UiTheme.Weight.Medium);
-            if (weight != null) label.font = weight;
-            label.text = Localisation.Text(text);
-            label.rectTransform.anchorMin = Vector2.zero;
-            label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.sizeDelta = Vector2.zero;
-            label.rectTransform.anchoredPosition = Vector2.zero;
-
-            var button = panel.gameObject.AddComponent<SeasonReportControl>();
-            button.targetGraphic = panel.GetComponent<Image>();
-            button.onClick.AddListener(() => action());
         }
 
         private static void Stretch(RectTransform rect)

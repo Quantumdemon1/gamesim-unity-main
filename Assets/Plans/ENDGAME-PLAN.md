@@ -814,6 +814,28 @@ From the commit that leaves three active until the final eviction:
   - *Tests*: the juror's screen at both text sizes (the cases, the ballot cards, the privacy
     line, what matters, the speeches opened and put away), the vote from its card, the frame
     with no panel open; EditMode on the deals a finalist broke.
+- **As built, F6b** (Season Complete, the owner's mockup and Season Complete Pack 7; no saved
+  field). The results grid above is replaced by the owner's later mockup, and what differs:
+  - *One scroll, a dashboard first.* The fixed header holds the title, the season in a line, the
+    four ways on beside it (under it on a narrow card) and three tabs - `Season at a glance`, `Your
+    game in detail`, `The house table` - that scroll to each part and hide nothing, so every line
+    the report's suites count stays on the page. The dashboard: the winner and the runner-up, each
+    with the first sentence of their own final speech (or nothing) and their jury votes; the verdict
+    with the pinned crown line, the count in the house's words (a tie as a tie and its rule, a jury
+    of one) and a bar drawn from the ballots; the five Game Sense cards, each line the face's own
+    strongest row in the notebook; the standings, how the jury voted (every reason whole) and the
+    season timeline side by side; the career strip. Below it, in the same scroll: the champion's
+    road, the player's season, Game Sense's moments and misses, and the house table.
+  - *Placements* are `CareerLedger.Placement` everywhere on the screen - the standings, the FINISHED
+    stat and the table's placement sort - and its removal merge now reads the week each juror left
+    from their power row, not the sentiment ledger's first event, which was always week 0.
+  - *The timeline* reads the ledger's power rows, one a week: HoH, the nominations as made (the
+    saved one included), the veto and whom it saved and who went up, the evictee and the count. The
+    final week is its own row (the three parts, and whom the last Head of Household chose between).
+    A week with no row says so. The event log's cap no longer loses the early weeks' HoH.
+  - *Not built*: the winner screen (mockups 29 and 33), statistics with ranks, legacy, the diary
+    reflection and signature moments; the mockup's taglines, its "3 — 2 — 1", its quotes and its
+    closing line, which have no source; motion.
 
 ### F7 The cut scenes (world; after the cut-scenes plan's S1 to S4)
 

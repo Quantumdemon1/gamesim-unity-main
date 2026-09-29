@@ -870,6 +870,15 @@ Files in `Assets/Gamesim/Resources/Packs/Pack3_Systems/SeasonRecap/`:
 | `relationship_change_positive_9slice.png` | 276x88 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
 | `week_recap_shell_9slice.png` | 1376x836 | UiSliced | 42, 42, 42, 42 | 8, 8, 8, 8 |
 
+*As built (the week recap redesign, the owner's mockup):* WeeklyRecapScreen is rebuilt as an episode
+summary - the evictee hero with their place and their own words from the block, five headline cards
+(HOH, nominees, veto, evicted, remaining), five tabs (`Week overview`, `Vote breakdown`, `Events &
+highlights`, `Houseguest reactions`, `What's next`) and one Continue with a way back. It draws with
+Pack 7's Season Complete art (`PackArt.Season*`: sections, the quote, stat cards, a filter, the tab and
+the two buttons) so the week and the season read as one family; the Pack 3 recap cards above stay in
+the catalogue, unused. The Lines seam keeps its five rows (`Evicted: X` among them) and gains
+`Remaining: N`; the line numbers in this section predate the rewrite.
+
 ## Pack 4 - Pack4_Presentation
 
 Presentation layer: Diary Room, cinematic ceremonies, schedule, memory wall, Final Three, social alerts, transitions, broadcast overlays.
@@ -1422,3 +1431,176 @@ Not used yet: the panel family and its focus halo, the meter parts (a signed tru
 domain - the pages print the signed number instead), the timeline and relation widgets, `records_load_error` (no
 vote record can fail to load: the page reads the save in memory), `room_no_known_occupants` (every located
 houseguest is known; "Location unavailable" covers the rest).
+
+## Season Complete Pack 7 - Pack7_SeasonComplete
+
+The owner's pack for the redesigned Season Complete screen, 66 sprites (43 nine-sliced, 23 whole)
+plus a README, a manifest and a preview sheet, which live in `ArtSource/ui-packs/Pack7_SeasonComplete`.
+Installed by `ArtSource/ui-packs/tools/bb_ui_pack7.py`, which checks the zip against its manifest,
+measures every border from its pixels with `bb_ui_packs.measure` (the manifest gives none) and adds
+the pack to `UiPackCatalogue`. The same frames dress the redesigned weekly recap, which the owner
+asked for in the same visual language.
+
+**Destination** (built): `SeasonReport` (`SeasonReport.cs`, `SeasonReport.Dashboard.cs`) and
+`WeeklyRecapScreen`, through `EndScreenKit`, which draws a frame on a child named "Art" behind
+whatever it dresses (`UiTheme.PackSliced`, no tint: the pack bakes its own grounds), overhanging the
+rect by the body inset so a 38 px glow file and an 8 px one line up, and falls back to the drawn card
+on a clone without the pack. Every piece is decoration: none catches a raycast, none carries a caption.
+
+- `Shells/section_panel` - the dashboard's columns (standings, jury, timeline) and the recap's
+  columns and blocks. `quote_panel` - the recap's quote from the block. `season_complete_shell`,
+  `section_panel_selected` - not used: the report keeps its glass sheet, and a selected section has
+  no meaning on a screen that is read.
+- `WinnerHero/winner_hero_frame`, `runnerup_hero_frame` - the two finalists in the hero;
+  `runnerup_hero_frame` also frames the recap's evictee. `winner_crown`, `winner_trophy` - the
+  winner's mark and the title's. The nameplates are not used: the name sits in the frame.
+- `StatCards/*` and `Icons/stat_*` - the five Game Sense cards; the recap's headline cards take the
+  competitions (gold: power), chances (red: the block and the door) and neutral frames with the
+  ceremony glyphs, not the Game Sense icons, whose meanings are season scores.
+- `Standings/*` - the standings rows: winner, runner-up, third (the final eviction's evictee), jury,
+  and pre-jury (an older save's status, and production's removal).
+- `JuryVotes/*` - the jury's ballots (winner rows, runner-up rows, the player's own neutral), the
+  verdict panel (`jury_vote_summary_bar`), and the recap's voter rows (neutral). `jury_quote_chip`
+  is not used: a reason is drawn whole in its row.
+- `Timeline/*` - the season timeline's weeks (power when the player held the house or the veto,
+  eviction when they were on the block) and the recap's key-moment nodes.
+- `Career/career_strip`, `career_neutral`, `career_best` - the career strip under the season.
+  `career_summary`, `career_zero` - not used.
+- `FiltersTabs/filter_active`, `filter_inactive` - the house table's chips; `tab_inactive` with
+  `filter_active` lit - the report's and the recap's tabs (`tab_active` carries a 30 px halo at a
+  different size, so a lit tab would change its rect).
+- `Buttons/button_new_season` - the primary way on (and the recap's Continue and Back);
+  `button_close` - the rest. `button_main_menu` and `button_review_season` are pixel-identical to
+  `button_close`. `button_continue_legacy` and `button_review_story` have no control (decision 10).
+- `Badges/badge_runnerup` - the runner-up's mark. The judgement badges (`badge_comp_beast`,
+  `badge_strategist`, `badge_social`, `badge_legacy`) are not used: the season awards none of them,
+  and a badge nothing awarded would be invented. `badge_winner`, `badge_jury` - not used.
+- `Charts/*` - not used, on purpose (PackArt says why): each bakes a fill into its pixels, and a bar
+  drawn from one would show a split the season never had. `EndScreenKit.SplitBar` draws the jury's
+  count from the real ballots.
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Badges/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `badge_comp_beast.png` | 192x192 | UiSprite |  |  |
+| `badge_jury.png` | 192x192 | UiSprite |  |  |
+| `badge_legacy.png` | 192x192 | UiSprite |  |  |
+| `badge_runnerup.png` | 192x192 | UiSprite |  |  |
+| `badge_social.png` | 192x192 | UiSprite |  |  |
+| `badge_strategist.png` | 192x192 | UiSprite |  |  |
+| `badge_winner.png` | 192x192 | UiSprite |  |  |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Buttons/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `button_close_9slice.png` | 436x108 | UiSliced | 28, 28, 28, 28 | 8, 8, 8, 8 |
+| `button_continue_legacy_9slice.png` | 496x168 | UiSliced | 77, 76, 77, 76 | 38, 38, 38, 38 |
+| `button_main_menu_9slice.png` | 436x108 | UiSliced | 28, 28, 28, 28 | 8, 8, 8, 8 |
+| `button_new_season_9slice.png` | 496x168 | UiSliced | 77, 76, 77, 76 | 38, 38, 38, 38 |
+| `button_review_season_9slice.png` | 436x108 | UiSliced | 28, 28, 28, 28 | 8, 8, 8, 8 |
+| `button_review_story_9slice.png` | 436x108 | UiSliced | 28, 28, 28, 28 | 8, 8, 8, 8 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Career/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `career_best_9slice.png` | 236x126 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `career_neutral_9slice.png` | 236x126 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `career_strip_9slice.png` | 1216x176 | UiSliced | 32, 32, 32, 32 | 8, 8, 8, 8 |
+| `career_summary_9slice.png` | 536x206 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `career_zero_9slice.png` | 236x126 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Charts/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `bar_blue.png` | 700x44 | UiSprite |  |  |
+| `bar_gold.png` | 700x44 | UiSprite |  |  |
+| `bar_green.png` | 700x44 | UiSprite |  |  |
+| `bar_purple.png` | 700x44 | UiSprite |  |  |
+| `bar_red.png` | 700x44 | UiSprite |  |  |
+| `jury_vote_stacked_bar.png` | 800x90 | UiSprite |  |  |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/FiltersTabs/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `filter_active_9slice.png` | 276x80 | UiSliced | 24, 24, 24, 24 | 8, 8, 8, 8 |
+| `filter_inactive_9slice.png` | 276x80 | UiSliced | 24, 24, 24, 24 | 8, 8, 8, 8 |
+| `tab_active_9slice.png` | 336x140 | UiSliced | 73, 67, 73, 67 | 38, 38, 38, 38 |
+| `tab_inactive_9slice.png` | 276x80 | UiSliced | 24, 24, 24, 24 | 8, 8, 8, 8 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Icons/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `stat_chances_icon.png` | 192x192 | UiSprite |  |  |
+| `stat_competitions_icon.png` | 192x192 | UiSprite |  |  |
+| `stat_game_sense_icon.png` | 192x192 | UiSprite |  |  |
+| `stat_social_icon.png` | 192x192 | UiSprite |  |  |
+| `stat_strategy_icon.png` | 192x192 | UiSprite |  |  |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/JuryVotes/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `jury_quote_chip_9slice.png` | 436x88 | UiSliced | 24, 24, 24, 24 | 8, 8, 8, 8 |
+| `jury_vote_row_neutral_9slice.png` | 776x102 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `jury_vote_row_runnerup_9slice.png` | 776x102 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `jury_vote_row_winner_9slice.png` | 776x102 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `jury_vote_summary_bar_9slice.png` | 916x112 | UiSliced | 28, 28, 28, 28 | 8, 8, 8, 8 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Shells/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `quote_panel_9slice.png` | 876x186 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `season_complete_shell_9slice.png` | 1416x916 | UiSliced | 42, 42, 42, 42 | 8, 8, 8, 8 |
+| `section_panel_9slice.png` | 916x536 | UiSliced | 35, 35, 35, 35 | 8, 8, 8, 8 |
+| `section_panel_selected_9slice.png` | 976x596 | UiSliced | 83, 82, 83, 82 | 38, 38, 38, 38 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Standings/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `standing_jury_9slice.png` | 736x98 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `standing_prejury_9slice.png` | 736x98 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `standing_runnerup_9slice.png` | 736x98 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `standing_third_9slice.png` | 736x98 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `standing_winner_9slice.png` | 796x158 | UiSliced | 75, 73, 75, 73 | 38, 38, 38, 38 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/StatCards/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `stat_card_neutral_9slice.png` | 336x196 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `stat_chances_9slice.png` | 336x196 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `stat_competitions_9slice.png` | 336x196 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `stat_game_sense_9slice.png` | 336x196 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `stat_social_9slice.png` | 336x196 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `stat_strategy_9slice.png` | 336x196 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/Timeline/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `timeline_node_eviction.png` | 96x96 | UiSprite |  |  |
+| `timeline_node_normal.png` | 96x96 | UiSprite |  |  |
+| `timeline_node_power.png` | 96x96 | UiSprite |  |  |
+| `timeline_shell_9slice.png` | 996x536 | UiSliced | 35, 35, 35, 35 | 8, 8, 8, 8 |
+| `week_row_9slice.png` | 916x100 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `week_row_eviction_9slice.png` | 916x100 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+| `week_row_power_9slice.png` | 916x100 | UiSliced | 26, 26, 26, 26 | 8, 8, 8, 8 |
+
+Files in `Assets/Gamesim/Resources/Packs/Pack7_SeasonComplete/WinnerHero/`:
+
+| File | Size | Kind | Border (L,B,R,T) | Body inset (L,B,R,T) |
+|---|---|---|---|---|
+| `runnerup_hero_frame_9slice.png` | 636x316 | UiSliced | 35, 35, 35, 35 | 8, 8, 8, 8 |
+| `runnerup_nameplate_9slice.png` | 536x126 | UiSliced | 30, 30, 30, 30 | 8, 8, 8, 8 |
+| `winner_crown.png` | 192x192 | UiSprite |  |  |
+| `winner_hero_frame_9slice.png` | 976x376 | UiSliced | 83, 82, 83, 82 | 38, 38, 38, 38 |
+| `winner_nameplate_9slice.png` | 596x186 | UiSliced | 78, 77, 78, 77 | 38, 38, 38, 38 |
+| `winner_trophy.png` | 192x192 | UiSprite |  |  |

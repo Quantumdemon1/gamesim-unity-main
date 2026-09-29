@@ -24,7 +24,7 @@ namespace Gamesim.Presentation
     /// without a scene, the same division the reference makes between its builders and its screen.
     /// <see cref="WeeklyRecapScreen"/> draws what this returns.</para>
     /// </summary>
-    public static class WeeklyRecap
+    public static partial class WeeklyRecap
     {
         /// <summary>How far a relationship has to move in a week before the recap mentions it.</summary>
         public const double NotableMove = 20;
@@ -63,7 +63,11 @@ namespace Gamesim.Presentation
             }
 
             var gone = events.FirstOrDefault(e => e.kind == "eviction" || e.kind == "final-eviction");
-            recap.evicted = gone == null ? null : Subject(state, gone.text);
+            // The final eviction's line opens with the Head of Household who chose ("Maya takes Casey
+            // to the final two. Riley joins the jury."), so its evictee is the second sentence's.
+            recap.evicted = gone == null ? null
+                : gone.kind == "final-eviction" ? VoteRecords.FinalEvictee(state, gone.text) ?? Subject(state, gone.text)
+                : Subject(state, gone.text);
             recap.evictionLine = gone?.text;
 
             recap.ballots = events
@@ -72,8 +76,11 @@ namespace Gamesim.Presentation
                 .ToList();
 
             recap.relationships = Movements(state, week);
-            recap.alliances = events.Where(e => e.kind == "alliance").Select(e => e.text).Take(LineLimit).ToList();
-            recap.deals = events.Where(e => e.kind == "deal" || e.kind == "deal-outcome")
+            // Only what the player saw: an alliance or a deal between two other houseguests is
+            // theirs, logged to them alone, and never the player's news.
+            bool Seen(EpisodeEvent e) => e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId);
+            recap.alliances = events.Where(e => e.kind == "alliance" && Seen(e)).Select(e => e.text).Take(LineLimit).ToList();
+            recap.deals = events.Where(e => (e.kind == "deal" || e.kind == "deal-outcome") && Seen(e))
                 .Select(e => e.text).Take(LineLimit).ToList();
             recap.moments = Moments(state, events);
             // What happened to the house that week, and what the player did about it. The recap is
@@ -85,6 +92,7 @@ namespace Gamesim.Presentation
                 .Take(LineLimit).ToList();
             recap.yourWeek = Narrative(state, week, events);
             Episode(state, week, events, recap);
+            Ledger(state, week, events, recap, gone);
             return recap;
         }
 
@@ -298,7 +306,11 @@ namespace Gamesim.Presentation
             bool ranTheWeek = CompetitionWinner(state, events, EpisodePhase.HoH) == you.name;
             bool heldTheVeto = CompetitionWinner(state, events, EpisodePhase.Veto) == you.name;
             bool onTheBlock = you.nominationWeeks != null && you.nominationWeeks.Contains(week);
-            bool saved = onTheBlock && !state.nominees.Contains(you.id) && state.vetoResolved;
+            // The week's own record, not the house as it stands now: a week looked back on has its
+            // power row, and the current nominees are another week's.
+            var power = state.ledger?.power?.FirstOrDefault(p => p.week == week);
+            bool saved = onTheBlock && (power != null ? power.savedId == you.id
+                : week == state.week && !state.nominees.Contains(you.id) && state.vetoResolved);
 
             var said = new List<string>();
             if (ranTheWeek) said.Add("You ran the week as Head of Household.");
@@ -308,18 +320,23 @@ namespace Gamesim.Presentation
                     : "You spent the week on the block.");
             if (heldTheVeto) said.Add("You won the veto.");
 
+            // The player's own feelings only: how the house took to them is the house's, and the
+            // recap is shown during play.
             double warmer = 0, cooler = 0;
-            foreach (var move in Movements(state, week))
+            foreach (var move in Movements(state, week).Where(m => !m.aboutYou))
             {
                 if (move.delta > 0) warmer += move.delta; else cooler -= move.delta;
             }
-            if (warmer > cooler && warmer > 0) said.Add("You left the week better liked than you started it.");
-            else if (cooler > warmer && cooler > 0) said.Add("You made enemies this week.");
-            else if (warmer > 0) said.Add("You gained as much ground as you lost.");
+            if (warmer > cooler && warmer > 0) said.Add("You warmed to the house this week.");
+            else if (cooler > warmer && cooler > 0) said.Add("You soured on the house this week.");
+            else if (warmer > 0) said.Add("You warmed to some and cooled on others.");
 
-            if (you.status == ContestantStatus.Jury || you.status == ContestantStatus.Evicted)
+            // Only in the week it happened: a look back at week one, from the jury, is not the end.
+            bool leftThisWeek = power != null ? power.evicteeId == you.id : week == state.week;
+            var removal = state.story?.removals?.FirstOrDefault(r => r.contestantId == you.id);
+            if ((you.status == ContestantStatus.Jury || you.status == ContestantStatus.Evicted) && leftThisWeek)
                 said.Add("Your season ended here.");
-            else if (you.status == ContestantStatus.Expelled)
+            else if (you.status == ContestantStatus.Expelled && (removal == null ? week == state.week : removal.week == week))
                 said.Add("Production removed you from the house.");
 
             return said.Count == 0 ? "A quiet week for you." : string.Join(" ", said);
@@ -328,7 +345,7 @@ namespace Gamesim.Presentation
         // ---------------------------------------------------------------- what a recap is
 
         /// <summary>One week's recap. Plain data, so a test can read it without a screen.</summary>
-        public sealed class Week
+        public sealed partial class Week
         {
             public int week;
             public string headOfHousehold, vetoHolder, evicted;

@@ -404,6 +404,7 @@ If one person builds everything, follow the numbers. The UI slices that need no 
   - **Prompt hint.** `EpisodeHud.SetPrompt` takes an optional hint, drawn as a separate muted line under the Talk prompt: 'Talk, strategize, or spend time together.'. The prompt's caption is unchanged.
   - **Live feed caption.** `RoomCaption` names the occupants when a room holds three or fewer, from `WhoIsWhere()`: 'LIVING ROOM · YOU, ALEX, JORDAN'. It says 'talking' only through the existing witnessed path.
   - **Optional:** the pill's jury label reads 'Jury members'.
+  - **The jury-house door (decision 42, carried from M3).** M3 did not build it. Build it here on the objectives card's jury strip, per the review correction in section 6: a caption of its own, never a second `The jury house` beside the free tile, and the panel flag F4 names.
 - **Effort / risk:** M / low.
 - **Tests and pins:** Endgame.cs:97-100 (one rail child per actor with its parts); 'Juror' count (:77, :120); beacon captions.
 - **Kind:** presentation only.

@@ -1585,6 +1585,11 @@ namespace Gamesim.Episode
             if (opening != null) { Destroy(opening.gameObject); opening = null; }
         }
 
+        /// <summary>
+        /// A phase's title as the panel's header prints it. The final Head of Household is one
+        /// title over its three parts, which the header's line under it tells apart; the finale's
+        /// two jury beats say they are the finale's (MOCKUP-PASS M3).
+        /// </summary>
         public static string PhaseTitle(EpisodePhase phase)
         {
             switch (phase)
@@ -1593,15 +1598,28 @@ namespace Gamesim.Episode
                 case EpisodePhase.HoH: return "HEAD OF HOUSEHOLD";
                 case EpisodePhase.VetoSelection: return "VETO PLAYER SELECTION";
                 case EpisodePhase.VetoMeeting: return "VETO CEREMONY";
-                case EpisodePhase.FinalHoHPart1: return "FINAL HOH · ENDURANCE";
-                case EpisodePhase.FinalHoHPart2: return "FINAL HOH · SKILL";
-                case EpisodePhase.FinalHoHPart3: return "FINAL HOH · MENTAL";
+                case EpisodePhase.FinalHoHPart1:
+                case EpisodePhase.FinalHoHPart2:
+                case EpisodePhase.FinalHoHPart3: return "FINAL HEAD OF HOUSEHOLD";
                 case EpisodePhase.FinalEviction: return "CHOOSE YOUR FINAL TWO";
-                case EpisodePhase.JuryQuestioning: return "FACE THE JURY";
+                case EpisodePhase.JuryQuestioning: return "FINALE · FACE THE JURY";
                 case EpisodePhase.FinalSpeeches: return "MAKE YOUR FINAL CASE";
+                case EpisodePhase.Jury: return "FINALE · JURY VOTE";
                 case EpisodePhase.Finished: return "SEASON FINALE";
                 default: return phase.ToString().ToUpperInvariant();
             }
+        }
+
+        /// <summary>
+        /// The title for where the season stands, which the phase alone cannot always say: the final
+        /// eviction is the player's to choose only when they hold the house, and otherwise it is
+        /// the final eviction they watch.
+        /// </summary>
+        public static string PhaseTitle(EpisodeState state)
+        {
+            if (state == null) return string.Empty;
+            if (state.phase == EpisodePhase.FinalEviction && state.hohId != state.playerId) return "THE FINAL EVICTION";
+            return PhaseTitle(state.phase);
         }
     }
 }

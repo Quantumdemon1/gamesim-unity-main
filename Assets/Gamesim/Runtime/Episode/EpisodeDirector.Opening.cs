@@ -157,16 +157,37 @@ namespace Gamesim.Episode
         /// record, this one aside, plus one. Presentation only - it reads the career file, never the
         /// season - and a record that cannot be read counts as none.
         /// </summary>
-        private int SeasonNumberFor(EpisodeState state)
+        private int SeasonNumberFor(EpisodeState state) => SeasonNumber(state) ?? 1;
+
+        /// <summary>The session the cached season number was read for, and the number, or null when unknown.</summary>
+        private string seasonNumberSession;
+        private int? seasonNumber;
+
+        /// <summary>
+        /// The season's number as <see cref="SeasonNumberFor"/> counts it, or null when there is no
+        /// career record to count from or it cannot be read. Read once a session and kept: the
+        /// frame asks on every render from finale night on (MOCKUP-PASS M3), and the count cannot
+        /// move under a session, because the one season it leaves out is the one being played.
+        /// Setting the record aside is the one thing that changes it, and that forgets the number.
+        /// </summary>
+        public int? SeasonNumber(EpisodeState state)
         {
-            if (career == null || state == null) return 1;
+            if (state == null) return null;
+            if (seasonNumberSession == state.sessionId) return seasonNumber;
+            seasonNumberSession = state.sessionId;
+            seasonNumber = null;
+            if (career == null) return null;
             try
             {
                 var record = career.Load();
-                return 1 + (record?.seasons?.Count(season => season != null && season.sessionId != state.sessionId) ?? 0);
+                seasonNumber = 1 + (record?.seasons?.Count(season => season != null && season.sessionId != state.sessionId) ?? 0);
             }
-            catch (Exception error) when (SaveJson.IsExpected(error)) { return 1; }
+            catch (Exception error) when (SaveJson.IsExpected(error)) { seasonNumber = null; }
+            return seasonNumber;
         }
+
+        /// <summary>Forgets the cached season number, for a career record that has just been set aside.</summary>
+        private void ForgetSeasonNumber() { seasonNumberSession = null; seasonNumber = null; }
 
         private IEnumerator WaitForTutorial(Action done)
         {

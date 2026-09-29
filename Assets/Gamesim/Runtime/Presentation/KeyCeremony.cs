@@ -592,12 +592,15 @@ namespace Gamesim.Presentation
             float scale = frame.Text;
             var slot = Slot(person.Value, 0f, frame.SlotW, frame.SlotH, tint, "Name");
             if (string.IsNullOrEmpty(badge)) return;
-            // The word the key means, pinned to the photo's shoulder.
+            // The word the key means, pinned to the photo's shoulder. On the set's screen it sits
+            // just inside the photo's top edge rather than across it: across it, at the screen's
+            // scale, it covered the foot of the Head of Household's line above (MOCKUP-PASS-PLAN M2).
+            float chipHeight = 20f * scale;
             var chip = HudPrimitives.Fill("Badge", slot, tint, 4);
             chip.anchorMin = chip.anchorMax = new Vector2(.5f, 1f);
             chip.pivot = new Vector2(.5f, .5f);
-            chip.anchoredPosition = Vector2.zero;
-            chip.sizeDelta = new Vector2(70f * scale, 20f * scale);
+            chip.anchoredPosition = frame.Screen ? new Vector2(0f, -chipHeight * .5f) : Vector2.zero;
+            chip.sizeDelta = new Vector2(70f * scale, chipHeight);
             chip.GetComponent<Image>().raycastTarget = false;
             var chipText = HudPrimitives.Label("Badge text", chip, 12f * scale, UiTheme.Ink, TextAlignmentOptions.Center);
             chipText.text = badge;

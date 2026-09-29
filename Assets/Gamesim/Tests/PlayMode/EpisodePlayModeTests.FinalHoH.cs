@@ -107,6 +107,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ContinueFromFinalPart(EpisodePhase.FinalHoHPart2);
             var state = director.Snapshot;
             Assert.That(takeover.PlayingKind, Is.EqualTo(CeremonyTakeover.FinalHoHPartKind), "Part 2 opens with the bracket.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The card has the frame to itself: no chrome under it (MOCKUP-PASS-PLAN M2).");
             var words = TakeoverWords(takeover);
             Assert.That(words, Does.Contain("Final HoH · Part 2"));
             Assert.That(words.Count(text => text == "WON PART 1"), Is.EqualTo(1), "The Part 1 winner, badged.");
@@ -136,6 +137,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ContinueFromFinalPart(EpisodePhase.FinalHoHPart3);
             state = director.Snapshot;
             Assert.That(takeover.PlayingKind, Is.EqualTo(CeremonyTakeover.FinalHoHPartKind), "Part 3 opens with the bracket.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "No chrome under the bracket.");
             words = TakeoverWords(takeover);
             Assert.That(words, Does.Contain("Final HoH · Part 3"));
             Assert.That(words.Count(text => text == "WON PART 1"), Is.EqualTo(1));
@@ -153,6 +155,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ContinueFromFinalPart(EpisodePhase.FinalEviction);
             state = director.Snapshot;
             Assert.That(takeover.PlayingKind, Is.EqualTo(CeremonyTakeover.FinalHoHCrownedKind), "The final eviction opens with the crowning.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "No chrome under the crowning.");
             words = TakeoverWords(takeover);
             Assert.That(words, Does.Contain("Final Head of Household"));
             Assert.That(words.Count(text => text == "FINAL HOH"), Is.EqualTo(1));
@@ -169,6 +172,7 @@ namespace Gamesim.Tests.PlayMode
             if (Application.isBatchMode) yield return CaptureFraming("endgame-final-hoh-crowned", settle: false);
             takeover.Cancel();
             yield return Frames(1);
+            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down.");
         }
 
         /// <summary>

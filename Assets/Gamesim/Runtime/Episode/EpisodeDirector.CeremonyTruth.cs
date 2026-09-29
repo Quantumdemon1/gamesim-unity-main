@@ -32,6 +32,12 @@ namespace Gamesim.Episode
         /// <summary>Whether the HUD stepped aside for a key ceremony or a live eviction now playing.</summary>
         private bool revealHeld;
 
+        /// <summary>
+        /// Whether the hold is for a reveal the chrome would spoil, which redraws the house as it
+        /// lets go - and not only for a clean frame under an endgame card, which does not.
+        /// </summary>
+        private bool revealRedraws;
+
         /// <summary>The settings' pace switch, in the words of what pressing it does.</summary>
         public const string QuickCeremoniesCaption = "Make ceremonies quick";
         public const string SuspensefulCeremoniesCaption = "Make ceremonies suspenseful";
@@ -100,13 +106,31 @@ namespace Gamesim.Episode
         /// The house's chrome steps aside while a key ceremony or a live eviction plays: it is drawn
         /// from the committed result, so it named the nominees and the evicted before the reveal
         /// reached them. It comes back, and the house redraws, the moment the card is over or skipped.
+        ///
+        /// <para>The endgame's cards (<see cref="IsEndgameCard"/>) take the same hold for their
+        /// frame alone, with <paramref name="redraw"/> false: the chrome under them names nothing
+        /// the card has not, so it comes back as it was, with no rebuild of a panel left open under
+        /// the card (MOCKUP-PASS-PLAN M2).</para>
         /// </summary>
-        private void HoldHudForReveal()
+        private void HoldHudForReveal(bool redraw = true)
         {
             if (hud == null) return;
             revealHeld = true;
+            revealRedraws |= redraw;
             hud.HoldForReveal(true);
         }
+
+        /// <summary>
+        /// The endgame's cards on the HUD frame, which the chrome stands aside for as it does for a
+        /// reveal: the house down to three, a final part's bracket, the crowning, and the final
+        /// Head of Household's choice. The week chip, the rail and the objectives drew over them.
+        /// </summary>
+        public static bool IsEndgameCard(string kind) =>
+            kind == CeremonyTakeover.FinalThreeKind || kind == CeremonyTakeover.FinalHoHPartKind
+            || kind == CeremonyTakeover.FinalHoHCrownedKind || kind == CeremonySting.FinalEvictionKind;
+
+        /// <summary>Whether one of the endgame's cards is playing now.</summary>
+        private bool EndgameCardPlaying => takeover != null && IsEndgameCard(takeover.PlayingKind);
 
         /// <summary>
         /// Each frame: the chrome returns when the reveal it stepped aside for ends; the evicted
@@ -120,11 +144,13 @@ namespace Gamesim.Episode
             // committed result, and the house walking to its seats is the reveal's first beat.
             bool revealing = (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
                 || JuryRevealPlaying || CeremonyStageNarrating;
-            if (revealHeld && !revealing)
+            if (revealHeld && !revealing && !EndgameCardPlaying)
             {
                 revealHeld = false;
+                bool redraw = revealRedraws;
+                revealRedraws = false;
                 if (hud != null) hud.HoldForReveal(false);
-                if (IsReady) Render();
+                if (IsReady && redraw) Render();
             }
             bool narrating = revealing || (takeover != null && takeover.IsPlaying);
             // The cards are done: the evicted walks out through the front door when this house can
@@ -135,7 +161,26 @@ namespace Gamesim.Episode
                 if (IsReady) Project();
             }
             TickWalkOut();
+            TickCeremonyPlates();
             GuardUiSubmit(CeremonyOverlays.OnScreen);
+        }
+
+        /// <summary>
+        /// Each frame, after the walk out has moved on: the name plates and the player's disc go
+        /// down while a ceremony's card is up (MOCKUP-PASS-PLAN M2), and a plate showed through the
+        /// eviction's scrim on the HUD frame and over every face in a cut to the chairs. A staged
+        /// ceremony keeps them up through its summons, so the player can find a seat by them, takes
+        /// them down as its card starts, and keeps them down until it lets the house go; the walk
+        /// out keeps them down until the evicted are through the door. On the HUD frame the key
+        /// ceremony and the live eviction take them down while they play.
+        /// </summary>
+        private void TickCeremonyPlates()
+        {
+            var step = CeremonyStagePhase;
+            ceremonyPlatesDown = step == CeremonyStageStep.Playing || step == CeremonyStageStep.Release
+                || (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
+                || walkingOutId != null;
+            ApplyPlates();
         }
 
         private bool submitHeld;
@@ -169,6 +214,7 @@ namespace Gamesim.Episode
             ResetWalkOut();
             if (revealHeld && hud != null) hud.HoldForReveal(false);
             revealHeld = false;
+            revealRedraws = false;
             GuardUiSubmit(false);
         }
 

@@ -433,6 +433,15 @@ namespace Gamesim.Episode
         /// <summary>The player's selection disc, named as the scene builds it under the player.</summary>
         public const string PlayerMarkerName = "Selected player marker";
 
+        /// <summary>Whether the opening has the house's labels down.</summary>
+        private bool openingPlatesDown;
+
+        /// <summary>Whether a ceremony has them down (<see cref="TickCeremonyPlates"/>).</summary>
+        private bool ceremonyPlatesDown;
+
+        /// <summary>What the player's disc was last set to, so a frame that changes nothing looks nothing up.</summary>
+        private bool? discSuppressed;
+
         /// <summary>
         /// The house's labels down for the show and up again after it: the houseguests' name plates,
         /// and the disc under the player, which stood in the doorway under a shut front door and
@@ -440,13 +449,29 @@ namespace Gamesim.Episode
         /// </summary>
         private void SetPlatesSuppressed(bool suppressed)
         {
-            if (player != null)
+            openingPlatesDown = suppressed;
+            ApplyPlates();
+        }
+
+        /// <summary>
+        /// The labels as the opening and the ceremonies between them want them: down while either
+        /// has them down. Kept apart so a ceremony's card coming down never brings the plates back
+        /// under the opening, or the other way round. The houseguests' flags are set every time, so
+        /// a body the house takes back mid-card is down with the rest.
+        /// </summary>
+        private void ApplyPlates()
+        {
+            bool suppressed = openingPlatesDown || ceremonyPlatesDown;
+            if (player != null && discSuppressed != suppressed)
+            {
+                discSuppressed = suppressed;
                 foreach (var part in player.GetComponentsInChildren<Transform>(true))
                     if (part.name == PlayerMarkerName)
                     {
                         var disc = part.GetComponent<Renderer>();
                         if (disc != null) disc.enabled = !suppressed;
                     }
+            }
             if (housemates == null) return;
             foreach (var npc in housemates)
                 if (npc != null) npc.PlateSuppressed = suppressed;

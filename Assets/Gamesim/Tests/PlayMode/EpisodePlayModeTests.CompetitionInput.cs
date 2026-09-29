@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Linq;
+using Gamesim.Episode;
 using Gamesim.Presentation;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -108,6 +110,63 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(area.width * area.height, Is.GreaterThan(Screen.width * Screen.height * .45f),
                 "The board takes most of the frame: " + area + ".");
             if (Application.isBatchMode && screen.IsShowing) yield return CaptureFraming("competition-practice");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
+        }
+
+        /// <summary>
+        /// The arena's sign of the award and the discipline reads from the deck (MOCKUP-PASS-PLAN M2).
+        /// It was turned half round, so it read mirrored from the competition camera and every seat,
+        /// and it hung across the centre gate, whose neon ran through the words. A practice attempt
+        /// stages the arena and commits nothing; batch runs frame the sign for the look sheet.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Competition_TheYardSignReadsFromTheDeckOverTheCentreGate()
+        {
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();
+            yield return null;
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            var before = director.Snapshot;
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            yield return null; yield return null;
+
+            var sign = SceneComponents<TextMeshPro>()
+                .SingleOrDefault(text => text.name == EpisodeDirector.CompetitionSignName && text.gameObject.activeInHierarchy);
+            Assert.That(sign, Is.Not.Null, "The practice stages the arena, and the arena its sign.");
+            Assert.That(sign.text, Is.Not.Empty, "The sign names the award and the discipline.");
+            // A TextMeshPro face reads from behind its forward: toward the deck, the sign's forward
+            // points away from it, along +z, the way the backdrop's lit face looks and the
+            // competition camera looks.
+            Assert.That(Vector3.Dot(sign.transform.forward, Vector3.forward), Is.GreaterThan(0.99f),
+                "The sign faces the deck, not the backdrop behind it: forward " + sign.transform.forward + ".");
+            Assert.That(Vector3.Dot(sign.transform.position - player.transform.position, sign.transform.forward), Is.GreaterThan(0f),
+                "The player, on their way to the station, is on the side it reads from.");
+
+            var gates = SceneComponents<Transform>()
+                .Where(part => part.name.StartsWith(EpisodeDirector.CompetitionGateName, System.StringComparison.Ordinal)
+                    && part.GetComponentsInChildren<Renderer>().Length > 0)
+                .ToList();
+            Assert.That(gates, Is.Not.Empty, "The yard is dressed with the course's gates.");
+            var centre = gates.OrderBy(gate => Mathf.Abs(gate.position.x - sign.transform.position.x)).First();
+            float gateTop = centre.GetComponentsInChildren<Renderer>().Max(renderer => renderer.bounds.max.y);
+            sign.ForceMeshUpdate();
+            float foot = sign.transform.TransformPoint(new Vector3(0f, sign.textBounds.min.y, 0f)).y;
+            Assert.That(foot, Is.GreaterThan(gateTop),
+                "The words stand clear of the centre gate's head: their foot at " + foot.ToString("0.00")
+                + ", the gate's top at " + gateTop.ToString("0.00") + ".");
+
+            if (Application.isBatchMode)
+            {
+                // The game's screen stands over the yard while the house walks to its stations; the
+                // sign is this frame's subject, so the screen steps out of it and comes back after.
+                var game = SceneComponents<CompetitionGameScreen>().SingleOrDefault();
+                var surface = game != null ? game.GetComponent<Canvas>() : null;
+                if (surface != null) surface.enabled = false;
+                yield return CaptureSet("competition-yard-sign", sign.transform.position + Vector3.down * 1.4f, 10f, 6f, 0f);
+                if (surface != null) surface.enabled = true;
+            }
             Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing.");
         }
     }

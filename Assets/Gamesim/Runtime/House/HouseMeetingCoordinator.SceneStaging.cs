@@ -30,15 +30,18 @@ namespace Gamesim.House
         public int SceneStageCount => sceneLeases.Count;
 
         /// <summary>
-        /// Borrows the free ones among these houseguests and walks each to its place. Any earlier
-        /// scene is let go first. Returns how many were staged; none when the house is busy with a
-        /// stage of its own, paused, or holding a meeting.
+        /// Borrows the free ones among these houseguests and walks each to the first of the offered
+        /// places their own body clears (the reservation checks the capsule against the furniture's
+        /// collision, which the NavMesh does not). Any earlier scene is let go first. Returns how many
+        /// were staged; none when the house is busy with a stage of its own - a ceremony's included -
+        /// paused, or holding a meeting.
         /// </summary>
         public int BeginSceneStage(string key, IReadOnlyList<string> ids, IReadOnlyList<Vector3> places)
         {
             EndSceneStage();
-            if (string.IsNullOrEmpty(key) || !IsReady || paused || HasCompetitionStage || HasOpeningStage || leases.Count != 0
-                || ids == null || places == null || ids.Count != places.Count) return 0;
+            if (string.IsNullOrEmpty(key) || !IsReady || paused || HasCompetitionStage || HasOpeningStage || HasCeremonyStage
+                || leases.Count != 0 || ids == null || places == null || places.Count == 0) return 0;
+            var taken = new bool[places.Count];
             for (int i = 0; i < ids.Count; i++)
             {
                 if (ids[i] == null || sceneLeases.ContainsKey(ids[i]) || !actors.TryGetValue(ids[i], out var actor) || !eligible.Contains(ids[i])
@@ -48,7 +51,13 @@ namespace Gamesim.House
                 string token = "scene:" + key + ":" + i;
                 if (token.Length > 128) token = "scene:" + i + ":" + key.GetHashCode();
                 actor.motion.SetPaused(false);
-                if (!actor.motion.TryReserveAndPath(token, places[i])) { actor.motion.SetPaused(paused); continue; }
+                bool placed = false;
+                for (int p = 0; p < places.Count && !placed; p++)
+                {
+                    if (taken[p] || !actor.motion.TryReserveAndPath(token, places[p])) continue;
+                    taken[p] = placed = true;
+                }
+                if (!placed) { actor.motion.SetPaused(paused); continue; }
                 sceneLeases[ids[i]] = new SceneLease { actor = actor, token = token };
             }
             SceneStageKey = sceneLeases.Count > 0 ? key : null;

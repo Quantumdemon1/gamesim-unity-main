@@ -754,8 +754,12 @@ From the commit that leaves three active until the final eviction:
   three, else Game Sense's), and the analysts' line (Game Sense's verdict). No legacy score is
   invented: the career keeps none, and a single legacy number would be a new formula for the
   owner to decide. The diary reflection is the last entry of the persona history: the
-  persona and its week, worded, beside the season's persona; the diary keeps no memory and no
-  answer text. "Episode archive" and "Export share card" are out of scope (decision 8).
+  persona and its week, worded, beside the season's persona. The diary keeps no memory of its
+  own, but each confessional is logged verbatim as a `diary-room` event with its persona
+  (`WebDiaryRoom.cs:139`: 'Diary Room confessional: "{answer}" ({persona})'), so the answer
+  text can be quoted while the event log, which keeps 256 rows, still holds it; an older
+  week's answer may be gone. "Episode archive" and "Export share card" are out of scope
+  (decision 8).
 - **Placements.** Two readers disagree today and both miss. The report's own placement counts
   Evicted, which the engine never writes, so every juror's FINISHED card reads last place.
   `CareerLedger.Placement` reads the jury ledger's order, which is right, but merges
@@ -773,9 +777,14 @@ From the commit that leaves three active until the final eviction:
   and none opened for that week in play.
 - **Statistics.** Competition wins, HoH wins, veto wins, alliances formed, betrayals,
   nominations survived; ties as T-1st. Competition wins count as F2's résumé counts them, a
-  Part 1 or Part 2 win included, and the report's COMP WINS stat moves to the same count. The
-  ledger's competition rows hold only the player's placement, so ranks among the cast read
-  state. Nominations survived come from `timesNominated` and `nominationWeeks`, never the
+  Part 1 or Part 2 win included, and the report's COMP WINS stat moves to the same count (the
+  champion's road and the player's season, `FinalistRead.Wins`; done in the mockup pass's M1).
+  The career strip's COMP WINS stays Heads of Household plus vetoes, because `CareerSeason`
+  stores only `hohWins` and `vetoWins`; counting the parts there is a career-file schema
+  change (1 to 2). A muted "HoH and veto" under the career cell's caption, which stays word
+  for word, says what it counts, so a one-season career's two COMP WINS numbers do not read
+  as a mistake. The ledger's competition rows hold only the player's placement, so ranks
+  among the cast read state. Nominations survived come from `timesNominated` and `nominationWeeks`, never the
   power rows (F4).
 - **Tests.** JuryRevealPlayModeTests stays green on the HUD path, and CeremonyTruthTests' jury
   pacing is unchanged; a screen-path test as the vote reveal's; the screen path and the

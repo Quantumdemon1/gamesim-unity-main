@@ -15,10 +15,11 @@ namespace Gamesim.Presentation
     /// standings, how the jury voted, and the season week by week - and the career under them.
     ///
     /// <para>Nothing here is invented. The quote under a finalist is the first sentence of their own
-    /// final speech, or nothing; the count is the jury's ballots; a card's line is that face's own
-    /// strongest row in the notebook; the weeks are the ledger's power rows, one a week, the final
-    /// week's three parts and the last Head of Household's choice included. The mockup's taglines,
-    /// its "3 — 2 — 1" and its quotes had no source, and are not here.</para>
+    /// final speech (the runner-up's next one where the first repeats the winner's), or nothing; the
+    /// count is the jury's ballots; a card's line is that face's own strongest row in the notebook;
+    /// the weeks are the ledger's power rows, one a week, the final week's three parts and the last
+    /// Head of Household's choice included. The mockup's taglines, its "3 — 2 — 1" and its quotes
+    /// had no source, and are not here.</para>
     ///
     /// <para>Words tests read are kept word for word: the Game Sense captions, "How the jury voted",
     /// "voted for {name}" and each juror's recorded reason, the crown line "{winner} beat
@@ -34,6 +35,12 @@ namespace Gamesim.Presentation
         private static readonly Color Violet = new Color(.66f, .49f, 1f);
 
         private const float Gap = 16f;
+
+        /// <summary>
+        /// The muted line under the career's COMP WINS caption, and its label's name: what the career
+        /// counts, which is not what the season's own COMP WINS counts (<see cref="CareerStrip"/>).
+        /// </summary>
+        public const string CareerCompWinsNote = "HoH and veto", CareerCaptionNoteName = "Caption note";
 
         private void Dashboard(EpisodeState state, Func<string, Texture> portrait)
         {
@@ -168,7 +175,11 @@ namespace Gamesim.Presentation
                 textX, 50f, textWidth, won ? 40f : 34f, TextAlignmentOptions.Left, UiTheme.Weight.Bold);
             name.enableAutoSizing = true; name.fontSizeMax = won ? 30f : 24f; name.fontSizeMin = 16f;
             float y = won ? 94f : 88f;
-            string quote = EndScreenKit.Excerpt(state.finalSpeeches?.FirstOrDefault(s => s.speakerId == who.id)?.text, won ? 110 : 80);
+            string SpeechOf(string id) => state.finalSpeeches?.FirstOrDefault(s => s.speakerId == id)?.text;
+            // The runner-up's line never repeats the winner's: two speeches that open alike give the
+            // runner-up their next sentence, or no quote.
+            string quote = won ? EndScreenKit.Excerpt(SpeechOf(who.id), 110)
+                : EndScreenKit.ExcerptBeside(SpeechOf(who.id), 80, SpeechOf(state.winnerId));
             if (quote != null)
             {
                 var said = EndScreenKit.Text("Quote", card, "“" + quote + "”", 15f, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .86f),
@@ -277,11 +288,7 @@ namespace Gamesim.Presentation
         {
             const float pad = 16f, rowHeight = 42f, rowGap = 6f;
             float y = pad + EndScreenKit.Heading(column, "Final standings", null, "trophy", pad, pad, width - pad * 2f);
-            var order = state.contestants
-                .Select(c => (who: c, place: c.status == ContestantStatus.Active ? 0 : CareerLedger.Placement(state, c)))
-                .OrderBy(e => e.place == 0 ? int.MaxValue : e.place).ThenBy(e => PlacementRank(e.who.status)).ThenBy(e => e.who.name, StringComparer.CurrentCulture)
-                .ToList();
-            foreach (var (who, place) in order)
+            foreach (var (who, place) in StandingsOrder(state))
             {
                 var row = EndScreenKit.Box("Standing", column, pad, y, width - pad * 2f, rowHeight);
                 string frame = who.status == ContestantStatus.Winner ? PackArt.SeasonStandingWinner
@@ -310,6 +317,52 @@ namespace Gamesim.Presentation
                 y += rowHeight + rowGap;
             }
             return y + pad - rowGap;
+        }
+
+        /// <summary>
+        /// Everybody in the order they finished, with the place the standings print: the one
+        /// placement every screen reads (<see cref="CareerLedger.Placement"/>), and 0 for anyone
+        /// still in the house, who comes last.
+        ///
+        /// <para>Without the jury ledger (a save from before it, or a season built for a test) that
+        /// placement falls back to a coarse count, and every juror shares one number: a house of
+        /// eight printed "7" five times. The week each of them left, their power row, breaks the
+        /// tie: the latest to leave finished highest, and the tied group takes the run of places its
+        /// number stands for, never above the row before it. Two who left in the same week, or two
+        /// the ledger has no row for, share the lowest place of their part of the run, as the coarse
+        /// count gives a tied jury, rather than an order nothing on the record gives.</para>
+        /// </summary>
+        public static List<(ContestantState who, int place)> StandingsOrder(EpisodeState state)
+        {
+            int? Left(ContestantState who) => JuryHouseRead.LeftWeek(state, who.id);
+            var order = state.contestants
+                .Select(c => (who: c, place: c.status == ContestantStatus.Active ? 0 : CareerLedger.Placement(state, c)))
+                .OrderBy(e => e.place == 0 ? int.MaxValue : e.place).ThenBy(e => PlacementRank(e.who.status))
+                .ThenByDescending(e => Left(e.who) ?? int.MinValue).ThenBy(e => e.who.name, StringComparer.CurrentCulture)
+                .ToList();
+            int above = 0;
+            for (int start = 0; start < order.Count;)
+            {
+                int place = order[start].place, end = start;
+                while (end < order.Count && order[end].place == place) end++;
+                if (place > 0 && end - start > 1)
+                {
+                    // The run a coarse number stands for: a juror's is the lowest seat the jury holds
+                    // and a pre-jury evictee's the highest seat below it, so the run reaches back
+                    // from the number, but never above the place printed on the row before.
+                    int first = Math.Max(above + 1, place - (end - start) + 1);
+                    for (int i = start; i < end;)
+                    {
+                        int same = i;
+                        while (same < end && Left(order[same].who) == Left(order[i].who)) same++;
+                        for (int n = i; n < same; n++) order[n] = (order[n].who, first + (same - start) - 1);
+                        i = same;
+                    }
+                }
+                if (place > 0) above = order[end - 1].place;
+                start = end;
+            }
+            return order;
         }
 
         /// <summary>A status as short as a standings pill holds it; the house table keeps the long words.</summary>
@@ -491,10 +544,16 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The player's record across seasons, under this one, in a strip: the five numbers with the
         /// captions they have always had, and the career's own line. Only when there is a career.
+        ///
+        /// <para>The career's COMP WINS counts Heads of Household and vetoes, the two a
+        /// <see cref="CareerSeason"/> stores, while the season's own COMP WINS below counts the final
+        /// Head of Household's first two parts as well (<see cref="FinalistRead.Wins"/>). A one-season
+        /// career would show two different numbers under one caption, so the career's cell says
+        /// what it counts in a muted line under its caption, which stays word for word.</para>
         /// </summary>
         private float CareerStrip(RectTransform board, CareerSummary career, float y, float inner)
         {
-            const float height = 104f, pad = 18f;
+            const float height = 112f, pad = 18f;
             var strip = EndScreenKit.Box(CareerStripName, board, 0f, y, inner, height);
             EndScreenKit.Frame(strip, PackArt.SeasonCareerStrip, 16f, UiTheme.Surface);
             bool wide = inner >= 1150f;
@@ -509,24 +568,28 @@ namespace Gamesim.Presentation
             }
             float noteWidth = wide ? Mathf.Min(330f, inner * .24f) : 0f;
             float cellsX = pad + titleWidth, cellsWidth = inner - cellsX - noteWidth - pad * (wide ? 2f : 1f);
-            var cells = new[]
+            var cells = new (string caption, string value, Color tint, bool best, string note)[]
             {
-                ("SEASONS", career.Seasons.ToString(), UiTheme.Paper, false),
-                ("WINS", career.Wins.ToString(), UiTheme.Gold, false),
-                ("MEDIAN FINISH", CareerSummary.PlaceWord(career.MedianPlacement), UiTheme.Accent, false),
-                ("BEST FINISH", CareerSummary.PlaceWord(career.BestPlacement), UiTheme.Positive, true),
-                ("COMP WINS", (career.HohWins + career.VetoWins).ToString(), UiTheme.Positive, false),
+                ("SEASONS", career.Seasons.ToString(), UiTheme.Paper, false, null),
+                ("WINS", career.Wins.ToString(), UiTheme.Gold, false, null),
+                ("MEDIAN FINISH", CareerSummary.PlaceWord(career.MedianPlacement), UiTheme.Accent, false, null),
+                ("BEST FINISH", CareerSummary.PlaceWord(career.BestPlacement), UiTheme.Positive, true, null),
+                ("COMP WINS", (career.HohWins + career.VetoWins).ToString(), UiTheme.Positive, false, CareerCompWinsNote),
             };
             float cellGap = 10f, cellWidth = (cellsWidth - cellGap * (cells.Length - 1)) / cells.Length;
             for (int i = 0; i < cells.Length; i++)
             {
-                var (caption, value, tint, best) = cells[i];
+                var (caption, value, tint, best, note) = cells[i];
                 var cell = EndScreenKit.Box(caption, strip, cellsX + i * (cellWidth + cellGap), 14f, cellWidth, height - 28f);
                 EndScreenKit.Frame(cell, best ? PackArt.SeasonCareerBest : PackArt.SeasonCareerCell, 10f, UiTheme.SurfaceRaised, null, 8);
                 var number = EndScreenKit.Text("Value", cell, value, 26f, tint, 6f, 8f, cellWidth - 12f, 34f, TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
                 number.enableAutoSizing = true; number.fontSizeMax = 26f; number.fontSizeMin = 14f;
                 var label = EndScreenKit.Text("Caption", cell, caption, 12f, UiTheme.Muted, 6f, 44f, cellWidth - 12f, 18f, TextAlignmentOptions.Center);
                 label.enableAutoSizing = true; label.fontSizeMax = 12f; label.fontSizeMin = 9f;
+                if (note == null) continue;
+                // A label of its own under the pinned caption, never words added to it.
+                var counts = EndScreenKit.Text(CareerCaptionNoteName, cell, note, 11f, UiTheme.Muted, 6f, 62f, cellWidth - 12f, 16f, TextAlignmentOptions.Center);
+                counts.enableAutoSizing = true; counts.fontSizeMax = 11f; counts.fontSizeMin = 9f;
             }
             if (wide)
             {

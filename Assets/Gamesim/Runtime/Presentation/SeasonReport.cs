@@ -696,24 +696,27 @@ namespace Gamesim.Presentation
             Stat(card, 1, "VETO WINS", champion.vetoWins.ToString(), UiTheme.Gold);
             Stat(card, 2, "NOMINATED", champion.timesNominated.ToString(),
                 champion.timesNominated > 0 ? UiTheme.Danger : UiTheme.Positive);
-            Stat(card, 3, "COMP WINS", (champion.hohWins + champion.vetoWins).ToString(), UiTheme.Positive);
+            // Every competition won, the final Head of Household's first two parts included, as the
+            // finalists' records count them (FinalistRead.Wins); HOH WINS and VETO WINS stay the two.
+            Stat(card, 3, "COMP WINS", FinalistRead.Wins(state, champion).ToString(), UiTheme.Positive);
             Stat(card, 4, "WITH YOU",
                 Math.Round(state.Score(state.playerId, champion.id)).ToString(CultureInfo.InvariantCulture),
                 UiTheme.Muted);
 
             var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
-            note.text = WinnerNote(champion);
+            note.text = WinnerNote(state, champion);
             Place(note.rectTransform, Width - Pad * 4f, 24f, -100f);
         }
 
         /// <summary>
         /// One line on how the champion played it, from the shape of their own record rather than
         /// from a phrase picked at random — a winner who never won anything and a winner who won
-        /// everything did not have the same season and should not be described the same way.
+        /// everything did not have the same season and should not be described the same way. The
+        /// count is the card's own COMP WINS, so the line and the number beside it agree.
         /// </summary>
-        private static string WinnerNote(ContestantState champion)
+        private static string WinnerNote(EpisodeState state, ContestantState champion)
         {
-            int comps = champion.hohWins + champion.vetoWins;
+            int comps = FinalistRead.Wins(state, champion);
             if (comps == 0 && champion.timesNominated == 0)
                 return "Never on the block, never in charge. Nobody ever thought to move on them.";
             if (comps == 0)
@@ -774,7 +777,7 @@ namespace Gamesim.Presentation
             Stat(card, 2, "VETO WINS", you.vetoWins.ToString(), UiTheme.Gold);
             Stat(card, 3, "NOMINATED", you.timesNominated.ToString(),
                 you.timesNominated > 0 ? UiTheme.Danger : UiTheme.Positive);
-            Stat(card, 4, "COMP WINS", (you.hohWins + you.vetoWins).ToString(), UiTheme.Positive);
+            Stat(card, 4, "COMP WINS", FinalistRead.Wins(state, you).ToString(), UiTheme.Positive);
 
             var note = HudPrimitives.Label("Note", card, 15f, UiTheme.Muted, TextAlignmentOptions.Center);
             note.text = ClosingNote(state, you);

@@ -679,6 +679,38 @@ namespace Gamesim.Episode
         /// <summary>The notebook, on its own page: your notes on each houseguest. The rail's rows are the other pages.</summary>
         public void OpenJournal() => OpenNotebookAt(NotebookSection.Notes, scroll: false);
 
+        /// <summary>
+        /// The status line for the one event a commit lets the player see: its words, or a phase
+        /// change in the words the week chip uses. The engine logs a phase by its enum's own name
+        /// ("Week 4 · FinalHoHPart2"), and the saved log keeps that text as it is; only the line
+        /// on the screen is worded. Null when there is no event to report.
+        /// </summary>
+        public static string StatusLine(EpisodeState state, EpisodeEvent visible)
+        {
+            if (visible == null) return null;
+            return visible.kind == "phase" ? PhaseLine(visible.phase, visible.week) : StoryText.Log(state, visible);
+        }
+
+        /// <summary>
+        /// A phase as the status line announces it: "Week 4 · Final HoH, Part 2 of 3", "Week 4 · The
+        /// final decision", "Jury questioning". The finale's phases have no week of their own worth
+        /// naming; every other phase is the week chip's short word under its week.
+        /// </summary>
+        public static string PhaseLine(EpisodePhase phase, int week)
+        {
+            string part = FinalHoHPartLabel(phase);
+            if (part != null) return "Week " + week + " · Final HoH, " + part;
+            switch (phase)
+            {
+                case EpisodePhase.FinalEviction: return "Week " + week + " · The final decision";
+                case EpisodePhase.JuryQuestioning: return "Jury questioning";
+                case EpisodePhase.FinalSpeeches: return "Final speeches";
+                case EpisodePhase.Jury: return "The jury votes";
+                case EpisodePhase.Finished: return "The season is over";
+                default: return "Week " + week + " · " + EpisodeHud.PhaseShort(phase);
+            }
+        }
+
         public CommandResult Submit(EpisodeCommand command)
         {
             if (durableCommitInProgress) return new CommandResult { reason = "A save transaction is already running.", state = Snapshot };
@@ -723,7 +755,7 @@ namespace Gamesim.Episode
             var visible = result.accepted
                 ? result.state.events.LastOrDefault(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
                 : null;
-            message = result.accepted ? (visible == null ? null : StoryText.Log(result.state, visible)) ?? "Decision committed." : result.reason;
+            message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
@@ -784,8 +816,10 @@ namespace Gamesim.Episode
                 if (field != null && takeover != null)
                 {
                     EndCeremonyCards(includingResult: competition == null);
+                    // A house bigger than the field gets a line that says who plays and why; the
+                    // card's own says everyone does (VetoFieldLine is null when that is true).
                     takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
-                        VetoField(result.state), reducedMotion);
+                        VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
                 }
 
                 var ceremony = result.state.events.Skip(knownEvents)
@@ -897,7 +931,10 @@ namespace Gamesim.Episode
         /// </summary>
         private bool PlayGenericCeremonyCard(EpisodeState state, string kind, string text, HashSet<string> wasActive, HashSet<string> wasNominated)
         {
-            if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion);
+            // The veto meeting's card says which way it went, from the block before this commit and
+            // after it; every other card keeps its kind's own line.
+            string line = kind == CeremonySting.VetoKind ? VetoMeetingLine(wasNominated, state.nominees) : null;
+            if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion, null, line);
             if (sting != null) sting.Play(kind, text, reducedMotion);
             ReactToCeremony(state, kind, wasActive, wasNominated);
             FrameCeremony(kind);

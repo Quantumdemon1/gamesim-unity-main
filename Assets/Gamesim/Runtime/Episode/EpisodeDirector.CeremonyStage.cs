@@ -70,6 +70,13 @@ namespace Gamesim.Episode
         public ScreenSurface CeremonyStageScreen => IsCeremonyStaged ? ceremonyStage.Screen : null;
 
         /// <summary>
+        /// The staged ceremony's report of where everybody it placed has got to, one line each, or
+        /// null when nothing is staged. The stage logs the same report at its card's start and at
+        /// its release; this is for a test to read it when it likes.
+        /// </summary>
+        public string CeremonyStageReport(string moment = "now") => IsCeremonyStaged ? ceremonyStage.Report(moment) : null;
+
+        /// <summary>
         /// Stages a ceremony the commit just decided, when this house can: the house is gathered,
         /// and <paramref name="playCard"/> is called with the set's screen once the seats have
         /// filled (or the summons has run its course), instead of now. Returns false when it cannot
@@ -183,6 +190,10 @@ namespace Gamesim.Episode
             private readonly Dictionary<string, HouseInteractionAnchor> placeOf = new Dictionary<string, HouseInteractionAnchor>();
             private readonly Dictionary<string, HouseSeatPresentation> seated = new Dictionary<string, HouseSeatPresentation>();
             private readonly HashSet<string> arrived = new HashSet<string>();
+            /// <summary>Why the coordinator last refused to send someone, by id: the report's "never sent".</summary>
+            private readonly Dictionary<string, string> refusals = new Dictionary<string, string>();
+            /// <summary>Whoever the summons itself could not send, and why, as the coordinator said it.</summary>
+            private string summonsRefusals;
             private readonly List<Cue> cues = new List<Cue>();
             private readonly object playerOwner = new object();
             private readonly Vector3 roomCentre;
@@ -332,6 +343,7 @@ namespace Gamesim.Episode
                     ids.Add(pair.Key); anchors.Add(pair.Value);
                 }
                 int sent = director.npcMeetings.BeginCeremonyStage(ids, anchors, out var left);
+                summonsRefusals = left;
                 if (left != null) Debug.Log("Ceremony stage (" + Kind + "): " + sent + " sent to their places. " + left);
 
                 if (placeOf.TryGetValue(state.playerId, out var mine) && director.player != null)
@@ -450,7 +462,8 @@ namespace Gamesim.Episode
                     string id = pair.Key;
                     if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
-                    meetings.JoinCeremonyStage(id, pair.Value, out _);
+                    if (meetings.JoinCeremonyStage(id, pair.Value, out var why)) refusals.Remove(id);
+                    else if (why != null) refusals[id] = why;
                 }
                 if (playerPlace == null && placeOf.TryGetValue(state.playerId, out var mine) && director.player != null && !playerSeatedRequested
                     && !director.player.HasActivityOwner && director.player.TryBeginActivityMove(playerOwner, mine.Approach, out _))
@@ -469,6 +482,7 @@ namespace Gamesim.Episode
                 Step = CeremonyStageStep.Playing;
                 bool up = playCard(Screen);
                 if (!up || !CardPlaying) { End(true); return; }
+                Debug.Log(Report("card start"));
                 Cut(Screen.Shot(CutSeconds));
             }
 
@@ -726,6 +740,78 @@ namespace Gamesim.Episode
                 return seated.TryGetValue(id, out var seat) ? seat : null;
             }
 
+            // ------------------------------------------------------------ the report
+
+            /// <summary>
+            /// Where everybody the stage placed has got to, one line each: their place, whether the
+            /// coordinator holds their route, arrived, seated, how far from their approach, what
+            /// their agent says - and for anyone not in their place, which it is: never sent (with
+            /// the coordinator's reason), stuck short of the approach, still walking, or arrived
+            /// and not sat. Logged at the card's start and at the release, so a play session's log
+            /// names why each standing houseguest stands (CEREMONY-CUTSCENES-PLAN §7.1): every
+            /// seating fault C3 had was found by a report like this, not by reading.
+            /// </summary>
+            public string Report(string moment)
+            {
+                var meetings = director.npcMeetings;
+                var lines = new List<string>
+                {
+                    "Ceremony stage report (" + Kind + ", " + Step + ", " + moment + "): " + SeatedCount + " of " + places.Count
+                    + " in their seats" + (StandingId != null ? ", " + StandingId + " standing at the head" : "")
+                    + (summonsRefusals != null ? "; at the summons: " + summonsRefusals : ""),
+                };
+                foreach (var pair in places)
+                {
+                    string id = pair.Key;
+                    var place = pair.Value;
+                    string where = " -> " + place.VenueId + " " + place.Slot + (place.Posed ? " (seated)" : " (standing)");
+                    if (id == state.playerId)
+                    {
+                        var you = director.player;
+                        bool here = playerPlace != null && you != null && you.ActivityHasArrived(playerOwner);
+                        lines.Add("  " + id + where + (you != null ? " at " + you.transform.position.ToString("F2")
+                            + " (" + Flat(you.transform.position, place.Approach).ToString("F2") + " m from the approach)" : "")
+                            + " sent=" + (playerPlace != null) + " arrived=" + here
+                            + " seat=" + (playerSeat != null && playerSeat.Active ? "active" : "none")
+                            + " :: " + (playerSeat != null && playerSeat.Active ? "seated" : !place.Posed && here ? "standing in place"
+                                : playerPlace == null ? "never sent (the player's move was refused)" : here ? "arrived, not seated" : "walking"));
+                        continue;
+                    }
+                    var npc = director.BodyFor(id);
+                    if (npc == null) { lines.Add("  " + id + where + " :: no active body"); continue; }
+                    var motion = npc.GetComponent<HouseNpcMotion>();
+                    var agent = motion != null ? motion.Agent : null;
+                    var seat = SeatOf(id);
+                    if (seat == null) seat = npc.GetComponent<HouseSeatPresentation>();
+                    bool holds = meetings != null && meetings.CeremonyActorHolds(id);
+                    bool there = arrived.Contains(id) || (meetings != null && meetings.CeremonyActorArrived(id));
+                    bool sitting = seat != null && seat.Active;
+                    float away = Flat(npc.transform.position, place.Approach);
+                    string agentSays = agent == null ? "no agent"
+                        : !agent.isActiveAndEnabled ? "agent disabled"
+                        : !agent.isOnNavMesh ? "agent off the NavMesh"
+                        : "hasPath=" + agent.hasPath + " status=" + agent.pathStatus + " remaining=" + agent.remainingDistance.ToString("F2")
+                            + " speed=" + agent.velocity.magnitude.ToString("F2") + (agent.isStopped ? " stopped" : "");
+                    bool stalled = agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh
+                        && (agent.isStopped || agent.velocity.sqrMagnitude < 0.05f * 0.05f || !agent.hasPath
+                            || agent.pathStatus != UnityEngine.AI.NavMeshPathStatus.PathComplete);
+                    string verdict = sitting ? "seated"
+                        : !place.Posed && there ? "standing in place"
+                        : there ? "arrived, not seated"
+                        : !holds ? "never sent" + (refusals.TryGetValue(id, out var why) ? " (" + why + ")" : summonsRefusals != null ? " (at the summons)" : " (no reason recorded)")
+                        : stalled ? "stuck " + away.ToString("F2") + " m short of the approach"
+                        : "walking";
+                    lines.Add("  " + id + where + " at " + npc.transform.position.ToString("F2") + " (" + away.ToString("F2") + " m from the approach)"
+                        + " holds=" + holds + " arrived=" + there + " seat=" + (sitting ? "active" : seat != null ? "idle" : "none")
+                        + (motion != null ? " lease=" + (motion.LeaseId ?? "none") + " bound=" + motion.IsBound + " state=" + motion.State
+                            + (motion.FailureReason != null ? " failure='" + motion.FailureReason + "'" : "") : " no motion")
+                        + " agent: " + agentSays + " :: " + verdict);
+                }
+                return string.Join("\n", lines);
+            }
+
+            private static float Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
+
             /// <summary>Relief from the chair: a look to the Head of Household, the neighbours glancing over, and on the last key the seated fist pump.</summary>
             private void Relief(string id, bool last)
             {
@@ -886,6 +972,7 @@ namespace Gamesim.Episode
                 if (!Active || Step == CeremonyStageStep.Release) return;
                 Step = CeremonyStageStep.Release;
                 releasedAt = Time.unscaledTime;
+                Debug.Log(Report("release"));
                 ClearCues();
                 director.cameraRig.ReleaseShot(1.2f);
                 director.cameraRig.ControlsEnabled = !director.IsPanelOpen;
@@ -902,6 +989,8 @@ namespace Gamesim.Episode
             public void End(bool playCardIfUnplayed)
             {
                 if (ended) return;
+                // A stage ending before its card played is the report's own subject: who never got there.
+                if (begun && !cardStarted) Debug.Log(Report("ended before the card"));
                 ended = true;
                 ClearCues();
                 Subscribe(false);

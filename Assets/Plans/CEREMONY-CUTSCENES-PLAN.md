@@ -457,6 +457,67 @@ One commit, no behaviour change, so the owner's next play session answers the se
   answer means either a build older than 3af59ae or something new, and it is chased before 7.3 is
   built. The owner sends the log from a nomination and an eviction at their own cast size.
 
+#### 7.1.1 What D0 measured (2026-09-28)
+
+Built: the stage logs its report at the card's start, at the release and when it ends before its
+card, with the coordinator's refusal per houseguest kept from every retry
+(`EpisodeDirector.CeremonyStage.cs`, `Report`); `EpisodeDirector.CeremonyStageReport` reads it
+for a test. The fixture: a house of sixteen, the cast screen's own season at the roster's
+largest (twelve) with four added the way the cast-size tests add them, and the stage tests'
+two full-house measurements (`CeremonyStage_AFullHouse…`) beside the six-house ones. The
+fixture's bodies start together near the template, so every route here is short: the lateness
+below is understated against a played season, where a nominee starts in the yard.
+
+| ceremony | house | at the card's start | eight seconds in | at the release |
+|---|---|---|---|---|
+| nomination | 16 | 6 of 16 seated; the card started at the 7 s summons with the Head of Household in place and ten still walking, one 18 m away | 12 of 16 | 11 of 16 (the test skipped the card at 9 s; one seat had ended) |
+| nomination | 6 | 2 of 6 | | 5 of 6: everyone but the head |
+| eviction | 16 | 4 of 16: both nominees in the hot seats by id, the player and one more on the sofa; one stuck at the sofa; eleven standing on the marks | 4 of 16 | 4 of 16 |
+| eviction | 6 | 4 of 6, one stuck at the sofa's third seat | | 4 of 6 |
+
+Four mechanisms, each named by the report and confirmed in the code:
+
+1. **Late.** The card starts at the summons the moment the one principal is in place
+   (`Tick`, the Summons case). At sixteen the keys play to six seated and ten walking; the
+   rest sit as they arrive, in shot. 7.2's rule - the card waits for everyone up to a cap keyed
+   to the longest route - stands, measured.
+2. **Stuck short of the approach.** `HouseNpcMotion.PhysicalArrival` wants the root within
+   0.25 m of its destination at under 0.2 m/s. A seated body's root stays parked on its approach
+   as a stopped agent (a seat moves only the visual body), and the sofa's three approaches are
+   0.52 m apart, so the third body stops 0.18 to 0.35 m short between two parked agents and
+   never arrives - at six and at sixteen, the sofa's second or third seat every time. The hot
+   seats, 1.1 m apart, never suffer it. Any seat row at the sofa's pitch will, until a seated
+   body's parked agent is made passable (radius and avoidance off, restored when they rise).
+3. **Arrived, not seated.** `HouseSeatPresentation.LateUpdate` ends the seat once the root has
+   moved 0.4 m from where it sat down. A root pushed by neighbours squeezing past to their own
+   approaches - or walked back by the motion's own re-path, since a push that breaks the
+   arrival turns Arrived back into Walking - loses the seat, and `SeatArrivals` never seats an
+   id in `arrived` twice. Two at the table at sixteen; one of them was seated at eight seconds
+   and up again by the release. The fix is to retry: an id leaves `arrived` when its seat ends.
+4. **The eviction's summons refused whole.** `TryBeginCeremonyStage` reconciles the world to
+   re-bind the evicted before `Begin`; the re-bound body is still Binding on that frame, so the
+   coordinator's `IsReady` is false and `BeginCeremonyStage` refuses everybody - "The house is
+   not free for a ceremony" - and the 1.5 s retry sends them. Every eviction, never a
+   nomination: the strip says the house gathers while nobody moves. The summons has to begin
+   once the coordinator is ready, or the coordinator refuse only the unbound, as its retry does.
+
+Not reproduced: a non-nominee in a hot seat. Both nominees held and took the hot seats by id
+at six and at sixteen; the owner's own log at their cast size is still wanted for it. Seen in
+the captures (`ceremony-stage-full-house-table`, `-table-later`, `-living`, `-living-later` on
+the look sheet): fifteen chairs on a ring round a table a third their width, four still
+standing round it at eight seconds; and eleven in two standing rows behind two hot seats and a
+sofa turned in its place off the room's axis.
+
+One consequence the reports force on 7.2 and 7.3: **a moved or cloned set piece leaves no hole
+in the baked NavMesh.** The turned sofa's hole is where the sofa was; the cloned hot seats and a
+grown table have none; bodies path through such a piece and an approach sampled beside it lands
+on the old hole's edge. So the gallery's rows and the grown table cannot be runtime clones: the
+gallery is authored in the scene as set pieces with fitted collision proxies and baked in the
+rebake slice, `CeremonySets` adding only the anchors, and the sofa stays where the scene puts
+it rather than being turned at the first eviction. Decision 3 collapses to A in that form. D1
+gains the summons begun when the coordinator is ready, seating retried for as long as the stage
+runs, and the parked agent made passable, and keeps the card waiting for the house.
+
 ### 7.2 The table: everyone seated, at a table their size (D1)
 
 - **One ring, the table grown to it.** The chairs stay on one ring - the show seats the whole
@@ -605,7 +666,7 @@ seated, the walk out becomes an exit sequence with the intro's beats in reverse.
 
 | | Milestone | Done when |
 |---|---|---|
-| D0 | The stage report in play and the sixteen-houseguest fixture, with the two captures | The Player.log names why each standing houseguest stands, and who held each hot seat at the card's start |
+| D0 | The stage report in play and the sixteen-houseguest fixture, with the two captures | The Player.log names why each standing houseguest stands, and who held each hot seat at the card's start. **Done 2026-09-28: 7.1.1.** |
 | D1 | The table grown to the ring, the stuck re-sent, the summons keyed to the longest route, approaches validated | PlayMode at sixteen: everybody seated by the card's end; the capture from the head |
 | D2 | The gallery: the sofa on the axis, the armchairs, the cloned rows, one venue, the nominees' arrival beat, the venue and coffee-table scene edit | PlayMode at sixteen: the nominees' ids in the hot seats at the card's start, nobody standing but the Head of Household by its end; the capture over the gallery |
 | D3 | The exit sequence: the goodbyes, the house watching, the door shot, the last look, the door opened, walked through and shut, the hold | The walk-out tests extended and green; the three captures; the audited pipeline's eviction frames |

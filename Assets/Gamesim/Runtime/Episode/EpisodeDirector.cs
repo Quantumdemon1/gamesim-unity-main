@@ -910,6 +910,8 @@ namespace Gamesim.Episode
                         EndCeremonyCards();
                         takeover.Play(CeremonyTakeover.FinalThreeKind, result.state.week,
                             CeremonySubjects(result.state, CeremonyTakeover.FinalThreeKind, wasActive, wasNominated), reducedMotion);
+                        // The card has the frame to itself: the chrome stands aside until it is down.
+                        HoldHudForReveal(redraw: false);
                     }
                     // The final Head of Household's bracket as each part opens, and its crowning as
                     // the final eviction does (EpisodeDirector.FinalHoH.cs; ENDGAME-PLAN F3).
@@ -935,6 +937,8 @@ namespace Gamesim.Episode
             // after it; every other card keeps its kind's own line.
             string line = kind == CeremonySting.VetoKind ? VetoMeetingLine(wasNominated, state.nominees) : null;
             if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion, null, line);
+            // The final Head of Household's choice is an endgame card: the chrome stands aside for it.
+            if (takeover != null && kind == CeremonySting.FinalEvictionKind) HoldHudForReveal(redraw: false);
             if (sting != null) sting.Play(kind, text, reducedMotion);
             ReactToCeremony(state, kind, wasActive, wasNominated);
             FrameCeremony(kind);

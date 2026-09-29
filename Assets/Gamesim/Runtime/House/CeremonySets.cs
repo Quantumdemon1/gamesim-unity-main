@@ -274,6 +274,12 @@ namespace Gamesim.House
                 var console = all.FirstOrDefault(t => t.name == TelevisionConsoleName && bounds.Contains(new Vector3(t.position.x, bounds.center.y, t.position.z)));
                 float x = television != null ? television.position.x : console != null ? console.position.x : bounds.center.x;
                 screen = Clone(source, root, LivingScreenName);
+                // The clone carries the nomination room's idle board, which read NOMINATIONS over the
+                // living room on eviction night; here the board is dark until a card mounts. Its
+                // renderer is switched off rather than its object, because a card hides and brings
+                // back only the idle boards it found lit (ScreenSurface.Mount), so this one stays dark.
+                foreach (var idle in screen.GetComponentsInChildren<Renderer>(true))
+                    if (idle.name == ScreenSurface.IdleDisplayName) idle.enabled = false;
                 // The stage's depth clear of the room's edge, the board facing the room (-z).
                 screen.SetPositionAndRotation(new Vector3(x, floorY, bounds.max.z - 1.25f), Quaternion.identity);
                 if (television != null) television.gameObject.SetActive(false);

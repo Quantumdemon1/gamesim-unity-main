@@ -58,6 +58,8 @@
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />
+    <Compile Include="$(EditMode)JuryHouseReadTests.cs" />
+    <Compile Include="$(EditMode)FinaleRulesTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyTests.cs" />
     <Compile Include="$(EditMode)CastTemplateTests.cs" />
     <Compile Include="$(EditMode)CharacterDraftTests.cs" />

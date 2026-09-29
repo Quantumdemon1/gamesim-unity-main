@@ -706,12 +706,16 @@ namespace Gamesim.Episode
                 return "Production removed you from the house in week " + removed + ". You take no seat on the jury."
                     + " The house plays on; you can still watch every ceremony and read the notebook.";
             }
-            int week = you != null && you.nominationWeeks != null && you.nominationWeeks.Count > 0
-                ? you.nominationWeeks[you.nominationWeeks.Count - 1]
-                : state.week;
-            string seat = you != null && you.status == ContestantStatus.Jury
-                ? "You are on the jury, and you will vote for the winner."
-                : "You were evicted before jury, so you have no vote in the finale.";
+            // The week they left is the power row that names them; the final eviction adds no
+            // nomination week, so the last nomination was the wrong week for its juror.
+            int week = JuryHouseRead.LeftWeek(state, state.playerId)
+                ?? (you != null && you.nominationWeeks != null && you.nominationWeeks.Count > 0
+                    ? you.nominationWeeks[you.nominationWeeks.Count - 1] : state.week);
+            // A juror as the engine counts one: Jury, or Evicted on an older save, which the jury
+            // vote counts too. Nobody else is left out of the house but the removed.
+            string seat = !EpisodeHud.IsJuror(you) ? "You have no vote in the finale."
+                : state.votes.Any(vote => vote.voterId == state.playerId) ? "You are on the jury, and your vote is cast."
+                : "You are on the jury, and you will vote for the winner.";
             return "You were evicted in week " + week + ". " + seat
                 + " The house plays on; you can still watch every ceremony and read the notebook.";
         }

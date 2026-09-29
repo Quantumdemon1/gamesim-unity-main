@@ -35,7 +35,7 @@ namespace Gamesim.House
             {
                 int count = 0;
                 foreach (var lease in ceremonyLeases.Values)
-                    if (lease.actor.motion != null && lease.actor.motion.HasArrivedAt(lease.token)) count++;
+                    if (lease.actor.motion != null && lease.actor.motion.IsOnMark(lease.token)) count++;
                 return count;
             }
         }
@@ -141,9 +141,16 @@ namespace Gamesim.House
         public float CeremonyRouteLength(string id) =>
             ceremonyLeases.TryGetValue(id, out var lease) && lease.actor.motion != null ? lease.actor.motion.RouteLength : -1f;
 
-        /// <summary>Whether a borrowed houseguest has reached their place.</summary>
+        /// <summary>
+        /// Whether a borrowed houseguest has reached their place: standing on it and stopped,
+        /// whoever's capsule is against theirs. The place is theirs, and what touches a body on it
+        /// is a neighbour not yet seated or somebody walking past. Asking for the clearance as
+        /// well deadlocked a full table (endgame-f34b, 2026-09-29): a walker going round was held
+        /// against a body waiting on its approach, and the walker's touch withheld the arrival
+        /// that would have seated the body and parked its agent, so neither ever moved again.
+        /// </summary>
         public bool CeremonyActorArrived(string id) =>
-            ceremonyLeases.TryGetValue(id, out var lease) && lease.actor.motion != null && lease.actor.motion.HasArrivedAt(lease.token);
+            ceremonyLeases.TryGetValue(id, out var lease) && lease.actor.motion != null && lease.actor.motion.IsOnMark(lease.token);
 
         /// <summary>Whether a borrowed houseguest is still bound and holding the ceremony's route.</summary>
         public bool CeremonyActorHolds(string id) =>

@@ -134,5 +134,52 @@ namespace Gamesim.Presentation
         public const string KitIconChevronDown = "Kit6_Refinement/Icons/ic_chevron_down";
         public const string KitEmptyVotes = "Kit6_Refinement/EmptyStates/votes_no_records";
         public const string KitEmptyPrivate = "Kit6_Refinement/EmptyStates/private_no_decision";
+
+        // Season Complete Pack 7: the season's end and the week's (SeasonReport, WeeklyRecapScreen;
+        // ASSET-PACKS.md, Pack 7). The chart strips (Charts/bar_*, jury_vote_stacked_bar) are not
+        // here on purpose: each bakes a fill into its pixels, and a bar drawn from one would show
+        // a number the season never had. Bars are drawn from the real counts instead.
+        public const string SeasonSection = "Pack7_SeasonComplete/Shells/section_panel_9slice";
+        public const string SeasonQuote = "Pack7_SeasonComplete/Shells/quote_panel_9slice";
+        public const string SeasonWinnerHero = "Pack7_SeasonComplete/WinnerHero/winner_hero_frame_9slice";
+        public const string SeasonRunnerUpHero = "Pack7_SeasonComplete/WinnerHero/runnerup_hero_frame_9slice";
+        public const string SeasonWinnerCrown = "Pack7_SeasonComplete/WinnerHero/winner_crown";
+        public const string SeasonTrophy = "Pack7_SeasonComplete/WinnerHero/winner_trophy";
+        public const string SeasonStatNeutral = "Pack7_SeasonComplete/StatCards/stat_card_neutral_9slice";
+        public const string SeasonStatGameSense = "Pack7_SeasonComplete/StatCards/stat_game_sense_9slice";
+        public const string SeasonStatCompetitions = "Pack7_SeasonComplete/StatCards/stat_competitions_9slice";
+        public const string SeasonStatStrategy = "Pack7_SeasonComplete/StatCards/stat_strategy_9slice";
+        public const string SeasonStatSocial = "Pack7_SeasonComplete/StatCards/stat_social_9slice";
+        public const string SeasonStatChances = "Pack7_SeasonComplete/StatCards/stat_chances_9slice";
+        public const string SeasonIconGameSense = "Pack7_SeasonComplete/Icons/stat_game_sense_icon";
+        public const string SeasonIconCompetitions = "Pack7_SeasonComplete/Icons/stat_competitions_icon";
+        public const string SeasonIconStrategy = "Pack7_SeasonComplete/Icons/stat_strategy_icon";
+        public const string SeasonIconSocial = "Pack7_SeasonComplete/Icons/stat_social_icon";
+        public const string SeasonIconChances = "Pack7_SeasonComplete/Icons/stat_chances_icon";
+        public const string SeasonStandingWinner = "Pack7_SeasonComplete/Standings/standing_winner_9slice";
+        public const string SeasonStandingRunnerUp = "Pack7_SeasonComplete/Standings/standing_runnerup_9slice";
+        public const string SeasonStandingThird = "Pack7_SeasonComplete/Standings/standing_third_9slice";
+        public const string SeasonStandingJury = "Pack7_SeasonComplete/Standings/standing_jury_9slice";
+        public const string SeasonStandingPreJury = "Pack7_SeasonComplete/Standings/standing_prejury_9slice";
+        public const string SeasonJuryRowWinner = "Pack7_SeasonComplete/JuryVotes/jury_vote_row_winner_9slice";
+        public const string SeasonJuryRowRunnerUp = "Pack7_SeasonComplete/JuryVotes/jury_vote_row_runnerup_9slice";
+        public const string SeasonJuryRowNeutral = "Pack7_SeasonComplete/JuryVotes/jury_vote_row_neutral_9slice";
+        public const string SeasonJurySummary = "Pack7_SeasonComplete/JuryVotes/jury_vote_summary_bar_9slice";
+        public const string SeasonWeekRow = "Pack7_SeasonComplete/Timeline/week_row_9slice";
+        public const string SeasonWeekRowPower = "Pack7_SeasonComplete/Timeline/week_row_power_9slice";
+        public const string SeasonWeekRowEviction = "Pack7_SeasonComplete/Timeline/week_row_eviction_9slice";
+        public const string SeasonNodeNormal = "Pack7_SeasonComplete/Timeline/timeline_node_normal";
+        public const string SeasonNodePower = "Pack7_SeasonComplete/Timeline/timeline_node_power";
+        public const string SeasonNodeEviction = "Pack7_SeasonComplete/Timeline/timeline_node_eviction";
+        public const string SeasonCareerStrip = "Pack7_SeasonComplete/Career/career_strip_9slice";
+        public const string SeasonCareerCell = "Pack7_SeasonComplete/Career/career_neutral_9slice";
+        public const string SeasonCareerBest = "Pack7_SeasonComplete/Career/career_best_9slice";
+        public const string SeasonFilterActive = "Pack7_SeasonComplete/FiltersTabs/filter_active_9slice";
+        public const string SeasonFilterInactive = "Pack7_SeasonComplete/FiltersTabs/filter_inactive_9slice";
+        public const string SeasonTabInactive = "Pack7_SeasonComplete/FiltersTabs/tab_inactive_9slice";
+        public const string SeasonButtonPrimary = "Pack7_SeasonComplete/Buttons/button_new_season_9slice";
+        public const string SeasonButton = "Pack7_SeasonComplete/Buttons/button_close_9slice";
+        public const string SeasonBadgeJury = "Pack7_SeasonComplete/Badges/badge_jury";
+        public const string SeasonBadgeRunnerUp = "Pack7_SeasonComplete/Badges/badge_runnerup";
     }
 }

@@ -139,6 +139,28 @@ namespace Gamesim.Tests.EditMode
             Assert.That(third.sessionId, Is.EqualTo("season-4"));
         }
 
+        /// <summary>
+        /// Production's removal is an exit too, merged into the eviction order by the week each
+        /// juror left - the power row that names them - and not by the jury ledger's first event,
+        /// which was always week 0 and put every removal ahead of every juror (ENDGAME-PLAN F6).
+        /// </summary>
+        [Test]
+        public void Placement_MergesARemovalByTheWeekEachJurorLeft()
+        {
+            var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 7u);
+            var cast = state.contestants.Where(c => !c.isPlayer).ToList();
+            var first = cast[0]; var removed = cast[1]; var second = cast[2];
+            state.week = 5;
+            first.status = ContestantStatus.Jury; second.status = ContestantStatus.Jury; removed.status = ContestantStatus.Expelled;
+            state.jurySentiment = WebJurySentiment.AddJuror(WebJurySentiment.AddJuror(WebJurySentiment.CreateInitial(), first.id, first.name, 0), second.id, second.name, 0);
+            state.ledger.power.Add(new PowerRow { week = 2, evicteeId = first.id, tally = new List<int> { 5, 2 } });
+            state.ledger.power.Add(new PowerRow { week = 4, evicteeId = second.id, tally = new List<int> { 4, 2 } });
+            state.story.removals.Add(new RemovalState { contestantId = removed.id, reasonId = "conduct", week = 3 });
+            Assert.That(CareerLedger.Placement(state, first), Is.EqualTo(8), "Out in week two, of eight: eighth.");
+            Assert.That(CareerLedger.Placement(state, removed), Is.EqualTo(7), "Removed in week three, after one eviction: seventh.");
+            Assert.That(CareerLedger.Placement(state, second), Is.EqualTo(6), "Out in week four, after an eviction and a removal: sixth.");
+        }
+
         [Test]
         public void Placement_FallsBackToTheReportsCountWithoutAJuryLedger()
         {

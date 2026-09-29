@@ -349,6 +349,58 @@ namespace Gamesim.Tests.EditMode
             Assert.That(s.randomState, Is.EqualTo(random), "or draw from its generator.");
         }
 
+        /// <summary>
+        /// ENDGAME-PLAN F6: a juror's case says what the finalist did to the player, and a broken
+        /// deal is the finalist's only where the record shows it was their act - the ceremony, the
+        /// veto, the vote the player's own ballot kept. A deal the player broke is not held against
+        /// the finalist, a voting block is both of theirs, and a promise counts only one way.
+        /// </summary>
+        [Test]
+        public void AJurorsCaseCountsOnlyTheDealsTheFinalistBroke()
+        {
+            var s = FinalThree();
+            var finalist = Finalist(s, 0); var other = Finalist(s, 1); var target = Juror(s, 0);
+            s.Find(s.playerId).status = ContestantStatus.Jury;
+            s.phase = EpisodePhase.Jury;
+            s.hohId = finalist.id;
+            string you = s.playerId, them = finalist.id;
+            // Week 4: the player, as Head of Household, put the finalist up. Week 5: a vote on the
+            // target. Week 6: the finalist put the player up. Week 7: the finalist held the veto and
+            // left the player on the block.
+            s.ledger.power.Add(new PowerRow { week = 4, hohId = you, nominees = new List<string> { them, target.id }, evicteeId = other.id, tally = new List<int> { 3, 1 } });
+            s.ledger.power.Add(new PowerRow { week = 5, hohId = other.id, nominees = new List<string> { target.id, other.id }, evicteeId = target.id, tally = new List<int> { 3, 1 } });
+            s.ledger.power.Add(new PowerRow { week = 6, hohId = them, nominees = new List<string> { you, target.id }, evicteeId = target.id, tally = new List<int> { 2, 1 } });
+            s.ledger.power.Add(new PowerRow { week = 7, hohId = other.id, vetoHolderId = them, nominees = new List<string> { you, target.id }, evicteeId = you, tally = new List<int> { 2, 0 } });
+            s.ledger.ballots.Add(new BallotRow { week = 5, voterId = you, targetId = target.id });
+            DealState Deal(string id, string type, int week, int expires, string targetId = null)
+            {
+                var deal = new DealState { id = id, type = type, proposerId = you, recipientId = them, targetId = targetId, status = DealStatus.Broken, week = week, expiresWeek = expires };
+                s.deals.Add(deal);
+                return deal;
+            }
+            var yours = Deal("safety-yours", DealKind.SafetyAgreement, 4, 5);
+            var theirs = Deal("safety-theirs", DealKind.SafetyAgreement, 6, 7);
+            var veto = Deal("veto", DealKind.VetoUse, 7, 7);
+            var evict = Deal("evict", DealKind.VoteEvict, 5, 5, target.id);
+            var save = Deal("save", DealKind.VoteSave, 5, 5, target.id);
+            var block = Deal("block", DealKind.VoteTogether, 5, 5);
+            Assert.That(FinalistRead.BrokeADealWithYou(s, yours, them), Is.False, "The player broke it: they put the finalist up first.");
+            Assert.That(FinalistRead.BrokeADealWithYou(s, theirs, them), Is.True, "The finalist put the player up.");
+            Assert.That(FinalistRead.BrokeADealWithYou(s, veto, them), Is.True, "The finalist held the veto and left the player up.");
+            Assert.That(FinalistRead.BrokeADealWithYou(s, evict, them), Is.True, "The player's own ballot kept it, so the finalist broke it.");
+            Assert.That(FinalistRead.BrokeADealWithYou(s, save, them), Is.False, "The player's own ballot broke it.");
+            Assert.That(FinalistRead.BrokeADealWithYou(s, block, them), Is.False, "A voting block is both of theirs.");
+            s.promises.Add(new PromiseState { id = "their-word", fromId = them, toId = you, kind = PromiseKind.FinalTwo, status = PromiseStatus.Broken, week = 5 });
+            s.promises.Add(new PromiseState { id = "your-word", fromId = you, toId = them, kind = PromiseKind.FinalTwo, status = PromiseStatus.Broken, week = 5 });
+
+            var fact = FinalistRead.JurorCase(s, them).Facts.Last();
+            Assert.That(fact.label, Is.EqualTo("What they did to you"));
+            Assert.That(fact.certainty, Is.EqualTo(FinalistRead.Confirmed));
+            Assert.That(fact.value, Is.EqualTo("Week 6: nominated you · Broke 3 deals with you · Your voting block fell apart · Broke a promise to you"));
+            Assert.That(FinalistRead.TowardYou(s, other.id).value, Is.EqualTo("Week 7: nominated you"),
+                "The other finalist's own week is theirs, and none of the deals, the block or the promises are.");
+        }
+
 #if UNITY_5_3_OR_NEWER
         /// <summary>The simulation's word for the player's standing is the relationship web's, threshold for threshold.</summary>
         [Test]

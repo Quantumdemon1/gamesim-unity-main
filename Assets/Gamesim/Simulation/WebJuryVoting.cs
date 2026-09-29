@@ -19,7 +19,9 @@ namespace Gamesim.Simulation
     ///
     /// <para><b>Nothing here is new machinery.</b> Every term reads something the simulation already
     /// records — competition wins, times nominated, the strategic stat, alliances, deals — which is
-    /// why a richer jury costs no schema version and cannot disagree with the save.</para>
+    /// why a richer jury costs no schema version and cannot disagree with the save. The one term
+    /// that reads a choice of the player's own is the final argument (schema 21,
+    /// <see cref="FinalArgument.Term"/>), and it reads it from the save.</para>
     /// </summary>
     public static class WebJuryVoting
     {
@@ -137,7 +139,10 @@ namespace Gamesim.Simulation
                    + (Obligations(state, jurorId, finalistId) + 50) * ObligationWeight
                    // Native: a bitter juror is not noise. A grudge, a kept or betrayed showmance, a
                    // nemesis. Zero on an empty story state, so every jury fixture holds.
-                   + StoryConsumers.JuryStory(state, jurorId, finalistId);
+                   + StoryConsumers.JuryStory(state, jurorId, finalistId)
+                   // Schema 21 (ENDGAME-PLAN F4b): the player's final argument, for a juror whose
+                   // theme it argues, capped under the final impression. Zero on every old save.
+                   + FinalArgument.Term(state, jurorId, finalistId);
         }
 
         /// <summary>
@@ -189,6 +194,16 @@ namespace Gamesim.Simulation
                 return Say(state, jurorId, "Some things you do not get over in a jury house.", "I remember how it went between me and the other one. So do they.", "I had weeks to think about what happened. It did not get better.");
             if (storyChosen >= 8)
                 return Say(state, jurorId, "What we had in there was real. I am not pretending otherwise.", "They never turned on me. I am not turning on them.", "Some people you keep, whatever the game says.");
+            // The final argument, when it spoke to what this juror values (ENDGAME-PLAN F4b).
+            if (FinalArgument.Term(state, jurorId, chosen.id) >= 2 * FinalArgument.PerMoment)
+            {
+                // Words about a speech only where one was given: a player may lock the argument and
+                // then let their game speak for itself.
+                bool spoke = state.finalSpeeches.Any(x => x.speakerId == chosen.id && !string.IsNullOrWhiteSpace(x.text));
+                return spoke
+                    ? Say(state, jurorId, "Their final argument was about what I value in this game.", "They made the case I came here to hear.", "What they said at the end spoke to me.")
+                    : Say(state, jurorId, "Their season was the kind of game I value.", "The game they played is the one I respect.", "Their record made the case on its own.");
+            }
             if (state.Allied(jurorId, chosen.id))
                 return Say(state, jurorId, "We were in this together and I am not walking away from that now.", "We had an alliance, and I am keeping my end of it tonight.", "I do not abandon people I made plans with. This is that.");
             if (Obligations(state, jurorId, chosen.id) > 10)

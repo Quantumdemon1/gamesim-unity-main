@@ -274,6 +274,8 @@ namespace Gamesim.Episode
                 // NPC agency from week one, and with it the house's first impressions of each other
                 // and of the player's persona (NPC-AGENCY-PLAN.md §2).
                 EpisodeEngine.EnableAgency(fresh);
+                // The finale rules (ENDGAME-PLAN §3): history questions, the five responses, the argument.
+                EpisodeEngine.EnableFinale(fresh);
                 CharacterAppearanceSnapshots.Materialize(fresh);
                 fresh.sessionId = Guid.NewGuid().ToString("N");
                 nextStore.Save(fresh); // Stage and validate on disk before replacing the current in-memory session.
@@ -411,6 +413,7 @@ namespace Gamesim.Episode
             if (tutorial != null) { tutorial.FontScale = largeText ? 1.2f : 1; tutorial.ReducedMotion = reducedMotion; }
             if (opening != null) opening.FontScale = largeText ? 1.2f : 1;
             if (seasonReport != null) seasonReport.FontScale = largeText ? 1.2f : 1;
+            if (weeklyRecap != null) weeklyRecap.FontScale = largeText ? 1.2f : 1;
             if (castSelect != null) { castSelect.FontScale = largeText ? 1.2f : 1; castSelect.ReducedMotion = reducedMotion; }
             if (characterCreator != null) characterCreator.FontScale = largeText ? 1.2f : 1;
             if (mainMenu != null) mainMenu.FontScale = largeText ? 1.2f : 1;

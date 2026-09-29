@@ -168,8 +168,16 @@ namespace Gamesim.Episode
         private static string CompetitionTitle(EpisodeState state)
         {
             var definition = CompetitionDefinitions.For(state);
-            return AwardTitle(state.phase) + (definition != null ? " · " + definition.Title : "");
+            if (definition != null) return AwardTitle(state.phase) + " · " + definition.Title;
+            // Before authored games (rules under 3) a final part still names its game, so the card
+            // heads itself with the game and the eyebrow keeps the part, as from rules 3.
+            if (IsFinalHoHPart(state.phase))
+                return AwardTitle(state.phase) + " · " + CompetitionMiniGames.DisplayName(CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state)));
+            return AwardTitle(state.phase);
         }
+
+        /// <summary>The competition's full title as the game screen and the result card read it. Public for tests.</summary>
+        public static string CompetitionTitleFor(EpisodeState state) => CompetitionTitle(state);
 
         /// <summary>
         /// The competition's briefing, as the style guide's modal draws it: the hero card (the
@@ -188,7 +196,7 @@ namespace Gamesim.Episode
             var definition = CompetitionDefinitions.For(state);
             string stakes = (state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
                 : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
-                : "At stake: progress toward the final Head of Household decision.") + HaveNotStakes(state);
+                : FinalPartStakes(state)) + HaveNotStakes(state);
             hud.CompetitionHero(state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
                 definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes);
             hud.CompetitionBrief(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));
@@ -256,7 +264,7 @@ namespace Gamesim.Episode
             var definition = CompetitionDefinitions.For(state);
             string stakes = (state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
                 : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
-                : "At stake: progress toward the final Head of Household decision.") + HaveNotStakes(state);
+                : FinalPartStakes(state)) + HaveNotStakes(state);
             hud.CompetitionHero(state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
                 definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes);
             hud.CompetitionBrief(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));

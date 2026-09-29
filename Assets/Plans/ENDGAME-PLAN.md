@@ -357,6 +357,50 @@ From the commit that leaves three active until the final eviction:
   1.5-point bonus`, `Watch eligible housemates compete` and `Continue from competition
   results` each on one live button with the bracket card up; a test that pins the eyebrow
   and the result card's heading for a final part, since none does today.
+- **As built** (the F3 commit). What differs from the text above:
+  - *The bracket card plays as each part opens, not as the part before resolves.* A part's
+    own commit plays its standings card at once, and that card sorts above every takeover
+    (105 against 100), so a card on that commit would sit under the standings. The Advance
+    behind `Continue to the next ceremony` logs no competition, so a card keyed on the phase it
+    arrives in plays alone, as the Final Three card does. Part 2 opens with "Final HoH · Part
+    2": the Part 1 winner badged `WON PART 1`, the two who play badged `PART 2`, and "{A} won
+    Part 1 and waits in Part 3. {B} and {C} play for the other seat." Part 3 opens with the two
+    part winners badged `WON PART 1` and `WON PART 2` and the third `WATCHING`. The kind is
+    `FinalHoHPart`; the takeover gained a title and a line per call, and `PlayingKind`.
+  - *The panel closes as a bracket card plays.* The takeover takes no input, and the click
+    that moves it on would otherwise land on the next part's briefing beneath it, where
+    `Accessible alternative` commits. Every walk and every player reopens the station for the
+    next decision, as after the Final Three card.
+  - *The crowning* (`FinalHoHCrowned`) plays on the commit into the final eviction: "Final
+    Head of Household", the winner badged `FINAL HOH` and the other two `FINAL 3`, the line
+    the player's ("You won it. One decision remains: who sits beside you in the Final 2.") or
+    the winner's; the winner plays Won and the room turns to them. The decision screen does
+    not open by itself: nothing reopened the station after that commit, and an automatic open
+    would race every walk's own. The objective chip already says "One decision remains".
+  - *The award title* is "Final HoH, Part n of 3", with no separator inside it: the game
+    screen's eyebrow and the result card split the title at its first one. The eyebrow reads
+    `FINAL HOH, PART 1 OF 3`, the result card heads itself with the game and carries the part
+    in its week line (which may now shrink to fit), and before rules 3 the title names the
+    mini game so the card still has one. `EpisodeDirector.FinalHoHPartLabel` is the one
+    source of "Part n of 3", the objectives card included.
+  - *The player is spoken to.* Every line that can hold the player says "you" ("You won Part
+    1 and wait in Part 3.", "You and Will play for the final Head of Household.", "You
+    watch.", "At stake: who joins you in Part 3."): the default player is called "You", and a
+    name with a third-person verb read "You waits". Names on the endgame's lines skip a title
+    ("Dr. Will Kirby" is Will), through `FinalistRead.FirstName`.
+  - *The stakes line* on the briefing says what each part is for (Part 1's winner goes
+    straight to Part 3; Part 2 is for the other seat, against the Part 1 winner; Part 3 is the
+    final Head of Household and the choice). The old line said the same for all three.
+  - *The yard sign* reads `FINAL HOH · PART n` where `HEAD OF HOUSEHOLD` stood; the markers
+    are named `Final HoH station` (a name only: the discs carry no text). Whether the sign
+    reads mirrored from the house is untested, as it was before.
+  - *With it:* the week chip's endgame line gives up the week when "Week 4 · Final eviction"
+    is wider than its slot at the smallest size; F2's fit check had missed it, because TMP
+    does not report a line cut short in its box as overflowing. The endgame tests now count
+    the characters drawn against those held.
+  - *Tests:* the bracket, standings and crowning walked through a real Part 1 to the final
+    eviction (the cards' kinds, words and badges, the panel closed, every word fitting, the
+    winner's Won); the titles, labels and stakes from cloned states under rules 2 and 4.
 
 ### F4 Jury preparation and the jury house (HUD; one saved fact)
 
@@ -440,6 +484,90 @@ From the commit that leaves three active until the final eviction:
   the jury house at eight and at the largest house; a compact-HUD test that opens the jury
   house from the panel; the schema 21 migration, the new frozen validator and the load pins
   moved to 21 (§3).
+- **As built, F4a** (the jury house; no saved field). The story session could not be reached
+  to claim schema 21, so F4 is split. F4a builds what the saved rows already hold; F4b keeps
+  *Prepare your final case*, the lock, the theme's saved fact and its jury effect, and the
+  schema. What differs from the text above:
+  - *The read* is `JuryHouseRead` in the simulation, pure and Unity-free. A juror's band
+    starts from the player's last `read` row on them (their view of the player, 25 and -25),
+    never the `juror` row, a miss or a deflection.
+  - *Bitter* is read from the public record, not from grudge rows: the player nominated them
+    as Head of Household (a veto save included), named them the replacement, used the veto to
+    put them up, broke the tie that evicted them, or evicted them at the final eviction. A
+    grudge's cause is last-writer-wins (a public `nominated` turns private when a broken deal
+    stacks on it) and its removal turns on a score the player cannot see, so the rows cannot
+    say what the house saw. The freshest evidence speaks: a read after the player put them up
+    is their view after it, and a read in the same week came after that week's ceremonies
+    (except the opening week, whose free time comes first). An eviction by the player is
+    always Bitter.
+  - *Leaning* is **Wavering**: a warm read cooled since, by a promise the player broke them, a
+    plea the player refused, a vote to evict them, or a deal between them that broke. "Since"
+    counts only what provably came after the read. The record holds no break week and no
+    phase, so a same-week campaign or reveal cannot be placed against it. A Final 2 agreement,
+    broken only at the final eviction, always counts.
+  - *Knows* lists the alliances they shared (ended or not), the deals and promises between
+    them with their standing, and the player's public votes against them. *Missed* lists the
+    weeks the player held the house or used the veto after they left, the competitions the
+    player won, and the deals the player struck. *Between you* is the dated lines: the week they
+    left and whose week it was, what the player did to them, the player's reads, votes and
+    replies. *What matters to this jury* counts the traits the jurors lead with (the trait the
+    questioning reads). *May be swayed by* waits for F4b's theme table.
+  - *The doors*: a free tile at three beside the comparison, and a row after the Final 2's
+    questioning and speech controls, so the opening focus stays on the panel's own controls.
+    Both open a view over the station's panel, with `Leave the jury house`. The door on the
+    jury strip is not built: the strip is chrome in free roam, and a screen that opens from
+    anywhere needs a panel flag of its own, as the notebook has. The Jury phase has no door:
+    the vote is underway.
+  - *The cards*: one per juror with a photo slot, the band in its colour, the reason, and up to
+    three lines of each section, in rows of three, two or one by width and text size. Nothing on
+    a card is a control.
+  - *Tests*: ten on the read (Unity-free), and the jury house opened from both doors at both
+    text sizes, with nothing committed and every line fitting its card.
+- **As built, F4b** (schema 21, claimed by game flow at the owner's word; decision 4 A). What
+  differs from the text above:
+  - *The rules week* is `finaleRulesStartWeek`, switched on by `EpisodeEngine.EnableFinale` at
+    the director's one season-building site (the quick start and the cast screen both pass
+    through it) and by the importer from the week after; `EpisodeEngine.FinaleOn` is the one
+    gate. The migration adds it as 0, so a season saved before it keeps the catalogue to its end.
+  - *The themes* are the web's five speech flavours, so a juror's theme is their lead trait as
+    the questioning reads it through the web's own trait table (`WebFinalSpeeches.TraitFlavor`):
+    Strategic mastermind (cerebral), Social connector, Competition threat (aggressive), Under the
+    radar (sneaky), Loyal to the end (emotional). A juror with no traits reads as Strategic.
+  - *The moments* are the player's own record (`FinalArgument.Moments`): competitions won, weeks
+    in power (the final eviction included), calls that sent their target home (the alliance
+    named), whip counts read right, vetoes used on somebody else, weeks survived on the block,
+    promises (by their kind) and deals kept, alliances that held or lasted three weeks, never
+    nominated, and three weeks and more off the block - the last two separate moments, so a quiet
+    season has two to argue. Each backs one theme and has a reference naming its row
+    (`win:{week}:{kind}`, `hoh:{week}`, `promise:{id}` and so on) that the validator checks still
+    resolves, never that it still qualifies; no two read alike, since the screen finds a tile by
+    its words. Not moments: the story's opportunities (theirs), a backdoor (its target can be a
+    story's private plan), a break from an alliance's call (only the player calls a vote, so the
+    player is never among a call's defectors), why an alliance ended, and Game Sense's notes
+    that read hidden scores.
+  - *The résumé* is wins (HoH, veto, final parts), nominations survived, weeks, weeks in power,
+    the player's alliances by name, and betrayals both ways (promises by their direction, deals
+    by `FinalistRead.DealBreaker`). Why an alliance ended is not shown: it reads hidden scores.
+  - *The lock* is `LockFinalArgument`, appended after `CallTheVote`: the theme's key in
+    `secondTargetId`, the references in `text`, one to a line; three, or every one a quiet season
+    has. Once, for a player finalist, from the final eviction until their speech is in. It draws
+    nothing and moves nobody; it logs one line. The screen (`EpisodeDirector.FinalCase.cs`)
+    opens from a row after the questioning's and the speech's own controls, before the jury
+    house's; the theme and moments are view state until the lock, which closes it back to the
+    panel, and a second visit reads the argument back.
+  - *The speech* is templated from the theme's opening and closing and each moment in the
+    player's voice, and fills the editor once when the speeches open; a draft already there
+    stays, and one the player clears is not filled again. It goes in through `Submit final
+    speech` as any speech does.
+  - *The jury effect* is `FinalArgument.Term` in `WebJuryVoting.Score` beside the story term:
+    for the player only, for a juror whose theme is the argument's, 2 for each locked moment
+    that backs the theme, up to 6. A theme with nothing behind it moves nobody. No draw; the
+    vote's rolls stay as pinned. `WebJuryVoting.Reason` says so when it counted for at least two
+    moments: in words about the speech when the player gave one, about the season when they did
+    not. The other finalist has no argument: their speech is the web's, as before.
+  - *The jury house* gains *May be swayed by* on each card (the theme and the answers that land
+    whatever they ask) and, in *What matters to this jury*, how many value each theme.
+  - *Not built*: the tile at three to read the screen early; the objectives card's swap at two.
 
 ### F5 Jury questioning as a live event (engine under new rules; the HUD; the set)
 
@@ -494,6 +622,72 @@ From the commit that leaves three active until the final eviction:
   PlayMode: the caption map, the answer test and the keyboard walk play seasons with no rules
   week, so they stay on A and B; a new test of the live layout uses a fixture with the rules
   week set and finds its controls by caption.
+- **As built, F5a** (the live layout; no saved field). History questions and the five
+  responses change the saved exchange record, so they wait for schema 21 with F4b (F5b). What
+  F5a builds, and where it differs from the text above:
+  - *The live layout* inside the questioning panel: the juror asking (their photo, name and the
+    trait they lead with) and the question on the left; the answers in the centre, the A/B
+    answers, the player juror's tone questions, the recorded answers and Continue, under their
+    own captions and in their own order, so the opening focus, the keyboard ring and every walk
+    are unchanged; and the *Season receipt* on the right. The hint "The jury is listening."
+    sits over them, and `Skip remaining questions` stays after them in the panel's own column,
+    with the jury house door after that. At the larger text the three stack.
+  - *The receipt* is the jury house's read of the juror asking (F4a): where they stand with the
+    player and why, the latest dated lines between them and the deals and promises they share.
+    It quotes the record, not the juror: no saved row holds a juror's words (the reply rows keep
+    keys, the eviction speeches are cleared each week, and a reply card's line is picked by a
+    score the player cannot see).
+  - *The trait* the juror leads with is shown beside the question. It is the key the catalogue's
+    right answer is written to, and it was already public (the conversation header, the
+    finalist cards, the jury house); the five responses of F5b make fit with the traits the
+    point.
+  - *The reaction* is the engine's own note, rebuilt from the saved exchange so it survives a
+    reload, in the allied green or the conflict red, never a number, in the answers' column.
+    Nothing reads the answer key before the commit.
+  - *The player as a juror* sees the finalist they ask on the left and what they know of them on
+    the right (the finalist cards' first facts). The lines speak to the player: "You ask
+    {finalist}", "{juror} asks you".
+  - *The set* is F7's.
+  - *Tests*: the live layout at both text sizes (the columns and what each holds, Skip after
+    them, nothing about the answer before it), the reaction line equal to the engine's note
+    and kept through a reload, and the player juror's columns.
+- **As built, F5b** (schema 21, with F4b on one rules week). What differs from the text above:
+  - *The exchange* gains `category`, `receiptKind` and `receiptId`, all strings, null on the
+    catalogue's questions and a player juror's. The response's key goes in `answerChoice`, where
+    the catalogue's A or B goes, so there is no separate response field. Under the rules the
+    catalogue's `optionA`, `optionB` and `correctChoice` are null, the tone is the category's
+    (bitter for a grievance, supportive for a bond, neutral otherwise, no draw), and the other
+    finalist's line is today's.
+  - *Receipts* (`FinaleQuestions.Receipts`), the latest of each kind: accountability, a promise
+    the player broke to them or a deal between them the player broke; ownership, a ceremony of
+    the player's that put them up or out, else the player's ballot against them; jury
+    management, a plea of theirs the player refused; strategy, a call the player made in an
+    alliance they were not in (a member heard it even off its ballot), else the player's last
+    week in power; social, the last week the player survived the block; mistake, a ballot of the
+    player's that misread or went against the house; personal, a promise kept to them, an
+    alliance shared that still stands or ended only as they left, a deal kept.
+  - *The category* is drawn among the four the juror's theme asks about most that have a
+    receipt (a comparison when none has), and the wording among those of the category's two or
+    three that the receipt bears out (`FinaleQuestions.QuestionsFor`: "the reason I am sitting on
+    this jury" only for the week they went home, "you kept faith with me" only for a promise);
+    both draws are always taken, so a question takes the two the catalogue took. The words name
+    nobody and read no row, so the validator checks them from the category, and the receipt is
+    shown beside them in the Season receipt column.
+  - *The five responses*: Own the move, Explain the strategy, Appeal to loyalty, Deflect, and
+    Reveal the truth, offered only on a call the juror was not in on (the one private fact the
+    record can show). Each has a line per category and a risk word, drawn one to a row in the
+    centre column; the locked argument's own response comes first, at render. The order is not
+    drawn: the second draw is the wording.
+  - *The sign* is a fixed table (`FinaleQuestions.Lands`) of the juror's theme, the category and
+    the response: the truth lands; on a grievance owning lands and deflecting costs; owning a
+    mistake, explaining a strategy, loyalty on a personal question land; otherwise what the
+    theme values (a strategist the explanation, a social or loyal juror the appeal, a competitor
+    owning it, a schemer the explanation or the deflection). It reads only what was saved, so the
+    reaction rebuilt after a reload is the one applied. Today's ±10 and its two draws, under a
+    softer note: "{juror} took your answer well." or "{juror} was not moved by your answer."
+  - *The audited walk* checks the cast screen's season has the rules, locks an argument before
+    the first answer (a `final-case` capture), answers with Own the move, and checks the editor
+    holds the template before it writes its own speech.
 
 ### F6 The pleas, the vote, the reveal, the winner, the results (HUD and cards)
 
@@ -597,6 +791,51 @@ From the commit that leaves three active until the final eviction:
   player removed asserts no `Vote for {name} to win` and no `Cast your vote` row; a check at
   the Final 2 with the player on the jury asserts the spectator banner with no panel open and
   no unparented text left behind.
+- **As built, F6a** (the player on the jury; no saved field). What differs from the text above:
+  - *The ballot* is a screen of its own (`EpisodeDirector.JurorVote.cs`) for a juror as the
+    engine counts one: THE JURY VOTES and the privacy line, the two finalists' cases
+    (`FinalistRead.JurorCase`: the record, the player's standing with them, any Final 2
+    agreement, the alliances the player knew, and what they did to the player), the two as
+    ballot cards under the pinned `Vote for {name} to win`, *What matters to you* (the diary
+    persona and the reflections recorded, decision 9 A), and `Review final speeches`.
+  - *What they did to you* is the public record: the finalist's ceremonies against the player,
+    the final eviction, the promises they broke to the player, and the deals the record shows
+    they broke (`FinalistRead.DealBreaker`: the first ceremony or veto in the deal's term, the
+    vote the player's own ballot kept, the final Head of Household's choice). A voting block
+    that fell apart was both of theirs and is said so; a deal the player broke is never held
+    against the finalist. Rivalries from grudges are not on the case: grudge rows are private.
+  - *A player production removed* gets no ballot: a line that says so and Continue. Their
+    objectives read Watch the Final 2, Watch the questions and Watch the jury vote, and the
+    season walks key their vote on the same juror check.
+  - *The spectator banner* draws only into an open panel; with none open, the objectives
+    card's spectator line carries it. The seat line says the vote is cast once it is.
+  - *Not built this round*: the hidden vote (F7), the reveal on the screen, the winner screen,
+    the results grid, placements, the timeline and the statistics.
+  - *Tests*: the juror's screen at both text sizes (the cases, the ballot cards, the privacy
+    line, what matters, the speeches opened and put away), the vote from its card, the frame
+    with no panel open; EditMode on the deals a finalist broke.
+- **As built, F6b** (Season Complete, the owner's mockup and Season Complete Pack 7; no saved
+  field). The results grid above is replaced by the owner's later mockup, and what differs:
+  - *One scroll, a dashboard first.* The fixed header holds the title, the season in a line, the
+    four ways on beside it (under it on a narrow card) and three tabs - `Season at a glance`, `Your
+    game in detail`, `The house table` - that scroll to each part and hide nothing, so every line
+    the report's suites count stays on the page. The dashboard: the winner and the runner-up, each
+    with the first sentence of their own final speech (or nothing) and their jury votes; the verdict
+    with the pinned crown line, the count in the house's words (a tie as a tie and its rule, a jury
+    of one) and a bar drawn from the ballots; the five Game Sense cards, each line the face's own
+    strongest row in the notebook; the standings, how the jury voted (every reason whole) and the
+    season timeline side by side; the career strip. Below it, in the same scroll: the champion's
+    road, the player's season, Game Sense's moments and misses, and the house table.
+  - *Placements* are `CareerLedger.Placement` everywhere on the screen - the standings, the FINISHED
+    stat and the table's placement sort - and its removal merge now reads the week each juror left
+    from their power row, not the sentiment ledger's first event, which was always week 0.
+  - *The timeline* reads the ledger's power rows, one a week: HoH, the nominations as made (the
+    saved one included), the veto and whom it saved and who went up, the evictee and the count. The
+    final week is its own row (the three parts, and whom the last Head of Household chose between).
+    A week with no row says so. The event log's cap no longer loses the early weeks' HoH.
+  - *Not built*: the winner screen (mockups 29 and 33), statistics with ranks, legacy, the diary
+    reflection and signature moments; the mockup's taglines, its "3 — 2 — 1", its quotes and its
+    closing line, which have no source; motion.
 
 ### F7 The cut scenes (world; after the cut-scenes plan's S1 to S4)
 
@@ -692,7 +931,9 @@ The rules week is switched on by an `EpisodeEngine.EnableFinale` beside `EnableW
 `EnableAgency`. The director's fresh season calls it on both paths, the quick start and the
 built cast, and the web importer calls it from the week after the import, as it does the
 others. Seasons that tests build directly stay off unless they enable it, so today's finale
-pins keep their fixtures. The migration adds it as 0. Only the live finale validator
+pins keep their fixtures. The migration adds it as 0. (As built: see F4b and F5b; the
+exchange gains three fields, not four, and the load pins that moved were 51 lines across 21
+EditMode files, not 24 across 13.) Only the live finale validator
 (`EpisodeFinaleValidation`) branches on it; the frozen validators stay as they are. Schema 21
 adds a `FrozenEpisodeV20` of today's shape, which `UpgradeV20ToV21` checks before it adds the
 fields, and `PrepareCurrentPayload`'s current version moves to 21. Every load pin that asserts
@@ -709,10 +950,10 @@ untouched).
 |---|---|---|
 | F1 | The Final 3 frame: the strip, the objectives card with the jury strip, the folded rail, the two-row feed and the ENDGAME PREPARATION head on the window at three (built; the trait row deferred, see F1) | PlayMode in the window at three, at Part 1 and at two asserts the words, the marks and the card's foot; the overlap and compact suites green |
 | F2 | The comparison and the decision screen, gated; with them F1's context card at three and the Diary Room's study copy (built; see F2's note) | The gate's EditMode tests; the decision by caption; the window-at-three fixture asserts the context card's words |
-| F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows | Both card kinds in a fixture at three; the eyebrow and heading pinned |
-| F4 | Preparation, the lock and the jury house; schema 21 with the argument | Bands and the effect under both rules; migrations green, the load pins at 21 |
-| F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions | Receipts, categories, the sign by fit, draw counts pinned |
-| F6 | The juror's screen, the hidden vote card, the reveal on the screen, the winner screen, the results grid, one placement function | The reveal's tests on both paths, a tie on each; the ways on by caption; the report's pins kept or moved |
+| F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows (built; see F3's note) | Both card kinds in a fixture at three; the eyebrow and heading pinned |
+| F4 | Preparation, the lock and the jury house; schema 21 with the argument (built: F4a the jury house, F4b the argument; see F4's notes) | Bands and the effect under both rules; migrations green, the load pins at 21 |
+| F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions (built: F5a the live layout, F5b history and responses; see F5's notes) | Receipts, categories, the sign by fit, draw counts pinned |
+| F6 | The juror's screen, the hidden vote card, the reveal on the screen, the winner screen, the results grid, one placement function (F6a built: the juror's screen; see F6's note) | The reveal's tests on both paths, a tie on each; the ways on by caption; the report's pins kept or moved |
 | F7 | The cut scenes on the authored set and the door | Captures of the ceremony, the exit, the walk-in, the reveal; the audited pipeline |
 | F8 | The message to a juror, opening statements, new games, the share card | As decided |
 

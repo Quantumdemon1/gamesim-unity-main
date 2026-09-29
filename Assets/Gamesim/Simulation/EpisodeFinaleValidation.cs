@@ -47,7 +47,17 @@ namespace Gamesim.Simulation
                     x.isPlayerAuthored != (x.speakerId == s.playerId)) || s.finalSpeeches.GroupBy(x => x.speakerId).Any(g => g.Count() > 1))
                 return Fail(out error, "Invalid finale records.");
             bool finale = s.phase == EpisodePhase.JuryQuestioning || s.phase == EpisodePhase.FinalSpeeches || s.phase == EpisodePhase.Jury || s.phase == EpisodePhase.Finished;
-            if (!finale && (s.juryExchanges.Count != 0 || s.juryQuestionIndex != 0 || s.finalSpeeches.Count != 0)) return Fail(out error, "Finale records cannot precede the final eviction.");
+            if (!finale && (s.juryExchanges.Count != 0 || s.juryQuestionIndex != 0 || s.finalSpeeches.Count != 0 || s.finalArgument != null))
+                return Fail(out error, "Finale records cannot precede the final eviction.");
+            // Schema 21: the player finalist's argument, under the finale rules. Each reference must
+            // still name a row of theirs; whether it would still qualify is not asked, so nothing
+            // later can orphan it.
+            var argument = s.finalArgument;
+            if (argument != null && (!EpisodeEngine.FinaleOn(s) || !Finalist(s.playerId) || !FinalArgument.Themes.Contains(argument.theme)
+                || argument.momentRefs == null || argument.momentRefs.Count > FinalArgument.MomentCount
+                || argument.momentRefs.Distinct().Count() != argument.momentRefs.Count || argument.momentRefs.Any(r => !FinalArgument.Resolves(s, r))))
+                return Fail(out error, "Invalid final argument.");
+            bool rules = EpisodeEngine.FinaleOn(s);
             bool playerFinalist = Finalist(s.playerId);
             var questioners = s.contestants.Where(c => Juror(c.id)).Select(c => c.id).ToArray();
             var finalists = s.contestants.Where(c => Finalist(c.id)).Select(c => c.id).ToArray();
@@ -60,7 +70,24 @@ namespace Gamesim.Simulation
                     q.questionerId != (playerFinalist ? questioners[i] : s.playerId) ||
                     q.finalistId != (playerFinalist ? s.playerId : finalists[i]) || (!q.completed && i != s.juryQuestionIndex))
                     return Fail(out error, "Invalid jury exchange order or identities.");
-                if (playerFinalist)
+                if (playerFinalist && rules)
+                {
+                    // A history question: its words are the category's, its receipt of a kind the
+                    // category takes, and the answer one of the responses offered, in its own words.
+                    if (!FinaleQuestions.Categories.Contains(q.category) || q.tone != FinaleQuestions.Tone(q.category)
+                        || !FinaleQuestions.Questions(q.category).Contains(q.question)
+                        || (q.receiptKind == null) != (q.category == FinaleQuestions.Comparison)
+                        || (q.receiptKind == null ? q.receiptId != null
+                            : !FinaleQuestions.ReceiptKinds(q.category).Contains(q.receiptKind) || string.IsNullOrEmpty(q.receiptId) || !Text(q.receiptId, 200))
+                        || q.optionA != null || q.optionB != null || q.correctChoice != null
+                        || q.opponentAnswer != WebJuryQuestioning.GetOpponentAnswer(i)
+                        || (q.completed && (!FinaleQuestions.Offered(q.category, q.receiptKind).Contains(q.answerChoice)
+                            || q.answer != FinaleQuestions.Line(q.category, q.answerChoice))))
+                        return Fail(out error, "The saved finalist question does not match the finale rules.");
+                }
+                else if (q.category != null || q.receiptKind != null || q.receiptId != null)
+                    return Fail(out error, "Only a history question saves a category or a receipt.");
+                else if (playerFinalist)
                 {
                     var saved = new WebJuryQuestion { tone = q.tone, question = q.question, optionA = q.optionA, optionB = q.optionB,
                         correctIs = q.correctChoice, opponentAnswer = q.opponentAnswer, trait = WebJuryQuestioning.GetPrimaryTrait(s.Find(q.questionerId).traits) };

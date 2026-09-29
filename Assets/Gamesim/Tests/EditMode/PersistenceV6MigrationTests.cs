@@ -18,7 +18,7 @@ namespace Gamesim.Tests.EditMode
         {
             var state = ContentCatalog.Create(seed);
             // A fresh season is written at whatever the current schema is, not at this file's step.
-            Assert.That(state.schemaVersion, Is.EqualTo(20));
+            Assert.That(state.schemaVersion, Is.EqualTo(21));
             Assert.That(state.npcSocial.rulesStartWeek, Is.EqualTo(1));
             Assert.That(state.npcSocial.randomState, Is.EqualTo(SeededRandom.HashSeed("gamesim:npc-social:v1:" + seed.ToString("x8", System.Globalization.CultureInfo.InvariantCulture))));
             Assert.That(state.randomState, Is.EqualTo(seed == 0 ? 0x6D2B79F5u : seed));
@@ -203,6 +203,7 @@ namespace Gamesim.Tests.EditMode
             source["state"]["week"] = week; using var files = new Files(); string json = source.ToString();
             Assert.That(WebSaveImporter.TryImport(json, files.DirectoryPath, out var state, out string message), Is.True, message);
             Assert.That(state.npcSocial.rulesStartWeek, Is.EqualTo(week + 1)); Assert.That(state.blocRulesStartWeek, Is.EqualTo(week + 1));
+            Assert.That(state.finaleRulesStartWeek, Is.EqualTo(week + 1), "The finale rules from the week after the import.");
             Assert.That(state.npcSocial.randomState, Is.EqualTo(NpcSocialState.InitialRandomState(state.seed)));
             Assert.That(state.npcSocial.pending, Is.Empty); Assert.That(state.votes, Is.Empty);
             Assert.That(message, Does.Contain("NPC conversations begin in week " + (week + 1)));

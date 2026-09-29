@@ -173,7 +173,7 @@ namespace Gamesim.Presentation
         /// Who went home out of "Maya takes Casey to the final two. Riley joins the jury." - the
         /// name that opens the second sentence ("You join the jury." when it is the player).
         /// </summary>
-        private static string FinalEvictee(EpisodeState state, string text)
+        internal static string FinalEvictee(EpisodeState state, string text)
         {
             int at = text.IndexOf(". ", StringComparison.Ordinal);
             if (at < 0) return null;

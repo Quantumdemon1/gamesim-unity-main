@@ -203,6 +203,9 @@ namespace Gamesim.Presentation
             var weekLine=Label("Week",column,"WEEK "+Mathf.Max(1,week)+" \u00b7 "+(gameName!=null?awardName.ToUpperInvariant()+" \u00b7 ":"")
                 +(category??"").ToUpperInvariant(),11,32,20*fs,inner/scale,18*fs,UiTheme.Muted);
             weekLine.characterSpacing=8f;
+            // The final parts carry the part in the award ("FINAL HOH, PART 1 OF 3"): the line may
+            // shrink to fit rather than wrap out of its one-line box.
+            Fit(weekLine,9);
             float titleX=32f;
             var trophy=UiTheme.Icon("trophy");
             if(trophy!=null)

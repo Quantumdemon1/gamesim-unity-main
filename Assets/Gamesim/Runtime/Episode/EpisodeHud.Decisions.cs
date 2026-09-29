@@ -142,6 +142,8 @@ namespace Gamesim.Episode
 
         /// <summary>The ballot's row, so a test can find it the way it finds a named panel.</summary>
         public const string BallotRowName = "Ballot row";
+        /// <summary>The juror's "What matters to you" card (ENDGAME-PLAN F6).</summary>
+        public const string JurorMattersName = "What matters to you";
         private const float BallotCardWidth = 196f;
         private const float BallotCardHeight = 250f;
 
@@ -154,15 +156,17 @@ namespace Gamesim.Episode
         /// the choice is waiting to be confirmed.
         /// </summary>
         public void BallotCards(EpisodeState state, System.Collections.Generic.IList<string> nominees, string chosenId,
-            Func<string, string> caption, Action<string> press)
+            Func<string, string> caption, Action<string> press,
+            string heading = "EVICTION VOTE", string line = "Choose one houseguest to evict from the house.", string glyph = "gavel")
         {
-            var heading = new GameObject("Ballot heading", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
-            heading.SetParent(content, false);
-            heading.GetComponent<LayoutElement>().minHeight = 40f * FontScale;
+            string headingWords = heading;
+            var headingRow = new GameObject("Ballot heading", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
+            headingRow.SetParent(content, false);
+            headingRow.GetComponent<LayoutElement>().minHeight = 40f * FontScale;
             // Centred, the gavel and the title together, over a centred line, as mockup-08 heads
             // its ballot.
             float markSide = 30f * FontScale;
-            var title = FixedText(heading, "EVICTION VOTE", 26, Paper, new Vector2(markSide + 12f * FontScale, -2f),
+            var title = FixedText(headingRow, headingWords, 26, Paper, new Vector2(markSide + 12f * FontScale, -2f),
                 new Vector2(ContentWidth() - 2f * (markSide + 12f * FontScale), 36f * FontScale));
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) title.font = bold;
@@ -170,9 +174,9 @@ namespace Gamesim.Episode
             AutoSize(title, 16);
             title.alignment = TextAlignmentOptions.Center;
             float words = Mathf.Min(title.rectTransform.sizeDelta.x, Mathf.Ceil(title.GetPreferredValues(title.text).x));
-            HudPrimitives.Glyph("Ballot mark", heading, "gavel", Paper,
+            HudPrimitives.Glyph("Ballot mark", headingRow, glyph, Paper,
                 new Vector2((ContentWidth() - words) * .5f - markSide - 10f * FontScale, -4f), markSide);
-            DecisionText(content, "Choose one houseguest to evict from the house.", 16, Paper).alignment = TextAlignmentOptions.Center;
+            DecisionText(content, line, 16, Paper).alignment = TextAlignmentOptions.Center;
 
             var row = new GameObject(BallotRowName, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
             row.SetParent(content, false);

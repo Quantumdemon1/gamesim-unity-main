@@ -164,6 +164,20 @@ namespace Gamesim.Presentation
         /// </summary>
         public const string FinalThreeKind = "final-three";
 
+        /// <summary>
+        /// The final Head of Household's bracket (ENDGAME-PLAN F3): the card that opens Part 2 and
+        /// Part 3, who won the part before and who plays now. Its title and line are the bracket's,
+        /// passed with the card.
+        /// </summary>
+        public const string FinalHoHPartKind = "final-hoh-part";
+
+        /// <summary>The final Head of Household crowned: the card on the commit that enters the final eviction.</summary>
+        public const string FinalHoHCrownedKind = "final-hoh-crowned";
+
+        /// <summary>The kind on screen, or null when no card is playing. A read for tests.</summary>
+        public string PlayingKind => playing ? playingKind : null;
+        private string playingKind;
+
         /// <summary>The title a beat announces itself with, or null when it does not get a card.</summary>
         public static string TitleFor(string kind)
         {
@@ -175,6 +189,8 @@ namespace Gamesim.Presentation
                 case CeremonySting.WinnerKind: return "The Winner";
                 case VetoSelectionKind: return "Power of Veto";
                 case FinalThreeKind: return "The Final Three";
+                case FinalHoHPartKind: return "Final HoH";
+                case FinalHoHCrownedKind: return "Final Head of Household";
                 case CeremonySting.FinalEvictionKind: return "The Final Two";
                 // The story's ceremonies (plan §5.1) keep their own table.
                 default: return StoryFallout.TitleFor(kind);
@@ -207,6 +223,8 @@ namespace Gamesim.Presentation
                     return "Only three remain. The final battle for power begins now.";
                 case CeremonySting.FinalEvictionKind:
                     return "The final Head of Household chooses who sits beside them. The other joins the jury.";
+                case FinalHoHPartKind: return "The bracket moves on.";
+                case FinalHoHCrownedKind: return "One decision remains.";
                 default: return StoryFallout.FlavourFor(kind) ?? string.Empty;
             }
         }
@@ -222,6 +240,8 @@ namespace Gamesim.Presentation
                 case CeremonySting.WinnerKind: return "trophy";
                 case VetoSelectionKind: return "veto-token";
                 case FinalThreeKind: return "trophy";
+                case FinalHoHPartKind: return "crown";
+                case FinalHoHCrownedKind: return "crown";
                 case CeremonySting.FinalEvictionKind: return "trophy";
                 default: return StoryFallout.IconFor(kind);
             }
@@ -237,6 +257,8 @@ namespace Gamesim.Presentation
                 case CeremonySting.WinnerKind: return UiTheme.Gold;
                 case VetoSelectionKind: return UiTheme.Gold;
                 case FinalThreeKind: return UiTheme.Gold;
+                case FinalHoHPartKind: return UiTheme.Gold;
+                case FinalHoHCrownedKind: return UiTheme.Gold;
                 case CeremonySting.FinalEvictionKind: return UiTheme.Gold;
                 default: return StoryFallout.TintFor(kind);
             }
@@ -246,10 +268,19 @@ namespace Gamesim.Presentation
         /// Plays the card. An unrecognised kind is ignored rather than guessed at, matching the
         /// sting: a beat nobody wrote a title for should show nothing, not a blank screen.
         /// </summary>
-        public void Play(string kind, int week, IList<Subject> subjects, bool reducedMotion)
+        public void Play(string kind, int week, IList<Subject> subjects, bool reducedMotion) =>
+            Play(kind, week, subjects, reducedMotion, null, null);
+
+        /// <summary>
+        /// Plays the card with a title and a line of its own in place of the kind's: the final Head
+        /// of Household's bracket and crowning say who, and a kind's table cannot. Either left null
+        /// keeps the kind's. A kind with no title in the tables still shows nothing.
+        /// </summary>
+        public void Play(string kind, int week, IList<Subject> subjects, bool reducedMotion, string titleText, string line)
         {
-            string name = TitleFor(kind);
-            if (string.IsNullOrEmpty(name)) return;
+            if (string.IsNullOrEmpty(TitleFor(kind))) return;
+            string name = string.IsNullOrEmpty(titleText) ? TitleFor(kind) : titleText;
+            playingKind = kind;
 
             Build();
             reduced = reducedMotion;
@@ -259,7 +290,7 @@ namespace Gamesim.Presentation
             var tint = Tint(kind);
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
             title.text = name;
-            flavour.text = FlavourFor(kind);
+            flavour.text = string.IsNullOrEmpty(line) ? FlavourFor(kind) : line;
             // A generated glyph when the icon set exists, and the two-disc mark when it does not.
             var glyph = UiTheme.Icon(IconFor(kind));
             markOuter.GetComponent<Image>().sprite = glyph != null ? glyph : UiTheme.Circle();

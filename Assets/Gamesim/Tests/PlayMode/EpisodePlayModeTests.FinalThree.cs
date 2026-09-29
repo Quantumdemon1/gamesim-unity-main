@@ -44,10 +44,7 @@ namespace Gamesim.Tests.PlayMode
             var chip = LastActive("Week chip");
             Assert.That(Words(chip), Does.Contain("FINAL 3"));
             foreach (var text in chip.GetComponentsInChildren<TMP_Text>())
-            {
-                text.ForceMeshUpdate();
-                Assert.That(text.isTextOverflowing, Is.False, "The week chip loses the end of \"" + text.text + "\".");
-            }
+                Assert.That(ShowsAllOf(text), Is.True, "The week chip loses the end of \"" + text.text + "\".");
 
             foreach (bool larger in new[] { false, true })
             {
@@ -75,9 +72,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(card, Is.Not.Null, take.name + " has a card.");
                     string words = Words(card);
                     Assert.That(words, Does.Contain(take.name).And.Contain("WHAT YOU KNOW")
-                        .And.Contain("IF YOU TAKE " + take.name.Split(' ')[0].ToUpperInvariant()), take.name + "'s card: " + words);
+                        .And.Contain("IF YOU TAKE " + FinalistRead.FirstName(take.name).ToUpperInvariant()), take.name + "'s card: " + words);
                     foreach (var label in FactLabels) Assert.That(words, Does.Contain(label), take.name + "'s card lacks " + label);
-                    Assert.That(words, Does.Contain(cut.name.Split(' ')[0] + " joins the jury"), "What taking them does to the other.");
+                    Assert.That(words, Does.Contain(FinalistRead.FirstName(cut.name) + " joins the jury"), "What taking them does to the other.");
                     Assert.That(card.GetComponentsInChildren<CharacterPortraitBinding>(true), Has.Length.EqualTo(1), "A photo bound to them.");
                     AssertDecisionCopyFits(card);
 
@@ -152,7 +149,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(card, Is.Not.Null, finalist.name + " has a card.");
                 string words = Words(card);
                 foreach (var label in FactLabels) Assert.That(words, Does.Contain(label), finalist.name + "'s card lacks " + label);
-                Assert.That(words, Does.Contain("IF YOU WIN AND TAKE " + finalist.name.Split(' ')[0].ToUpperInvariant()));
+                Assert.That(words, Does.Contain("IF YOU WIN AND TAKE " + FinalistRead.FirstName(finalist.name).ToUpperInvariant()));
             }
             Assert.That(director.GetComponentsInChildren<Button>().Any(button => button.IsActive() && button.name.StartsWith("Evict ")), Is.False,
                 "Nothing on the comparison decides anything.");

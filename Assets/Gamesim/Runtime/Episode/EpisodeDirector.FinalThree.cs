@@ -40,7 +40,7 @@ namespace Gamesim.Episode
         public void OpenFinalistComparison()
         {
             if (!Preparing(projected)) return;
-            moveScreenId = null;
+            moveScreenId = null; juryHouseOpen = false; finalCaseOpen = false;
             comparingFinalists = true;
             Render();
         }
@@ -74,7 +74,7 @@ namespace Gamesim.Episode
                 columns.Add(new EpisodeHud.FinalistColumn
                 {
                     Actor = take, Read = FinalistRead.Read(state, take.id),
-                    BulletsHeading = "IF YOU WIN AND TAKE " + take.name.Split(' ')[0].ToUpperInvariant(),
+                    BulletsHeading = "IF YOU WIN AND TAKE " + FinalistRead.FirstName(take.name).ToUpperInvariant(),
                     Bullets = cut != null ? FinalistRead.IfYouTake(state, take.id, cut.id) : null,
                 });
             }

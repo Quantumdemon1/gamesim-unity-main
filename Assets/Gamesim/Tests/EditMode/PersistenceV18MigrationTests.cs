@@ -54,7 +54,7 @@ namespace Gamesim.Tests.EditMode
 
             var current = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)current["schemaVersion"], Is.EqualTo(20));
+            Assert.That((int)current["schemaVersion"], Is.EqualTo(21));
             CheckShape(current);
             var state = current.ToObject<EpisodeState>(Serializer());
             Assert.That(EpisodeValidation.TryValidate(state, out var error), Is.True, error);
@@ -67,7 +67,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void TheWholeChainFromV15ReachesEighteen()
+        public void TheWholeChainFromV15ReachesTheCurrentSchemaThroughEighteen()
         {
             var engine = new EpisodeEngine(ContentCatalog.Create(911));
             for (int i = 0; i < 40 && engine.Snapshot.week < 2; i++) Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
@@ -75,7 +75,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(20));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(21));
             Assert.That(migrated["story"], Is.Not.Null);
             Assert.That(migrated["ledger"]["replies"], Is.Not.Null);
             Assert.That((int)migrated["leverRulesStartWeek"], Is.EqualTo((int)old["week"] + 1));

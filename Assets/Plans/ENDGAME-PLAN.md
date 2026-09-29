@@ -282,6 +282,45 @@ From the commit that leaves three active until the final eviction:
   screen's text); PlayMode: the decision screen's columns, the portrait slot per person and
   the paired actions by caption; the comparison and the decision join the panel sweep's
   openers (F1).
+- **As built** (the F2 commit). The gate is `FinalistRead` in the simulation, pure and
+  Unity-free, so the dotnet subset runs its tests. What differs from the text above:
+  - *The rows.* Each card carries seven, each with Confirmed, Suspected or Unknown: Competition
+    record (the grade, then HoH, Veto, Nominated and a part won), Your relationship (the
+    player's standing word, the relationship web's thresholds, held together by an EditMode
+    test), Final 2 agreement, Known alliances, Known jury support, Jury bitterness and
+    Uncertain jurors ("n of m"). The jury is counted as support, bitterness and uncertain, not
+    supportive, leaning and unknown: Leaning already names the vote read's lean.
+  - *The Final 2 agreement* shows what binds first, in the order the final eviction settles
+    them: a binding deal, the player's own standing promise, an offer waiting, then the latest
+    of any standing. "None with you" is Unknown; any agreement the player was party to is
+    Confirmed.
+  - *A shared alliance* counts as support however it ended. Why an alliance ended (the
+    ledger's `turned` and `soured`) is worked out from scores the player never sees, so it
+    cannot be the player's evidence.
+  - *Bitterness* is the finalist nominating the juror as Head of Household (a veto save or a
+    replacement included) and a vote proven at a reveal: a kept claim, or a lie the reveal
+    exposed when the ballot went to the other nominee on that week's block.
+  - *The line of theirs* is their meet-and-greet line (`WebIntroductions.IntroLine`, seeded,
+    no draw). A last eviction speech does not survive the week turn, so there is none to use.
+  - *If you take them* counts the jury that will vote: today's jurors and the finalist cut,
+    whose own lean toward the one kept gets its line ("Taylor joins the jury with reason to
+    hold a grudge against Maya (nominated them)").
+  - *The warning* sits in each column between the headline and the control, not below both
+    columns: the screen opens scrolled to its first control, and a warning at the head of a
+    tall screen was out of sight. Above the columns, when there are any, a line names the
+    Final 2 agreements with jurors that the eviction breaks either way.
+  - *The comparison* is a free tile, first among the moves on Endgame Preparation ("Costs no
+    action"), with `Back to endgame preparation`; its cards say "If you win and take".
+  - *With them:* the context card at three reads "You are in the Final 3" under the
+    objective chip's title, and the Diary Room's study copy follows the competition rules
+    (from rules 3 preparation counts in every competition, the final Head of Household's
+    three parts included); its pin reads the same function. The week chip's endgame line may
+    shrink to 11 points rather than lose its end.
+  - *Tests:* sixteen on the gate (the dotnet subset runs fifteen; the standing-word match is
+    Unity-only); the decision screen at both text sizes (the columns, the portrait slot per
+    card, headline over warning over control, the warning in sight as the screen opens, the
+    copy fitting its card, the week chip fitting); the comparison opening and closing with
+    nothing committed.
 
 ### F3 The Final HOH as an event (presentation over the engine's three parts)
 
@@ -669,7 +708,7 @@ untouched).
 | | Slice | Done when |
 |---|---|---|
 | F1 | The Final 3 frame: the strip, the objectives card with the jury strip, the folded rail, the two-row feed and the ENDGAME PREPARATION head on the window at three (built; the trait row deferred, see F1) | PlayMode in the window at three, at Part 1 and at two asserts the words, the marks and the card's foot; the overlap and compact suites green |
-| F2 | The comparison and the decision screen, gated; with them F1's context card at three and the Diary Room's study copy | The gate's EditMode tests; the decision by caption; the window-at-three fixture asserts the context card's words |
+| F2 | The comparison and the decision screen, gated; with them F1's context card at three and the Diary Room's study copy (built; see F2's note) | The gate's EditMode tests; the decision by caption; the window-at-three fixture asserts the context card's words |
 | F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows | Both card kinds in a fixture at three; the eyebrow and heading pinned |
 | F4 | Preparation, the lock and the jury house; schema 21 with the argument | Bands and the effect under both rules; migrations green, the load pins at 21 |
 | F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions | Receipts, categories, the sign by fit, draw counts pinned |

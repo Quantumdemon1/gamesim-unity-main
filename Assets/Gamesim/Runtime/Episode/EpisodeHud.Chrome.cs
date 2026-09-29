@@ -337,6 +337,9 @@ namespace Gamesim.Episode
                 15, Paper, new Vector2(x + 116f, -14f), new Vector2(WeekWidth - x - 126f, 24f));
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) phase.font = medium;
+            // The endgame's line carries the week as well as the phase ("Week 4 · Final eviction"):
+            // it may shrink to fit rather than lose its end.
+            if (label != null) { phase.fontSizeMin = Mathf.Min(phase.fontSizeMin, 11f * FontScale); phase.textWrappingMode = TextWrappingModes.NoWrap; }
             AutoSize(phase, 11);
             ClickThrough(chip);
         }

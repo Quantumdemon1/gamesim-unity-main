@@ -85,6 +85,9 @@ namespace Gamesim.Episode
             var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
             if (chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active) { HouseguestScreen(state, chosen); return; }
             moveScreenId = null;
+            // The comparison over Endgame Preparation (EpisodeDirector.FinalThree.cs), while the window lasts.
+            if (comparingFinalists && Preparing(state)) { FinalistComparison(state); return; }
+            comparingFinalists = false;
             // Before anything the player chose to do: something has happened to them, and a
             // situation buried under the ordinary controls is a situation they will not see.
             if (!PendingReplyCard(state)) PendingHouseEvent(state);
@@ -92,7 +95,8 @@ namespace Gamesim.Episode
             // At three this window is the endgame's preparation (ENDGAME-PLAN F1): the final-four
             // eviction opens it and leaving it starts the final Head of Household's first part.
             // The seat and the moves are the week's own; the head says what they are for now.
-            if (EpisodeHud.IsFinalThree(state))
+            // Only for a player who is one of the three: a juror watching the window is not preparing.
+            if (Preparing(state))
                 hud.ScreenHead(EndgamePreparationTitle, ActionsLeftHeadline(left),
                     "Three remain. Study in the Diary Room, settle who you trust, and get ready: the final Head of Household is next.");
             else
@@ -248,6 +252,8 @@ namespace Gamesim.Episode
                 Tile(EpisodeHud.AirLaundryCaption, "No middle ground: each housemate comes down with you or against you.",
                     EpisodeCommandKind.HouseMeeting, "target", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry), "High risk"),
             };
+            // At three, first of all: the comparison, which costs nothing (ENDGAME-PLAN F2).
+            if (asCards && Preparing(state)) tiles.Insert(0, CompareTile(OpenFinalistComparison));
             // Listening in needs no one to talk to, so it sits here rather than in a conversation.
             if (state.Active.Count(c => !c.isPlayer) >= 2)
                 tiles.Add(Tile("Listen in on a conversation", "Works seven times in ten; the rest of the time somebody notices.",
@@ -406,7 +412,10 @@ namespace Gamesim.Episode
         {
             hud.BeginSideCard(EpisodeHud.YourContextCardName, "YOUR CONTEXT");
             string role, why;
-            if (state.playerId == state.hohId) { role = "You are HOH"; why = "You can set the tone this week."; }
+            // At three the final-four week's roles are still in state until the window closes; what
+            // matters now is the final Head of Household (ENDGAME-PLAN F1).
+            if (Preparing(state)) { role = "You are in the Final 3"; why = "The final Head of Household is next."; }
+            else if (state.playerId == state.hohId) { role = "You are HOH"; why = "You can set the tone this week."; }
             else if (state.nominees != null && state.nominees.Contains(state.playerId)) { role = "You are on the block"; why = "Campaign for the votes you need."; }
             else if (state.playerId == state.vetoHolderId) { role = "You hold the veto"; why = "The meeting is yours to call."; }
             else { role = "You are safe this week"; why = "Spend the week on what comes next."; }
@@ -415,7 +424,7 @@ namespace Gamesim.Episode
             int left = ActionsLeftCount(state);
             hud.CardLine(left + (left == 1 ? " action left" : " actions left"), 15, UiTheme.Paper, UiTheme.Weight.SemiBold);
             hud.CardLine(left == 1 ? "Choose carefully." : left == 0 ? "The week's actions are spent." : "Spend them well.", 12, UiTheme.Muted);
-            hud.CardLine("Current Objective", 15, UiTheme.Paper, UiTheme.Weight.SemiBold);
+            hud.CardLine(EpisodeHud.ObjectiveTitle(state), 15, UiTheme.Paper, UiTheme.Weight.SemiBold);
             hud.CardLine(hud.NextStop(state), 12, UiTheme.Muted);
             hud.EndSideCard();
         }

@@ -115,14 +115,18 @@ namespace Gamesim.Episode
                 CreateCompetitionStationMesh();
                 AddCompetitionStationMarker(competitionPlayerStation,"Your competition station");
                 foreach(var pair in competitionArenaActors.Where(pair=>contestants.Contains(pair.Key)))
-                    AddCompetitionStationMarker(pair.Value,state.phase==EpisodePhase.Veto?"Veto station":"HoH station");
+                    AddCompetitionStationMarker(pair.Value,state.phase==EpisodePhase.Veto?"Veto station":IsFinalHoHPart(state.phase)?"Final HoH station":"HoH station");
             }
             var sign=new GameObject("Award and discipline",typeof(TextMeshPro));
             sign.transform.SetParent(competitionArenaRoot.transform,false);
             sign.transform.position=new Vector3(bounds.center.x,bounds.max.y+2.7f,bounds.max.z-.4f);
             sign.transform.rotation=Quaternion.Euler(0,180,0);sign.transform.localScale=Vector3.one;
             var label=sign.GetComponent<TextMeshPro>();label.fontSize=5;label.alignment=TextAlignmentOptions.Center;
-            label.text=(state.phase==EpisodePhase.Veto?"POWER OF VETO":"HEAD OF HOUSEHOLD")+"\n"+EpisodeEngine.CompetitionCategory(state).ToUpperInvariant();
+            // The final parts name their part where HEAD OF HOUSEHOLD stands (ENDGAME-PLAN F3).
+            string award=state.phase==EpisodePhase.Veto?"POWER OF VETO"
+                :IsFinalHoHPart(state.phase)?"FINAL HOH \u00b7 PART "+(state.phase==EpisodePhase.FinalHoHPart1?1:state.phase==EpisodePhase.FinalHoHPart2?2:3)
+                :"HEAD OF HOUSEHOLD";
+            label.text=award+"\n"+EpisodeEngine.CompetitionCategory(state).ToUpperInvariant();
             var definition=CompetitionDefinitions.For(state);if(definition!=null)label.text+="\n"+definition.Title;
             label.color=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
             TickCompetitionArena(); return competitionArenaStaging;

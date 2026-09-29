@@ -339,7 +339,19 @@ namespace Gamesim.Episode
             if (medium != null) phase.font = medium;
             // The endgame's line carries the week as well as the phase ("Week 4 · Final eviction"):
             // it may shrink to fit rather than lose its end.
-            if (label != null) { phase.fontSizeMin = Mathf.Min(phase.fontSizeMin, 11f * FontScale); phase.textWrappingMode = TextWrappingModes.NoWrap; }
+            if (label != null)
+            {
+                phase.fontSizeMin = Mathf.Min(phase.fontSizeMin, 11f * FontScale);
+                phase.textWrappingMode = TextWrappingModes.NoWrap;
+                // "Week 4 · Final eviction" is wider than the slot even at the smallest size; then
+                // the phase says itself alone. The endgame's week no longer turns once Part 1 has
+                // begun, so it is the part of the line that says least.
+                bool autoSize = phase.enableAutoSizing; float size = phase.fontSize;
+                phase.enableAutoSizing = false; phase.fontSize = phase.fontSizeMin;
+                if (phase.GetPreferredValues(phase.text).x > phase.rectTransform.sizeDelta.x)
+                    phase.text = Localisation.Text(PhaseShort(state.phase));
+                phase.fontSize = size; phase.enableAutoSizing = autoSize;
+            }
             AutoSize(phase, 11);
             ClickThrough(chip);
         }
@@ -685,15 +697,13 @@ namespace Gamesim.Episode
             if (IsFinalThree(state))
             {
                 bool decided = state.phase == EpisodePhase.FinalEviction;
-                string part = state.phase == EpisodePhase.FinalHoHPart1 ? "Part 1 of 3"
-                    : state.phase == EpisodePhase.FinalHoHPart2 ? "Part 2 of 3"
-                    : state.phase == EpisodePhase.FinalHoHPart3 ? "Part 3 of 3" : "Ahead";
+                string part = EpisodeDirector.FinalHoHPartLabel(state.phase) ?? "Ahead";
                 if (finalist)
                 {
                     bool won = decided && state.hohId == player;
                     rows.Add(new Objective("Win the Final HoH", won ? "Won" : decided ? "Lost" : part, won));
                     var partner = FinalTwoPartner(state, player);
-                    rows.Add(new Objective("Decide who to trust", partner != null ? partner.name.Split(' ')[0] : "Open", partner != null));
+                    rows.Add(new Objective("Decide who to trust", partner != null ? FinalistRead.FirstName(partner.name) : "Open", partner != null));
                     // The case itself is the Final 2's to prepare (ENDGAME-PLAN F4): the row says so
                     // rather than promising a screen the Final 3 does not have.
                     rows.Add(new Objective("Prepare your case", "At the Final 2", false));
@@ -701,7 +711,7 @@ namespace Gamesim.Episode
                 else
                 {
                     var holder = decided && state.hohId != null ? state.Find(state.hohId) : null;
-                    rows.Add(new Objective("Follow the Final HoH", holder != null ? holder.name.Split(' ')[0] : part, holder != null));
+                    rows.Add(new Objective("Follow the Final HoH", holder != null ? FinalistRead.FirstName(holder.name) : part, holder != null));
                     rows.Add(new Objective("Weigh the finalists", "At the Final 2", false));
                     rows.Add(new Objective("Cast your vote", "Ahead", false));
                 }

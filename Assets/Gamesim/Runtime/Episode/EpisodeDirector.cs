@@ -876,6 +876,9 @@ namespace Gamesim.Episode
                         takeover.Play(CeremonyTakeover.FinalThreeKind, result.state.week,
                             CeremonySubjects(result.state, CeremonyTakeover.FinalThreeKind, wasActive, wasNominated), reducedMotion);
                     }
+                    // The final Head of Household's bracket as each part opens, and its crowning as
+                    // the final eviction does (EpisodeDirector.FinalHoH.cs; ENDGAME-PLAN F3).
+                    else PlayFinalHoHCard(result.state, wasPhase, wasActive);
                 }
                 if (revealed) HoldHudForReveal();
                 else if (command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)

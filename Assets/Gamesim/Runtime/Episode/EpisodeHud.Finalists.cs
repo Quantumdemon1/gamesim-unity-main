@@ -161,7 +161,7 @@ namespace Gamesim.Episode
             if (finalist.Bullets != null && finalist.Bullets.Count > 0)
             {
                 Gap(6f);
-                FinalistEyebrow(finalist.BulletsHeading ?? "IF YOU TAKE " + actor.name.Split(' ')[0].ToUpperInvariant());
+                FinalistEyebrow(finalist.BulletsHeading ?? "IF YOU TAKE " + FinalistRead.FirstName(actor.name).ToUpperInvariant());
                 foreach (var bullet in finalist.Bullets) FlowText("• " + bullet, 15, Paper);
             }
             PopContent();

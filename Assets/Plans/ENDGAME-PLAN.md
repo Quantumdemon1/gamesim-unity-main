@@ -357,6 +357,50 @@ From the commit that leaves three active until the final eviction:
   1.5-point bonus`, `Watch eligible housemates compete` and `Continue from competition
   results` each on one live button with the bracket card up; a test that pins the eyebrow
   and the result card's heading for a final part, since none does today.
+- **As built** (the F3 commit). What differs from the text above:
+  - *The bracket card plays as each part opens, not as the part before resolves.* A part's
+    own commit plays its standings card at once, and that card sorts above every takeover
+    (105 against 100), so a card on that commit would sit under the standings. The Advance
+    behind `Continue to the next ceremony` logs no competition, so a card keyed on the phase it
+    arrives in plays alone, as the Final Three card does. Part 2 opens with "Final HoH · Part
+    2": the Part 1 winner badged `WON PART 1`, the two who play badged `PART 2`, and "{A} won
+    Part 1 and waits in Part 3. {B} and {C} play for the other seat." Part 3 opens with the two
+    part winners badged `WON PART 1` and `WON PART 2` and the third `WATCHING`. The kind is
+    `FinalHoHPart`; the takeover gained a title and a line per call, and `PlayingKind`.
+  - *The panel closes as a bracket card plays.* The takeover takes no input, and the click
+    that moves it on would otherwise land on the next part's briefing beneath it, where
+    `Accessible alternative` commits. Every walk and every player reopens the station for the
+    next decision, as after the Final Three card.
+  - *The crowning* (`FinalHoHCrowned`) plays on the commit into the final eviction: "Final
+    Head of Household", the winner badged `FINAL HOH` and the other two `FINAL 3`, the line
+    the player's ("You won it. One decision remains: who sits beside you in the Final 2.") or
+    the winner's; the winner plays Won and the room turns to them. The decision screen does
+    not open by itself: nothing reopened the station after that commit, and an automatic open
+    would race every walk's own. The objective chip already says "One decision remains".
+  - *The award title* is "Final HoH, Part n of 3", with no separator inside it: the game
+    screen's eyebrow and the result card split the title at its first one. The eyebrow reads
+    `FINAL HOH, PART 1 OF 3`, the result card heads itself with the game and carries the part
+    in its week line (which may now shrink to fit), and before rules 3 the title names the
+    mini game so the card still has one. `EpisodeDirector.FinalHoHPartLabel` is the one
+    source of "Part n of 3", the objectives card included.
+  - *The player is spoken to.* Every line that can hold the player says "you" ("You won Part
+    1 and wait in Part 3.", "You and Will play for the final Head of Household.", "You
+    watch.", "At stake: who joins you in Part 3."): the default player is called "You", and a
+    name with a third-person verb read "You waits". Names on the endgame's lines skip a title
+    ("Dr. Will Kirby" is Will), through `FinalistRead.FirstName`.
+  - *The stakes line* on the briefing says what each part is for (Part 1's winner goes
+    straight to Part 3; Part 2 is for the other seat, against the Part 1 winner; Part 3 is the
+    final Head of Household and the choice). The old line said the same for all three.
+  - *The yard sign* reads `FINAL HOH · PART n` where `HEAD OF HOUSEHOLD` stood; the markers
+    are named `Final HoH station` (a name only: the discs carry no text). Whether the sign
+    reads mirrored from the house is untested, as it was before.
+  - *With it:* the week chip's endgame line gives up the week when "Week 4 · Final eviction"
+    is wider than its slot at the smallest size; F2's fit check had missed it, because TMP
+    does not report a line cut short in its box as overflowing. The endgame tests now count
+    the characters drawn against those held.
+  - *Tests:* the bracket, standings and crowning walked through a real Part 1 to the final
+    eviction (the cards' kinds, words and badges, the panel closed, every word fitting, the
+    winner's Won); the titles, labels and stakes from cloned states under rules 2 and 4.
 
 ### F4 Jury preparation and the jury house (HUD; one saved fact)
 
@@ -709,7 +753,7 @@ untouched).
 |---|---|---|
 | F1 | The Final 3 frame: the strip, the objectives card with the jury strip, the folded rail, the two-row feed and the ENDGAME PREPARATION head on the window at three (built; the trait row deferred, see F1) | PlayMode in the window at three, at Part 1 and at two asserts the words, the marks and the card's foot; the overlap and compact suites green |
 | F2 | The comparison and the decision screen, gated; with them F1's context card at three and the Diary Room's study copy (built; see F2's note) | The gate's EditMode tests; the decision by caption; the window-at-three fixture asserts the context card's words |
-| F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows | Both card kinds in a fixture at three; the eyebrow and heading pinned |
+| F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows (built; see F3's note) | Both card kinds in a fixture at three; the eyebrow and heading pinned |
 | F4 | Preparation, the lock and the jury house; schema 21 with the argument | Bands and the effect under both rules; migrations green, the load pins at 21 |
 | F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions | Receipts, categories, the sign by fit, draw counts pinned |
 | F6 | The juror's screen, the hidden vote card, the reveal on the screen, the winner screen, the results grid, one placement function | The reveal's tests on both paths, a tie on each; the ways on by caption; the report's pins kept or moved |

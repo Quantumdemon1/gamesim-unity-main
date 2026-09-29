@@ -100,9 +100,12 @@ namespace Gamesim.Episode
             {
                 case EpisodePhase.HoH: return "Head of Household";
                 case EpisodePhase.Veto: return "Power of Veto";
-                case EpisodePhase.FinalHoHPart1: return "Final HoH · Part 1";
-                case EpisodePhase.FinalHoHPart2: return "Final HoH · Part 2";
-                case EpisodePhase.FinalHoHPart3: return "Final HoH · Part 3";
+                // No separator inside the award: the game screen and the result card split the title
+                // at its first one, and "Final HoH · Part 1" lost the part to the eyebrow and headed
+                // the card with it instead of the game (ENDGAME-PLAN F3).
+                case EpisodePhase.FinalHoHPart1:
+                case EpisodePhase.FinalHoHPart2:
+                case EpisodePhase.FinalHoHPart3: return "Final HoH, " + FinalHoHPartLabel(phase);
                 default: return "Competition";
             }
         }

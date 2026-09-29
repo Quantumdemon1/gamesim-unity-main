@@ -302,11 +302,17 @@ namespace Gamesim.Simulation
             return new Fact(label, leans.Count + (leans.Count == 1 ? " juror: " : " jurors: ") + names, certainty);
         }
 
-        private static string FirstName(EpisodeState s, string id)
+        private static string FirstName(EpisodeState s, string id) => FirstName(s.Find(id)?.name ?? id);
+
+        /// <summary>
+        /// The name a line calls someone by: the first word that is not a title ("Dr. Will Kirby"
+        /// is Will), as the cast screen's CastSelect.FirstName has it.
+        /// </summary>
+        public static string FirstName(string name)
         {
-            string name = s.Find(id)?.name ?? id;
-            int space = name.IndexOf(' ');
-            return space > 0 ? name.Substring(0, space) : name;
+            if (string.IsNullOrEmpty(name)) return string.Empty;
+            var words = name.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+            return words.FirstOrDefault(word => !word.EndsWith(".", System.StringComparison.Ordinal)) ?? words[0];
         }
 
         // ------------------------------------------------------------ the decision

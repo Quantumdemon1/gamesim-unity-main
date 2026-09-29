@@ -556,15 +556,19 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Places for a scene's people in its room: a loose ring round the room's middle, each on the
-        /// walkable floor, in the room, and a stride from the next - the gather the plan's staging
-        /// asks for. Fewer than asked when the room is tight. The NavMesh is not carved by furniture,
-        /// so a spot may be under a sofa: the stage checks each body's clearance when it takes one.
+        /// walkable floor, in the room, clear of furniture, and a stride from the next - the gather the
+        /// plan's staging asks for. Fewer than asked when the room is tight.
+        ///
+        /// <para>The NavMesh has holes only under the set pieces it was baked with, and a body's
+        /// clearance is checked against sight, which furniture is not part of; so a seat cloned at run
+        /// time - the ceremonies' hot seats and gallery rows - is caught only by the furniture test here.</para>
         /// </summary>
         private List<Vector3> ScenePlaces(string room, int count)
         {
             var places = new List<Vector3>();
             var marker = room == null ? null : RoomMarker(room);
             if (marker == null || count <= 0 || !HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out _)) return places;
+            Physics.SyncTransforms();
             var centre = marker.transform.position;
             for (int ring = 0; ring < 3 && places.Count < count; ring++)
             {
@@ -575,12 +579,26 @@ namespace Gamesim.Episode
                     var wanted = centre + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
                     if (!NavMesh.SamplePosition(wanted, out var hit, 0.8f, NavMesh.AllAreas)) continue;
                     if (!rooms.TryLocate(hit.position, 0.3f, out var at) || at != room) continue;
+                    if (InsideFurniture(hit.position)) continue;
                     if (places.Any(p => (p - hit.position).sqrMagnitude < 1.1f * 1.1f)) continue;
                     places.Add(hit.position);
                 }
             }
             return places;
         }
+
+        /// <summary>For the tests: the places a scene in this room would offer its people now.</summary>
+        public IReadOnlyList<Vector3> ScenePlacesForDiagnostics(string room, int count) => ScenePlaces(room, count);
+
+        private static readonly Collider[] sceneFurniture = new Collider[8];
+
+        /// <summary>
+        /// Whether a body standing here would be inside furniture: the ceremony marks' own capsule
+        /// (CeremonySets) against the furniture layer. The caller syncs the transforms.
+        /// </summary>
+        private bool InsideFurniture(Vector3 feet) =>
+            gameObject.scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * 0.35f, feet + Vector3.up * 1.5f, 0.3f,
+                sceneFurniture, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore) > 0;
 
         /// <summary>
         /// Step in on a walk-in: the engine's own walk-in, committed now with the pair the player

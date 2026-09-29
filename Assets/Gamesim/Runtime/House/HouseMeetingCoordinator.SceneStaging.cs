@@ -31,10 +31,11 @@ namespace Gamesim.House
 
         /// <summary>
         /// Borrows the free ones among these houseguests and walks each to the first of the offered
-        /// places their own body clears (the reservation checks the capsule against the furniture's
-        /// collision, which the NavMesh does not). Any earlier scene is let go first. Returns how many
-        /// were staged; none when the house is busy with a stage of its own - a ceremony's included -
-        /// paused, or holding a meeting.
+        /// places it can reserve: on the floor, with its own body clear of other actors and of what
+        /// blocks sight. Furniture is not part of that test; the director's places have already been
+        /// kept clear of it. Any earlier scene is let go first. Returns how many were staged; none
+        /// when the house is busy with a stage of its own - a ceremony's included - paused, or
+        /// holding a meeting.
         /// </summary>
         public int BeginSceneStage(string key, IReadOnlyList<string> ids, IReadOnlyList<Vector3> places)
         {

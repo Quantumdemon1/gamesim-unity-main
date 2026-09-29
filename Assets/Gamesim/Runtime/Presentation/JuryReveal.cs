@@ -31,6 +31,13 @@ namespace Gamesim.Presentation
     {
         private const float ReadDelay = 0.35f;
 
+        /// <summary>
+        /// The least room left between the card's glass and each edge of the canvas when the card is
+        /// fitted to it: a little more than the glass's halo (<see cref="UiTheme.GlowWidth"/>), so the
+        /// halo stays whole too.
+        /// </summary>
+        private const float EdgeRoom = 12f;
+
         /// <summary>The show's name, as the host says it at the end.</summary>
         public const string ShowName = "Gamesim: The House";
 
@@ -97,6 +104,8 @@ namespace Gamesim.Presentation
         private CeremonyPace pace = CeremonyPace.Suspenseful;
         private float elapsed, upFor, speed = 1f;
         private bool playing, reduced, usingPad, tied, resultShown;
+        // The card's whole size with its glass, at full size, and the canvas size it was last fitted to.
+        private Vector2 cardExtent, fittedTo;
 
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -232,6 +241,7 @@ namespace Gamesim.Presentation
             CeremonyOverlays.Showing();
             upFor += Time.unscaledDeltaTime;
             FollowDevice();
+            FitToCanvas();
 
             if (Dismissable && CeremonyTakeover.SpeedPressed()) SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
             if (Dismissable && CeremonyTakeover.SkipPressed())
@@ -292,6 +302,27 @@ namespace Gamesim.Presentation
         {
             speed = value;
             if (speedMark != null) speedMark.gameObject.SetActive(speed > 1f);
+        }
+
+        /// <summary>
+        /// Shrinks the card, glass and all, to a canvas too short or too narrow to hold it. The
+        /// canvas keeps about 1600 by 900's area whatever the screen's shape, so a screen wider than
+        /// 16:9 leaves it less height - about 780 units at 21:9 - and at large text, with a full jury
+        /// and the count's headline, the card wants about 900. Every label shrinks with its box, so
+        /// each still draws; the scrim and the confetti keep the whole canvas. Checked each frame,
+        /// because the window can change shape during the reveal, and because a canvas attached this
+        /// frame is only sized by its scaler as it first draws.
+        /// </summary>
+        private void FitToCanvas()
+        {
+            if (column == null) return;
+            var room = ((RectTransform)transform).rect.size;
+            if (room.x <= 0f || room.y <= 0f || room == fittedTo) return;
+            fittedTo = room;
+            float fit = Mathf.Min(1f,
+                Mathf.Max(1f, room.x - 2f * EdgeRoom) / cardExtent.x,
+                Mathf.Max(1f, room.y - 2f * EdgeRoom) / cardExtent.y);
+            column.localScale = new Vector3(fit, fit, 1f);
         }
 
         private void FollowDevice()
@@ -415,6 +446,7 @@ namespace Gamesim.Presentation
             glass.anchorMin = Vector2.zero; glass.anchorMax = Vector2.one;
             glass.offsetMin = new Vector2(-34f * scale, -26f * scale); glass.offsetMax = new Vector2(34f * scale, 26f * scale);
             UiTheme.Glass(glass, UiTheme.GlassRadius);
+            cardExtent = column.sizeDelta + new Vector2(68f, 52f) * scale;
 
             eyebrow = HudPrimitives.Label("Eyebrow", column, 15f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.characterSpacing = 14f;
@@ -523,6 +555,11 @@ namespace Gamesim.Presentation
             controls = HudPrimitives.Label("Controls", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             controls.text = CeremonyTakeover.ControlsFor(usingPad);
             Place(controls.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 244f) * scale);
+
+            // Fitted afresh: this jury and this text size make a card of their own size.
+            column.localScale = Vector3.one;
+            fittedTo = Vector2.zero;
+            FitToCanvas();
         }
 
         /// <summary>Each finalist's colour, carried by their votes' chips: the reference's blue and red, in the house's tones.</summary>

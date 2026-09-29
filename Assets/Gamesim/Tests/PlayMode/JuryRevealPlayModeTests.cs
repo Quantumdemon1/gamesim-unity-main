@@ -152,7 +152,25 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Text(reveal, "Count").text, Is.EqualTo(forAlex + " TO " + forCasey));
             AssertVotesColouredByOutcome(reveal, votes, Alex);
             AssertHeadlineLaidOut(reveal, "at large text");
+            AssertCardOnCanvas(reveal, "at large text");
             AssertEveryLabelDraws(reveal, "at large text, at the result");
+        }
+
+        [UnityTest]
+        public IEnumerator JuryReveal_TheCardFitsAScreenWiderThanSixteenByNine()
+        {
+            // A 21:9 screen leaves the canvas about 780 units tall, where the card at large text
+            // with fourteen jurors and the count's headline wants about 900. The canvas's height is
+            // pinned to 780 so the run stands in for that screen, whatever shape its own screen is.
+            var votes = Enumerable.Range(0, 14).Select(i => i % 7 == 3 || i % 2 == 0 ? Alex : Casey).ToArray();
+            var reveal = Reveal(votes, Alex, fontScale: 1.2f, canvasHeight: 780f);
+            yield return SkipToTheResult(reveal);
+            yield return null;
+            Assert.That(((RectTransform)reveal.transform).rect.height, Is.EqualTo(780f).Within(1f), "The canvas stands in for a 21:9 screen's.");
+            Assert.That(Rects(reveal, "Card").Single().localScale.y, Is.LessThan(1f), "The card is shrunk to the canvas.");
+            AssertCardOnCanvas(reveal, "on a wide screen at large text");
+            AssertHeadlineLaidOut(reveal, "on a wide screen at large text");
+            AssertEveryLabelDraws(reveal, "on a wide screen at large text");
         }
 
         [Test]
@@ -237,11 +255,20 @@ namespace Gamesim.Tests.PlayMode
 
         // ------------------------------------------------------------------ helpers
 
-        private JuryReveal Reveal(string[] votes, string winner, bool reducedMotion = true, string playerFinalist = null, float fontScale = 1f)
+        private JuryReveal Reveal(string[] votes, string winner, bool reducedMotion = true, string playerFinalist = null, float fontScale = 1f,
+            float canvasHeight = 0f)
         {
             var reveal = JuryReveal.Attach(owner);
             cards.Add(reveal.gameObject);
             reveal.FontScale = fontScale;
+            if (canvasHeight > 0f)
+            {
+                // Matched wholly to the height, the scaler makes the canvas exactly this tall, as a
+                // screen of another shape would.
+                var scaler = reveal.GetComponent<CanvasScaler>();
+                scaler.matchWidthOrHeight = 1f;
+                scaler.referenceResolution = new Vector2(1600f, canvasHeight);
+            }
             Assert.That(reveal.Play(Pair(playerFinalist), Jury(votes), winner, reducedMotion, CeremonyPace.Quick, 7), Is.True);
             return reveal;
         }
@@ -327,6 +354,26 @@ namespace Gamesim.Tests.PlayMode
             var column = Rects(card, "Card").Single();
             Assert.That(Bottom(order[order.Length - 1]), Is.GreaterThanOrEqualTo(Bottom(column) - 0.5f),
                 where + ": the card is tall enough to hold everything down to its controls.");
+        }
+
+        /// <summary>
+        /// The card, glass and all, lies inside its canvas: nothing on it - the eyebrow at its head,
+        /// the controls at its foot - is cut off at the screen's edge.
+        /// </summary>
+        private static void AssertCardOnCanvas(Component card, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var canvas = new Vector3[4];
+            ((RectTransform)card.transform).GetWorldCorners(canvas);
+            foreach (var name in new[] { "Card", "Card glass" })
+            {
+                var corners = new Vector3[4];
+                Rects(card, name).Single().GetWorldCorners(corners);
+                Assert.That(corners[0].x, Is.GreaterThanOrEqualTo(canvas[0].x - 0.5f), where + ": '" + name + "' is inside the canvas's left edge.");
+                Assert.That(corners[0].y, Is.GreaterThanOrEqualTo(canvas[0].y - 0.5f), where + ": '" + name + "' is inside the canvas's foot.");
+                Assert.That(corners[2].x, Is.LessThanOrEqualTo(canvas[2].x + 0.5f), where + ": '" + name + "' is inside the canvas's right edge.");
+                Assert.That(corners[2].y, Is.LessThanOrEqualTo(canvas[2].y + 0.5f), where + ": '" + name + "' is inside the canvas's head.");
+            }
         }
 
         private static float Top(RectTransform rect)

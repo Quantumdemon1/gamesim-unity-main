@@ -917,14 +917,18 @@ namespace Gamesim.Tests.PlayMode
             yield return null; yield return null;
         }
 
-        private IEnumerator InstallFinaleFixture(bool playerFinalist, string playerName = null)
+        private IEnumerator InstallFinaleFixture(bool playerFinalist, string playerName = null, bool finaleRules = false)
         {
             // Generate a legal authoritative history, then install it in this test's isolated slot.
             // The full reachable-station test separately covers ordinary whole-season navigation.
             EpisodeState fixture = null;
             for (uint seed = 1; seed <= 60 && fixture == null; seed++)
             {
-                var engine = new EpisodeEngine(ContentCatalog.Create(seed));
+                // The finale rules are the season's from its start or not at all: the first question
+                // is drawn at the final eviction's commit (ENDGAME-PLAN F5b).
+                var initial = ContentCatalog.Create(seed);
+                if (finaleRules) EpisodeEngine.EnableFinale(initial);
+                var engine = new EpisodeEngine(initial);
                 int guard = 0;
                 while (engine.Snapshot.phase != EpisodePhase.JuryQuestioning && guard++ < 150)
                 {

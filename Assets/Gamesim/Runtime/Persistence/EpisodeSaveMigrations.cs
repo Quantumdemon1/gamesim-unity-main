@@ -21,6 +21,42 @@ namespace Gamesim.Persistence
             if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
                 throw new InvalidDataException("Simulation schema version must be an integer.");
             long version = (long)original["schemaVersion"];
+            if (version == 21) return (JObject)original.DeepClone();
+            if (version < 1 || version > 20) throw new InvalidDataException("Unsupported simulation schema version.");
+            var result = UpgradeV20ToV21(version == 20 ? original : PrepareV20Payload(original, out _));
+            migrated = true;
+            return result;
+        }
+
+        /// <summary>
+        /// Adds the finale rules switched off (ENDGAME-PLAN §3): a rules week of 0, so a season saved
+        /// before them keeps the catalogue's questions to its end, no final argument, and on every
+        /// jury exchange the three fields only a history question fills, empty. Hand-written literals,
+        /// never the live type.
+        /// </summary>
+        public static JObject UpgradeV20ToV21(JObject original)
+        {
+            FrozenEpisodeV20.Validate(original);
+            var result = (JObject)original.DeepClone();
+            result.Add("finaleRulesStartWeek", 0);
+            result.Add("finalArgument", JValue.CreateNull());
+            foreach (JObject exchange in ((JArray)result["juryExchanges"]).OfType<JObject>())
+            {
+                exchange.Add("category", JValue.CreateNull());
+                exchange.Add("receiptKind", JValue.CreateNull());
+                exchange.Add("receiptId", JValue.CreateNull());
+            }
+            result["schemaVersion"] = 21;
+            return result;
+        }
+
+        /// <summary>Frozen v1-v19-to-v20 dispatch.</summary>
+        public static JObject PrepareV20Payload(JObject original, out bool migrated)
+        {
+            migrated = false;
+            if (original == null || original["schemaVersion"]?.Type != JTokenType.Integer)
+                throw new InvalidDataException("Simulation schema version must be an integer.");
+            long version = (long)original["schemaVersion"];
             if (version == 20) return (JObject)original.DeepClone();
             if (version < 1 || version > 19) throw new InvalidDataException("Unsupported simulation schema version.");
             var result = UpgradeV19ToV20(version == 19 ? original : PrepareV19Payload(original, out _));

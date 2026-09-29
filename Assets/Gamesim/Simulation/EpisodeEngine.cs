@@ -162,6 +162,7 @@ namespace Gamesim.Simulation
                 // Free, like a reply: a question is not an action, and the read is the play.
                 case EpisodeCommandKind.AskVote: AskVote(s, c); break;
                 case EpisodeCommandKind.ReadPerson: ReadPerson(s, c); break;
+                case EpisodeCommandKind.LockFinalArgument: LockFinalArgument(s, c); break;
                 default: Social(s, c); break;
             }
         }

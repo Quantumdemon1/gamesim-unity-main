@@ -39,7 +39,7 @@ namespace Gamesim.Tests.EditMode
             var old = V19(); string original = old.ToString();
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(20));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(21));
             int week = (int)old["week"];
             Assert.That((int)migrated["agencyRulesStartWeek"], Is.EqualTo(week + 1), "The week the save was in keeps the house it was played with.");
             Assert.That(JToken.DeepEquals(migrated["relationships"], old["relationships"]), Is.True, "No first impressions into a season under way.");
@@ -61,7 +61,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void TheWholeChainFromV15ReachesTwenty()
+        public void TheWholeChainFromV15ReachesTheCurrentSchemaThroughTwenty()
         {
             var engine = new EpisodeEngine(ContentCatalog.Create(1019));
             for (int i = 0; i < 40 && engine.Snapshot.week < 2; i++) Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
@@ -69,7 +69,7 @@ namespace Gamesim.Tests.EditMode
             old["schemaVersion"] = 15;
             var migrated = EpisodeSaveMigrations.PrepareCurrentPayload(old, out var changed);
             Assert.That(changed, Is.True);
-            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(20));
+            Assert.That((int)migrated["schemaVersion"], Is.EqualTo(21));
             Assert.That((int)migrated["agencyRulesStartWeek"], Is.EqualTo((int)old["week"] + 1));
             Assert.That((int)migrated["weekRulesStartWeek"], Is.EqualTo((int)old["week"] + 1));
             CheckShape(migrated);

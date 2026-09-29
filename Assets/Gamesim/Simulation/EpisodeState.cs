@@ -103,6 +103,13 @@ namespace Gamesim.Simulation
     {
         public string questionerId, finalistId, tone, question, optionA, optionB, correctChoice;
         public string answerChoice, answer, opponentAnswer;
+        /// <summary>
+        /// Schema 21 (ENDGAME-PLAN F5b), under the finale rules only: the question's category, and
+        /// the receipt it was built from, by kind and the id that finds its row. Null on the web
+        /// catalogue's questions and on a player juror's. Under the rules <see cref="answerChoice"/>
+        /// holds the response's key (<see cref="FinaleQuestions"/>) where the catalogue's holds A or B.
+        /// </summary>
+        public string category, receiptKind, receiptId;
         public bool completed;
         public JuryExchangeState Clone() => (JuryExchangeState)MemberwiseClone();
     }
@@ -127,6 +134,24 @@ namespace Gamesim.Simulation
         public string speakerId, text;
         public bool isPlayerAuthored;
         public FinalSpeechState Clone() => (FinalSpeechState)MemberwiseClone();
+    }
+
+    /// <summary>
+    /// Schema 21 (ENDGAME-PLAN F4b): the player finalist's locked final argument, keys only: one of
+    /// the five themes and the references of the signature moments that back it
+    /// (<see cref="FinalArgument"/>). The speech it templates is never saved here; it goes in
+    /// through the speech's own command.
+    /// </summary>
+    [Serializable] public sealed class FinalArgumentState
+    {
+        public string theme;
+        public List<string> momentRefs = new List<string>();
+        public FinalArgumentState Clone()
+        {
+            var copy = (FinalArgumentState)MemberwiseClone();
+            copy.momentRefs = momentRefs == null ? null : new List<string>(momentRefs);
+            return copy;
+        }
     }
 
     [Serializable] public sealed class DiaryPromptState
@@ -201,7 +226,7 @@ namespace Gamesim.Simulation
     [Serializable]
     public sealed class EpisodeState
     {
-        public int schemaVersion = 20;
+        public int schemaVersion = 21;
         public int competitionRulesVersion = 1;
         public string sessionId;
         public uint seed, randomState;
@@ -234,12 +259,16 @@ namespace Gamesim.Simulation
         public List<int> windowActions = new List<int> { 0, 0, 0, 0 };
         /// <summary>Schema 20: the week NPC agency begins (NPC-AGENCY-PLAN.md §2); 0 for a save that never reached it.</summary>
         public int agencyRulesStartWeek;
+        /// <summary>Schema 21: the week the finale rules begin (ENDGAME-PLAN §3); 0 for a save that never reached them.</summary>
+        public int finaleRulesStartWeek;
         public List<CompetitionScore> competitionScores = new List<CompetitionScore>();
         public List<EpisodeEvent> events = new List<EpisodeEvent>();
         public List<string> acceptedCommandIds = new List<string>();
         public List<JuryExchangeState> juryExchanges = new List<JuryExchangeState>();
         public int juryQuestionIndex;
         public List<FinalSpeechState> finalSpeeches = new List<FinalSpeechState>();
+        /// <summary>Schema 21: the player finalist's final argument, null until they lock it (ENDGAME-PLAN F4b).</summary>
+        public FinalArgumentState finalArgument;
         public List<RelationshipArcState> relationshipArcs = new List<RelationshipArcState>();
         public WebPersonaState playerPersona = WebDiaryRoom.CreateInitialPersonaState();
         public WebJurySentimentState jurySentiment = WebJurySentiment.CreateInitial();
@@ -447,6 +476,7 @@ namespace Gamesim.Simulation
             copy.playerPersona = playerPersona.Clone();
             copy.jurySentiment = jurySentiment.Clone();
             copy.pendingDiary = pendingDiary?.Clone();
+            copy.finalArgument = finalArgument?.Clone();
             copy.resolvedDiaryIds = new List<string>(resolvedDiaryIds);
             copy.loyaltyOaths = loyaltyOaths.Select(x => new WebOathRecord { playerId = x.playerId, targetId = x.targetId, week = x.week, timestamp = x.timestamp }).ToList();
             copy.oathOpportunities = new List<string>(oathOpportunities);
@@ -546,7 +576,12 @@ namespace Gamesim.Simulation
         /// <summary>Asking a voter, <c>targetId</c>, straight where their vote is. They may lie.</summary>
         AskVote,
         /// <summary>Reading a houseguest, <c>targetId</c>: on a hit, how they see you becomes known.</summary>
-        ReadPerson, CallTheVote
+        ReadPerson, CallTheVote,
+        /// <summary>
+        /// Schema 21 (ENDGAME-PLAN F4b): the player finalist locks their final argument, the theme's
+        /// key in <c>secondTargetId</c> and the moments' references in <c>text</c>, one to a line.
+        /// </summary>
+        LockFinalArgument
     }
 
     /// <summary>

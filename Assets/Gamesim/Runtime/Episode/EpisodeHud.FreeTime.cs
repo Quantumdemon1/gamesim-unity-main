@@ -512,8 +512,8 @@ namespace Gamesim.Episode
             public Action Choose;
         }
 
-        /// <summary>How tiles are laid: two rows to a column, or as cards several to a row (the free-time screens).</summary>
-        public enum TileStyle { Rows, Cards }
+        /// <summary>How tiles are laid: two rows to a column, as cards several to a row (the free-time screens), or one to a row (a column of choices).</summary>
+        public enum TileStyle { Rows, Cards, List }
 
         /// <summary>The moves that name nobody, as cards several to a row on a wide column, else two to a row.</summary>
         public void MoveTiles(IList<MoveTile> tiles, TileStyle style = TileStyle.Rows)
@@ -542,7 +542,7 @@ namespace Gamesim.Episode
             float s = FontScale, spacing = 10f * s;
             bool cards = style == TileStyle.Cards && FontScale <= 1.05f && ContentWidth() >= 560f;
             int columns = cards ? Mathf.Clamp(Mathf.FloorToInt((ContentWidth() + spacing) / (176f * s + spacing)), 2, Mathf.Max(2, tiles.Count))
-                : tiles.Count > 1 ? 2 : 1;
+                : style == TileStyle.List ? 1 : tiles.Count > 1 ? 2 : 1;
             float cellWidth = (ContentWidth() - spacing * (columns - 1)) / columns;
             // Tall enough for a caption and two lines under it at the player's text size; a card
             // stacks its chips and its foot as well.

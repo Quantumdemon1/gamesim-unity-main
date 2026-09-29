@@ -86,6 +86,7 @@ namespace Gamesim.Episode
                 seasonReport.finalistAnswers == 0 ? "Player-finalist jury answers were not reached in this legal season." : null,
                 seasonReport.jurorQuestions == 0 ? "Player-juror questions were not reached in this legal season." : null,
                 !seasonReport.playerSpeechSubmitted ? "Player final speech was not required in this legal season." : null,
+                !seasonReport.finalArgumentLocked ? "The final argument's lock was not reached in this legal season." : null,
                 seasonReport.diaryReflections == 0 ? "No active-player reflection became available in this legal season." : null,
                 seasonReport.oathOutcome == "Not reached" ? "A loyalty opportunity was not reached within the optional legal conversation budget." : null,
                 "Precision timing input and physical keyboard/mouse event synthesis are outside this runner's coverage."
@@ -132,6 +133,8 @@ namespace Gamesim.Episode
                 && fresh.Active.Count() == SeasonBuilder.DefaultHouseSize
                 && fresh.contestants.Count == SeasonBuilder.DefaultHouseSize
                 && fresh.contestants.Count(actor => actor.isPlayer) == 1,"The cast screen must start a genuine default-size season.");
+            // A lost EnableFinale would fall back to the catalogue's A and B and never walk the responses.
+            RequireSeason(fresh.finaleRulesStartWeek == 1,"The cast screen's season must play the finale rules from its first week.");
             CheckSaveIsIsolated();
             seasonReport.sessionId = fresh.sessionId; seasonReport.seed = fresh.seed.ToString();
             seasonReport.profileSavePath = previousSlot; seasonReport.seasonSavePath = seasonDirector.SavePath;
@@ -262,11 +265,28 @@ namespace Gamesim.Episode
                     seasonReport.juryReloadVerified = true;
                 }
                 var exchange = state.juryExchanges[state.juryQuestionIndex];
+                // The final argument, once, before the first answer (ENDGAME-PLAN F4b): the door, a
+                // narrative, the first moments, the lock - the step's one commit.
+                if (EpisodeDirector.FinalCaseAvailable(state) && state.finalArgument == null)
+                {
+                    yield return ClickSeasonButton(EpisodeDirector.FinalCaseCaption);
+                    yield return ClickSeasonButton(FinalArgument.Label(FinalArgument.Themes[0]));
+                    foreach (var moment in FinalArgument.Moments(state).Take(FinalArgument.Required(state)).ToList())
+                        yield return ClickSeasonButton(moment.text);
+                    yield return CaptureSeason("final-case",graphical);
+                    yield return ClickSeasonButton(EpisodeDirector.LockArgumentCaption);
+                    RequireSeason(seasonDirector.Snapshot.finalArgument != null && seasonDirector.Snapshot.finalArgument.theme == FinalArgument.Themes[0],
+                        "The lock must save the chosen narrative.");
+                    seasonReport.finalArgumentLocked = true;
+                    yield break;
+                }
                 if (exchange.completed) yield return ClickSeasonButton(EpisodeHud.JuryContinueCaption);
                 else if (exchange.finalistId == state.playerId)
                 {
                     if (seasonReport.finalistAnswers == 0) yield return CaptureSeason("jury-finalist-question",graphical);
-                    yield return ClickSeasonButton("A · " + exchange.optionA); seasonReport.finalistAnswers++;
+                    // Under the finale rules a response the question always offers; the catalogue's A otherwise.
+                    yield return ClickSeasonButton(EpisodeEngine.FinaleOn(state) ? FinaleQuestions.Caption(FinaleQuestions.Own) : "A · " + exchange.optionA);
+                    seasonReport.finalistAnswers++;
                 }
                 else
                 {
@@ -285,6 +305,12 @@ namespace Gamesim.Episode
                     // for the legacy uGUI InputField, missed when the HUD moved to TextMeshPro (the PlayMode
                     // helper was caught then; this one only runs when the walk makes the player a finalist).
                     var field = seasonDirector.GetComponentsInChildren<TMPro.TMP_InputField>().Single(input => input.isActiveAndEnabled && input.name == "Final speech draft");
+                    // The locked argument fills the editor; the walk checks it, then writes its own.
+                    if (state.finalArgument != null)
+                    {
+                        RequireSeason(field.text == FinalArgument.Speech(state),"The locked final argument must fill the speech editor.");
+                        field.text = "";
+                    }
                     field.Select(); field.ActivateInputField(); yield return null; yield return null;
                     foreach (char character in VerificationSpeech)
                         field.ProcessEvent(new Event { type = EventType.KeyDown, character = character, keyCode = character == '\n' ? KeyCode.Return : KeyCode.None });
@@ -561,7 +587,7 @@ namespace Gamesim.Episode
         {
             public string status, startedUtc, finishedUtc, workload, artifactId, sessionId, seed, saveDirectory,
                 profileSavePath, seasonSavePath, winnerId, playerFinalStatus, oathOutcome, oathNote;
-            public bool graphical, finished, playerSpeechSubmitted, juryReloadVerified, profileSavePreserved;
+            public bool graphical, finished, playerSpeechSubmitted, juryReloadVerified, profileSavePreserved, finalArgumentLocked;
             public StudyReport study;
             public BlocReport blocs;
             public AutonomyReport autonomy;

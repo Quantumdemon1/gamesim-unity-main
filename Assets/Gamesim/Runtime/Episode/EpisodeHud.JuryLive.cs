@@ -28,6 +28,28 @@ namespace Gamesim.Episode
 
         public const string JuryHintWords = "The jury is listening.";
 
+        /// <summary>The five responses' column, the receipt's line, and the final case's parts (ENDGAME-PLAN F4b/F5b).</summary>
+        public const string JuryResponsesName = "Jury responses", JuryReceiptLineName = "Jury receipt",
+            FinalCaseResumeName = "Your season résumé", FinalCaseThemesName = "Final case narratives", FinalCaseMomentsName = "Final case moments";
+
+        /// <summary>
+        /// The responses offered for a history question, one to a row: the caption, the words the
+        /// player would say, and the risk. The locked argument's own response comes first, a read at
+        /// render that is never saved; nothing on a tile says which one lands.
+        /// </summary>
+        private void ResponseTiles(EpisodeState state, JuryExchangeState exchange)
+        {
+            var offered = FinaleQuestions.Offered(exchange.category, exchange.receiptKind).ToList();
+            string first = FinaleQuestions.FirstFor(state.finalArgument?.theme);
+            offered = offered.OrderBy(response => response == first ? 0 : 1).ToList();
+            Tiles(JuryResponsesName, offered.Select(response => new MoveTile
+            {
+                Caption = FinaleQuestions.Caption(response), Description = FinaleQuestions.Line(exchange.category, response),
+                Corner = RiskTag(FinaleQuestions.Risk(response)), CornerTint = RiskTint(FinaleQuestions.Risk(response)), Glyph = "chat",
+                Choose = () => director.AnswerJury(response),
+            }).ToList(), TileStyle.List);
+        }
+
         /// <summary>
         /// The three columns. <paramref name="controls"/> draws the centre - the answers, the tone
         /// questions, the recorded answers and Continue - exactly as the panel always drew them.
@@ -77,14 +99,14 @@ namespace Gamesim.Episode
             string reaction = Reaction(state, exchange, questioner);
             if (reaction != null)
             {
-                bool impressed = exchange.answerChoice == exchange.correctChoice;
+                bool impressed = exchange.category != null ? FinaleQuestions.Landed(state, exchange) : exchange.answerChoice == exchange.correctChoice;
                 var line = FlowText(reaction, 15, impressed ? UiTheme.Allied : UiTheme.Conflict);
                 line.name = JuryReactionName;
             }
             PopContent();
 
             PushContent(LiveColumn(JuryReceiptColumnName, row, right), right);
-            if (playerAnswers) Receipt(state, exchange.questionerId);
+            if (playerAnswers) Receipt(state, exchange);
             else FinalistReceipt(state, exchange.finalistId);
             PopContent();
         }
@@ -110,6 +132,9 @@ namespace Gamesim.Episode
         public static string Reaction(EpisodeState state, JuryExchangeState exchange, ContestantState questioner)
         {
             if (exchange == null || !exchange.completed || exchange.finalistId != state.playerId) return null;
+            // A history question's note, from what was saved, as the engine wrote it.
+            if (exchange.category != null)
+                return FinaleQuestions.Note(questioner?.name ?? "Unknown housemate", FinaleQuestions.Landed(state, exchange));
             bool choice(string key) => key == "A" || key == "B";
             if (!choice(exchange.answerChoice) || !choice(exchange.correctChoice)) return null;
             if (string.IsNullOrEmpty(exchange.questionerId) || exchange.questionerId == exchange.finalistId) return null;
@@ -118,9 +143,18 @@ namespace Gamesim.Episode
         }
 
         /// <summary>The season's receipt for the juror asking: where they stand with the player and the dated lines between them.</summary>
-        private void Receipt(EpisodeState state, string jurorId)
+        private void Receipt(EpisodeState state, JuryExchangeState exchange)
         {
+            string jurorId = exchange.questionerId;
             ReceiptEyebrow("SEASON RECEIPT");
+            // A history question's own receipt first (ENDGAME-PLAN F5b): the row it was built from.
+            if (exchange.category != null)
+            {
+                string line = exchange.category == FinaleQuestions.Comparison ? "No receipt: they are weighing you against the other finalist."
+                    : FinaleQuestions.ReceiptLine(state, exchange) ?? "The record no longer holds the row this question came from.";
+                var receipt = FlowText(line, 14, Paper);
+                receipt.name = JuryReceiptLineName;
+            }
             var read = JuryHouseRead.ReadJuror(state, jurorId);
             var band = FlowText(read.band.ToUpperInvariant(), 14, BandTint(read.band));
             band.name = JurorBandName;

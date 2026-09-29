@@ -92,7 +92,7 @@ namespace Gamesim.Tests.EditMode
         public void LegalPactReplayMatchesOriginalSourceAndChangesTargetThroughPrivatePressure()
         {
             var fixture = Fixture(); var state = Witness().Snapshot;
-            Assert.That(state.schemaVersion, Is.EqualTo(20));
+            Assert.That(state.schemaVersion, Is.EqualTo(21));
             Assert.That((int)fixture["state"]["schemaVersion"], Is.EqualTo(5), "Keep the original witness unchanged.");
             // Compared against a subsystem created with the same declared boundary, because that
             // boundary is configuration rather than activity. What this asserts is unchanged: no

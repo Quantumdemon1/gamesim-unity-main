@@ -24,6 +24,8 @@ namespace Gamesim.Episode
         {
             public ContestantState Actor;
             public JuryHouseRead.Juror Read;
+            /// <summary>Under the finale rules: the theme the juror values and the answers that land with them (ENDGAME-PLAN F4b).</summary>
+            public IList<string> Swayed;
         }
 
         /// <summary>A band's colour: warm in the allied green, wavering in amber, cold in the warning orange, bitter in red, the rest muted.</summary>
@@ -116,6 +118,7 @@ namespace Gamesim.Episode
                 JurorLines("KNOWS", read.knows);
                 JurorLines("MISSED", read.missing);
                 JurorLines("BETWEEN YOU", read.highlights);
+                JurorLines("MAY BE SWAYED BY", juror.Swayed);
             }
             PopContent();
         }

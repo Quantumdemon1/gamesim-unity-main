@@ -36,7 +36,7 @@ namespace Gamesim.Episode
         public void OpenJuryHouse()
         {
             if (!JuryHouseAvailable(projected)) return;
-            moveScreenId = null; comparingFinalists = false;
+            moveScreenId = null; comparingFinalists = false; finalCaseOpen = false;
             juryHouseOpen = true;
             Render();
         }
@@ -71,6 +71,18 @@ namespace Gamesim.Episode
             if (JuryHouseAvailable(state)) hud.Action(JuryHouseCaption, OpenJuryHouse);
         }
 
+        /// <summary>"May be swayed by": the theme a juror values and the answers that land with them, whatever they ask.</summary>
+        private static System.Collections.Generic.List<string> SwayedBy(ContestantState juror)
+        {
+            if (juror == null) return null;
+            string theme = FinalArgument.ThemeOf(juror);
+            return new System.Collections.Generic.List<string>
+            {
+                "An argument of " + FinalArgument.Label(theme),
+                "Answers that " + string.Join(" or ", FinaleQuestions.Values(theme).Select(r => FinaleQuestions.Caption(r).ToLowerInvariant())),
+            };
+        }
+
         private void JuryHouseScreen(EpisodeState state)
         {
             var house = JuryHouseRead.Read(state);
@@ -82,8 +94,17 @@ namespace Gamesim.Episode
             hud.BeginSideCard(EpisodeHud.JuryMattersName, "WHAT MATTERS TO THIS JURY");
             foreach (var line in house.matters) hud.CardLine(line, 14, UiTheme.Paper);
             hud.CardLine("The trait each juror leads with is the one their questions come from.", 12, UiTheme.Muted);
+            bool rules = EpisodeEngine.FinaleOn(state);
+            if (rules)
+            {
+                // Under the finale rules, what the jury values: the theme each juror's lead trait reads as.
+                var themes = FinalistRead.Jurors(state).Where(j => j.status != ContestantStatus.Expelled)
+                    .GroupBy(FinalArgument.ThemeOf).OrderByDescending(g => g.Count()).ThenBy(g => System.Array.IndexOf(FinalArgument.Themes, g.Key));
+                foreach (var theme in themes)
+                    hud.CardLine(theme.Count() + " of " + house.jurors.Count + " value " + FinalArgument.Label(theme.Key) + ".", 13, UiTheme.Paper);
+            }
             hud.EndSideCard();
-            hud.JurorCards(house.jurors.Select(juror => new EpisodeHud.JurorCard { Actor = state.Find(juror.id), Read = juror })
+            hud.JurorCards(house.jurors.Select(juror => new EpisodeHud.JurorCard { Actor = state.Find(juror.id), Read = juror, Swayed = rules ? SwayedBy(state.Find(juror.id)) : null })
                 .Where(card => card.Actor != null).ToList());
         }
     }

@@ -40,7 +40,7 @@ namespace Gamesim.Episode
         public void OpenFinalistComparison()
         {
             if (!Preparing(projected)) return;
-            moveScreenId = null; juryHouseOpen = false;
+            moveScreenId = null; juryHouseOpen = false; finalCaseOpen = false;
             comparingFinalists = true;
             Render();
         }

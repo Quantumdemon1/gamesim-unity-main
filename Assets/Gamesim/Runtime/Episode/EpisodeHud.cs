@@ -197,6 +197,8 @@ namespace Gamesim.Episode
         private ScrollRect modalScroll;
         private string preferredSelection, retainedImportPath = "";
         private string retainedSpeech = "", speechSession, speechSpeaker;
+        /// <summary>The locked argument the speech editor was last filled from, so a draft the player cleared stays clear.</summary>
+        private string speechSeededFor;
         private bool restoreSelection;
         private GameObject lastSelection;
         public float FontScale { get; set; } = 1;
@@ -958,6 +960,12 @@ namespace Gamesim.Episode
                         Action(tone + " · " + option.text,() => director.AnswerJury(tone));
                     }
                 }
+                else if (exchange.finalistId == state.playerId && EpisodeEngine.FinaleOn(state))
+                {
+                    // A history question (ENDGAME-PLAN F5b): the five responses, one to a row.
+                    Paragraph("Choose your response. Only the committed response changes the record.");
+                    ResponseTiles(state, exchange);
+                }
                 else if (exchange.finalistId == state.playerId)
                 {
                     Paragraph("Choose your answer. Only the committed response changes the record.");
@@ -978,7 +986,16 @@ namespace Gamesim.Episode
             Paragraph("The finalists make their final case before the jury votes.");
             if (speechSession != state.sessionId || speechSpeaker != state.playerId)
             {
-                speechSession = state.sessionId; speechSpeaker = state.playerId; retainedSpeech = "";
+                speechSession = state.sessionId; speechSpeaker = state.playerId; retainedSpeech = ""; speechSeededFor = null;
+            }
+            // The locked final argument fills the editor once (ENDGAME-PLAN F4b): a draft already
+            // there is the player's and stays, and one they clear is not filled again.
+            var argument = state.finalArgument;
+            string seed = argument == null ? null : argument.theme + "|" + string.Join("|", argument.momentRefs);
+            if (seed != null && seed != speechSeededFor)
+            {
+                if (retainedSpeech.Length == 0) retainedSpeech = FinalArgument.Speech(state);
+                speechSeededFor = seed;
             }
             foreach (var speech in state.finalSpeeches)
             {

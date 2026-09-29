@@ -639,7 +639,7 @@ namespace Gamesim.Episode
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;
-            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; reviewingSpeeches = false;
+            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
@@ -678,6 +678,38 @@ namespace Gamesim.Episode
         public void OpenSettings() { PauseNpcSocialForPanel(); ClosePanels(); settingsOpen = true; player.SetInputEnabled(false); cameraRig.ControlsEnabled = false; Render(); }
         /// <summary>The notebook, on its own page: your notes on each houseguest. The rail's rows are the other pages.</summary>
         public void OpenJournal() => OpenNotebookAt(NotebookSection.Notes, scroll: false);
+
+        /// <summary>
+        /// The status line for the one event a commit lets the player see: its words, or a phase
+        /// change in the words the week chip uses. The engine logs a phase by its enum's own name
+        /// ("Week 4 · FinalHoHPart2"), and the saved log keeps that text as it is; only the line
+        /// on the screen is worded. Null when there is no event to report.
+        /// </summary>
+        public static string StatusLine(EpisodeState state, EpisodeEvent visible)
+        {
+            if (visible == null) return null;
+            return visible.kind == "phase" ? PhaseLine(visible.phase, visible.week) : StoryText.Log(state, visible);
+        }
+
+        /// <summary>
+        /// A phase as the status line announces it: "Week 4 · Final HoH, Part 2 of 3", "Week 4 · The
+        /// final decision", "Jury questioning". The finale's phases have no week of their own worth
+        /// naming; every other phase is the week chip's short word under its week.
+        /// </summary>
+        public static string PhaseLine(EpisodePhase phase, int week)
+        {
+            string part = FinalHoHPartLabel(phase);
+            if (part != null) return "Week " + week + " · Final HoH, " + part;
+            switch (phase)
+            {
+                case EpisodePhase.FinalEviction: return "Week " + week + " · The final decision";
+                case EpisodePhase.JuryQuestioning: return "Jury questioning";
+                case EpisodePhase.FinalSpeeches: return "Final speeches";
+                case EpisodePhase.Jury: return "The jury votes";
+                case EpisodePhase.Finished: return "The season is over";
+                default: return "Week " + week + " · " + EpisodeHud.PhaseShort(phase);
+            }
+        }
 
         public CommandResult Submit(EpisodeCommand command)
         {
@@ -723,7 +755,7 @@ namespace Gamesim.Episode
             var visible = result.accepted
                 ? result.state.events.LastOrDefault(e => e.audienceIds.Count == 0 || e.audienceIds.Contains(result.state.playerId))
                 : null;
-            message = result.accepted ? (visible == null ? null : StoryText.Log(result.state, visible)) ?? "Decision committed." : result.reason;
+            message = result.accepted ? StatusLine(result.state, visible) ?? "Decision committed." : result.reason;
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
@@ -784,8 +816,10 @@ namespace Gamesim.Episode
                 if (field != null && takeover != null)
                 {
                     EndCeremonyCards(includingResult: competition == null);
+                    // A house bigger than the field gets a line that says who plays and why; the
+                    // card's own says everyone does (VetoFieldLine is null when that is true).
                     takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
-                        VetoField(result.state), reducedMotion);
+                        VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
                 }
 
                 var ceremony = result.state.events.Skip(knownEvents)
@@ -876,6 +910,8 @@ namespace Gamesim.Episode
                         EndCeremonyCards();
                         takeover.Play(CeremonyTakeover.FinalThreeKind, result.state.week,
                             CeremonySubjects(result.state, CeremonyTakeover.FinalThreeKind, wasActive, wasNominated), reducedMotion);
+                        // The card has the frame to itself: the chrome stands aside until it is down.
+                        HoldHudForReveal(redraw: false);
                     }
                     // The final Head of Household's bracket as each part opens, and its crowning as
                     // the final eviction does (EpisodeDirector.FinalHoH.cs; ENDGAME-PLAN F3).
@@ -897,7 +933,12 @@ namespace Gamesim.Episode
         /// </summary>
         private bool PlayGenericCeremonyCard(EpisodeState state, string kind, string text, HashSet<string> wasActive, HashSet<string> wasNominated)
         {
-            if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion);
+            // The veto meeting's card says which way it went, from the block before this commit and
+            // after it; every other card keeps its kind's own line.
+            string line = kind == CeremonySting.VetoKind ? VetoMeetingLine(wasNominated, state.nominees) : null;
+            if (takeover != null) takeover.Play(kind, state.week, CeremonySubjects(state, kind, wasActive, wasNominated), reducedMotion, null, line);
+            // The final Head of Household's choice is an endgame card: the chrome stands aside for it.
+            if (takeover != null && kind == CeremonySting.FinalEvictionKind) HoldHudForReveal(redraw: false);
             if (sting != null) sting.Play(kind, text, reducedMotion);
             ReactToCeremony(state, kind, wasActive, wasNominated);
             FrameCeremony(kind);
@@ -1409,6 +1450,9 @@ namespace Gamesim.Episode
                 hud.Action(SeasonReport.NewSeasonCaption, NewSeason);
                 hud.Action("Review the season", OpenJournal);
                 hud.Action(SeasonReport.MainMenuCaption, OpenMainMenu);
+                // And two ways back into the night: the vote read again, and the jury's questions
+                // (EpisodeDirector.Finale.cs; MOCKUP-PASS-PLAN M4).
+                FinaleRecordControls(state);
                 return;
             }
             if (EpisodeEngine.IsCompetition(state.phase))
@@ -1544,6 +1588,11 @@ namespace Gamesim.Episode
             if (opening != null) { Destroy(opening.gameObject); opening = null; }
         }
 
+        /// <summary>
+        /// A phase's title as the panel's header prints it. The final Head of Household is one
+        /// title over its three parts, which the header's line under it tells apart; the finale's
+        /// two jury beats say they are the finale's (MOCKUP-PASS M3).
+        /// </summary>
         public static string PhaseTitle(EpisodePhase phase)
         {
             switch (phase)
@@ -1552,15 +1601,28 @@ namespace Gamesim.Episode
                 case EpisodePhase.HoH: return "HEAD OF HOUSEHOLD";
                 case EpisodePhase.VetoSelection: return "VETO PLAYER SELECTION";
                 case EpisodePhase.VetoMeeting: return "VETO CEREMONY";
-                case EpisodePhase.FinalHoHPart1: return "FINAL HOH · ENDURANCE";
-                case EpisodePhase.FinalHoHPart2: return "FINAL HOH · SKILL";
-                case EpisodePhase.FinalHoHPart3: return "FINAL HOH · MENTAL";
+                case EpisodePhase.FinalHoHPart1:
+                case EpisodePhase.FinalHoHPart2:
+                case EpisodePhase.FinalHoHPart3: return "FINAL HEAD OF HOUSEHOLD";
                 case EpisodePhase.FinalEviction: return "CHOOSE YOUR FINAL TWO";
-                case EpisodePhase.JuryQuestioning: return "FACE THE JURY";
+                case EpisodePhase.JuryQuestioning: return "FINALE · FACE THE JURY";
                 case EpisodePhase.FinalSpeeches: return "MAKE YOUR FINAL CASE";
+                case EpisodePhase.Jury: return "FINALE · JURY VOTE";
                 case EpisodePhase.Finished: return "SEASON FINALE";
                 default: return phase.ToString().ToUpperInvariant();
             }
+        }
+
+        /// <summary>
+        /// The title for where the season stands, which the phase alone cannot always say: the final
+        /// eviction is the player's to choose only when they hold the house, and otherwise it is
+        /// the final eviction they watch.
+        /// </summary>
+        public static string PhaseTitle(EpisodeState state)
+        {
+            if (state == null) return string.Empty;
+            if (state.phase == EpisodePhase.FinalEviction && state.hohId != state.playerId) return "THE FINAL EVICTION";
+            return PhaseTitle(state.phase);
         }
     }
 }

@@ -1830,10 +1830,15 @@ namespace Gamesim.Episode
         /// The colour a phase announces itself in. Deliberately the same vocabulary the ceremony
         /// takeover uses — gold for the veto, red for the block and the vote — so a player learns
         /// one palette rather than two.
+        ///
+        /// <para>Read from the state, not the phase alone: the final eviction is the block's red
+        /// when somebody else holds the house, and the crown's gold when the player does and the
+        /// choice is theirs (MOCKUP-PASS M3).</para>
         /// </summary>
-        private static Color PhaseTint(EpisodePhase phase)
+        private static Color PhaseTint(EpisodeState state)
         {
-            switch (phase)
+            if (PlayerDecidesTheFinalEviction(state)) return UiTheme.Gold;
+            switch (state.phase)
             {
                 case EpisodePhase.Nomination:
                 case EpisodePhase.Eviction:
@@ -1860,10 +1865,16 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>Whether the season is at its final eviction with the player holding the house: the choice is theirs.</summary>
+        private static bool PlayerDecidesTheFinalEviction(EpisodeState state) =>
+            state != null && state.phase == EpisodePhase.FinalEviction && !string.IsNullOrEmpty(state.hohId) && state.hohId == state.playerId;
+
         /// <summary>The glyph a phase's header carries, drawn in its <see cref="PhaseTint"/>.</summary>
-        private static string PhaseGlyph(EpisodePhase phase)
+        private static string PhaseGlyph(EpisodeState state)
         {
-            switch (phase)
+            // The final Head of Household's choice wears the crown it was won with.
+            if (PlayerDecidesTheFinalEviction(state)) return "crown";
+            switch (state.phase)
             {
                 case EpisodePhase.Nomination: return "target";
                 case EpisodePhase.Eviction:
@@ -1894,7 +1905,7 @@ namespace Gamesim.Episode
         /// </summary>
         private RectTransform PhaseBand(RectTransform parent, EpisodeState state)
         {
-            var tint = PhaseTint(state.phase);
+            var tint = PhaseTint(state);
 
             var rect = Panel("Phase band",parent,new Color(0,0,0,0),UiTheme.PanelRadius);
             rect.anchorMin = new Vector2(0,1); rect.anchorMax = new Vector2(1,1); rect.pivot = new Vector2(.5f,1);
@@ -1903,17 +1914,23 @@ namespace Gamesim.Episode
 
             // Where the words start: past the glyph when there is one, flush when a clone without
             // the icon set draws none.
-            var glyph = HudPrimitives.Glyph("Phase glyph",rect,PhaseGlyph(state.phase),tint,new Vector2(22,-14),26);
+            var glyph = HudPrimitives.Glyph("Phase glyph",rect,PhaseGlyph(state),tint,new Vector2(22,-14),26);
             float words = glyph != null ? 58f : 22f;
-            var title = FixedText(rect,EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),20,Paper,
+            var title = FixedText(rect,EpisodeDirector.PhaseTitle(state).ToUpperInvariant(),20,Paper,
                 new Vector2(words,-9),new Vector2(540,27));
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) title.font = bold;
             title.characterSpacing = 4f;
-            FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
-                    ? "Season complete"
-                    : state.Active.Count() + " houseguests remain"),
-                13,UiTheme.Muted,new Vector2(words,-36),new Vector2(540,20));
+            // A final part says which of the three it is and what it tests, in the gold the final
+            // Head of Household is played for: the title is the same over all three (MOCKUP-PASS M3).
+            string part = EpisodeDirector.FinalHoHPartLabel(state.phase);
+            if (part != null)
+                FixedText(rect,part + " · " + EpisodeEngine.CompetitionCategory(state),13,UiTheme.Gold,new Vector2(words,-36),new Vector2(540,20));
+            else
+                FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
+                        ? "Season complete"
+                        : state.Active.Count() + " houseguests remain"),
+                    13,UiTheme.Muted,new Vector2(words,-36),new Vector2(540,20));
 
             // The phase's colour as a short stroke under the title, over a hairline the width of
             // the panel that separates the header from what it heads.

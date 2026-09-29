@@ -43,17 +43,22 @@ namespace Gamesim.Tests.PlayMode
         /// has to skip the card or sit it out before those controls are there to press; a walk that
         /// pressed them under a reveal was pressing something nobody could see. This lands the
         /// skip's end state - the keys and clicks that skip are the reveal tests' subject - and
-        /// waits for the chrome to come back, rebuilt, before anything reaches for it.
+        /// waits for the chrome to come back, rebuilt, before anything reaches for it. The
+        /// endgame's cards are skipped with them: the chrome stands aside for those as well
+        /// (MOCKUP-PASS-PLAN M2), so a walk pressing the house's controls under one would be
+        /// pressing controls nobody can see.
         /// </summary>
         private IEnumerator SkipReveals()
         {
             var playing = SceneComponents<KeyCeremony>().Where(card => card.IsPlaying).ToList();
             var reveals = SceneComponents<VoteReveal>().Where(card => card.IsPlaying).ToList();
             var jury = SceneComponents<JuryReveal>().Where(card => card.IsPlaying).ToList();
-            if (playing.Count == 0 && reveals.Count == 0 && jury.Count == 0) yield break;
+            var endgame = SceneComponents<CeremonyTakeover>().Where(card => EpisodeDirector.IsEndgameCard(card.PlayingKind)).ToList();
+            if (playing.Count == 0 && reveals.Count == 0 && jury.Count == 0 && endgame.Count == 0) yield break;
             foreach (var card in playing) card.Cancel();
             foreach (var card in reveals) card.Cancel();
             foreach (var card in jury) card.Cancel();
+            foreach (var card in endgame) card.Cancel();
             // One frame for the director to hand the chrome back and redraw it, one for the copy it
             // replaced to be destroyed.
             yield return Frames(2);

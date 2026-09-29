@@ -138,6 +138,45 @@ namespace Gamesim.Tests.PlayMode
             return animator != null ? animator.GetBoneTransform(HumanBodyBones.Hips) : null;
         }
 
+        /// <summary>The houseguests in the house whose name plate the director has left up, by id.</summary>
+        private static string[] PlatesUp() => SceneComponents<HouseNpc>()
+            .Where(npc => npc.gameObject.activeInHierarchy && !npc.PlateSuppressed).Select(npc => npc.Id).ToArray();
+
+        /// <summary>The houseguests in the house whose name plate the director has taken down, by id.</summary>
+        private static string[] PlatesDown() => SceneComponents<HouseNpc>()
+            .Where(npc => npc.gameObject.activeInHierarchy && npc.PlateSuppressed).Select(npc => npc.Id).ToArray();
+
+        /// <summary>The houseguests whose plate is drawn at all, by id: a plate taken down or faded out by distance is not.</summary>
+        private static string[] PlatesDrawn() => SceneComponents<HouseNpc>()
+            .Where(npc => npc.gameObject.activeInHierarchy)
+            .Where(npc =>
+            {
+                var plate = Plate(npc);
+                var group = plate != null ? plate.GetComponent<CanvasGroup>() : null;
+                return group != null && group.alpha > 0.01f;
+            })
+            .Select(npc => npc.Id).ToArray();
+
+        /// <summary>The selection disc under the player, as the scene builds it.</summary>
+        private Renderer PlayerDisc() => player.GetComponentsInChildren<Transform>(true)
+            .Where(part => part.name == EpisodeDirector.PlayerMarkerName)
+            .Select(part => part.GetComponent<Renderer>()).SingleOrDefault(disc => disc != null);
+
+        /// <summary>A rect's lowest and highest points, as x and y, in another rect's own space.</summary>
+        private static Vector2 VerticalSpan(RectTransform space, RectTransform rect)
+        {
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            float low = float.MaxValue, high = float.MinValue;
+            foreach (var corner in corners)
+            {
+                float y = space.InverseTransformPoint(corner).y;
+                low = Mathf.Min(low, y);
+                high = Mathf.Max(high, y);
+            }
+            return new Vector2(low, high);
+        }
+
         [UnityTest]
         public IEnumerator CeremonyStage_TheNominationGathersTheHouseToTheTableAndPlaysTheKeysOnTheScreen()
         {
@@ -190,6 +229,78 @@ namespace Gamesim.Tests.PlayMode
                     || npc.GetComponent<HouseSeatPresentation>().IsExiting), Is.True, "The chairs empty.");
             Assert.That(player.HasActivityOwner, Is.False, "The player has their body back.");
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back.");
+        }
+
+        /// <summary>
+        /// The card plays to a clean frame (MOCKUP-PASS-PLAN M2). The name plates and the player's
+        /// disc are up through the summons, so the player can find a seat by them; they go down as
+        /// the card starts on the screen, where a plate hung over every face the camera cut to; and
+        /// they come back once the house is let go.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheCardPlaysWithNoPlateUpAndTheHouseGetsThemBack()
+        {
+            yield return InstallStagedSeason(51, AtNomination);
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged in the house.");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Summons), "The house is summoned first.");
+            var disc = PlayerDisc();
+            Assert.That(disc, Is.Not.Null, "The scene gives the player a selection disc.");
+            Assert.That(PlatesDown(), Is.Empty, "The plates are up through the summons: the player finds a seat by them.");
+            Assert.That(disc.enabled, Is.True, "and so is the disc under the player.");
+
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the card plays once the seats have filled or the summons has run its course");
+            // The director takes the plates down in its Update and each plate draws what it was told
+            // in its own LateUpdate, which the frame the card started in has not reached yet.
+            yield return null;
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Playing), "The card is still up.");
+            Assert.That(PlatesUp(), Is.Empty, "Every plate is down once the card plays on the screen.");
+            Assert.That(PlatesDrawn(), Is.Empty, "No plate is drawn over the faces the camera cuts to.");
+            Assert.That(disc.enabled, Is.False, "nor the disc at the player's feet.");
+
+            yield return SkipReveals();
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
+            yield return Frames(2);
+            Assert.That(PlatesDown(), Is.Empty, "The plates come back with the house.");
+            Assert.That(disc.enabled, Is.True, "and so does the disc.");
+        }
+
+        /// <summary>
+        /// The SAFE chip on the set's screen sits inside the photo it labels (MOCKUP-PASS-PLAN M2).
+        /// Pinned across the photo's top edge, as on the HUD's board, at the screen's scale it covered
+        /// the foot of the Head of Household's line above. The keys are played straight onto the
+        /// nomination room's screen - the screen's own frame, with nobody summoned.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheSafeChipOnTheScreenClearsTheHeadOfHouseholdsLine()
+        {
+            Assert.That(ScreenSurface.TryFind(director.gameObject.scene, CeremonySets.NominationRoom, out var screen), Is.True,
+                "The nomination room has its ceremony screen.");
+            var state = director.Snapshot;
+            // Houseguests first, so the Head of Household and the block are theirs and the player draws a key.
+            var people = state.Active.OrderBy(actor => actor.isPlayer ? 1 : 0)
+                .Select(actor => new KeyCeremony.Person(actor.id, actor.name, null, actor)).ToList();
+            Assert.That(people.Count, Is.GreaterThanOrEqualTo(4), "A Head of Household, two on the block, and a key to hand out.");
+            var keys = SceneComponents<KeyCeremony>().Single();
+            Assert.That(keys.Play(state.week, people[0].Name, false, people.Skip(3).ToList(), people.Skip(1).Take(2).ToList(),
+                true, CeremonyPace.Quick, screen), Is.True, "The keys play.");
+            Assert.That(keys.Surface, Is.SameAs(screen), "on the screen's frame.");
+            yield return WaitFor(() => keys.KeysShown >= 1, 12f, "the first key is out");
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+
+            var space = (RectTransform)keys.transform;
+            var hoh = keys.GetComponentsInChildren<TMPro.TMP_Text>().Single(label => label.name == "HoH");
+            var line = VerticalSpan(space, hoh.rectTransform);
+            // Every chip up, the one a new key is replacing included: they share the key's place.
+            var chips = keys.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == "Badge").ToList();
+            Assert.That(chips, Is.Not.Empty, "The key's holder wears the SAFE chip.");
+            foreach (var chip in chips)
+                Assert.That(VerticalSpan(space, chip).y, Is.LessThanOrEqualTo(line.x + 0.5f),
+                    "The chip's top stands under the foot of \"" + hoh.text + "\": the chip spans " + VerticalSpan(space, chip)
+                    + " and the line " + line + " on the screen's frame.");
+            yield return SkipReveals();
         }
 
         /// <summary>
@@ -333,8 +444,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsCeremonyStaged, Is.True, "The house keeps its seats while they go.");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release));
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down.");
+            // MOCKUP-PASS-PLAN M2: the walk out is the card's last beat, and its frame is as clean.
+            Assert.That(PlatesUp(), Is.Empty, "The plates stay down while the evicted walk out.");
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            yield return null;
+            Assert.That(PlatesDown(), Is.Empty, "The plates come back once the house is let go.");
         }
 
         [UnityTest]
@@ -352,6 +467,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(keys.IsPlaying, Is.True, "The keys play on the HUD at once.");
                 Assert.That(keys.Surface, Is.Null);
                 Assert.That(keys.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+                // MOCKUP-PASS-PLAN M2: a plate showed through the card's scrim on the HUD frame.
+                Assert.That(PlatesUp(), Is.Empty, "No plate is up under the keys on the HUD frame.");
             }
             yield return SkipReveals();
         }

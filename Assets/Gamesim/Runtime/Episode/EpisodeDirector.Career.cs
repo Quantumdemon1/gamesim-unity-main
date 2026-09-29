@@ -79,6 +79,7 @@ namespace Gamesim.Episode
             careerResetArmed = false;
             if (career == null) return;
             var archived = career.Reset();
+            ForgetSeasonNumber();
             message = archived == null
                 ? "There was no career record to reset."
                 : "Career record set aside as " + Path.GetFileName(archived) + ". A fresh record starts with your next finished season.";

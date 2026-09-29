@@ -77,7 +77,7 @@ namespace Gamesim.House
         /// <summary>
         /// Whether the plate is kept down whatever the distance: while the opening plays, the
         /// houseguests are introduced by their cards, and a plate over each head would name them
-        /// before the show does.
+        /// before the show does; and while a ceremony's card is up, whose frame is the show's.
         /// </summary>
         public bool PlateSuppressed { get; set; }
 

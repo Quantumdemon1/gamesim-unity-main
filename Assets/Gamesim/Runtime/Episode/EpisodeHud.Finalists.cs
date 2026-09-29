@@ -57,6 +57,11 @@ namespace Gamesim.Episode
         /// <summary>
         /// The columns, side by side at the resting text on a wide stage and one under another at
         /// the larger text or on a narrow one, as the paired choices go.
+        ///
+        /// <para>Side by side, the columns are one height and each card takes up the difference, so
+        /// what sits under the cards - the headline, the warning and the control - lines up across
+        /// the row whatever each card holds. Left to their own heights, the shorter card's control sat
+        /// higher than the other's, and the two choices read as unequal.</para>
         /// </summary>
         public void FinalistColumns(IList<FinalistColumn> finalists)
         {
@@ -70,12 +75,12 @@ namespace Gamesim.Episode
                 : row.gameObject.AddComponent<VerticalLayoutGroup>();
             layout.spacing = gap; layout.childAlignment = TextAnchor.UpperLeft;
             layout.childControlWidth = layout.childControlHeight = true;
-            layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true; layout.childForceExpandHeight = beside;
             float columnWidth = beside ? (width - gap * (finalists.Count - 1)) / finalists.Count : width;
-            foreach (var finalist in finalists) FinalistColumnIn(row, finalist, columnWidth);
+            foreach (var finalist in finalists) FinalistColumnIn(row, finalist, columnWidth, beside);
         }
 
-        private void FinalistColumnIn(RectTransform row, FinalistColumn finalist, float width)
+        private void FinalistColumnIn(RectTransform row, FinalistColumn finalist, float width, bool level)
         {
             float s = FontScale;
             var column = new GameObject("Finalist column · " + finalist.Actor.name, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement))
@@ -89,7 +94,10 @@ namespace Gamesim.Episode
             element.minWidth = 0f; element.preferredWidth = width; element.flexibleWidth = 1f;
 
             PushContent(column, width);
-            FinalistCard(finalist, width);
+            var card = FinalistCard(finalist, width);
+            // The card takes whatever height the row gives the column past its own, so the lines
+            // under it sit at the foot of every column alike.
+            if (level) card.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
             if (!string.IsNullOrEmpty(finalist.Headline))
             {
                 var headline = FlowText(finalist.Headline, 17, UiTheme.Heading);
@@ -110,7 +118,7 @@ namespace Gamesim.Episode
             PopContent();
         }
 
-        private void FinalistCard(FinalistColumn finalist, float width)
+        private RectTransform FinalistCard(FinalistColumn finalist, float width)
         {
             float s = FontScale;
             var actor = finalist.Actor;
@@ -165,6 +173,7 @@ namespace Gamesim.Episode
                 foreach (var bullet in finalist.Bullets) FlowText("• " + bullet, 15, Paper);
             }
             PopContent();
+            return card;
         }
 
         private void FinalistEyebrow(string words)

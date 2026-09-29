@@ -151,6 +151,8 @@ namespace Gamesim.Episode
 
             EndCeremonyCards();
             takeover.Play(kind, state.week, subjects, reducedMotion, title, FinalHoHLine(state));
+            // The card has the frame to itself: the chrome stands aside until it is down.
+            HoldHudForReveal(redraw: false);
             if (kind == CeremonyTakeover.FinalHoHCrownedKind)
             {
                 // The winner acts it out and the room turns to them: all three are still in the house.

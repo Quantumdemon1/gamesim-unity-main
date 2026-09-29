@@ -76,6 +76,113 @@ namespace Gamesim.Tests.EditMode
 
         private static float Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
 
+        /// <summary>
+        /// The living room as the gallery (MOCKUP-PASS-PLAN M21), at the scene's numbers: the U's base
+        /// of two four-seat couches at z -2.3 facing south, an arm each side facing in, the red chairs
+        /// facing the U, the room's own screen behind them on the south wall.
+        /// </summary>
+        private static Scene GalleryHouse()
+        {
+            var scene = EditorSceneManager.NewPreviewScene();
+            var pieces = new GameObject("Set Pieces");
+            SceneManager.MoveGameObjectToScene(pieces, scene);
+            var living = new GameObject("Living marker");
+            SceneManager.MoveGameObjectToScene(living, scene);
+            living.transform.position = new Vector3(-5f, 0f, -7.6f);
+            living.AddComponent<HouseRoomMarker>().Configure("Living");
+            var floor = new GameObject(CeremonySets.LivingFloorName);
+            SceneManager.MoveGameObjectToScene(floor, scene);
+            floor.transform.position = new Vector3(-7f, -0.15f, -5f);
+            floor.AddComponent<BoxCollider>().size = new Vector3(14f, 0.3f, 10f);
+            var screen = new GameObject(CeremonySets.LivingScreenName);
+            screen.transform.SetParent(pieces.transform, false);
+            screen.transform.SetPositionAndRotation(new Vector3(-8f, 0f, -8.9f), Quaternion.Euler(0f, 180f, 0f));
+            var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            board.name = "board";
+            board.transform.SetParent(screen.transform, false);
+            board.transform.localScale = new Vector3(2.6f, 1.5f, 0.1f);
+            board.transform.localPosition = new Vector3(0f, 1.75f, -0.54f);
+            Box(CeremonySets.LoungeFourName, new Vector3(-9.8f, 0f, -2.3f), new Vector3(3.44f, 0.80f, 0.92f), 0f, pieces.transform);
+            Box(CeremonySets.LoungeFourName, new Vector3(-6.2f, 0f, -2.3f), new Vector3(3.44f, 0.80f, 0.92f), 0f, pieces.transform);
+            Box(CeremonySets.LoungeThreeName, new Vector3(-11.78f, 0f, -5.6f), new Vector3(2.68f, 0.80f, 0.92f), 270f, pieces.transform);
+            Box(CeremonySets.LoungeThreeName, new Vector3(-4.22f, 0f, -5.6f), new Vector3(2.68f, 0.80f, 0.92f), 90f, pieces.transform);
+            Box(CeremonySets.WingbackName, new Vector3(-8.55f, 0f, -7.3f), new Vector3(0.9f, 1.25f, 0.9f), 180f, pieces.transform);
+            Box(CeremonySets.WingbackName, new Vector3(-7.45f, 0f, -7.3f), new Vector3(0.9f, 1.25f, 0.9f), 180f, pieces.transform);
+            Box("bb_set_lowtable", new Vector3(-8f, 0f, -5.6f), new Vector3(0.95f, 0.45f, 0.95f), 0f, pieces.transform);
+            return scene;
+        }
+
+        /// <summary>
+        /// On the gallery the whole house sits: fourteen couch seats and the two red chairs, all
+        /// anchors on the pieces where they stand. The chairs face the U and are approached from their
+        /// outer sides; the couch seats face their own way and are approached from in front, clear
+        /// of the couch's baked edge; slots fill the base from its middle outward, then the arms from
+        /// the base's end. Nothing is cloned, turned or moved.
+        /// </summary>
+        [Test]
+        public void TheGallerySeatsTheWholeHouseOnTheCouchesAndTheNomineesInRed()
+        {
+            var scene = GalleryHouse();
+            try
+            {
+                var pieces = scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true))
+                    .Where(t => t.name.StartsWith("bb_set_", System.StringComparison.Ordinal) || t.name == CeremonySets.LivingScreenName).ToList();
+                var before = pieces.Select(t => (t.position, t.rotation)).ToList();
+                CeremonySeating.Ensure(scene, 16);
+
+                var hot = CeremonySeating.Anchors(scene, CeremonySeating.HotSeat);
+                Assert.That(hot.Count, Is.EqualTo(2), "The two red chairs are the hot seats.");
+                Assert.That(hot[0].Position.x, Is.LessThan(hot[1].Position.x), "numbered west to east");
+                foreach (var seat in hot)
+                {
+                    Assert.That(seat.Seated, Is.True);
+                    Assert.That(Mathf.Abs(Mathf.DeltaAngle(seat.Facing, 0f)), Is.LessThan(1f), "facing the U, north");
+                    Assert.That(seat.SeatContact.y, Is.EqualTo(CeremonySets.WingbackSeatHeight).Within(0.01f), "at the chair's seat");
+                    Assert.That(Flat(seat.Approach, seat.Position), Is.EqualTo(CeremonySets.WingbackApproach).Within(0.01f));
+                    Assert.That(Mathf.Abs(seat.Approach.z - seat.Position.z), Is.LessThan(0.01f), "approached from the side,");
+                }
+                Assert.That(hot[0].Approach.x, Is.LessThan(hot[0].Position.x), "the west chair from the west,");
+                Assert.That(hot[1].Approach.x, Is.GreaterThan(hot[1].Position.x), "the east chair from the east.");
+
+                var gallery = CeremonySeating.Anchors(scene, CeremonySeating.GallerySeat);
+                Assert.That(gallery.Count, Is.EqualTo(14), "Fourteen couch seats: with the red chairs, the largest house.");
+                Assert.That(gallery.Select(s => s.Slot), Is.EqualTo(Enumerable.Range(0, 14)), "numbered in order");
+                var expected = new[]
+                {
+                    new Vector2(-8.66f, -2.4f), new Vector2(-7.34f, -2.4f), new Vector2(-9.42f, -2.4f), new Vector2(-6.58f, -2.4f),
+                    new Vector2(-10.18f, -2.4f), new Vector2(-5.82f, -2.4f), new Vector2(-10.94f, -2.4f), new Vector2(-5.06f, -2.4f),
+                    new Vector2(-11.68f, -4.84f), new Vector2(-4.32f, -4.84f), new Vector2(-11.68f, -5.6f), new Vector2(-4.32f, -5.6f),
+                    new Vector2(-11.68f, -6.36f), new Vector2(-4.32f, -6.36f),
+                };
+                for (int i = 0; i < gallery.Count; i++)
+                {
+                    var seat = gallery[i];
+                    Assert.That(new Vector2(seat.Position.x, seat.Position.z).x, Is.EqualTo(expected[i].x).Within(0.02f), "seat " + i + " x: the base from its middle out, then the arms from the base's end");
+                    Assert.That(seat.Position.z, Is.EqualTo(expected[i].y).Within(0.02f), "seat " + i + " z");
+                    Assert.That(seat.Seated, Is.True);
+                    Assert.That(seat.SeatContact.y, Is.EqualTo(CeremonySets.GallerySeatHeight).Within(0.01f), "at the cushion");
+                    float facing = i < 8 ? 180f : seat.Position.x < -8f ? 90f : 270f;
+                    Assert.That(Mathf.Abs(Mathf.DeltaAngle(seat.Facing, facing)), Is.LessThan(1f), "seat " + i + " faces " + facing);
+                    Assert.That(Flat(seat.Approach, seat.Position), Is.EqualTo(CeremonySets.GalleryApproach).Within(0.01f), "approached from in front");
+                }
+                var approaches = gallery.Select(s => s.Approach).Concat(hot.Select(s => s.Approach)).ToList();
+                for (int i = 0; i < approaches.Count; i++)
+                    for (int j = i + 1; j < approaches.Count; j++)
+                        Assert.That(Flat(approaches[i], approaches[j]), Is.GreaterThanOrEqualTo(0.7f), "approaches " + i + " and " + j + " stand apart");
+
+                Assert.That(CeremonySeating.Anchors(scene, CeremonySeating.SofaSeat), Is.Empty, "No sofa seats beside the gallery.");
+                var all = scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true)).ToList();
+                Assert.That(all.Count(t => t.name == CeremonySets.LivingScreenName), Is.EqualTo(1), "The room's own screen, not a clone.");
+                Assert.That(all.Any(t => t.name == CeremonySets.ChairName + " (hot seat)"), Is.False, "No hot seat is cloned.");
+                for (int i = 0; i < pieces.Count; i++)
+                {
+                    Assert.That(Flat(pieces[i].position, before[i].position), Is.LessThan(0.001f), pieces[i].name + " did not move");
+                    Assert.That(Quaternion.Angle(pieces[i].rotation, before[i].rotation), Is.LessThan(0.01f), pieces[i].name + " did not turn");
+                }
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
         [Test]
         public void TheTableSeatsEveryoneWhoDrawsAKeyWithTheHeadLeftOpen([Values(6, 8, 12, 16)] int houseguests)
         {

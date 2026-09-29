@@ -187,70 +187,103 @@ namespace Gamesim.Tests.EditMode
             finally { EditorSceneManager.ClosePreviewScene(scene); }
         }
 
+        /// <summary>
+        /// The living room as the eviction's set (MOCKUP-PASS-PLAN M21): the U of couches, the low
+        /// table and the red chairs on one navy rug; the room's screen on the south wall behind the
+        /// chairs, with the oak, the warm strips and the house mark round it; the prints on the north
+        /// partition, whose oak stays behind the U; the prototype's sofa, table and television gone.
+        /// </summary>
         [Test]
-        public void TheLivingRoomGetsItsFeatureWallRugClusterAndPrints()
+        public void TheLivingRoomIsTheEvictionsSetRoundItsScreenOnTheSouthWall()
         {
             var scene = EditorSceneManager.OpenPreviewScene(EpisodeScene);
             try
             {
                 var all = scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true)).ToArray();
                 var floor = all.First(t => t.name == "Living room floor").GetComponent<Renderer>().bounds;
+                bool InRoom(Transform t) => floor.Contains(new Vector3(t.position.x, floor.center.y, t.position.z));
                 var root = Root(scene);
                 var living = root.Find("Living room");
                 Assert.That(living, Is.Not.Null);
                 var renderers = living.GetComponentsInChildren<Renderer>(true);
                 Bounds BoundsOf(Transform t) => t.GetComponentsInChildren<Renderer>(true).Select(r => r.bounds).Aggregate((a, b) => { a.Encapsulate(b); return a; });
 
-                // The feature wall: oak on both segments of the north partition, a strip either side of the screen's place, the mark.
-                var bands = renderers.Where(r => r.name.StartsWith("Band · Living / bedroom", StringComparison.Ordinal)).ToList();
-                Assert.That(bands.Count, Is.EqualTo(2), "Oak slats on both segments of the north partition.");
-                foreach (var band in bands)
-                {
-                    Assert.That(AssetDatabase.GetAssetPath(band.sharedMaterial.GetTexture("_BaseMap")), Does.EndWith("wall_warm_oak_slats.png"), band.name);
-                    Assert.That(band.bounds.center.z, Is.GreaterThan(floor.max.z - 0.3f), band.name + " is on the north wall.");
-                }
-                var strips = renderers.Where(r => r.name == "Feature strip").ToList();
-                Assert.That(strips.Count, Is.EqualTo(2), "A lit strip either side of the screen's place.");
-                var television = all.First(t => t.name == "Television");
-                Assert.That(strips.Min(s => s.bounds.center.x), Is.LessThan(television.position.x), "one to its left,");
-                Assert.That(strips.Max(s => s.bounds.center.x), Is.GreaterThan(television.position.x), "one to its right,");
-                Assert.That(strips.All(s => s.sharedMaterial.renderQueue >= (int)RenderQueue.Transparent), Is.True, "both lit.");
-                Assert.That(renderers.Count(r => r.name == "House mark"), Is.EqualTo(1), "The house mark, once.");
+                // The set: four couches, two red chairs, the low table and the room's own screen, placed.
+                var couches = all.Where(t => (t.name == "bb_set_lounge4" || t.name == "bb_set_lounge3") && InRoom(t) && t.gameObject.activeInHierarchy).ToList();
+                Assert.That(couches.Count(t => t.name == "bb_set_lounge4"), Is.EqualTo(2), "The U's base: two four-seat couches.");
+                Assert.That(couches.Count(t => t.name == "bb_set_lounge3"), Is.EqualTo(2), "Its arms: two three-seat couches.");
+                var chairs = all.Where(t => t.name == "bb_set_wingback" && InRoom(t) && t.gameObject.activeInHierarchy).ToList();
+                Assert.That(chairs.Count, Is.EqualTo(2), "The two red chairs.");
+                var table = all.Single(t => t.name == "bb_set_lowtable" && InRoom(t));
+                var screen = all.Single(t => t.name == Gamesim.House.CeremonySets.LivingScreenName);
+                Assert.That(InRoom(screen), Is.True, "The room's own screen stands in the room.");
+                Assert.That(screen.position.z, Is.LessThan(floor.min.z + 1.6f), "on its stage by the south wall,");
+                Assert.That(chairs.All(c => c.position.z > screen.position.z && c.position.z < table.position.z), Is.True,
+                    "the red chairs between it and the table.");
+                foreach (var gone in new[] { "Television", "Coffee table (model)", "Sofa seat (model)" })
+                    Assert.That(all.Where(t => t.name == gone && InRoom(t)).All(t => !t.gameObject.activeInHierarchy), Is.True, gone + " is struck.");
+                Assert.That(all.Any(t => t.name == "loungeDesignSofa" && InRoom(t)), Is.False, "The U takes the kitchen-door sofa's place.");
 
-                // The rug binds the sofa and the coffee table.
-                var sofa = all.Single(t => t.name == "loungeDesignSofa" && floor.Contains(new Vector3(t.position.x, floor.center.y, t.position.z)));
-                var table = all.Single(t => t.name == "Coffee table (model)");
-                var sb = BoundsOf(sofa); var tb = BoundsOf(table);
+                // The feature wall: oak on the south wall, a warm strip either side of the screen, the mark; the oak behind the U stays.
+                var south = renderers.Where(r => r.name == "Band · South wing link left").ToList();
+                Assert.That(south.Count, Is.EqualTo(1), "Oak on the south wall behind the screen.");
+                Assert.That(AssetDatabase.GetAssetPath(south[0].sharedMaterial.GetTexture("_BaseMap")), Does.EndWith("wall_warm_oak_slats.png"));
+                Assert.That(renderers.Count(r => r.name.StartsWith("Band · Living / bedroom", StringComparison.Ordinal)), Is.EqualTo(2),
+                    "The north partition keeps its oak behind the U.");
+                var strips = renderers.Where(r => r.name == "Feature strip").ToList();
+                Assert.That(strips.Count, Is.EqualTo(2), "A lit strip either side of the screen.");
+                Assert.That(strips.Min(s => s.bounds.center.x), Is.LessThan(screen.position.x), "one to its left,");
+                Assert.That(strips.Max(s => s.bounds.center.x), Is.GreaterThan(screen.position.x), "one to its right,");
+                Assert.That(strips.All(s => s.bounds.center.z < floor.min.z + 0.3f), Is.True, "on the south wall,");
+                Assert.That(strips.All(s => s.sharedMaterial.renderQueue >= (int)RenderQueue.Transparent), Is.True, "both lit,");
+                Assert.That(strips.All(s => s.sharedMaterial.name.EndsWith("_warm", StringComparison.Ordinal)), Is.True, "and warm, not the cool strips elsewhere.");
+                Assert.That(renderers.Count(r => r.name == "House mark"), Is.EqualTo(1), "The house mark, once.");
+                Assert.That(renderers.Count(r => r.name == "Ceremony frame"), Is.EqualTo(1), "The screen in its gold frame.");
+                var idle = screen.GetComponentsInChildren<Renderer>(true).Where(r => r.name == Gamesim.Presentation.ScreenSurface.IdleDisplayName).ToList();
+                Assert.That(idle.Count, Is.EqualTo(1), "The screen idles on a board of its own,");
+                Assert.That(AssetDatabase.GetAssetPath(idle[0].sharedMaterial.GetTexture("_BaseMap")), Does.EndWith("display_idle_gamesim.png"),
+                    "the house's GAMESIM, not the nomination room's NOMINATIONS.");
+
+                // One navy rug under the couches' feet, the table and the chairs; the old rugs off.
                 var rug = renderers.Single(r => r.name == "Living rug");
-                var between = (new Vector2(sb.center.x, sb.center.z) + new Vector2(tb.center.x, tb.center.z)) * 0.5f;
-                Assert.That(Vector2.Distance(new Vector2(rug.bounds.center.x, rug.bounds.center.z), between), Is.LessThan(0.1f), "The rug is centred between the sofa and the table.");
-                Assert.That(rug.bounds.size.x, Is.EqualTo(4.4f).Within(0.05f));
-                var oldRugs = all.Where(t => !t.IsChildOf(root) && t.name.IndexOf("rug", StringComparison.OrdinalIgnoreCase) >= 0
-                        && floor.Contains(new Vector3(t.position.x, floor.center.y, t.position.z)))
+                Assert.That(AssetDatabase.GetAssetPath(rug.sharedMaterial.GetTexture("_BaseMap")), Does.EndWith("rug_living_navy_cream.png"));
+                Assert.That(rug.bounds.size.x, Is.EqualTo(7f).Within(0.05f));
+                // Under each couch's inner half - the seats' feet - toward the table.
+                Assert.That(couches.All(c =>
+                {
+                    var inward = table.position - c.position; inward.y = 0f;
+                    var feet = c.position + inward.normalized * 0.4f;
+                    return rug.bounds.Contains(new Vector3(feet.x, rug.bounds.center.y, feet.z));
+                }), Is.True, "under every couch's seats,");
+                foreach (var gone in new[] { "Books A", "Books B", "Vase", "Lamp - Living", "Frame - Living South" })
+                    Assert.That(all.Where(t => t.name == gone && InRoom(t)).All(t => !t.gameObject.activeInHierarchy), Is.True, "The old layout's " + gone + " is struck.");
+                Assert.That(all.Where(t => t.name.StartsWith("Television", StringComparison.Ordinal) && t.name.EndsWith("practical", StringComparison.Ordinal) && InRoom(t))
+                    .All(t => !t.gameObject.activeInHierarchy), Is.True, "The television's practicals are off with it.");
+                Assert.That(rug.bounds.Contains(new Vector3(table.position.x, rug.bounds.center.y, table.position.z)), Is.True, "under the table,");
+                Assert.That(chairs.All(c => rug.bounds.Contains(new Vector3(c.position.x, rug.bounds.center.y, c.position.z))), Is.True, "and the red chairs.");
+                var oldRugs = all.Where(t => !t.IsChildOf(root) && t.name.IndexOf("rug", StringComparison.OrdinalIgnoreCase) >= 0 && InRoom(t))
                     .Where(t => { var b = BoundsOf(t); return b.Intersects(rug.bounds); }).ToList();
-                Assert.That(oldRugs.SelectMany(t => t.GetComponentsInChildren<Renderer>(true)).All(r => !r.enabled), Is.True,
+                Assert.That(oldRugs.SelectMany(t => t.GetComponentsInChildren<Renderer>(true)).All(r => !r.enabled || !r.gameObject.activeInHierarchy), Is.True,
                     "The flat rugs under the new one are switched off, not stacked.");
 
                 // The table's cluster stands on its top.
-                foreach (var piece in new[] { "bb_set_bookstack", "bb_set_candle", "bb_set_tray" })
+                var tb = BoundsOf(table);
+                foreach (var piece in new[] { "bb_set_bookstack", "bb_set_candle", "bb_set_ph_plantsmall" })
                 {
                     var thing = living.GetComponentsInChildren<Transform>(true).Single(t => t.name == piece);
                     var b = BoundsOf(thing);
-                    Assert.That(b.min.y, Is.EqualTo(tb.max.y).Within(0.03f), piece + " stands on the coffee table.");
+                    Assert.That(b.min.y, Is.EqualTo(tb.max.y).Within(0.03f), piece + " stands on the low table.");
                     Assert.That(b.center.x, Is.InRange(tb.min.x - 0.3f, tb.max.x + 0.3f), piece + " is on the table.");
                     Assert.That(b.center.z, Is.InRange(tb.min.z - 0.3f, tb.max.z + 0.3f), piece + " is on the table.");
                 }
 
-                // Two framed prints on the 1.1 m south wall, under its top.
+                // Two framed prints on the north partition, clear of the bedroom door.
                 var prints = renderers.Where(r => r.name == "Framed print").ToList();
                 Assert.That(prints.Count, Is.EqualTo(2), "Two prints.");
                 Assert.That(renderers.Count(r => r.name == "Framed print frame"), Is.EqualTo(2), "each in its frame.");
-                foreach (var print in prints)
-                {
-                    Assert.That(print.bounds.center.z, Is.LessThan(floor.min.z + 0.3f), "on the south wall,");
-                    Assert.That(print.bounds.max.y, Is.LessThanOrEqualTo(floor.max.y + 1.1f + 0.01f), "under the wall's top.");
-                }
-                Assert.That(living.GetComponentsInChildren<Transform>(true).Count(t => t.name == "bb_set_ph_plant"), Is.EqualTo(1), "A plant in the corner.");
+                Assert.That(prints.All(p => p.bounds.center.z > floor.max.z - 0.3f), Is.True, "on the north partition.");
+                Assert.That(living.GetComponentsInChildren<Transform>(true).Count(t => t.name == "bb_set_ph_plant"), Is.EqualTo(3),
+                    "A plant at each end of the stage, and one in the corner.");
             }
             finally { EditorSceneManager.ClosePreviewScene(scene); }
         }

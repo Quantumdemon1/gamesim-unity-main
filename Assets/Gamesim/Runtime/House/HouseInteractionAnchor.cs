@@ -86,7 +86,7 @@ namespace Gamesim.House
         // anchor transforms, and saved rendezvous IDs remain unchanged.
         public static readonly Definition[] Meetings =
         {
-            new Definition("living-east-chat","Living",new Vector3(-6.2f,0,-4),new Vector3(-4.8f,0,-4)),
+            new Definition("living-east-chat","Living",new Vector3(-3.4f,0,-3f),new Vector3(-2.0f,0,-3f)), // out of the eviction gallery's U
             new Definition("kitchen-west-chat","Kitchen",new Vector3(2.3f,0,-3),new Vector3(3.7f,0,-3)),
             new Definition("bedroom-south-chat","Bedroom",new Vector3(-8.7f,0,3.5f),new Vector3(-7.3f,0,3.5f)),
             new Definition("yard-south-chat","Yard",new Vector3(3.3f,0,13.5f),new Vector3(4.7f,0,13.5f)),

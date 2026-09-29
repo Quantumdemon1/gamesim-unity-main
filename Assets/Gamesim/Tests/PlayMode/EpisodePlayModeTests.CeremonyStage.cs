@@ -309,10 +309,11 @@ namespace Gamesim.Tests.PlayMode
             while (!BothSeated() && Time.realtimeSinceStartup < seatsBy) yield return null;
             if (!BothSeated()) Debug.Log(StageReport());
             Assert.That(BothSeated(), Is.True, "both nominees sit in the hot seats");
-            // The sofa's three fill too: the third seat's approach, 0.52 m from the second's, was
-            // blocked by the parked agents of the two already sat until they were parked as points.
-            yield return WaitFor(() => director.CeremonyStageSeated >= director.CeremonyStagePlaces - 1, 8f,
-                "everyone but the Head of Household sits down, the sofa's third seat included");
+            // The whole house sits on the gallery (MOCKUP-PASS-PLAN M22), the Head of Household
+            // included: fourteen couch seats and the two red chairs, no standing marks.
+            yield return WaitFor(() => director.CeremonyStageSeated >= director.CeremonyStagePlaces, 8f,
+                "everyone sits down, the Head of Household with the house");
+            Assert.That(director.CeremonyStageStanding, Is.Null, "Nobody stands at the head at an eviction.");
             foreach (var id in block)
             {
                 var npc = SceneComponents<HouseNpc>().First(each => each.Id == id);
@@ -453,7 +454,11 @@ namespace Gamesim.Tests.PlayMode
             Debug.Log(start);
             foreach (var id in block)
                 Assert.That(start, Does.Contain("  " + id + " -> " + CeremonySeating.HotSeat + " "), id + " holds a hot seat's place, whoever is sitting where.");
-            Assert.That(start.Split('\n').Length - 1, Is.GreaterThanOrEqualTo(6), "The nominees, the head, and the sofa's three are placed at the least.");
+            var placed = start.Split('\n').Where(line => line.Contains(" -> ")).ToList();
+            Assert.That(placed.Count(line => line.Contains(" -> " + CeremonySeating.GallerySeat + " ")), Is.EqualTo(EpisodeValidation.MaximumCast - 2),
+                "Fourteen on the U's couches:\n" + start);
+            Assert.That(placed.Count(line => line.Contains(" -> " + CeremonySeating.HotSeat + " ")), Is.EqualTo(2), "two in the red chairs,");
+            Assert.That(placed.Any(line => line.Contains(" -> " + CeremonySeating.LivingMark + " ")), Is.False, "and nobody on a standing mark.");
             // D1: the summons sends the house although the evicted is still binding on that frame.
             Assert.That(start, Does.Not.Contain("The house is not free"), "The summons sent the house; nobody waited for the retry.");
             Debug.Log("Full-house eviction: " + (start.Split('\n').Length - 1) + " places for " + state.Active.Count() + " houseguests.");
@@ -461,11 +466,10 @@ namespace Gamesim.Tests.PlayMode
             yield return LetTheHouseSettle();
             var later = StageReport("eight seconds into the card");
             Debug.Log(later);
-            // D1: everyone is in their place, and the sofa's seats fill now that a seated body's
-            // parked agent no longer blocks the approach beside it.
+            // Everyone is in their place, and every place is a seat: the whole house sits together.
             Assert.That(director.CeremonyStageInPlace, Is.EqualTo(director.CeremonyStagePlaces), "Everyone has reached their place eight seconds into the card:\n" + later);
-            foreach (var line in later.Split('\n').Where(each => each.Contains(" -> " + CeremonySeating.SofaSeat + " ")))
-                Assert.That(line.Trim(), Does.EndWith(":: seated"), "The sofa's seats all fill: " + line.Trim());
+            foreach (var line in later.Split('\n').Where(each => each.Contains(" -> ")))
+                Assert.That(line.Trim(), Does.EndWith(":: seated"), "Every place is sat in: " + line.Trim());
             yield return CaptureLivingRoom("ceremony-stage-full-house-living-later");
             yield return SkipReveals();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");

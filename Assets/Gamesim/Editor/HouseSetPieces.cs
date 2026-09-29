@@ -144,11 +144,23 @@ namespace Gamesim.Editor
             new Prop("Living room floor", "speaker",           -0.43f, -0.26f,  90f, 0.95f),
             new Prop("Living room floor", "speaker",            0.43f,  0.26f, 270f, 0.95f),
             new Prop("Living room floor", "pottedPlant",        0.43f,  0.38f,   0f, 0.85f),
-            new Prop("Living room floor", "loungeChairRelax",   0.22f, -0.20f, 210f, 0.90f),
-            new Prop("Living room floor", "loungeDesignChair", -0.24f, -0.22f, 150f, 0.82f),
-            new Prop("Living room floor", "loungeDesignSofa",   0.40f,  0.02f, 270f, 0.78f),
-            new Prop("Living room floor", "bb_set_cushion",     0.40f,  0.07f, 270f, 0f, 0.54f),
-            new Prop("Living room floor", "bb_set_cushion",     0.40f, -0.03f, 300f, 0f, 0.54f),
+            // The eviction's gallery (MOCKUP-PASS-PLAN M21; HouseLivingGallery says why each stands
+            // where it does): a U of cream couches round a low table - the base at z -2.3 facing
+            // south, an arm each side facing in - and the two red chairs in front of the room's
+            // screen on the south wall, facing the U. At their own size (a zero height). The U takes
+            // the place of the sofa by the kitchen door and the two armchairs, which stood on its
+            // east arm's end and in the west chair's approach.
+            new Prop("Living room floor", "bb_set_lounge4",   -0.200000f,  0.27f,   0f, 0f),
+            new Prop("Living room floor", "bb_set_lounge4",    0.057143f,  0.27f,   0f, 0f),
+            new Prop("Living room floor", "bb_set_lounge3",   -0.341429f, -0.06f, 270f, 0f),
+            new Prop("Living room floor", "bb_set_lounge3",    0.198571f, -0.06f,  90f, 0f),
+            new Prop("Living room floor", "bb_set_lowtable",  -0.071429f, -0.06f,   0f, 0f),
+            new Prop("Living room floor", "bb_set_wingback",  -0.110714f, -0.23f, 180f, 0f),
+            new Prop("Living room floor", "bb_set_wingback",  -0.032143f, -0.23f, 180f, 0f),
+            // The room's own screen, on its stage against the south wall behind the red chairs,
+            // facing the U (yaw 180; authored, it looks at -z). The pass names it apart from the
+            // nomination room's.
+            new Prop("Living room floor", "bb_set_ceremonyscreen", -0.071429f, -0.39f, 180f, 0f),
             // Against the north wall's west segment, not the west wall: the memory wall hangs there
             // now, two rows of eight along the living room's half of it, and a bookcase stood in
             // front of its middle.
@@ -165,7 +177,6 @@ namespace Gamesim.Editor
             // board on, which is the same reason the yard's backdrop stands on the deck. Yaw 180
             // turns its face into the room; authored, it looks at -z.
             new Prop("Nomination floor", "bb_set_ceremonyscreen", 0f, -0.39f, 180f, 0f),
-            new Prop("Living room floor", "rugSquare",         -0.18f, -0.30f,   0f, -3.2f),
             new Prop("Living room floor", "trashcan",          -0.20f,  0.42f,   0f, 0.55f),
             new Prop("Living room floor", "plantSmall2",       -0.36f, -0.42f,   0f, 0.50f),
 
@@ -353,6 +364,8 @@ namespace Gamesim.Editor
             int rings = Rings(world.transform, root);
             int course = Course(world.transform, root);
             int shell = Shell(world.transform, root);
+            // Before the collision and the bake, so both see the living room as it will be played.
+            string gallery = HouseLivingGallery.Dress(world.transform, root);
 
             // Placement, collision, the back-off and the bake travel together. Set dressing was
             // re-placed once without the lighting pass that follows it and the house lost its
@@ -370,11 +383,11 @@ namespace Gamesim.Editor
             Debug.Log(string.Format(
                 "[Gamesim] set pieces · {0} props placed, {1} skipped, {2} floor tiles, {3} entrance parts, "
                 + "{4} plants swapped in, {5} podium parts, {6} ring segments dressed by the authored circle, "
-                + "{7} primitive walls dressed by the authored shell, {8} competition course pieces"
+                + "{7} primitive walls dressed by the authored shell, {8} competition course pieces; {9}"
                 + "\nCollision was fitted, resolved against the bake and baked. Check the two lines above"
                 + " this one for what had to be backed off, and re-run the lighting pass - placement"
                 + " still leaves the house outside its lightmaps.",
-                placed, missing, tiles, entrance, greenery, podiums, rings, shell, course));
+                placed, missing, tiles, entrance, greenery, podiums, rings, shell, course, gallery));
         }
 
         /// <summary>

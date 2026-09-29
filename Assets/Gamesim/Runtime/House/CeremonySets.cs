@@ -40,6 +40,8 @@ namespace Gamesim.House
         public const string ChairName = "chairModernCushion";
         public const string TableName = "tableRound";
         public const string SofaName = "loungeDesignSofa";
+        /// <summary>The gallery's pieces (MOCKUP-PASS-PLAN M21): the four- and three-seat couches and the red wingbacks.</summary>
+        public const string LoungeFourName = "bb_set_lounge4", LoungeThreeName = "bb_set_lounge3", WingbackName = "bb_set_wingback";
         public const string LivingFloorName = "Living room floor";
         /// <summary>The prototype's television, which the living room's screen replaces.</summary>
         public const string TelevisionName = "Television";
@@ -68,6 +70,20 @@ namespace Gamesim.House
         public const float MarkRowDistance = 1.7f, MarkPitch = 1.3f;
         /// <summary>The least room between a head mark and any chair's approach, or the other mark: two standing roots and a little more, since an arrival is refused while roots overlap.</summary>
         public const float HeadMarkClearance = 0.7f;
+        /// <summary>
+        /// A gallery seat's approach, in front of the seat, ON the couch's baked edge: the couch's
+        /// front is 0.46 from its middle, the bake erodes 0.5 more, and the seat is 0.10 in front of
+        /// the middle, so 0.85 m from the seat is the edge itself (the coordinator samples an approach
+        /// onto the mesh within 0.25). Anywhere further out leaves a strip between the couch and the
+        /// row of parked roots, and a walker the path sends along it is stopped by the first body
+        /// seated: measured on the first gallery bake, at 1.05, the last of sixteen stood 1.71 m
+        /// short of the base's middle seat, behind the player's parked root.
+        /// </summary>
+        public const float GalleryApproach = 0.85f;
+        /// <summary>A red chair's approach, off its outer side, on its baked edge: the chair's half width and the erosion.</summary>
+        public const float WingbackApproach = 1.0f;
+        /// <summary>The seats' heights as authored: the couches' cushions at 0.43, the wingback's at 0.46.</summary>
+        public const float GallerySeatHeight = 0.43f, WingbackSeatHeight = 0.46f;
 
         /// <summary>What the dressing was made for, kept on the root so a house of the same size is left alone.</summary>
         private sealed class Dressing : MonoBehaviour
@@ -107,7 +123,8 @@ namespace Gamesim.House
 
         public static bool IsCeremonyVenue(string venue) =>
             venue == CeremonySeating.NominationSeat || venue == CeremonySeating.NominationHead
-            || venue == CeremonySeating.HotSeat || venue == CeremonySeating.SofaSeat || venue == CeremonySeating.LivingMark;
+            || venue == CeremonySeating.HotSeat || venue == CeremonySeating.SofaSeat || venue == CeremonySeating.LivingMark
+            || venue == CeremonySeating.GallerySeat;
 
         private static Transform[] All(Scene scene) =>
             scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<Transform>(true)).ToArray();
@@ -282,6 +299,7 @@ namespace Gamesim.House
             }
             var face = ScreenSurface.Measure(screen, LivingRoom, marker.transform.position);
             if (face == null) return false;
+            if (DressTheGallery(scene, root, bounds, floorY)) return true;
             var inward = -face.Normal; inward.y = 0f; inward.Normalize();
             var outward = -inward;
             var aside = Vector3.Cross(Vector3.up, outward).normalized;
@@ -380,6 +398,97 @@ namespace Gamesim.House
                 else continue;
                 if (InsideFurniture(scene, at)) continue;
                 HouseInteractionAnchor.Create(root, CeremonySeating.LivingMark, LivingRoom, placed++, at, mark.yaw, false);
+            }
+            return true;
+        }
+
+        // ------------------------------------------------------------ the living room's gallery
+
+        /// <summary>A couch's seats across its width, in its own frame: 0.76 m apart, as bb_set_lounge4 and bb_set_lounge3 are authored.</summary>
+        public static float[] SeatsAcross(string piece) => piece == LoungeFourName
+            ? new[] { -1.14f, -0.38f, 0.38f, 1.14f }
+            : new[] { -0.76f, 0f, 0.76f };
+
+        /// <summary>
+        /// The authored gallery (MOCKUP-PASS-PLAN M21-M22), when the room has one: anchors on the
+        /// pieces as they stand, nothing cloned, moved or turned. The red chairs are the hot seats,
+        /// approached from their outer sides; every couch seat is a gallery seat, approached from in
+        /// front, slots filled from the base's middle outward and then down the arms from the base's
+        /// end. Standing marks are laid behind the base only as a fallback for a house the seats cannot
+        /// hold. False when the room has no gallery, and the prototype's dressing stands in.
+        /// </summary>
+        private static bool DressTheGallery(Scene scene, Transform root, Bounds bounds, float floorY)
+        {
+            bool InRoom(Transform t) => bounds.Contains(new Vector3(t.position.x, bounds.center.y, t.position.z));
+            var all = All(scene);
+            var chairs = all.Where(t => t.name == WingbackName && t.gameObject.activeInHierarchy && InRoom(t)).OrderBy(t => t.position.x).ToList();
+            var couches = all.Where(t => (t.name == LoungeFourName || t.name == LoungeThreeName) && t.gameObject.activeInHierarchy && InRoom(t)).ToList();
+            if (chairs.Count < 2 || couches.Count == 0) return false;
+
+            StrikeVenue(scene, CeremonySeating.HotSeat);
+            StrikeVenue(scene, CeremonySeating.SofaSeat);
+            StrikeVenue(scene, CeremonySeating.LivingMark);
+            StrikeVenue(scene, CeremonySeating.GallerySeat);
+
+            // The red chairs. An authored piece looks down its own -z, so a body in it faces the
+            // piece's yaw turned half round.
+            var middle = (chairs[0].position + chairs[1].position) * 0.5f;
+            float chairYaw = chairs[0].eulerAngles.y + 180f;
+            var chairFacing = Quaternion.Euler(0f, chairYaw, 0f);
+            for (int slot = 0; slot < 2; slot++)
+            {
+                var chair = chairs[slot];
+                float yaw = chair.eulerAngles.y + 180f;
+                var facing = Quaternion.Euler(0f, yaw, 0f);
+                var outward = Quaternion.Inverse(facing) * (chair.position - middle);
+                var at = new Vector3(chair.position.x, floorY, chair.position.z) + facing * Vector3.forward * 0.08f;
+                var seat = HouseInteractionAnchor.Create(chair, CeremonySeating.HotSeat, LivingRoom, slot, at, yaw, true,
+                    new Vector3(Mathf.Sign(outward.x), 0f, 0f) * WingbackApproach);
+                seat.SetSeatHeight(WingbackSeatHeight);
+            }
+
+            // The couches' seats: the base faces the chairs, the arms face across.
+            var toChairs = chairFacing * Vector3.back;   // from the U toward the chairs
+            var across = chairFacing * Vector3.right;
+            var seats = new List<(Transform couch, Vector3 at, float yaw, bool onBase, float order)>();
+            foreach (var couch in couches)
+            {
+                float yaw = couch.eulerAngles.y + 180f;
+                var facing = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+                bool onBase = Vector3.Dot(facing, toChairs) > 0.7f;
+                foreach (float x in SeatsAcross(couch.name))
+                {
+                    var at = couch.position + couch.rotation * new Vector3(x, 0f, -0.10f);
+                    at.y = floorY;
+                    // The base from its middle outward; the arms from the base's end, the far side second.
+                    float order = onBase ? Mathf.Round(Mathf.Abs(Vector3.Dot(at - middle, across)) * 100f) / 100f
+                        : 100f + Vector3.Dot(at - middle, toChairs) + (Vector3.Dot(at - middle, across) > 0f ? 0.01f : 0f);
+                    seats.Add((couch, at, yaw, onBase, order));
+                }
+            }
+            int placed = 0;
+            foreach (var s in seats.OrderBy(s => s.onBase ? 0 : 1).ThenBy(s => s.order).ThenBy(s => Vector3.Dot(s.at - middle, across)))
+            {
+                var seat = HouseInteractionAnchor.Create(s.couch, CeremonySeating.GallerySeat, LivingRoom, placed++, s.at, s.yaw, true,
+                    Vector3.forward * GalleryApproach);
+                seat.SetSeatHeight(GallerySeatHeight);
+            }
+
+            // The fallback: a row of standing marks behind the base, facing the chairs.
+            var basePieces = couches.Where(c => Vector3.Dot(Quaternion.Euler(0f, c.eulerAngles.y + 180f, 0f) * Vector3.forward, toChairs) > 0.7f).ToList();
+            if (basePieces.Count > 0)
+            {
+                var behind = basePieces.Aggregate(Vector3.zero, (sum, c) => sum + c.position) / basePieces.Count - toChairs * 1.2f;
+                float yaw = YawToward(behind, middle);
+                int mark = 0;
+                for (int k = -3; k <= 3; k++)
+                {
+                    var at = new Vector3(behind.x, floorY, behind.z) + across * (k * MarkPitch);
+                    if (!bounds.Contains(new Vector3(at.x, bounds.center.y, at.z))) continue;
+                    if (!NavMesh.SamplePosition(at, out var hit, 0.4f, NavMesh.AllAreas)) continue;
+                    if (InsideFurniture(scene, hit.position)) continue;
+                    HouseInteractionAnchor.Create(root, CeremonySeating.LivingMark, LivingRoom, mark++, hit.position, yaw, false);
+                }
             }
             return true;
         }

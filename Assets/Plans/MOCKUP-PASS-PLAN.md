@@ -587,6 +587,13 @@ If one person builds everything, follow the numbers. The UI slices that need no 
 - **Effort / risk:** XL / high: parked agents on approaches, the story session's ring moving, and the audited pipeline.
 - **Kind:** Blender set pieces, the scene and a NavMesh rebake.
 
+*As built (M20-M21):* see CEREMONY-CUTSCENES-PLAN 8.2.3's as-built note. The arms sit clear of the
+base's ends with an open corner. The chairs are approached from their outer sides. The pieces are
+`bb_set_lounge4`, `bb_set_lounge3`, `bb_set_wingback` and `bb_set_lowtable`, the last its own script
+per section 6 correction 8. The whole pass runs by `-executeMethod
+Gamesim.Editor.HouseLivingGallery.BuildFromCommandLine`: the pieces, collision, resolve and NavMesh
+bake, then the room finish, then the lighting and its bake.
+
 ### M22. Couches, part 3 (S3): the whole house seated for the eviction
 
 - **Serves:** 61

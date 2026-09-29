@@ -957,6 +957,36 @@ start spots and the `living-east-chat` anchors move out of the U (a scene edit c
 the batch, every moved spot audited); the standing marks stay as the fallback past fourteen.
 The Head of Household stands beside the screen as built (or sits in the U: the owner's call).
 
+*As built for the living room (MOCKUP-PASS-PLAN M20-M22, 2026-09-29).* The owner chose the south
+wall, the Head of Household seated in the U, and the living room's door. Two things differ from the
+paragraph above:
+
+- *The arms do not tuck under the base's ends.* At 3.44 m, the two four-seat couches span x -11.52
+  to -4.48. Arms centred at -11.06 and -4.94 would leave the base's outer seats facing an arm 0.45 m
+  away, with no floor for their approach. Instead each arm's front is flush with the base's first
+  seat, at x -11.32 and -4.68 (arms centred at -11.78 and -4.22), spanning z -4.26 to -6.94.
+- *The base stands at z -2.3, not -2.9.* At -2.9 the 0.89 m corners closed once the bake eroded both
+  sides, and the U's west half was reached through one 0.76 m lane past the table. At -2.3 the
+  corners are 1.49 m and the lane 1.36 m. Gallery approaches stand 1.05 m in front of the seat
+  (0.19 m outside the couch's eroded edge), and the red chairs' approaches stand 1.15 m to the side.
+- *The red chairs are approached from their outer sides,* 1.0 m off the chair. The low table's baked
+  edge (0.95 m across at (-8, -5.6)) meets the chairs' own in front of them.
+
+The screen is authored on its stage at (-8, -8.9), named `bb_set_ceremonyscreen (Living)`, with the
+house's GAMESIM idle board. The chairs are at (-8.55, -7.3) and (-7.45, -7.3), the base at z -2.3,
+and the table at (-8, -5.6).
+
+`HouseLivingGallery` switches off what the U replaces: the prototype's sofa, coffee table, rug and
+television, and three plan rows (the sofa by the kitchen door and the two armchairs, which stood on
+the east arm's end and in the west chair's approach). It also switches off the broadcast dressing's
+decor from the old layout (books, a vase, a pendant, a frame) and the television's fitted practicals. It moves the room marker to (-5, -7.6) and
+the chat pair to (-3.4, -3.0) and (-2.0, -3.0). It also moves the three bodies the scene started
+inside the U: the player, Casey and Maya.
+
+`CeremonySets` lays anchors on the pieces where they stand, filling slots from the base's middle
+outward and then down the arms. It keeps the prototype's clone path only for a room with no
+gallery.
+
 **`CeremonySets` rewritten to anchors only:** no clone, move or scale; a seat-layout table per
 piece name gives each piece's seats in its own frame; `Ensure` finds the named pieces in the
 room, orders them by the venue's slot rule and creates the anchors; seat counts never depend on

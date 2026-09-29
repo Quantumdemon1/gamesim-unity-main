@@ -50,7 +50,7 @@ namespace Gamesim.House
         {
             reason = null;
             EndCeremonyStage();
-            if (!IsReady || HasCompetitionStage || HasOpeningStage || ids == null || places == null || ids.Count != places.Count)
+            if (!Usable || HasCompetitionStage || HasOpeningStage || ids == null || places == null || ids.Count != places.Count)
             { reason = "The house is not free for a ceremony."; return 0; }
             EndWandering();
             EndSceneStage();
@@ -71,7 +71,8 @@ namespace Gamesim.House
                 if (!actor.motion.TryReserveAndPath(token, place.Approach))
                 {
                     actor.motion.SetPaused(paused);
-                    left.Add(actor.npc.DisplayName + " (no route to " + place.VenueId + " " + place.Slot + ")");
+                    left.Add(actor.npc.DisplayName + " (no route to " + place.VenueId + " " + place.Slot
+                        + (actor.motion.LastRouteFailure != null ? ": " + actor.motion.LastRouteFailure : "") + ")");
                     continue;
                 }
                 ceremonyLeases[id] = new CeremonyLease { actor = actor, place = place, token = token };
@@ -88,7 +89,7 @@ namespace Gamesim.House
         public bool JoinCeremonyStage(string id, HouseInteractionAnchor place, out string reason)
         {
             reason = null;
-            if (!IsReady || HasCompetitionStage || HasOpeningStage || id == null || place == null || !place.isActiveAndEnabled
+            if (!Usable || HasCompetitionStage || HasOpeningStage || id == null || place == null || !place.isActiveAndEnabled
                 || place.gameObject.scene != rooms.Scene) { reason = "The house is not free for a ceremony."; return false; }
             if (ceremonyLeases.ContainsKey(id)) return true;
             if (!actors.TryGetValue(id, out var actor) || !eligible.Contains(id) || actor.motion == null || !actor.motion.IsBound)
@@ -100,12 +101,45 @@ namespace Gamesim.House
             if (!actor.motion.TryReserveAndPath(token, place.Approach))
             {
                 actor.motion.SetPaused(paused);
-                reason = actor.npc.DisplayName + " has no route to " + place.VenueId + " " + place.Slot + ".";
+                reason = actor.npc.DisplayName + " has no route to " + place.VenueId + " " + place.Slot
+                    + (actor.motion.LastRouteFailure != null ? " (" + actor.motion.LastRouteFailure + ")" : "") + ".";
                 return false;
             }
             ceremonyLeases[id] = new CeremonyLease { actor = actor, place = place, token = token };
             return true;
         }
+
+        /// <summary>
+        /// The least a ceremony needs of the coordinator: it exists and has a generation. Not
+        /// <see cref="IsReady"/>, which wants every eligible body bound - and the evicted, re-bound
+        /// the frame the stage was created, is still Binding on it, so every eviction's summons
+        /// was refused whole and the house only moved on the retry (measured 2026-09-28). The
+        /// unbound are left out by name instead, and the retries send them.
+        /// </summary>
+        private bool Usable => !disposed && Generation != null;
+
+        /// <summary>
+        /// Whether a body could be sent to stand here: the floor sampled and the clearance the
+        /// arrival test asks for, in the coordinator's own terms, with the reason when not. A stage
+        /// asks before it hands out a standing mark, so nobody is placed where the summons would
+        /// refuse them every time (measured 2026-09-28: a mark on a NavMesh edge, refused at every
+        /// retry, left one of sixteen standing by the screen). <paramref name="self"/> is the local
+        /// actor the clearance leaves out, the player's transform as the jury bench passes it.
+        /// </summary>
+        public bool CanStandAt(Vector3 at, Transform self, out string why)
+        {
+            why = null;
+            if (!Usable) { why = "the house is not up"; return false; }
+            if (!rooms.TrySampleFloor(at, 0.3f, filter, 0.25f, out var sampled, out _))
+            { why = "no floor within 0.25 m" + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
+            if (!rooms.HasCapsuleClearance(sampled, 0.3f, 1.8f, self))
+            { why = "no room to stand" + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
+            return true;
+        }
+
+        /// <summary>How far a borrowed houseguest's route runs, in metres, or -1 when they hold none: the summons is keyed to the longest.</summary>
+        public float CeremonyRouteLength(string id) =>
+            ceremonyLeases.TryGetValue(id, out var lease) && lease.actor.motion != null ? lease.actor.motion.RouteLength : -1f;
 
         /// <summary>Whether a borrowed houseguest has reached their place.</summary>
         public bool CeremonyActorArrived(string id) =>

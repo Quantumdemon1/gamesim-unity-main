@@ -66,8 +66,21 @@ namespace Gamesim.Episode
         /// <summary>Who the stage stands at the set's head - the Head of Household - or null.</summary>
         public string CeremonyStageStanding => IsCeremonyStaged ? ceremonyStage.StandingId : null;
 
+        /// <summary>How many of the stage's places have been reached - seated or standing in place, the player included. A read for tests.</summary>
+        public int CeremonyStageInPlace => IsCeremonyStaged ? ceremonyStage.InPlaceCount : 0;
+
+        /// <summary>How many places the stage gave out. A read for tests.</summary>
+        public int CeremonyStagePlaces => IsCeremonyStaged ? ceremonyStage.PlaceCount : 0;
+
         /// <summary>The screen the staged ceremony plays on, or null.</summary>
         public ScreenSurface CeremonyStageScreen => IsCeremonyStaged ? ceremonyStage.Screen : null;
+
+        /// <summary>
+        /// The staged ceremony's report of where everybody it placed has got to, one line each, or
+        /// null when nothing is staged. The stage logs the same report at its card's start and at
+        /// its release; this is for a test to read it when it likes.
+        /// </summary>
+        public string CeremonyStageReport(string moment = "now") => IsCeremonyStaged ? ceremonyStage.Report(moment) : null;
 
         /// <summary>
         /// Stages a ceremony the commit just decided, when this house can: the house is gathered,
@@ -164,6 +177,19 @@ namespace Gamesim.Episode
         public const float SummonsPatience = 3.5f;
         public static float SummonsHardSeconds(CeremonyPace pace) => SummonsSeconds(pace) * SummonsPatience;
 
+        /// <summary>The agents' walk, metres a second (HouseNpcMotion), which the summons' wait is reckoned in.</summary>
+        public const float WalkSpeed = 2.2f;
+
+        /// <summary>
+        /// How long the card waits for the house, keyed to the longest route the summons sent: the
+        /// walk at the agents' pace and three seconds to sit, never less than the summons and never
+        /// more than the patience allows. Measured 2026-09-28: the keys played to six seated and
+        /// ten still walking at a full house, because the card started the moment its one
+        /// principal was in place.
+        /// </summary>
+        public static float SummonsHardSecondsFor(CeremonyPace pace, float longestRoute) =>
+            Mathf.Clamp(Mathf.Max(0f, longestRoute) / WalkSpeed + 3f, SummonsSeconds(pace), SummonsHardSeconds(pace));
+
         /// <summary>The most a stage may run, in real seconds, before the house is let go whatever the card says.</summary>
         public const float CeremonyStageSeconds = 150f;
 
@@ -183,19 +209,27 @@ namespace Gamesim.Episode
             private readonly Dictionary<string, HouseInteractionAnchor> placeOf = new Dictionary<string, HouseInteractionAnchor>();
             private readonly Dictionary<string, HouseSeatPresentation> seated = new Dictionary<string, HouseSeatPresentation>();
             private readonly HashSet<string> arrived = new HashSet<string>();
+            /// <summary>Why the coordinator last refused to send someone, by id: the report's "never sent".</summary>
+            private readonly Dictionary<string, string> refusals = new Dictionary<string, string>();
+            /// <summary>How many retries in a row have refused someone: twice over and the card stops waiting for them.</summary>
+            private readonly Dictionary<string, int> refusalCounts = new Dictionary<string, int>();
+            /// <summary>Whoever the summons itself could not send, and why, as the coordinator said it.</summary>
+            private string summonsRefusals;
             private readonly List<Cue> cues = new List<Cue>();
             private readonly object playerOwner = new object();
             private readonly Vector3 roomCentre;
             private HouseInteractionAnchor playerPlace;
             private HouseSeatPresentation playerSeat;
             private Transform lookMark;
-            private float summonsUntil, summonsHardBy, endBy, pressGuardUntil, playerAlignedAt, releasedAt, retryAt;
+            private float summonsUntil, summonsHardBy, summonsPatienceBy, endBy, pressGuardUntil, playerAlignedAt, releasedAt, retryAt;
             /// <summary>How often whoever was left out at the summons is asked again, while the house is still gathering.</summary>
             private const float RetrySeconds = 1.5f;
             private bool begun, ended, cardStarted, playerSeatedRequested, playerHeld;
             private int keysShown;
             private Collider playerCollider;
-            private bool playerColliderEnabled, playerUpdatePosition, playerUpdateRotation;
+            private bool playerColliderEnabled, playerUpdatePosition, playerUpdateRotation, playerAgentParked;
+            private float playerAgentRadius;
+            private UnityEngine.AI.ObstacleAvoidanceType playerAgentAvoidance;
 
             public string Kind { get; }
             public string Room { get; }
@@ -207,6 +241,21 @@ namespace Gamesim.Episode
             /// <summary>Whether the stage has a place for this houseguest and has not let the house go.</summary>
             public bool Holds(string id) => !ended && id != null && placeOf.ContainsKey(id);
             public int SeatedCount => seated.Values.Count(seat => seat != null && seat.Active) + (playerSeat != null && playerSeat.Active ? 1 : 0);
+            public int PlaceCount => places.Count;
+            /// <summary>How many places have been reached: the houseguests the coordinator says arrived, and the player by their own move.</summary>
+            public int InPlaceCount
+            {
+                get
+                {
+                    int count = 0;
+                    foreach (var pair in places)
+                    {
+                        if (pair.Key == state.playerId) { if (playerPlace != null && director.player != null && director.player.ActivityHasArrived(playerOwner)) count++; }
+                        else if (arrived.Contains(pair.Key)) count++;
+                    }
+                    return count;
+                }
+            }
 
             private struct Cue { public float At; public Action Do; }
 
@@ -282,14 +331,31 @@ namespace Gamesim.Episode
                         foreach (var id in nominees)
                             if ((active.Contains(id) || id == director.departingId) && hotSeat < hot.Count) Place(id, hot[hotSeat++]);
                         int mark = 0;
-                        if (!string.IsNullOrEmpty(state.hohId) && active.Contains(state.hohId) && !placeOf.ContainsKey(state.hohId) && marks.Count > 0)
-                        { Place(state.hohId, marks[mark++]); StandingId = state.hohId; }
+                        // A standing mark nobody could be sent to - laid on a NavMesh edge, or where a
+                        // body already stands - is passed over, not handed out.
+                        HouseInteractionAnchor NextMark()
+                        {
+                            while (mark < marks.Count)
+                            {
+                                var candidate = marks[mark++];
+                                if (director.npcMeetings == null || director.player == null
+                                    || director.npcMeetings.CanStandAt(candidate.Position, director.player.transform, out var why)) return candidate;
+                                Debug.Log("Ceremony stage (" + Kind + "): " + candidate.VenueId + " " + candidate.Slot + " is passed over: " + why);
+                            }
+                            return null;
+                        }
+                        if (!string.IsNullOrEmpty(state.hohId) && active.Contains(state.hohId) && !placeOf.ContainsKey(state.hohId))
+                        {
+                            var head = NextMark();
+                            if (head != null) { Place(state.hohId, head); StandingId = state.hohId; }
+                        }
                         int sofaSeat = 0;
                         foreach (var id in active)
                         {
                             if (placeOf.ContainsKey(id)) continue;
-                            if (sofaSeat < sofa.Count) Place(id, sofa[sofaSeat++]);
-                            else if (mark < marks.Count) Place(id, marks[mark++]);
+                            if (sofaSeat < sofa.Count) { Place(id, sofa[sofaSeat++]); continue; }
+                            var next = NextMark();
+                            if (next != null) Place(id, next);
                         }
                         break;
                     }
@@ -332,14 +398,29 @@ namespace Gamesim.Episode
                     ids.Add(pair.Key); anchors.Add(pair.Value);
                 }
                 int sent = director.npcMeetings.BeginCeremonyStage(ids, anchors, out var left);
+                summonsRefusals = left;
                 if (left != null) Debug.Log("Ceremony stage (" + Kind + "): " + sent + " sent to their places. " + left);
+
+                // The card waits for the house: as long as the longest route the summons sent
+                // takes to walk, within the pace's patience.
+                float longest = 0f;
+                foreach (var id in ids) longest = Mathf.Max(longest, director.npcMeetings.CeremonyRouteLength(id));
 
                 if (placeOf.TryGetValue(state.playerId, out var mine) && director.player != null)
                 {
                     director.player.ReleaseActivityMove(playerOwner);
-                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, out var reason)) playerPlace = mine;
+                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, out var reason))
+                    {
+                        playerPlace = mine;
+                        longest = Mathf.Max(longest, Flat(director.player.transform.position, mine.Approach) * 1.3f);
+                    }
                     else Debug.Log("Ceremony stage (" + Kind + "): you stay where you are: " + reason);
                 }
+                summonsHardBy = now + SummonsHardSecondsFor(director.ceremonyPace, longest);
+                // The people the card is about get the pace's whole patience, whatever the routes
+                // said: the evicted, re-bound the frame the stage was made, is sent by a retry and
+                // walks thirty metres from the yard, and no eviction plays to an empty hot seat.
+                summonsPatienceBy = now + SummonsHardSeconds(director.ceremonyPace);
                 Subscribe(true);
             }
 
@@ -362,13 +443,32 @@ namespace Gamesim.Episode
                 if (Active && Step == CeremonyStageStep.Summons) summonsUntil = summonsHardBy = Time.unscaledTime;
             }
 
+            /// <summary>
+            /// Whether everyone the stage placed has reached their place - the player by their own
+            /// move - leaving out only whoever the coordinator has refused twice over, who is not
+            /// coming. Not the leases' count against their arrivals: a body the summons could not
+            /// send (the evicted, still binding on that frame) holds no lease yet, and the card
+            /// would have started without them.
+            /// </summary>
             private bool EveryoneArrived
             {
                 get
                 {
                     var meetings = director.npcMeetings;
-                    if (meetings == null || meetings.CeremonyArrivals < meetings.CeremonyStageCount) return false;
-                    return playerPlace == null || director.player.ActivityHasArrived(playerOwner);
+                    if (meetings == null) return false;
+                    foreach (var pair in places)
+                    {
+                        string id = pair.Key;
+                        if (id == state.playerId)
+                        {
+                            if (playerPlace != null && !director.player.ActivityHasArrived(playerOwner)) return false;
+                            continue;
+                        }
+                        if (arrived.Contains(id) || meetings.CeremonyActorArrived(id)) continue;
+                        if (refusalCounts.TryGetValue(id, out int refused) && refused >= 2) continue;
+                        return false;
+                    }
+                    return true;
                 }
             }
 
@@ -388,6 +488,7 @@ namespace Gamesim.Episode
             {
                 get
                 {
+                    var meetings = director.npcMeetings;
                     foreach (var id in Principals)
                     {
                         if (id == state.playerId)
@@ -395,7 +496,7 @@ namespace Gamesim.Episode
                             if (playerPlace != null && !director.player.ActivityHasArrived(playerOwner)) return false;
                             continue;
                         }
-                        if (!arrived.Contains(id)) return false;
+                        if (!arrived.Contains(id) && !(meetings != null && meetings.CeremonyActorArrived(id))) return false;
                     }
                     return true;
                 }
@@ -418,9 +519,10 @@ namespace Gamesim.Episode
                 {
                     case CeremonyStageStep.Summons:
                         bool pressed = now >= pressGuardUntil && CeremonyTakeover.SkipPressed();
-                        // Past the summons the card waits only for the people it is about, and
-                        // for them only as long as the patience allows.
-                        if (EveryoneArrived || pressed || (now >= summonsUntil && (PrincipalsInPlace || now >= summonsHardBy))) StartCard();
+                        // The card waits for the whole house as long as the longest route takes,
+                        // and for the people it is about as long as the pace's patience allows;
+                        // past that, whoever is still walking sits as they arrive.
+                        if (EveryoneArrived || pressed || (now >= summonsHardBy && (PrincipalsInPlace || now >= summonsPatienceBy))) StartCard();
                         break;
                     case CeremonyStageStep.Playing:
                         RunCues(now);
@@ -450,7 +552,19 @@ namespace Gamesim.Episode
                     string id = pair.Key;
                     if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
-                    meetings.JoinCeremonyStage(id, pair.Value, out _);
+                    if (meetings.JoinCeremonyStage(id, pair.Value, out var why))
+                    {
+                        refusals.Remove(id); refusalCounts.Remove(id);
+                        // Sent late, they get their walk: the cap stretches to their route, within the patience.
+                        float route = meetings.CeremonyRouteLength(id);
+                        if (route > 0f && Step == CeremonyStageStep.Summons)
+                            summonsHardBy = Mathf.Max(summonsHardBy, Mathf.Min(summonsPatienceBy, Time.unscaledTime + route / WalkSpeed + 3f));
+                    }
+                    else if (why != null)
+                    {
+                        refusals[id] = why;
+                        refusalCounts[id] = refusalCounts.TryGetValue(id, out int count) ? count + 1 : 1;
+                    }
                 }
                 if (playerPlace == null && placeOf.TryGetValue(state.playerId, out var mine) && director.player != null && !playerSeatedRequested
                     && !director.player.HasActivityOwner && director.player.TryBeginActivityMove(playerOwner, mine.Approach, out _))
@@ -469,29 +583,38 @@ namespace Gamesim.Episode
                 Step = CeremonyStageStep.Playing;
                 bool up = playCard(Screen);
                 if (!up || !CardPlaying) { End(true); return; }
+                Debug.Log(Report("card start"));
                 Cut(Screen.Shot(CutSeconds));
             }
 
             /// <summary>Everyone who has reached their place sits, or stands facing the way the place faces.</summary>
+            /// <summary>
+            /// Sits everyone who is at their place, and sits them again if they lost the seat: a
+            /// seat ends when a neighbour squeezing past pushes the root 0.4 m, and the body walks
+            /// back to its approach and arrives again (measured 2026-09-28: two at a full table,
+            /// seated once and standing beside their chairs by the release). Arrival is the
+            /// coordinator's word each frame, not a thing remembered once.
+            /// </summary>
             private void SeatArrivals()
             {
+                var meetings = director.npcMeetings;
+                if (meetings == null) return;
                 foreach (var pair in places)
                 {
                     string id = pair.Key;
-                    if (id == state.playerId || arrived.Contains(id)) continue;
-                    if (!director.npcMeetings.CeremonyActorArrived(id)) continue;
-                    arrived.Add(id);
-                        // BodyFor, not Housemates(): the latter is the active contestants, and the
+                    if (id == state.playerId) continue;
+                    if (!meetings.CeremonyActorArrived(id)) continue;
+                    // BodyFor, not Housemates(): the latter is the active contestants, and the
                     // evicted in the hot seat is no longer one.
                     var npc = director.BodyFor(id);
                     var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                     if (visual == null) continue;
-                    visual.SetTalking(false); visual.SetArguing(false);
+                    if (arrived.Add(id)) { visual.SetTalking(false); visual.SetArguing(false); }
                     visual.SetFacing(pair.Value.Facing);
                     if (!pair.Value.Posed) continue;
                     var seat = npc.GetComponent<HouseSeatPresentation>();
                     if (seat == null) seat = npc.gameObject.AddComponent<HouseSeatPresentation>();
-                    if (!seat.isActiveAndEnabled || seat.Active) continue;
+                    if (!seat.isActiveAndEnabled || seat.Active || stoodUp.Contains(id)) continue;
                     string who = id;
                     seat.Begin(pair.Value, () => Active && director.npcMeetings != null && director.npcMeetings.CeremonyActorHolds(who));
                     if (seat.Active) seated[id] = seat;
@@ -523,6 +646,11 @@ namespace Gamesim.Episode
                 var agent = player.Agent;
                 playerUpdatePosition = agent.updatePosition; playerUpdateRotation = agent.updateRotation;
                 agent.updatePosition = false; agent.updateRotation = false;
+                // Parked like a houseguest's: the player's root stays on its approach too, and at
+                // its full radius it blocked the seat beside it.
+                playerAgentRadius = agent.radius; playerAgentAvoidance = agent.obstacleAvoidanceType;
+                agent.radius = HouseNpcMotion.ParkedRadius; agent.obstacleAvoidanceType = UnityEngine.AI.ObstacleAvoidanceType.NoObstacleAvoidance;
+                playerAgentParked = true;
                 playerCollider = player.GetComponent<Collider>();
                 playerColliderEnabled = playerCollider != null && playerCollider.enabled;
                 if (playerCollider != null) playerCollider.enabled = false;
@@ -726,6 +854,79 @@ namespace Gamesim.Episode
                 return seated.TryGetValue(id, out var seat) ? seat : null;
             }
 
+            // ------------------------------------------------------------ the report
+
+            /// <summary>
+            /// Where everybody the stage placed has got to, one line each: their place, whether the
+            /// coordinator holds their route, arrived, seated, how far from their approach, what
+            /// their agent says - and for anyone not in their place, which it is: never sent (with
+            /// the coordinator's reason), stuck short of the approach, still walking, or arrived
+            /// and not sat. Logged at the card's start and at the release, so a play session's log
+            /// names why each standing houseguest stands (CEREMONY-CUTSCENES-PLAN §7.1): every
+            /// seating fault C3 had was found by a report like this, not by reading.
+            /// </summary>
+            public string Report(string moment)
+            {
+                var meetings = director.npcMeetings;
+                var lines = new List<string>
+                {
+                    "Ceremony stage report (" + Kind + ", " + Step + ", " + moment + "): " + SeatedCount + " of " + places.Count
+                    + " in their seats" + (StandingId != null ? ", " + StandingId + " standing at the head" : "")
+                    + (summonsRefusals != null ? "; at the summons: " + summonsRefusals : ""),
+                };
+                foreach (var pair in places)
+                {
+                    string id = pair.Key;
+                    var place = pair.Value;
+                    string where = " -> " + place.VenueId + " " + place.Slot + (place.Posed ? " (seated)" : " (standing)");
+                    if (id == state.playerId)
+                    {
+                        var you = director.player;
+                        bool here = playerPlace != null && you != null && you.ActivityHasArrived(playerOwner);
+                        lines.Add("  " + id + where + (you != null ? " at " + you.transform.position.ToString("F2")
+                            + " (" + Flat(you.transform.position, place.Approach).ToString("F2") + " m from the approach)" : "")
+                            + " sent=" + (playerPlace != null) + " arrived=" + here
+                            + " seat=" + (playerSeat != null && playerSeat.Active ? "active" : "none")
+                            + " :: " + (playerSeat != null && playerSeat.Active ? "seated" : !place.Posed && here ? "standing in place"
+                                : playerPlace == null ? "never sent (the player's move was refused)" : here ? "arrived, not seated" : "walking"));
+                        continue;
+                    }
+                    var npc = director.BodyFor(id);
+                    if (npc == null) { lines.Add("  " + id + where + " :: no active body"); continue; }
+                    var motion = npc.GetComponent<HouseNpcMotion>();
+                    var agent = motion != null ? motion.Agent : null;
+                    var seat = SeatOf(id);
+                    if (seat == null) seat = npc.GetComponent<HouseSeatPresentation>();
+                    bool holds = meetings != null && meetings.CeremonyActorHolds(id);
+                    bool there = arrived.Contains(id) || (meetings != null && meetings.CeremonyActorArrived(id));
+                    bool sitting = seat != null && seat.Active;
+                    float away = Flat(npc.transform.position, place.Approach);
+                    string agentSays = agent == null ? "no agent"
+                        : !agent.isActiveAndEnabled ? "agent disabled"
+                        : !agent.isOnNavMesh ? "agent off the NavMesh"
+                        : "hasPath=" + agent.hasPath + " status=" + agent.pathStatus + " remaining=" + agent.remainingDistance.ToString("F2")
+                            + " speed=" + agent.velocity.magnitude.ToString("F2") + (agent.isStopped ? " stopped" : "");
+                    bool stalled = agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh
+                        && (agent.isStopped || agent.velocity.sqrMagnitude < 0.05f * 0.05f || !agent.hasPath
+                            || agent.pathStatus != UnityEngine.AI.NavMeshPathStatus.PathComplete);
+                    string arrival = holds && !there && motion != null && motion.ArrivalFailure != null ? " [" + motion.ArrivalFailure + "]" : "";
+                    string verdict = sitting ? "seated"
+                        : !place.Posed && there ? "standing in place"
+                        : there ? "arrived, not seated"
+                        : !holds ? "never sent" + (refusals.TryGetValue(id, out var why) ? " (" + why + ")" : summonsRefusals != null ? " (at the summons)" : " (no reason recorded)")
+                        : stalled ? "stuck " + away.ToString("F2") + " m short of the approach" + arrival
+                        : "walking" + arrival;
+                    lines.Add("  " + id + where + " at " + npc.transform.position.ToString("F2") + " (" + away.ToString("F2") + " m from the approach)"
+                        + " holds=" + holds + " arrived=" + there + " seat=" + (sitting ? "active" : seat != null ? "idle" : "none")
+                        + (motion != null ? " lease=" + (motion.LeaseId ?? "none") + " bound=" + motion.IsBound + " state=" + motion.State
+                            + (motion.FailureReason != null ? " failure='" + motion.FailureReason + "'" : "") : " no motion")
+                        + " agent: " + agentSays + " :: " + verdict);
+                }
+                return string.Join("\n", lines);
+            }
+
+            private static float Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
+
             /// <summary>Relief from the chair: a look to the Head of Household, the neighbours glancing over, and on the last key the seated fist pump.</summary>
             private void Relief(string id, bool last)
             {
@@ -886,6 +1087,7 @@ namespace Gamesim.Episode
                 if (!Active || Step == CeremonyStageStep.Release) return;
                 Step = CeremonyStageStep.Release;
                 releasedAt = Time.unscaledTime;
+                Debug.Log(Report("release"));
                 ClearCues();
                 director.cameraRig.ReleaseShot(1.2f);
                 director.cameraRig.ControlsEnabled = !director.IsPanelOpen;
@@ -902,6 +1104,8 @@ namespace Gamesim.Episode
             public void End(bool playCardIfUnplayed)
             {
                 if (ended) return;
+                // A stage ending before its card played is the report's own subject: who never got there.
+                if (begun && !cardStarted) Debug.Log(Report("ended before the card"));
                 ended = true;
                 ClearCues();
                 Subscribe(false);
@@ -939,7 +1143,12 @@ namespace Gamesim.Episode
                     if (playerSeatedRequested && playerPlace != null && playerPlace.Posed)
                     {
                         var agent = player.Agent;
-                        if (agent != null) { agent.updatePosition = playerUpdatePosition; agent.updateRotation = playerUpdateRotation; }
+                        if (agent != null)
+                        {
+                            agent.updatePosition = playerUpdatePosition; agent.updateRotation = playerUpdateRotation;
+                            if (playerAgentParked) { agent.radius = playerAgentRadius; agent.obstacleAvoidanceType = playerAgentAvoidance; }
+                        }
+                        playerAgentParked = false;
                         if (playerCollider != null) playerCollider.enabled = playerColliderEnabled;
                     }
                     if (visual != null) { visual.SetFacing(float.NaN); visual.LookAt(null, 0f); }

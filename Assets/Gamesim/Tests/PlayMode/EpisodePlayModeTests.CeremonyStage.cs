@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Gamesim.Episode;
 using Gamesim.House;
+using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -35,38 +36,44 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Where each of <paramref name="ids"/> got to on the stage: their place, whether the
-        /// coordinator still holds their route, whether they arrived, and what their agent says -
-        /// the report a seat that never filled leaves behind.
+        /// The stage's own report of where everybody it placed got to - the report a seat that never
+        /// filled leaves behind - as the stage logs it at its card's start and its release.
         /// </summary>
-        private string StageReport(IEnumerable<string> ids)
+        private string StageReport(string moment = "read by the test") => director.CeremonyStageReport(moment) ?? "No ceremony is staged.";
+
+        /// <summary>
+        /// A house of <paramref name="houseguests"/> at <paramref name="phase"/>, the cast screen's
+        /// own season at the roster's largest and houseguests added beyond it the way the cast-size
+        /// tests add them, so a stage can be measured at the house's full size
+        /// (<see cref="EpisodeValidation.MaximumCast"/>), which no roster reaches on its own.
+        /// </summary>
+        private static EpisodeState FullHouse(uint seed, int houseguests)
         {
-            var meetings = (HouseMeetingCoordinator)typeof(EpisodeDirector)
-                .GetField("npcMeetings", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(director);
-            var lines = new List<string> { "Ceremony stage report (" + director.CeremonyStageKind + ", " + director.CeremonyStagePhase
-                + ", seated " + director.CeremonyStageSeated + "):" };
-            foreach (var id in ids)
+            var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = houseguests }, seed);
+            string[] rooms = { "Living", "Kitchen", "Bedroom", "Yard" };
+            while (state.contestants.Count < houseguests)
             {
-                var npc = SceneComponents<HouseNpc>().FirstOrDefault(each => each.Id == id && each.gameObject.activeInHierarchy);
-                if (npc == null) { lines.Add("  " + id + ": no active body"); continue; }
-                var place = meetings != null ? meetings.CeremonyPlace(id) : null;
-                var motion = npc.GetComponent<HouseNpcMotion>();
-                var agent = motion != null ? motion.Agent : null;
-                var seat = npc.GetComponent<HouseSeatPresentation>();
-                lines.Add("  " + id + " at " + npc.transform.position.ToString("F2")
-                    + (place != null ? " -> " + place.VenueId + " " + place.Slot + " approach " + place.Approach.ToString("F2")
-                        + " (" + Flat(npc.transform.position, place.Approach).ToString("F2") + " m away)" : " -> no place")
-                    + (meetings != null ? " holds=" + meetings.CeremonyActorHolds(id) + " arrived=" + meetings.CeremonyActorArrived(id) : "")
-                    + (motion != null ? " lease=" + (motion.LeaseId ?? "none") + " bound=" + motion.IsBound + " state=" + motion.State
-                        + (motion.FailureReason != null ? " failure='" + motion.FailureReason + "'" : "") : " no motion")
-                    + (agent == null ? " no agent"
-                        : !agent.isActiveAndEnabled ? " agent: disabled"
-                        : !agent.isOnNavMesh ? " agent: off the NavMesh"
-                        : " agent: hasPath=" + agent.hasPath + " status=" + agent.pathStatus
-                            + " remaining=" + agent.remainingDistance.ToString("F2") + " stopped=" + agent.isStopped)
-                    + " seat=" + (seat == null ? "none" : seat.Active ? "active" : "idle"));
+                int index = state.contestants.Count;
+                var extra = new ContestantState
+                {
+                    id = "extra-" + index,
+                    name = "Extra " + index,
+                    pronouns = "they/them",
+                    homeRoom = rooms[index % rooms.Length],
+                    motive = "Added by a test to fill the house to its largest size.",
+                    status = ContestantStatus.Active,
+                    archetype = "The Newcomer", age = 30, occupation = "Houseguest",
+                    traits = new List<string> { "Social" },
+                    stats = new ContestantStats(),
+                };
+                foreach (var other in state.contestants)
+                {
+                    state.relationships.Add(new RelationshipState { fromId = extra.id, toId = other.id, score = 0 });
+                    state.relationships.Add(new RelationshipState { fromId = other.id, toId = extra.id, score = 0 });
+                }
+                state.contestants.Add(extra);
             }
-            return string.Join("\n", lines);
+            return state;
         }
 
         /// <summary>Eviction night: the first houseguest is Head of Household, the next two on the block, the house about to vote.</summary>
@@ -88,10 +95,18 @@ namespace Gamesim.Tests.PlayMode
         /// stages nothing unless asked, and reduced motion - which the stage never plays under - is
         /// switched off on the director and the rig the way the motion tests do.
         /// </summary>
-        private IEnumerator InstallStagedSeason(uint seed, System.Action<EpisodeState> shape)
+        private IEnumerator InstallStagedSeason(uint seed, System.Action<EpisodeState> shape, int houseguests = 0)
         {
             HoldTheHouseForTheFixture();
-            yield return InstallStrategySeason(seed, shape);
+            if (houseguests > 0)
+            {
+                var state = FullHouse(seed, houseguests);
+                shape?.Invoke(state);
+                Assert.That(EpisodeValidation.TryValidate(state, out var invalid), Is.True, invalid);
+                new EpisodeSaveStore(director.SavePath).Save(state);
+                yield return ReloadEpisode();
+            }
+            else yield return InstallStrategySeason(seed, shape);
             director.BuildNpcWorldForDiagnostics();
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
             director.StagesInBatchRuns = true;
@@ -193,6 +208,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.IsPlaying, Is.True);
             Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
             Assert.That(vote.Surface.Room, Is.EqualTo("Living"));
+            Assert.That(StageReport(), Does.Not.Contain("The house is not free"), "The summons sent the house; nobody waited for the retry.");
 
             var hot = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.HotSeat);
             Assert.That(hot.Count, Is.EqualTo(2), "Two hot seats face the screen.");
@@ -206,8 +222,12 @@ namespace Gamesim.Tests.PlayMode
             });
             float seatsBy = Time.realtimeSinceStartup + 8f;
             while (!BothSeated() && Time.realtimeSinceStartup < seatsBy) yield return null;
-            if (!BothSeated()) Debug.Log(StageReport(block));
+            if (!BothSeated()) Debug.Log(StageReport());
             Assert.That(BothSeated(), Is.True, "both nominees sit in the hot seats");
+            // The sofa's three fill too: the third seat's approach, 0.52 m from the second's, was
+            // blocked by the parked agents of the two already sat until they were parked as points.
+            yield return WaitFor(() => director.CeremonyStageSeated >= director.CeremonyStagePlaces - 1, 8f,
+                "everyone but the Head of Household sits down, the sofa's third seat included");
             foreach (var id in block)
             {
                 var npc = SceneComponents<HouseNpc>().First(each => each.Id == id);
@@ -266,6 +286,105 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitFor(() => keys.ShowingBlock, 40f, "the block is up");
             yield return CaptureFraming("ceremony-stage-block", settle: false);
             yield return SkipReveals();
+        }
+
+        // ---------------------------------------------------------------- the full house (CEREMONY-CUTSCENES-PLAN §7.1)
+
+        /// <summary>A frame of a set from above, for the look sheet: the rig put on the shot for two frames, then the capture. Batch runs only.</summary>
+        private IEnumerator CaptureSet(string name, Vector3 focus, float distance, float pitch, float yaw)
+        {
+            if (!Application.isBatchMode) yield break;
+            cameraRig.MoveTo(new HouseCameraRig.Shot { Focus = focus, Distance = distance, Pitch = pitch, Yaw = yaw, FieldOfView = 45f, Seconds = 0.01f });
+            yield return Frames(2);
+            yield return CaptureFraming(name, settle: false);
+        }
+
+        /// <summary>The nomination table from over its head, the whole ring in frame.</summary>
+        private IEnumerator CaptureTable(string name) => CaptureSet(name, new Vector3(0.075f, 0.9f, -14.6f), 8.5f, 40f, 180f);
+
+        /// <summary>The living room from over its north wall, looking at the faces the screen looks at.</summary>
+        private IEnumerator CaptureLivingRoom(string name) => CaptureSet(name, new Vector3(-5f, 1.0f, -4.5f), 9f, 35f, 180f);
+
+        /// <summary>The house given its time past the card's start: eight seconds, in which everyone who will sit has.</summary>
+        private IEnumerator LetTheHouseSettle()
+        {
+            float by = Time.realtimeSinceStartup + 8f;
+            while (Time.realtimeSinceStartup < by && director.IsCeremonyStaged) yield return null;
+        }
+
+        /// <summary>
+        /// The measurement in front of the seating fixes (CEREMONY-CUTSCENES-PLAN §7.1, D0): a house
+        /// of sixteen gathered for the keys, the stage's report read at the card's start and once the
+        /// house has had its time, and the table from above for the look sheet. It asserts the
+        /// report, not the seating - a place for everyone and a line for every place - because what
+        /// the report says is what D1 is built on, and a fault it names is the finding, not a failure.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_AFullHouseNominationReportsEveryPlaceAndCapturesTheTable()
+        {
+            yield return InstallStagedSeason(61, AtNomination, EpisodeValidation.MaximumCast);
+            var state = director.Snapshot;
+            Assert.That(state.Active.Count(), Is.EqualTo(EpisodeValidation.MaximumCast), "The house is at its largest.");
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged at a full house.");
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the card plays");
+            var start = StageReport("card start, read by the test");
+            Debug.Log(start);
+            Assert.That(start.Split('\n').Length - 1, Is.EqualTo(state.Active.Count()), "A place for everyone, and a line for every place.");
+            var seats = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.NominationSeat);
+            Assert.That(seats.Count, Is.EqualTo(state.Active.Count() - 1), "A chair for everyone who draws a key.");
+            yield return CaptureTable("ceremony-stage-full-house-table");
+            yield return LetTheHouseSettle();
+            Debug.Log(StageReport("eight seconds into the card"));
+            // D1: the card waited for the house, the stuck were re-sent, the lost seats retaken -
+            // everyone but the Head of Household is in a chair eight seconds into the keys.
+            Assert.That(director.CeremonyStageInPlace, Is.EqualTo(director.CeremonyStagePlaces),
+                "Everyone has reached their place eight seconds into the card:\n" + StageReport("the places"));
+            Assert.That(director.CeremonyStageSeated, Is.EqualTo(state.Active.Count() - 1),
+                "Everyone but the Head of Household is in a chair eight seconds into the card:\n" + StageReport("the seats"));
+            yield return CaptureTable("ceremony-stage-full-house-table-later");
+            yield return SkipReveals();
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
+        }
+
+        /// <summary>
+        /// The same measurement on eviction night at a full house: the hot seats are the nominees'
+        /// by id whatever their bodies did - the report's lines say so - and the living room is
+        /// captured from over its north wall, at the card's start and once the house has settled.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_AFullHouseEvictionReportsTheHotSeatsAndCapturesTheRoom()
+        {
+            yield return InstallStagedSeason(62, AtEviction, EpisodeValidation.MaximumCast);
+            var state = director.Snapshot;
+            var block = state.nominees.ToList();
+            Assert.That(state.Active.Count(), Is.EqualTo(EpisodeValidation.MaximumCast), "The house is at its largest.");
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged at a full house.");
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the reveal plays");
+            var start = StageReport("card start, read by the test");
+            Debug.Log(start);
+            foreach (var id in block)
+                Assert.That(start, Does.Contain("  " + id + " -> " + CeremonySeating.HotSeat + " "), id + " holds a hot seat's place, whoever is sitting where.");
+            Assert.That(start.Split('\n').Length - 1, Is.GreaterThanOrEqualTo(6), "The nominees, the head, and the sofa's three are placed at the least.");
+            // D1: the summons sends the house although the evicted is still binding on that frame.
+            Assert.That(start, Does.Not.Contain("The house is not free"), "The summons sent the house; nobody waited for the retry.");
+            Debug.Log("Full-house eviction: " + (start.Split('\n').Length - 1) + " places for " + state.Active.Count() + " houseguests.");
+            yield return CaptureLivingRoom("ceremony-stage-full-house-living");
+            yield return LetTheHouseSettle();
+            var later = StageReport("eight seconds into the card");
+            Debug.Log(later);
+            // D1: everyone is in their place, and the sofa's seats fill now that a seated body's
+            // parked agent no longer blocks the approach beside it.
+            Assert.That(director.CeremonyStageInPlace, Is.EqualTo(director.CeremonyStagePlaces), "Everyone has reached their place eight seconds into the card:\n" + later);
+            foreach (var line in later.Split('\n').Where(each => each.Contains(" -> " + CeremonySeating.SofaSeat + " ")))
+                Assert.That(line.Trim(), Does.EndWith(":: seated"), "The sofa's seats all fill: " + line.Trim());
+            yield return CaptureLivingRoom("ceremony-stage-full-house-living-later");
+            yield return SkipReveals();
+            yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
         }
     }
 }

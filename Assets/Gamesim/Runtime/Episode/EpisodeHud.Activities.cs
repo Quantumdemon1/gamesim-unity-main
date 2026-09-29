@@ -42,7 +42,7 @@ namespace Gamesim.Episode
                     // House vibe is a right-column card. It was counted as a LEFT card after it moved,
                     // which pushed the left edge past the right one whenever it was on screen.
                     bool rightCard=item.name==EpisodeDirector.LiveFeedCardName || item.name==RecentEventsCardName
-                        || item.name==OverviewColumnName || item.name=="Exploration controls" || item.name==HouseVibeCardName
+                        || item.name==OverviewColumnName || item.name=="Exploration controls" || item.name==HouseVibeCardName || item.name==ObjectivesCardName
                         || item.name==RelationshipsCardName || item.name==NearbyCardName || item.name==PullCardName;
                     // The floor grew a band. The strip and the caption above it are both fixed
                     // chrome a world bubble must clear, and the caption used to be low enough that
@@ -124,6 +124,7 @@ namespace Gamesim.Episode
             // left-column card an activity would sit on.
             if (Compact) SetChromeVisible("Objective", false);
             SetChromeVisible(HouseVibeCardName, false);
+            SetChromeVisible(ObjectivesCardName, false);
             SetChromeVisible(EpisodeDirector.LiveFeedCardName, false);
             SetChromeVisible(RecentEventsCardName, false);
             SetChromeVisible(RelationshipsCardName, false);
@@ -308,6 +309,7 @@ namespace Gamesim.Episode
         {
             if (Compact) SetChromeVisible("Objective", false);
             SetChromeVisible(HouseVibeCardName, false);
+            SetChromeVisible(ObjectivesCardName, false);
             SetChromeVisible(EpisodeDirector.LiveFeedCardName, false);
             SetChromeVisible(RecentEventsCardName, false);
             SetChromeVisible(RelationshipsCardName, false);
@@ -429,6 +431,7 @@ namespace Gamesim.Episode
             CompactClose();
             if (Compact) SetChromeVisible("Objective", false);
             SetChromeVisible(HouseVibeCardName, false);
+            SetChromeVisible(ObjectivesCardName, false);
             SetChromeVisible(EpisodeDirector.LiveFeedCardName, false);
             SetChromeVisible(RecentEventsCardName, false);
             SetChromeVisible(RelationshipsCardName, false);
@@ -518,6 +521,7 @@ namespace Gamesim.Episode
             SetChromeVisible(RecentEventsCardName, false);
             SetChromeVisible(RelationshipsCardName, false);
             SetChromeVisible(HouseVibeCardName, false);
+            SetChromeVisible(ObjectivesCardName, false);
             SetChromeVisible("Exploration controls", false);
             SetChromeVisible("Interaction prompt", false);
             SetChromeVisible(FollowChipName, false);

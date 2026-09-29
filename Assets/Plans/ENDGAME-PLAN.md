@@ -109,33 +109,47 @@ through the finale on the cards.
 
 From the commit that leaves three active until the final eviction:
 
-- **The top strip.** The week chip reads `FINAL 3 · WEEK n` with the phase word; the objective
-  line reads "Final Head of Household ahead" during the Social window and the parts' names
-  after; the house pill gains a `Jury` cell with the count. Chrome panel names and the
-  finale's next-stop line are untouched.
-- **The objectives card.** A right-column card headed `FINAL 3 OBJECTIVES` with three rows and
-  a tick each: "Win the Final Head of Household" (ticked when `hohId` is the player after
-  part 3), "Decide who to trust" (ticked when a Final 2 deal or promise binds the player),
-  "Prepare your case to the jury" (ticked when the final argument is locked, F4). After the
-  final eviction the card becomes `FINAL 2` with "Prepare your final case", "Deliver your
-  final speech", "Await the jury vote". The existing objective chip keeps its one line.
-- **The cast strip at three.** The rail's wide chips already fit three; each grows a trait row
-  (the contestant's three traits) and the `YOU` badge stays. Departed chips are folded behind
-  a `The jury (n)` card in the right column that shows the jurors' portraits and opens the jury
-  house (F4).
-- **Fewer feed events.** The recent-events card shows two rows at three instead of three, and
-  the live feed prefers the finalists' room.
+*Built (the F1 commit). What landed differs from the first draft in three places, marked
+"as built".*
+
+- **The top strip.** The week chip leads with `FINAL 3` (`FINAL 2` at two, `FINALE` when the
+  season is over) and reads `Week n · phase` beside it; the objective chip's title reads
+  "Final Head of Household ahead" until the final Head of Household is crowned, then "One
+  decision remains" for the player or "The final Head of Household decides", "The jury
+  decides" at two and "Season complete" after; the house pill's third cell is the jury's size
+  while nobody holds the house. Chrome panel names and the next-stop line are untouched.
+- **The objectives card.** A right-column card headed `FINAL 3 OBJECTIVES` in the vibe
+  card's place, three rows with a mark each and where each stands under it: "Win the Final
+  HoH" (Part n of 3; Won or Lost once the final eviction is reached), "Decide who to
+  trust" (the partner's name when a Final 2 deal or promise binds the player), "Prepare your
+  case" (At the Final 2, F4). At two the rows are "Answer the jury's questions"
+  (n of m), "Deliver your final speech", "Await the jury vote"; F4 swaps in "Prepare your
+  final case". A player on the jury sees the juror's three instead: follow the final Head of
+  Household, weigh the finalists, cast your vote. *As built:* the jurors' faces are a
+  `The jury (n)` strip at the foot of this card rather than a card of their own. The column
+  clears the status band by 24 units with the vibe card in it and the two-row feed buys 58;
+  two cards and the gap between them did not fit, one card with a strip does. The strip is
+  where F4's jury house opens from.
+- **The cast strip at three.** *As built:* the rail folds the departed (jury, evicted,
+  expelled) at the endgame and keeps the three; the winner and runner-up keep their chips
+  after the reveal. The trait row is deferred: the wide chip's rows are full (mood face,
+  badge, name, standing track, mood word, standing tag) and a seventh does not fit the 96.
+- **Fewer feed events.** The recent-events card shows two rows at the endgame instead of
+  three. The live feed's room preference is not built.
 - **The memory wall** already lights the three and dims the rest. Nothing to do until F6.
-- **Endgame Preparation.** The Social window at three deals one seat under the week rules.
-  The free-time screen at three is relabelled `ENDGAME PREPARATION` and its tiles are the
-  moves that exist and matter: *Study the competition* (the study command, feeding the
-  endurance bonus), *Negotiate a Final 2 deal* (the deal flow, Final 2 kind), *Compare the
-  finalists* (opens F2's comparison, free), *Prepare your case* (opens F4's preparation
-  read-only until the Final 2). *Repair a jury relationship* is not possible today: a juror is
-  not an active target of any social command. It is F8's message-to-a-juror command, a decision.
-- **Tests.** The chrome overlap and compact suites re-run; a PlayMode fixture at three asserts
-  the strip's words, the jury cell, the objectives' ticks from state, and the two-row feed;
-  the rail's six rows unchanged.
+- **Endgame Preparation.** *As built: not built, and not buildable as drawn.* There is no
+  Social window at three. The final-four eviction's Advance goes straight to the first part
+  of the final Head of Household (`EpisodeEngine.cs`, the Eviction case: three active means
+  `FinalHoHPart1`, not `HoH`), so there is no free-time screen to relabel and no seat to deal.
+  The preparation the outline draws needs an engine window between that eviction and Part 1:
+  decision 11. Until it is taken the preparation moves live where they already exist (the
+  study command in the competition briefing, deals in a houseguest's card). *Repair a jury
+  relationship* stays F8's message-to-a-juror command.
+- **Tests.** `EpisodePlayModeTests.Endgame.cs`: a fixture at the Final 3 asserts the chip's
+  words, the objective's title, the jury cell, the card's rows and marks and faces, the
+  two-row feed, the card's foot above the status band and the rail of three; a fixture at
+  the Final 2 asserts the same frame at two; an EditMode-style check reads the frame's words
+  from cloned states. The chrome overlap and compact suites re-run unchanged.
 
 ### F2 The comparison and the Final 2 decision (HUD, derivable, knowledge-gated)
 
@@ -353,7 +367,7 @@ schema 21 before the first of these lands, and told what the jury effect reads o
 
 | | Slice | Done when |
 |---|---|---|
-| F1 | The Final 3 frame: the strip, the objectives card, the jury card, the trait row, the feed, Endgame Preparation's tiles | PlayMode at three asserts the words and the ticks; the overlap and compact suites green |
+| F1 | The Final 3 frame: the strip, the objectives card with the jury strip, the folded rail, the two-row feed (built; the trait row and Endgame Preparation deferred, see F1) | PlayMode at three and at two asserts the words, the marks and the card's foot; the overlap and compact suites green |
 | F2 | The comparison and the decision screen, gated | The gate's EditMode tests; the decision by caption |
 | F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows | Both card kinds in a fixture at three |
 | F4 | Preparation and the jury house; schema 21 with the argument | Bands and the effect under both rules; migrations green |
@@ -389,3 +403,10 @@ F7 5; about four weeks before F8.
    read-only. (B) sliders that do nothing. (C) omitted.
 10. **Watch season recap.** (A, recommended) the weekly recaps replayed in order behind the
     pinned `Review the season`. (B) omitted.
+11. **A window at three.** The engine has none: the final-four eviction advances straight to
+    the first part of the final Head of Household, so the outline's Endgame Preparation has
+    no screen to be. (A, recommended) an engine Social window between that eviction and
+    Part 1, one seat under the week rules, behind `finaleRulesStartWeek` and schema 21, and
+    the free-time screen relabelled `ENDGAME PREPARATION` with the tiles F1 listed. (B) none:
+    the endgame stays competition to competition, and the preparation moves live in the
+    briefing and the cards.

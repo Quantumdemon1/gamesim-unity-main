@@ -59,8 +59,15 @@ namespace Gamesim.House
         public const float SofaSeatShare = 0.525f;
         /// <summary>The hot seats' distance in front of the screen's stage, and how far apart they are.</summary>
         public const float HotSeatDistance = 2.0f, HotSeatGap = 1.1f;
-        /// <summary>How far behind the hot seats the standing marks are laid, a metre apart.</summary>
-        public const float MarkRowDistance = 1.7f, MarkPitch = 1.0f;
+        /// <summary>
+        /// How far behind the hot seats the standing marks are laid, and how far apart across and
+        /// between rows: 1.3 m, because a body bound for the back row passes between two standing
+        /// in the front, and two roots a metre apart leave 0.4 m for a body 0.6 m wide (measured
+        /// 2026-09-28: the last of sixteen crawled at 0.1 m/s behind the front row for the whole card).
+        /// </summary>
+        public const float MarkRowDistance = 1.7f, MarkPitch = 1.3f;
+        /// <summary>The least room between a head mark and any chair's approach, or the other mark: two standing roots and a little more, since an arrival is refused while roots overlap.</summary>
+        public const float HeadMarkClearance = 0.7f;
 
         /// <summary>What the dressing was made for, kept on the root so a house of the same size is left alone.</summary>
         private sealed class Dressing : MonoBehaviour
@@ -210,14 +217,38 @@ namespace Gamesim.House
             }
             Physics.SyncTransforms();
 
-            // The head marks: two, either side of the head slot, a step out from the ring, facing the table.
+            // The head marks: the Head of Household's on the head's own line, a step out from the
+            // ring, and the veto holder's beside it, both facing the table. On the line because at
+            // a full house the ring's first and last approaches come round to within a hand of a
+            // mark laid a step out to the side, and whoever stood there blocked that seat for good
+            // (measured 2026-09-28: the sixteenth never sat); two roots need 0.6 m between them.
+            // The side mark is stepped further aside while it is too close, and never toward the
+            // screen, where the floor runs out.
             var toHead = new Vector3(Mathf.Cos(headAngle * Mathf.Deg2Rad), 0f, Mathf.Sin(headAngle * Mathf.Deg2Rad));
             var aside = Vector3.Cross(Vector3.up, toHead).normalized;
-            for (int slot = 0; slot < 2; slot++)
-            {
-                var at = centre + toHead * (radius + 0.6f) + aside * (slot == 0 ? 0.9f : -0.9f);
-                HouseInteractionAnchor.Create(root, CeremonySeating.NominationHead, NominationRoom, slot, at, YawToward(at, centre), false);
-            }
+            var approaches = CeremonySeating.Anchors(scene, CeremonySeating.NominationSeat).Select(a => a.Approach).ToList();
+            // The Head of Household's mark, a shade off the line so the holder's fits beside it.
+            var head = centre + toHead * (radius + 0.6f) + aside * 0.2f;
+            HouseInteractionAnchor.Create(root, CeremonySeating.NominationHead, NominationRoom, 0, head, YawToward(head, centre), false);
+            // The veto holder's: the dressed place a step aside, or the nearest of a few places
+            // further in and further out that clear every approach and the head's own mark.
+            float[] sides = { -0.9f, -0.7f, -0.5f, -0.35f };
+            float[] steps = { 0.6f, 0.85f, 1.1f };
+            Vector3 holder = centre + toHead * (radius + 0.6f) + aside * -0.9f;
+            bool Clear(Vector3 at) => Flat(at, head) >= HeadMarkClearance && approaches.All(approach => Flat(approach, at) >= HeadMarkClearance);
+            if (!Clear(holder))
+                foreach (float step in steps)
+                {
+                    bool found = false;
+                    foreach (float side in sides)
+                    {
+                        var at = centre + toHead * (radius + step) + aside * side;
+                        if (!Clear(at)) continue;
+                        holder = at; found = true; break;
+                    }
+                    if (found) break;
+                }
+            HouseInteractionAnchor.Create(root, CeremonySeating.NominationHead, NominationRoom, 1, holder, YawToward(holder, centre), false);
         }
 
         // ------------------------------------------------------------ the living room
@@ -327,10 +358,10 @@ namespace Gamesim.House
             float markYaw = YawToward(stage + outward, stage);
             for (int row = 0; row < 2; row++)
             {
-                float back = HotSeatDistance + MarkRowDistance + row * 1.0f;
+                float back = HotSeatDistance + MarkRowDistance + row * MarkPitch;
                 for (int k = -3; k <= 3; k++)
                 {
-                    float across = k * MarkPitch + (row == 1 ? 0.5f : 0f);
+                    float across = k * MarkPitch + (row == 1 ? MarkPitch * 0.5f : 0f);
                     marks.Add((stage + outward * back + aside * across, markYaw));
                 }
             }

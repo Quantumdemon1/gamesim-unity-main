@@ -518,6 +518,43 @@ it rather than being turned at the first eviction. Decision 3 collapses to A in 
 gains the summons begun when the coordinator is ready, seating retried for as long as the stage
 runs, and the parked agent made passable, and keeps the card waiting for the house.
 
+#### 7.1.2 D1's mechanics, built (2026-09-28, five filtered runs)
+
+Everything the reports named, fixed the same night and measured again at six and at sixteen:
+all fourteen stage and walk-out tests pass, and at sixteen the keys play to fifteen seated round
+the table with the Head of Household standing at the head, and the vote to every body in its
+place with the sofa full (the captures on the look sheet). Built:
+
+- **The summons sends the house** although the evicted is still binding: the coordinator's
+  `BeginCeremonyStage` and `JoinCeremonyStage` ask only that the coordinator exists
+  (`Usable`), not that every eligible body is bound (`IsReady`); the unbound are named and the
+  retries send them.
+- **The card waits for the house** as long as the longest route the summons sent takes
+  (`SummonsHardSecondsFor`: the walk at 2.2 m/s and three seconds to sit, never less than the
+  summons, never more than the pace's patience; a late join stretches it), and for the people
+  it is about - the nominees, the Head of Household - up to the whole patience regardless.
+  `EveryoneArrived` counts the placed, not the leased, and stops waiting for anyone the
+  coordinator has refused twice.
+- **Seating is retried** on the coordinator's word each frame (`SeatArrivals`): a seat lost to
+  a push is taken again when the body arrives again.
+- **A seated body's root is parked** (`HouseNpcMotion.SetParked`, from
+  `HouseSeatPresentation`; the player's agent by the stage): the agent a point with no
+  avoidance, and the root on the furniture layer, which the arrival test's clearance leaves
+  out - two roots half a metre apart always overlap at the bodies' radius, and the capsule
+  itself must stay enabled or the motion loses its binding (learned the hard way: disabling it
+  churned the house for thirty seconds).
+- **The set's marks:** the Head of Household's mark on the head's own line (a step out to the
+  side, it stood within a hand of the ring's flanking approach at sixteen and blocked that seat
+  for good), the veto holder's searched clear of every approach; the standing marks 1.3 m
+  apart across and between rows, since a body bound for the back row passes between two in
+  the front; and `Assign` passes over any mark the coordinator's `CanStandAt` refuses - one
+  lay on a floor's edge, refused by every send.
+- **The report says why:** `ArrivalFailure` and `LastRouteFailure` on the motion put the
+  arrival test's own reason and the route's refusal into the stage's report.
+
+Not built from D1: the table grown to the ring - the storyboards (§8) replace the table with a
+lounge circle, so the ring stays as it is until the authored set lands.
+
 ### 7.2 The table: everyone seated, at a table their size (D1)
 
 - **One ring, the table grown to it.** The chairs stay on one ring - the show seats the whole
@@ -667,7 +704,7 @@ seated, the walk out becomes an exit sequence with the intro's beats in reverse.
 | | Milestone | Done when |
 |---|---|---|
 | D0 | The stage report in play and the sixteen-houseguest fixture, with the two captures | The Player.log names why each standing houseguest stands, and who held each hot seat at the card's start. **Done 2026-09-28: 7.1.1.** |
-| D1 | The table grown to the ring, the stuck re-sent, the summons keyed to the longest route, approaches validated | PlayMode at sixteen: everybody seated by the card's end; the capture from the head |
+| D1 | The table grown to the ring, the stuck re-sent, the summons keyed to the longest route, approaches validated | PlayMode at sixteen: everybody seated by the card's end; the capture from the head. **Mechanics done 2026-09-28: 7.1.2**; the grown table gives way to §8's lounge circle |
 | D2 | The gallery: the sofa on the axis, the armchairs, the cloned rows, one venue, the nominees' arrival beat, the venue and coffee-table scene edit | PlayMode at sixteen: the nominees' ids in the hot seats at the card's start, nobody standing but the Head of Household by its end; the capture over the gallery |
 | D3 | The exit sequence: the goodbyes, the house watching, the door shot, the last look, the door opened, walked through and shut, the hold | The walk-out tests extended and green; the three captures; the audited pipeline's eviction frames |
 | D4 | Polish: the tearful walk and the embrace takes, the door's sound, dressing at season start, the Head of Household's chair if chosen | As C5 |

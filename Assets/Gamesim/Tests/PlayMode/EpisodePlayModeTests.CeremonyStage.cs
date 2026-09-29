@@ -208,6 +208,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.IsPlaying, Is.True);
             Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
             Assert.That(vote.Surface.Room, Is.EqualTo("Living"));
+            Assert.That(StageReport(), Does.Not.Contain("The house is not free"), "The summons sent the house; nobody waited for the retry.");
 
             var hot = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.HotSeat);
             Assert.That(hot.Count, Is.EqualTo(2), "Two hot seats face the screen.");
@@ -223,6 +224,10 @@ namespace Gamesim.Tests.PlayMode
             while (!BothSeated() && Time.realtimeSinceStartup < seatsBy) yield return null;
             if (!BothSeated()) Debug.Log(StageReport());
             Assert.That(BothSeated(), Is.True, "both nominees sit in the hot seats");
+            // The sofa's three fill too: the third seat's approach, 0.52 m from the second's, was
+            // blocked by the parked agents of the two already sat until they were parked as points.
+            yield return WaitFor(() => director.CeremonyStageSeated >= director.CeremonyStagePlaces - 1, 8f,
+                "everyone but the Head of Household sits down, the sofa's third seat included");
             foreach (var id in block)
             {
                 var npc = SceneComponents<HouseNpc>().First(each => each.Id == id);
@@ -332,6 +337,12 @@ namespace Gamesim.Tests.PlayMode
             yield return CaptureTable("ceremony-stage-full-house-table");
             yield return LetTheHouseSettle();
             Debug.Log(StageReport("eight seconds into the card"));
+            // D1: the card waited for the house, the stuck were re-sent, the lost seats retaken -
+            // everyone but the Head of Household is in a chair eight seconds into the keys.
+            Assert.That(director.CeremonyStageInPlace, Is.EqualTo(director.CeremonyStagePlaces),
+                "Everyone has reached their place eight seconds into the card:\n" + StageReport("the places"));
+            Assert.That(director.CeremonyStageSeated, Is.EqualTo(state.Active.Count() - 1),
+                "Everyone but the Head of Household is in a chair eight seconds into the card:\n" + StageReport("the seats"));
             yield return CaptureTable("ceremony-stage-full-house-table-later");
             yield return SkipReveals();
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
@@ -358,10 +369,18 @@ namespace Gamesim.Tests.PlayMode
             foreach (var id in block)
                 Assert.That(start, Does.Contain("  " + id + " -> " + CeremonySeating.HotSeat + " "), id + " holds a hot seat's place, whoever is sitting where.");
             Assert.That(start.Split('\n').Length - 1, Is.GreaterThanOrEqualTo(6), "The nominees, the head, and the sofa's three are placed at the least.");
+            // D1: the summons sends the house although the evicted is still binding on that frame.
+            Assert.That(start, Does.Not.Contain("The house is not free"), "The summons sent the house; nobody waited for the retry.");
             Debug.Log("Full-house eviction: " + (start.Split('\n').Length - 1) + " places for " + state.Active.Count() + " houseguests.");
             yield return CaptureLivingRoom("ceremony-stage-full-house-living");
             yield return LetTheHouseSettle();
-            Debug.Log(StageReport("eight seconds into the card"));
+            var later = StageReport("eight seconds into the card");
+            Debug.Log(later);
+            // D1: everyone is in their place, and the sofa's seats fill now that a seated body's
+            // parked agent no longer blocks the approach beside it.
+            Assert.That(director.CeremonyStageInPlace, Is.EqualTo(director.CeremonyStagePlaces), "Everyone has reached their place eight seconds into the card:\n" + later);
+            foreach (var line in later.Split('\n').Where(each => each.Contains(" -> " + CeremonySeating.SofaSeat + " ")))
+                Assert.That(line.Trim(), Does.EndWith(":: seated"), "The sofa's seats all fill: " + line.Trim());
             yield return CaptureLivingRoom("ceremony-stage-full-house-living-later");
             yield return SkipReveals();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");

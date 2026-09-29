@@ -68,7 +68,20 @@ namespace Gamesim.House
             began=Time.unscaledTime;nextScan=0;Active=true;mode=target.Pose;
             lap=0f;lapHeading=1f;lapTurnedAt=float.NegativeInfinity;lapRestUntil=Time.unscaledTime+LapRest;floatDepth=-1f;
             occupied.Add(this);
+            Park(true);
             Cue();
+        }
+
+        /// <summary>
+        /// The root's agent parked while the body sits and a body again when it rises: a seated
+        /// body's root stays on its approach, and at its full radius it blocked the approaches
+        /// beside it, so a sofa's third seat never filled. The player has no motion owner here;
+        /// the stage that seats them parks their agent itself.
+        /// </summary>
+        private void Park(bool value)
+        {
+            var motion=GetComponent<HouseNpcMotion>();
+            if(motion!=null)motion.SetParked(value);
         }
 
         /// <summary>
@@ -238,6 +251,7 @@ namespace Gamesim.House
             occupied.Remove(this);
             if(!Active)return;
             Active=false;exiting=false;RestoreBody();
+            Park(false);
             // Stood up, not put back as found: only a pose that holds a body in a seat may say it
             // sits, and a flag found set when this pose began - one set with no seat under it -
             // was handed back when it ended, and sat the body down in the air at its approach.

@@ -139,11 +139,14 @@ namespace Gamesim.House
                 || !HouseRoomQuery.Finite(requested) || !ValidateOwnedComponents(out _)) return false;
             if (leaseId != null)
                 return leaseId == reservationId && (requested - requestedDestination).sqrMagnitude <= .000001f;
-            if (!rooms.TrySampleFloor(requested, capsule.radius, filter, .25f, out var sampled, out var room)
-                || !rooms.HasCapsuleClearance(sampled, capsule.radius, capsule.height, transform)) return false;
+            if (!rooms.TrySampleFloor(requested, capsule.radius, filter, .25f, out var sampled, out var room))
+            { LastRouteFailure = "no floor within 0.25 m of " + requested.ToString("F2") + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
+            if (!rooms.HasCapsuleClearance(sampled, capsule.radius, capsule.height, transform))
+            { LastRouteFailure = "no room to stand at " + sampled.ToString("F2") + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
             if (!ownedAgent.CalculatePath(sampled, candidatePath) || candidatePath.status != NavMeshPathStatus.PathComplete)
-                return false;
-            if (!ownedAgent.SetPath(candidatePath)) return false;
+            { LastRouteFailure = "no complete path from " + transform.position.ToString("F2") + " to " + sampled.ToString("F2") + " (" + candidatePath.status + ")"; return false; }
+            if (!ownedAgent.SetPath(candidatePath)) { LastRouteFailure = "the agent refused the path"; return false; }
+            LastRouteFailure = null;
             leaseId = reservationId; destination = sampled; requestedDestination = requested; destinationRoom = room;
             arrivalFrames = 0; state = HouseNpcMotionState.Walking;
             ownedAgent.updateRotation = true; ownedAgent.isStopped = false;
@@ -152,6 +155,104 @@ namespace Gamesim.House
 
         public bool HasArrivedAt(string reservationId) => reservationId != null && reservationId == leaseId
             && !paused && state == HouseNpcMotionState.Arrived && PhysicalArrival();
+
+        /// <summary>How far the route this body holds still runs, in metres along its path, or -1 when it holds none.</summary>
+        public float RouteLength
+        {
+            get
+            {
+                if (!IsBound || leaseId == null || ownedAgent == null || !ownedAgent.hasPath) return -1f;
+                var corners = ownedAgent.path.corners;
+                float total = 0f;
+                for (int i = 1; i < corners.Length; i++) total += Vector3.Distance(corners[i - 1], corners[i]);
+                return total;
+            }
+        }
+
+        private bool parked;
+        private ObstacleAvoidanceType unparkedAvoidance = ObstacleAvoidanceType.MedQualityObstacleAvoidance;
+        /// <summary>A parked agent's radius: a point in the crowd, not a body.</summary>
+        public const float ParkedRadius = 0.05f;
+
+        /// <summary>
+        /// Parks the agent while the visual body sits. A seat moves only the visual body, so the
+        /// root stays on its approach as a stopped agent, and at its full radius it blocks the
+        /// approaches beside it: measured 2026-09-28, the sofa's third seat, 0.52 m from the
+        /// second, never filled. Parked, the agent is a point nobody has to avoid, and the root
+        /// stands on the furniture layer, which the sight queries leave out: an arrival is refused
+        /// while the root overlaps another actor's capsule (<see cref="PhysicalArrival"/>), two
+        /// roots half a metre apart always overlap at the bodies' radius, and the capsule itself
+        /// must stay enabled, upright and whole for the motion to keep its binding
+        /// (<see cref="ValidateComponents"/>). Unparked, it is a body again. The visual body on
+        /// the seat is picked by <see cref="HouseSeatPresentation.TryPickNpc"/>, not by the root.
+        /// </summary>
+        public void SetParked(bool value)
+        {
+            if (parked == value) return;
+            parked = value;
+            if (value)
+            {
+                unparkedLayer = gameObject.layer;
+                gameObject.layer = HouseLayers.Furniture;
+                if (ownedAgent != null)
+                {
+                    unparkedAvoidance = ownedAgent.obstacleAvoidanceType;
+                    ownedAgent.radius = ParkedRadius;
+                    ownedAgent.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
+                }
+            }
+            else
+            {
+                gameObject.layer = unparkedLayer;
+                if (ownedAgent != null)
+                {
+                    ownedAgent.radius = capsule != null ? capsule.radius : ownedAgent.radius;
+                    ownedAgent.obstacleAvoidanceType = unparkedAvoidance;
+                }
+            }
+        }
+
+        private int unparkedLayer;
+
+        /// <summary>Whether the agent is parked under a seated body.</summary>
+        public bool IsParked => parked;
+
+        /// <summary>Why the last route was refused, for the coordinator's refusal and the stage's report; null after a route was taken.</summary>
+        public string LastRouteFailure { get; private set; }
+
+        /// <summary>
+        /// Why this body does not count as arrived right now, in the arrival test's own terms
+        /// (<see cref="PhysicalArrival"/>), or null when it would: the stage's report prints it for
+        /// a body standing on its mark that the coordinator still calls walking.
+        /// </summary>
+        public string ArrivalFailure
+        {
+            get
+            {
+                if (!IsBound) return "not bound";
+                if (!ValidateOwnedComponents(out var invalid)) return invalid;
+                if (leaseId == null) return "no lease";
+                if (ownedAgent.pathPending) return "the path is pending";
+                if (ownedAgent.isOnOffMeshLink) return "on an off-mesh link";
+                if (!HouseRoomQuery.Finite(ownedAgent.velocity) || ownedAgent.velocity.sqrMagnitude >= .04f) return "moving at " + ownedAgent.velocity.magnitude.ToString("F2") + " m/s";
+                if (!HouseRoomQuery.Finite(transform.position)) return "no position";
+                var offset = transform.position - destination;
+                if (offset.x * offset.x + offset.z * offset.z > .25f * .25f) return new Vector2(offset.x, offset.z).magnitude.ToString("F2") + " m from the destination " + destination.ToString("F2");
+                if (Mathf.Abs(offset.y) > .20f) return offset.y.ToString("F2") + " m above or below the destination";
+                if (ownedAgent.hasPath)
+                {
+                    if (ownedAgent.pathStatus != NavMeshPathStatus.PathComplete) return "the path is " + ownedAgent.pathStatus;
+                    if (!HouseRoomQuery.Finite(ownedAgent.remainingDistance)) return "the remaining distance is not finite";
+                    if (!HouseRoomQuery.Finite(ownedAgent.destination) || Vector3.Distance(ownedAgent.destination, destination) > .05f)
+                        return "the agent's destination drifted to " + ownedAgent.destination.ToString("F2");
+                    if (ownedAgent.remainingDistance > ownedAgent.stoppingDistance + .10f) return ownedAgent.remainingDistance.ToString("F2") + " m of path remain";
+                }
+                if (!rooms.TryLocate(transform.position, capsule.radius, out var room)) return "no floor under the body" + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : "");
+                if (room != destinationRoom) return "in the " + room + " room, bound for the " + destinationRoom;
+                if (!rooms.HasCapsuleClearance(transform.position, capsule.radius, capsule.height, transform)) return "no clearance" + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : "");
+                return null;
+            }
+        }
 
         public void SetPaused(bool value)
         {

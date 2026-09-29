@@ -993,6 +993,11 @@ living room marker and the start spots move under their scene stage's ring.
 
 ### 8.4 Decisions for the owner
 
+*Answered on 2026-09-29 (MOCKUP-PASS-PLAN section 4):* 2 A (the exit door on the living room's west
+wall, the yard as the fallback), 3 A (the screen on the south wall's west half) and 4 B (the Head
+of Household seated in the U, in cast order). The rest are open; the mockup pass takes their
+recommendations unless the owner rules otherwise.
+
 1. **The wait at a key boundary.** (A, recommended) the card holds up to 4 s for a late take and
    6 s for the crossing. (B) the card never waits; a late walk is abandoned where it stands.
 2. **The exit door.** (A, recommended) the opening's set rebuilt on the living room's west wall,

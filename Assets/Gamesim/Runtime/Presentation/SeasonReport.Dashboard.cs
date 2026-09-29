@@ -328,9 +328,10 @@ namespace Gamesim.Presentation
         /// placement falls back to a coarse count, and every juror shares one number: a house of
         /// eight printed "7" five times. The week each of them left, their power row, breaks the
         /// tie: the latest to leave finished highest, and the tied group takes the run of places its
-        /// number stands for, never above the row before it. Two who left in the same week, or two
-        /// the ledger has no row for, share the lowest place of their part of the run, as the coarse
-        /// count gives a tied jury, rather than an order nothing on the record gives.</para>
+        /// number stands for, between the rows around it and inside the house. Two who left in the
+        /// same week, or two the ledger has no row for, share the lowest place of their part of the
+        /// run, as the coarse count gives a tied jury, rather than an order nothing on the record
+        /// gives. A group whose run does not fit there keeps the number it shares.</para>
         /// </summary>
         public static List<(ContestantState who, int place)> StandingsOrder(EpisodeState state)
         {
@@ -340,23 +341,34 @@ namespace Gamesim.Presentation
                 .OrderBy(e => e.place == 0 ? int.MaxValue : e.place).ThenBy(e => PlacementRank(e.who.status))
                 .ThenByDescending(e => Left(e.who) ?? int.MinValue).ThenBy(e => e.who.name, StringComparer.CurrentCulture)
                 .ToList();
-            int above = 0;
+            int above = 0, house = state.contestants.Count;
             for (int start = 0; start < order.Count;)
             {
                 int place = order[start].place, end = start;
                 while (end < order.Count && order[end].place == place) end++;
-                if (place > 0 && end - start > 1)
+                int size = end - start;
+                if (place > 0 && size > 1)
                 {
-                    // The run a coarse number stands for: a juror's is the lowest seat the jury holds
-                    // and a pre-jury evictee's the highest seat below it, so the run reaches back
-                    // from the number, but never above the place printed on the row before.
-                    int first = Math.Max(above + 1, place - (end - start) + 1);
-                    for (int i = start; i < end;)
+                    // The run a coarse number stands for. A juror's number is the lowest seat the jury
+                    // holds, so their run reaches back from it. A pre-jury evictee's is the highest
+                    // seat below the jury, and the row before it is the jury's last, so their run
+                    // starts at the number and goes down the table. Either run holds the number
+                    // itself, because the row before printed a smaller one.
+                    int first = Math.Max(above + 1, place - size + 1), last = first + size - 1;
+                    // A save whose jury ledger began part way through the season mixes the ledger's
+                    // places with the fallback's, and there a run can reach the next row's number or
+                    // pass the foot of the house. That group keeps the number it shares, as it always
+                    // printed, rather than a place printed twice or a place the house never had.
+                    int next = end < order.Count && order[end].place > 0 ? order[end].place : house + 1;
+                    if (last <= house && last < next)
                     {
-                        int same = i;
-                        while (same < end && Left(order[same].who) == Left(order[i].who)) same++;
-                        for (int n = i; n < same; n++) order[n] = (order[n].who, first + (same - start) - 1);
-                        i = same;
+                        for (int i = start; i < end;)
+                        {
+                            int same = i;
+                            while (same < end && Left(order[same].who) == Left(order[i].who)) same++;
+                            for (int n = i; n < same; n++) order[n] = (order[n].who, first + (same - start) - 1);
+                            i = same;
+                        }
                     }
                 }
                 if (place > 0) above = order[end - 1].place;

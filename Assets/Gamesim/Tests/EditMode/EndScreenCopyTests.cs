@@ -140,6 +140,26 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
+        public void StandingsOrder_KeepsTheSharedNumberWhereARunWouldLeaveTheHouse()
+        {
+            // A save that gained the jury ledger part way through the season (a version 1 or 2 save
+            // migrates with an empty one): only the last three to leave are on it, so the ledger's
+            // places mix with the fallback's, and seventh and eighth are each shared.
+            var state = EightWithoutAJuryLedger(out var left);
+            foreach (var gone in left.Skip(3)) state.jurySentiment = WebJurySentiment.AddJuror(state.jurySentiment, gone.id, gone.name, 0);
+            var coarse = state.contestants.ToDictionary(c => c.id, c => CareerLedger.Placement(state, c));
+            Assert.That(coarse.Values.Count(place => place == 7), Is.EqualTo(3), "Two off the ledger and one on it share seventh.");
+            Assert.That(coarse.Values.Count(place => place == 8), Is.EqualTo(2), "and one of each share eighth.");
+
+            // Seventh's run would reach eighth and eighth's would pass the house: both keep the number.
+            var places = SeasonReport.StandingsOrder(state).Select(e => (e.who.id, e.place)).ToList();
+            Assert.That(places.Select(e => e.place), Is.All.InRange(1, state.contestants.Count), "No place past the foot of the house.");
+            Assert.That(places.Select(e => e.place), Is.Ordered, "No place out of order.");
+            Assert.That(places.Select(e => e.place), Is.EqualTo(places.Select(e => coarse[e.id])),
+                "A group whose run does not fit prints the number it shares: " + string.Join(", ", places.Select(e => e.place)));
+        }
+
+        [Test]
         public void StandingsOrder_ReadsTheJuryLedgerWhenThereIsOne()
         {
             var state = EightWithoutAJuryLedger(out var left);

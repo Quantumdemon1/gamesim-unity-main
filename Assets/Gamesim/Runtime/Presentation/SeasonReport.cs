@@ -983,11 +983,13 @@ namespace Gamesim.Presentation
                 case CastSort.Nominations:
                     return cast.OrderByDescending(c => c.timesNominated).ThenBy(c => c.name, StringComparer.CurrentCulture);
                 default:
-                    // How far they got: the order the standings read in, one placement for every screen.
-                    return cast
-                        .OrderBy(c => CareerLedger.Placement(state, c))
-                        .ThenBy(c => PlacementRank(c.status))
-                        .ThenByDescending(c => c.hohWins + c.vetoWins)
+                    // How far they got: the order the standings read in, one placement for every
+                    // screen. Where the placement is the fallback's shared number, the standings
+                    // order the tie by the week each left, and the table follows them rather than
+                    // its own count of wins.
+                    var standing = StandingsOrder(state).Select((entry, index) => (entry.who.id, index))
+                        .ToDictionary(entry => entry.id, entry => entry.index);
+                    return cast.OrderBy(c => standing.TryGetValue(c.id, out int index) ? index : int.MaxValue)
                         .ThenBy(c => c.name, StringComparer.CurrentCulture);
             }
         }
@@ -1050,8 +1052,11 @@ namespace Gamesim.Presentation
                 case ContestantStatus.Active: return "Still in the house";
                 default:
                     // The one placement every screen reads: the order the jury ledger filled, with
-                    // production's removals merged in by the week each left.
-                    int place = CareerLedger.Placement(state, you);
+                    // production's removals merged in by the week each left, and the place the
+                    // standings print, so a fallback's tie broken there is broken here too. The
+                    // career keeps CareerLedger.Placement, the number its saved season holds.
+                    int place = StandingsOrder(state).Where(entry => entry.who.id == you.id)
+                        .Select(entry => entry.place).DefaultIfEmpty(CareerLedger.Placement(state, you)).First();
                     return place + Ordinal(place) + " — " + StatusWord(you.status);
             }
         }

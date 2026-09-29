@@ -179,6 +179,19 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(SeasonReport.StandingsOrder(coarse).Select(entry => entry.who.id + " " + entry.place),
                 Is.EqualTo(SeasonReport.StandingsOrder(state).Select(entry => entry.who.id + " " + entry.place)),
                 "The fallback's tie is broken by the week each juror left.");
+            // The rest of the report reads the same places: your season's FINISHED and the house
+            // table's first order are the standings', not the fallback's shared number.
+            Report().Show(coarse, _ => null, null);
+            yield return null;
+            var coarseOrder = SeasonReport.StandingsOrder(coarse);
+            Assert.That(coarseOrder.Single(entry => entry.who.isPlayer).place, Is.EqualTo(5), "Out in week 4 of six, fifth of eight.");
+            Assert.That(CareerLedger.Placement(coarse, coarse.Find(coarse.playerId)), Is.EqualTo(7), "The fallback alone says seventh.");
+            var yourFinish = Report().GetComponentsInChildren<RectTransform>()
+                .Last(rect => rect.name == "FINISHED" && rect.gameObject.activeInHierarchy);
+            Assert.That(yourFinish.Find("Value").GetComponent<TMP_Text>().text, Is.EqualTo("5th — Jury member"));
+            Assert.That(Report().TableNames, Is.EqualTo(coarseOrder.Select(entry => entry.who.name).ToList()),
+                "The house table opens in the standings' order.");
+            Report().Hide();
 
             // The tabs scroll to the detail, and back; they hide nothing and change nothing.
             Report().Show(state, _ => null, null, CareerSummary.Of(record));

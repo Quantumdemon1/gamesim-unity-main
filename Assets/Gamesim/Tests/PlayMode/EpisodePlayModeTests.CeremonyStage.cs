@@ -9,6 +9,7 @@ using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.PlayMode
@@ -189,6 +190,90 @@ namespace Gamesim.Tests.PlayMode
                     || npc.GetComponent<HouseSeatPresentation>().IsExiting), Is.True, "The chairs empty.");
             Assert.That(player.HasActivityOwner, Is.False, "The player has their body back.");
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back.");
+        }
+
+        /// <summary>
+        /// A scene unloaded under a card that is still playing - a failed assertion's teardown, a
+        /// reload - destroys the stage's anchors before the director's OnDisable cancels the card,
+        /// and the cancel releases the stage, which logs its report. The report says the place is
+        /// gone instead of throwing (endgame-f34b, 2026-09-29: a MissingReferenceException from
+        /// the anchor's approach, in TearDown). The anchor is destroyed and the card cancelled in
+        /// one frame, as the unload does, so no tick reads the anchor in between.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheReleaseReportsAPlaceDestroyedUnderThePlayingCard()
+        {
+            yield return InstallStagedSeason(51, AtNomination);
+            string hoh = director.Snapshot.hohId;
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged in the house.");
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the card plays");
+            var keys = SceneComponents<KeyCeremony>().Single();
+            Assert.That(keys.IsPlaying, Is.True, "The key ceremony plays.");
+
+            var head = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.NominationHead).First();
+            Object.DestroyImmediate(head.gameObject);
+            Assert.That(StageReport(), Does.Contain("  " + hoh + " -> " + CeremonySeating.NominationHead + " 0 (standing) :: the place is gone"),
+                "The report names the place whose anchor is gone.");
+            // The director's OnDisable cancels the card this way at an unload; the release logs its
+            // report on the way out. Not LogAssert.NoUnexpectedReceived, which counts the stage's
+            // ordinary logs too: an exception here fails the test by itself.
+            string released = null;
+            void Capture(string message, string stack, LogType type)
+            {
+                if (message.StartsWith("Ceremony stage report (nomination, Release, release)")) released = message;
+            }
+            Application.logMessageReceived += Capture;
+            try { keys.Cancel(); }
+            finally { Application.logMessageReceived -= Capture; }
+            Assert.That(released, Does.Contain("  " + hoh + " -> " + CeremonySeating.NominationHead + " 0 (standing) :: the place is gone"),
+                "The release's report names the place whose anchor is gone.");
+            Assert.That(director.IsCeremonyStaged, Is.False, "The cancelled card released the stage and let the house go.");
+            yield return Frames(2);
+        }
+
+        /// <summary>
+        /// A body on its place is there, whoever is against it (endgame-f34b, 2026-09-29): at a full
+        /// table a walker going round was held against a houseguest waiting, not yet seated, on an
+        /// approach, and the walker's capsule against theirs withheld the arrival that would have
+        /// seated them and parked their agent - so neither ever moved again. Here a body's worth
+        /// of collider stands against one approach from the moment the house is sent, where the
+        /// walker stood, and the houseguest bound for it sits down all the same.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_AHouseguestOnTheirPlaceSitsWithSomebodyAgainstThem()
+        {
+            yield return InstallStagedSeason(51, AtNomination);
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged in the house.");
+            var seat = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.NominationSeat)[2];
+            string line = StageReport().Split('\n').FirstOrDefault(each => each.Contains(" -> " + CeremonySeating.NominationSeat + " 2 "));
+            Assert.That(line, Is.Not.Null, "Somebody is placed at the third chair:\n" + StageReport());
+            string id = line.Trim().Split(' ')[0];
+            Assert.That(id, Is.Not.EqualTo(director.Snapshot.playerId), "The third chair is a houseguest's.");
+
+            // Along the ring from the approach, 0.55 m: two bodies' capsules overlap under 0.7.
+            var outward = seat.Approach - seat.Position; outward.y = 0f;
+            var along = Vector3.Cross(Vector3.up, outward.normalized);
+            var against = new GameObject("Somebody against the approach");
+            SceneManager.MoveGameObjectToScene(against, director.gameObject.scene);
+            against.transform.position = seat.Approach + along * 0.55f;
+            var body = against.AddComponent<CapsuleCollider>();
+            body.radius = 0.35f; body.height = 1.9f; body.center = Vector3.up * 0.95f;
+            Physics.SyncTransforms();
+
+            bool Seated()
+            {
+                var npc = SceneComponents<HouseNpc>().FirstOrDefault(each => each.Id == id && each.gameObject.activeInHierarchy);
+                var chair = npc != null ? npc.GetComponent<HouseSeatPresentation>() : null;
+                return chair != null && chair.Active;
+            }
+            float by = Time.realtimeSinceStartup + 20f;
+            while (!Seated() && Time.realtimeSinceStartup < by) yield return null;
+            Assert.That(Seated(), Is.True, id + " sits although somebody stands against their approach:\n" + StageReport());
+            Object.Destroy(against);
+            yield return SkipReveals();
         }
 
         [UnityTest]

@@ -879,6 +879,11 @@ namespace Gamesim.Episode
                     string id = pair.Key;
                     var place = pair.Value;
                     string where = " -> " + place.VenueId + " " + place.Slot + (place.Posed ? " (seated)" : " (standing)");
+                    // The scene unloading under a card that is still playing destroys the anchors
+                    // before the director's OnDisable cancels the card, and the release reports.
+                    // The anchor's own fields still read; its transform does not. An explicit
+                    // == null: a destroyed anchor is Unity's fake null, which ?. would pass.
+                    if (place == null) { lines.Add("  " + id + where + " :: the place is gone (its anchor was destroyed)"); continue; }
                     if (id == state.playerId)
                     {
                         var you = director.player;
@@ -914,8 +919,8 @@ namespace Gamesim.Episode
                         : !place.Posed && there ? "standing in place"
                         : there ? "arrived, not seated"
                         : !holds ? "never sent" + (refusals.TryGetValue(id, out var why) ? " (" + why + ")" : summonsRefusals != null ? " (at the summons)" : " (no reason recorded)")
-                        : stalled ? "stuck " + away.ToString("F2") + " m short of the approach" + arrival
-                        : "walking" + arrival;
+                        : stalled ? "stuck " + away.ToString("F2") + " m short of the approach" + arrival + Nearest(id, npc.transform.position)
+                        : "walking" + arrival + Nearest(id, npc.transform.position);
                     lines.Add("  " + id + where + " at " + npc.transform.position.ToString("F2") + " (" + away.ToString("F2") + " m from the approach)"
                         + " holds=" + holds + " arrived=" + there + " seat=" + (sitting ? "active" : seat != null ? "idle" : "none")
                         + (motion != null ? " lease=" + (motion.LeaseId ?? "none") + " bound=" + motion.IsBound + " state=" + motion.State
@@ -926,6 +931,27 @@ namespace Gamesim.Episode
             }
 
             private static float Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
+
+            /// <summary>
+            /// Whoever of the stage's people stands within a metre of a body that is not in its
+            /// place, and how far - two roots under 0.7 m apart touch - so a report of "no
+            /// clearance" or of a walker barely moving names who it is up against. Empty when
+            /// nobody is that close.
+            /// </summary>
+            private string Nearest(string id, Vector3 at)
+            {
+                string who = null;
+                float best = 1f;
+                foreach (var pair in places)
+                {
+                    if (pair.Key == id) continue;
+                    Component body = pair.Key == state.playerId ? (Component)director.player : director.BodyFor(pair.Key);
+                    if (body == null) continue;
+                    float apart = Flat(at, body.transform.position);
+                    if (apart < best) { best = apart; who = pair.Key; }
+                }
+                return who == null ? "" : " (nearest: " + who + " " + best.ToString("F2") + " m away)";
+            }
 
             /// <summary>Relief from the chair: a look to the Head of Household, the neighbours glancing over, and on the last key the seated fist pump.</summary>
             private void Relief(string id, bool last)
@@ -1089,8 +1115,12 @@ namespace Gamesim.Episode
                 releasedAt = Time.unscaledTime;
                 Debug.Log(Report("release"));
                 ClearCues();
-                director.cameraRig.ReleaseShot(1.2f);
-                director.cameraRig.ControlsEnabled = !director.IsPanelOpen;
+                // The rig may be gone too when the release comes from an unloading scene: End checks the same.
+                if (director.cameraRig != null)
+                {
+                    director.cameraRig.ReleaseShot(1.2f);
+                    director.cameraRig.ControlsEnabled = !director.IsPanelOpen;
+                }
                 if (Kind != CeremonySting.EvictionKind) End(true);
             }
 

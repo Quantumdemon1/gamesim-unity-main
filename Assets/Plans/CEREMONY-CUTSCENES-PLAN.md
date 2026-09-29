@@ -555,6 +555,42 @@ place with the sofa full (the captures on the look sheet). Built:
 Not built from D1: the table grown to the ring - the storyboards (§8) replace the table with a
 lounge circle, so the ring stays as it is until the authored set lands.
 
+#### 7.1.3 A walker held against a body on its approach (2026-09-29)
+
+The full-house nomination test failed twice in the audited pipeline (endgame-f34b at 80fef17,
+endgame-f36 at b52e1dd), both times with the same pair, to the centimetre. taylor-kim stood on
+seat 8's approach, "no clearance". extra-14, going round to seat 13, stood 0.70 m away at
+r = 2.0 m and did not move between the card's start and eight seconds in. A longer window would
+not have helped: the pair was deadlocked. Measured on the UMA copy with the stage report and a
+trace every half second:
+
+- **The way round is 0.56-0.69 m from the north arc's approaches.** At fifteen chairs the ring
+  is 1.92 m out and its approaches 2.62 m. The runtime chairs have no NavMesh hole. The baked
+  hole round the table (bake agent radius 0.5 m) ends at r = 1.84-2.06 m, so walkers going
+  round follow that edge, through the chairs. At seats 5 to 9, on the north arc where the house comes in, the approach is
+  0.56-0.69 m from the edge. That is less than two bodies' radii (0.35 + 0.35), measured with a
+  NavMesh raycast from each approach toward the table.
+- **A body standing on one of those approaches closes the way round.** Not yet seated, it is
+  not parked. The walker is held against it at 0.68-0.70 m, touching, and the touch fails the
+  stander's arrival clearance (`HasCapsuleClearance`). So the stander is never seated and
+  parked, and the walker is never let past. Ten runs of the full house: four deadlocked, all
+  on seat 9 (sam-williams, with extra-14 and extra-15 held against them). The walkers stayed
+  put for 17 s, through the whole card, and the card only started at the summons' cap. The
+  pipeline's two deadlocks were on seat 8.
+- **Fixed:** a ceremony counts a body as arrived once it stands on its place and has stopped,
+  whoever touches it (`HouseMeetingCoordinator.CeremonyActorArrived` asks
+  `HouseNpcMotion.IsOnMark`, which is the arrival test without the clearance). The body sits,
+  its agent is parked, and the walker goes by. Twenty runs after the fix: fifteen seated at
+  every card's start, and the card started when the house had gathered (about 19 s), never at
+  the cap. The stage's report now names the nearest body to anyone stuck or walking.
+- **Still true:** walkers go round through the ring's chairs, and through anybody seated on
+  them, because runtime chairs have no hole. The authored, baked set (§8.2.3) is what ends that.
+
+The same failure showed a teardown fault. When a scene unloads under a playing card, the
+anchors are destroyed first. Then the director's `OnDisable` cancels the card or ends the stage,
+and the stage's report read a destroyed anchor's approach. `Report` now says the place is gone,
+and `Release` checks the camera rig as `End` does.
+
 ### 7.2 The table: everyone seated, at a table their size (D1)
 
 - **One ring, the table grown to it.** The chairs stay on one ring - the show seats the whole

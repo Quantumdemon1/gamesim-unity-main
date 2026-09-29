@@ -156,6 +156,18 @@ namespace Gamesim.House
         public bool HasArrivedAt(string reservationId) => reservationId != null && reservationId == leaseId
             && !paused && state == HouseNpcMotionState.Arrived && PhysicalArrival();
 
+        /// <summary>
+        /// Whether this body stands on the destination its reservation walked it to - within the
+        /// arrival test's reach, stopped, on the destination's floor - whoever's capsule is against
+        /// it. <see cref="HasArrivedAt"/> also asks for the clearance, and a body passing close
+        /// enough to touch withholds it; a ceremony's places are the body's own, so the ceremony
+        /// asks this instead (measured 2026-09-29, endgame-f34b: a walker held against a body
+        /// waiting on its approach refused that body's arrival, the body was never seated and
+        /// parked, and so the walker was never let past).
+        /// </summary>
+        public bool IsOnMark(string reservationId) => reservationId != null && reservationId == leaseId
+            && !paused && PhysicalArrival(false);
+
         /// <summary>How far the route this body holds still runs, in metres along its path, or -1 when it holds none.</summary>
         public float RouteLength
         {
@@ -343,7 +355,7 @@ namespace Gamesim.House
             }
         }
 
-        private bool PhysicalArrival()
+        private bool PhysicalArrival(bool clearance = true)
         {
             if (!IsBound || !ValidateOwnedComponents(out _) || leaseId == null || ownedAgent.pathPending || ownedAgent.isOnOffMeshLink
                 || !HouseRoomQuery.Finite(ownedAgent.velocity) || ownedAgent.velocity.sqrMagnitude >= .04f
@@ -355,7 +367,7 @@ namespace Gamesim.House
                 || !HouseRoomQuery.Finite(ownedAgent.destination) || Vector3.Distance(ownedAgent.destination, destination) > .05f
                 || ownedAgent.remainingDistance > ownedAgent.stoppingDistance + .10f)) return false;
             return rooms.TryLocate(transform.position, capsule.radius, out var room) && room == destinationRoom
-                && rooms.HasCapsuleClearance(transform.position, capsule.radius, capsule.height, transform);
+                && (!clearance || rooms.HasCapsuleClearance(transform.position, capsule.radius, capsule.height, transform));
         }
 
         private bool ValidateOwnedComponents(out string reason)

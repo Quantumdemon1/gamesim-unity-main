@@ -154,6 +154,17 @@ namespace Gamesim.Tests.PlayMode
                     .And.Contain(EpisodeDirector.ActionsLeftHeadline(left)).And.Not.Contain("FREE TIME"),
                 "The head names the window for what it is now, over the same count of actions.");
             Assert.That(ActiveRect(EpisodeHud.HouseCardsName), Is.Not.Null, "The house's cards are still the decision.");
+
+            // A houseguest's screen: the context card speaks for the Final 3, not the final-four
+            // week whose roles stay in state until the window closes.
+            director.OpenHouseguestScreen(state.Active.First(actor => !actor.isPlayer).id);
+            yield return null; yield return null;
+            var context = LastActive(EpisodeHud.YourContextCardName);
+            Assert.That(context, Is.Not.Null, "The houseguest screen has its context card.");
+            Assert.That(Words(context), Does.Contain("You are in the Final 3").And.Contain("Final Head of Household ahead")
+                .And.Not.Contain("You are HOH").And.Not.Contain("You are on the block").And.Not.Contain("Current Objective"));
+            director.CloseHouseguestScreen();
+            yield return null;
         }
 
         /// <summary>

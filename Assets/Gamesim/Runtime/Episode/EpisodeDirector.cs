@@ -639,7 +639,7 @@ namespace Gamesim.Episode
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;
-            moveScreenId = null;
+            moveScreenId = null; comparingFinalists = false;
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -1444,9 +1444,9 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
             {
                 hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
-                // The two of them side by side: one of two, not the first of a list.
-                var finalists = hud.Pairs();
-                foreach (var candidate in state.Active.Where(c => !c.isPlayer)) { string id = candidate.id; hud.PairedActionFor(finalists, id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
+                // The two of them side by side as cards, with what the player knows about each and
+                // what taking each means, over the controls that decide it (ENDGAME-PLAN F2).
+                FinalTwoChoice(state);
                 return;
             }
             if (state.phase == EpisodePhase.Jury && !state.Active.Any(c => c.isPlayer) && !state.votes.Any(v => v.voterId == state.playerId))

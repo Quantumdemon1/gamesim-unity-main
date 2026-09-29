@@ -223,7 +223,7 @@ namespace Gamesim.Episode
                         : "\nSuccess chance: " + chance + "%. Success adds 2 preparation; failure removes 1.")
                     + "\nPreparation stays between 0 and 5. Current preparation: " + state.playerStudyBonus + "/5."
                     + " Even at a limit, confirming uses one action."
-                    + "\nThis helps only the weekly simulated HoH/Veto option. It does not boost precision play or final HoH."
+                    + "\nPreparation is " + StudyUse(state) + "."
             };
             Render();
         }
@@ -405,6 +405,23 @@ namespace Gamesim.Episode
         /// room keeps - preparation, persona, the jury's recorded impression - one a row, and the
         /// full rules behind a disclosure rather than in the reading column.
         /// </summary>
+        /// <summary>
+        /// Where study preparation counts, as the season's competition rules have it. From rules 3
+        /// the engine adds it on every player entry route (EpisodeEngine.CommonCompetitionBonus):
+        /// the weekly competitions however they are played, and all three parts of the final Head
+        /// of Household. Before rules 3 only the weekly simulated option read it.
+        /// </summary>
+        public static string StudyUse(EpisodeState state) =>
+            state != null && state.competitionRulesVersion >= 3
+                ? "used in every competition you enter, however you play it, the final HoH's three parts included"
+                : "used only by the weekly simulated HoH/Veto option, not precision play or final HoH";
+
+        /// <summary>The same, in the record row's few words.</summary>
+        public static string StudyUseShort(EpisodeState state) =>
+            state != null && state.competitionRulesVersion >= 3
+                ? "Used in every competition you enter."
+                : "Used only by the weekly simulated HoH/Veto option.";
+
         private void RenderDiaryRecordTab(EpisodeState state, bool choice)
         {
             bool ballotCast = state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId);
@@ -419,7 +436,7 @@ namespace Gamesim.Episode
             hud.RecordSummary(new List<(string, string, string, string)>
             {
                 ("Study preparation", PackArt.KitIconBook, state.playerStudyBonus + " / 5",
-                    "Used only by the weekly simulated HoH/Veto option."),
+                    StudyUseShort(state)),
                 ("Diary persona", PackArt.KitIconPerson, state.playerPersona.current,
                     reflections + (reflections == 1 ? " recorded reflection." : " recorded reflections.")),
                 // A record of how the jury has read you, never a forecast of how it will vote; and
@@ -431,7 +448,7 @@ namespace Gamesim.Episode
             });
             hud.Disclosure(EpisodeHud.DiaryRulesCaption, diaryRulesOpen, () => { diaryRulesOpen = !diaryRulesOpen; Render(); });
             if (!diaryRulesOpen) return;
-            hud.Aside("Study preparation: saved between weeks; used only by the weekly simulated HoH/Veto option, not precision play or final HoH. It stays between 0 and 5 and changes only when you confirm a study approach.");
+            hud.Aside("Study preparation: saved between weeks; " + StudyUse(state) + ". It stays between 0 and 5 and changes only when you confirm a study approach.");
             hud.Aside("Diary persona: each confirmed reflection adds one to your persona history; your displayed persona may remain unchanged.");
             hud.Aside("Jury impression: an impression, not a promise. A reflection can shift it for each current juror, within the ledger's limits. It is not a directed-trust change or a jury ballot.");
         }
@@ -507,7 +524,7 @@ namespace Gamesim.Episode
             hud.DiarySection("YOUR DIARY RECORD");
             hud.DiaryRecord(
                 ("star", "Study preparation: " + state.playerStudyBonus + "/5",
-                    "Saved between weeks; used only by the weekly simulated HoH/Veto option, not precision play or final HoH."),
+                    "Saved between weeks; " + StudyUse(state) + "."),
                 ("journal", "Current diary persona: " + state.playerPersona.current + ".",
                     "Recorded reflections: " + state.playerPersona.history.Count + "."),
                 ("people", "How the jury has read you so far: " + state.jurySentiment.overallSentiment.ToString("0")

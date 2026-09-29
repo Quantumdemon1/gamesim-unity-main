@@ -45,11 +45,12 @@ namespace Gamesim.Tests.PlayMode
             if (before.jurySentiment.jurors.Count == 0)
                 Assert.That(ActiveRect(EpisodeHud.DiaryRecordRowPrefix + "Recorded jury impression").GetComponentsInChildren<TMP_Text>()
                     .Select(t => t.text), Does.Contain("None yet"), "No jury is no record, not a zero.");
-            Assert.That(text, Does.Not.Contain("not precision play or final HoH"), "The long rules are behind the disclosure.");
+            Assert.That(text, Does.Not.Contain(EpisodeDirector.StudyUse(before)), "The long rules are behind the disclosure.");
 
             ButtonWithCaption(EpisodeHud.DiaryRulesCaption).onClick.Invoke();
             yield return null; yield return null;
-            Assert.That(ActiveDiaryText(), Does.Contain("not precision play or final HoH"));
+            Assert.That(ActiveDiaryText(), Does.Contain(EpisodeDirector.StudyUse(before)),
+                "Where preparation counts, as the season's competition rules have it.");
             Assert.That(ActiveDiaryText(), Does.Contain("an impression, not a promise"));
             if (Application.isBatchMode) yield return CaptureFraming("diary-record");
 

@@ -732,3 +732,248 @@ checkout before a PR.
 5. **The last look.** (A, recommended) keyed to the goodbye line: the warm and the dealt stop and
    turn, the cold and the glare walk straight through. (B) everybody stops and turns. (C) nobody
    does.
+
+The owner took every recommendation above on 2026-09-28 (evening). D0 and D1's mechanics are
+built (7.1.1, 7.1.2). Where §8 says so, §7.2 to §7.4's designs are superseded by the storyboards.
+
+## 8. The storyboards (2026-09-28): the cut scenes' art direction
+
+The owner drew three storyboards, six frames each, for the nomination ceremony, the veto
+competition and ceremony, and eviction night (the images are in the session's records; the
+frames are described below). They are the art direction for C4 and for the rest of round two.
+This section was built by mapping every frame against the code (three readers, three
+adversarial verifiers: 6 of 96, 26 of 111 and 5 of 97 claims corrected, none of the analyses
+refuted) and by a design panel on the three hard problems (three designs each and a judge). What
+follows keeps only what the verifiers confirmed, with the house's rules in front of every
+proposal: seating furniture is authored in the scene and baked (7.1.1); bodies move only by
+routing; runtime props have no colliders; the cards keep the order and the timing, with one
+stated exception; reduced motion, batch runs and the HUD path never see any of it; captions are
+contracts; presentation only, no saved field, nothing of the story session's.
+
+### 8.0 What the storyboards change
+
+**The sets.** The nomination room is a lounge circle: cream curved sofas round a low round table
+with a plant, the circle's mouth open toward the screen, the Head of Household standing in the
+mouth with a keybox, and two tall red wingback chairs in the mouth for the nominees. The living
+room is a U of cream couches round a low table facing the screen, with the two red wingbacks in
+front of the screen facing the room, so the house sees the nominees and the board together.
+Neither exists: the nomination room is fifteen dining chairs on a ring round a 0.78 m table, the
+living room a turned sofa, two cloned dining chairs and standing marks. Under 7.1.1 both become
+scene set pieces with fitted proxies and one rebake; `CeremonySets` keeps only the anchors.
+
+**The beats.** Each key is a walk: the named houseguest rises, walks to the box the Head of
+Household holds, takes a key, walks back and sits holding it; the last two cross to the red
+chairs. The veto meeting is staged in the nomination room with the nominees in the red chairs,
+the holder between them wearing the necklace, the pleas, and the necklace into a red box on a
+stand or round a nominee's neck with the replacement walking to the freed chair. Eviction night
+adds a goodbye from the red chair, and the exit is a walk to a golden double door in view of the
+couches, opened, walked through and shut, held over the seated heads. Built today: the summons,
+the keys and the vote on the screen, the beat-driven cuts, the seated reactions, the stand-up,
+and a walk-out to the yard's front door that nobody watches (§7.0).
+
+**The props.** Eight authored pieces, none in the catalogue today: an arc sofa, a four-seat and
+a three-seat straight couch in cream, the red wingback, a stand, the keybox, the veto necklace
+and the red veto box. The keys and the box can start as renderer-only runtime primitives on the
+opening door set's recipe (no art blocks the build); the crown over the exit door is the door
+set's own bar with the crown icon; the bag in the evicted's hand is dropped (no prop, no carry
+take). The takes the frames want and the library lacks - a carry, a reach and take, a hand on
+the heart, a tearful walk, a seated shock - are mocap polish through adding-a-mocap-take, never
+blockers: until then looks, the seated fist pump, `ReactEvicted` and a slower walk carry them.
+
+### 8.1 Frame by frame
+
+**Nomination ceremony (nomination room).**
+
+| # | Frame | Built | To build |
+|---|---|---|---|
+| 1 | The house assembles on the lounge circle; the HoH at the head with the keybox | The summons, N−1 seats on the ring, the head mark, the idle house mark on the screen | The authored circle (8.2.3); the HoH's mark on the mouth's line; the keybox on the HoH (8.2.1) |
+| 2 | The HoH holds the box to the house and speaks | The screen shot on the Opened beat | An over-the-shoulder shot from the nearest seated houseguest; the talk loop on the HoH for the intro's 2.4 s |
+| 3 | The first called walks up and takes a key | A cut to their face and a look | The walk-up per key, the take, the key in the hand (8.2.1) |
+| 4 | Seated houseguests hold their keys up | The seated fist pump on the last safe key only | The fist pump on every key once seated; a key quad riding home in the hand; a group raise on the last-key beat |
+| 5 | The two without keys sit in the middle; tension | The last-key push-in on the waiting group | The push-in from the wide's side so the board stays behind them; seating never keyed to the outcome (the spoiler rule) |
+| 6 | The nominees take the red chairs in front of the screen | The block beat drops two heads in their ring seats | The two authored wingbacks in the mouth and a stage tail after the card: the nominees rise, cross and sit in red, the pair shot holds (8.2.1) |
+
+**Veto competition and ceremony.**
+
+| # | Frame | Built | To build |
+|---|---|---|---|
+| 1 | The six competitors revealed in a line in front of the living room's screen | The veto-field takeover on the HUD; the engine's draw | The takeover mounted on a screen with per-face beats; a `living-line` of six standing anchors in front of the stage facing the room; the field commit routed through a stage |
+| 2 | The competition begins at six lit stations in the yard | The arena samples bare floor and marks it with discs; three podiums | Six authored stations with key icons on the podiums' row; a yard screen a card can mount on; a rebake (a slice of its own, 8.3) |
+| 3 | The timer on the yard screen; the six solving | The HUD's clock; contestants stand at their marks | A world scoreboard on the yard screen fed from the run; heads down over the station; the puzzle take is polish |
+| 4 | The winner holds the key aloft; the others cheer | The arena is struck before the result card; `Cheered` | A result beat inside the arena's life: the yard screen reads VETO WINNER, the winner's `Won`, the house's `Cheered`, confetti on the card |
+| 5 | The meeting: nominees in the red chairs, the holder between them, the HoH aside, the pleas | `Assign` for the veto (dead code behind the reveal routing), the takeover on the HUD | The veto commit routed through the stage into the nomination room; the block from `wasNominated`; the holder's and the HoH's marks; a plea beat per nominee on the card (the player's own plea stays the strategy windows') |
+| 6 | Not used: the necklace into the red box. Used: round a nominee's neck, the replacement takes the other chair | Nothing | Decision and replacement beats on the takeover; the necklace re-parented under a cut; the saved nominee back to the circle and the replacement to the freed chair in a stage tail |
+
+**Eviction night (living room).**
+
+| # | Frame | Built | To build |
+|---|---|---|---|
+| 1 | The house on the U of couches; the nominees in the red chairs facing the room | Two hot seats facing the screen, three sofa seats, standing marks; the nominees held by id; the card waits for the house (7.1.2) | The authored U and wingbacks facing the room (8.2.3); an arrival cut to the nominees taking the chairs |
+| 2 | THE VOTE: a roster of voters revealed one by one | Two faces with climbing counts and pips | A roster on the screen frame only, each row naming the nominee that voter evicts (never EVICT/KEEP against the eventual evictee, which spoils the result); the HUD frame byte-identical |
+| 3 | BY A VOTE OF 3 TO 2, CASEY IS EVICTED | The banner and the host line; the evicted stands at 0.4 of the hold | A three-line result block on the screen frame; both nominees seated through the result; the losing side of the vote looks down |
+| 4 | The evicted stands from the red chair and says goodbye | Closed goes straight to Release and the camera to the viewer | A Goodbye step of about 4 s: the evicted up and turned to the U, every head on them, the goodbye line here, a push onto them; a press skips it |
+| 5 | The exit: down the room toward the golden door as the house watches | The camera on the body's heels for 20 m to the yard | The door in the living room in one over-the-heads frame; the walk at 1.5 m/s with the head down; the last look by the goodbye line's kind (8.2.2) |
+| 6 | The door closes over the seated heads | The leaves never close; the body vanishes in the open | `Close` once the body is behind the leaves; a 1.2 s hold; the body switched off behind the shut door; the strike under a dip |
+
+### 8.2 The three hard problems, decided
+
+#### 8.2.1 The keybox walk-ups (the one contract change)
+
+Each key is a real round trip by routing under the ceremony lease, re-routed leg by leg (a
+`RouteCeremonyActor` on the opening's `RouteOpeningActor` pattern): chair, a take mark in the
+circle's mouth in front of the Head of Household, chair. The HoH carries the keybox on their
+forearms; the key the card names is one object re-parented from the box to the taker's right
+hand on a forearm reach and rides home to the lap. Props are renderer-only runtime objects
+driven by one LateUpdate component that lives off the bodies, so no body's motion binding is
+touched (the motion refuses any unlisted root behaviour). On the block beat the two nominees
+cross to the red chairs.
+
+Timing: the card keeps the order and its rhythm. A `CeremonyPace.Staged` row, never a setting,
+is chosen by the director's play lambda when the card plays on a set's screen at the suspenseful
+pace: PerKey 5.0 s up to six keys, 5.5 to nine, 6.0 beyond, so a take fits inside each key's
+hold and the return overlaps the next key. **The contract change:** the card may be asked to
+hold at a key boundary for a take that is late, capped at 4 s, and at the block's end for the
+crossing, capped at 6 s (`HoldBefore(atCardSeconds, until, cap)` on the card; cleared by a skip,
+a speed press, a cancel and the stage's end). A skip still gives up the order and never the
+outcome; on the HUD nothing changes; `Duration` is unchanged so the pacing tests keep their
+numbers. Four doc comments that say a card never waits are rewritten with it. If the owner
+declines the wait, the design runs on the Staged row alone and a walk later than the boundary
+is abandoned where it stands.
+
+Gates, decided once at the card's start: walk-ups only on a baked ring (a NavMesh probe under
+every seat: a chair whose centre samples floor has no hole), only on the set's screen at the
+suspenseful pace, never under reduced motion, on the HUD, in a batch run without
+`StagesInBatchRuns`, at the quick pace, or while sped up; a body that cannot walk or whose take
+mark is not free is handed the key at the chair, as today. Before anyone leaves a chair the
+coordinator's `CanWalk` and `CanStandAt` are asked, so nothing stands up that cannot walk. The
+shot list per key: the screen, the rise from in front of the chair, a following shot from the
+mouth's side, a profile two-shot across the head's line for the take (never over the HoH's
+shoulder: at sixteen there is no room behind them), a wide of the walk home with the next riser
+in frame; the last-key push-in and the block's pair shot as built. Budget: about 29 s at six
+against 15 today, about 91 s at sixteen against 30, inside a stage cap raised to
+60 + 10 × keys. The report gains a walk-up column (to the box, taking, returning, abandoned,
+handed at the chair, held seconds). Effort about six days once the ring is authored.
+
+#### 8.2.2 The exit door
+
+The storyboard draws the door at the end of the living room in view of the couches; the owner's
+earlier words were "the same door from when they enter". Both are honoured by rebuilding the
+opening's own door set - the same leaves, jambs, crown, light and swing - on the living room's
+west wall at its south end, with the yard's front door kept as a fallback venue behind a switch.
+The facts that decide it, verified: there is no NavMesh west of the wall and none can be added
+at runtime, so there is no deck behind this door; the body is switched off standing inside the
+one-metre vestibule behind two shut leaves, where neither the exit wide nor the dollhouse view
+can see it. The memory wall hangs on the west wall from z −7.3 to −2.7, so the door stands at
+DoorCentre (−12.6, 0, −8.5) with its aperture at z −9.6 to −7.4, clear of the frames; the west
+wall is 1.5 m tall, not the 1.1 m cutaway the plan assumed. The set is built at the vote card's
+close, closed and dark and out of every frame, and struck under a travel dip when the stage
+ends, as the opening strikes its own; a runtime door stops nobody, so it never outlives the
+walk. Two small props inside its footprint (a speaker and a plant) are hidden while it stands,
+as the television is for the screen.
+
+The sequence: the goodbyes (about 4 s, the goodbye line moved here from the door, the stage
+keeping its shot instead of releasing it); the exit wide over the seated heads looking west down
+the room with the door at centre; the walk at 1.5 m/s with a look mark kept ahead on the floor;
+the last look at a mark 1.4 m before the door, by the goodbye line's kind (warm and dealt stop,
+turn to the lens and play `Evicted` for 1.6 s; cold and glare walk straight on); `Open` without
+the intro's white flash; a push-in; through the leaves into the light; `Close` once the body is
+behind them; a 1.2 s hold on the shut door; then the stage ends, stands the house up and hands
+the camera back. About 18 s after the card, every second in frame. A press skips to the shut
+door and lets them go; the press that closed the card still does not. Measured first: a probe on
+the D: copy samples the door mark's floor and reports the mesh's edge; if it comes back too far
+east the whole set steps east by the shortfall, and if the leaves could not hide a body the exit
+falls back to the yard. Effort about four days. Because 8.2.3 moves the living room's screen to
+the south wall, the door stands 1.5 m from the stage's west end; the walk from the red chair is
+four metres, and the exact wide is placed by capture, not reasoned.
+
+#### 8.2.3 Authoring the seats
+
+Eight authored pieces (one script each under ArtSource/setpieces, origin centred and on z = 0,
+verified with bb_look renders; the arc sofa and the wingback first, since every other number
+hangs on their imported bounds): `bb_set_loungearc3`, a 52.8° arc sofa with three seats at
+0.72 m pitch and three chord-box collision children so the hulls follow the arc;
+`bb_set_lounge4` and `bb_set_lounge3`, straight cream couches at 0.76 m pitch (the existing
+sofa's 0.67 breaks the 0.7 rule); `bb_set_wingback`, 0.9 × 0.9 × 1.25 m in red velvet;
+`bb_set_stand`; `bb_set_keybox`; `bb_set_vetonecklace`; `bb_set_vetobox`. The low round table
+is the existing round table at a row height of 0.45. Fallback if the art slips: the Poly Haven
+armchair as the wingback's stand-in and the straight couches alone.
+
+**The nomination room:** the circle's centre at (0.075, −14.5), the seat ring at 2.4 m, the
+approach ring at 3.55 m (approaches behind the sofas, 1.07 m apart), the mouth 96° wide toward
+the screen; five arc sofas touching; the two wingbacks in the mouth at (−1.2, −14.75) and
+(1.35, −14.75) facing the house, approached from behind; the low table at the centre; the
+head marks in the lane between the wingbacks and the screen, validated by `CanStandAt`; the
+keystand and the veto stand on the screen's stage ends, above the floor so they cost no lane;
+the room marker moved out of the table's box into the lane. The ring rug follows the table. The
+north band between the north sofa and the wall is the tightest spot in the house (0.55 m at the
+north door's mouth): the doorway resolver's log decides it, and the fallback is the circle
+0.2 m further south. An alternative layout, the owner's call: the wingbacks flanking the mouth
+wider apart with the HoH's mark between them nearer the ring.
+
+**The living room:** the screen moves to the south wall's west half (a stage 4 m wide on the
+north wall would pinch the bedroom door to 0.4 m of mesh), the wingbacks at (−8.55, −7.3) and
+(−7.45, −7.3) facing the room 1.1 m apart, approached from the front; the U of two four-seat
+couches as its base at z −2.9 facing south and a three-seat couch at each arm, fourteen seats
+in one `gallery-seat` venue filled centre-out, the low table inside; the prototype sofa, coffee
+table, rug and television boxes disabled; the room finish's feature wall, strips and prints
+follow the screen to the south wall; the living room marker, the player's and two houseguests'
+start spots and the `living-east-chat` anchors move out of the U (a scene edit committed with
+the batch, every moved spot audited); the standing marks stay as the fallback past fourteen.
+The Head of Household stands beside the screen as built (or sits in the U: the owner's call).
+
+**`CeremonySets` rewritten to anchors only:** no clone, move or scale; a seat-layout table per
+piece name gives each piece's seats in its own frame; `Ensure` finds the named pieces in the
+room, orders them by the venue's slot rule and creates the anchors; seat counts never depend on
+the house size, because `Assign` hands out slots in order. The anchors are not saved: the
+placement pass runs `Ensure(scene, 16)` after fitting the proxies and before the resolver, so
+the resolver scores every ceremony approach, and strikes them before the save. Any seat piece
+whose proxy the resolver backs off means the layout sealed a route and is fixed by moving
+furniture, never by leaving the proxy off.
+
+**The stage:** `Assign` by venue as above; the wide on the placed seats' centroid; the block
+move on the block beat as a stage tail in Release (the seats exit, the leases re-join the
+wingbacks, the pair shot holds up to 10 s, then the release), no card change; the veto meeting
+in the same pattern. Effort about eight days, the rebake slice included (7.1.1's deferred one),
+and this is the first slice to build, because 8.2.1 and 8.2.2 both stand on it.
+
+### 8.3 The build order
+
+| | Slice | Done when |
+|---|---|---|
+| S1 | The eight pieces, arc sofa and wingback first, with renders | Imported, centred, on z = 0, metas written; the seating tests' preview scene dressed with them |
+| S2 | The scene: the rows, the markers, the start spots, the chat anchors, the prototype boxes, the room finish moved, the placement pass with `Ensure(16)` before the resolver, the rebake, the lighting pass, the anchor audit | 28 of 28 room pairs, no seat proxy backed off, the start-spot audit green, the audited pipeline green |
+| S3 | `CeremonySets` as anchors only; the stage's Assign, wide and block move; the full-house tests re-pinned (fifteen seated round the circle; fourteen on the U and two in red, every line seated) | The two captures from above show the storyboards' first frames |
+| S4 | The exit: the door on the west wall, the goodbye step, the last look, the close and the hold, the yard as the fallback venue | The walk-out tests extended and green; three captures; the audited walk's eviction frames |
+| S5 | The keys: the Staged pace, the capped holds, the re-route, the box and keys, the shots, the report's walk-up column | Every key taken from the box at six; the full house measured; captures of the take and the return |
+| S6 | The veto: the takeover on a screen with beats, the field's line in the living room, the meeting with the wingbacks, the pleas, the necklace and the box, the replacement's walk | A staged veto meeting on a director season at both outcomes |
+| S7 | The yard: six authored stations, the yard screen and scoreboard, the winner's beat (its own rebake) | Optional; the owner's call on scope |
+| S8 | Polish: the vote roster and the result block on the screen frame, the crown emblem, the door sound, the takes, the group key raise | As C5 |
+
+S1 to S3 first, as one batch with the rebake; S4 and S5 are independent of each other and
+follow; S6 after S5 (it reuses the re-route and the block chairs). Each lands as before: the
+offline compile, the Unity-free subset, the filtered suites on the D: copy, the audited pipeline
+alone from the main checkout, then a PR. The story session is told before S2 lands, because the
+living room marker and the start spots move under their scene stage's ring.
+
+### 8.4 Decisions for the owner
+
+1. **The wait at a key boundary.** (A, recommended) the card holds up to 4 s for a late take and
+   6 s for the crossing. (B) the card never waits; a late walk is abandoned where it stands.
+2. **The exit door.** (A, recommended) the opening's set rebuilt on the living room's west wall,
+   the yard kept as a fallback. (B) the yard's front door only, with the plan's dip and cut. (C)
+   both: the room's door, then the yard's as a coda.
+3. **The living room's screen.** (A, recommended) the south wall's west half, the feature wall
+   moving with it. (B) the north wall, shifted east to clear the bedroom door, the U hugging the
+   kitchen door.
+4. **The Head of Household at evictions.** (A, recommended) standing beside the screen as built.
+   (B) seated in the U in cast order.
+5. **Walk-ups at every house size.** (A, recommended) always, about 91 s at sixteen. (B) up to
+   twelve keys, the rest handed at the chair.
+6. **The vote board.** (A, recommended) a roster under the two faces, each row naming the nominee
+   that voter evicts. (B) the two-face tally as built. Never EVICT/KEEP against the evictee.
+7. **The nominees' crossing.** (A, recommended) a stage tail after the card, up to 10 s. (B) the
+   card holds until both are seated.
+8. **The competition yard.** (A, recommended) later, as S7 on its own rebake. (B) in this round.
+9. **The keybox.** (A, recommended) carried on the HoH's forearms, renderer-only props now,
+   the authored box later. (B) on a stand beside the HoH.
+10. **The bag.** (A, recommended) dropped. (B) a prop later, with a carry take.

@@ -31,8 +31,34 @@ namespace Gamesim.Presentation
     {
         private const float ReadDelay = 0.35f;
 
+        /// <summary>
+        /// The least room left between the card's glass and each edge of the canvas when the card is
+        /// fitted to it: a little more than the glass's halo (<see cref="UiTheme.GlowWidth"/>), so the
+        /// halo stays whole too.
+        /// </summary>
+        private const float EdgeRoom = 12f;
+
         /// <summary>The show's name, as the host says it at the end.</summary>
         public const string ShowName = "Gamesim: The House";
+
+        /// <summary>
+        /// The runner-up's steel, as the season report wears it: not the gold of the win, and not
+        /// either finalist's own tint, which the chips carry until the result.
+        /// </summary>
+        private static readonly Color Steel = new Color(.68f, .77f, .86f);
+
+        /// <summary>
+        /// The small line over the count at the result (MOCKUP-PASS-PLAN M4): "BY A VOTE OF" over
+        /// "5 TO 2", a split jury called as a tie, and a jury of one said as the one vote it is.
+        /// Public so the winner's screen can say it the same way.
+        /// </summary>
+        public static string CountEyebrow(int forWinner, int forOther) =>
+            forWinner + forOther == 1 ? "WITH THE JURY'S ONLY VOTE"
+            : forWinner == forOther ? "THE JURY IS TIED"
+            : "BY A VOTE OF";
+
+        /// <summary>The jury's whole count as the headline says it, the winner's votes first: "5 TO 2".</summary>
+        public static string CountLine(int forWinner, int forOther) => forWinner + " TO " + forOther;
 
         /// <summary>A finalist, as the card needs them.</summary>
         public readonly struct Finalist
@@ -66,8 +92,8 @@ namespace Gamesim.Presentation
 
         private CanvasGroup group;
         private RectTransform column, scrim, jurorRow, banner;
-        private TMP_Text eyebrow, title, progress, host, bannerText, controls, speedMark;
-        private readonly List<TMP_Text> counts = new List<TMP_Text>();
+        private TMP_Text eyebrow, title, progress, countEyebrow, countLine, host, bannerText, controls, speedMark;
+        private readonly List<TMP_Text> counts = new List<TMP_Text>(), chipTexts = new List<TMP_Text>();
         private readonly List<RectTransform> rims = new List<RectTransform>(), jurorRims = new List<RectTransform>(), chips = new List<RectTransform>();
         private readonly List<float> readAt = new List<float>();
         private List<Finalist> finalists = new List<Finalist>();
@@ -78,6 +104,8 @@ namespace Gamesim.Presentation
         private CeremonyPace pace = CeremonyPace.Suspenseful;
         private float elapsed, upFor, speed = 1f;
         private bool playing, reduced, usingPad, tied, resultShown;
+        // The card's whole size with its glass, at full size, and the canvas size it was last fitted to.
+        private Vector2 cardExtent, fittedTo;
 
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -213,6 +241,7 @@ namespace Gamesim.Presentation
             CeremonyOverlays.Showing();
             upFor += Time.unscaledDeltaTime;
             FollowDevice();
+            FitToCanvas();
 
             if (Dismissable && CeremonyTakeover.SpeedPressed()) SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
             if (Dismissable && CeremonyTakeover.SkipPressed())
@@ -275,6 +304,27 @@ namespace Gamesim.Presentation
             if (speedMark != null) speedMark.gameObject.SetActive(speed > 1f);
         }
 
+        /// <summary>
+        /// Shrinks the card, glass and all, to a canvas too short or too narrow to hold it. The
+        /// canvas keeps about 1600 by 900's area whatever the screen's shape, so a screen wider than
+        /// 16:9 leaves it less height - about 780 units at 21:9 - and at large text, with a full jury
+        /// and the count's headline, the card wants about 900. Every label shrinks with its box, so
+        /// each still draws; the scrim and the confetti keep the whole canvas. Checked each frame,
+        /// because the window can change shape during the reveal, and because a canvas attached this
+        /// frame is only sized by its scaler as it first draws.
+        /// </summary>
+        private void FitToCanvas()
+        {
+            if (column == null) return;
+            var room = ((RectTransform)transform).rect.size;
+            if (room.x <= 0f || room.y <= 0f || room == fittedTo) return;
+            fittedTo = room;
+            float fit = Mathf.Min(1f,
+                Mathf.Max(1f, room.x - 2f * EdgeRoom) / cardExtent.x,
+                Mathf.Max(1f, room.y - 2f * EdgeRoom) / cardExtent.y);
+            column.localScale = new Vector3(fit, fit, 1f);
+        }
+
         private void FollowDevice()
         {
             var pad = CeremonyTakeover.PadUsed();
@@ -323,7 +373,23 @@ namespace Gamesim.Presentation
                 rims[i].GetComponent<Image>().color = won ? UiTheme.Gold : UiTheme.Outline;
                 counts[i].color = won ? UiTheme.Gold : UiTheme.Muted;
             }
+            // Each vote in the colour of how it went: gold for the winner's, steel for the other's.
+            // Only now: until the result a chip wears its finalist's own tint, which says nothing
+            // about who wins.
+            for (int i = 0; i < jurors.Count; i++)
+            {
+                var tint = jurors[i].TargetId == winnerId ? UiTheme.Gold : Steel;
+                chips[i].GetComponent<Image>().color = tint;
+                chipTexts[i].color = UiTheme.OnColor(tint);
+            }
             progress.text = tied ? TieLine() : "All votes are in";
+            // The count as a headline over the host's line, the winner's votes first.
+            string otherId = finalists[0].Id == winnerId ? finalists[1].Id : finalists[0].Id;
+            int forWinner = Votes(winnerId, jurors.Count), forOther = Votes(otherId, jurors.Count);
+            countEyebrow.text = CountEyebrow(forWinner, forOther);
+            countLine.text = CountLine(forWinner, forOther);
+            countEyebrow.gameObject.SetActive(true);
+            countLine.gameObject.SetActive(true);
             host.text = Verdict(winner);
             Raise(HouseAudio.Cue.Finale);
             if (!reduced && confetti != null) confetti.Throw(seed);
@@ -346,7 +412,7 @@ namespace Gamesim.Presentation
             if (column != null)
             {
                 foreach (Transform child in column) Destroy(child.gameObject);
-                counts.Clear(); rims.Clear(); jurorRims.Clear(); chips.Clear();
+                counts.Clear(); rims.Clear(); jurorRims.Clear(); chips.Clear(); chipTexts.Clear();
             }
             else
             {
@@ -372,12 +438,15 @@ namespace Gamesim.Presentation
             float portrait = 110f * scale;
             float face = Mathf.Min(52f, 760f / Mathf.Max(1, jurors.Count) - 10f) * scale;
             float step = face + 12f * scale;
-            column.sizeDelta = new Vector2(900f * scale, (100f + portrait + 150f + face + 190f) * scale);
+            // Grown by the count's headline at the result (64 units), which sits between the
+            // progress line and the host's.
+            column.sizeDelta = new Vector2(900f * scale, (100f + portrait + 150f + face + 254f) * scale);
             var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
             glass.SetAsFirstSibling();
             glass.anchorMin = Vector2.zero; glass.anchorMax = Vector2.one;
             glass.offsetMin = new Vector2(-34f * scale, -26f * scale); glass.offsetMax = new Vector2(34f * scale, 26f * scale);
             UiTheme.Glass(glass, UiTheme.GlassRadius);
+            cardExtent = column.sizeDelta + new Vector2(68f, 52f) * scale;
 
             eyebrow = HudPrimitives.Label("Eyebrow", column, 15f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             eyebrow.characterSpacing = 14f;
@@ -447,19 +516,36 @@ namespace Gamesim.Presentation
                 chipText.rectTransform.offsetMin = Vector2.zero; chipText.rectTransform.offsetMax = Vector2.zero;
                 chip.gameObject.SetActive(false);
                 chips.Add(chip);
+                chipTexts.Add(chipText);
             }
 
             progress = HudPrimitives.Label("Progress", column, 16f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             Place(progress.rectTransform, 900f * scale, 22f * scale, -(100f + portrait + 130f + face + 64f) * scale);
 
+            // The count as a headline, "BY A VOTE OF" over "5 TO 2" (MOCKUP-PASS-PLAN M4). Both
+            // wait for the result: before it they would tell. Each box is at least 1.3 times its
+            // text's size, since Inter draws nothing in a box under 1.21 of it.
+            countEyebrow = HudPrimitives.Label("Count eyebrow", column, 13f * scale, UiTheme.Gold, TextAlignmentOptions.Center);
+            countEyebrow.characterSpacing = 12f;
+            Place(countEyebrow.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 88f) * scale);
+            countEyebrow.gameObject.SetActive(false);
+
+            countLine = HudPrimitives.Label("Count", column, 36f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
+            if (bold != null) countLine.font = bold;
+            countLine.characterSpacing = 2f;
+            countLine.enableVertexGradient = true;
+            countLine.colorGradient = new VertexGradient(Color.white, Color.white, UiTheme.Gold, UiTheme.Gold);
+            Place(countLine.rectTransform, 900f * scale, 48f * scale, -(100f + portrait + 130f + face + 106f) * scale);
+            countLine.gameObject.SetActive(false);
+
             host = HudPrimitives.Label("Host", column, 18f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) host.font = medium;
             host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = 12f * scale;
-            Place(host.rectTransform, 900f * scale, 26f * scale, -(100f + portrait + 130f + face + 92f) * scale);
+            Place(host.rectTransform, 900f * scale, 26f * scale, -(100f + portrait + 130f + face + 156f) * scale);
 
             banner = HudPrimitives.Fill("Result banner", column, UiTheme.Gold, UiTheme.ControlRadius);
-            Place(banner, 560f * scale, 44f * scale, -(100f + portrait + 130f + face + 126f) * scale);
+            Place(banner, 560f * scale, 44f * scale, -(100f + portrait + 130f + face + 190f) * scale);
             bannerText = HudPrimitives.Label("Result", banner, 22f * scale, UiTheme.Ink, TextAlignmentOptions.Center);
             if (bold != null) bannerText.font = bold;
             bannerText.rectTransform.anchorMin = Vector2.zero; bannerText.rectTransform.anchorMax = Vector2.one;
@@ -468,7 +554,12 @@ namespace Gamesim.Presentation
 
             controls = HudPrimitives.Label("Controls", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             controls.text = CeremonyTakeover.ControlsFor(usingPad);
-            Place(controls.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 180f) * scale);
+            Place(controls.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 244f) * scale);
+
+            // Fitted afresh: this jury and this text size make a card of their own size.
+            column.localScale = Vector3.one;
+            fittedTo = Vector2.zero;
+            FitToCanvas();
         }
 
         /// <summary>Each finalist's colour, carried by their votes' chips: the reference's blue and red, in the house's tones.</summary>

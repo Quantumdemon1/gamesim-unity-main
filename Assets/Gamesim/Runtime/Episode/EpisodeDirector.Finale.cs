@@ -6,14 +6,120 @@ using Gamesim.Simulation;
 namespace Gamesim.Episode
 {
     /// <summary>
-    /// The finale on screen: the jury's vote read one juror at a time (<see cref="JuryReveal"/>).
+    /// The finale on screen: the jury's vote read one juror at a time (<see cref="JuryReveal"/>),
+    /// and, once the season is over, two ways back into that night from the finale's panel: the
+    /// vote read again, and what each juror asked and gave as their reason (MOCKUP-PASS-PLAN M4).
     /// </summary>
     public sealed partial class EpisodeDirector
     {
+        /// <summary>The finale panel's control that reads the jury's vote again.</summary>
+        public const string WatchFinaleReplayCaption = "Watch finale replay";
+
+        /// <summary>The finale panel's disclosure of the jury's questions, the answers and the reasons.</summary>
+        public const string JuryQuestionsCaption = "The jury's questions";
+
+        /// <summary>The names the disclosure's lines carry, so a test can tell them from the panel's own.</summary>
+        public const string JuryQuestionsJurorName = "Jury's questions juror", JuryQuestionsQuestionName = "Jury's questions question",
+            JuryQuestionsAnswerName = "Jury's questions answer", JuryQuestionsReasonName = "Jury's questions reason";
+
         private JuryReveal juryReveal;
+
+        /// <summary>Whether the jury's questions are open under the finale's panel. View state.</summary>
+        private bool juryQuestionsOpen;
 
         /// <summary>Whether the jury's vote is being read.</summary>
         private bool JuryRevealPlaying => juryReveal != null && juryReveal.IsPlaying;
+
+        /// <summary>
+        /// Whether the season's jury vote can be read again: two finalists, a winner who is one of
+        /// them, and at least one ballot for one of them from somebody else - the shape
+        /// <see cref="JuryReveal.Play"/> accepts. A season without it offers no replay rather than
+        /// a control that does nothing.
+        /// </summary>
+        private static bool CanReplayJuryReveal(EpisodeState state)
+        {
+            if (state?.contestants == null || state.votes == null) return false;
+            var finalists = new HashSet<string>(state.contestants
+                .Where(c => c.status == ContestantStatus.Winner || c.status == ContestantStatus.RunnerUp).Select(c => c.id));
+            return finalists.Count == 2 && finalists.Contains(state.winnerId)
+                && state.votes.Any(v => finalists.Contains(v.targetId) && !finalists.Contains(v.voterId) && state.Find(v.voterId) != null);
+        }
+
+        /// <summary>
+        /// Reads the jury's vote again, on the finale's panel once the season is over: the same
+        /// card, the same deal and the same count as on the night, from the committed ballots. The
+        /// chrome steps aside as it did then, and <see cref="TickCeremonies"/> brings it back, panel
+        /// and all, when the card ends or is skipped. It reads the season and writes nothing.
+        /// </summary>
+        public void ReplayJuryReveal()
+        {
+            var state = Snapshot;
+            if (state == null || state.phase != EpisodePhase.Finished || juryReveal == null || JuryRevealPlaying) return;
+            EndCeremonyCards();
+            if (juryReveal.Play(JuryFinalists(state), JuryVotes(state), state.winnerId,
+                    reducedMotion, ceremonyPace, unchecked((int)state.seed)))
+                HoldHudForReveal();
+        }
+
+        /// <summary>
+        /// The finale panel's two ways back into the night, after its four ways on: the replay,
+        /// when there is a vote to replay, and the jury's questions, folded until asked for.
+        /// </summary>
+        private void FinaleRecordControls(EpisodeState state)
+        {
+            if (CanReplayJuryReveal(state)) hud.Action(WatchFinaleReplayCaption, ReplayJuryReveal);
+            hud.Disclosure(JuryQuestionsCaption, juryQuestionsOpen, () => { juryQuestionsOpen = !juryQuestionsOpen; Render(); });
+            if (juryQuestionsOpen) JuryQuestionsRecord(state);
+        }
+
+        /// <summary>
+        /// What each juror asked at the finale, both finalists' answers, and the reason each gave
+        /// with their vote, from the record: the questions and answers as <c>juryExchanges</c> saved
+        /// them, and the reasons as the ballots carry them, in full. The truthful stand-in for
+        /// mockup 53's jury roundtable - what the jurors said among themselves was never recorded,
+        /// so it is not here. Nor is anything a question was scored by: never the catalogue's
+        /// answer key, the answer the player passed over, or whether an answer landed.
+        /// </summary>
+        private void JuryQuestionsRecord(EpisodeState state)
+        {
+            var exchanges = (state.juryExchanges ?? new List<JuryExchangeState>())
+                .Where(x => x != null && x.completed && !string.IsNullOrEmpty(x.question)).ToList();
+            var ballots = SeasonReport.JuryBallots(state);
+            var finalists = state.contestants
+                .Where(c => c.status == ContestantStatus.Winner || c.status == ContestantStatus.RunnerUp).ToList();
+            hud.Footnote(exchanges.Count == 0
+                ? "No questions were put to the finalists this season. Each juror's reason is as they gave it with their vote."
+                : "Each question as it was put, the finalists' answers as they were given, and each juror's reason as they gave it with their vote.");
+            string Who(ContestantState c) => c == null ? "A finalist" : c.isPlayer ? "You" : c.name;
+            string Quoted(string words) => "\u201C" + words + "\u201D";
+            // The jury in cast order, the order the questions were asked in.
+            foreach (var juror in state.contestants)
+            {
+                var asked = exchanges.Where(x => x.questionerId == juror.id).ToList();
+                var ballot = ballots.Where(b => b.JurorId == juror.id).ToList();
+                if (asked.Count == 0 && ballot.Count == 0) continue;
+                hud.CardLine(Who(juror), 16, UiTheme.Paper, UiTheme.Weight.SemiBold).name = JuryQuestionsJurorName;
+                foreach (var exchange in asked)
+                {
+                    var to = state.Find(exchange.finalistId);
+                    string addressed = to == null ? "the finalist" : to.isPlayer ? "you" : to.name;
+                    hud.CardLine((juror.isPlayer ? "You asked " : "Asked ") + addressed + ": " + Quoted(exchange.question),
+                        14, UiTheme.Paper).name = JuryQuestionsQuestionName;
+                    if (!string.IsNullOrEmpty(exchange.answer))
+                        hud.CardLine(Who(to) + ": " + Quoted(exchange.answer), 14, UiTheme.Muted).name = JuryQuestionsAnswerName;
+                    // The other finalist's answer to the same question, as the questioning showed it.
+                    var other = finalists.FirstOrDefault(f => f.id != exchange.finalistId);
+                    if (!string.IsNullOrEmpty(exchange.opponentAnswer) && other != null)
+                        hud.CardLine(Who(other) + ": " + Quoted(exchange.opponentAnswer), 14, UiTheme.Muted).name = JuryQuestionsAnswerName;
+                }
+                foreach (var vote in ballot)
+                {
+                    string chosen = vote.FinalistId == state.playerId ? "you" : vote.Finalist;
+                    hud.CardLine("Voted for " + chosen + (string.IsNullOrEmpty(vote.Reason) ? "." : ": " + Quoted(vote.Reason)),
+                        14, UiTheme.Paper).name = JuryQuestionsReasonName;
+                }
+            }
+        }
 
         /// <summary>The two finalists, in cast order, with their faces: the order the engine counts them in.</summary>
         private List<JuryReveal.Finalist> JuryFinalists(EpisodeState state) =>

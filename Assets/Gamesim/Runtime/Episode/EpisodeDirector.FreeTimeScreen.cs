@@ -35,6 +35,9 @@ namespace Gamesim.Episode
         public const string TalkPrivatelyCaption = "Talk privately", AskForInformationCaption = "Ask for information",
             PitchADealCaption = "Pitch a deal", BackToFreeTimeCaption = "Back to free time";
 
+        /// <summary>The free-time screen's head at the Final 3 (ENDGAME-PLAN F1).</summary>
+        public const string EndgamePreparationTitle = "ENDGAME PREPARATION";
+
         /// <summary>What a houseguest's screen sent the player into a conversation for, so the conversation puts it first.</summary>
         public const string IntentAsk = "ask", IntentDeal = "deal";
 
@@ -86,7 +89,14 @@ namespace Gamesim.Episode
             // situation buried under the ordinary controls is a situation they will not see.
             if (!PendingReplyCard(state)) PendingHouseEvent(state);
             int left = ActionsLeftCount(state);
-            hud.ScreenHead("FREE TIME", ActionsLeftHeadline(left), "Talk to a houseguest or make a move around the house.");
+            // At three this window is the endgame's preparation (ENDGAME-PLAN F1): the final-four
+            // eviction opens it and leaving it starts the final Head of Household's first part.
+            // The seat and the moves are the week's own; the head says what they are for now.
+            if (EpisodeHud.IsFinalThree(state))
+                hud.ScreenHead(EndgamePreparationTitle, ActionsLeftHeadline(left),
+                    "Three remain. Study in the Diary Room, settle who you trust, and get ready: the final Head of Household is next.");
+            else
+                hud.ScreenHead("FREE TIME", ActionsLeftHeadline(left), "Talk to a houseguest or make a move around the house.");
             // The week's rule under the head: which window this is and that its seats do not carry.
             string rule = BudgetRule(state);
             if (rule != null) hud.Footnote(rule);

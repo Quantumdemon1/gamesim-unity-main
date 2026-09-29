@@ -248,6 +248,13 @@ namespace Gamesim.Episode
             state != null && state.Active.Count() == 2
             && (state.phase == EpisodePhase.JuryQuestioning || state.phase == EpisodePhase.FinalSpeeches || state.phase == EpisodePhase.Jury);
 
+        /// <summary>
+        /// A juror as the engine's jury vote counts one (EpisodeEngine.ResolveJury): Jury, or Evicted
+        /// on a save that carries the older word. The engine itself only ever writes Jury.
+        /// </summary>
+        public static bool IsJuror(ContestantState actor) =>
+            actor != null && (actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted);
+
         /// <summary>The endgame, where the frame strips down: the Final 3, the Final 2 and the finished season.</summary>
         public static bool IsEndgame(EpisodeState state) =>
             IsFinalThree(state) || IsFinalTwo(state) || (state != null && state.phase == EpisodePhase.Finished);
@@ -354,7 +361,7 @@ namespace Gamesim.Episode
             // The first name only: a full name does not fit a cell, and the pill is a glance. At the
             // endgame, while nobody holds the house, the cell is the jury's size instead: the number
             // the last decisions turn on (ENDGAME-PLAN F1).
-            int jurors = state.contestants.Count(actor => actor.status == ContestantStatus.Jury);
+            int jurors = state.contestants.Count(IsJuror);
             if (holder == null && jurors > 0 && IsEndgame(state))
                 StatCell(pill, 2f * PillCell, "people", UiTheme.Gold, jurors.ToString(), "Jury");
             else
@@ -603,7 +610,7 @@ namespace Gamesim.Episode
         private float EndgameCard(Transform parent, float top, EpisodeState state)
         {
             var rows = EndgameObjectives(state);
-            var jurors = state.contestants.Where(actor => actor.status == ContestantStatus.Jury).ToList();
+            var jurors = state.contestants.Where(IsJuror).ToList();
             float width = RightColumnWidth;
             float juryTop = 44f + rows.Count * ObjectiveRowHeight + 6f;
             float height = juryTop + 18f + JurorDisc + 14f;

@@ -577,6 +577,35 @@ From the commit that leaves three active until the final eviction:
   PlayMode: the caption map, the answer test and the keyboard walk play seasons with no rules
   week, so they stay on A and B; a new test of the live layout uses a fixture with the rules
   week set and finds its controls by caption.
+- **As built, F5a** (the live layout; no saved field). History questions and the five
+  responses change the saved exchange record, so they wait for schema 21 with F4b (F5b). What
+  F5a builds, and where it differs from the text above:
+  - *The live layout* inside the questioning panel: the juror asking (their photo, name and the
+    trait they lead with) and the question on the left; the answers in the centre, the A/B
+    answers, the player juror's tone questions, the recorded answers and Continue, under their
+    own captions and in their own order, so the opening focus, the keyboard ring and every walk
+    are unchanged; and the *Season receipt* on the right. The hint "The jury is listening."
+    sits over them, and `Skip remaining questions` stays after them in the panel's own column,
+    with the jury house door after that. At the larger text the three stack.
+  - *The receipt* is the jury house's read of the juror asking (F4a): where they stand with the
+    player and why, the latest dated lines between them and the deals and promises they share.
+    It quotes the record, not the juror: no saved row holds a juror's words (the reply rows keep
+    keys, the eviction speeches are cleared each week, and a reply card's line is picked by a
+    score the player cannot see).
+  - *The trait* the juror leads with is shown beside the question. It is the key the catalogue's
+    right answer is written to, and it was already public (the conversation header, the
+    finalist cards, the jury house); the five responses of F5b make fit with the traits the
+    point.
+  - *The reaction* is the engine's own note, rebuilt from the saved exchange so it survives a
+    reload, in the allied green or the conflict red, never a number, in the answers' column.
+    Nothing reads the answer key before the commit.
+  - *The player as a juror* sees the finalist they ask on the left and what they know of them on
+    the right (the finalist cards' first facts). The lines speak to the player: "You ask
+    {finalist}", "{juror} asks you".
+  - *The set* is F7's.
+  - *Tests*: the live layout at both text sizes (the columns and what each holds, Skip after
+    them, nothing about the answer before it), the reaction line equal to the engine's note
+    and kept through a reload, and the player juror's columns.
 
 ### F6 The pleas, the vote, the reveal, the winner, the results (HUD and cards)
 
@@ -794,7 +823,7 @@ untouched).
 | F2 | The comparison and the decision screen, gated; with them F1's context card at three and the Diary Room's study copy (built; see F2's note) | The gate's EditMode tests; the decision by caption; the window-at-three fixture asserts the context card's words |
 | F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows (built; see F3's note) | Both card kinds in a fixture at three; the eyebrow and heading pinned |
 | F4 | Preparation, the lock and the jury house; schema 21 with the argument (F4a built: the jury house; see F4's note) | Bands and the effect under both rules; migrations green, the load pins at 21 |
-| F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions | Receipts, categories, the sign by fit, draw counts pinned |
+| F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions (F5a built: the live layout; see F5's note) | Receipts, categories, the sign by fit, draw counts pinned |
 | F6 | The juror's screen, the hidden vote card, the reveal on the screen, the winner screen, the results grid, one placement function | The reveal's tests on both paths, a tie on each; the ways on by caption; the report's pins kept or moved |
 | F7 | The cut scenes on the authored set and the door | Captures of the ceremony, the exit, the walk-in, the reveal; the audited pipeline |
 | F8 | The message to a juror, opening statements, new games, the share card | As decided |

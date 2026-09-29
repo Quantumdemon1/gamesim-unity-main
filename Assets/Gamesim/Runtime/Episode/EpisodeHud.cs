@@ -921,44 +921,52 @@ namespace Gamesim.Episode
                 ? state.contestants.Count(actor => actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted)
                 : state.Active.Count();
             Heading("Question " + (state.juryQuestionIndex + 1) + " of " + questionCount);
-            Paragraph((questioner?.name ?? "Juror") + " asks " + (finalist?.name ?? "Finalist"));
-            if (!string.IsNullOrEmpty(exchange.question))
-                FlowText(exchange.question,23,Accent).gameObject.name = "Jury question";
-            if (exchange.completed)
+            // "You ask", not "You asks": the default player is called "You".
+            Paragraph(exchange.questionerId == state.playerId ? "You ask " + (finalist?.name ?? "the finalist")
+                : exchange.finalistId == state.playerId ? (questioner?.name ?? "Juror") + " asks you"
+                : (questioner?.name ?? "Juror") + " asks " + (finalist?.name ?? "Finalist"));
+            var hint = FlowText(JuryHintWords, 13, UiTheme.Muted);
+            hint.name = JuryHintName;
+            // The live layout (EpisodeHud.JuryLive.cs; ENDGAME-PLAN F5): the juror and the question
+            // left, these controls in the centre exactly as they were, the season's receipt right.
+            JuryLive(state, exchange, questioner, finalist, () =>
             {
-                if (!string.IsNullOrEmpty(exchange.answer))
+                if (exchange.completed)
                 {
-                    Heading(finalist?.name ?? "Finalist");
-                    FlowText(exchange.answer,21,Paper).gameObject.name = "Jury answer";
+                    if (!string.IsNullOrEmpty(exchange.answer))
+                    {
+                        Heading(finalist?.name ?? "Finalist");
+                        FlowText(exchange.answer,21,Paper).gameObject.name = "Jury answer";
+                    }
+                    if (!string.IsNullOrEmpty(exchange.opponentAnswer))
+                    {
+                        var opponent = state.Active.FirstOrDefault(actor => actor.id != exchange.finalistId);
+                        Heading(opponent?.name ?? "Other finalist");
+                        FlowText(exchange.opponentAnswer,21,Paper).gameObject.name = "Other finalist answer";
+                    }
+                    Action(JuryContinueCaption,director.ContinueEpisode);
                 }
-                if (!string.IsNullOrEmpty(exchange.opponentAnswer))
+                else if (exchange.questionerId == state.playerId)
                 {
-                    var opponent = state.Active.FirstOrDefault(actor => actor.id != exchange.finalistId);
-                    Heading(opponent?.name ?? "Other finalist");
-                    FlowText(exchange.opponentAnswer,21,Paper).gameObject.name = "Other finalist answer";
+                    Paragraph("Choose the question you want to put to this finalist.");
+                    foreach (var option in WebJuryQuestioning.GetJurorQuestionOptions(state.juryQuestionIndex))
+                    {
+                        string tone = option.tone;
+                        Action(tone + " · " + option.text,() => director.AnswerJury(tone));
+                    }
                 }
-                Action(JuryContinueCaption,director.ContinueEpisode);
-            }
-            else if (exchange.questionerId == state.playerId)
-            {
-                Paragraph("Choose the question you want to put to this finalist.");
-                foreach (var option in WebJuryQuestioning.GetJurorQuestionOptions(state.juryQuestionIndex))
+                else if (exchange.finalistId == state.playerId)
                 {
-                    string tone = option.tone;
-                    Action(tone + " · " + option.text,() => director.AnswerJury(tone));
+                    Paragraph("Choose your answer. Only the committed response changes the record.");
+                    Action("A · " + exchange.optionA,() => director.AnswerJury("A"));
+                    Action("B · " + exchange.optionB,() => director.AnswerJury("B"));
                 }
-            }
-            else if (exchange.finalistId == state.playerId)
-            {
-                Paragraph("Choose your answer. Only the committed response changes the record.");
-                Action("A · " + exchange.optionA,() => director.AnswerJury("A"));
-                Action("B · " + exchange.optionB,() => director.AnswerJury("B"));
-            }
-            else
-            {
-                Paragraph("The finalists are ready to answer this question.");
-                Action(JuryContinueCaption,director.ContinueEpisode);
-            }
+                else
+                {
+                    Paragraph("The finalists are ready to answer this question.");
+                    Action(JuryContinueCaption,director.ContinueEpisode);
+                }
+            });
             Action(JurySkipCaption,director.SkipQuestioning);
         }
 

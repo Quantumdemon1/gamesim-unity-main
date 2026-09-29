@@ -506,6 +506,11 @@ namespace Gamesim.Episode
         public const float SceneHoldSeconds = 60f;
         /// <summary>The most people a scene gathers: the beat's own, never a crowd.</summary>
         public const int SceneCastLimit = 4;
+        /// <summary>
+        /// The spots a scene offers its people: every point of the ring, so each can take the first
+        /// their own body clears - a room with furniture on the ring still gathers its scene.
+        /// </summary>
+        private const int SceneCandidates = 24;
 
         private string sceneStagedBeat;
         private float sceneStagedAt;
@@ -518,6 +523,14 @@ namespace Gamesim.Episode
         private void TickSceneStage()
         {
             if (npcMeetings == null || !IsReady) return;
+            // A ceremony staged in the house has it: a scene never stands its people in the aisles
+            // during a nomination or an eviction, or takes the card's camera. BeginCeremonyStage ends a
+            // scene already up; this covers the ceremony's gathering, before its every lease exists.
+            if (IsCeremonyStaged || npcMeetings.HasCeremonyStage)
+            {
+                if (npcMeetings.HasSceneStage) npcMeetings.EndSceneStage();
+                return;
+            }
             var state = projected;
             StagedRoom(state, out _);
             var beat = stagedBeat;
@@ -536,16 +549,16 @@ namespace Gamesim.Episode
             var ids = beat.involvedIds.Concat(beat.cast.Select(role => role.contestantId))
                 .Where(id => !string.IsNullOrEmpty(id) && id != state.playerId && state.Find(id)?.status == ContestantStatus.Active)
                 .Distinct().Take(SceneCastLimit).ToList();
-            var places = ScenePlaces(room, ids.Count);
+            var places = ScenePlaces(room, SceneCandidates);
             if (places.Count == 0) return;
-            if (places.Count < ids.Count) ids = ids.Take(places.Count).ToList();
             if (npcMeetings.BeginSceneStage(beat.id, ids, places) > 0) sceneStagedAt = Time.unscaledTime;
         }
 
         /// <summary>
         /// Places for a scene's people in its room: a loose ring round the room's middle, each on the
         /// walkable floor, in the room, and a stride from the next - the gather the plan's staging
-        /// asks for. Fewer than asked when the room is tight.
+        /// asks for. Fewer than asked when the room is tight. The NavMesh is not carved by furniture,
+        /// so a spot may be under a sofa: the stage checks each body's clearance when it takes one.
         /// </summary>
         private List<Vector3> ScenePlaces(string room, int count)
         {

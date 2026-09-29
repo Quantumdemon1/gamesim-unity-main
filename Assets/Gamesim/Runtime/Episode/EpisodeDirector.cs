@@ -639,7 +639,7 @@ namespace Gamesim.Episode
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;
-            moveScreenId = null; comparingFinalists = false;
+            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false;
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -1382,8 +1382,10 @@ namespace Gamesim.Episode
                 return;
             }
             if (challengeActive) { ChallengePanel(); return; }
-            if (state.phase == EpisodePhase.JuryQuestioning) { hud.JuryQuestioning(state); return; }
-            if (state.phase == EpisodePhase.FinalSpeeches) { hud.FinalSpeech(state); return; }
+            // The jury house over the Final 2's panel when it is open, and its door after the
+            // panel's own controls (EpisodeDirector.JuryHouse.cs; ENDGAME-PLAN F4).
+            if (state.phase == EpisodePhase.JuryQuestioning) { if (JuryHouseIfOpen(state)) return; hud.JuryQuestioning(state); JuryHouseDoor(state); return; }
+            if (state.phase == EpisodePhase.FinalSpeeches) { if (JuryHouseIfOpen(state)) return; hud.FinalSpeech(state); JuryHouseDoor(state); return; }
             if (state.phase == EpisodePhase.Finished)
             {
                 hud.Paragraph("Winner: " + state.Find(state.winnerId).name + ". Runner-up: " + state.Find(state.runnerUpId).name + ".");

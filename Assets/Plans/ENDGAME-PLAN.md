@@ -484,6 +484,45 @@ From the commit that leaves three active until the final eviction:
   the jury house at eight and at the largest house; a compact-HUD test that opens the jury
   house from the panel; the schema 21 migration, the new frozen validator and the load pins
   moved to 21 (§3).
+- **As built, F4a** (the jury house; no saved field). The story session could not be reached
+  to claim schema 21, so F4 is split. F4a builds what the saved rows already hold; F4b keeps
+  *Prepare your final case*, the lock, the theme's saved fact and its jury effect, and the
+  schema. What differs from the text above:
+  - *The read* is `JuryHouseRead` in the simulation, pure and Unity-free. A juror's band
+    starts from the player's last `read` row on them (their view of the player, 25 and -25),
+    never the `juror` row, a miss or a deflection.
+  - *Bitter* is read from the public record, not from grudge rows: the player nominated them
+    as Head of Household (a veto save included), named them the replacement, used the veto to
+    put them up, broke the tie that evicted them, or evicted them at the final eviction. A
+    grudge's cause is last-writer-wins (a public `nominated` turns private when a broken deal
+    stacks on it) and its removal turns on a score the player cannot see, so the rows cannot
+    say what the house saw. The freshest evidence speaks: a read after the player put them up
+    is their view after it, and a read in the same week came after that week's ceremonies
+    (except the opening week, whose free time comes first). An eviction by the player is
+    always Bitter.
+  - *Leaning* is **Wavering**: a warm read cooled since, by a promise the player broke them, a
+    plea the player refused, a vote to evict them, or a deal between them that broke. "Since"
+    counts only what provably came after the read. The record holds no break week and no
+    phase, so a same-week campaign or reveal cannot be placed against it. A Final 2 agreement,
+    broken only at the final eviction, always counts.
+  - *Knows* lists the alliances they shared (ended or not), the deals and promises between
+    them with their standing, and the player's public votes against them. *Missed* lists the
+    weeks the player held the house or used the veto after they left, the competitions the
+    player won, and the deals the player struck. *Between you* is the dated lines: the week they
+    left and whose week it was, what the player did to them, the player's reads, votes and
+    replies. *What matters to this jury* counts the traits the jurors lead with (the trait the
+    questioning reads). *May be swayed by* waits for F4b's theme table.
+  - *The doors*: a free tile at three beside the comparison, and a row after the Final 2's
+    questioning and speech controls, so the opening focus stays on the panel's own controls.
+    Both open a view over the station's panel, with `Leave the jury house`. The door on the
+    jury strip is not built: the strip is chrome in free roam, and a screen that opens from
+    anywhere needs a panel flag of its own, as the notebook has. The Jury phase has no door:
+    the vote is underway.
+  - *The cards*: one per juror with a photo slot, the band in its colour, the reason, and up to
+    three lines of each section, in rows of three, two or one by width and text size. Nothing on
+    a card is a control.
+  - *Tests*: ten on the read (Unity-free), and the jury house opened from both doors at both
+    text sizes, with nothing committed and every line fitting its card.
 
 ### F5 Jury questioning as a live event (engine under new rules; the HUD; the set)
 
@@ -754,7 +793,7 @@ untouched).
 | F1 | The Final 3 frame: the strip, the objectives card with the jury strip, the folded rail, the two-row feed and the ENDGAME PREPARATION head on the window at three (built; the trait row deferred, see F1) | PlayMode in the window at three, at Part 1 and at two asserts the words, the marks and the card's foot; the overlap and compact suites green |
 | F2 | The comparison and the decision screen, gated; with them F1's context card at three and the Diary Room's study copy (built; see F2's note) | The gate's EditMode tests; the decision by caption; the window-at-three fixture asserts the context card's words |
 | F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows (built; see F3's note) | Both card kinds in a fixture at three; the eyebrow and heading pinned |
-| F4 | Preparation, the lock and the jury house; schema 21 with the argument | Bands and the effect under both rules; migrations green, the load pins at 21 |
+| F4 | Preparation, the lock and the jury house; schema 21 with the argument (F4a built: the jury house; see F4's note) | Bands and the effect under both rules; migrations green, the load pins at 21 |
 | F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions | Receipts, categories, the sign by fit, draw counts pinned |
 | F6 | The juror's screen, the hidden vote card, the reveal on the screen, the winner screen, the results grid, one placement function | The reveal's tests on both paths, a tie on each; the ways on by caption; the report's pins kept or moved |
 | F7 | The cut scenes on the authored set and the door | Captures of the ceremony, the exit, the walk-in, the reveal; the audited pipeline |

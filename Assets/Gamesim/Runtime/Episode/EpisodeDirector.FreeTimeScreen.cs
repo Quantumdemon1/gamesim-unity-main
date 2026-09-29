@@ -88,6 +88,8 @@ namespace Gamesim.Episode
             // The comparison over Endgame Preparation (EpisodeDirector.FinalThree.cs), while the window lasts.
             if (comparingFinalists && Preparing(state)) { FinalistComparison(state); return; }
             comparingFinalists = false;
+            // The jury house over Endgame Preparation (EpisodeDirector.JuryHouse.cs), while the window lasts.
+            if (JuryHouseIfOpen(state)) return;
             // Before anything the player chose to do: something has happened to them, and a
             // situation buried under the ordinary controls is a situation they will not see.
             if (!PendingReplyCard(state)) PendingHouseEvent(state);
@@ -254,6 +256,7 @@ namespace Gamesim.Episode
             };
             // At three, first of all: the comparison, which costs nothing (ENDGAME-PLAN F2).
             if (asCards && Preparing(state)) tiles.Insert(0, CompareTile(OpenFinalistComparison));
+            if (asCards && Preparing(state) && JuryHouseAvailable(state)) tiles.Insert(1, JuryHouseTile(OpenJuryHouse));
             // Listening in needs no one to talk to, so it sits here rather than in a conversation.
             if (state.Active.Count(c => !c.isPlayer) >= 2)
                 tiles.Add(Tile("Listen in on a conversation", "Works seven times in ten; the rest of the time somebody notices.",

@@ -639,7 +639,7 @@ namespace Gamesim.Episode
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;
-            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; reviewingSpeeches = false;
+            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
@@ -1409,6 +1409,9 @@ namespace Gamesim.Episode
                 hud.Action(SeasonReport.NewSeasonCaption, NewSeason);
                 hud.Action("Review the season", OpenJournal);
                 hud.Action(SeasonReport.MainMenuCaption, OpenMainMenu);
+                // And two ways back into the night: the vote read again, and the jury's questions
+                // (EpisodeDirector.Finale.cs; MOCKUP-PASS-PLAN M4).
+                FinaleRecordControls(state);
                 return;
             }
             if (EpisodeEngine.IsCompetition(state.phase))

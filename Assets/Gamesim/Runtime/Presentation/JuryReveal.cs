@@ -34,6 +34,25 @@ namespace Gamesim.Presentation
         /// <summary>The show's name, as the host says it at the end.</summary>
         public const string ShowName = "Gamesim: The House";
 
+        /// <summary>
+        /// The runner-up's steel, as the season report wears it: not the gold of the win, and not
+        /// either finalist's own tint, which the chips carry until the result.
+        /// </summary>
+        private static readonly Color Steel = new Color(.68f, .77f, .86f);
+
+        /// <summary>
+        /// The small line over the count at the result (MOCKUP-PASS-PLAN M4): "BY A VOTE OF" over
+        /// "5 TO 2", a split jury called as a tie, and a jury of one said as the one vote it is.
+        /// Public so the winner's screen can say it the same way.
+        /// </summary>
+        public static string CountEyebrow(int forWinner, int forOther) =>
+            forWinner + forOther == 1 ? "WITH THE JURY'S ONLY VOTE"
+            : forWinner == forOther ? "THE JURY IS TIED"
+            : "BY A VOTE OF";
+
+        /// <summary>The jury's whole count as the headline says it, the winner's votes first: "5 TO 2".</summary>
+        public static string CountLine(int forWinner, int forOther) => forWinner + " TO " + forOther;
+
         /// <summary>A finalist, as the card needs them.</summary>
         public readonly struct Finalist
         {
@@ -66,8 +85,8 @@ namespace Gamesim.Presentation
 
         private CanvasGroup group;
         private RectTransform column, scrim, jurorRow, banner;
-        private TMP_Text eyebrow, title, progress, host, bannerText, controls, speedMark;
-        private readonly List<TMP_Text> counts = new List<TMP_Text>();
+        private TMP_Text eyebrow, title, progress, countEyebrow, countLine, host, bannerText, controls, speedMark;
+        private readonly List<TMP_Text> counts = new List<TMP_Text>(), chipTexts = new List<TMP_Text>();
         private readonly List<RectTransform> rims = new List<RectTransform>(), jurorRims = new List<RectTransform>(), chips = new List<RectTransform>();
         private readonly List<float> readAt = new List<float>();
         private List<Finalist> finalists = new List<Finalist>();
@@ -323,7 +342,23 @@ namespace Gamesim.Presentation
                 rims[i].GetComponent<Image>().color = won ? UiTheme.Gold : UiTheme.Outline;
                 counts[i].color = won ? UiTheme.Gold : UiTheme.Muted;
             }
+            // Each vote in the colour of how it went: gold for the winner's, steel for the other's.
+            // Only now: until the result a chip wears its finalist's own tint, which says nothing
+            // about who wins.
+            for (int i = 0; i < jurors.Count; i++)
+            {
+                var tint = jurors[i].TargetId == winnerId ? UiTheme.Gold : Steel;
+                chips[i].GetComponent<Image>().color = tint;
+                chipTexts[i].color = UiTheme.OnColor(tint);
+            }
             progress.text = tied ? TieLine() : "All votes are in";
+            // The count as a headline over the host's line, the winner's votes first.
+            string otherId = finalists[0].Id == winnerId ? finalists[1].Id : finalists[0].Id;
+            int forWinner = Votes(winnerId, jurors.Count), forOther = Votes(otherId, jurors.Count);
+            countEyebrow.text = CountEyebrow(forWinner, forOther);
+            countLine.text = CountLine(forWinner, forOther);
+            countEyebrow.gameObject.SetActive(true);
+            countLine.gameObject.SetActive(true);
             host.text = Verdict(winner);
             Raise(HouseAudio.Cue.Finale);
             if (!reduced && confetti != null) confetti.Throw(seed);
@@ -346,7 +381,7 @@ namespace Gamesim.Presentation
             if (column != null)
             {
                 foreach (Transform child in column) Destroy(child.gameObject);
-                counts.Clear(); rims.Clear(); jurorRims.Clear(); chips.Clear();
+                counts.Clear(); rims.Clear(); jurorRims.Clear(); chips.Clear(); chipTexts.Clear();
             }
             else
             {
@@ -372,7 +407,9 @@ namespace Gamesim.Presentation
             float portrait = 110f * scale;
             float face = Mathf.Min(52f, 760f / Mathf.Max(1, jurors.Count) - 10f) * scale;
             float step = face + 12f * scale;
-            column.sizeDelta = new Vector2(900f * scale, (100f + portrait + 150f + face + 190f) * scale);
+            // Grown by the count's headline at the result (64 units), which sits between the
+            // progress line and the host's.
+            column.sizeDelta = new Vector2(900f * scale, (100f + portrait + 150f + face + 254f) * scale);
             var glass = HudPrimitives.Fill("Card glass", column, UiTheme.GlassFill, UiTheme.GlassRadius);
             glass.SetAsFirstSibling();
             glass.anchorMin = Vector2.zero; glass.anchorMax = Vector2.one;
@@ -447,19 +484,36 @@ namespace Gamesim.Presentation
                 chipText.rectTransform.offsetMin = Vector2.zero; chipText.rectTransform.offsetMax = Vector2.zero;
                 chip.gameObject.SetActive(false);
                 chips.Add(chip);
+                chipTexts.Add(chipText);
             }
 
             progress = HudPrimitives.Label("Progress", column, 16f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             Place(progress.rectTransform, 900f * scale, 22f * scale, -(100f + portrait + 130f + face + 64f) * scale);
 
+            // The count as a headline, "BY A VOTE OF" over "5 TO 2" (MOCKUP-PASS-PLAN M4). Both
+            // wait for the result: before it they would tell. Each box is at least 1.3 times its
+            // text's size, since Inter draws nothing in a box under 1.21 of it.
+            countEyebrow = HudPrimitives.Label("Count eyebrow", column, 13f * scale, UiTheme.Gold, TextAlignmentOptions.Center);
+            countEyebrow.characterSpacing = 12f;
+            Place(countEyebrow.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 88f) * scale);
+            countEyebrow.gameObject.SetActive(false);
+
+            countLine = HudPrimitives.Label("Count", column, 36f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
+            if (bold != null) countLine.font = bold;
+            countLine.characterSpacing = 2f;
+            countLine.enableVertexGradient = true;
+            countLine.colorGradient = new VertexGradient(Color.white, Color.white, UiTheme.Gold, UiTheme.Gold);
+            Place(countLine.rectTransform, 900f * scale, 48f * scale, -(100f + portrait + 130f + face + 106f) * scale);
+            countLine.gameObject.SetActive(false);
+
             host = HudPrimitives.Label("Host", column, 18f * scale, UiTheme.Paper, TextAlignmentOptions.Center);
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) host.font = medium;
             host.enableAutoSizing = true; host.fontSizeMax = host.fontSize; host.fontSizeMin = 12f * scale;
-            Place(host.rectTransform, 900f * scale, 26f * scale, -(100f + portrait + 130f + face + 92f) * scale);
+            Place(host.rectTransform, 900f * scale, 26f * scale, -(100f + portrait + 130f + face + 156f) * scale);
 
             banner = HudPrimitives.Fill("Result banner", column, UiTheme.Gold, UiTheme.ControlRadius);
-            Place(banner, 560f * scale, 44f * scale, -(100f + portrait + 130f + face + 126f) * scale);
+            Place(banner, 560f * scale, 44f * scale, -(100f + portrait + 130f + face + 190f) * scale);
             bannerText = HudPrimitives.Label("Result", banner, 22f * scale, UiTheme.Ink, TextAlignmentOptions.Center);
             if (bold != null) bannerText.font = bold;
             bannerText.rectTransform.anchorMin = Vector2.zero; bannerText.rectTransform.anchorMax = Vector2.one;
@@ -468,7 +522,7 @@ namespace Gamesim.Presentation
 
             controls = HudPrimitives.Label("Controls", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             controls.text = CeremonyTakeover.ControlsFor(usingPad);
-            Place(controls.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 180f) * scale);
+            Place(controls.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 244f) * scale);
         }
 
         /// <summary>Each finalist's colour, carried by their votes' chips: the reference's blue and red, in the house's tones.</summary>

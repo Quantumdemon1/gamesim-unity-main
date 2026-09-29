@@ -194,6 +194,13 @@ namespace Gamesim.Tests.PlayMode
                 yield return null; yield return null;
             }
             yield return AssertKeyboardRing("finale", ModalRoot);
+            // The ring holds the finale's ways on, each once: the four it has always had, and the
+            // replay and the jury's questions (MOCKUP-PASS-PLAN M4).
+            var finaleRing = ActiveRect(ModalRoot).GetComponentsInChildren<Button>()
+                .Where(button => button.IsActive() && button.IsInteractable() && button.navigation.mode != Navigation.Mode.None).ToList();
+            foreach (var caption in FinaleWaysOn)
+                Assert.That(finaleRing.Count(button => button.GetComponentsInChildren<TMPro.TMP_Text>(true).Any(text => text.text == caption)),
+                    Is.EqualTo(1), "finale: '" + caption + "' is in the keyboard ring once.");
             yield return KeyboardSubmit("Season report");
             var report = director.GetComponentsInChildren<SeasonReport>(true).Single();
             Assert.That(report.IsShowing, Is.True, "Enter on the report control must show the report.");

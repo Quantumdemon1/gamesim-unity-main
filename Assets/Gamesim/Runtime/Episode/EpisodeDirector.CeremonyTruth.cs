@@ -173,6 +173,13 @@ namespace Gamesim.Episode
         /// them down as its card starts, and keeps them down until it lets the house go; the walk
         /// out keeps them down until the evicted are through the door. On the HUD frame the key
         /// ceremony and the live eviction take them down while they play.
+        ///
+        /// <para>The walk out's own term reaches past the plan's staged walk out, on purpose. A
+        /// staged one is covered by the stage's release, which waits for the door. The term adds a
+        /// staged walk out whose stage ran out of its budget before the door, and a walk out after
+        /// an eviction that played on the HUD frame because the house could not be staged. Both are
+        /// the same goodbye, with the camera on the walker and their line on the strip, and a press
+        /// skips it, so both play to the same clean frame.</para>
         /// </summary>
         private void TickCeremonyPlates()
         {

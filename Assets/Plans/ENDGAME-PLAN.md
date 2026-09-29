@@ -709,6 +709,29 @@ From the commit that leaves three active until the final eviction:
   player removed asserts no `Vote for {name} to win` and no `Cast your vote` row; a check at
   the Final 2 with the player on the jury asserts the spectator banner with no panel open and
   no unparented text left behind.
+- **As built, F6a** (the player on the jury; no saved field). What differs from the text above:
+  - *The ballot* is a screen of its own (`EpisodeDirector.JurorVote.cs`) for a juror as the
+    engine counts one: THE JURY VOTES and the privacy line, the two finalists' cases
+    (`FinalistRead.JurorCase`: the record, the player's standing with them, any Final 2
+    agreement, the alliances the player knew, and what they did to the player), the two as
+    ballot cards under the pinned `Vote for {name} to win`, *What matters to you* (the diary
+    persona and the reflections recorded, decision 9 A), and `Review final speeches`.
+  - *What they did to you* is the public record: the finalist's ceremonies against the player,
+    the final eviction, the promises they broke to the player, and the deals the record shows
+    they broke (`FinalistRead.DealBreaker`: the first ceremony or veto in the deal's term, the
+    vote the player's own ballot kept, the final Head of Household's choice). A voting block
+    that fell apart was both of theirs and is said so; a deal the player broke is never held
+    against the finalist. Rivalries from grudges are not on the case: grudge rows are private.
+  - *A player production removed* gets no ballot: a line that says so and Continue. Their
+    objectives read Watch the Final 2, Watch the questions and Watch the jury vote, and the
+    season walks key their vote on the same juror check.
+  - *The spectator banner* draws only into an open panel; with none open, the objectives
+    card's spectator line carries it. The seat line says the vote is cast once it is.
+  - *Not built this round*: the hidden vote (F7), the reveal on the screen, the winner screen,
+    the results grid, placements, the timeline and the statistics.
+  - *Tests*: the juror's screen at both text sizes (the cases, the ballot cards, the privacy
+    line, what matters, the speeches opened and put away), the vote from its card, the frame
+    with no panel open; EditMode on the deals a finalist broke.
 
 ### F7 The cut scenes (world; after the cut-scenes plan's S1 to S4)
 
@@ -824,7 +847,7 @@ untouched).
 | F3 | The Final HOH: the bracket card, the crowning card, the yard's signs, the eyebrows (built; see F3's note) | Both card kinds in a fixture at three; the eyebrow and heading pinned |
 | F4 | Preparation, the lock and the jury house; schema 21 with the argument (F4a built: the jury house; see F4's note) | Bands and the effect under both rules; migrations green, the load pins at 21 |
 | F5 | Questioning from history with receipts and five responses; the live layout; the audited walk through the new captions (F5a built: the live layout; see F5's note) | Receipts, categories, the sign by fit, draw counts pinned |
-| F6 | The juror's screen, the hidden vote card, the reveal on the screen, the winner screen, the results grid, one placement function | The reveal's tests on both paths, a tie on each; the ways on by caption; the report's pins kept or moved |
+| F6 | The juror's screen, the hidden vote card, the reveal on the screen, the winner screen, the results grid, one placement function (F6a built: the juror's screen; see F6's note) | The reveal's tests on both paths, a tie on each; the ways on by caption; the report's pins kept or moved |
 | F7 | The cut scenes on the authored set and the door | Captures of the ceremony, the exit, the walk-in, the reveal; the audited pipeline |
 | F8 | The message to a juror, opening statements, new games, the share card | As decided |
 

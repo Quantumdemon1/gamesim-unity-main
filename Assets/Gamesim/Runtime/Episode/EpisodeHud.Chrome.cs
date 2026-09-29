@@ -599,6 +599,8 @@ namespace Gamesim.Episode
 
         /// <summary>The endgame card's name and its jury strip's, so a test can find them without guessing.</summary>
         public const string ObjectivesCardName = "Objectives";
+        /// <summary>The objectives card's line for a player out of the game.</summary>
+        public const string SpectatorLineName = "Spectator line";
         public const string JuryStripName = "Jury strip";
         private const float ObjectiveRowHeight = 34f;
         private const float JurorDisc = 22f;
@@ -627,18 +629,28 @@ namespace Gamesim.Episode
             var rows = EndgameObjectives(state);
             var jurors = state.contestants.Where(IsJuror).ToList();
             float width = RightColumnWidth;
-            float juryTop = 44f + rows.Count * ObjectiveRowHeight + 6f;
+            // A player out of the game reads it here, in the frame, with no panel open (ENDGAME-PLAN F6).
+            bool watching = EpisodeDirector.Spectating(state);
+            float rowsTop = watching ? 60f : 42f;
+            float juryTop = rowsTop + 2f + rows.Count * ObjectiveRowHeight + 6f;
             float height = juryTop + 18f + JurorDisc + 14f;
             var card = Chrome(ObjectivesCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
             // The heading keeps no room for a corner control: none is coming, and the word needs it.
             CardHeading(card, (IsFinalTwo(state) ? "FINAL 2" : "FINAL 3") + " OBJECTIVES").rectTransform.sizeDelta = new Vector2(width - 28f, 22f);
 
+            if (watching)
+            {
+                var line = FixedText(card, SpectatorCaption, 11, UiTheme.Warning, new Vector2(14f, -36f), new Vector2(width - 28f, 16f));
+                line.name = SpectatorLineName;
+                line.characterSpacing = 3f;
+            }
+
             var open = UiTheme.Muted; open.a = .45f;
             for (int i = 0; i < rows.Count; i++)
             {
                 var row = rows[i];
-                float y = -(42f + i * ObjectiveRowHeight);
+                float y = -(rowsTop + i * ObjectiveRowHeight);
                 // The mark: gold for a row that is done, a dim dot for one that is not. Where the
                 // row stands goes under its words rather than beside them: beside, the words had
                 // 120 units and lost their ends.
@@ -712,8 +724,10 @@ namespace Gamesim.Episode
                 {
                     var holder = decided && state.hohId != null ? state.Find(state.hohId) : null;
                     rows.Add(new Objective("Follow the Final HoH", holder != null ? FinalistRead.FirstName(holder.name) : part, holder != null));
-                    rows.Add(new Objective("Weigh the finalists", "At the Final 2", false));
-                    rows.Add(new Objective("Cast your vote", "Ahead", false));
+                    // Removed by production: no seat on the jury, so nothing to weigh and no vote to come.
+                    bool removed = me != null && me.status == ContestantStatus.Expelled;
+                    rows.Add(removed ? new Objective("Watch the Final 2", "Ahead", false) : new Objective("Weigh the finalists", "At the Final 2", false));
+                    rows.Add(removed ? new Objective("Watch the jury vote", "Ahead", false) : new Objective("Cast your vote", "Ahead", false));
                 }
             }
             else
@@ -730,6 +744,13 @@ namespace Gamesim.Episode
                     rows.Add(new Objective("Deliver your final speech",
                         spoke ? "Done" : state.phase == EpisodePhase.FinalSpeeches ? "Now" : "Ahead", spoke));
                     rows.Add(new Objective("Await the jury vote", voting ? "Voting" : "Ahead", false));
+                }
+                else if (me != null && me.status == ContestantStatus.Expelled)
+                {
+                    // Removed by production: no questions to ask and no vote to cast, only the finale to watch.
+                    rows.Add(new Objective("Watch the questions", questioning ? "Now" : "Done", !questioning));
+                    rows.Add(new Objective("Hear the final speeches", voting ? "Done" : questioning ? "Ahead" : "Now", voting));
+                    rows.Add(new Objective("Watch the jury vote", voting ? "Now" : "Ahead", false));
                 }
                 else
                 {

@@ -52,7 +52,9 @@ namespace Gamesim.Simulation
             public int wins;
             public Fact resume, relationship, agreement, alliances, support, bitterness, uncertain;
             public List<JurorLean> jurors = new List<JurorLean>();
-            public IEnumerable<Fact> Facts => new[] { resume, relationship, agreement, alliances, support, bitterness, uncertain };
+            /// <summary>The facts a card shows when they are not the finalist's seven: a juror's case (<see cref="JurorCase"/>).</summary>
+            public List<Fact> caseFacts;
+            public IEnumerable<Fact> Facts => (IEnumerable<Fact>)caseFacts ?? new[] { resume, relationship, agreement, alliances, support, bitterness, uncertain };
         }
 
         /// <summary>The jurors, as the engine's jury vote counts one: Jury, or Evicted on an older save. Never the player.</summary>
@@ -314,6 +316,120 @@ namespace Gamesim.Simulation
             var words = name.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
             return words.FirstOrDefault(word => !word.EndsWith(".", System.StringComparison.Ordinal)) ?? words[0];
         }
+
+        // ------------------------------------------------------------ the player on the jury
+
+        /// <summary>
+        /// A finalist's case as the player on the jury can read it (ENDGAME-PLAN F6): the record,
+        /// the player's own relationship with them, any Final 2 agreement between them, the
+        /// alliances the player knew, and what the finalist did to the player where the house could
+        /// see it. The other jurors' leans are not shown: the vote is the player's own.
+        /// </summary>
+        public static Finalist JurorCase(EpisodeState s, string finalistId)
+        {
+            var read = Read(s, finalistId);
+            if (read == null) return null;
+            read.caseFacts = new List<Fact> { read.resume, read.relationship, read.agreement, read.alliances, TowardYou(s, finalistId) };
+            return read;
+        }
+
+        /// <summary>
+        /// What a finalist did to the player on the record: put them on the block as Head of
+        /// Household (a veto save included), named them the replacement, used the veto to put them
+        /// up, evicted them, broke a deal with them (<see cref="BrokeADealWithYou"/>) or a promise
+        /// to them. A voting block that fell apart was both of theirs, so it is said as that. Public
+        /// or the player's own, so certain; nothing, Unknown.
+        /// </summary>
+        public static Fact TowardYou(EpisodeState s, string finalistId)
+        {
+            string player = s.playerId;
+            var acts = new List<(int week, string text)>();
+            if (s.ledger?.power != null)
+                foreach (var p in s.ledger.power)
+                {
+                    bool final = p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null;
+                    if (p.evicteeId == player && p.hohId == finalistId && final) { acts.Add((p.week, "evicted you at the final eviction")); continue; }
+                    if (final) continue;
+                    if (p.hohId == finalistId && p.replacementId == player) acts.Add((p.week, "named you the replacement"));
+                    else if (p.hohId == finalistId && (p.nominees.Contains(player) || p.savedId == player)) acts.Add((p.week, "nominated you"));
+                    else if (p.vetoHolderId == finalistId && p.vetoUsed && p.replacementId == player) acts.Add((p.week, "used the veto to put you up"));
+                }
+            var broken = s.deals.Where(d => d.status == DealStatus.Broken && Between(d.proposerId, d.recipientId, player, finalistId)).ToList();
+            int deals = broken.Count(d => BrokeADealWithYou(s, d, finalistId));
+            bool block = broken.Any(d => d.type == DealKind.VoteTogether);
+            int promises = s.promises.Count(p => p.status == PromiseStatus.Broken && p.fromId == finalistId && p.toId == player);
+            var parts = acts.OrderBy(a => a.week).Select(a => "Week " + a.week + ": " + a.text).ToList();
+            if (deals > 0) parts.Add(deals == 1 ? "Broke a deal with you" : "Broke " + deals + " deals with you");
+            if (block) parts.Add("Your voting block fell apart");
+            if (promises > 0) parts.Add(promises == 1 ? "Broke a promise to you" : "Broke " + promises + " promises to you");
+            return parts.Count == 0 ? new Fact("What they did to you", "Nothing on the record", Unknown)
+                : new Fact("What they did to you", string.Join(" · ", parts), Confirmed);
+        }
+
+        /// <summary>Whether a broken deal between the player and a finalist was the finalist's doing (<see cref="DealBreaker"/>).</summary>
+        public static bool BrokeADealWithYou(EpisodeState s, DealState deal, string finalistId) =>
+            finalistId != null && finalistId != s.playerId && DealBreaker(s, deal) == finalistId;
+
+        /// <summary>
+        /// Who broke a broken deal the player was party to, as the player can tell it, or null. The
+        /// engine judges each kind on one act (<see cref="DealResolution"/>) and names who did it;
+        /// the player reads the same acts off the record. A nomination deal (safety, target) broke
+        /// on the first ceremony in its term where one of them, as Head of Household, put the other
+        /// up. A veto deal broke on the first veto in its term that one of them held and left the
+        /// other on the block. A vote deal broke at the vote on its target: the player knows their
+        /// own ballot, so a deal broken where they kept it was the other's. A Final 2 deal is
+        /// settled by the final Head of Household. A voting block is settled by both at once, so by
+        /// neither; anything else, by nobody the record names.
+        /// </summary>
+        public static string DealBreaker(EpisodeState s, DealState deal)
+        {
+            string player = s.playerId;
+            if (deal == null || deal.status != DealStatus.Broken || (deal.proposerId != player && deal.recipientId != player)) return null;
+            string other = deal.proposerId == player ? deal.recipientId : deal.proposerId;
+            var rows = s.ledger?.power ?? new List<PowerRow>();
+            bool Final(PowerRow p) => p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null;
+            int last = deal.expiresWeek >= deal.week ? deal.expiresWeek : int.MaxValue;
+            var term = rows.Where(p => p.week >= deal.week && p.week <= last && !Final(p)).OrderBy(p => p.week).ToList();
+            switch (deal.type)
+            {
+                case DealKind.SafetyAgreement:
+                case DealKind.TargetAgreement:
+                    foreach (var p in term)
+                    {
+                        if (p.hohId == other && PutUp(p, player)) return other;
+                        if (p.hohId == player && PutUp(p, other)) return player;
+                    }
+                    return null;
+                case DealKind.VetoUse:
+                    foreach (var p in term)
+                    {
+                        if (p.vetoHolderId == other && LeftOnTheBlock(p, player)) return other;
+                        if (p.vetoHolderId == player && LeftOnTheBlock(p, other)) return player;
+                    }
+                    return null;
+                case DealKind.VoteSave:
+                case DealKind.VoteEvict:
+                    foreach (var p in term.Where(p => p.tally.Count > 0 && p.nominees.Contains(deal.targetId)))
+                    {
+                        var ballot = s.ledger.ballots.FirstOrDefault(b => b.week == p.week && b.voterId == player);
+                        if (ballot == null) return other;
+                        bool evicted = ballot.targetId == deal.targetId;
+                        return (deal.type == DealKind.VoteEvict ? evicted : !evicted) ? other : player;
+                    }
+                    return null;
+                case DealKind.FinalTwo:
+                    var chose = rows.Where(Final).OrderBy(p => p.week).LastOrDefault();
+                    return chose != null && (chose.hohId == player || chose.hohId == other) ? chose.hohId : null;
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>Whether a week's Head of Household put somebody up: nominated (a veto save included) or named the replacement.</summary>
+        internal static bool PutUp(PowerRow p, string id) => p.nominees.Contains(id) || p.savedId == id || p.replacementId == id;
+
+        /// <summary>Whether somebody was on the block at the veto and the holder did not take them off.</summary>
+        internal static bool LeftOnTheBlock(PowerRow p, string id) => p.nominees.Contains(id) && p.replacementId != id && p.savedId != id;
 
         // ------------------------------------------------------------ the decision
 

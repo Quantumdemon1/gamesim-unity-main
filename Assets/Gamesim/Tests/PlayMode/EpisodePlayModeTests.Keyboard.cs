@@ -329,7 +329,8 @@ namespace Gamesim.Tests.PlayMode
                     ? EpisodeHud.SpeechSkipCaption : EpisodeHud.SpeechContinueCaption;
                 yield break;
             }
-            if (state.phase == EpisodePhase.Jury && !state.Active.Any(actor => actor.isPlayer) && !state.votes.Any(vote => vote.voterId == state.playerId))
+            // A juror's ballot; a player production removed has none, and continues.
+            if (EpisodeDirector.JurorVotes(state))
             { yield return "Vote for " + state.Active.First().name + " to win"; yield break; }
             yield return state.phase == EpisodePhase.Social ? "Begin the next competition"
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode";

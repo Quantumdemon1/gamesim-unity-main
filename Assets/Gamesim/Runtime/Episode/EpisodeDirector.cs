@@ -639,7 +639,7 @@ namespace Gamesim.Episode
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;
-            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false;
+            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; reviewingSpeeches = false;
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -1454,13 +1454,12 @@ namespace Gamesim.Episode
                 FinalTwoChoice(state);
                 return;
             }
-            if (state.phase == EpisodePhase.Jury && !state.Active.Any(c => c.isPlayer) && !state.votes.Any(v => v.voterId == state.playerId))
-            {
-                hud.Paragraph("As a juror, choose who deserves to win.");
-                var finalTwo = hud.Pairs();
-                foreach (var candidate in state.Active) { string id = candidate.id; hud.PairedActionFor(finalTwo, id, "Vote for " + candidate.name + " to win", () => Commit(state, EpisodeCommandKind.CastVote, id)); }
-                return;
-            }
+            // The player on the jury votes on a screen of their own (EpisodeDirector.JurorVote.cs;
+            // ENDGAME-PLAN F6). A player production removed has no vote: the ballot it used to draw
+            // for them could not be pressed and left no way on, so they watch and continue.
+            if (JurorVotes(state)) { JurorBallot(state); return; }
+            if (state.phase == EpisodePhase.Jury && state.Find(state.playerId)?.status == ContestantStatus.Expelled)
+                hud.Paragraph(RemovedAtTheVoteLine);
             if (state.phase == EpisodePhase.Campaign) CampaignScreen(state);
             // Free time as a screen: the house as cards and the moves as tiles (EpisodeDirector.FreeTimeScreen.cs).
             else if (state.phase == EpisodePhase.Social) FreeTimeScreen(state);

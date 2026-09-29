@@ -456,6 +456,9 @@ namespace Gamesim.Episode
         /// </summary>
         public void SpectatorNote(string detail)
         {
+            // Only into an open panel: with none open there is no column, and the labels were made
+            // with no parent and piled up. The frame carries the line then (the objectives card).
+            if (content == null) return;
             FlowText(SpectatorCaption,18,UiTheme.Warning).gameObject.name = "Spectator banner";
             FlowText(detail,19,UiTheme.Muted);
         }

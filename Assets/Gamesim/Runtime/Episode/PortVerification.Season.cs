@@ -300,7 +300,8 @@ namespace Gamesim.Episode
                 else yield return ClickSeasonButton(EpisodeHud.SpeechContinueCaption);
                 yield break;
             }
-            if (state.phase == EpisodePhase.Jury && !state.Active.Any(actor => actor.isPlayer) && !state.votes.Any(vote => vote.voterId == state.playerId))
+            // A juror's ballot; a player production removed has none, and continues.
+            if (EpisodeDirector.JurorVotes(state))
             { yield return ClickSeasonButton("Vote for " + state.Active.First().name + " to win"); yield break; }
             // Eviction night pauses on the block for the nominees' speeches, and a nominated player
             // has to give theirs before the house will vote. There is no "continue" past it, which

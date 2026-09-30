@@ -139,10 +139,40 @@ namespace Gamesim.Presentation
         private const float WidePhotoHeight = 86f;
         private const float WideText = 74f;
 
+        /// <summary>
+        /// The finalist's card (MOCKUP-PASS M14, mockup 60). At the endgame the strip folds down to
+        /// three at most, and a band built for twelve chips has room to give each of them the card
+        /// the mockup does: a bigger photo, the landscape chip's own words column unchanged, and a
+        /// second column with the houseguest's traits. Same height, so the frame's bands stay put.
+        /// </summary>
+        private const float FinalistEntryWidth = 300f;
+        private const float FinalistPhotoWidth = 72f;
+        private const float FinalistText = 84f;
+        private const int FinalistMost = 3;
+        /// <summary>The gap between the words column and the traits, and how many traits a card lists.</summary>
+        private const float TraitGap = 10f;
+        private const int TraitRows = 4;
+        /// <summary>A finalist card's trait words and the dots before them, so a test can find them.</summary>
+        public const string TraitName = "Trait", TraitDotName = "Trait dot";
+
         /// <summary>The strip's full-width glass, and the quote card at its far end.</summary>
         public const string StripName = "Cast strip";
         public const string QuoteName = "Strip quote";
         private const float QuoteWidth = 290f;
+
+        /// <summary>
+        /// The jury card's parts, in the quote card's slot at the endgame, so a test can find them:
+        /// its heading, its line, a face per juror and, while seven or fewer share the row, each
+        /// juror's first name under their face.
+        /// </summary>
+        public const string JuryHeadingName = "Jury heading", JuryLineName = "Jury line";
+        public const string JuryFaceName = "Jury card face", JuryNameName = "Jury card name";
+        /// <summary>The jury card's line while the vote is still to come, and once it has been cast.</summary>
+        public const string JuryDecidesLine = "They will decide the winner.";
+        public const string JuryDecidedLine = "They chose the winner.";
+        /// <summary>How many jurors the card names under their faces; past this it shows faces alone.</summary>
+        public const int JuryNamesUpTo = 7;
+        private const float JuryFace = 28f;
 
         /// <summary>How a houseguest is standing right now, and the colour that says so.</summary>
         private readonly struct Standing
@@ -192,14 +222,24 @@ namespace Gamesim.Presentation
             word.color = UiTheme.Glow;
         }
 
+        /// <param name="jury">
+        /// At the endgame, the jurors, whose card takes the quote card's slot; null or empty keeps
+        /// the quote. Handed in rather than counted here, so the card counts the jury exactly as
+        /// the frame's other jury readings do.
+        /// </param>
         public static RectTransform Build(
             Transform parent, EpisodeState state, float fontScale, TMP_FontAsset font,
             System.Func<string, Texture> portrait, System.Action<string> onSelect = null,
-            string followedId = null, bool foldDeparted = false)
+            string followedId = null, bool foldDeparted = false, IList<ContestantState> jury = null)
         {
+            var canvas = parent as RectTransform;
             var order = Order(state, foldDeparted);
-            bool wide = Wide(parent as RectTransform, order.Count, fontScale);
-            float scale = wide ? fontScale : Fit(parent as RectTransform, order.Count, fontScale);
+            // The endgame's few are finalists' cards where the band has room for them at the
+            // player's text size, landscape chips where it has room for those, and the narrow chip
+            // otherwise.
+            bool finalists = foldDeparted && order.Count <= FinalistMost && Wide(canvas, order.Count, fontScale, true);
+            bool wide = finalists || Wide(canvas, order.Count, fontScale);
+            float scale = wide ? fontScale : Fit(canvas, order.Count, fontScale);
 
             // The strip's glass first, so it draws behind the chips: a sibling of the rail rather
             // than its child, because a chip is whatever the rail's children are.
@@ -211,32 +251,40 @@ namespace Gamesim.Presentation
             root.anchorMax = new Vector2(0f, 0f);
             root.pivot = new Vector2(0f, 0f);
             root.anchoredPosition = new Vector2(SideMargin, Bottom);
-            float width = (wide ? WideRailWidth(order.Count) : RailWidth(order.Count)) * scale;
+            float width = (wide ? WideRailWidth(order.Count, finalists) : RailWidth(order.Count)) * scale;
             root.sizeDelta = new Vector2(width, EntryHeight * scale);
 
             for (int index = 0; index < order.Count; index++)
             {
-                if (wide) WideEntry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
+                if (wide) WideEntry(root, state, order[index], index, scale, font, portrait, onSelect, followedId, finalists);
                 else Entry(root, state, order[index], index, scale, font, portrait, onSelect, followedId);
             }
 
             // The mockups end the strip on a line of the show's own voice, where there is room for
-            // it past the last chip.
-            var canvas = parent as RectTransform;
+            // it past the last chip. At the endgame the same slot is the jury's (mockup 60): the
+            // number every last decision turns on, and the faces that will make it.
             float spare = canvas != null ? canvas.rect.width - 2f * SideMargin - width : 0f;
-            if (spare >= (QuoteWidth + 16f) * scale) Quote(parent, scale);
+            if (spare >= (QuoteWidth + 16f) * scale)
+            {
+                if (jury != null && jury.Count > 0) JuryCard(parent, state, jury, scale, font);
+                else Quote(parent, scale);
+            }
             return root;
         }
 
-        /// <summary>Whether the house fits the band as landscape chips at the player's text size.</summary>
-        private static bool Wide(RectTransform canvas, int count, float fontScale)
+        /// <summary>
+        /// Whether the house fits the band as landscape chips at the player's text size - or, with
+        /// <paramref name="finalists"/>, as the endgame's finalist cards.
+        /// </summary>
+        private static bool Wide(RectTransform canvas, int count, float fontScale, bool finalists = false)
         {
             if (canvas == null || count <= 0) return false;
             float available = canvas.rect.width - SideMargin * 2f;
-            return available > 0f && WideRailWidth(count) * fontScale <= available;
+            return available > 0f && WideRailWidth(count, finalists) * fontScale <= available;
         }
 
-        private static float WideRailWidth(int count) => Mathf.Max(0f, count * (WideEntryWidth + WideGap) - WideGap);
+        private static float WideRailWidth(int count, bool finalists = false) =>
+            Mathf.Max(0f, count * ((finalists ? FinalistEntryWidth : WideEntryWidth) + WideGap) - WideGap);
 
         /// <summary>The strip's glass: the whole width of the frame, a little proud of the chips.</summary>
         private static void Ground(Transform parent, float scale)
@@ -291,6 +339,69 @@ namespace Gamesim.Presentation
             line.rectTransform.anchorMin = Vector2.zero; line.rectTransform.anchorMax = Vector2.one;
             line.rectTransform.offsetMin = new Vector2(58f * scale, 8f * scale);
             line.rectTransform.offsetMax = new Vector2(-14f * scale, -8f * scale);
+        }
+
+        /// <summary>
+        /// The jury in the quote card's slot at the endgame (MOCKUP-PASS M14, mockup 60): 'The Jury
+        /// (n)', what they are there to do, and one row of faces - each with a first name while
+        /// seven or fewer share the row, faces alone past that, fanned as the objectives card's
+        /// strip fans them when fourteen do.
+        ///
+        /// <para>Built under the quote card's name, so every layout that stands the quote down
+        /// stands this down with it, and the speech bar stops short of it as it does of the quote.
+        /// Who sits on the jury is public - the house watched each of them leave - and the card
+        /// says nothing about how any of them will vote. The objectives card's strip keeps its
+        /// faces too, and is the only jury in the frame on a canvas too narrow for this card.</para>
+        /// </summary>
+        private static void JuryCard(Transform parent, EpisodeState state, IList<ContestantState> jury, float scale, TMP_FontAsset font)
+        {
+            var card = HudPrimitives.Fill(QuoteName, parent, UiTheme.CardFill, ChipRadius);
+            card.anchorMin = card.anchorMax = new Vector2(1f, 0f);
+            card.pivot = new Vector2(1f, 0f);
+            card.anchoredPosition = new Vector2(-SideMargin, Bottom + ChipBottom * scale);
+            card.sizeDelta = new Vector2(QuoteWidth * scale, (EntryHeight - ChipTop - ChipBottom) * scale);
+            card.GetComponent<Image>().raycastTarget = false;
+            UiTheme.AddBorder(card, ChipRadius, UiTheme.Edge(UiTheme.Emphasis.Resting));
+
+            const float inset = 12f;
+            float inner = QuoteWidth - 2f * inset;
+            var heading = Label(card, Localisation.Text("The Jury (" + jury.Count + ")"), 13, UiTheme.Heading, scale, font, TextAlignmentOptions.Left);
+            heading.name = JuryHeadingName;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) heading.font = semibold;
+            Fit(heading, 10f);
+            // 18 tall: at the larger text the 13 rounds up to 16, and the box stays 1.3 times it.
+            Place(heading.rectTransform, inset * scale, 4f * scale, inner * scale, 18f * scale);
+            // The vote is still to come until the season is over; after it, the line says it was theirs.
+            var line = Label(card, Localisation.Text(state.phase == EpisodePhase.Finished ? JuryDecidedLine : JuryDecidesLine), 11,
+                UiTheme.Muted, scale, font, TextAlignmentOptions.Left);
+            line.name = JuryLineName;
+            Fit(line, 9f);
+            Place(line.rectTransform, inset * scale, 21f * scale, inner * scale, 15f * scale);
+
+            // Seven names fit the row at a pitch of 38; past seven the faces close up and overlap
+            // like a fanned hand, as the strip's do, and the names go.
+            bool named = jury.Count <= JuryNamesUpTo;
+            float pitch = named ? inner / JuryNamesUpTo
+                : Mathf.Min(JuryFace + 4f, (inner - JuryFace) / Mathf.Max(1, jury.Count - 1));
+            float faceTop = named ? 38f : 46f;
+            int radius = Mathf.Max(4, Mathf.RoundToInt(JuryFace * scale * .5f) - 1);
+            for (int i = 0; i < jury.Count; i++)
+            {
+                var juror = jury[i];
+                if (juror == null) continue;
+                float slot = inset + i * pitch;
+                float faceX = named ? slot + (pitch - JuryFace) * .5f : slot;
+                // Through the portrait studio and bound, so a face still being built lands when it is ready.
+                var face = HudPrimitives.RectPortrait(card, JuryFaceName, CharacterPortraits.Get(juror), juror,
+                    new Vector2(JuryFace * scale, JuryFace * scale), radius);
+                Place(face, faceX * scale, faceTop * scale, JuryFace * scale, JuryFace * scale);
+                if (!named) continue;
+                var name = Label(card, FinalistRead.FirstName(juror.name), 10, UiTheme.Paper, scale, font, TextAlignmentOptions.Center);
+                name.name = JuryNameName;
+                Fit(name, 8f);
+                Place(name.rectTransform, slot * scale, (faceTop + JuryFace + 1f) * scale, pitch * scale, 14f * scale);
+            }
         }
 
         /// <summary>
@@ -640,22 +751,27 @@ namespace Gamesim.Presentation
         /// <see cref="ChipName"/>, the mood face <see cref="MoodGlyphName"/> with its "Face", the
         /// word <see cref="MoodWordName"/>, the role <see cref="BadgeName"/>, the standing
         /// <see cref="StandingTagName"/> - so everything that reads a chip reads this one.</para>
+        ///
+        /// <para>With <paramref name="finalist"/> it is the endgame's finalist card: the same parts
+        /// by the same names, a wider photo, and the traits in a column of their own.</para>
         /// </summary>
         private static RectTransform WideEntry(
             RectTransform root, EpisodeState state, ContestantState actor, int index, float scale,
             TMP_FontAsset font, System.Func<string, Texture> portrait, System.Action<string> onSelect,
-            string followedId)
+            string followedId, bool finalist = false)
         {
             var standing = Read(state, actor);
             bool isPlayer = actor.isPlayer || actor.id == state.playerId;
             var moodColour = standing.Dim ? UiTheme.Muted : RelationshipWeb.MoodColour(actor.mood);
+            float entryWidth = finalist ? FinalistEntryWidth : WideEntryWidth;
+            float photoWidth = finalist ? FinalistPhotoWidth : WidePhotoWidth;
 
             var entry = new GameObject(actor.name, typeof(RectTransform)).GetComponent<RectTransform>();
             entry.SetParent(root, false);
             entry.anchorMin = entry.anchorMax = new Vector2(0f, 1f);
             entry.pivot = new Vector2(0f, 1f);
-            entry.anchoredPosition = new Vector2(index * (WideEntryWidth + WideGap) * scale, 0f);
-            entry.sizeDelta = new Vector2(WideEntryWidth * scale, EntryHeight * scale);
+            entry.anchoredPosition = new Vector2(index * (entryWidth + WideGap) * scale, 0f);
+            entry.sizeDelta = new Vector2(entryWidth * scale, EntryHeight * scale);
 
             // A card on the strip's glass: lifted a step, with a seam - and the followed one lit and
             // glowing, the one channel that says "the camera is on this one".
@@ -677,7 +793,7 @@ namespace Gamesim.Presentation
             frame.anchorMin = frame.anchorMax = new Vector2(0f, 1f);
             frame.pivot = new Vector2(0f, 1f);
             frame.anchoredPosition = new Vector2(5f * scale, -photoTop);
-            frame.sizeDelta = new Vector2(WidePhotoWidth * scale, WidePhotoHeight * scale);
+            frame.sizeDelta = new Vector2(photoWidth * scale, WidePhotoHeight * scale);
             frame.GetComponent<Image>().raycastTarget = false;
             frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             var face = portrait != null ? portrait(actor.id) : null;
@@ -689,7 +805,7 @@ namespace Gamesim.Presentation
                 raw.rectTransform.offsetMin = Vector2.zero; raw.rectTransform.offsetMax = Vector2.zero;
                 raw.texture = face;
                 // The render is square; the column is not, so take its middle rather than squash it.
-                float share = WidePhotoWidth / WidePhotoHeight;
+                float share = photoWidth / WidePhotoHeight;
                 raw.uvRect = new Rect((1f - share) * .5f, 0f, share, 1f);
                 raw.raycastTarget = false;
                 raw.color = standing.Dim ? new Color(.6f, .65f, .7f, 1f) : Color.white;
@@ -702,7 +818,9 @@ namespace Gamesim.Presentation
                 glyph.rectTransform.offsetMin = Vector2.zero; glyph.rectTransform.offsetMax = Vector2.zero;
             }
 
-            float x = WideText * scale;
+            // The words column keeps its width on the finalist's card: it only starts further in,
+            // past the wider photo.
+            float x = (finalist ? FinalistText : WideText) * scale;
             float column = (WideEntryWidth - WideText - 6f) * scale;
 
             // The mood face at the head of the column, in the mood's own colour.
@@ -721,7 +839,7 @@ namespace Gamesim.Presentation
                 badgeChip.SetParent(entry, false);
                 badgeChip.anchorMin = badgeChip.anchorMax = new Vector2(0f, 1f);
                 badgeChip.pivot = new Vector2(.5f, 0f);
-                badgeChip.anchoredPosition = new Vector2((5f + WidePhotoWidth * .5f) * scale, -(photoTop + WidePhotoHeight * scale) + 4f * scale);
+                badgeChip.anchoredPosition = new Vector2((5f + photoWidth * .5f) * scale, -(photoTop + WidePhotoHeight * scale) + 4f * scale);
                 badgeChip.sizeDelta = new Vector2(BadgeWidth * scale, BadgeHeight * scale);
                 var chipImage = badgeChip.GetComponent<Image>();
                 UiTheme.Style(chipImage, standing.Colour, 4);
@@ -732,7 +850,7 @@ namespace Gamesim.Presentation
                 // As wide as its word, up to the photo's own width: a fixed 46 cut "HAVE-NOT" to
                 // "HAVE-N" on every Have-Not's chip (playtest, 2026-09-27).
                 float word = badge.GetPreferredValues(badge.text).x + 8f * scale;
-                badgeChip.sizeDelta = new Vector2(Mathf.Min(WidePhotoWidth * scale, Mathf.Max(BadgeWidth * scale, word)), BadgeHeight * scale);
+                badgeChip.sizeDelta = new Vector2(Mathf.Min(photoWidth * scale, Mathf.Max(BadgeWidth * scale, word)), BadgeHeight * scale);
             }
 
             string given = actor.name ?? string.Empty;
@@ -785,6 +903,12 @@ namespace Gamesim.Presentation
                 Place(tag, x, (ChipTop + 76f) * scale, Mathf.Min(column, Mathf.Max(BadgeWidth * scale, measured)), BadgeHeight * scale);
             }
 
+            if (finalist)
+            {
+                float traitsX = FinalistText + (WideEntryWidth - WideText - 6f) + TraitGap;
+                TraitColumn(entry, actor, traitsX, FinalistEntryWidth - traitsX - 8f, scale, font, standing.Dim);
+            }
+
             if (onSelect == null) return entry;
             string id = actor.id;
             var hit = HudPrimitives.Fill("Press", entry, new Color(1f, 1f, 1f, 0f), ChipRadius);
@@ -803,6 +927,33 @@ namespace Gamesim.Presentation
             button.colors = colours;
             button.onClick.AddListener(() => onSelect(id));
             return entry;
+        }
+
+        /// <summary>
+        /// The finalist card's second column: the houseguest's traits, one to a row after a dot in
+        /// the trait's tint, the colours the cast screen and the Final 2's cards give the same
+        /// words. Centred down the card, four at most. The traits are the cast card's own public
+        /// words, never a reading of anybody.
+        /// </summary>
+        private static void TraitColumn(RectTransform entry, ContestantState actor, float x, float width, float scale,
+            TMP_FontAsset font, bool dim)
+        {
+            var traits = actor.traits;
+            if (traits == null || traits.Count == 0) return;
+            int rows = Mathf.Min(traits.Count, TraitRows);
+            const float pitch = 18f;
+            float top = ChipTop + (EntryHeight - ChipTop - ChipBottom - rows * pitch) * .5f;
+            for (int i = 0; i < rows; i++)
+            {
+                float y = top + i * pitch;
+                var dot = Disc(TraitDotName, entry, dim ? UiTheme.Muted : CastSelect.TraitTint(traits[i]));
+                Place(dot, x * scale, (y + 4.5f) * scale, 7f * scale, 7f * scale);
+                // 16 tall for a 12: over 1.3 times the words at both text sizes.
+                var word = Label(entry, Localisation.Text(traits[i]), 12, dim ? UiTheme.Muted : UiTheme.Paper, scale, font, TextAlignmentOptions.Left);
+                word.name = TraitName;
+                Fit(word, 9f);
+                Place(word.rectTransform, (x + 13f) * scale, y * scale, (width - 13f) * scale, 16f * scale);
+            }
         }
 
         /// <summary>Top-left placement inside an entry, in the entry's own units.</summary>

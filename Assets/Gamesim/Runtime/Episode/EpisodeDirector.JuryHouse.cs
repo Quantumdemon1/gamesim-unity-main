@@ -16,14 +16,18 @@ namespace Gamesim.Episode
     /// jury as a 2D tableau of callouts in their own recorded words (decisions 40 C and 41 A),
     /// and beside it the season's highlights and what the jury values.</para>
     ///
-    /// <para>Not built: the door on the objectives card's jury strip (decision 42). The strip is
-    /// chrome, drawn only in free roam, and a screen that opens from anywhere needs a panel flag
-    /// of its own, as the notebook has.</para>
+    /// <para>A third door is the objectives card's jury strip (the owner's decision 42, MOCKUP-PASS
+    /// M14). The strip is chrome, drawn in free roam with no station panel under it, so the view it
+    /// opens has a panel flag of its own, as the notebook has: it is a panel by
+    /// <see cref="IsPanelOpen"/>'s reckoning, the house pauses under it, and leaving it goes back
+    /// to the house. Its caption is its own, never a second 'The jury house'.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
         public const string JuryHouseCaption = "The jury house";
         public const string LeaveJuryHouseCaption = "Leave the jury house";
+        /// <summary>The jury strip's door. Words of its own: the tile and the Final 2's row carry <see cref="JuryHouseCaption"/>.</summary>
+        public const string JuryStripCaption = "Jury house";
 
         /// <summary>The screen's name: the head's title and, while it is open, the station band's.</summary>
         private const string JuryHouseTitle = "THE JURY HOUSE";
@@ -34,8 +38,47 @@ namespace Gamesim.Episode
         /// <summary>Whether the jury house is open over the station's panel. View state.</summary>
         private bool juryHouseOpen;
 
-        /// <summary>Whether the jury house is open. A read for tests.</summary>
-        public bool InJuryHouse => juryHouseOpen;
+        /// <summary>Whether the jury house is open over the house itself, from the jury strip: a panel of its own. View state.</summary>
+        private bool juryHouseOverHouse;
+
+        /// <summary>Whether the jury house is open, from any of its doors. A read for tests.</summary>
+        public bool InJuryHouse => juryHouseOpen || juryHouseOverHouse;
+
+        /// <summary>
+        /// Where the jury strip opens the jury house: wherever the other doors do, and through the
+        /// Final 3's three parts and its final decision as well, since the strip is in the frame
+        /// for all of them. Only for a finalist player with a jury to read, and never once the
+        /// Jury phase has the vote under way.
+        /// </summary>
+        public static bool JuryStripDoorAvailable(EpisodeState state) =>
+            JuryHouseAvailable(state)
+            || (EpisodeHud.IsFinalThree(state) && state.Active.Any(actor => actor.id == state.playerId) && FinalistRead.Jurors(state).Count > 0);
+
+        /// <summary>Whether the strip is a door right now: the house is the view, with nothing open over it.</summary>
+        public bool JuryStripIsADoor(EpisodeState state) => IsReady && !blockedRecovery && !IsPanelOpen && JuryStripDoorAvailable(state);
+
+        /// <summary>Opens the jury house over the house, from the jury strip. Public for tests.</summary>
+        public void OpenJuryHouseFromStrip()
+        {
+            if (!IsReady || blockedRecovery || !JuryStripDoorAvailable(projected)) return;
+            PauseNpcSocialForPanel(); ClosePanels();
+            juryHouseOverHouse = true;
+            if (player != null) player.SetInputEnabled(false);
+            if (cameraRig != null) cameraRig.ControlsEnabled = false;
+            Render();
+        }
+
+        /// <summary>
+        /// Draws the jury house opened from the strip, when it is, and says whether it did: on the
+        /// stage the station's screens take, over the house.
+        /// </summary>
+        private bool JuryHouseOverHouseIfOpen(EpisodeState state)
+        {
+            if (!juryHouseOverHouse) return false;
+            hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
+            JuryHouseScreen(state);
+            return true;
+        }
 
         /// <summary>Where the jury house can open: the window at three, or the Final 2's questioning and speeches, for a player who is a finalist.</summary>
         public static bool JuryHouseAvailable(EpisodeState state) =>
@@ -51,9 +94,10 @@ namespace Gamesim.Episode
             Render();
         }
 
-        /// <summary>Back to the panel the jury house was opened over.</summary>
+        /// <summary>Back to the panel the jury house was opened over - or, opened from the strip, back to the house.</summary>
         public void CloseJuryHouse()
         {
+            if (juryHouseOverHouse) { ClosePanels(); return; }
             juryHouseOpen = false;
             Render();
         }

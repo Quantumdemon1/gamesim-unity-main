@@ -393,6 +393,9 @@ namespace Gamesim.Episode
             ClickThrough(chip);
         }
 
+        /// <summary>The house pill's jury cell's label.</summary>
+        public const string JuryCellLabel = "Jury members";
+
         /// <summary>
         /// The house's numbers, as the mockups' stat chip: who is still in, how many social actions
         /// are left this week, and who holds the house.
@@ -424,8 +427,10 @@ namespace Gamesim.Episode
             int jurors = state.contestants.Count(IsJuror);
             bool juryCell = IsEndgame(state) && (holder == null || EpisodeDirector.FinaleNight(state.phase)
                 || state.phase == EpisodePhase.FinalEviction);
+            // 'Jury members' under the count, as mockup 60 labels it (MOCKUP-PASS M14): the word
+            // Jury leads it, as it always did.
             if (juryCell && jurors > 0)
-                StatCell(pill, 2f * PillCell, "people", UiTheme.Gold, jurors.ToString(), "Jury");
+                StatCell(pill, 2f * PillCell, "people", UiTheme.Gold, jurors.ToString(), JuryCellLabel);
             else
                 StatCell(pill, 2f * PillCell, "crown", UiTheme.Gold, holder == null ? "Awaiting" : holder.name.Split(' ')[0], "HoH");
             for (int i = 1; i < 3; i++)
@@ -760,7 +765,13 @@ namespace Gamesim.Episode
             var strip = new GameObject(JuryStripName, typeof(RectTransform)).GetComponent<RectTransform>();
             strip.SetParent(card, false);
             Anchor(strip, new Vector2(0, 1), new Vector2(0, 1), new Vector2(14f, -juryTop), new Vector2(width - 28f, 18f + JurorDisc));
-            FixedText(strip, "The jury (" + jurors.Count + ")", 12, UiTheme.Muted, Vector2.zero, new Vector2(width - 28f, 16f));
+            // The strip is a door to the jury house wherever the house can open it from here (the
+            // owner's decision 42, MOCKUP-PASS M14): a link in its heading's corner, so the faces
+            // stay faces.
+            bool door = director.JuryStripIsADoor(state);
+            FixedText(strip, "The jury (" + jurors.Count + ")", 12, UiTheme.Muted, Vector2.zero,
+                new Vector2(width - 28f - (door ? JuryStripLinkWidth + 4f : 0f), 16f));
+            if (door) JuryStripLink(strip);
             // A face per juror in a row; a jury too wide for the strip overlaps like a fanned hand.
             float pitch = jurors.Count > 1 ? Mathf.Min(JurorDisc + 2f, (width - 28f - JurorDisc) / (jurors.Count - 1)) : 0f;
             for (int i = 0; i < jurors.Count; i++)
@@ -788,6 +799,34 @@ namespace Gamesim.Episode
                 }
             }
             return height;
+        }
+
+        private const float JuryStripLinkWidth = 92f;
+
+        /// <summary>
+        /// The jury strip's door (the owner's decision 42, MOCKUP-PASS M14): a corner link drawn as
+        /// the other cards' corner links are, captioned with words of its own. 'The jury house' is
+        /// the free tile's and the Final 2's row's caption, and a second control with those words
+        /// would be two controls a test or a screen reader cannot tell apart. The director builds
+        /// it only while nothing is open over the house, so it is never live beside those doors.
+        /// </summary>
+        private void JuryStripLink(RectTransform strip)
+        {
+            var link = Panel(EpisodeDirector.JuryStripCaption, strip, Color.white, 6);
+            Anchor(link, new Vector2(1, 1), new Vector2(1, 1), new Vector2(0f, 1f), new Vector2(JuryStripLinkWidth, 18f));
+            var button = Pressable(link, director.OpenJuryHouseFromStrip);
+            var colours = button.colors;
+            colours.normalColor = new Color(1f, 1f, 1f, 0f);
+            colours.highlightedColor = new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f);
+            colours.selectedColor = colours.highlightedColor;
+            button.colors = colours;
+            var navigation = button.navigation; navigation.mode = Navigation.Mode.None; button.navigation = navigation;
+            // 20 tall for a 12, which is a 14 at the larger text size: over 1.3 times the words, as
+            // 'View all' keeps them. The box is centred on the 18 tall link, so the words sit where
+            // they did, and it reaches down no further than the top of the faces under the heading.
+            var words = FixedText(link, EpisodeDirector.JuryStripCaption, 12, Accent, new Vector2(4f, 1f), new Vector2(JuryStripLinkWidth - 24f, 20f));
+            words.alignment = TextAlignmentOptions.Right;
+            HudPrimitives.Chevron(link, Accent, 9f).anchoredPosition = new Vector2(-6f, 0f);
         }
 
         /// <summary>The Final 2's leading row under the finale rules: the screen it names is the final case's.</summary>

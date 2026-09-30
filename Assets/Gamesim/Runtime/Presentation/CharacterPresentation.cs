@@ -221,6 +221,13 @@ namespace Gamesim.Presentation
         public Transform VisualRoot => visual;
 
         /// <summary>
+        /// The head bone the body has resolved, or null while it has none - a primitive rig, or a
+        /// body still being built. For what hangs a label over a head: a body can stand metres
+        /// from its root, and a seated one lower than its root says.
+        /// </summary>
+        public Transform HeadBone => modelHead;
+
+        /// <summary>
         /// How many deferred bodies have finished assembling this session, or been given up on for
         /// the primitive rig. Monotonic; readers keep their own last-seen value.
         /// </summary>

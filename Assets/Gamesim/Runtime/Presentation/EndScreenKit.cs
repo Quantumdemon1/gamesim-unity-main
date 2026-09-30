@@ -27,12 +27,24 @@ namespace Gamesim.Presentation
         /// </summary>
         private static float BodyInset(string path) => Glowing.Contains(path) ? 38f : 8f;
 
-        /// <summary>The pack files drawn inside a 38 px glow, as the catalogue measured them.</summary>
+        /// <summary>
+        /// The pack files drawn inside a 38 px glow, as the catalogue measured them: Pack 7's six and
+        /// Pack 8's eleven. A name missing from here is drawn 30 px inside its rect, which reads as a
+        /// card a size too small rather than as an error; <c>PackArtTests</c> holds the set to the
+        /// catalogue both ways.
+        /// </summary>
         private static readonly HashSet<string> Glowing = new HashSet<string>
         {
             PackArt.SeasonWinnerHero, PackArt.SeasonStandingWinner, PackArt.SeasonButtonPrimary,
             PackArt.SeasonSectionSelected, PackArt.SeasonButtonLegacy, PackArt.SeasonWinnerNameplate,
+            PackArt.Pack8ButtonPrimary, PackArt.Pack8ButtonGold, PackArt.Pack8ContinueButton,
+            PackArt.Pack8HouseguestNominee, PackArt.Pack8HouseguestSelected, PackArt.Pack8PhaseCurrent,
+            PackArt.Pack8VoterSelected, PackArt.Pack8TabActive, PackArt.Pack8DrawnPlayer,
+            PackArt.Pack8DrawSlotFilled, PackArt.Pack8RevealButton,
         };
+
+        /// <summary>The frames <see cref="Frame"/> draws out past their rect by a 38 px glow, for a test.</summary>
+        public static IReadOnlyCollection<string> GlowingFrames => Glowing;
 
         /// <summary>
         /// Frames <paramref name="host"/> with a pack sprite on a child named "Art", drawn behind
@@ -99,6 +111,33 @@ namespace Gamesim.Presentation
             image.sprite = sprite;
             image.color = pack ? Color.white : tint;
             image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// A sprite the pack names _9slice drawn whole: Pack 8's draw slots are circles whose stretch
+        /// is 12 to 14 px, and sliced they draw a pill. Simple, its aspect kept, centred on
+        /// <paramref name="centre"/> in its parent's upper-left space and drawn out past
+        /// <paramref name="side"/> by the padding or glow it bakes in, so the circle itself is
+        /// <paramref name="side"/> across whichever slot it is. Null without the pack.
+        /// </summary>
+        public static Image Whole(string name, RectTransform parent, string path, Vector2 centre, float side)
+        {
+            var sprite = UiTheme.Pack(path);
+            if (sprite == null) return null;
+            var image = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            var rect = image.rectTransform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(.5f, .5f);
+            float size = sprite.rect.width, body = Mathf.Max(1f, size - 2f * BodyInset(path));
+            rect.sizeDelta = new Vector2(side * size / body, side * size / body);
+            rect.anchoredPosition = centre;
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = true;
+            image.color = Color.white;
             image.raycastTarget = false;
             return image;
         }

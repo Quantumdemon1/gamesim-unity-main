@@ -9,11 +9,12 @@ using UnityEngine;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The five UI/art asset packs, UI Refinement Kit 6, Room Finish Pack 6 and Season Complete Pack 7,
-    /// as imported: every file the catalogue lists is on disk and every file on disk is listed; each
-    /// imports as its kind says, and a 9-slice sprite carries its border - measured from its own pixels
-    /// for packs 1-5 and 7, the kit manifest's own for Kit 6; the UI sprites load by path the way the
-    /// code-built UI loads everything; and the import rules touch nothing outside the packs.
+    /// The five UI/art asset packs, UI Refinement Kit 6, Room Finish Pack 6, Season Complete Pack 7 and
+    /// Campaign, Veto and Nomination Pack 8, as imported: every file the catalogue lists is on disk and
+    /// every file on disk is listed; each imports as its kind says, and a 9-slice sprite carries its
+    /// border - measured from its own pixels for packs 1-5, 7 and 8, the kit manifest's own for Kit 6;
+    /// the UI sprites load by path the way the code-built UI loads everything; and the import rules
+    /// touch nothing outside the packs.
     ///
     /// <para>The expectations are written out here per kind rather than asked of
     /// <see cref="UiPackImporter"/>, so a wrong rule fails against what the kind is for instead of
@@ -36,9 +37,10 @@ namespace Gamesim.Tests.EditMode
                 .OrderBy(file => file, StringComparer.Ordinal).ToArray();
             var listed = UiPackCatalogue.All.Select(entry => entry.Path).OrderBy(path => path, StringComparer.Ordinal).ToArray();
 
-            Assert.That(listed.Length, Is.EqualTo(397 + 71 + 174 + 66),
+            Assert.That(listed.Length, Is.EqualTo(397 + 71 + 174 + 66 + 102),
                 "Five packs, 397 images; Kit 6's 71 sprites; Room Finish Pack 6's 174 textures (162 world, 12 editor markers); "
-                + "Season Complete Pack 7's 66 sprites; the previews, READMEs, manifests and SVG sources live in ArtSource/ui-packs.");
+                + "Season Complete Pack 7's 66 sprites; Pack 8's 102, its seven Icons/ twins among them; "
+                + "the previews, READMEs, manifests and SVG sources live in ArtSource/ui-packs.");
             Assert.That(onDisk.Except(listed), Is.Empty, "On disk and not in UiPackCatalogue - re-run the ArtSource/ui-packs/tools script for that pack.");
             Assert.That(listed.Except(onDisk), Is.Empty, "In UiPackCatalogue and missing from disk.");
             Assert.That(onDisk.All(file => file.EndsWith(".png", StringComparison.Ordinal)), Is.True,
@@ -106,8 +108,8 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(sprite, Is.Not.Null, entry.Path);
                 Assert.That(sprite.border, Is.EqualTo(b), entry.Path + ": and the sprite a Sliced Image draws carries it.");
             }
-            Assert.That(sliced, Is.EqualTo(186 + 15 + 43),
-                "Every file named _9slice across the five packs, Kit 6's fifteen sliced sprites, and Pack 7's forty-three.");
+            Assert.That(sliced, Is.EqualTo(186 + 15 + 43 + 75),
+                "Every file named _9slice across the five packs, Kit 6's fifteen sliced sprites, Pack 7's forty-three and Pack 8's seventy-five.");
         }
 
         /// <summary>

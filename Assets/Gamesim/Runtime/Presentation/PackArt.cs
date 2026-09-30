@@ -202,5 +202,110 @@ namespace Gamesim.Presentation
         public const string SeasonButtonLegacy = "Pack7_SeasonComplete/Buttons/button_continue_legacy_9slice";
         public const string SeasonBadgeJury = "Pack7_SeasonComplete/Badges/badge_jury";
         public const string SeasonBadgeRunnerUp = "Pack7_SeasonComplete/Badges/badge_runnerup";
+
+        // Campaign, Veto and Nomination Pack 8: the week's four strategy screens (PACK8-PASS-PLAN;
+        // ASSET-PACKS.md, Pack 8). One name per distinct image. Not here on purpose:
+        //  - Campaign/Relationship/relationship_*, which bake a fill of 18 to 78 % into the bar; a
+        //    standing drawn from one would show a number the player never earned.
+        //  - Icons/*, byte for byte the seven Common/icon_* files named below.
+        //  - The pack's own twins: Nomination/up_next_strip (Common/info_strip), status_card_objective
+        //    (status_card_phase), lobby_listen_pitch and stay_off_block_take_it_on
+        //    (Campaign/choice_promise_support), lobby_counter_lobby (Campaign/choice_counter_lobby),
+        //    stay_off_block_not_now (Campaign/choice_stay_noncommittal) and intel_row (goal_row).
+        //  - Common/modal_shell (pixel for pixel Pack 4's memory wall shell), Common/status_card (the
+        //    plain twin of the Nomination cards), Common/toast_saved (the status line's geometry is
+        //    pinned), eligible_player_hover (the draw's faces are not controls), arrow_left (the
+        //    mockup points both chevrons right) and draw_chip_2 to 6 (the mockup's chips are chip 1's).
+        //  - Campaign/houseguest_card_high_value, which would say a voter matters more than the
+        //    player has any way of knowing.
+        public const string Pack8ButtonPrimary = "Pack8_CampaignVetoNomination/Common/primary_button_9slice";
+        public const string Pack8ButtonGold = "Pack8_CampaignVetoNomination/Common/gold_button_9slice";
+        public const string Pack8ButtonSecondary = "Pack8_CampaignVetoNomination/Common/secondary_button_9slice";
+        public const string Pack8ButtonDanger = "Pack8_CampaignVetoNomination/Common/danger_button_9slice";
+        public const string Pack8HeaderStrip = "Pack8_CampaignVetoNomination/Common/header_strip_9slice";
+        /// <summary>The strip an info line and the footer's Up next line sit on.</summary>
+        public const string Pack8InfoStrip = "Pack8_CampaignVetoNomination/Common/info_strip_9slice";
+        public const string Pack8Section = "Pack8_CampaignVetoNomination/Common/section_shell_9slice";
+        public const string Pack8IconHoh = "Pack8_CampaignVetoNomination/Common/icon_hoh";
+        public const string Pack8IconPeople = "Pack8_CampaignVetoNomination/Common/icon_people";
+        public const string Pack8IconChat = "Pack8_CampaignVetoNomination/Common/icon_chat";
+        public const string Pack8IconTarget = "Pack8_CampaignVetoNomination/Common/icon_target";
+        public const string Pack8IconVeto = "Pack8_CampaignVetoNomination/Common/icon_veto";
+        public const string Pack8IconInfo = "Pack8_CampaignVetoNomination/Common/icon_info";
+        /// <summary>An OPEN padlock; a closed one is <see cref="KitIconLock"/>.</summary>
+        public const string Pack8IconLock = "Pack8_CampaignVetoNomination/Common/icon_lock";
+        /// <summary>The nomination's frame: its body is the strategy stage at the 1600x900 reference, 1360x800.</summary>
+        public const string Pack8NominationShell = "Pack8_CampaignVetoNomination/Nomination/nomination_shell_9slice";
+        public const string Pack8NominationSummary = "Pack8_CampaignVetoNomination/Nomination/nomination_summary_panel_9slice";
+        public const string Pack8StatusHoh = "Pack8_CampaignVetoNomination/Nomination/status_card_hoh_9slice";
+        /// <summary>The red-edged status card: the Phase card's and the Objective's, which the pack draws alike.</summary>
+        public const string Pack8StatusPhase = "Pack8_CampaignVetoNomination/Nomination/status_card_phase_9slice";
+        public const string Pack8StatusActions = "Pack8_CampaignVetoNomination/Nomination/status_card_actions_9slice";
+        /// <summary>A tracker's steps. The three share one 330x80 body, so a step changes its sprite and never its rect.</summary>
+        public const string Pack8PhaseComplete = "Pack8_CampaignVetoNomination/Nomination/phase_complete_9slice";
+        public const string Pack8PhaseCurrent = "Pack8_CampaignVetoNomination/Nomination/phase_current_9slice";
+        public const string Pack8PhaseNext = "Pack8_CampaignVetoNomination/Nomination/phase_next_9slice";
+        public const string Pack8HouseguestHoh = "Pack8_CampaignVetoNomination/Nomination/houseguest_hoh_9slice";
+        public const string Pack8HouseguestNeutral = "Pack8_CampaignVetoNomination/Nomination/houseguest_neutral_9slice";
+        public const string Pack8HouseguestNominee = "Pack8_CampaignVetoNomination/Nomination/houseguest_nominee_9slice";
+        public const string Pack8HouseguestSelected = "Pack8_CampaignVetoNomination/Nomination/houseguest_selected_9slice";
+        public const string Pack8HouseguestUnavailable = "Pack8_CampaignVetoNomination/Nomination/houseguest_unavailable_9slice";
+        public const string Pack8NomRiskLow = "Pack8_CampaignVetoNomination/Nomination/nom_risk_low_9slice";
+        public const string Pack8NomRiskSome = "Pack8_CampaignVetoNomination/Nomination/nom_risk_some_9slice";
+        public const string Pack8NomRiskHigh = "Pack8_CampaignVetoNomination/Nomination/nom_risk_high_9slice";
+        public const string Pack8ContinueButton = "Pack8_CampaignVetoNomination/Nomination/continue_episode_button_9slice";
+        /// <summary>
+        /// A choice's face, by the kind of answer rather than by the arc that asks it: next week's
+        /// beat is a different arc with the same three kinds of answer.
+        /// </summary>
+        public const string Pack8ChoiceWarm = "Pack8_CampaignVetoNomination/Campaign/choice_promise_support_9slice";
+        public const string Pack8ChoiceBold = "Pack8_CampaignVetoNomination/Campaign/choice_counter_lobby_9slice";
+        public const string Pack8ChoiceQuiet = "Pack8_CampaignVetoNomination/Campaign/choice_stay_noncommittal_9slice";
+        public const string Pack8ChoiceRefuse = "Pack8_CampaignVetoNomination/Campaign/choice_refuse_9slice";
+        public const string Pack8VetoShell = "Pack8_CampaignVetoNomination/VetoSelection/veto_selection_shell_9slice";
+        public const string Pack8VetoAutoHoh = "Pack8_CampaignVetoNomination/VetoSelection/auto_player_card_hoh_9slice";
+        public const string Pack8VetoAutoNominee = "Pack8_CampaignVetoNomination/VetoSelection/auto_player_card_nominee_9slice";
+        public const string Pack8VetoEligible = "Pack8_CampaignVetoNomination/VetoSelection/eligible_player_card_9slice";
+        public const string Pack8DrawArea = "Pack8_CampaignVetoNomination/VetoSelection/draw_area_9slice";
+        public const string Pack8VetoBag = "Pack8_CampaignVetoNomination/VetoSelection/veto_bag_icon";
+        public const string Pack8DrawChip = "Pack8_CampaignVetoNomination/VetoSelection/draw_chip_1";
+        /// <summary>
+        /// The draw's slots. Named _9slice and sliced on import, but they are circles with a stretch
+        /// of 12 to 14 px: sliced, one draws a pill. Draw them whole, through <see cref="EndScreenKit.Whole"/>.
+        /// </summary>
+        public const string Pack8DrawSlotEmpty = "Pack8_CampaignVetoNomination/VetoSelection/draw_slot_empty_9slice";
+        public const string Pack8DrawSlotFilled = "Pack8_CampaignVetoNomination/VetoSelection/draw_slot_filled_9slice";
+        public const string Pack8DrawnPlayer = "Pack8_CampaignVetoNomination/VetoSelection/drawn_player_card_9slice";
+        public const string Pack8RevealButton = "Pack8_CampaignVetoNomination/VetoSelection/reveal_draw_button_9slice";
+        public const string Pack8VetoOutcome = "Pack8_CampaignVetoNomination/VetoSelection/veto_outcome_strip_9slice";
+        public const string Pack8ArrowRight = "Pack8_CampaignVetoNomination/VetoSelection/arrow_right";
+        public const string Pack8CampaignShell = "Pack8_CampaignVetoNomination/Campaign/campaign_shell_9slice";
+        public const string Pack8CampaignHero = "Pack8_CampaignVetoNomination/Campaign/nominee_hero_9slice";
+        public const string Pack8CampaignHeroDanger = "Pack8_CampaignVetoNomination/Campaign/nominee_hero_danger_9slice";
+        public const string Pack8Situation = "Pack8_CampaignVetoNomination/Campaign/situation_panel_9slice";
+        /// <summary>A tab, lit and resting. The two share one 260x66 body, so lighting a tab moves no rect.</summary>
+        public const string Pack8TabActive = "Pack8_CampaignVetoNomination/Campaign/tab_active_9slice";
+        public const string Pack8TabInactive = "Pack8_CampaignVetoNomination/Campaign/tab_inactive_9slice";
+        public const string Pack8VoterCard = "Pack8_CampaignVetoNomination/Campaign/houseguest_card_resting_9slice";
+        public const string Pack8VoterDanger = "Pack8_CampaignVetoNomination/Campaign/houseguest_card_danger_9slice";
+        public const string Pack8VoterSelected = "Pack8_CampaignVetoNomination/Campaign/houseguest_card_selected_9slice";
+        public const string Pack8TalkButton = "Pack8_CampaignVetoNomination/Campaign/talk_button_9slice";
+        public const string Pack8ActionsLeft = "Pack8_CampaignVetoNomination/Campaign/action_left_card_9slice";
+        public const string Pack8GoalPanel = "Pack8_CampaignVetoNomination/Campaign/campaign_goal_panel_9slice";
+        public const string Pack8IntelPanel = "Pack8_CampaignVetoNomination/Campaign/recent_intel_panel_9slice";
+        /// <summary>A goal's row and an intel row, which the pack draws alike.</summary>
+        public const string Pack8CampaignRow = "Pack8_CampaignVetoNomination/Campaign/goal_row_9slice";
+        public const string Pack8ProTip = "Pack8_CampaignVetoNomination/Campaign/pro_tip_panel_9slice";
+        public const string Pack8RiskLow = "Pack8_CampaignVetoNomination/Campaign/risk_low_9slice";
+        public const string Pack8RiskMedium = "Pack8_CampaignVetoNomination/Campaign/risk_medium_9slice";
+        public const string Pack8RiskHigh = "Pack8_CampaignVetoNomination/Campaign/risk_high_9slice";
+        public const string Pack8TypeStrategic = "Pack8_CampaignVetoNomination/Campaign/type_strategic_9slice";
+        /// <summary>The grounds of a voter's read, never its words: the words stay the read's own.</summary>
+        public const string Pack8VoteLikelyKeep = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_likely_keep_9slice";
+        public const string Pack8VoteLeanKeep = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_lean_keep_9slice";
+        public const string Pack8VoteUndecided = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_undecided_9slice";
+        public const string Pack8VoteLeanEvict = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_lean_evict_9slice";
+        public const string Pack8VoteLikelyEvict = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_likely_evict_9slice";
+        public const string Pack8VoteUnknown = "Pack8_CampaignVetoNomination/Campaign/Voting/vote_unknown_9slice";
     }
 }

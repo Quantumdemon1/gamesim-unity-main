@@ -20,6 +20,23 @@ namespace Gamesim.Episode
         private static bool CeremonyScreenBeat(EpisodeState s) => s != null && s.pendingDiary == null
             && (s.phase == EpisodePhase.Nomination || s.phase == EpisodePhase.VetoSelection || s.phase == EpisodePhase.VetoMeeting);
 
+        /// <summary>
+        /// The week's four strategy screens, which take the strategy stage (PACK8-PASS-PLAN A3): the
+        /// ceremonies' three and the campaign. Not the Head of Household's own picker, which keeps
+        /// its band (ActivityLayout.Nominations) until the nomination is laid out for the frame, and
+        /// never under a challenge, whose sheet is a layout of its own.
+        /// </summary>
+        private bool StrategyScreenBeat(EpisodeState s) => s != null && !challengeActive
+            && (CeremonyScreenBeat(s) || (s.phase == EpisodePhase.Campaign && s.pendingDiary == null))
+            && !(s.phase == EpisodePhase.Nomination && s.nominees.Count == 0 && s.hohId == s.playerId
+                && s.Find(s.playerId)?.status == ContestantStatus.Active);
+
+        /// <summary>The Pack 8 shell a strategy screen is framed in: the veto meeting has none of its own and wears the draw's.</summary>
+        private static string StrategyShell(EpisodeState s) =>
+            s.phase == EpisodePhase.Nomination ? PackArt.Pack8NominationShell
+            : s.phase == EpisodePhase.Campaign ? PackArt.Pack8CampaignShell
+            : PackArt.Pack8VetoShell;
+
         private void CeremonyScreen(EpisodeState s)
         {
             if (!CeremonyScreenBeat(s) || s.Find(s.hohId) == null) return;

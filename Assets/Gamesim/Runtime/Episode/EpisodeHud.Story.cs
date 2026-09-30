@@ -40,7 +40,10 @@ namespace Gamesim.Episode
         /// </summary>
         public void StoryBeatHeader(string eyebrow, string title, string narrative)
         {
-            SetActivityLayout(ActivityLayout.HouseEvent);
+            // On the strategy stage a beat is drawn inside it, as the step it is, and the way on
+            // stays pinned; everywhere else it takes the house event's band (PACK8-PASS-PLAN
+            // decision 7). The band turned the whole nomination into a 403-unit scroll.
+            if (activityLayout != ActivityLayout.Strategy) SetActivityLayout(ActivityLayout.HouseEvent);
             var mark = DecisionText(content, (eyebrow ?? "STORY").ToUpperInvariant(), 12, UiTheme.Joke);
             mark.characterSpacing = 8f;
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);

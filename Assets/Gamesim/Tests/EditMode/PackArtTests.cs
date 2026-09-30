@@ -52,6 +52,82 @@ namespace Gamesim.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// <see cref="EndScreenKit.Frame"/> draws a frame out past its rect by the glow baked around
+        /// it, and it knows which frames glow only from its own list. A frame the list misses is drawn
+        /// 30 px inside its rect - a card a size too small - and nothing reports it; a frame it holds
+        /// wrongly is drawn 30 px too large. So the list is every named frame the catalogue measured
+        /// inside a 38 px glow, and nothing else, and every other Pack 7 or Pack 8 frame sits 8 px in,
+        /// the one other depth the kit allows for.
+        /// </summary>
+        [Test]
+        public void TheGlowSetIsEveryNamedFrameTheCatalogueMeasuredInsideAGlow()
+        {
+            var glow = new Vector4(38f, 38f, 38f, 38f);
+            var deep = new System.Collections.Generic.List<string>();
+            foreach (var (name, path) in Named())
+            {
+                if (!UiPackCatalogue.TryGet(Asset(path), out var entry) || entry.Kind != UiPackCatalogue.Kind.UiSliced) continue;
+                if (entry.BodyInset == glow) { deep.Add(path); continue; }
+                if (path.StartsWith("Pack7_") || path.StartsWith("Pack8_"))
+                    Assert.That(entry.BodyInset, Is.EqualTo(new Vector4(8f, 8f, 8f, 8f)), name + " sits at a depth the frame does not allow for.");
+            }
+            Assert.That(EndScreenKit.GlowingFrames, Is.EquivalentTo(deep), "The frames drawn out past their rect by a glow.");
+            Assert.That(deep.Count(path => path.StartsWith("Pack7_")), Is.EqualTo(6), "Pack 7's six glowing frames.");
+            Assert.That(deep.Count(path => path.StartsWith("Pack8_")), Is.EqualTo(11), "Pack 8's eleven.");
+        }
+
+        /// <summary>
+        /// Pack 8 is imported whole and named once per image (PACK8-PASS-PLAN decision 9): the Icons/
+        /// folder repeats Common/'s icons byte for byte and six more files repeat another, so two names
+        /// for one picture would let two screens drift apart while looking alike. The relationship bars
+        /// bake a fill into their pixels and are never named.
+        /// </summary>
+        [Test]
+        public void Pack8NamesEachOfItsImagesOnceAndNoneOfItsBakedBars()
+        {
+            var named = Named().Where(entry => entry.Path.StartsWith("Pack8_")).ToArray();
+            Assert.That(named, Has.Length.EqualTo(73), "Pack 8's names.");
+            Assert.That(named.Where(entry => entry.Path.Contains("/Relationship/") || entry.Path.Contains("/Icons/")).Select(entry => entry.Name),
+                Is.Empty, "A baked bar or an Icons/ twin is named.");
+            using (var md5 = System.Security.Cryptography.MD5.Create())
+            {
+                var twins = named.GroupBy(entry => System.BitConverter.ToString(md5.ComputeHash(System.IO.File.ReadAllBytes(Asset(entry.Path)))))
+                    .Where(group => group.Count() > 1).Select(group => string.Join(" = ", group.Select(entry => entry.Name))).ToArray();
+                Assert.That(twins, Is.Empty, "One picture under two names: " + string.Join("; ", twins));
+            }
+        }
+
+        private static string Asset(string path) => "Assets/Gamesim/Resources/Packs/" + path + ".png";
+
+        /// <summary>
+        /// Pack 8's draw slots are named _9slice and import sliced, but they are circles with a stretch
+        /// of 12 to 14 px: a Sliced Image draws them as pills. They are drawn whole, their aspect
+        /// kept, and the empty slot and the lit one - one padded 8 px, one glowing 38 - show a
+        /// circle of the same size.
+        /// </summary>
+        [Test]
+        public void TheDrawSlotsAreDrawnWholeAtTheSameSize()
+        {
+            var parent = new GameObject("Probe", typeof(RectTransform)).GetComponent<RectTransform>();
+            try
+            {
+                foreach (var path in new[] { PackArt.Pack8DrawSlotEmpty, PackArt.Pack8DrawSlotFilled })
+                {
+                    var slot = EndScreenKit.Whole("Slot", parent, path, Vector2.zero, 60f);
+                    Assert.That(slot, Is.Not.Null, path);
+                    Assert.That(slot.sprite, Is.SameAs(UiTheme.Pack(path)));
+                    Assert.That(slot.type, Is.EqualTo(Image.Type.Simple), path + " is drawn whole, not sliced.");
+                    Assert.That(slot.preserveAspect, Is.True);
+                    Assert.That(slot.raycastTarget, Is.False, "A slot is not a control.");
+                    Assert.That(UiPackCatalogue.TryGet(Asset(path), out var entry), Is.True);
+                    float body = slot.rectTransform.sizeDelta.x * (entry.Width - entry.BodyInset.x - entry.BodyInset.z) / entry.Width;
+                    Assert.That(body, Is.EqualTo(60f).Within(.01f), path + "'s circle is the size asked.");
+                }
+            }
+            finally { Object.DestroyImmediate(parent.gameObject); }
+        }
+
         [Test]
         public void PackSlicedSolvesTheMultiplierFromTheBorderAsked()
         {

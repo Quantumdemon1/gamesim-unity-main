@@ -99,6 +99,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(hero.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == "Hero face"), Is.True,
                 "The player's own briefing keeps their face in the hero.");
             Assert.That(ActiveRect(EpisodeHud.CompetitorCardsName), Is.Null, "The pair's cards are the game screen's and the watcher's.");
+            // Every way to compete is still on the sheet without a scroll, as an ordinary week's
+            // briefing pins it, with the tracker at its head and the band at its foot.
+            var column = ActiveRect("Episode content");
+            var fold = (RectTransform)column.parent;
+            Assert.That(column.rect.height, Is.LessThanOrEqualTo(fold.rect.height + .5f),
+                "A final part's briefing column fits its sheet: " + column.rect.height + " in " + fold.rect.height + ".");
             AssertEveryLabelDraws("A final part's briefing");
             if (Application.isBatchMode) yield return CaptureFraming("final-hoh-part-briefing");
             yield return AssertTheFinalPartSheetFitsAtBothTextSizes();

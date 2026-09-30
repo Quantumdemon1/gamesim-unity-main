@@ -124,15 +124,28 @@ namespace Gamesim.Presentation
 
         private float EnduranceTarget => (float)CompetitionMiniGames.EnduranceTarget(run.TimeLimit, run.RulesVersion);
 
+        /// <summary>
+        /// What the grip panel's rows add up to at this text size. They are laid at fixed heights,
+        /// so a field shorter than this squeezes the panel and its rows run into the hold button.
+        /// </summary>
+        private float EnduranceHeight
+        {
+            get
+            {
+                float line = 1.3f * 20f * FontScale;
+                bool waves = pressureTimeline != null;
+                return 20f + 1.3f * 26f * FontScale + 10f + 28f * FontScale + 8f + line + 6f + 1.3f * 15f * FontScale + 10f
+                    + 1.3f * 15f * FontScale + 4f + 14f * FontScale + (waves ? 12f + 18f * FontScale : 0f) + 16f + 72f + 20f;
+            }
+        }
+
         private void PlaceEndurance()
         {
             var field = PlayField;
             float width = Mathf.Min(field.width - 48f, 900f), inner = width - 48f;
             float line = 1.3f * 20f * FontScale;
             bool waves = pressureTimeline != null;
-            float height = 20f + 1.3f * 26f * FontScale + 10f + 28f * FontScale + 8f + line + 6f + 1.3f * 15f * FontScale + 10f
-                + 1.3f * 15f * FontScale + 4f + 14f * FontScale + (waves ? 12f + 18f * FontScale : 0f) + 16f + 72f + 20f;
-            height = Mathf.Min(height, field.height - 24f);
+            float height = Mathf.Min(EnduranceHeight, field.height - 24f);
             Place(staminaPanel, (field.width - width) * .5f, field.yMax - 16f - height, width, height);
             float y = 20f;
             Place(enduranceHeadline.rectTransform, 24f, y, inner, 1.3f * 26f * FontScale); y += 1.3f * 26f * FontScale + 10f;

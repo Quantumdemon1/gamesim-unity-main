@@ -100,17 +100,18 @@ namespace Gamesim.Presentation
             }
         }
 
-        /// <summary>How tall the header row has to be for this width at this text size.</summary>
-        private float HeaderFor(float challengeWidth)
+        /// <summary>How tall the header row has to be for this width and frame at this text size.</summary>
+        private float HeaderFor(float challengeWidth, float frameHeight)
         {
             float inner = challengeWidth - 32f;
             float rules = PreferredHeight(rulesLabel, inner);
             float policy = PreferredHeight(policyLabel, inner - 22f);
-            float challenge = 14f + 18f * FontScale + 6f + 34f * FontScale + 4f + rules + 8f + policy + 12f + FinalPartHeader(inner);
+            float challenge = 14f + 18f * FontScale + 6f + 34f * FontScale + 4f + rules + 8f + policy + 12f;
             float timer = 44f + 126f * FontScale;
-            // A final part's tracker and scoring line take a little more of the frame; the board
-            // still keeps the rest.
-            return Mathf.Clamp(Mathf.Max(HeaderHeight, challenge, timer), HeaderHeight, bracketStrip != null ? 340f : 300f);
+            float header = Mathf.Clamp(Mathf.Max(HeaderHeight, challenge, timer), HeaderHeight, 300f);
+            // A final part's tracker and scoring line take a little more of the frame, out of the
+            // board its game can spare.
+            return FinalPartHeaderFor(header, challenge, timer, inner, frameHeight);
         }
 
         private static float PreferredHeight(TMP_Text label, float width)
@@ -451,8 +452,10 @@ namespace Gamesim.Presentation
             fieldHeading.characterSpacing = 6f; fieldHeading.textWrappingMode = TextWrappingModes.NoWrap;
             youRow = null;
             competitorCards.Clear();
-            // Two in the field - a final part's pair - are cards of their own (MOCKUP-PASS-PLAN M13).
-            bool cards = entrants != null && entrants.Count == 2;
+            // A final part's pair are cards of their own (MOCKUP-PASS-PLAN M13). Keyed on the bracket
+            // as well as the count: a sit-out can leave an ordinary week's field at two, and that
+            // field keeps its list and faces as it always had them.
+            bool cards = finalBracket != null && entrants != null && entrants.Count == 2;
             if (cards) BuildCompetitorCards(entrants);
             else if (entrants != null && entrants.Count > 0)
             {

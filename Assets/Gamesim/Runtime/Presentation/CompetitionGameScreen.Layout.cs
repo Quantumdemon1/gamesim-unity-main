@@ -85,7 +85,7 @@ namespace Gamesim.Presentation
             float frameWidth = frame.x, frameHeight = frame.y;
             float left = FrameEdge, sideX = frameWidth - FrameEdge - SideWidth, mainWidth = Mathf.Max(480f, sideX - FrameGap - left);
             float challengeWidth = mainWidth - TimerWidth - FrameGap;
-            float header = HeaderFor(challengeWidth);
+            float header = HeaderFor(challengeWidth, frameHeight);
             float legend = LegendHeight * FontScale;
             surfaceWidth = mainWidth;
             surfaceHeight = Mathf.Max(360f, frameHeight - (FrameEdge + header + FrameGap) - (FrameEdge + legend + 8f));

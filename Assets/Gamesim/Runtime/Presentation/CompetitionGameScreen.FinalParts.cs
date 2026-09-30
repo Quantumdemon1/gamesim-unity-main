@@ -25,6 +25,7 @@ namespace Gamesim.Presentation
         private RectTransform bracketStrip, finalBand;
         private TMP_Text scoringLabel;
         private Image scoringMark;
+        private bool scoringShown;
         private float finalBandWidth;
 
         /// <summary>One of the two competitor cards and the parts a relayout re-places.</summary>
@@ -59,12 +60,36 @@ namespace Gamesim.Presentation
             scoringLabel.alignment = TextAlignmentOptions.TopLeft; Fit(scoringLabel, 10);
         }
 
-        /// <summary>What the tracker and the scoring line add to the header row's height.</summary>
-        private float FinalPartHeader(float inner)
+        /// <summary>
+        /// The header row's height once a final part's tracker and scoring line join the ordinary
+        /// card's <paramref name="challenge"/> content. They come out of the board, but never out
+        /// of the board its game needs: Pressure Cooker's rows are laid at fixed heights, and on a
+        /// wide, short frame at the larger text the bracket squeezed them into the hold button. So
+        /// there the scoring line gives way first, then the rules shrink to fit, and the header
+        /// never drops below the <paramref name="ordinary"/> one. Without a bracket the ordinary
+        /// height is the answer.
+        /// </summary>
+        private float FinalPartHeaderFor(float ordinary, float challenge, float timer, float inner, float frameHeight)
         {
-            if (bracketStrip == null) return 0f;
-            return FinalBracketView.StripHeight * FontScale + 8f + PreferredHeight(scoringLabel, inner - 22f) + 6f;
+            scoringShown = false;
+            if (bracketStrip == null) return ordinary;
+            float strip = FinalBracketView.StripHeight * FontScale + 8f;
+            float scoring = PreferredHeight(scoringLabel, inner - 22f) + 6f;
+            float full = Mathf.Clamp(Mathf.Max(HeaderHeight, challenge + strip + scoring, timer), HeaderHeight, 340f);
+            float lean = Mathf.Clamp(Mathf.Max(HeaderHeight, challenge + strip, timer), HeaderHeight, 340f);
+            // The most the header may take and still leave the board its floor. The ordinary card
+            // is never cut: a frame too short for it was short before the bracket came.
+            float room = Mathf.Max(ordinary, frameHeight - (FrameEdge + FrameGap) - (FrameEdge + LegendHeight * FontScale + 8f) - BoardFloor);
+            scoringShown = full <= room;
+            return Mathf.Min(scoringShown ? full : lean, room);
         }
+
+        /// <summary>
+        /// The board height, band included, that the attempt's game cannot do without: the grip
+        /// panel's rows and their margin for an endurance game. Every other board scales to the
+        /// field it is given, so the frame's own floor is enough for them.
+        /// </summary>
+        private float BoardFloor => run != null && run.Kind == CompetitionMiniGames.Kind.Endurance ? BandHeight + EnduranceHeight + 24f : 0f;
 
         /// <summary>
         /// Places the tracker under the title and the scoring line over the attempt's policy, and
@@ -77,6 +102,11 @@ namespace Gamesim.Presentation
             float strip = FinalBracketView.StripHeight * FontScale;
             Place(bracketStrip, 16f, rulesY, inner, strip);
             rulesY += strip + 8f;
+            // On a frame too short for it the scoring line gives way to the board (FinalPartHeaderFor);
+            // a later, taller frame brings it back.
+            scoringLabel.gameObject.SetActive(scoringShown);
+            if (scoringMark != null) scoringMark.gameObject.SetActive(scoringShown);
+            if (!scoringShown) return (rulesY, rulesBottom);
             float scoring = PreferredHeight(scoringLabel, inner - 22f);
             float scoringY = policyY - 8f - scoring;
             if (scoringMark != null) Place(scoringMark.rectTransform, 16f, scoringY + 1f, 14f * FontScale, 14f * FontScale);

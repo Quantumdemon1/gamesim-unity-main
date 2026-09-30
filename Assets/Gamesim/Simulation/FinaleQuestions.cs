@@ -416,5 +416,126 @@ namespace Gamesim.Simulation
                     return null;
             }
         }
+
+        // ------------------------------------------------------------ the receipt, read for the screen
+
+        /// <summary>
+        /// The week a question's receipt names, or null: a comparison has none, and neither has a
+        /// row the record no longer holds or an alliance whose start it never wrote. A read at
+        /// render, never saved (MOCKUP-PASS M11).
+        /// </summary>
+        public static int? ReceiptWeek(EpisodeState s, JuryExchangeState exchange)
+        {
+            if (s == null || exchange == null || exchange.receiptKind == null || ReceiptLine(s, exchange) == null) return null;
+            string id = exchange.receiptId;
+            var ledger = s.ledger ?? new SeasonLedger();
+            switch (exchange.receiptKind)
+            {
+                case PromiseReceipt: return s.promises.First(p => p.id == id).week;
+                case DealReceipt: return s.deals.First(d => d.id == id).week;
+                case PowerReceipt:
+                case BallotReceipt: return ParsedWeek(id);
+                case ReplyReceipt: return ledger.replies.First(r => r.cardId == id).week;
+                case CallReceipt: return ParsedWeek(id.Substring(id.LastIndexOf(':') + 1));
+                case AllianceReceipt:
+                    int started = ledger.alliances.FirstOrDefault(r => r.id == id)?.startedWeek ?? 0;
+                    return started > 0 ? started : (int?)null;
+                default: return null;
+            }
+        }
+
+        private static int? ParsedWeek(string words) =>
+            int.TryParse(words, NumberStyles.None, CultureInfo.InvariantCulture, out int week) && week > 0 ? week : (int?)null;
+
+        /// <summary>
+        /// The receipt in a few words, for the line over the question it was asked from ("Week 4 ·
+        /// you voted to evict them"; decision 39). The juror asking is "them". The question's saved
+        /// words are never touched: this is drawn above them. Null with no receipt, or with a row
+        /// the record no longer holds.
+        /// </summary>
+        public static string Kicker(EpisodeState s, JuryExchangeState exchange)
+        {
+            if (s == null || exchange == null || exchange.receiptKind == null || ReceiptLine(s, exchange) == null) return null;
+            string player = s.playerId, juror = exchange.questionerId, id = exchange.receiptId;
+            var ledger = s.ledger ?? new SeasonLedger();
+            int? week = ReceiptWeek(s, exchange);
+            string words;
+            switch (exchange.receiptKind)
+            {
+                case PromiseReceipt:
+                    var promise = s.promises.First(p => p.id == id);
+                    words = promise.status == PromiseStatus.Broken ? "you broke your word to them"
+                        : promise.status == PromiseStatus.Fulfilled ? "you kept your word to them" : "you gave them your word";
+                    break;
+                case DealReceipt:
+                    var deal = s.deals.First(d => d.id == id);
+                    string title = DealKind.Title(deal.type).ToLowerInvariant();
+                    words = deal.status == DealStatus.Broken ? "you broke your " + title + " with them"
+                        : deal.status == DealStatus.Fulfilled ? "you kept your " + title + " with them" : "your " + title + " with them";
+                    break;
+                case PowerReceipt:
+                    if (week == null) return null;
+                    var power = ledger.power.First(p => p.week == week.Value);
+                    bool final = power.tally.Count == 0 && power.evicteeId != null && power.vetoHolderId == null;
+                    words = exchange.category == Social ? "you sat on the block and stayed"
+                        : power.hohId == player && power.evicteeId == juror ? (final ? "you sent them to the jury" : "they left in your week")
+                        : power.hohId == player && FinalistRead.PutUp(power, juror) ? "you put them on the block"
+                        : power.vetoHolderId == player && power.replacementId == juror ? "your veto put them up"
+                        : "you held the house";
+                    break;
+                case BallotReceipt:
+                    if (week == null) return null;
+                    var ballot = ledger.ballots.First(b => b.week == week.Value && b.voterId == player);
+                    words = "you voted to evict " + (ballot.targetId == juror ? "them" : s.Find(ballot.targetId)?.name ?? "somebody");
+                    break;
+                case ReplyReceipt: words = "you turned down their plea"; break;
+                case CallReceipt: words = "you called the vote in your alliance"; break;
+                case AllianceReceipt: words = "you were allies"; break;
+                default: return null;
+            }
+            return week == null ? char.ToUpperInvariant(words[0]) + words.Substring(1) : "Week " + week.Value + " · " + words;
+        }
+
+        /// <summary>
+        /// The count of the vote in the receipt's week, the evictee's first, as the reveal read it:
+        /// "(5–2)". Only for a receipt about that week's vote - the power, a ballot, a call - and
+        /// only when the week had a count: the final eviction is a choice, not a vote.
+        /// </summary>
+        public static string ReceiptTally(EpisodeState s, JuryExchangeState exchange)
+        {
+            if (exchange == null || (exchange.receiptKind != PowerReceipt && exchange.receiptKind != BallotReceipt && exchange.receiptKind != CallReceipt)) return null;
+            int? week = ReceiptWeek(s, exchange);
+            var power = week == null ? null : s.ledger?.power?.FirstOrDefault(p => p.week == week.Value);
+            if (power?.tally == null || power.tally.Count < 2) return null;
+            return "(" + string.Join("–", power.tally.OrderByDescending(n => n)) + ")";
+        }
+
+        /// <summary>
+        /// Whether the receipt's line already says who left in its week: the block the player sat
+        /// on and who went, the juror leaving in the player's week, the house the player held and
+        /// who went, the player's ballot against the one who went. The week's recap headline adds
+        /// nothing under such a line (MOCKUP-PASS M11, review correction 19).
+        /// </summary>
+        public static bool ReceiptSaysWhoWent(EpisodeState s, JuryExchangeState exchange)
+        {
+            int? week = ReceiptWeek(s, exchange);
+            var power = week == null ? null : s.ledger?.power?.FirstOrDefault(p => p.week == week.Value);
+            if (power == null || power.evicteeId == null) return false;
+            string player = s.playerId, juror = exchange.questionerId;
+            switch (exchange.receiptKind)
+            {
+                case PowerReceipt:
+                    // As ReceiptLine words it: only the nomination and the veto lines leave out who went.
+                    if (exchange.category == Social || (power.hohId == player && power.evicteeId == juror)) return true;
+                    if (power.hohId == player && FinalistRead.PutUp(power, juror)) return false;
+                    if (power.vetoHolderId == player && power.replacementId == juror) return false;
+                    return true;
+                case BallotReceipt:
+                    var ballot = s.ledger.ballots.FirstOrDefault(b => b.week == week.Value && b.voterId == player);
+                    return ballot != null && ballot.targetId == power.evicteeId;
+                default:
+                    return false;
+            }
+        }
     }
 }

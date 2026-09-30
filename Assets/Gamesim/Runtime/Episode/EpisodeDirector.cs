@@ -1426,9 +1426,10 @@ namespace Gamesim.Episode
             if (challengeActive) { ChallengePanel(); return; }
             // The jury house over the Final 2's panel when it is open, and its door after the
             // panel's own controls (EpisodeDirector.JuryHouse.cs; ENDGAME-PLAN F4).
-            // The final case's door and the jury house's, after the panel's own controls (ENDGAME-PLAN F4).
+            // The final case's door and the jury house's, after the panel's own controls (ENDGAME-PLAN F4):
+            // during the questioning, in its thin row of ways on after Skip (MOCKUP-PASS M11).
             if (state.phase == EpisodePhase.JuryQuestioning)
-            { if (FinalCaseIfOpen(state) || JuryHouseIfOpen(state)) return; hud.JuryQuestioning(state); FinalCaseDoor(state); JuryHouseDoor(state); return; }
+            { if (FinalCaseIfOpen(state) || JuryHouseIfOpen(state)) return; hud.JuryQuestioning(state, () => { FinalCaseDoor(state); JuryHouseDoor(state); }); return; }
             if (state.phase == EpisodePhase.FinalSpeeches)
             { if (FinalCaseIfOpen(state) || JuryHouseIfOpen(state)) return; hud.FinalSpeech(state); FinalCaseDoor(state); JuryHouseDoor(state); return; }
             if (state.phase == EpisodePhase.Finished)

@@ -910,13 +910,19 @@ namespace Gamesim.Episode
                 Mathf.Clamp01(1f - offset / travel);
         }
 
-        public void JuryQuestioning(EpisodeState state)
+        /// <summary>
+        /// The questioning's panel. <paramref name="after"/> draws the director's doors - the final
+        /// case, the jury house - into the thin row of ways on, after Skip (MOCKUP-PASS M11).
+        /// </summary>
+        public void JuryQuestioning(EpisodeState state, Action after = null)
         {
-            Paragraph("Public questions and recorded answers. A response is not a guaranteed jury vote.");
+            const string disclaimer = "Public questions and recorded answers. A response is not a guaranteed jury vote.";
             if (state.juryExchanges == null || state.juryQuestionIndex < 0 || state.juryQuestionIndex >= state.juryExchanges.Count)
             {
+                Paragraph(disclaimer);
                 Paragraph("The questions are complete. Continue to the final speeches.");
                 Action(JuryContinueCaption,director.ContinueEpisode);
+                after?.Invoke();
                 return;
             }
             var exchange = state.juryExchanges[state.juryQuestionIndex];
@@ -925,16 +931,14 @@ namespace Gamesim.Episode
             int questionCount = state.Active.Any(actor => actor.isPlayer)
                 ? state.contestants.Count(actor => actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted)
                 : state.Active.Count();
-            Heading("Question " + (state.juryQuestionIndex + 1) + " of " + questionCount);
             // "You ask", not "You asks": the default player is called "You".
-            Paragraph(exchange.questionerId == state.playerId ? "You ask " + (finalist?.name ?? "the finalist")
+            string asks = exchange.questionerId == state.playerId ? "You ask " + (finalist?.name ?? "the finalist")
                 : exchange.finalistId == state.playerId ? (questioner?.name ?? "Juror") + " asks you"
-                : (questioner?.name ?? "Juror") + " asks " + (finalist?.name ?? "Finalist"));
-            var hint = FlowText(JuryHintWords, 13, UiTheme.Muted);
-            hint.name = JuryHintName;
-            // The live layout (EpisodeHud.JuryLive.cs; ENDGAME-PLAN F5): the juror and the question
-            // left, these controls in the centre exactly as they were, the season's receipt right.
-            JuryLive(state, exchange, questioner, finalist, () =>
+                : (questioner?.name ?? "Juror") + " asks " + (finalist?.name ?? "Finalist");
+            // The live layout (EpisodeHud.JuryLive.cs; ENDGAME-PLAN F5, MOCKUP-PASS M11): the asker's
+            // card - the heading and the line above, word for word - and the question left, these
+            // controls in the centre exactly as they were, the season's receipt right.
+            JuryLive(state, exchange, questioner, finalist, state.juryQuestionIndex + 1, questionCount, asks, () =>
             {
                 if (exchange.completed)
                 {
@@ -962,8 +966,9 @@ namespace Gamesim.Episode
                 }
                 else if (exchange.finalistId == state.playerId && EpisodeEngine.FinaleOn(state))
                 {
-                    // A history question (ENDGAME-PLAN F5b): the five responses, one to a row.
-                    Paragraph("Choose your response. Only the committed response changes the record.");
+                    // A history question (ENDGAME-PLAN F5b): the five responses, one to a compact
+                    // row under their eyebrow (MOCKUP-PASS M11).
+                    ReceiptEyebrow("YOUR RESPONSE");
                     ResponseTiles(state, exchange);
                 }
                 else if (exchange.finalistId == state.playerId)
@@ -978,7 +983,15 @@ namespace Gamesim.Episode
                     Action(JuryContinueCaption,director.ContinueEpisode);
                 }
             });
+            // The hint, framed, with what to take care over while a choice is open and the line the
+            // panel used to open with.
+            string care = exchange.completed ? "" : exchange.finalistId == state.playerId ? "Choose your response carefully. "
+                : exchange.questionerId == state.playerId ? "Choose your question carefully. " : "";
+            JuryFooter(care + JuryHintWords + " " + disclaimer);
+            var ways = BeginWaysOn();
             Action(JurySkipCaption,director.SkipQuestioning);
+            after?.Invoke();
+            EndWaysOn(ways);
         }
 
         public void FinalSpeech(EpisodeState state)

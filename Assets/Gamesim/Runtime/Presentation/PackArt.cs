@@ -110,6 +110,8 @@ namespace Gamesim.Presentation
         // The competition art Pack 2 and Pack 3 drew for the games.
         public const string AnswerTile = "Pack2_Gameplay/Competition/answer_tile_9slice";
         public const string StaminaPanel = "Pack3_Systems/CompetitionHUD/endurance_stamina_panel_9slice";
+        /// <summary>The panel a juror's question sits in, beside the asker's card (MOCKUP-PASS M11).</summary>
+        public const string JuryQuestionPanel = "Pack3_Systems/FinaleJury/jury_question_panel_9slice";
         public const string KitSelectionStripe = "Kit6_Refinement/Widgets/selection_stripe";
         public const string KitDivider = "Kit6_Refinement/Widgets/divider_h";
         public const string KitIconBed = "Kit6_Refinement/Icons/ic_bed";

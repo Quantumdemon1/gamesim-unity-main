@@ -471,5 +471,145 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(FinaleQuestions.Line(category, response), Is.Not.Null.And.Not.Empty, category + "/" + response);
             Assert.That(FinaleQuestions.Responses.Select(FinaleQuestions.Caption).Distinct().Count(), Is.EqualTo(5));
         }
+
+        // ------------------------------------------------------------ the receipt on the screen (MOCKUP-PASS M11)
+
+        private static JuryExchangeState Asked(ContestantState juror, string category, string kind, string id) =>
+            new JuryExchangeState { questionerId = juror.id, category = category, receiptKind = kind, receiptId = id };
+
+        [Test]
+        public void ABallotReceiptReadsItsWeekItsKickerAndTheWeeksCount()
+        {
+            var state = FinalThree();
+            var juror = FirstJuror(state);
+            var other = state.contestants[5];
+            state.ledger.power.Add(new PowerRow { week = 3, hohId = state.contestants[1].id, nominees = new List<string> { juror.id, other.id },
+                evicteeId = other.id, tally = new List<int> { 1, 4 } });
+            state.ledger.ballots.Add(new BallotRow { week = 3, voterId = state.playerId, targetId = juror.id });
+            var exchange = Asked(juror, FinaleQuestions.Ownership, FinaleQuestions.BallotReceipt, "3");
+            Assert.That(FinaleQuestions.ReceiptLine(state, exchange), Is.EqualTo("Week 3 · you voted to evict " + juror.name + "."));
+            Assert.That(FinaleQuestions.ReceiptWeek(state, exchange), Is.EqualTo(3));
+            Assert.That(FinaleQuestions.Kicker(state, exchange), Is.EqualTo("Week 3 · you voted to evict them"), "The juror asking is them.");
+            Assert.That(FinaleQuestions.ReceiptTally(state, exchange), Is.EqualTo("(4–1)"), "The evictee's votes first.");
+            Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, exchange), Is.False, "They stayed: who went is the recap headline's to add.");
+            Assert.That(FinaleQuestions.RecapAdds(state, exchange), Is.True);
+            // The week they went: the line already says who.
+            state.ledger.power[0].evicteeId = juror.id;
+            Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, exchange), Is.True);
+            Assert.That(FinaleQuestions.RecapAdds(state, exchange), Is.False);
+            // A ballot that went against the house names somebody else.
+            state.ledger.ballots[0].targetId = other.id;
+            exchange.category = FinaleQuestions.Mistake;
+            Assert.That(FinaleQuestions.Kicker(state, exchange), Is.EqualTo("Week 3 · you voted to evict " + other.name));
+            Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, exchange), Is.False);
+            Assert.That(FinaleQuestions.RecapAdds(state, exchange), Is.True);
+        }
+
+        [Test]
+        public void APowerReceiptSaysWhoWentOnlyWhereItsLineDoes()
+        {
+            var state = FinalThree();
+            var juror = FirstJuror(state);
+            state.ledger.power.Add(new PowerRow { week = 2, hohId = state.playerId, nominees = new List<string> { juror.id, state.contestants[5].id },
+                evicteeId = state.contestants[5].id, tally = new List<int> { 3, 1 } });
+            state.ledger.power.Add(new PowerRow { week = 3, hohId = state.contestants[1].id, nominees = new List<string> { state.playerId, state.contestants[4].id },
+                evicteeId = state.contestants[4].id, tally = new List<int> { 1, 3 } });
+            var putUp = Asked(juror, FinaleQuestions.Ownership, FinaleQuestions.PowerReceipt, "2");
+            Assert.That(FinaleQuestions.ReceiptLine(state, putUp), Is.EqualTo("Week 2 · you put them on the block."));
+            Assert.That(FinaleQuestions.Kicker(state, putUp), Is.EqualTo("Week 2 · you put them on the block"));
+            Assert.That(FinaleQuestions.ReceiptTally(state, putUp), Is.EqualTo("(3–1)"));
+            Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, putUp), Is.False);
+            Assert.That(FinaleQuestions.RecapAdds(state, putUp), Is.True);
+            var survived = Asked(juror, FinaleQuestions.Social, FinaleQuestions.PowerReceipt, "3");
+            Assert.That(FinaleQuestions.ReceiptLine(state, survived), Is.EqualTo("Week 3 · you sat on the block, and " + state.contestants[4].name + " went."));
+            Assert.That(FinaleQuestions.Kicker(state, survived), Is.EqualTo("Week 3 · you sat on the block and stayed"));
+            Assert.That(FinaleQuestions.ReceiptTally(state, survived), Is.EqualTo("(3–1)"));
+            Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, survived), Is.True);
+            Assert.That(FinaleQuestions.RecapAdds(state, survived), Is.False);
+
+            // The final eviction is the player's choice, not a vote: no count, and the line says they left.
+            var final = EnterQuestioning(FinalThree());
+            var sent = final.juryExchanges.Single();
+            Assert.That(sent.receiptKind, Is.EqualTo(FinaleQuestions.PowerReceipt));
+            Assert.That(FinaleQuestions.ReceiptWeek(final, sent), Is.EqualTo(4));
+            Assert.That(FinaleQuestions.Kicker(final, sent), Is.EqualTo("Week 4 · you sent them to the jury"));
+            Assert.That(FinaleQuestions.ReceiptTally(final, sent), Is.Null);
+            Assert.That(FinaleQuestions.ReceiptSaysWhoWent(final, sent), Is.True);
+            Assert.That(FinaleQuestions.RecapAdds(final, sent), Is.False);
+        }
+
+        [Test]
+        public void ReceiptsWithNoVoteHaveKickersAndNoCount()
+        {
+            var state = FinalThree();
+            var juror = FirstJuror(state);
+            // Both weeks had a count and somebody went, so nothing below is missing for want of a vote.
+            state.ledger.power.Add(new PowerRow { week = 2, hohId = state.contestants[1].id, nominees = new List<string> { state.contestants[4].id, state.contestants[5].id },
+                evicteeId = state.contestants[5].id, tally = new List<int> { 4, 1 } });
+            state.ledger.power.Add(new PowerRow { week = 3, hohId = state.contestants[1].id, nominees = new List<string> { juror.id, state.contestants[4].id },
+                evicteeId = state.contestants[4].id, tally = new List<int> { 1, 3 } });
+            state.promises.Add(new PromiseState { id = "broken", fromId = state.playerId, toId = juror.id,
+                kind = PromiseKind.Safety, status = PromiseStatus.Broken, week = 3, expiresWeek = 3 });
+            state.deals.Add(new DealState { id = "safety", type = DealKind.SafetyAgreement, proposerId = state.playerId, recipientId = juror.id,
+                status = DealStatus.Broken, week = 2, expiresWeek = 3 });
+            state.alliances.Add(new AllianceState { id = "a1", name = "The Core", active = true, members = new List<string> { state.playerId, juror.id } });
+            var promise = Asked(juror, FinaleQuestions.Accountability, FinaleQuestions.PromiseReceipt, "broken");
+            var deal = Asked(juror, FinaleQuestions.Accountability, FinaleQuestions.DealReceipt, "safety");
+            var allies = Asked(juror, FinaleQuestions.Personal, FinaleQuestions.AllianceReceipt, "a1");
+            string pact = DealKind.Title(DealKind.SafetyAgreement).ToLowerInvariant();
+            // A promise and a deal are dated by their making. They are kept or broken later, in a
+            // week the record does not hold, so the week never stands on the break.
+            Assert.That(FinaleQuestions.Kicker(state, promise), Is.EqualTo("Week 3 · you gave them your word, and broke it"));
+            Assert.That(FinaleQuestions.Kicker(state, deal), Is.EqualTo("Week 2 · your " + pact + " with them, broken"));
+            Assert.That(FinaleQuestions.ReceiptWeek(state, allies), Is.Null, "The record never wrote when the alliance began.");
+            Assert.That(FinaleQuestions.Kicker(state, allies), Is.EqualTo("You were allies"));
+            state.ledger.alliances.Add(new AllianceRow { id = "a1", startedWeek = 2 });
+            Assert.That(FinaleQuestions.Kicker(state, allies), Is.EqualTo("Week 2 · you were allies"));
+            foreach (var exchange in new[] { promise, deal, allies })
+            {
+                Assert.That(FinaleQuestions.ReceiptTally(state, exchange), Is.Null, exchange.receiptKind + " is not about a vote.");
+                Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, exchange), Is.False, exchange.receiptKind);
+                Assert.That(FinaleQuestions.RecapAdds(state, exchange), Is.False, exchange.receiptKind + ": who went the week it began is not part of it.");
+            }
+            state.promises[0].status = PromiseStatus.Fulfilled; state.deals[0].status = DealStatus.Fulfilled;
+            Assert.That(FinaleQuestions.Kicker(state, promise), Is.EqualTo("Week 3 · you gave them your word, and kept it"));
+            Assert.That(FinaleQuestions.Kicker(state, deal), Is.EqualTo("Week 2 · your " + pact + " with them, kept"));
+            state.promises[0].status = PromiseStatus.Active; state.deals[0].status = DealStatus.Active;
+            Assert.That(FinaleQuestions.Kicker(state, promise), Is.EqualTo("Week 3 · you gave them your word"));
+            Assert.That(FinaleQuestions.Kicker(state, deal), Is.EqualTo("Week 2 · your " + pact + " with them"));
+
+            // A comparison has no receipt, and a row the record lost has nothing to read.
+            foreach (var none in new[] { Asked(juror, FinaleQuestions.Comparison, null, null), Asked(juror, FinaleQuestions.Ownership, FinaleQuestions.BallotReceipt, "7") })
+            {
+                Assert.That(FinaleQuestions.ReceiptWeek(state, none), Is.Null);
+                Assert.That(FinaleQuestions.Kicker(state, none), Is.Null);
+                Assert.That(FinaleQuestions.ReceiptTally(state, none), Is.Null);
+                Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, none), Is.False);
+                Assert.That(FinaleQuestions.RecapAdds(state, none), Is.False);
+            }
+        }
+
+        /// <summary>
+        /// A plea is a nominee asking for the player's vote. The house offers one only while the
+        /// nominees campaign and clears it when campaigning closes, so its week is the vote's: the
+        /// week's count stands beside it, and who went, which its line does not say, under it.
+        /// </summary>
+        [Test]
+        public void APleaIsAboutItsWeeksVote()
+        {
+            var state = FinalThree();
+            var juror = FirstJuror(state);
+            var other = state.contestants[4];
+            state.ledger.power.Add(new PowerRow { week = 3, hohId = state.contestants[1].id, nominees = new List<string> { juror.id, other.id },
+                evicteeId = other.id, tally = new List<int> { 1, 3 } });
+            state.ledger.replies.Add(new ReplyRow { week = 3, cardId = "plea", kind = ReplyCards.Plea, fromId = juror.id, listenerId = other.id, replyKey = "refuse", toThem = -5 });
+            var plea = Asked(juror, FinaleQuestions.JuryManagement, FinaleQuestions.ReplyReceipt, "plea");
+            Assert.That(FinaleQuestions.ReceiptLine(state, plea), Is.EqualTo("Week 3 · they asked you for your vote, and you said no."));
+            Assert.That(FinaleQuestions.ReceiptWeek(state, plea), Is.EqualTo(3));
+            Assert.That(FinaleQuestions.Kicker(state, plea), Is.EqualTo("Week 3 · you turned down their plea"));
+            Assert.That(FinaleQuestions.ReceiptTally(state, plea), Is.EqualTo("(3–1)"));
+            Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, plea), Is.False, "The line does not say who went,");
+            Assert.That(FinaleQuestions.RecapAdds(state, plea), Is.True, "so the week's headline adds it.");
+        }
     }
 }

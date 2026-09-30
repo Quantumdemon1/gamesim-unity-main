@@ -71,7 +71,7 @@ namespace Gamesim.Episode
         /// <summary>A quiet line with the kit's lock: what the page cannot show, and why.</summary>
         public RectTransform LockNote(string name, string words) => IconNote(name, PackArt.KitIconLock, words);
 
-        private RectTransform IconNote(string name, string icon, string words)
+        private RectTransform IconNote(string name, string icon, string words, int textSize = 16)
         {
             if (content == null) return null;
             float s = FontScale, width = ContentWidth();
@@ -79,7 +79,7 @@ namespace Gamesim.Episode
             row.SetParent(content, false);
             float x = 0f;
             if (KitGlyph(row, icon, UiTheme.Muted, new Vector2(0, 1), new Vector2(0f, -8f * s), 20f * s) != null) x = 30f * s;
-            float bottom = PlacedCopy(row, words, 16, UiTheme.Weight.Regular, UiTheme.Muted, x, 6f * s, width - x);
+            float bottom = PlacedCopy(row, words, textSize, UiTheme.Weight.Regular, UiTheme.Muted, x, 6f * s, width - x);
             var size = row.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = bottom + 6f * s;
             return row;

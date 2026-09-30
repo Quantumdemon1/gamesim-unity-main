@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -58,6 +59,9 @@ namespace Gamesim.Tests.PlayMode
             var house = ButtonWithCaption(EpisodeDirector.JuryHouseCaption);
             Assert.That(door.transform.GetSiblingIndex(), Is.GreaterThan(skip.transform.GetSiblingIndex()), "After the panel's own controls,");
             Assert.That(door.transform.GetSiblingIndex(), Is.LessThan(house.transform.GetSiblingIndex()), "and before the jury house's.");
+            Assert.That(LastActive(EpisodeHud.JuryWaysOnName).GetComponentsInChildren<Button>().Select(button => button.name),
+                Is.EqualTo(new[] { EpisodeHud.JurySkipCaption, EpisodeDirector.FinalCaseCaption, EpisodeDirector.JuryHouseCaption }),
+                "One thin row of ways on after the live layout, in that order (MOCKUP-PASS M11).");
 
             foreach (bool larger in new[] { false, true })
             {
@@ -168,6 +172,35 @@ namespace Gamesim.Tests.PlayMode
                 if (exchange.receiptKind != null)
                     Assert.That(LastActive(EpisodeHud.JuryReceiptLineName)?.GetComponent<TMP_Text>().text, Is.EqualTo(FinaleQuestions.ReceiptLine(state, exchange)));
                 AssertDecisionCopyFits(grid);
+                // The mockup pass (MOCKUP-PASS M11): the responses under their eyebrow, in compact
+                // rows shorter than the rows they replace; the receipt's kicker over the saved
+                // question, which is untouched; the week's count beside the receipt line, never in it.
+                Assert.That(ColumnWords(answers), Does.Contain("YOUR RESPONSE"));
+                Assert.That(grid.GetComponent<GridLayoutGroup>().cellSize.y, Is.LessThan(78f * Hud.FontScale), "Compact rows.");
+                Assert.That(LastActive("Jury question").GetComponent<TMP_Text>().text, Is.EqualTo(exchange.question), "The saved question, word for word.");
+                string kicker = FinaleQuestions.Kicker(state, exchange);
+                var over = LastActive(EpisodeHud.JuryKickerName);
+                if (kicker == null) Assert.That(over, Is.Null, "No receipt, no kicker.");
+                else
+                {
+                    Assert.That(over.GetComponent<TMP_Text>().text, Is.EqualTo(kicker));
+                    Assert.That(over.IsChildOf(LastActive(EpisodeHud.JuryQuestionPanelName)), Is.True, "Over the question, in its panel.");
+                }
+                string tally = FinaleQuestions.ReceiptTally(state, exchange);
+                var count = LastActive(EpisodeHud.JuryReceiptTallyName);
+                if (tally == null) Assert.That(count, Is.Null, "No count for a receipt that is not about a vote.");
+                else
+                {
+                    Assert.That(count.GetComponent<TMP_Text>().text, Is.EqualTo(tally));
+                    Assert.That(count.parent, Is.SameAs(LastActive(EpisodeHud.JuryReceiptLineName).parent), "Beside the receipt line.");
+                }
+                // The week's recap headline only where it adds: under a receipt about that week's
+                // vote whose line does not say who went (review correction 19).
+                bool recapAdds = FinaleQuestions.RecapAdds(state, exchange)
+                    && WeeklyRecap.Build(state, FinaleQuestions.ReceiptWeek(state, exchange).Value).evicted != null;
+                Assert.That(LastActive(EpisodeHud.JuryRecapName) != null, Is.EqualTo(recapAdds), "The recap headline only where it adds.");
+                AssertDecisionCopyFits(LastActive(EpisodeHud.JuryAskerColumnName));
+                AssertDecisionCopyFits(LastActive(EpisodeHud.JuryReceiptColumnName));
                 if (!larger && Application.isBatchMode) yield return CaptureFraming("endgame-history-question", settle: false);
                 director.ClosePanels();
                 yield return null;

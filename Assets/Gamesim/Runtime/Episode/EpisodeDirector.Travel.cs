@@ -190,21 +190,31 @@ namespace Gamesim.Episode
         /// house, and the name plates are gone by the distance the map begins at. Everyone still
         /// in the house with a body - the player among them, named as the lists name them, 'Emma
         /// (You)' - hung over the head bone where the body has one. Nobody the rest of the season.
+        ///
+        /// <para>The player's own chip comes first. Where two chips would cover each other the
+        /// icons keep the first over its head and lift the other, and the player's chip is the one
+        /// the player reads the rest of the house against.</para>
         /// </summary>
         private void NameTheEndgame()
         {
             endgameNames.Clear();
             var state = projected;
             if (state != null && (EpisodeHud.IsFinalThree(state) || EpisodeHud.IsFinalTwo(state)))
-                foreach (var actor in state.Active)
-                {
-                    var body = BodyFor(actor.id);
-                    if (body == null) continue;
-                    var visual = body.GetComponent<CharacterPresentation>();
-                    endgameNames.Add(new EpisodeTravelBeacons.Named(actor.id,
-                        HudPrimitives.WithYou(FinalistRead.FirstName(actor.name), actor.id == state.playerId),
-                        visual != null ? visual.HeadBone : null, body));
-                }
+            {
+                // Two passes over the few: the player on the first, everyone else on the second.
+                for (int pass = 0; pass < 2; pass++)
+                    foreach (var actor in state.Active)
+                    {
+                        bool you = actor.id == state.playerId;
+                        if (you != (pass == 0)) continue;
+                        var body = BodyFor(actor.id);
+                        if (body == null) continue;
+                        var visual = body.GetComponent<CharacterPresentation>();
+                        endgameNames.Add(new EpisodeTravelBeacons.Named(actor.id,
+                            HudPrimitives.WithYou(FinalistRead.FirstName(actor.name), you),
+                            visual != null ? visual.HeadBone : null, body));
+                    }
+            }
             travelBeacons.Name(endgameNames);
         }
 

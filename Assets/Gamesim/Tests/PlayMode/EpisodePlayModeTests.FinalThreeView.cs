@@ -7,6 +7,7 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -194,7 +195,9 @@ namespace Gamesim.Tests.PlayMode
         /// Pulled back over the house, every room's icon names its room under it - a label, while
         /// the caption a click is found by stays the icon's. At three, the few left in the house are
         /// named over their heads, the player as the lists name them; in an ordinary week nobody
-        /// is. None of it takes a click, and it goes with the icons when the camera closes in.
+        /// is. Two of them side by side still wear a name each, one lifted clear of the other, and
+        /// the frame is captured with the rooms and the names in it. None of it takes a click, and
+        /// it goes with the icons when the camera closes in.
         /// </summary>
         [UnityTest]
         public IEnumerator Endgame_AtMapDistanceTheRoomsAndTheFewAreNamed()
@@ -244,6 +247,36 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Naming(), Is.True, "From over the middle of the house, at least one of the three is named on screen.");
             foreach (var chip in NameChips().Where(chip => chip.gameObject.activeInHierarchy))
                 AssertCopyDrawsUnder(chip, chip.name);
+
+            // Two of them side by side, as two finalists talking or sharing the couch are: the
+            // player stood beside another finalist, and the view centred on the pair, away from the
+            // chrome. Both are named, and neither name covers the other.
+            var partner = SceneComponents<HouseNpc>().First(body => body.gameObject.activeInHierarchy
+                && state.Active.Any(actor => !actor.isPlayer && actor.id == body.Id));
+            Assert.That(NavMesh.SamplePosition(partner.transform.position + partner.transform.right * .9f, out var beside, 1.5f, NavMesh.AllAreas), Is.True,
+                "There is floor beside " + partner.DisplayName + ".");
+            WarpPlayer(beside.position);
+            cameraRig.MoveTo((partner.transform.position + player.transform.position) * .5f, 24f);
+            yield return WaitFor(() => director.TravelBeacons.IsNaming(state.playerId) && director.TravelBeacons.IsNaming(partner.Id), 6f,
+                "Side by side in the middle of the view, the player and " + partner.DisplayName + " are both named.");
+            float apart = Vector3.Distance(player.transform.position, partner.transform.position);
+            for (int frame = 0; frame < 3; frame++)
+            {
+                var shown = NameChips().Where(chip => chip.gameObject.activeInHierarchy).ToArray();
+                for (int a = 0; a < shown.Length; a++)
+                    for (int b = a + 1; b < shown.Length; b++)
+                        Assert.That(ScreenRect(shown[a]).Overlaps(ScreenRect(shown[b])), Is.False,
+                            shown[a].name + " covers " + shown[b].name + ", with the player " + apart.ToString("0.0") + " m from " + partner.DisplayName + ".");
+                yield return null;
+            }
+            // Beside a finalist the E key is usually a talk, and at three a talk's prompt carries
+            // its line under the words. The capture below has it in the frame when it is up.
+            var promptBox = LastActive("Interaction prompt");
+            if (promptBox != null && promptBox.GetComponentsInChildren<TMP_Text>().Any(label => label.text.Contains("Talk to ")))
+                Assert.That(promptBox.GetComponentsInChildren<TMP_Text>().Any(label => label.name == EpisodeHud.PromptHintName && label.text == EpisodeHud.TalkHint),
+                    Is.True, "At three, the Talk prompt carries its line.");
+            // The rooms' names, the chips and the prompt are drawn things: the frame is the evidence.
+            if (Application.isBatchMode) yield return CaptureFraming("endgame-final-three-map", settle: false);
 
             // Close in on somebody: the icons go, and the names with them.
             cameraRig.FocusSubject(SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy).transform);

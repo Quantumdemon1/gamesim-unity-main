@@ -821,8 +821,10 @@ namespace Gamesim.Episode
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
             var navigation = button.navigation; navigation.mode = Navigation.Mode.None; button.navigation = navigation;
-            // 16 tall for a 12: over 1.3 times the words, as the other corner links keep them.
-            var words = FixedText(link, EpisodeDirector.JuryStripCaption, 12, Accent, new Vector2(4f, -1f), new Vector2(JuryStripLinkWidth - 24f, 16f));
+            // 20 tall for a 12, which is a 14 at the larger text size: over 1.3 times the words, as
+            // 'View all' keeps them. The box is centred on the 18 tall link, so the words sit where
+            // they did, and it reaches down no further than the top of the faces under the heading.
+            var words = FixedText(link, EpisodeDirector.JuryStripCaption, 12, Accent, new Vector2(4f, 1f), new Vector2(JuryStripLinkWidth - 24f, 20f));
             words.alignment = TextAlignmentOptions.Right;
             HudPrimitives.Chevron(link, Accent, 9f).anchoredPosition = new Vector2(-6f, 0f);
         }

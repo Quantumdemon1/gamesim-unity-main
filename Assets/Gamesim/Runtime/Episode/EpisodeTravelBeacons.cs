@@ -312,12 +312,15 @@ namespace Gamesim.Episode
             public TMP_Text word;
             public CanvasGroup group;
             public Transform head, body;
-            /// <summary>Whether the ground has been fitted to the words since they last changed: measured on screen, not while hidden.</summary>
+            /// <summary>Whether the ground has been fitted to the words since they last changed. Measuring the words does not need the chip to be showing.</summary>
             public bool fitted;
         }
 
         private readonly List<NameChip> names = new List<NameChip>();
         private bool namesShowing;
+
+        /// <summary>The screen rects, in pixels, of the chips placed so far this frame. Kept, so placing them makes no garbage.</summary>
+        private readonly List<Rect> placedNames = new List<Rect>();
 
         /// <summary>
         /// Metres over the head bone a name chip floats, clear of the hair; and over the root, for a
@@ -338,6 +341,10 @@ namespace Gamesim.Episode
         /// the few left in the house, whom the player has to find from across it after the name
         /// plates have faded out with the distance. Null or empty names nobody. Kept between calls:
         /// a chip is made once for a person and moved every frame.
+        ///
+        /// <para>The order matters. Chips are placed in the order they are given, and where two
+        /// would cover each other the one given first stays over its head while the later one is
+        /// lifted clear of it, so the caller puts first the chip that should never move.</para>
         /// </summary>
         public void Name(IList<Named> people)
         {
@@ -352,12 +359,24 @@ namespace Gamesim.Episode
                 names.RemoveAt(i);
             }
             if (people == null) return;
+            // The chips before this index are in the order given. Every chip after it belongs to
+            // somebody still to come in the list, since everybody else was taken away above.
+            int ordered = 0;
             foreach (var person in people)
             {
-                NameChip chip = null;
-                foreach (var existing in names)
-                    if (existing.id == person.Id) { chip = existing; break; }
-                if (chip == null) { chip = NewNameChip(person.Id); names.Add(chip); }
+                int at = -1;
+                for (int i = 0; i < names.Count; i++)
+                    if (names[i].id == person.Id) { at = i; break; }
+                // Somebody named twice keeps the chip and the place of the first time.
+                if (at >= 0 && at < ordered) continue;
+                NameChip chip;
+                if (at < 0) { chip = NewNameChip(person.Id); names.Insert(ordered, chip); }
+                else
+                {
+                    chip = names[at];
+                    if (at != ordered) { names.RemoveAt(at); names.Insert(ordered, chip); }
+                }
+                ordered++;
                 chip.head = person.Head;
                 chip.body = person.Body;
                 if (chip.word.text == person.Words) continue;
@@ -399,23 +418,48 @@ namespace Gamesim.Episode
         /// <summary>
         /// Hangs each name chip over its houseguest's head, faded with the icons. The head bone
         /// rather than the root: a body can stand metres from its transform, and a seated one is
-        /// lower than its root says. A chip off the screen or under the HUD's chrome is not shown.
+        /// lower than its root says.
+        ///
+        /// <para>Two people close together, two finalists talking or sharing the couch, would wear
+        /// one chip over the other, and the one drawn on top would hide the other's name. So the
+        /// chips are placed in the order they were given, and a chip that would touch one already
+        /// placed is lifted clear of it. The first one stays over its head.</para>
+        ///
+        /// <para>A chip is shown only when all of it is on the screen and clear of the HUD's
+        /// chrome, not just the point it hangs from. The chrome draws over this canvas, and a name
+        /// half under the right column or the strip reads as a different name.</para>
         /// </summary>
         private void PlaceNames(Camera eye, Rect frame, float fade)
         {
             bool any = false;
-            float margin = 12f * scale * canvas.scaleFactor;
+            // Canvas units to screen pixels, for the chips' footprints and the air between them.
+            float pixels = scale * canvas.scaleFactor;
+            var bounds = eye.pixelRect;
+            placedNames.Clear();
             foreach (var chip in names)
             {
                 if (chip.rect == null) continue;
                 bool show = false;
-                Vector3 screen = default;
+                Rect box = default;
                 bool headed = chip.head != null;
                 if (headed || chip.body != null)
                 {
                     var at = headed ? chip.head.position + Vector3.up * OverHead : chip.body.position + Vector3.up * OverRoot;
-                    screen = eye.WorldToScreenPoint(at);
-                    show = screen.z > .5f && eye.pixelRect.Contains(screen) && !Covered(screen, margin);
+                    var screen = eye.WorldToScreenPoint(at);
+                    if (screen.z > .5f)
+                    {
+                        // Fitted before it is tested, so the test is of the whole chip as it will be drawn.
+                        if (!chip.fitted)
+                        {
+                            chip.rect.sizeDelta = new Vector2(Mathf.Ceil(chip.word.GetPreferredValues(chip.word.text).x) + 24f, 24f);
+                            chip.fitted = true;
+                        }
+                        var size = chip.rect.sizeDelta * pixels;
+                        // The chip hangs from the middle of its bottom edge.
+                        box = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
+                        LiftClearOfPlacedNames(ref box, 2f * pixels);
+                        show = bounds.Contains(box.min) && bounds.Contains(box.max) && !ChipCovered(box);
+                    }
                 }
                 if (!show)
                 {
@@ -423,18 +467,51 @@ namespace Gamesim.Episode
                     continue;
                 }
                 if (!chip.rect.gameObject.activeSelf) chip.rect.gameObject.SetActive(true);
-                if (!chip.fitted)
-                {
-                    chip.rect.sizeDelta = new Vector2(Mathf.Ceil(chip.word.GetPreferredValues(chip.word.text).x) + 24f, 24f);
-                    chip.fitted = true;
-                }
                 any = true;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, UiCamera, out var local);
+                placedNames.Add(box);
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, new Vector2(box.center.x, box.yMin), UiCamera, out var local);
                 chip.rect.anchoredPosition = local - frame.min;
                 chip.rect.localScale = Vector3.one * scale;
                 chip.group.alpha = fade;
             }
             namesShowing = any;
+        }
+
+        /// <summary>
+        /// Moves a chip's screen rect up until it is at least <paramref name="gap"/> clear of every
+        /// chip placed before it this frame. Each move takes it above one placed chip's top, and it
+        /// only ever goes up, so it passes each placed chip at most once and the loop ends.
+        /// </summary>
+        private void LiftClearOfPlacedNames(ref Rect box, float gap)
+        {
+            for (int pass = 0; pass <= placedNames.Count; pass++)
+            {
+                bool moved = false;
+                foreach (var placed in placedNames)
+                {
+                    bool touches = box.xMin < placed.xMax + gap && box.xMax > placed.xMin - gap
+                        && box.yMin < placed.yMax + gap && box.yMax > placed.yMin - gap;
+                    if (!touches) continue;
+                    box.y = placed.yMax + gap;
+                    moved = true;
+                }
+                if (!moved) return;
+            }
+        }
+
+        /// <summary>
+        /// Whether the chrome covers any of a chip: its bottom, middle and top, at both ends and at
+        /// points between them no further apart than the chip is tall, so a narrow piece of chrome
+        /// cannot slip between the points tested.
+        /// </summary>
+        private bool ChipCovered(Rect box)
+        {
+            if (covered == null) return false;
+            int spans = Mathf.Max(2, Mathf.CeilToInt(box.width / Mathf.Max(1f, box.height)));
+            for (int x = 0; x <= spans; x++)
+                for (int y = 0; y <= 2; y++)
+                    if (covered(new Vector2(box.xMin + box.width * x / spans, box.yMin + box.height * y * .5f))) return true;
+            return false;
         }
 
         private bool wanted, competition;

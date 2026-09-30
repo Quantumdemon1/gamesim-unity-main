@@ -339,8 +339,9 @@ namespace Gamesim.Episode
             var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,PromptLift),new Vector2(425,PromptHeight));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
             // The muted line a prompt can carry under its words (MOCKUP-PASS M14): a label of its
-            // own, so the prompt's words and the control's caption are what they always were.
-            promptHint = FixedText(promptRoot,"",13,UiTheme.Muted,new Vector2(14,-46),new Vector2(397,20)); promptHint.alignment = TextAlignmentOptions.Center;
+            // own, so the prompt's words and the control's caption are what they always were. 22
+            // tall: a 13 is a 16 at the larger text size, and the box has to be 1.3 times that.
+            promptHint = FixedText(promptRoot,"",13,UiTheme.Muted,new Vector2(14,-46),new Vector2(397,22)); promptHint.alignment = TextAlignmentOptions.Center;
             promptHint.name = PromptHintName;
             promptHint.gameObject.SetActive(false);
             // The prompt is also the thing it prompts: a click on "E · Get up" gets up. Its words
@@ -1584,8 +1585,8 @@ namespace Gamesim.Episode
         /// <summary>The prompt's hint line, so a test can find it.</summary>
         public const string PromptHintName = "Prompt hint";
         private TMP_Text promptHint;
-        /// <summary>The prompt's height, and its height with a hint line under its words.</summary>
-        private const float PromptHeight = 52f, PromptHintedHeight = 72f;
+        /// <summary>The prompt's height, and its height with a hint line under its words: the line's 22 and the same 6 of air under it.</summary>
+        private const float PromptHeight = 52f, PromptHintedHeight = 74f;
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 

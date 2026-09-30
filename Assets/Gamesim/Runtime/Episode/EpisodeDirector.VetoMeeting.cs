@@ -204,7 +204,7 @@ namespace Gamesim.Episode
                 {
                     // Whom to save, then one list of who goes up in their place: every candidate's
                     // name once. The pick is the screen's; the first nominee until another is pressed.
-                    string saved = vetoSavePickWeek == state.week && state.nominees.Contains(vetoSavePick) ? vetoSavePick : state.nominees[0];
+                    string saved = vetoSavePickWeek == state.week && state.nominees.Contains(vetoSavePick) ? vetoSavePick : state.nominees.FirstOrDefault();
                     var pick = hud.MeetingGrid(EpisodeHud.MeetingChoiceWidth, 2);
                     foreach (var nominee in state.nominees)
                     {
@@ -246,6 +246,7 @@ namespace Gamesim.Episode
         /// <summary>Who can go up in the saved nominee's place, each once, as a grid of peers: pressing a name uses the veto and names them.</summary>
         private void VetoReplacementGrid(EpisodeState state, string saved)
         {
+            if (state.Find(saved) == null) return;
             var grid = hud.MeetingGrid(EpisodeHud.MeetingChoiceWidth, 4);
             foreach (var candidate in EpisodeEngine.ReplacementCandidates(state))
             {

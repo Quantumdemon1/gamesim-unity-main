@@ -72,6 +72,24 @@ namespace Gamesim.Simulation
             }
         }
 
+        /// <summary>
+        /// What a juror of this theme values, as the jury house's what-matters rows word it
+        /// (MOCKUP-PASS M12): a plain noun phrase for the game they reward, never a promise of how
+        /// they will vote.
+        /// </summary>
+        public static string Value(string theme)
+        {
+            switch (theme)
+            {
+                case Cerebral: return "Strategy and planning";
+                case Social: return "Relationships in the house";
+                case Aggressive: return "Competition wins";
+                case Sneaky: return "Staying under the radar";
+                case Emotional: return "Loyalty and keeping your word";
+                default: return null;
+            }
+        }
+
         /// <summary>The theme a juror values: their lead trait, read as the questioning reads it, through the web's table.</summary>
         public static string ThemeOf(ContestantState juror) =>
             juror == null ? null : WebFinalSpeeches.TraitFlavor(new[] { WebJuryQuestioning.GetPrimaryTrait(juror.traits) });

@@ -23,6 +23,13 @@ namespace Gamesim.Simulation
     /// juror's view after it.</para>
     ///
     /// <para>Pure and read-only, in the simulation so the Unity-free subset tests it.</para>
+    ///
+    /// <para>The mockup pass (MOCKUP-PASS-PLAN M12) adds three reads, each from a recorded source:
+    /// what a juror saw of the player's game before they left, which is the exact complement of
+    /// what they missed; the goodbye message the player recorded for them, by the choice taken and
+    /// never by what it did to them; and a callout line in the juror's own recorded words where
+    /// the record holds any (their question tonight, their plea from the block), dated, falling
+    /// back to the band's reason. None of it says how a juror feels about the player.</para>
     /// </summary>
     public static class JuryHouseRead
     {
@@ -32,6 +39,9 @@ namespace Gamesim.Simulation
         /// <summary>The bands in the order the legend reads them.</summary>
         public static readonly string[] Bands = { Supportive, Wavering, Open, Skeptical, Bitter, Unknown };
 
+        /// <summary>The storyline the player records a goodbye message in, and the choices that record one.</summary>
+        public const string GoodbyeTemplate = "goodbye-message";
+
         public sealed class Juror
         {
             public string id, band, reason, trait;
@@ -39,12 +49,45 @@ namespace Gamesim.Simulation
             public int? readWeek;
             /// <summary>The week they left, from the ledger's power rows, or null when it is not on the record.</summary>
             public int? leftWeek;
-            /// <summary>What the player and they share: alliances, deals, promises, the player's public votes against them.</summary>
+            /// <summary>What the player and they share: alliances, deals, promises, the player's public votes against them, the game they saw, the goodbye they watched.</summary>
             public List<string> knows = new List<string>();
             /// <summary>What the player did after they left, which they did not see.</summary>
             public List<string> missing = new List<string>();
             /// <summary>Dated lines from the rows between them, oldest first ("Week 6 · left on your nomination").</summary>
             public List<string> highlights = new List<string>();
+            /// <summary>The same lines with their weeks apart, oldest first, so the house can merge every juror's.</summary>
+            public List<(int week, string text)> dated = new List<(int, string)>();
+            /// <summary>The juror's callout: their own recorded words where there are any, else the band's reason.</summary>
+            public Callout line;
+        }
+
+        /// <summary>
+        /// One line for a juror's callout (decision 41, A): their question to the player tonight
+        /// with the engine's note on the answer once there is one, else their plea from the block
+        /// as the log holds it, dated, else the band's reason. The first two are the juror's own
+        /// words and are quoted; the reason is the player's evidence and never is.
+        /// </summary>
+        public sealed class Callout
+        {
+            /// <summary>When the words were said: "Tonight", "Week 5, from the block", or null for the reason.</summary>
+            public string when;
+            /// <summary>The words: a recorded question or plea, whole; or the band's reason.</summary>
+            public string words;
+            /// <summary>Whether the words are the juror's own, and so shown in quotation marks.</summary>
+            public bool quoted;
+            /// <summary>The engine's recorded note on the player's answer to tonight's question, once answered.</summary>
+            public string note;
+
+            /// <summary>The whole line, with the words as given: "Tonight: “…” Casey Lee took your answer well."</summary>
+            public string Text => Compose(words);
+
+            /// <summary>The whole line with <paramref name="shown"/> in place of the words: a narrow card passes an excerpt of them.</summary>
+            public string Compose(string shown)
+            {
+                string said = quoted ? "“" + shown + "”" : shown;
+                string line = string.IsNullOrEmpty(when) ? said : when + ": " + said;
+                return string.IsNullOrEmpty(note) ? line : line + " " + note;
+            }
         }
 
         public sealed class House
@@ -52,6 +95,13 @@ namespace Gamesim.Simulation
             public List<Juror> jurors = new List<Juror>();
             /// <summary>What most of the jury leads with, worded, from the traits the questioning reads.</summary>
             public List<string> matters = new List<string>();
+            /// <summary>
+            /// Every juror's dated lines merged, newest first, each naming its juror: tonight's
+            /// questions on top at the Final 2 ("Tonight · Casey asked about week 4 · took your answer
+            /// well"), then "Week 6 · Casey · left on your nomination". The player's record with each
+            /// of them, never what the jurors say to one another, which nothing records.
+            /// </summary>
+            public List<string> highlights = new List<string>();
         }
 
         public static House Read(EpisodeState s)
@@ -63,7 +113,120 @@ namespace Gamesim.Simulation
                 if (group.Count() > 1 || leads.Count == 1)
                     house.matters.Add(group.Count() + " of " + house.jurors.Count + " lead with " + group.Key + ".");
             if (house.matters.Count == 0 && house.jurors.Count > 0) house.matters.Add("No one trait leads this jury.");
+
+            // Tonight first, in the order the questions were asked; then the season, newest first,
+            // jurors in their cast order within a week and each juror's own lines in theirs.
+            foreach (var juror in house.jurors)
+            {
+                var asked = Question(s, juror.id);
+                if (asked == null) continue;
+                string note = Note(s, asked), tail = null;
+                if (note != null)
+                {
+                    string name = s.Find(juror.id)?.name ?? "";
+                    tail = (name.Length > 0 && note.StartsWith(name + " ", System.StringComparison.Ordinal) ? note.Substring(name.Length + 1) : note).TrimEnd('.');
+                }
+                house.highlights.Add("Tonight · " + ShortName(s, juror.id) + " " + Asked(s, asked) + (tail == null ? "" : " · " + tail));
+            }
+            var season = house.jurors.SelectMany((juror, seat) => juror.dated.Select((line, order) => (line.week, seat, order, text: "Week " + line.week + " · " + ShortName(s, juror.id) + " · " + line.text)));
+            house.highlights.AddRange(season.OrderByDescending(l => l.week).ThenBy(l => l.seat).ThenBy(l => l.order).Select(l => l.text).Distinct());
             return house;
+        }
+
+        /// <summary>
+        /// A juror as the jury house names them where space is short: their first name, or their
+        /// full name when another juror shares it.
+        /// </summary>
+        public static string ShortName(EpisodeState s, string jurorId)
+        {
+            string full = s.Find(jurorId)?.name ?? "";
+            string first = FinalistRead.FirstName(full);
+            bool shared = FinalistRead.Jurors(s).Any(other => other.id != jurorId && FinalistRead.FirstName(other.name) == first);
+            return shared || first.Length == 0 ? full : first;
+        }
+
+        /// <summary>The juror's question to the player finalist, once the Final 2's questioning has drawn it; null before, and for a player juror.</summary>
+        public static JuryExchangeState Question(EpisodeState s, string jurorId) =>
+            s?.juryExchanges?.LastOrDefault(x => x != null && x.questionerId == jurorId && x.finalistId == s.playerId && !string.IsNullOrEmpty(x.question));
+
+        /// <summary>
+        /// The engine's own note on the player's answer, rebuilt from the saved exchange as the
+        /// questioning screen rebuilds it: a history question's softer note, or the catalogue's.
+        /// Null until the answer is committed.
+        /// </summary>
+        public static string Note(EpisodeState s, JuryExchangeState exchange)
+        {
+            if (exchange == null || !exchange.completed || exchange.finalistId != s.playerId) return null;
+            if (string.IsNullOrEmpty(exchange.questionerId) || exchange.questionerId == exchange.finalistId) return null;
+            string name = s.Find(exchange.questionerId)?.name ?? "Unknown housemate";
+            if (exchange.category != null) return FinaleQuestions.Note(name, FinaleQuestions.Landed(s, exchange));
+            bool Choice(string key) => key == "A" || key == "B";
+            if (!Choice(exchange.answerChoice) || !Choice(exchange.correctChoice)) return null;
+            return WebJuryQuestioning.EvaluateChoice(new WebJuryQuestion { correctIs = exchange.correctChoice }, exchange.answerChoice,
+                exchange.questionerId, name, exchange.finalistId).note;
+        }
+
+        /// <summary>
+        /// What tonight's question was about, from the receipt it was built from: "asked about week
+        /// 4", "asked about your alliance", or "asked you a question" for a comparison and for the
+        /// catalogue's questions, which have no receipt.
+        /// </summary>
+        public static string Asked(EpisodeState s, JuryExchangeState exchange)
+        {
+            int? week = ReceiptWeek(s, exchange);
+            if (week != null && week.Value > 0) return "asked about week " + week.Value;
+            if (exchange?.receiptKind == FinaleQuestions.AllianceReceipt) return "asked about your alliance";
+            return "asked you a question";
+        }
+
+        /// <summary>The week a history question's receipt names, found by its kind and id; null when there is no receipt or its row is gone.</summary>
+        public static int? ReceiptWeek(EpisodeState s, JuryExchangeState exchange)
+        {
+            if (exchange?.receiptKind == null || exchange.receiptId == null) return null;
+            string id = exchange.receiptId;
+            var ledger = s.ledger ?? new SeasonLedger();
+            int Parse(string text) => int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int value) ? value : 0;
+            switch (exchange.receiptKind)
+            {
+                case FinaleQuestions.PowerReceipt:
+                case FinaleQuestions.BallotReceipt: return Parse(id);
+                case FinaleQuestions.PromiseReceipt: return s.promises.FirstOrDefault(p => p.id == id)?.week;
+                case FinaleQuestions.DealReceipt: return s.deals.FirstOrDefault(d => d.id == id)?.week;
+                case FinaleQuestions.ReplyReceipt: return ledger.replies.FirstOrDefault(r => r.cardId == id)?.week;
+                case FinaleQuestions.CallReceipt: int at = id.LastIndexOf(':'); return at < 0 ? (int?)null : Parse(id.Substring(at + 1));
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// The juror's last plea from the block, as the event log holds it ("{name}: {words}"), with
+        /// its week; else the week's own speech while the week still holds it. Only a speech the
+        /// house heard: the log's public lines, never one addressed to somebody else.
+        /// </summary>
+        public static (int week, string words)? Plea(EpisodeState s, string jurorId)
+        {
+            var juror = s.Find(jurorId);
+            if (juror == null || string.IsNullOrEmpty(juror.name)) return null;
+            string prefix = juror.name + ": ";
+            var logged = s.events?.Where(e => e != null && e.kind == "eviction-speech" && e.text != null && e.text.StartsWith(prefix, System.StringComparison.Ordinal)
+                    && (e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(s.playerId)))
+                .OrderBy(e => e.sequence).LastOrDefault();
+            if (logged != null && !string.IsNullOrWhiteSpace(logged.text.Substring(prefix.Length)))
+                return (logged.week, logged.text.Substring(prefix.Length).Trim());
+            var spoken = s.evictionSpeeches?.LastOrDefault(x => x != null && x.speakerId == jurorId && !x.isPlayerAuthored && !string.IsNullOrWhiteSpace(x.text));
+            return spoken == null ? ((int, string)?)null : (spoken.week, spoken.text.Trim());
+        }
+
+        /// <summary>The juror's callout line (decision 41, A); see <see cref="Callout"/>.</summary>
+        public static Callout Line(EpisodeState s, string jurorId) => ReadJuror(s, jurorId).line;
+
+        private static Callout LineFor(EpisodeState s, Juror juror)
+        {
+            var asked = Question(s, juror.id);
+            if (asked != null) return new Callout { when = "Tonight", words = asked.question.Trim(), quoted = true, note = Note(s, asked) };
+            var plea = Plea(s, juror.id);
+            if (plea != null) return new Callout { when = "Week " + plea.Value.week + ", from the block", words = plea.Value.words, quoted = true };
+            return new Callout { words = juror.reason };
         }
 
         /// <summary>The week a juror left: the power row that names them the evictee. Null when the row is not on the record (an older save, or the ledger's cap).</summary>
@@ -170,6 +333,7 @@ namespace Gamesim.Simulation
             Knows(s, juror);
             Missing(s, juror);
             Highlights(s, juror, acts, read);
+            juror.line = LineFor(s, juror);
             return juror;
         }
 
@@ -185,6 +349,62 @@ namespace Gamesim.Simulation
                     + ": " + HouseguestNotes.PromiseStanding(promise.status) + ".");
             int votes = s.ledger?.ballots?.Count(b => b.voterId == player && b.targetId == id) ?? 0;
             if (votes > 0) juror.knows.Add("You voted to evict them " + (votes == 1 ? "once" : votes + " times") + ", in the open.");
+            string game = SawYourGame(s, juror);
+            if (game != null) juror.knows.Add(game);
+            var goodbye = Goodbye(s, id);
+            if (goodbye != null) juror.knows.Add("They watched your goodbye: " + goodbye.Value.said + ".");
+        }
+
+        /// <summary>
+        /// What they saw of the player's game before they left: the exact complement of
+        /// <see cref="Missing"/> over the same rows - the player's wins, their weeks holding the
+        /// house and the vetoes they used, up to and including the week the juror left, the final
+        /// eviction's row aside. Null when there is none, or when the record does not say when they
+        /// left, which is when nothing is missing either.
+        /// </summary>
+        private static string SawYourGame(EpisodeState s, Juror juror)
+        {
+            if (juror.leftWeek == null) return null;
+            int left = juror.leftWeek.Value;
+            string player = s.playerId;
+            var ledger = s.ledger ?? new SeasonLedger();
+            int wins = ledger.competitions.Count(c => c.week <= left && c.placement == 1);
+            var seen = ledger.power.Where(p => p.week <= left && !FinalEvictionRow(p)).ToList();
+            int reign = seen.Count(p => p.hohId == player);
+            int vetoes = seen.Count(p => p.vetoHolderId == player && p.vetoUsed);
+            var parts = new List<string>();
+            if (wins > 0) parts.Add(wins + (wins == 1 ? " win" : " wins"));
+            if (reign > 0) parts.Add(reign + (reign == 1 ? " week" : " weeks") + " as Head of Household");
+            if (vetoes > 0) parts.Add(vetoes + (vetoes == 1 ? " veto" : " vetoes") + " used");
+            if (parts.Count == 0) return null;
+            string joined = parts.Count == 1 ? parts[0] : string.Join(", ", parts.Take(parts.Count - 1)) + " and " + parts[parts.Count - 1];
+            return "Your " + joined + " before they left.";
+        }
+
+        /// <summary>
+        /// The goodbye message the player recorded for this juror in the Diary Room on the night they
+        /// left, which production played them: the week, and the choice taken as what the player did
+        /// ("you kept it classy"). Null when there was none or the player skipped it. Never the
+        /// effect the choice had on them, which is the vote model's.
+        /// </summary>
+        public static (int week, string said)? Goodbye(EpisodeState s, string jurorId)
+        {
+            var story = s.storylines?.LastOrDefault(x => x != null && x.templateId == GoodbyeTemplate
+                && x.cast != null && x.cast.Any(role => role != null && role.role == "EVICTEE" && role.contestantId == jurorId));
+            var step = story?.path?.LastOrDefault(p => p != null && GoodbyeWords(p.optionId) != null);
+            if (step == null) return null;
+            return (step.week > 0 ? step.week : story.week, GoodbyeWords(step.optionId));
+        }
+
+        private static string GoodbyeWords(string optionId)
+        {
+            switch (optionId)
+            {
+                case "classy": return "you kept it classy";
+                case "tell-why": return "you told them why";
+                case "rub-it-in": return "you rubbed it in";
+                default: return null;
+            }
         }
 
         private static void Missing(EpisodeState s, Juror juror)
@@ -250,7 +470,10 @@ namespace Gamesim.Simulation
                         : "they came to you";
                     lines.Add((r.week, what + "; you answered " + answer));
                 }
-            juror.highlights = lines.OrderBy(l => l.week).Select(l => "Week " + l.week + " · " + l.text).Distinct().ToList();
+            var goodbye = Goodbye(s, id);
+            if (goodbye != null) lines.Add((goodbye.Value.week, "they watched your goodbye: " + goodbye.Value.said));
+            juror.dated = lines.OrderBy(l => l.week).Distinct().ToList();
+            juror.highlights = juror.dated.Select(l => "Week " + l.week + " · " + l.text).Distinct().ToList();
         }
     }
 }

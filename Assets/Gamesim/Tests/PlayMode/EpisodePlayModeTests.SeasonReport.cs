@@ -33,10 +33,14 @@ namespace Gamesim.Tests.PlayMode
                 .Select(label => label.text)
                 .ToArray();
 
-        /// <summary>A finished season, built rather than played, so the screen has something to show.</summary>
-        private static EpisodeState Finished()
+        /// <summary>
+        /// A finished season, built rather than played, so the screen has something to show: a house
+        /// of eight unless asked for more, and past a roster's twelve the house is filled as the
+        /// stage tests fill it (<see cref="FullHouse"/>), so a jury of fourteen can be read.
+        /// </summary>
+        private static EpisodeState Finished(int houseSize = 8)
         {
-            var state = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3u);
+            var state = FullHouse(3u, houseSize);
             var cast = state.contestants.ToList();
 
             var champion = cast.First(c => !c.isPlayer);

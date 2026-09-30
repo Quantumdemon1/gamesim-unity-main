@@ -27,11 +27,12 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Every way on is at the top of the report, on screen the moment it opens and outside the
-        /// part that scrolls; each one closes the report and goes where it says.
+        /// Every way on is in the report's footer (MOCKUP-PASS M5), on screen the moment it opens
+        /// and outside the part that scrolls, under it; each one closes the report and goes where
+        /// it says, and its caption is word for word, the line under it a label of its own.
         /// </summary>
         [UnityTest]
-        public IEnumerator Report_EveryWayOnIsAtTheTopAndEachOneLeads()
+        public IEnumerator Report_EveryWayOnIsInTheFooterAndEachOneLeads()
         {
             var went = new List<string>();
             Report().Show(Finished(), _ => null, () => went.Add("review"), null,
@@ -40,6 +41,9 @@ namespace Gamesim.Tests.PlayMode
             Canvas.ForceUpdateCanvases();
             var screen = (RectTransform)Report().transform;
             var scroll = Report().GetComponentInChildren<ScrollRect>();
+            var footer = Report().GetComponentsInChildren<RectTransform>().Last(rect => rect.name == SeasonReport.FooterName);
+            var viewCorners = new Vector3[4];
+            scroll.viewport.GetWorldCorners(viewCorners);
             foreach (string caption in new[] { SeasonReport.NewSeasonCaption, SeasonReport.ReviewCaption, SeasonReport.MainMenuCaption, SeasonReport.CloseCaption })
             {
                 var buttons = ReportButtons(caption);
@@ -47,6 +51,12 @@ namespace Gamesim.Tests.PlayMode
                 var rect = (RectTransform)buttons[0].transform;
                 Assert.That(Inside(screen, rect), Is.True, caption + " is on screen when the report opens.");
                 Assert.That(rect.IsChildOf(scroll.content), Is.False, caption + " stays put while the season scrolls.");
+                Assert.That(rect.IsChildOf(footer), Is.True, caption + " is in the footer.");
+                var corners = new Vector3[4];
+                rect.GetWorldCorners(corners);
+                Assert.That(corners[1].y, Is.LessThanOrEqualTo(viewCorners[0].y + .5f), caption + " sits under the season's window, not over it.");
+                Assert.That(buttons[0].GetComponentsInChildren<TMPro.TMP_Text>().Count(label => label.text == caption), Is.EqualTo(1),
+                    caption + ": the caption once, word for word; the line under it says something else.");
             }
 
             ReportButtons(SeasonReport.NewSeasonCaption)[0].onClick.Invoke();
@@ -241,8 +251,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Page Up and Page Down, Home and End, and a pad's right stick scroll the season, with the
-        /// keyboard left where it was. The ring runs from the ways on at the top to the chips at
-        /// the foot, so without these nothing between the two could be reached without a mouse -
+        /// keyboard left where it was. The ring holds the ways on, the tabs and the table's chips,
+        /// so without these nothing between the tabs and the chips could be reached without a mouse -
         /// and the right stick, which the input module also reads as a step round the ring, walked
         /// the focus down onto the chips while it scrolled.
         /// </summary>
@@ -261,7 +271,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(travel, Is.GreaterThan(window * .5f), "More than half a screen of season lies below the first - the case this is about.");
             var focus = EventSystem.current.currentSelectedGameObject;
             Assert.That(focus != null && focus.transform.IsChildOf(Report().transform) && !focus.transform.IsChildOf(content), Is.True,
-                "The keyboard starts on a way on at the top of the report.");
+                "The keyboard starts on a way on, outside the part that scrolls.");
 
             yield return PressKey(Key.PageDown);
             float paged = content.anchoredPosition.y;

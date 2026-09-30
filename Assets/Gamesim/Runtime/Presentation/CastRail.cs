@@ -246,10 +246,18 @@ namespace Gamesim.Presentation
             ground.anchorMin = new Vector2(0f, 0f); ground.anchorMax = new Vector2(1f, 0f);
             ground.pivot = new Vector2(.5f, 0f);
             ground.offsetMin = new Vector2(SideMargin - 6f, Bottom - 6f);
-            ground.offsetMax = new Vector2(-(SideMargin - 6f), Bottom + EntryHeight * scale + 6f);
+            ground.offsetMax = new Vector2(-(SideMargin - 6f), GroundTop(scale));
             ground.GetComponent<Image>().raycastTarget = false;
             UiTheme.AddBorder(ground, 12, UiTheme.Edge(UiTheme.Emphasis.Resting));
         }
+
+        /// <summary>
+        /// How high the strip's glass reaches off the canvas floor, in the HUD's units, for chips
+        /// drawn at <paramref name="scale"/>. A house too wide for the band draws its chips smaller
+        /// and never taller, so at the player's text size this is the most the strip can reach. The
+        /// season report reads it to dim the corner the strip runs under beside the rail.
+        /// </summary>
+        public static float GroundTop(float scale) => Bottom + EntryHeight * scale + 6f;
 
         /// <summary>The mockups' quote card at the strip's right-hand end.</summary>
         private static void Quote(Transform parent, float scale)

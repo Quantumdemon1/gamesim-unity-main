@@ -171,5 +171,29 @@ namespace Gamesim.Tests.EditMode
             Assert.That(order.Select(e => e.who.id), Is.EqualTo(new[] { state.winnerId, state.runnerUpId }
                 .Concat(Enumerable.Reverse(left).Select(c => c.id))));
         }
+
+        /// <summary>
+        /// Season Complete's second line (MOCKUP-PASS M5, decision 10) is the season's own public
+        /// counts, never the mockup's fixed tagline: each clause drops out when its count is nought.
+        /// </summary>
+        [Test]
+        public void CountLine_SaysTheSeasonsCountsAndDropsEveryNought()
+        {
+            var state = EightWithoutAJuryLedger(out var left);
+            Assert.That(SeasonReport.CountLine(state), Is.EqualTo(left.Count + " evictions. One winner."),
+                "No veto was used, so the line does not say so.");
+            state.ledger.power[1].vetoUsed = true;
+            Assert.That(SeasonReport.CountLine(state), Is.EqualTo(left.Count + " evictions. 1 veto used. One winner."));
+            state.ledger.power[3].vetoUsed = true;
+            Assert.That(SeasonReport.CountLine(state), Does.Contain("2 vetoes used."));
+
+            // A season still being played has no winner yet, and nobody out has nothing to count.
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 5u);
+            Assert.That(SeasonReport.CountLine(fresh), Is.Null);
+            fresh.contestants[3].status = ContestantStatus.Evicted;
+            Assert.That(SeasonReport.CountLine(fresh), Is.EqualTo("1 eviction."));
+            foreach (var line in new[] { SeasonReport.CountLine(state), SeasonReport.CountLine(fresh) })
+                Assert.That(line, Does.Not.Contain("Alliances").And.Not.Contain("Legacy").And.Not.Contain(" 0 "), "Nothing the record does not count.");
+        }
     }
 }

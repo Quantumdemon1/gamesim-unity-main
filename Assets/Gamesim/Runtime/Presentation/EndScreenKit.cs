@@ -25,8 +25,14 @@ namespace Gamesim.Presentation
         /// frame is drawn out past its rect by that much, scaled, so the visible edge lands on the
         /// rect whichever kind it is and a winner's row lines up with a juror's.
         /// </summary>
-        private static float BodyInset(string path) =>
-            path == PackArt.SeasonWinnerHero || path == PackArt.SeasonStandingWinner || path == PackArt.SeasonButtonPrimary ? 38f : 8f;
+        private static float BodyInset(string path) => Glowing.Contains(path) ? 38f : 8f;
+
+        /// <summary>The pack files drawn inside a 38 px glow, as the catalogue measured them.</summary>
+        private static readonly HashSet<string> Glowing = new HashSet<string>
+        {
+            PackArt.SeasonWinnerHero, PackArt.SeasonStandingWinner, PackArt.SeasonButtonPrimary,
+            PackArt.SeasonSectionSelected, PackArt.SeasonButtonLegacy, PackArt.SeasonWinnerNameplate,
+        };
 
         /// <summary>
         /// Frames <paramref name="host"/> with a pack sprite on a child named "Art", drawn behind
@@ -196,6 +202,39 @@ namespace Gamesim.Presentation
                 Place(right, first + (a > 0 ? 2f : 0f), 0f, Mathf.Max(height, width - first - (a > 0 ? 2f : 0f)), height);
             }
             return track;
+        }
+
+        /// <summary>The ramp <see cref="Ramp"/> draws: made once, white, opaque at its foot and clear at its top.</summary>
+        private static Texture2D ramp;
+
+        /// <summary>
+        /// A vertical ramp filling <paramref name="parent"/>, <paramref name="tint"/> at the foot and
+        /// clear at the top: a gradient no pack sprite draws, laid over a dark ground it reads as the
+        /// ground lit from below. The texture is made once and kept.
+        /// </summary>
+        public static RawImage Ramp(string name, RectTransform parent, Color tint)
+        {
+            if (ramp == null)
+            {
+                const int height = 32;
+                ramp = new Texture2D(1, height, TextureFormat.RGBA32, false)
+                    { name = "End screen ramp", hideFlags = HideFlags.DontSave, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+                var pixels = new Color32[height];
+                // A texture's first row is its foot.
+                for (int y = 0; y < height; y++)
+                    pixels[y] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(255f * Mathf.SmoothStep(1f, 0f, y / (height - 1f))));
+                ramp.SetPixels32(pixels);
+                ramp.Apply(false, true);
+            }
+            var image = new GameObject(name, typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+            var rect = image.rectTransform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero;
+            image.texture = ramp;
+            image.color = tint;
+            image.raycastTarget = false;
+            return image;
         }
 
         /// <summary>

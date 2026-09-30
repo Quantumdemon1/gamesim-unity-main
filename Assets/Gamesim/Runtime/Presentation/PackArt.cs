@@ -140,9 +140,14 @@ namespace Gamesim.Presentation
         // here on purpose: each bakes a fill into its pixels, and a bar drawn from one would show
         // a number the season never had. Bars are drawn from the real counts instead.
         public const string SeasonSection = "Pack7_SeasonComplete/Shells/section_panel_9slice";
+        /// <summary>The report's title card (MOCKUP-PASS M5): the section frame lit, with a 38 px glow.</summary>
+        public const string SeasonSectionSelected = "Pack7_SeasonComplete/Shells/section_panel_selected_9slice";
         public const string SeasonQuote = "Pack7_SeasonComplete/Shells/quote_panel_9slice";
         public const string SeasonWinnerHero = "Pack7_SeasonComplete/WinnerHero/winner_hero_frame_9slice";
         public const string SeasonRunnerUpHero = "Pack7_SeasonComplete/WinnerHero/runnerup_hero_frame_9slice";
+        /// <summary>The plates the finalists' names sit on in the hero (MOCKUP-PASS M6); the winner's has a 38 px glow.</summary>
+        public const string SeasonWinnerNameplate = "Pack7_SeasonComplete/WinnerHero/winner_nameplate_9slice";
+        public const string SeasonRunnerUpNameplate = "Pack7_SeasonComplete/WinnerHero/runnerup_nameplate_9slice";
         public const string SeasonWinnerCrown = "Pack7_SeasonComplete/WinnerHero/winner_crown";
         public const string SeasonTrophy = "Pack7_SeasonComplete/WinnerHero/winner_trophy";
         public const string SeasonStatNeutral = "Pack7_SeasonComplete/StatCards/stat_card_neutral_9slice";
@@ -179,6 +184,13 @@ namespace Gamesim.Presentation
         public const string SeasonTabInactive = "Pack7_SeasonComplete/FiltersTabs/tab_inactive_9slice";
         public const string SeasonButtonPrimary = "Pack7_SeasonComplete/Buttons/button_new_season_9slice";
         public const string SeasonButton = "Pack7_SeasonComplete/Buttons/button_close_9slice";
+        /// <summary>
+        /// The report's footer faces (MOCKUP-PASS M5): the notebook's, and the gold 'Continue to
+        /// Legacy' face the pinned <c>Main menu</c> wears (decision 21). The pack's
+        /// <c>button_main_menu</c> is not named: it is pixel-identical to <see cref="SeasonButton"/>.
+        /// </summary>
+        public const string SeasonButtonReview = "Pack7_SeasonComplete/Buttons/button_review_season_9slice";
+        public const string SeasonButtonLegacy = "Pack7_SeasonComplete/Buttons/button_continue_legacy_9slice";
         public const string SeasonBadgeJury = "Pack7_SeasonComplete/Badges/badge_jury";
         public const string SeasonBadgeRunnerUp = "Pack7_SeasonComplete/Badges/badge_runnerup";
     }

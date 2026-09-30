@@ -233,6 +233,170 @@ namespace Gamesim.Tests.PlayMode
             Report().Hide();
         }
 
+        /// <summary>
+        /// The head of Season Complete (MOCKUP-PASS M5): the season's number over the title, the
+        /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
+        /// rather than over it at both text sizes - the rail dimmed down to the cast strip, the
+        /// corner under it dimmed as the house is, the scrim still taking every click, and the
+        /// brand line in that corner.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EndScreens_TheHeadCarriesTheSeasonNumberAndTheCardStandsBesideTheRail()
+        {
+            var state = FinishedWithWeeks();
+            var hud = director.GetComponentsInChildren<Canvas>(true).First(canvas => canvas.name == "Gamesim Episode HUD");
+            foreach (bool larger in new[] { false, true })
+            {
+                string size = larger ? "At the larger text, " : "At resting text, ";
+                Report().FontScale = larger ? 1.2f : 1f;
+                yield return null;
+                Report().Show(state, _ => null, () => { }, null, () => { }, () => { }, () => { }, 3);
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+
+                var title = ReportPart(SeasonReport.TitleCardName);
+                Assert.That(title, Is.Not.Null, size + "the title has its card.");
+                var titleWords = LabelsUnder(title);
+                Assert.That(titleWords, Does.Contain("SEASON 3").And.Contain("SEASON COMPLETE"), size + "the season's number is over the title.");
+                Assert.That(titleWords, Does.Contain(SeasonReport.CountLine(state)), size + "the season's counts are its second line.");
+
+                var numbers = ReportPart(SeasonReport.SeasonNumbersName);
+                Assert.That(numbers, Is.Not.Null, size + "the season's numbers have their card.");
+                string Tile(string caption) => numbers.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == caption)
+                    .GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Value").text;
+                Assert.That(Tile(SeasonReport.HouseguestsTileCaption), Is.EqualTo(state.contestants.Count.ToString()));
+                Assert.That(Tile("Weeks"), Is.EqualTo(state.week.ToString()), "Weeks, never days.");
+                Assert.That(Tile(SeasonReport.CompetitionsTileCaption), Is.EqualTo(state.contestants.Sum(c => FinalistRead.Wins(state, c)).ToString()),
+                    "One winner a competition, the final parts included.");
+                foreach (var part in new[] { title, numbers, ReportPart(SeasonReport.FooterName) })
+                    AssertDecisionCopyFits(part);
+
+                // Clear of the rail's ground, which runs 8 to 220 HUD units whatever the text size.
+                var sheet = ReportPart("Report card");
+                float railEdge = (8f + IconRail.Width + 12f) * hud.scaleFactor;
+                Assert.That(ScreenRect(sheet).xMin, Is.GreaterThanOrEqualTo(railEdge - .5f), size + "the card sits beside the rail, not over it.");
+                Assert.That(ScreenRect(sheet).xMax, Is.LessThanOrEqualTo(Screen.width + .5f), size + "and on the screen.");
+                var railDim = ReportPart("Rail dim").GetComponent<Image>();
+                var houseDim = ReportPart("House dim").GetComponent<Image>();
+                Assert.That(railDim.color.a, Is.LessThan(houseDim.color.a), "The rail is dimmed beside the card, not blacked out.");
+                Assert.That(railDim.raycastTarget || houseDim.raycastTarget, Is.False, "The clear scrim under them takes the clicks.");
+                var brand = ReportPart("Brand line").GetComponent<TMP_Text>();
+                Assert.That(brand.text, Is.EqualTo(SeasonReport.BrandWords));
+                Assert.That(ScreenRect(brand.rectTransform).xMax, Is.LessThanOrEqualTo(ScreenRect(sheet).xMin + .5f), "The brand line is beside the card.");
+
+                // The cast strip runs under the rail's column too. The rail's lighter dim stops
+                // above it, the corner under the rail is dimmed as the house is, and the brand line
+                // stands in that corner rather than over the first chips at half light. The strip's
+                // top is where the HUD draws it at the report's text size; the HUD here may be at
+                // resting text, and a strip at resting text only stands lower.
+                var stripDim = ReportPart("Strip dim").GetComponent<Image>();
+                float stripTop = CastRail.GroundTop(larger ? 1.2f : 1f) * hud.scaleFactor;
+                Assert.That(stripDim.color.a, Is.EqualTo(houseDim.color.a), size + "the strip under the rail is dimmed as the house is.");
+                Assert.That(stripDim.raycastTarget, Is.False, "The clear scrim under it takes the clicks.");
+                Assert.That(ScreenRect(stripDim.rectTransform).yMax, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the corner's dim covers the strip.");
+                Assert.That(ScreenRect(railDim.rectTransform).yMin, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the rail's lighter dim stops above the strip.");
+                var brandRect = ScreenRect(brand.rectTransform);
+                Assert.That(brandRect.yMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).yMax + .5f), size + "the brand line stands in the dark corner.");
+                Assert.That(brandRect.xMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).xMax + .5f), size + "the brand line stands in the dark corner.");
+                if (Application.isBatchMode) yield return CaptureFraming(larger ? "season-complete-head-large" : "season-complete-head");
+                Report().Hide();
+            }
+            Report().FontScale = 1f;
+            yield return null;
+
+            // Without a career record to count from, the number is left off rather than guessed.
+            Report().Show(state, _ => null, null);
+            yield return null;
+            Assert.That(LabelsUnder(ReportPart(SeasonReport.TitleCardName)).Any(text => text.StartsWith("SEASON ") && text != "SEASON COMPLETE"), Is.False);
+            Report().Hide();
+        }
+
+        /// <summary>
+        /// Season Complete's hero (MOCKUP-PASS M6) for a jury of six and a jury of fourteen, at both
+        /// text sizes: the winner's card with 'WINNER' and the season's number before it, a chip for
+        /// each trait and the four counts; the final jury vote inside the hero, with the crown line
+        /// and the count word for word and a card for every ballot - never 'voted for', which the jury
+        /// column counts - in one row, or two past eight, inside the panel; and the tally's numbers.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EndScreens_TheWinnerHeroAndTheFinalJuryVoteHoldForSixAndFourteenJurors()
+        {
+            foreach (int house in new[] { 8, 16 })
+            {
+                var state = Finished(house);
+                var champion = state.Find(state.winnerId);
+                var runnerUp = state.Find(state.runnerUpId);
+                var ballots = SeasonReport.JuryBallots(state);
+                Assert.That(ballots.Count, Is.EqualTo(house - 2), "A jury of " + (house - 2) + ".");
+                int forChampion = ballots.Count(b => b.FinalistId == champion.id), forRunnerUp = ballots.Count(b => b.FinalistId == runnerUp.id);
+                foreach (bool larger in new[] { false, true })
+                {
+                    string where = ballots.Count + " jurors" + (larger ? " at the larger text" : "") + ": ";
+                    Report().FontScale = larger ? 1.2f : 1f;
+                    yield return null;
+                    Report().Show(state, _ => null, null, null, null, null, null, 2);
+                    yield return null;
+                    Canvas.ForceUpdateCanvases();
+
+                    var hero = ReportPart(SeasonReport.HeroName);
+                    var winnerCard = hero.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == "WINNER");
+                    var winnerWords = LabelsUnder(winnerCard);
+                    Assert.That(winnerWords, Does.Contain("WINNER").And.Contain("SEASON 2"), where + "'WINNER', with the season's number before it.");
+                    Assert.That(winnerWords, Does.Contain(forChampion + " jury votes"));
+                    foreach (var trait in champion.traits)
+                        Assert.That(winnerWords, Does.Contain(Localisation.Text(trait)), where + "a chip for " + trait + ".");
+                    var stats = ReportPart(SeasonReport.HeroStatsName);
+                    Assert.That(stats.IsChildOf(winnerCard), Is.True);
+                    string Count(string words) => stats.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == words)
+                        .GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Value").text;
+                    Assert.That(Count(SeasonReport.CompetitionWinsWords), Is.EqualTo(FinalistRead.Wins(state, champion).ToString()));
+                    Assert.That(Count(SeasonReport.HohWinsWords), Is.EqualTo(champion.hohWins.ToString()));
+                    Assert.That(Count(SeasonReport.VetoWinsWords), Is.EqualTo(champion.vetoWins.ToString()));
+                    Assert.That(Count(SeasonReport.NominationsSurvivedWords), Is.EqualTo(champion.timesNominated.ToString()));
+
+                    // The sparkles twinkle on a canvas nested in the report's, so a frame's twinkle
+                    // batches them again and not the whole report; nested without an override, they
+                    // keep the report's sorting and the season window's clip.
+                    var sparkles = winnerCard.GetComponentsInChildren<Image>().Where(image => image.name == "Sparkle").ToList();
+                    if (UiTheme.Icon("star") != null) Assert.That(sparkles, Is.Not.Empty, where + "the winner's well has its sparkles.");
+                    foreach (var sparkle in sparkles)
+                    {
+                        Assert.That(sparkle.canvas.isRootCanvas, Is.False, where + "a sparkle is on a canvas of its own inside the report's.");
+                        Assert.That(sparkle.canvas.overrideSorting, Is.False, where + "and that canvas keeps the report's sorting.");
+                        Assert.That(sparkle.canvas.rootCanvas, Is.SameAs(Report().GetComponent<Canvas>()), where + "under the report's own.");
+                    }
+
+                    var vote = ReportPart(SeasonReport.FinalJuryVoteName);
+                    Assert.That(vote != null && vote.IsChildOf(hero), Is.True, "The final jury vote is part of the hero, where its lines were read before.");
+                    var voteWords = LabelsUnder(vote);
+                    Assert.That(voteWords, Does.Contain("RUNNER-UP").And.Contain(champion.name + " beat " + runnerUp.name + " in the jury vote."));
+                    Assert.That(voteWords, Does.Contain("By a vote of " + forChampion + " to " + forRunnerUp + "."));
+                    Assert.That(LabelsUnder(hero).Any(text => text.Contains("voted for")), Is.False, where + "the hero never says 'voted for'.");
+
+                    var strip = ReportPart(SeasonReport.JurorStripName);
+                    var cards = strip.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == SeasonReport.JurorCardName).ToList();
+                    Assert.That(cards, Has.Count.EqualTo(ballots.Count), where + "a card for every ballot.");
+                    string On(RectTransform card, string label) => card.GetComponentsInChildren<TMP_Text>().Single(text => text.name == label).text;
+                    Assert.That(cards.Select(card => On(card, "Voted")), Is.All.EqualTo("VOTED"));
+                    Assert.That(cards.Count(card => On(card, "Their vote") == FinalistRead.FirstName(champion.name)), Is.EqualTo(forChampion),
+                        where + "each card names the finalist its juror chose, by first name.");
+                    Assert.That(cards.Count(card => On(card, "Juror name") == "You"), Is.EqualTo(1), "The player's own ballot says so.");
+                    int rows = cards.Select(card => Mathf.RoundToInt(ScreenRect(card).yMax)).Distinct().Count();
+                    Assert.That(rows, Is.EqualTo(ballots.Count > 8 ? 2 : 1), where + "one row, or two past eight ballots.");
+                    foreach (var card in cards) Assert.That(Inside(vote, card), Is.True, where + "every card is inside the panel.");
+
+                    var tally = ReportPart(SeasonReport.TallyName);
+                    Assert.That(LabelsUnder(tally), Does.Contain(forChampion.ToString()).And.Contain(forRunnerUp.ToString())
+                        .And.Contain(champion.name).And.Contain(runnerUp.name), where + "the count at the bar's ends, and whose it is.");
+                    foreach (var part in new[] { strip, stats, tally }) AssertDecisionCopyFits(part);
+                    if (Application.isBatchMode && house == 16) yield return CaptureFraming(larger ? "season-complete-hero-14-large" : "season-complete-hero-14");
+                    Report().Hide();
+                }
+            }
+            Report().FontScale = 1f;
+            yield return null;
+        }
+
         /// <summary>A season played to its first eviction, as a recap would close it.</summary>
         private static EpisodeState FirstWeekClosed()
         {

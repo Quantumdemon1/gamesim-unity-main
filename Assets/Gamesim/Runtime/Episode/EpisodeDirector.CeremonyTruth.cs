@@ -157,6 +157,9 @@ namespace Gamesim.Episode
             // play it, and goes as they always did when it cannot.
             if (departingId != null && !narrating && departingId != walkingOutId && !TryBeginWalkOut(departingId))
             {
+                // A staged eviction made them the house's candidate for the hot seat. With no walk
+                // out to follow it, the house has no candidate left.
+                if (npcMeetings != null && npcMeetings.DepartureCandidate == departingId) npcMeetings.DepartureCandidate = null;
                 departingId = null;
                 if (IsReady) Project();
             }

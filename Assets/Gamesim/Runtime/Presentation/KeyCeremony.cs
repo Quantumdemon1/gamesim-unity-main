@@ -213,6 +213,20 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// The first press's step: every remaining key handed out and the block shown - the order
+        /// given up, never the result. A press on the block ends the card. Shared with a staged
+        /// ceremony, whose press on its summons starts the card here, so one press is one step
+        /// however the ceremony is played. Nothing once the block is up.
+        /// </summary>
+        public void SkipToResult()
+        {
+            if (!playing || blockShown) return;
+            elapsed = Mathf.Max(elapsed, KeysEnd);
+            Show(safe.Count, false, false);
+            Block(true);
+        }
+
+        /// <summary>
         /// True once the card has been up long enough to have been read; after that a press moves
         /// it on. The same delay as <see cref="CeremonyTakeover"/>'s, for the same reason: a press
         /// already in flight when the card appears - the Enter that committed the nominations, say -
@@ -237,9 +251,7 @@ namespace Gamesim.Presentation
             if (Dismissable && CeremonyTakeover.SkipPressed())
             {
                 if (blockShown) { Cancel(); return; }
-                elapsed = Mathf.Max(elapsed, KeysEnd);
-                Show(safe.Count, false, false);
-                Block(true);
+                SkipToResult();
                 return;
             }
 

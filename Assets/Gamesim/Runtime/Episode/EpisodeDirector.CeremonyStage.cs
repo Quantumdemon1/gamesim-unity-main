@@ -91,20 +91,49 @@ namespace Gamesim.Episode
         /// </summary>
         private bool TryBeginCeremonyStage(string kind, EpisodeState state, Func<ScreenSurface, bool> playCard)
         {
+            // The policy first, and silently: the look sheet, reduced motion and a batch run not
+            // asking never stage, by design, and a line for each of their ceremonies would be noise
+            // in every audited walk (and a failure wherever a test asks for a log with nothing
+            // unexpected in it).
             if (!CeremonyStages || reducedMotion || (Application.isBatchMode && !StagesInBatchRuns) || state == null) return false;
-            if (npcMeetings == null || !npcMeetings.IsReady || npcWorldFailed || npcDiagnosticsSuspended || competitionArenaStaging) return false;
-            if (openingStage != null && openingStage.Active) return false;
-            if (walkingOutId != null || FinaleNight(state.phase)) return false;
-            if (player == null || player.Agent == null || !player.Agent.isOnNavMesh || cameraRig == null) return false;
+            // Past it, a house that cannot stage says why. Every guard below used to decline in
+            // silence, and a world stopped after the first staged eviction kept every later
+            // ceremony on the HUD with nothing in the log to say so.
+            string declined = StageDeclined(state);
+            if (declined != null) { Debug.Log("Ceremony stage declined (" + kind + "): " + declined); return false; }
             EndCeremonyStage();
             var stage = CeremonyStage.TryCreate(this, kind, state, playCard, out var reason);
             if (stage == null) { if (reason != null) Debug.Log("Ceremony stage: " + reason); return false; }
             ceremonyStage = stage;
             // The commit's projection unbound the evicted; now that the stage holds a place for
             // them the world takes them back, and the summons' retries send them once they are bound.
+            // A body that cannot take its navigation back ("The feet are not inside one bound
+            // floor's safe interior.") is let go on its own, as the walk out lets its candidate
+            // go, and the card stops waiting for them: it used to fail the whole house instead.
+            if (kind == CeremonySting.EvictionKind && departingId != null) npcMeetings.DepartureCandidate = departingId;
             ReconcileNpcSocialWorld();
             stage.Begin();
             return true;
+        }
+
+        /// <summary>
+        /// Why this house cannot stage a ceremony now, in words for the log, or null when it can.
+        /// Asked only past the policy checks, which decline in silence.
+        /// </summary>
+        private string StageDeclined(EpisodeState state)
+        {
+            if (npcMeetings == null) return "the house's world is not built";
+            if (npcWorldFailed) return "the house's world stopped: " + npcWorldFailure;
+            if (npcDiagnosticsSuspended) return "the house's world is suspended for diagnostics";
+            if (!npcMeetings.IsReady) return "the house's world is still binding its people";
+            if (competitionArenaStaging) return "the competition arena has the yard";
+            if (openingStage != null && openingStage.Active) return "the opening has the house";
+            if (walkingOutId != null) return walkingOutId + " is still walking out";
+            if (FinaleNight(state.phase)) return "it is finale night";
+            if (player == null || player.Agent == null) return "the player has no body";
+            if (!player.Agent.isOnNavMesh) return "the player is off the NavMesh";
+            if (cameraRig == null) return "there is no camera rig";
+            return null;
         }
 
         /// <summary>Each frame: the stage kept moving, and forgotten once it has let the house go.</summary>
@@ -113,6 +142,37 @@ namespace Gamesim.Episode
             if (ceremonyStage == null) return;
             ceremonyStage.Tick();
             if (!ceremonyStage.Active) ceremonyStage = null;
+        }
+
+        private CeremonySkipChip skipChip;
+
+        /// <summary>Whether the skip chip is on screen. A read for tests.</summary>
+        public bool CeremonySkipShowing => skipChip != null && skipChip.IsShowing;
+
+        /// <summary>
+        /// Whether a staged ceremony is running for the chip to name its skip: gathering the house,
+        /// playing its card on the set's screen, or keeping its seats while the evicted walk out.
+        /// Never otherwise - a card on the HUD frame says what moves it on in its own lines - and so
+        /// never in a batch run not asking for stages, or under reduced motion, which stage nothing.
+        /// Exactly while the stage holds the house's input (<see cref="CeremonyStage.OwnsThePress"/>),
+        /// so the press the chip names is never also a press on the HUD.
+        /// </summary>
+        private bool SkipChipWanted => IsCeremonyStaged && ceremonyStage.OwnsThePress;
+
+        /// <summary>The HUD's chrome on screen this frame, for the chip to stand clear of. Reused, never shared.</summary>
+        private readonly List<Rect> chromeUnderSkipChip = new List<Rect>();
+
+        private void TickSkipChip()
+        {
+            if (skipChip == null) return;
+            bool wanted = SkipChipWanted;
+            skipChip.Show(wanted);
+            if (!wanted) return;
+            // The chrome is back while the evicted walk out, and the chip's corner is the cast
+            // strip's right-hand end: it stands clear of whatever the HUD has on screen there.
+            if (hud != null) hud.ChromeOnScreen(chromeUnderSkipChip);
+            else chromeUnderSkipChip.Clear();
+            skipChip.StandClearOf(chromeUnderSkipChip);
         }
 
         /// <summary>
@@ -125,6 +185,8 @@ namespace Gamesim.Episode
             if (ceremonyStage == null) return;
             ceremonyStage.End(false);
             ceremonyStage = null;
+            // At once, not on the next frame: a director disabled here has no next frame.
+            if (skipChip != null) skipChip.Show(false);
         }
 
         /// <summary>Skips the summons: the card plays now, whoever is still walking sits down as they arrive. Public for tests.</summary>
@@ -238,6 +300,12 @@ namespace Gamesim.Episode
             public string StandingId { get; private set; }
             public bool Active => begun && !ended;
             public bool Narrating => Active && Step != CeremonyStageStep.Release;
+            /// <summary>
+            /// Whether a press on the devices is the stage's: while it narrates, and while the
+            /// evicted walk out under it. The skip chip is up exactly then, naming that press, and
+            /// the house takes none of its own until it is down.
+            /// </summary>
+            public bool OwnsThePress => Narrating || (Active && Step == CeremonyStageStep.Release && director.walkingOutId != null);
             /// <summary>Whether the stage has a place for this houseguest and has not let the house go.</summary>
             public bool Holds(string id) => !ended && id != null && placeOf.ContainsKey(id);
             public int SeatedCount => seated.Values.Count(seat => seat != null && seat.Active) + (playerSeat != null && playerSeat.Active ? 1 : 0);
@@ -447,15 +515,17 @@ namespace Gamesim.Episode
 
             public void SkipSummons()
             {
-                if (Active && Step == CeremonyStageStep.Summons) summonsUntil = summonsHardBy = Time.unscaledTime;
+                // The ceremony's own people are not waited for either: the card plays now.
+                if (Active && Step == CeremonyStageStep.Summons) summonsUntil = summonsHardBy = summonsPatienceBy = Time.unscaledTime;
             }
 
             /// <summary>
             /// Whether everyone the stage placed has reached their place - the player by their own
-            /// move - leaving out only whoever the coordinator has refused twice over, who is not
-            /// coming. Not the leases' count against their arrivals: a body the summons could not
-            /// send (the evicted, still binding on that frame) holds no lease yet, and the card
-            /// would have started without them.
+            /// move - leaving out only whoever the coordinator has refused twice over, or let go
+            /// because their body could not take its navigation back, who are not coming. Not the
+            /// leases' count against their arrivals: a body the summons could not send (the
+            /// evicted, still binding on that frame) holds no lease yet, and the card would have
+            /// started without them.
             /// </summary>
             private bool EveryoneArrived
             {
@@ -473,20 +543,28 @@ namespace Gamesim.Episode
                         }
                         if (arrived.Contains(id) || meetings.CeremonyActorArrived(id)) continue;
                         if (refusalCounts.TryGetValue(id, out int refused) && refused >= 2) continue;
+                        if (LetGo(id)) continue;
                         return false;
                     }
                     return true;
                 }
             }
 
-            /// <summary>The people the card is about: an eviction's nominees, a nomination's or a veto's Head of Household.</summary>
+            /// <summary>
+            /// Whether the house let this houseguest go because their body could not take its
+            /// navigation back for their place - the evicted, re-bound for the hot seat. They are
+            /// not coming, and no card waits out its patience in front of their empty chair.
+            /// </summary>
+            private bool LetGo(string id) => director.npcMeetings != null && director.npcMeetings.CandidateDropped(id);
+
+            /// <summary>The people the card is about: an eviction's nominees, a nomination's or a veto's Head of Household - whoever of them is coming.</summary>
             private IEnumerable<string> Principals
             {
                 get
                 {
                     if (Kind == CeremonySting.EvictionKind)
-                        foreach (var id in state.nominees ?? new List<string>()) { if (placeOf.ContainsKey(id)) yield return id; }
-                    else if (StandingId != null && placeOf.ContainsKey(StandingId)) yield return StandingId;
+                        foreach (var id in state.nominees ?? new List<string>()) { if (placeOf.ContainsKey(id) && !LetGo(id)) yield return id; }
+                    else if (StandingId != null && placeOf.ContainsKey(StandingId) && !LetGo(StandingId)) yield return StandingId;
                 }
             }
 
@@ -516,6 +594,16 @@ namespace Gamesim.Episode
                 if (!Active) return;
                 float now = Time.unscaledTime;
                 if (now > endBy || director.npcMeetings == null || director.npcWorldFailed) { End(true); return; }
+                // While it narrates the stage is a card, from its summons on. The HUD is held from
+                // the summons and the phase panel is still open under it, so the press that starts
+                // the card reached the house as well: Submit on whatever control had the keyboard,
+                // Escape closing the panels, the house's shortcuts. The gate the cards stamp says
+                // the press is spoken for (the card, once up, stamps it itself). So is the walk
+                // out the stage keeps its seats for, while the skip chip names the press that ends
+                // it: the chrome is back by then, and the episode screen the eviction was committed
+                // from is still open with its way on focused, so the Enter that ended the walk
+                // pressed Continue under it too, and Escape closed the panel.
+                if (OwnsThePress) CeremonyOverlays.Showing();
                 director.cameraRig.ControlsEnabled = false;
                 director.npcMeetings.ResumeCeremonyActors();
                 if (Step != CeremonyStageStep.Release && now >= retryAt) { retryAt = now + RetrySeconds; SendTheLeftOut(); }
@@ -526,10 +614,15 @@ namespace Gamesim.Episode
                 {
                     case CeremonyStageStep.Summons:
                         bool pressed = now >= pressGuardUntil && CeremonyTakeover.SkipPressed();
+                        // A press is one step (PACK8-PASS-PLAN A1): the card starts at its block or
+                        // its result, as a press on the card would take it, and the next press
+                        // closes it. The card cannot read the same press again: it takes none
+                        // until it has been up long enough to be read.
+                        if (pressed) { StartCard(); SkipTheCardToItsResult(); break; }
                         // The card waits for the whole house as long as the longest route takes,
                         // and for the people it is about as long as the pace's patience allows;
                         // past that, whoever is still walking sits as they arrive.
-                        if (EveryoneArrived || pressed || (now >= summonsHardBy && (PrincipalsInPlace || now >= summonsPatienceBy))) StartCard();
+                        if (EveryoneArrived || (now >= summonsHardBy && (PrincipalsInPlace || now >= summonsPatienceBy))) StartCard();
                         break;
                     case CeremonyStageStep.Playing:
                         RunCues(now);
@@ -557,7 +650,7 @@ namespace Gamesim.Episode
                 foreach (var pair in places)
                 {
                     string id = pair.Key;
-                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id)) continue;
+                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
                     if (meetings.JoinCeremonyStage(id, pair.Value, out var why))
                     {
@@ -582,6 +675,14 @@ namespace Gamesim.Episode
                 (director.keyCeremony != null && director.keyCeremony.IsPlaying)
                 || (director.voteReveal != null && director.voteReveal.IsPlaying)
                 || (director.takeover != null && director.takeover.IsPlaying);
+
+            /// <summary>The card just started, taken to its block or its result: the first press's step, which the cards share.</summary>
+            private void SkipTheCardToItsResult()
+            {
+                if (!Active || Step != CeremonyStageStep.Playing) return;
+                if (director.keyCeremony != null && director.keyCeremony.IsPlaying) director.keyCeremony.SkipToResult();
+                else if (director.voteReveal != null && director.voteReveal.IsPlaying) director.voteReveal.SkipToResult();
+            }
 
             /// <summary>The card, on the screen. A card that declines its shape ends the stage: the caller's generic card plays instead.</summary>
             private void StartCard()
@@ -925,6 +1026,7 @@ namespace Gamesim.Episode
                     string verdict = sitting ? "seated"
                         : !place.Posed && there ? "standing in place"
                         : there ? "arrived, not seated"
+                        : LetGo(id) ? "let go (their body could not take its navigation back)"
                         : !holds ? "never sent" + (refusals.TryGetValue(id, out var why) ? " (" + why + ")" : summonsRefusals != null ? " (at the summons)" : " (no reason recorded)")
                         : stalled ? "stuck " + away.ToString("F2") + " m short of the approach" + arrival + Nearest(id, npc.transform.position)
                         : "walking" + arrival + Nearest(id, npc.transform.position);

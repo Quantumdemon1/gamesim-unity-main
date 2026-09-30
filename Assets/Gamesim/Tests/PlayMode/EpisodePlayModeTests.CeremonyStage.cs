@@ -110,12 +110,21 @@ namespace Gamesim.Tests.PlayMode
             else yield return InstallStrategySeason(seed, shape);
             director.BuildNpcWorldForDiagnostics();
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+            AskForTheStages();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The stages and the walk outs asked for in a batch run, and reduced motion - which never
+        /// stages - switched off on the director, the rig and the bodies the way the motion tests do.
+        /// </summary>
+        private void AskForTheStages(bool reduced = false)
+        {
             director.StagesInBatchRuns = true;
             director.WalkOutsInBatchRuns = true;
-            typeof(EpisodeDirector).GetField("reducedMotion", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(director, false);
-            cameraRig.SetReducedMotion(false);
-            foreach (var visual in SceneComponents<CharacterPresentation>()) visual.SetReducedMotion(false);
-            yield return null;
+            typeof(EpisodeDirector).GetField("reducedMotion", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(director, reduced);
+            cameraRig.SetReducedMotion(reduced);
+            foreach (var visual in SceneComponents<CharacterPresentation>()) visual.SetReducedMotion(reduced);
         }
 
         /// <summary>Submits the house's next legal decisions until a ceremony is staged, or the cards play unstaged.</summary>
@@ -450,6 +459,9 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
             yield return null;
             Assert.That(PlatesDown(), Is.Empty, "The plates come back once the house is let go.");
+            // The stage ends itself on a stopped world, so "the house gets up" held on a dead one
+            // (PACK8-PASS-PLAN A1): the walk out has to leave the house's world running.
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
         [UnityTest]
@@ -469,6 +481,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(keys.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
                 // MOCKUP-PASS-PLAN M2: a plate showed through the card's scrim on the HUD frame.
                 Assert.That(PlatesUp(), Is.Empty, "No plate is up under the keys on the HUD frame.");
+                // PACK8-PASS-PLAN A1: the skip chip is a staged ceremony's; the card on the HUD
+                // frame says what moves it on in its own lines.
+                yield return null;
+                Assert.That(director.CeremonySkipShowing, Is.False, "No skip chip over the keys on the HUD frame.");
             }
             yield return SkipReveals();
         }
@@ -519,6 +535,7 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipReveals();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
         /// <summary>A frame of a card on its screen: the rig on the screen's own shot for two frames, then the capture.</summary>
@@ -629,6 +646,7 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipReveals();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out at a full house too.");
         }
     }
 }

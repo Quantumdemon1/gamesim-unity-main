@@ -144,6 +144,24 @@ namespace Gamesim.Episode
             if (!ceremonyStage.Active) ceremonyStage = null;
         }
 
+        private CeremonySkipChip skipChip;
+
+        /// <summary>Whether the skip chip is on screen. A read for tests.</summary>
+        public bool CeremonySkipShowing => skipChip != null && skipChip.IsShowing;
+
+        /// <summary>
+        /// Whether a staged ceremony is running for the chip to name its skip: gathering the house,
+        /// playing its card on the set's screen, or keeping its seats while the evicted walk out.
+        /// Never otherwise - a card on the HUD frame says what moves it on in its own lines - and so
+        /// never in a batch run not asking for stages, or under reduced motion, which stage nothing.
+        /// </summary>
+        private bool SkipChipWanted => IsCeremonyStaged && (ceremonyStage.Step != CeremonyStageStep.Release || walkingOutId != null);
+
+        private void TickSkipChip()
+        {
+            if (skipChip != null) skipChip.Show(SkipChipWanted);
+        }
+
         /// <summary>
         /// Ends a stage now, with everyone let go: a new commit, the opening, the arena, a season
         /// replaced. Its card, if it never played, stays unplayed: whatever ended the stage has the
@@ -154,6 +172,8 @@ namespace Gamesim.Episode
             if (ceremonyStage == null) return;
             ceremonyStage.End(false);
             ceremonyStage = null;
+            // At once, not on the next frame: a director disabled here has no next frame.
+            if (skipChip != null) skipChip.Show(false);
         }
 
         /// <summary>Skips the summons: the card plays now, whoever is still walking sits down as they arrive. Public for tests.</summary>
@@ -555,6 +575,12 @@ namespace Gamesim.Episode
                 if (!Active) return;
                 float now = Time.unscaledTime;
                 if (now > endBy || director.npcMeetings == null || director.npcWorldFailed) { End(true); return; }
+                // While it narrates the stage is a card, from its summons on. The HUD is held from
+                // the summons and the phase panel is still open under it, so the press that starts
+                // the card reached the house as well: Submit on whatever control had the keyboard,
+                // Escape closing the panels, the house's shortcuts. The gate the cards stamp says
+                // the press is spoken for (the card, once up, stamps it itself).
+                if (Narrating) CeremonyOverlays.Showing();
                 director.cameraRig.ControlsEnabled = false;
                 director.npcMeetings.ResumeCeremonyActors();
                 if (Step != CeremonyStageStep.Release && now >= retryAt) { retryAt = now + RetrySeconds; SendTheLeftOut(); }
@@ -565,10 +591,15 @@ namespace Gamesim.Episode
                 {
                     case CeremonyStageStep.Summons:
                         bool pressed = now >= pressGuardUntil && CeremonyTakeover.SkipPressed();
+                        // A press is one step (PACK8-PASS-PLAN A1): the card starts at its block or
+                        // its result, as a press on the card would take it, and the next press
+                        // closes it. The card cannot read the same press again: it takes none
+                        // until it has been up long enough to be read.
+                        if (pressed) { StartCard(); SkipTheCardToItsResult(); break; }
                         // The card waits for the whole house as long as the longest route takes,
                         // and for the people it is about as long as the pace's patience allows;
                         // past that, whoever is still walking sits as they arrive.
-                        if (EveryoneArrived || pressed || (now >= summonsHardBy && (PrincipalsInPlace || now >= summonsPatienceBy))) StartCard();
+                        if (EveryoneArrived || (now >= summonsHardBy && (PrincipalsInPlace || now >= summonsPatienceBy))) StartCard();
                         break;
                     case CeremonyStageStep.Playing:
                         RunCues(now);
@@ -621,6 +652,14 @@ namespace Gamesim.Episode
                 (director.keyCeremony != null && director.keyCeremony.IsPlaying)
                 || (director.voteReveal != null && director.voteReveal.IsPlaying)
                 || (director.takeover != null && director.takeover.IsPlaying);
+
+            /// <summary>The card just started, taken to its block or its result: the first press's step, which the cards share.</summary>
+            private void SkipTheCardToItsResult()
+            {
+                if (!Active || Step != CeremonyStageStep.Playing) return;
+                if (director.keyCeremony != null && director.keyCeremony.IsPlaying) director.keyCeremony.SkipToResult();
+                else if (director.voteReveal != null && director.voteReveal.IsPlaying) director.voteReveal.SkipToResult();
+            }
 
             /// <summary>The card, on the screen. A card that declines its shape ends the stage: the caller's generic card plays instead.</summary>
             private void StartCard()

@@ -110,12 +110,21 @@ namespace Gamesim.Tests.PlayMode
             else yield return InstallStrategySeason(seed, shape);
             director.BuildNpcWorldForDiagnostics();
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+            AskForTheStages();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The stages and the walk outs asked for in a batch run, and reduced motion - which never
+        /// stages - switched off on the director, the rig and the bodies the way the motion tests do.
+        /// </summary>
+        private void AskForTheStages(bool reduced = false)
+        {
             director.StagesInBatchRuns = true;
             director.WalkOutsInBatchRuns = true;
-            typeof(EpisodeDirector).GetField("reducedMotion", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(director, false);
-            cameraRig.SetReducedMotion(false);
-            foreach (var visual in SceneComponents<CharacterPresentation>()) visual.SetReducedMotion(false);
-            yield return null;
+            typeof(EpisodeDirector).GetField("reducedMotion", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(director, reduced);
+            cameraRig.SetReducedMotion(reduced);
+            foreach (var visual in SceneComponents<CharacterPresentation>()) visual.SetReducedMotion(reduced);
         }
 
         /// <summary>Submits the house's next legal decisions until a ceremony is staged, or the cards play unstaged.</summary>
@@ -472,6 +481,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(keys.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
                 // MOCKUP-PASS-PLAN M2: a plate showed through the card's scrim on the HUD frame.
                 Assert.That(PlatesUp(), Is.Empty, "No plate is up under the keys on the HUD frame.");
+                // PACK8-PASS-PLAN A1: the skip chip is a staged ceremony's; the card on the HUD
+                // frame says what moves it on in its own lines.
+                yield return null;
+                Assert.That(director.CeremonySkipShowing, Is.False, "No skip chip over the keys on the HUD frame.");
             }
             yield return SkipReveals();
         }

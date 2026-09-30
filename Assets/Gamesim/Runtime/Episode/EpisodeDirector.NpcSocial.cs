@@ -101,15 +101,37 @@ namespace Gamesim.Episode
 
         private void EnsureNpcSocialWorld()
         {
-            if (npcMeetings != null || npcWorldFailed || npcDiagnosticsSuspended || projected == null
-                || !NpcSocialState.IsEligible(projected) || blockedRecovery) return;
+            if (npcMeetings != null || npcWorldFailed || npcDiagnosticsSuspended || projected == null || blockedRecovery) return;
+            if (!NpcSocialState.IsEligible(projected) && !WorldOutlastsFreeTime(projected)) return;
             CreateNpcSocialWorld();
         }
 
         /// <summary>
+        /// Whether a season loaded past its free time gets the house's world at once. A played
+        /// season has it there: it is built in the first social phase and kept through the week,
+        /// paused outside free time and the campaign (<see cref="TickNpcSocialRuntime"/>), where the
+        /// wander, the ceremonies' stages and the walk out borrow its people. A season loaded at
+        /// Head of Household, the nominations, the veto or eviction night had none until the next
+        /// social phase, so that week's ceremonies were never staged (PACK8-PASS-PLAN A1). The same
+        /// creation path, on <see cref="NpcSocialState.IsEligible"/>'s terms but two: the phase and
+        /// a pending diary, which pause the house's clock and not its people.
+        ///
+        /// <para>Not on finale night, where nothing borrows it. And a batch run builds it past free
+        /// time only when a test asks for the stages or the walk outs, the only things there that
+        /// use it: the fixtures installed past free time were written and measured against a house
+        /// with no world, and a world turns on the wander under them.</para>
+        /// </summary>
+        private bool WorldOutlastsFreeTime(EpisodeState state) =>
+            state.npcSocial != null && !NpcSocialState.IsEligiblePhase(state.phase) && !FinaleNight(state.phase)
+            && NpcSocialState.AutonomyHasBegun(state) && state.Find(state.playerId)?.status == ContestantStatus.Active
+            && state.Active.Count(actor => !actor.isPlayer) >= 2
+            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns);
+
+        /// <summary>
         /// Editor-only: builds the house's world now, as a season's first social phase does and a
-        /// played season then keeps. A fixture installed past that phase has none, and the walk out
-        /// borrows its people from it.
+        /// played season then keeps. A fixture installed past that phase in a batch run that asks
+        /// for neither stages nor walk outs has none (<see cref="WorldOutlastsFreeTime"/>), and the
+        /// walk out borrows its people from it.
         /// </summary>
         public void BuildNpcWorldForDiagnostics()
         {

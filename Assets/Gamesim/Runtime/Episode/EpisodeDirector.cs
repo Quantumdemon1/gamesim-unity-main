@@ -168,6 +168,8 @@ namespace Gamesim.Episode
             hud.RegisterOverlay(competitionCard.GetComponent<CanvasGroup>());
             keyCeremony = KeyCeremony.Attach(gameObject);
             keyCeremony.CueRequested += cue => { if (audioBed != null) audioBed.PlayCue(cue); };
+            // The staged ceremonies' skip, on screen while one runs (EpisodeDirector.CeremonyStage).
+            skipChip = CeremonySkipChip.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
             tutorial.RememberCompletion = SaveRootOverride == null;
             // The reference build's rising blip on every step of the tour.
@@ -344,6 +346,8 @@ namespace Gamesim.Episode
             // hold on the chrome reads whether it is still telling its story.
             TickCeremonyStage();
             TickCeremonies();
+            // After both have moved on: the chip says what a press does while a stage runs.
+            TickSkipChip();
             // The music follows what is on screen every frame, before anything can return early:
             // the opening's loading gate and its closing fade change in the middle of a beat, with
             // nothing rendering. A state the bed is already in costs a comparison.

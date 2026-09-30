@@ -131,7 +131,9 @@ namespace Gamesim.Tests.PlayMode
         /// <paramref name="throughWeek"/>: the walk below asserts a staged nomination and eviction in
         /// every week, and a player evicted on the way would end it early. Measured on the engine
         /// alone, as the other fixtures are found; the director plays the same decisions, and its
-        /// own world commits nothing in the frames the walk spends in free time.
+        /// own world commits nothing in the frames the walk spends in free time. Measured
+        /// 2026-09-30 from 52, eviction night: 52 loses the player in week two, 53 and 54 in week
+        /// three, and 55 keeps them to the final three.
         /// </summary>
         private static uint SeasonThePlayerSurvives(uint from, System.Action<EpisodeState> shape, int throughWeek)
         {
@@ -266,6 +268,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(body.gameObject.activeInHierarchy, Is.False, "the evicted go as they always went,");
             Assert.That(director.IsCeremonyStaged, Is.False, "the arena lets the stage go,");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "and the house's world is still running.");
+        }
+
+        /// <summary>
+        /// A season continued at the nominations (PACK8-PASS-PLAN §1.1, "a load mid-week"): the
+        /// house's world was built only in free time and the campaign, so a load at the nominations
+        /// had none and that week's ceremonies were never staged. It is built from the load now, as
+        /// a played season carries it, paused outside free time - and without the diagnostic build
+        /// the stage's other fixtures use.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_ASeasonLoadedAtTheNominationsStagesThem()
+        {
+            HoldTheHouseForTheFixture();
+            yield return InstallStrategySeason(51, AtNomination);
+            yield return Frames(3);
+            if (Application.isBatchMode)
+                Assert.That(director.NpcAutonomyReady, Is.False,
+                    "A batch run asking for neither stages nor walk outs builds no world past free time: its fixtures were written without one.");
+            AskForTheStages();
+            yield return WaitFor(() => director.NpcAutonomyReady, 5f, "The loaded season builds the house's world at the nominations.");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+            Assert.That(NpcSocialState.IsEligible(director.Snapshot), Is.False, "The nominations are past free time: the world is there, paused.");
+
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The nomination of a season loaded at the nominations is staged.");
+            Assert.That(director.CeremonyStageKind, Is.EqualTo(CeremonySting.NominationKind));
+            director.SkipCeremonySummons();
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the card plays");
+            var keys = SceneComponents<KeyCeremony>().Single();
+            Assert.That(keys.Surface != null && keys.Surface.Room == "Nomination", Is.True, "on the nomination table's screen.");
+            yield return SkipReveals();
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
         }
 
         /// <summary>

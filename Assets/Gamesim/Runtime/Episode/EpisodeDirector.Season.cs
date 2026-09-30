@@ -410,6 +410,7 @@ namespace Gamesim.Episode
             if (juryReveal != null) juryReveal.FontScale = largeText ? 1.2f : 1;
             if (competitionCard != null) competitionCard.FontScale = largeText ? 1.2f : 1;
             if (keyCeremony != null) keyCeremony.FontScale = largeText ? 1.2f : 1;
+            if (skipChip != null) skipChip.FontScale = largeText ? 1.2f : 1;
             if (tutorial != null) { tutorial.FontScale = largeText ? 1.2f : 1; tutorial.ReducedMotion = reducedMotion; }
             if (opening != null) opening.FontScale = largeText ? 1.2f : 1;
             if (seasonReport != null) { seasonReport.FontScale = largeText ? 1.2f : 1; seasonReport.ReducedMotion = reducedMotion; }

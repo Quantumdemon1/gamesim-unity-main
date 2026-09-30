@@ -1040,6 +1040,49 @@ it). Every other decision takes its recommendation unless the owner rules otherw
 - **The Diary Room's jury number** (ENDGAME decision 12). It sits next to the jury house but is not in these mockups, and stays with ENDGAME F4.
 - **Anything numeric from the mockups themselves.** Their counts are inconsistent: for example, 8 houseguests beside 7 jurors plus a 2nd and 3rd place.
 
+## Build log
+
+**2026-09-29, wave 1 and the gallery**
+
+M1-M4 were each built in a worktree of its own, reviewed adversarially, fixed, and merged as f4c1483.
+The living room's couch gallery (M20-M22) landed as 838fe72, with its fix a677e17. On the UMA-free
+copy: EditMode 1947/1947 and PlayMode 630/630. Floors: EditMode 1947 and PlayMode 657; the full
+suite runs 27 more PlayMode tests where UMA is present.
+
+- **M1.** The status line words each phase: 'Week 4 · Final HoH, Part 2 of 3'. A runner-up whose
+  speech opens like the winner's quotes their next sentence (`EndScreenKit.ExcerptBeside`). A tied
+  fallback placement breaks by the week each juror left (`SeasonReport.StandingsOrder`). The champion's
+  road and your season count the final parts in COMP WINS; the career cell adds 'HoH and veto' under
+  its caption. The Final 2 columns stand level. The veto cards say who plays and which way the meeting
+  went.
+- **M2.**
+  - Name plates and the player's disc go down for every staged card and every walk-out.
+  - The endgame cards hold the HUD chrome.
+  - The SAFE chip clears the Head of Household's line.
+  - The cloned living screen stops idling on NOMINATIONS.
+  - The yard's sign reads the right way round.
+
+  *Follow-up:* in the competition-yard-sign capture the sign's second line (the category) stands
+  behind a gold arch over the deck's middle. Three measured fixes failed to move it: standing it at
+  the centre gate's depth, clearing every tall piece over the deck's middle, and counting the HOH neon.
+  Each capture was unchanged, so the arch is not what the lookup finds. Name it with a diagnostic first
+  (the renderer under the camera ray to the line), then clear it.
+- **M3.**
+  - The jury in the house pill from the Final 3, and '2 Finalists' at the Final 2.
+  - The finale strap and phase titles.
+  - A crowned objective chip and a gold objectives card with its tagline.
+  - 'View all' on Recent Events.
+  - 'Prepare your final case' leading the Final 2 objectives under the finale rules, with 'Not locked'
+    once the speech is in without a lock.
+- **M4.** The jury reveal ends on its count as a headline: 'BY A VOTE OF', a tie, or a jury of one.
+  The finale panel gains `Watch finale replay` and `The jury's questions`.
+- **M20-M22.** See CEREMONY-CUTSCENES-PLAN 8.2.3's as-built note. Faults the full suites found, fixed:
+  - Seat approaches off the baked edge left a strip that one seated body closed.
+  - The lighting pass marked the room finish static.
+  - The placement pass destroyed the anchors hung on set pieces, so its resolver protected 9
+    approaches of 16.
+  - Start spots beside the east arm pinched its lane.
+
 ## 6. Review corrections
 
 A completeness critic read this plan against the verified gap map and the code. Its corrections

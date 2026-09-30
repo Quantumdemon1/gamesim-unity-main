@@ -45,18 +45,17 @@ namespace Gamesim.Episode
         /// <para>With a <paramref name="fitHeight"/>, the grid - its heading apart - takes no more
         /// than that many units: the cards shrink, as many to a row as the column holds, until every
         /// face fits in the height a one-screen step leaves them (PACK8-PASS-PLAN A3). Never below
-        /// <see cref="FaceCardFloor"/>, where a name would stop reading; the names, the photos and the
-        /// role pills are the ones a card always carries.</para>
+        /// <see cref="FaceCardFloor"/>, where a name would stop reading: a house too big for the
+        /// height at that width runs taller than asked (see <see cref="FaceGrid"/>). The names, the
+        /// photos and the role pills are the ones a card always carries.</para>
         /// </summary>
         public void CeremonyFaces(string heading, IReadOnlyList<CeremonyFace> faces, float cardWidth = 150f, float fitHeight = 0f)
         {
             if (faces == null || faces.Count == 0 || content == null) return;
             if (!string.IsNullOrEmpty(heading)) Eyebrow(heading, UiTheme.Muted);
-            float s = FontScale, width = cardWidth * s, gap = 14f * s;
-            if (fitHeight > 0f) width = FittedFaceWidth(faces.Count, width, fitHeight, gap);
+            float s = FontScale, gap = FaceGap * s;
+            FaceGrid(faces.Count, ContentWidth(), cardWidth * s, fitHeight, s, out float width, out int columns);
             float photo = width * 1.12f, height = photo + 50f * s;
-            int columns = Mathf.Max(1, Mathf.FloorToInt((ContentWidth() + gap) / (width + gap)));
-            columns = Mathf.Min(columns, faces.Count);
             int rows = Mathf.CeilToInt(faces.Count / (float)columns);
             var grid = new GameObject(CeremonyFacesName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
             grid.SetParent(content, false);
@@ -97,24 +96,49 @@ namespace Gamesim.Episode
 
         /// <summary>The narrowest a fitted face card goes, at the resting text size: a first name at 10 still reads under a photo this wide.</summary>
         public const float FaceCardFloor = 64f;
+        /// <summary>The gap between face cards, across and down, at the resting text size.</summary>
+        public const float FaceGap = 14f;
 
         /// <summary>
-        /// The widest card, no wider than <paramref name="widest"/>, at which <paramref name="count"/>
-        /// faces fit the column in <paramref name="fitHeight"/>: tried at every number of rows, as
+        /// A face grid's card width and how many cards stand to a row, for <paramref name="count"/>
+        /// faces in a column <paramref name="column"/> wide at the text scale <paramref name="scale"/>.
+        ///
+        /// <para>Without a <paramref name="fitHeight"/> each card is <paramref name="widest"/>, as
+        /// many to a row as the column holds. With one, the card is the widest, no wider than that,
+        /// at which every face fits the column in that height: tried at every number of rows, as
         /// many to a row as that makes, because a second row of large faces can beat one row of
-        /// small ones. A card is its photo (1.12 of its width) and a 50-unit foot.
+        /// small ones. A card is its photo (1.12 of its width) and a 50-unit foot.</para>
+        ///
+        /// <para>Never below <see cref="FaceCardFloor"/>. There the height is given up rather than
+        /// the names, and the grid runs taller than asked: sixteen faces at the larger text do not
+        /// fit a short step at any width a name still reads at.</para>
         /// </summary>
-        private float FittedFaceWidth(int count, float widest, float fitHeight, float gap)
+        public static void FaceGrid(int count, float column, float widest, float fitHeight, float scale, out float width, out int columns)
         {
-            float s = FontScale, best = 0f, column = ContentWidth();
-            for (int rows = 1; rows <= count; rows++)
+            float gap = FaceGap * scale;
+            width = widest;
+            int solved = 0;
+            if (fitHeight > 0f)
             {
-                int columns = Mathf.CeilToInt(count / (float)rows);
-                float byWidth = (column - (columns - 1) * gap) / columns;
-                float byHeight = ((fitHeight - (rows - 1) * gap) / rows - 50f * s) / 1.12f;
-                best = Mathf.Max(best, Mathf.Min(widest, byWidth, byHeight));
+                float best = 0f;
+                for (int rows = 1; rows <= count; rows++)
+                {
+                    int across = Mathf.CeilToInt(count / (float)rows);
+                    float byWidth = (column - (across - 1) * gap) / across;
+                    float byHeight = ((fitHeight - (rows - 1) * gap) / rows - 50f * scale) / 1.12f;
+                    float fits = Mathf.Min(widest, byWidth, byHeight);
+                    if (fits > best) { best = fits; solved = across; }
+                }
+                width = best;
+                // At the floor the card is wider than the fit allowed, so the count it was solved
+                // at may not fit across the column: the division below decides the row then.
+                if (width < FaceCardFloor * scale) { width = FaceCardFloor * scale; solved = 0; }
             }
-            return Mathf.Max(best, FaceCardFloor * s);
+            columns = Mathf.Max(1, Mathf.FloorToInt((column + gap) / (width + gap)));
+            // When the column's own width set the card, dividing the column by it again is exactly
+            // the count it was solved at in real arithmetic, and float division can floor that one
+            // short: ten faces at the larger text became two rows, twice the height asked.
+            columns = Mathf.Min(Mathf.Max(columns, solved), Mathf.Max(1, count));
         }
 
         /// <summary>The campaign's grid of the votes, the name a test finds it by.</summary>

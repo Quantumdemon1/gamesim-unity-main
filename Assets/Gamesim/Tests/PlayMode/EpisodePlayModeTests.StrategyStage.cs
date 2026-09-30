@@ -25,8 +25,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The strategy screen now open is on the strategy stage: most of the frame, the whole of it
         /// from under the top bar to the foot and from the rail's column to the edge, clear of the
-        /// rail and of the status line it moved under the rail; the way on pinned once and nothing
-        /// else pinned beside it; the scroll clear of it; and the hidden hint still true of the scroll.
+        /// rail and of the status line it moved under the rail, which says all of its words there;
+        /// the way on pinned once and nothing else pinned beside it; the scroll clear of it; and the
+        /// hidden hint still true of the scroll.
         /// </summary>
         private void AssertOnTheStrategyStage(string wayOn, string where)
         {
@@ -51,6 +52,12 @@ namespace Gamesim.Tests.PlayMode
             var status = ScreenRect(ActiveRect("Status"));
             Assert.That(status.Overlaps(ScreenRect(ActiveRect("Rail ground"))), Is.False, "The status line stands under the rail, not on it.");
             Assert.That(status.xMin >= -.5f && status.yMin >= -.5f, Is.True, "and on the frame: " + status + ".");
+            // The gutter is a fraction of the width the line had over the strip: it grows up towards
+            // the rail rather than cutting off a commit's outcome after two short lines.
+            var said = ActiveRect("Status").GetComponentsInChildren<TMP_Text>().Single();
+            said.ForceMeshUpdate(true);
+            Assert.That(said.isTextTruncated, Is.False,
+                "The status line says all of '" + said.text + "', at " + said.fontSize.ToString("0.#") + " in a box " + said.rectTransform.rect.size + ".");
 
             var pinned = panel.Cast<Transform>().Select(child => child.GetComponent<Button>())
                 .Where(button => button != null && button.IsActive() && button.name != "Close  [Esc]")
@@ -201,8 +208,9 @@ namespace Gamesim.Tests.PlayMode
         /// status cards and a tracker in the fixed header, outside the scroll and above it, where
         /// only a step that opens something is a control; a secondary slot and an Up next strip on
         /// the footer's row beside the way on, a warning outranking the Up next line; and faces
-        /// fitted to the height a step leaves them, under the names a card always carries. Built and
-        /// read in one frame, so no render can replace them under the test.
+        /// fitted to the height a step leaves them, under the names a card always carries, and ten
+        /// of them at the larger text in the one row their width was solved for. Each part is built
+        /// and read in one frame, so no render can replace it under the test.
         /// </summary>
         [UnityTest]
         public IEnumerator StrategyStage_ItsHeaderAndFooterStandOutsideTheScroll()
@@ -293,8 +301,56 @@ namespace Gamesim.Tests.PlayMode
             }
             var crown = grid.Find("Face · " + state.Find(hoh).name).GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Role");
             Assert.That(crown.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("HOH"), "and the Head of Household their pill.");
+
+            // Ten faces at the larger text in a step one row of them fills on either canvas, where
+            // the column's width sets the card: dividing the column by that width again floored one
+            // short on the 16:9 frame, and two rows ran past the height (FaceGridTests has the sweep).
             director.ClosePanels();
+            yield return ApplyTextSize(true);
+            yield return OpenStation();
             yield return null;
+            var ten = Enumerable.Range(0, 10).Select(i => house[i % house.Count]).ToList();
+            hud.CeremonyFaces("Probe ten", ten, 150f, 250f);
+            Canvas.ForceUpdateCanvases();
+            var row = ActiveRect("Episode content").Cast<Transform>().Last(child => child.name == EpisodeHud.CeremonyFacesName);
+            Assert.That(row.GetComponent<LayoutElement>().preferredHeight, Is.LessThanOrEqualTo(250f + .5f),
+                "Ten faces at the larger text fit the height asked, in " + row.GetComponent<GridLayoutGroup>().constraintCount + " to a row.");
+            Assert.That(row.GetComponent<GridLayoutGroup>().constraintCount, Is.EqualTo(10), "one row of them, the row their width was solved for.");
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// The status line under the rail with a line as long as a story's outcome with "Saved
+        /// locally." after it, at both text sizes: it grows up towards the rail, stays clear of the
+        /// rail and of the stage, and says every word. It was a box 148 units wide and two short
+        /// lines deep, and the end of what a commit did was cut off.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StrategyStage_TheStatusLineUnderTheRailSaysALongLineWhole()
+        {
+            const string line = "The episode changed. Review a new diary choice before confirming.  ·  Saved locally.";
+            yield return InstallStrategySeason(47, state => AtVetoMeeting(state, false));
+            foreach (bool larger in new[] { false, true })
+            {
+                if (larger)
+                {
+                    director.ClosePanels();
+                    yield return ApplyTextSize(true);
+                }
+                // The director's line, as a commit leaves it, and then the panel rendered over it; a
+                // frame after, so the stage is drawn as a player sees it.
+                NpcWrite("message", line);
+                yield return OpenStation();
+                yield return null;
+                Assert.That(director.StatusMessage, Is.EqualTo(line), "Nothing has said anything else since.");
+                AssertOnTheStrategyStage("Continue episode", "The veto meeting under a long status line" + (larger ? " at the larger text" : ""));
+                var status = ActiveRect("Status");
+                Assert.That(status.GetComponentsInChildren<TMP_Text>().Single().text, Is.EqualTo(line), "The line is the one the director holds,");
+                Assert.That(status.rect.height, Is.GreaterThan(50f * (larger ? 1.2f : 1f) + .5f), "and it grew to hold it.");
+            }
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
         }
     }
 }

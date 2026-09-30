@@ -87,8 +87,10 @@ namespace Gamesim.Episode
         /// </summary>
         public void HouseEventHeader(string title, string narrative, string kind = "HOUSE EVENT")
         {
-            // A plea on the campaign is drawn inside the strategy stage, never the band, and the way
-            // on stays pinned (PACK8-PASS-PLAN decision 7); free time's events keep their band.
+            // A plea on the campaign, or a house event still waiting there, is drawn inside the
+            // strategy stage, never the band, and the way on stays pinned (PACK8-PASS-PLAN decision
+            // 7): the band would make the whole campaign scroll again, and the stage covers the
+            // people it framed. Free time's events keep their band.
             if (activityLayout != ActivityLayout.Strategy) SetActivityLayout(ActivityLayout.HouseEvent);
             var eyebrow = DecisionText(content, kind, 12, UiTheme.Joke);
             eyebrow.characterSpacing = 8f;

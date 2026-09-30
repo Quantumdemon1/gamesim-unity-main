@@ -105,10 +105,17 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Moves the status line into the foot of the left gutter, under the rail, so the stage can
-        /// run to the frame's foot and the line is still where a rejected commit is said. The last
-        /// child of each name, not Find's first: Begin's rebuild leaves the last render's chrome under
-        /// the canvas, inactive, until the frame ends, ahead of the new. False, with the line left
-        /// where it was, when the gutter under the rail is too short to hold it.
+        /// run to the frame's foot and the line is still where a commit's outcome and a rejected
+        /// commit's reason are said. The last child of each name, not Find's first: Begin's rebuild
+        /// leaves the last render's chrome under the canvas, inactive, until the frame ends, ahead of
+        /// the new. False, with the line left where it was, when the gutter under the rail is too
+        /// short to hold it.
+        ///
+        /// <para>The gutter is a fraction of the width the line had over the strip, where it grew to
+        /// fit its words, and an outcome with "Saved locally." after it is several of the gutter's
+        /// lines. So the line grows upward instead: as tall as its words need at their own size, no
+        /// taller than the gutter under the rail, where the auto-size takes them down a size or two.
+        /// Only words the gutter cannot hold even then end in an ellipsis, never mid-word.</para>
         /// </summary>
         private bool StatusIntoGutter(float canvasHeight)
         {
@@ -122,7 +129,24 @@ namespace Gamesim.Episode
             float height = StatusHeight * FontScale;
             // The rail's ground hangs from the frame's top: its foot is how far down it starts plus its height.
             float railFoot = rail != null ? -rail.anchoredPosition.y + rail.sizeDelta.y : IconRail.Top + IconRail.Height(6, FontScale);
-            if (canvasHeight - railFoot - FrameGapUnits < StrategyFoot + height) return false;
+            float room = canvasHeight - railFoot - FrameGapUnits - StrategyFoot;
+            if (room < height) return false;
+            var caption = status.GetComponentInChildren<TMP_Text>();
+            if (caption != null)
+            {
+                // The caption is stretched over the line, inset on every side (Begin), so it follows
+                // the line's height; it is measured at its own size, not the one the auto-size picked
+                // for the box it was built in.
+                var box = caption.rectTransform;
+                float inner = IconRail.Width - box.offsetMin.x + box.offsetMax.x, ends = box.offsetMin.y - box.offsetMax.y;
+                bool autoSize = caption.enableAutoSizing; float size = caption.fontSize;
+                caption.enableAutoSizing = false; caption.fontSize = caption.fontSizeMax;
+                float need = Mathf.Ceil(caption.GetPreferredValues(caption.text, inner, 0f).y) + ends;
+                caption.fontSize = size; caption.enableAutoSizing = autoSize;
+                height = Mathf.Clamp(need, height, room);
+                caption.overflowMode = TextOverflowModes.Ellipsis;
+            }
+            // Anchored at its foot, so a taller line grows up towards the rail.
             Anchor(status, Vector2.zero, Vector2.zero, new Vector2(14f, StrategyFoot), new Vector2(IconRail.Width, height));
             return true;
         }

@@ -135,6 +135,9 @@ namespace Gamesim.Presentation
         public const string KitEmptyVotes = "Kit6_Refinement/EmptyStates/votes_no_records";
         public const string KitEmptyPrivate = "Kit6_Refinement/EmptyStates/private_no_decision";
 
+        // The finale's card (Pack 3): the juror's two cases on the vote (MOCKUP-PASS M8, mockup 50).
+        public const string FinalistCard = "Pack3_Systems/FinaleJury/finalist_card_9slice";
+
         // Season Complete Pack 7: the season's end and the week's (SeasonReport, WeeklyRecapScreen;
         // ASSET-PACKS.md, Pack 7). The chart strips (Charts/bar_*, jury_vote_stacked_bar) are not
         // here on purpose: each bakes a fill into its pixels, and a bar drawn from one would show

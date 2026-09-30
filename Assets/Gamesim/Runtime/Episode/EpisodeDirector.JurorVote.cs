@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -30,15 +31,15 @@ namespace Gamesim.Episode
             state != null && state.phase == EpisodePhase.Jury && EpisodeHud.IsJuror(state.Find(state.playerId))
             && !state.votes.Any(vote => vote.voterId == state.playerId);
 
+        /// <summary>Where a juror's case says its quote came from, when it is the finalist's final speech.</summary>
+        public const string FinalSpeechSource = "From the final speech";
+
         private void JurorBallot(EpisodeState state)
         {
             hud.ScreenHead("THE JURY VOTES", "WHO DESERVES TO WIN?", JuryPrivacyLine);
             hud.CertaintyLegend();
             var finalists = state.Active.ToList();
-            hud.FinalistColumns(finalists.Select(actor => new EpisodeHud.FinalistColumn
-            {
-                Actor = actor, Read = FinalistRead.JurorCase(state, actor.id),
-            }).ToList());
+            hud.FinalistColumns(JurorCases(state, finalists));
             hud.BallotCards(state, finalists.Select(actor => actor.id).ToList(), null,
                 id => "Vote for " + state.Find(id).name + " to win",
                 id => Commit(state, EpisodeCommandKind.CastVote, id),
@@ -61,6 +62,32 @@ namespace Gamesim.Episode
                 hud.CardLine(state.Find(speech.speakerId)?.name ?? "A finalist", 16, UiTheme.Paper, UiTheme.Weight.SemiBold);
                 hud.CardLine(string.IsNullOrEmpty(speech.text) ? "No final speech was given." : speech.text, 14, UiTheme.Muted);
             }
+        }
+
+        /// <summary>
+        /// The finalists' cases as the juror's cards (MOCKUP-PASS M8, mockup 50). Each quotes the
+        /// first sentence of its finalist's final speech, never a sentence a card beside it already
+        /// shows (<see cref="EndScreenKit.ExcerptBeside"/>); without one, the line they introduced
+        /// themselves with; without either, nothing. Recorded words only.
+        /// </summary>
+        private static List<EpisodeHud.FinalistColumn> JurorCases(EpisodeState state, IList<ContestantState> finalists)
+        {
+            var columns = new List<EpisodeHud.FinalistColumn>();
+            var shown = new List<string>();
+            foreach (var actor in finalists)
+            {
+                var read = FinalistRead.JurorCase(state, actor.id);
+                string speech = state.finalSpeeches?.FirstOrDefault(item => item.speakerId == actor.id)?.text;
+                string quote = EndScreenKit.ExcerptBeside(speech, 110, shown.ToArray());
+                if (quote != null) shown.Add(speech);
+                columns.Add(new EpisodeHud.FinalistColumn
+                {
+                    Actor = actor, Read = read, JurorCase = true,
+                    Quote = quote ?? read?.line,
+                    QuoteSource = quote != null ? FinalSpeechSource : null,
+                });
+            }
+            return columns;
         }
     }
 }

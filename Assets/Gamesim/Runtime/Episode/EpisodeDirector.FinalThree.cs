@@ -81,11 +81,26 @@ namespace Gamesim.Episode
             hud.FinalistColumns(columns);
         }
 
+        /// <summary>The final Head of Household's screen's head (MOCKUP-PASS M8, mockup 59).</summary>
+        public const string FinalTwoHeadTitle = "CHOOSE WHO JOINS YOU IN THE FINAL 2";
+        public const string FinalTwoHeadLine = "What you know about each of them, and what taking each one means. Nothing here is a prediction.";
+
+        /// <summary>The head the final Head of Household's choice opens with, in the crown's gold under the crown.</summary>
+        private void FinalTwoHead() => hud.CrownedScreenHead(FinalTwoHeadTitle, null, FinalTwoHeadLine);
+
+        /// <summary>
+        /// What taking <paramref name="take"/> does, as the engine settles it: the other finalist
+        /// joins the jury, and the jury's questions come to the two left (EpisodeFinale's exchanges,
+        /// each asked of the player with the other finalist's answer recorded beside it).
+        /// </summary>
+        public static string FinalChoiceConsequence(ContestantState take, ContestantState cut) =>
+            FinalistRead.FirstName(cut.name) + " joins the jury; you and " + FinalistRead.FirstName(take.name) + " face the jury's questions.";
+
         /// <summary>
         /// The final Head of Household's choice: the two finalists as cards, what taking each means,
         /// the warning, and under each card "Take {name} to the Final 2" over the control that
         /// does it, which evicts the other and keeps the caption the tests and the season walks
-        /// press, <c>Evict {name}</c>.
+        /// press, <c>Evict {name}</c>. What the certainty words mean is the screen's footnote.
         /// </summary>
         private void FinalTwoChoice(EpisodeState state)
         {
@@ -97,7 +112,6 @@ namespace Gamesim.Episode
                 foreach (var candidate in others) { string id = candidate.id; hud.PairedActionFor(pairs, id, "Evict " + candidate.name, () => Commit(state, EpisodeCommandKind.FinalEvict, id)); }
                 return;
             }
-            hud.CertaintyLegend();
             // Whatever the choice: the Final 2 agreements with anyone but the two finalists end broken.
             var broken = FinalistRead.BrokenEitherWay(state);
             if (broken.Count > 0)
@@ -115,10 +129,12 @@ namespace Gamesim.Episode
                     Headline = "Take " + take.name + " to the Final 2",
                     Caption = "Evict " + cut.name,
                     Warning = FinalChoiceWarning,
+                    Consequence = FinalChoiceConsequence(take, cut),
                     Choose = () => Commit(state, EpisodeCommandKind.FinalEvict, cutId),
                 });
             }
             hud.FinalistColumns(columns);
+            hud.CertaintyLegend();
         }
     }
 }

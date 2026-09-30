@@ -125,6 +125,8 @@ namespace Gamesim.Tests.PlayMode
             var stoodAt = cutBody.transform.position;
             ButtonWithCaption("Evict " + cut.name).onClick.Invoke();
             yield return Frames(2);
+            Assert.That(director.Snapshot.Find(cut.id).status, Is.EqualTo(ContestantStatus.Jury),
+                "One press commits the choice: the ring and the gold edge on its column are decoration (MOCKUP-PASS M8).");
             Assert.That(Flat(cutBody.transform.position, stoodAt), Is.LessThan(0.3f),
                 "The new juror is not taken to the jury while the card is about them.");
             var takeover = SceneComponents<CeremonyTakeover>().Single();

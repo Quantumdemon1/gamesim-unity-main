@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Presentation;
@@ -63,6 +64,7 @@ namespace Gamesim.Tests.PlayMode
                 var panel = LastActive("Episode panel");
                 string words = Words(panel);
                 Assert.That(words, Does.Contain("THE JURY VOTES").And.Contain(EpisodeDirector.JuryPrivacyLine).And.Contain("YOUR VOTE"));
+                var quotes = new List<string>();
                 foreach (var finalist in state.Active)
                 {
                     var card = LastActive(EpisodeHud.FinalistCardPrefix + finalist.name);
@@ -73,7 +75,42 @@ namespace Gamesim.Tests.PlayMode
                     AssertDecisionCopyFits(card);
                     var vote = ButtonWithCaption("Vote for " + finalist.name + " to win");
                     Assert.That(vote.transform.IsChildOf(LastActive(EpisodeHud.BallotRowName)), Is.True, "The vote is a ballot card.");
+
+                    // MOCKUP-PASS M8 (mockup 50): the finale's card, its name in capitals, one photo,
+                    // the three public numbers, the player's standing and agreement on one line, the
+                    // crown on the final Head of Household alone, and a quote from the final speech.
+                    string caseWords = Words(card);
+                    Assert.That(card.Find("Finale frame"), Is.Not.Null, "The finale's card behind the case.");
+                    Assert.That(caseWords, Does.Contain(finalist.name.ToUpperInvariant()));
+                    Assert.That(card.GetComponentsInChildren<CharacterPortraitBinding>(true), Has.Length.EqualTo(1), "A photo bound to them.");
+                    var read = FinalistRead.JurorCase(state, finalist.id);
+                    Assert.That(card.GetComponentsInChildren<TMP_Text>().Where(text => text.name == "Stat value").Select(text => text.text),
+                        Is.EqualTo(new[] { read.wins.ToString(), read.votesSurvived.ToString(), finalist.timesNominated.ToString() }),
+                        "Comp wins, votes survived and times on the block, from the record.");
+                    Assert.That(caseWords, Does.Contain("YOU AND " + FinalistRead.FirstName(finalist.name).ToUpperInvariant()));
+                    Assert.That(caseWords.Contains("FINAL HEAD OF HOUSEHOLD"), Is.EqualTo(finalist.id == FinalistRead.FinalHeadOfHousehold(state)),
+                        "The crown is on the final Head of Household's case, and on nobody else's.");
+                    var quote = card.GetComponentsInChildren<TMP_Text>().SingleOrDefault(text => text.name == "Quote");
+                    Assert.That(quote, Is.Not.Null, finalist.name + " spoke, so their case quotes them.");
+                    string speech = state.finalSpeeches.Single(item => item.speakerId == finalist.id).text;
+                    // Its words, less the marks around them and any ellipsis where a long one was cut.
+                    string sentence = quote.text.Trim('“', '”').TrimEnd('…');
+                    bool fromSpeech = card.GetComponentsInChildren<TMP_Text>().Any(text => text.name == "Quote source" && text.text == EpisodeDirector.FinalSpeechSource);
+                    // The first case always quotes the speech; a later one gives way to the line they
+                    // introduced themselves with only when its speech would repeat the case beside it.
+                    if (quotes.Count == 0) Assert.That(fromSpeech, Is.True, "The first case quotes the final speech.");
+                    if (fromSpeech) Assert.That(speech, Does.Contain(sentence), "The quote is their own words from the final speech.");
+                    else Assert.That(sentence, Is.EqualTo(read.line), "Otherwise their own introduction, never invented words.");
+                    quotes.Add(sentence);
                 }
+                Assert.That(quotes.Distinct().Count(), Is.EqualTo(quotes.Count), "No case repeats the quote beside it.");
+                if (!larger)
+                {
+                    var versus = LastActive(EpisodeHud.VersusName);
+                    Assert.That(versus, Is.Not.Null, "The two cases are set against each other.");
+                    Assert.That(Words(versus), Does.Not.Contain("JOURNEYS"), "No tagline the owner has not approved (decision 10).");
+                }
+                AssertEveryLabelDraws(LastActive(EpisodeHud.FinalistColumnsName), "The juror's cases (" + (larger ? "larger" : "resting") + " text)");
                 Assert.That(LastActive(EpisodeHud.JurorMattersName), Is.Not.Null, "What matters to you.");
                 Assert.That(words, Does.Not.Contain("Trust "), "No trust number on the vote.");
 

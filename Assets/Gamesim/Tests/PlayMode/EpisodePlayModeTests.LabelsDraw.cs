@@ -41,6 +41,23 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(empty, Is.Empty, where + ": copy that draws nothing: " + string.Join(" | ", empty));
         }
 
+        /// <summary>The same sweep over one part of the screen: every label with copy under <paramref name="root"/> draws some of it.</summary>
+        private static void AssertEveryLabelDraws(RectTransform root, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var empty = root.GetComponentsInChildren<TMP_Text>()
+                .Where(label => label.enabled && label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text))
+                .Where(label =>
+                {
+                    label.ForceMeshUpdate(true);
+                    var info = label.textInfo;
+                    return !info.characterInfo.Take(info.characterCount).Any(glyph => glyph.isVisible);
+                })
+                .Select(label => "'" + label.text + "' (" + label.name + ", box " + label.rectTransform.rect.size.ToString("0") + ")")
+                .ToArray();
+            Assert.That(empty, Is.Empty, where + ": copy that draws nothing: " + string.Join(" | ", empty));
+        }
+
         [UnityTest]
         public IEnumerator Labels_EveryScreenAndCardDrawsItsCopy()
         {

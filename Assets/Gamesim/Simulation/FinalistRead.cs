@@ -25,6 +25,8 @@ namespace Gamesim.Simulation
         public const string Strong = "Strong", Moderate = "Moderate", Light = "Light";
         /// <summary>A juror's lean toward a finalist, as far as the player can tell.</summary>
         public const string Support = "support", Bitter = "bitter", Uncertain = "uncertain";
+        /// <summary>Why a juror the player has evidence both ways about is uncertain.</summary>
+        public const string MixedSignals = "mixed signals";
         /// <summary>A learned standing this warm or this cold says something; the engine's own bands for a told or overheard read.</summary>
         public const double WarmStanding = 25, ColdStanding = -25;
         /// <summary>The player's own standing bands, as <c>RelationshipWeb.KindOf</c> draws them.</summary>
@@ -41,6 +43,8 @@ namespace Gamesim.Simulation
         public sealed class JurorLean
         {
             public string jurorId, lean, certainty, reason;
+            /// <summary>The juror's first name, as the card lists them under their count.</summary>
+            public string name;
         }
 
         public sealed class Finalist
@@ -55,6 +59,20 @@ namespace Gamesim.Simulation
             /// <summary>The facts a card shows when they are not the finalist's seven: a juror's case (<see cref="JurorCase"/>).</summary>
             public List<Fact> caseFacts;
             public IEnumerable<Fact> Facts => (IEnumerable<Fact>)caseFacts ?? new[] { resume, relationship, agreement, alliances, support, bitterness, uncertain };
+
+            /// <summary>
+            /// The player's own score toward them, the value the cast strip's bar is drawn from. The
+            /// card draws it as that bar and never prints it: it is the player's reading, not theirs.
+            /// </summary>
+            public double standing;
+            /// <summary>The line under the player's standing, from the record only (<see cref="RelationshipLine"/>), or null.</summary>
+            public string standingLine;
+            /// <summary>The parts of the final Head of Household they won, 1 and 2, in order.</summary>
+            public List<int> finalPartsWon = new List<int>();
+            /// <summary>Eviction votes they sat on the block through and stayed (<see cref="VotesSurvived"/>).</summary>
+            public int votesSurvived;
+            /// <summary>Whether they are the final Head of Household on the record (<see cref="FinalHeadOfHousehold"/>).</summary>
+            public bool finalHead;
         }
 
         /// <summary>The jurors, as the engine's jury vote counts one: Jury, or Evicted on an older save. Never the player.</summary>
@@ -74,7 +92,13 @@ namespace Gamesim.Simulation
             read.wins = Wins(s, actor);
             read.grade = Grade(s, actor);
             read.resume = new Fact("Competition record", read.grade + " · " + Record(s, actor), Confirmed);
+            if (s.finalPart1WinnerId == actor.id) read.finalPartsWon.Add(1);
+            if (s.finalPart2WinnerId == actor.id) read.finalPartsWon.Add(2);
+            read.votesSurvived = VotesSurvived(s, actor.id);
+            read.finalHead = FinalHeadOfHousehold(s) == actor.id;
             read.relationship = new Fact("Your relationship", StandingWord(s, actor.id), Confirmed);
+            read.standing = s.Score(s.playerId, actor.id);
+            read.standingLine = RelationshipLine(s, actor.id);
             // The player is party to any agreement there is; with none there is nothing to go on.
             string agreement = Agreement(s, actor.id);
             read.agreement = agreement != null ? new Fact("Final 2 agreement", agreement, Confirmed) : new Fact("Final 2 agreement", "None with you", Unknown);
@@ -275,12 +299,13 @@ namespace Gamesim.Simulation
             if (s.ledger?.claims != null && s.ledger.claims.Any(c => c.voterId == finalistId && VotedAgainst(s, c) == jurorId))
                 Against(Confirmed, "voted to evict them");
 
+            string name = FirstName(s, jurorId);
             if (forCertainty != null && againstCertainty == null)
-                return new JurorLean { jurorId = jurorId, lean = Support, certainty = forCertainty, reason = forReason };
+                return new JurorLean { jurorId = jurorId, name = name, lean = Support, certainty = forCertainty, reason = forReason };
             if (againstCertainty != null && forCertainty == null)
-                return new JurorLean { jurorId = jurorId, lean = Bitter, certainty = againstCertainty, reason = againstReason };
-            return new JurorLean { jurorId = jurorId, lean = Uncertain, certainty = Unknown,
-                reason = forCertainty != null ? "mixed signals" : "nothing to go on" };
+                return new JurorLean { jurorId = jurorId, name = name, lean = Bitter, certainty = againstCertainty, reason = againstReason };
+            return new JurorLean { jurorId = jurorId, name = name, lean = Uncertain, certainty = Unknown,
+                reason = forCertainty != null ? MixedSignals : "nothing to go on" };
         }
 
         /// <summary>
@@ -423,6 +448,53 @@ namespace Gamesim.Simulation
                 default:
                     return null;
             }
+        }
+
+        // ------------------------------------------------------------ the card's lines (MOCKUP-PASS M8)
+
+        /// <summary>
+        /// The line under the player's standing with a finalist (mockup 59), from the record only:
+        /// the alliance the two of them are in and the week it began, the deals between them that
+        /// were kept, and what the finalist did to the player where the house could see it
+        /// (<see cref="TowardYou"/>). Never how the finalist feels about the player: that is a score
+        /// the player does not see. Null when the record holds nothing between them.
+        /// </summary>
+        public static string RelationshipLine(EpisodeState s, string finalistId)
+        {
+            if (string.IsNullOrEmpty(finalistId) || finalistId == s.playerId || s.Find(finalistId) == null) return null;
+            var parts = new List<string>();
+            // The week an alliance began is on the ledger; one without a row is said by the standing word already.
+            var weeks = s.alliances.Where(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(finalistId))
+                .Select(a => s.ledger?.alliances?.FirstOrDefault(row => row.id == a.id)?.startedWeek ?? 0)
+                .Where(week => week > 0).ToList();
+            if (weeks.Count > 0) parts.Add("Allied since week " + weeks.Min());
+            int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId));
+            if (kept > 0) parts.Add(kept == 1 ? "Kept a deal with you" : "Kept " + kept + " deals with you");
+            var acts = TowardYou(s, finalistId);
+            if (acts.certainty == Confirmed) parts.Add(acts.value);
+            return parts.Count == 0 ? null : string.Join(" · ", parts);
+        }
+
+        /// <summary>
+        /// How many eviction votes they sat on the block through and stayed (MOCKUP-PASS decision
+        /// 32): the weeks on the record with a tally, them on the block at the vote, and somebody
+        /// else evicted. A ceremony and its count are public, so this is too.
+        /// </summary>
+        public static int VotesSurvived(EpisodeState s, string id) =>
+            s.ledger?.power == null || string.IsNullOrEmpty(id) ? 0
+                : s.ledger.power.Count(p => p.tally.Count > 0 && p.nominees.Contains(id) && p.evicteeId != null && p.evicteeId != id);
+
+        /// <summary>
+        /// The final Head of Household once they have chosen, on the record: the last Head of
+        /// Household's own power row, the one with an evictee and neither a vote nor a veto. Null
+        /// before the final eviction is decided, so the crown the jury's cards give them (decision
+        /// 33) never lands on anybody early.
+        /// </summary>
+        public static string FinalHeadOfHousehold(EpisodeState s)
+        {
+            if (s.phase != EpisodePhase.JuryQuestioning && s.phase != EpisodePhase.FinalSpeeches
+                && s.phase != EpisodePhase.Jury && s.phase != EpisodePhase.Finished) return null;
+            return s.ledger?.power?.LastOrDefault(p => p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null)?.hohId;
         }
 
         /// <summary>Whether a week's Head of Household put somebody up: nominated (a veto save included) or named the replacement.</summary>

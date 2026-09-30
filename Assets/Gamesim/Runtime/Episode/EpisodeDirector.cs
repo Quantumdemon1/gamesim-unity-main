@@ -1485,16 +1485,23 @@ namespace Gamesim.Episode
                 return;
             }
             // Who holds what this week, on one line, before whatever there is to decide: the stage
-            // stands the strip and its badges down, so this is where the roles are read.
-            string houseStatus = HouseStatus(state);
-            if (houseStatus != null) hud.Paragraph(houseStatus);
+            // stands the strip and its badges down, so this is where the roles are read. The final
+            // Head of Household's choice opens on its own gold head instead: the house is down to
+            // the three, and the two it is between are on its cards (MOCKUP-PASS M8).
+            bool finalChoice = state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId;
+            if (finalChoice) FinalTwoHead();
+            else
+            {
+                string houseStatus = HouseStatus(state);
+                if (houseStatus != null) hud.Paragraph(houseStatus);
+            }
             // A story beat waiting on the player comes before anything else they could do: it
             // closes with the week's next beat, and a card buried under the ordinary controls is a
             // card the player never sees. It never blocks the decision under it.
             PendingStoryBeats(state);
             if (RenderPlayerDecision(state, false)) return;
             CeremonyScreen(state);
-            if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
+            if (finalChoice)
             {
                 hud.Paragraph("You won the final HoH. Choose who to evict; the other housemate joins you in the final two.");
                 // The two of them side by side as cards, with what the player knows about each and

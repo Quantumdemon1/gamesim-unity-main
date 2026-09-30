@@ -137,7 +137,20 @@ namespace Gamesim.Episode
         /// A screen's head: the screen's name in the accent, the one line that matters large under it
         /// - "1 ACTION LEFT" - and a line of what to do here, all centred.
         /// </summary>
-        public void ScreenHead(string title, string headline, string line)
+        public void ScreenHead(string title, string headline, string line) => ScreenHead(title, headline, line, Accent, null);
+
+        /// <summary>
+        /// The same head in the crown's gold, under the crown: the final Head of Household's own
+        /// screen, the choice of who joins them in the Final 2 (MOCKUP-PASS M8, mockup 59).
+        /// </summary>
+        public void CrownedScreenHead(string title, string headline, string line) =>
+            ScreenHead(title, headline, line, UiTheme.Gold, PackArt.KitIconCrown);
+
+        /// <summary>
+        /// A screen's head with its title in <paramref name="tint"/> and, when there is one, the pack
+        /// mark <paramref name="mark"/> centred over it in the same colour.
+        /// </summary>
+        private void ScreenHead(string title, string headline, string line, Color tint, string mark)
         {
             if (content == null) return;
             var head = new GameObject(ScreenHeadName, typeof(RectTransform), typeof(VerticalLayoutGroup)).GetComponent<RectTransform>();
@@ -147,9 +160,20 @@ namespace Gamesim.Episode
             layout.childControlWidth = true; layout.childControlHeight = true;
             layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
             PushContent(head, ContentWidth());
+            var sprite = string.IsNullOrEmpty(mark) ? null : UiTheme.Pack(mark);
+            if (sprite != null)
+            {
+                // Its own row, as tall as the mark: the image is stretched across the row and
+                // keeps its shape, so it stands centred over the title.
+                var crown = new GameObject("Screen mark", typeof(RectTransform), typeof(Image), typeof(LayoutElement)).GetComponent<Image>();
+                crown.rectTransform.SetParent(head, false);
+                crown.sprite = sprite; crown.color = tint; crown.preserveAspect = true; crown.raycastTarget = false;
+                var size = crown.GetComponent<LayoutElement>();
+                size.minHeight = size.preferredHeight = 34f * FontScale;
+            }
             if (!string.IsNullOrEmpty(title))
             {
-                var name = FlowText(title, 34, Accent);
+                var name = FlowText(title, 34, tint);
                 name.alignment = TextAlignmentOptions.Center;
                 var bold = UiTheme.Font(UiTheme.Weight.Bold);
                 if (bold != null) name.font = bold;

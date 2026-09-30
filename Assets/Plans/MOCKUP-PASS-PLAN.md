@@ -1083,6 +1083,47 @@ suite runs 27 more PlayMode tests where UMA is present.
     approaches of 16.
   - Start spots beside the east arm pinched its lane.
 
+**2026-09-29, wave 2**
+
+M5-M6, M8, M11, M12, M13, M14, M15 and M18 were each built in a worktree of its own over f4c1483,
+reviewed adversarially and fixed, then merged (ee8c179 to c501a9d). Three merges needed hand work:
+- M12 folded the jury's reaction into `JuryHouseRead.Note`, which M11 also changed.
+- M14 built the jury-strip door that M12 and M15 described as not built.
+- M15 and M11 both appended tests to FinaleRulesTests.
+
+The full suites found one fault: the Final 2 choice test read a panel a re-render had destroyed.
+On the UMA-free copy: EditMode 1974/1974, PlayMode 648/648, Simulation 1130. Floors: EditMode 1974,
+PlayMode 675, Simulation 1130.
+
+- **M5-M6.** Season Complete stands beside the rail at 226 HUD units, at both text sizes. It opens
+  on a lit title card with 'SEASON {n}' and a count line of the season's facts, and on tiles for
+  houseguests, weeks and competitions held. The four ways on are wide Pack 7 buttons in a fixed
+  footer, with their captions word for word and factual subtitles, not new taglines (decision 10).
+  The winner is the hero:
+  - a portrait in a gold-lit well, sparkles only with motion on, trait chips and four stat rows;
+  - the final jury vote as a card per ballot under it, never 'voted for';
+  - the tally bar between two number tiles.
+- **M8.** The finalist cards for the Final 2 choice and the juror's vote carry a photo header, chips,
+  a quote, the record as counts, and the player's standing as the cast strip's bar. The Final 2
+  choice adds a JURY READ in known support, bitterness and uncertain. The pinned 'Take {name} to the
+  Final 2' is large and gold by style alone. One gold edge follows the keyboard or the pointer.
+- **M11.** The juror sits in a card beside the question, with the receipt's kicker in bold over it.
+  The responses are compact measured rows, and the receipt card carries the week's count on vote
+  receipts. Skip and both doors share one 'Jury ways on' row.
+- **M12.** The jury house is a dashboard:
+  - compact juror cards with status dots, what each knows and is missing;
+  - a 2D lounge of callouts in the jurors' recorded words;
+  - the highlights and what matters in a side column.
+- **M13.** The final parts carry a bracket tracker, a 'winner advances' band and the pair as
+  competitor cards. The live feed is M27's.
+- **M14.** At the Final 3, the house view has finalist cards with traits, a jury card, room names at
+  map distance and name chips over the finalists. The jury strip is a door to the jury house
+  (decision 42), captioned 'Jury house'.
+- **M15.** Prepare your final case is a screen of its own: narrative, resume and moment cards over a
+  tray, and a gold 'Lock final argument'. At three it can be read early, not locked.
+- **M18.** The eviction vote on the living room's screen is a roster of who voted for whom, one row
+  per ballot. The result block fades the board, and the HUD frame is unchanged.
+
 ## 6. Review corrections
 
 A completeness critic read this plan against the verified gap map and the code. Its corrections

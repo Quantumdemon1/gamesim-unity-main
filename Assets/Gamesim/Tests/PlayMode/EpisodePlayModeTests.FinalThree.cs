@@ -217,7 +217,9 @@ namespace Gamesim.Tests.PlayMode
                     // The decision screen from its top: the head, the cards' faces and who they are.
                     if (Application.isBatchMode)
                     {
-                        panel.GetComponentsInChildren<ScrollRect>().First(scroll => scroll.gameObject.activeInHierarchy).verticalNormalizedPosition = 1f;
+                        // Found again: the selection moves above re-render the HUD, and the panel read at
+                        // the top of this pass is the destroyed copy by now.
+                        LastActive("Episode panel").GetComponentsInChildren<ScrollRect>().First(scroll => scroll.gameObject.activeInHierarchy).verticalNormalizedPosition = 1f;
                         yield return null;
                         yield return CaptureFraming("endgame-final-choice-top", settle: false);
                     }

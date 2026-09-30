@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -193,6 +194,11 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(count.GetComponent<TMP_Text>().text, Is.EqualTo(tally));
                     Assert.That(count.parent, Is.SameAs(LastActive(EpisodeHud.JuryReceiptLineName).parent), "Beside the receipt line.");
                 }
+                // The week's recap headline only where it adds: under a receipt about that week's
+                // vote whose line does not say who went (review correction 19).
+                bool recapAdds = FinaleQuestions.RecapAdds(state, exchange)
+                    && WeeklyRecap.Build(state, FinaleQuestions.ReceiptWeek(state, exchange).Value).evicted != null;
+                Assert.That(LastActive(EpisodeHud.JuryRecapName) != null, Is.EqualTo(recapAdds), "The recap headline only where it adds.");
                 AssertDecisionCopyFits(LastActive(EpisodeHud.JuryAskerColumnName));
                 AssertDecisionCopyFits(LastActive(EpisodeHud.JuryReceiptColumnName));
                 if (!larger && Application.isBatchMode) yield return CaptureFraming("endgame-history-question", settle: false);

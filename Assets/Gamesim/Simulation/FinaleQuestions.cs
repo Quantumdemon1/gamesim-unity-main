@@ -452,6 +452,11 @@ namespace Gamesim.Simulation
         /// you voted to evict them"; decision 39). The juror asking is "them". The question's saved
         /// words are never touched: this is drawn above them. Null with no receipt, or with a row
         /// the record no longer holds.
+        ///
+        /// <para>A promise or a deal is dated by the week it was made, and its words say so. It is
+        /// kept or broken later - a final two at the final eviction, a safety promise at a
+        /// nomination - and the record holds no week for that, so the week never stands on the
+        /// break or the keeping. <see cref="ReceiptLine"/> words it the same way.</para>
         /// </summary>
         public static string Kicker(EpisodeState s, JuryExchangeState exchange)
         {
@@ -464,14 +469,13 @@ namespace Gamesim.Simulation
             {
                 case PromiseReceipt:
                     var promise = s.promises.First(p => p.id == id);
-                    words = promise.status == PromiseStatus.Broken ? "you broke your word to them"
-                        : promise.status == PromiseStatus.Fulfilled ? "you kept your word to them" : "you gave them your word";
+                    words = "you gave them your word" + (promise.status == PromiseStatus.Broken ? ", and broke it"
+                        : promise.status == PromiseStatus.Fulfilled ? ", and kept it" : "");
                     break;
                 case DealReceipt:
                     var deal = s.deals.First(d => d.id == id);
-                    string title = DealKind.Title(deal.type).ToLowerInvariant();
-                    words = deal.status == DealStatus.Broken ? "you broke your " + title + " with them"
-                        : deal.status == DealStatus.Fulfilled ? "you kept your " + title + " with them" : "your " + title + " with them";
+                    words = "your " + DealKind.Title(deal.type).ToLowerInvariant() + " with them"
+                        + (deal.status == DealStatus.Broken ? ", broken" : deal.status == DealStatus.Fulfilled ? ", kept" : "");
                     break;
                 case PowerReceipt:
                     if (week == null) return null;
@@ -497,13 +501,22 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
+        /// Whether a receipt is about its week's vote: the power, a ballot, a call, or a plea -
+        /// a nominee asking for the player's vote, which the house offers only while nominees
+        /// campaign and clears when campaigning closes, so its week is the vote's. A promise, a
+        /// deal or an alliance is dated by the week it began, and that week's vote is not its.
+        /// </summary>
+        private static bool AboutTheWeeksVote(string receiptKind) =>
+            receiptKind == PowerReceipt || receiptKind == BallotReceipt || receiptKind == CallReceipt || receiptKind == ReplyReceipt;
+
+        /// <summary>
         /// The count of the vote in the receipt's week, the evictee's first, as the reveal read it:
-        /// "(5–2)". Only for a receipt about that week's vote - the power, a ballot, a call - and
-        /// only when the week had a count: the final eviction is a choice, not a vote.
+        /// "(5–2)". Only for a receipt about that week's vote (<see cref="AboutTheWeeksVote"/>),
+        /// and only when the week had a count: the final eviction is a choice, not a vote.
         /// </summary>
         public static string ReceiptTally(EpisodeState s, JuryExchangeState exchange)
         {
-            if (exchange == null || (exchange.receiptKind != PowerReceipt && exchange.receiptKind != BallotReceipt && exchange.receiptKind != CallReceipt)) return null;
+            if (exchange == null || !AboutTheWeeksVote(exchange.receiptKind)) return null;
             int? week = ReceiptWeek(s, exchange);
             var power = week == null ? null : s.ledger?.power?.FirstOrDefault(p => p.week == week.Value);
             if (power?.tally == null || power.tally.Count < 2) return null;
@@ -537,5 +550,14 @@ namespace Gamesim.Simulation
                     return false;
             }
         }
+
+        /// <summary>
+        /// Whether the week's recap headline adds to the receipt, drawn under it: only under a
+        /// receipt about that week's vote whose line does not already say who went (review
+        /// correction 19). Under a promise, a deal or an alliance the week is when it began, and who
+        /// went that week, set right under the receipt, would read as part of it.
+        /// </summary>
+        public static bool RecapAdds(EpisodeState s, JuryExchangeState exchange) =>
+            exchange != null && AboutTheWeeksVote(exchange.receiptKind) && ReceiptWeek(s, exchange) != null && !ReceiptSaysWhoWent(s, exchange);
     }
 }

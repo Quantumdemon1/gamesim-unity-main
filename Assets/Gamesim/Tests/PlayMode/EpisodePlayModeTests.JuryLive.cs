@@ -77,6 +77,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(before, Does.Not.Contain("impressed").And.Not.Contain("unconvinced"), "Nothing says how an answer will land.");
                 AssertDecisionCopyFits(asker);
                 AssertDecisionCopyFits(receipt);
+                // The A and B answers are whole sentences in a centre column about a third of the
+                // row: each row is as tall as its caption needs, so none loses a line.
+                AssertDecisionCopyFits(answers);
                 var a = ScreenRect(asker); var c = ScreenRect(answers); var r = ScreenRect(receipt);
                 if (!larger)
                 {
@@ -128,6 +131,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Words(LastActive("Episode panel")), Does.Contain("You ask " + finalist.name));
             var tone = WebJuryQuestioning.GetJurorQuestionOptions(state.juryQuestionIndex).First();
             Assert.That(ButtonWithCaption(tone.tone + " · " + tone.text).transform.IsChildOf(LastActive(EpisodeHud.JuryAnswerColumnName)), Is.True);
+            Canvas.ForceUpdateCanvases();
+            AssertDecisionCopyFits(LastActive(EpisodeHud.JuryAnswerColumnName));
         }
     }
 }

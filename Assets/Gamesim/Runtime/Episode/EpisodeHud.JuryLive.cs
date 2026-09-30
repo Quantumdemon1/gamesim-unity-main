@@ -107,6 +107,7 @@ namespace Gamesim.Episode
 
             PushContent(LiveColumn(JuryAnswerColumnName, row, centre), centre);
             controls();
+            FitActionRows(content, centre);
             string reaction = Reaction(state, exchange, questioner);
             if (reaction != null)
             {
@@ -133,6 +134,27 @@ namespace Gamesim.Episode
             var element = column.GetComponent<LayoutElement>();
             element.minWidth = 0f; element.preferredWidth = width; element.flexibleWidth = width;
             return column;
+        }
+
+        /// <summary>
+        /// Grows each action row in a column to the lines its caption needs. The old seasons' A and
+        /// B answers and the player juror's questions are whole sentences at 20. The centre column
+        /// is about a third of the row, and a row one line tall showed only their first line. The
+        /// caption's words and size are untouched; only the row's height changes.
+        /// </summary>
+        private void FitActionRows(RectTransform column, float width)
+        {
+            foreach (Transform child in column)
+            {
+                var element = child.GetComponent<LayoutElement>();
+                var caption = child.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(text => text.transform.parent == child);
+                if (child.GetComponent<Button>() == null || element == null || caption == null) continue;
+                // The caption is stretched over its row, inset on every side.
+                var box = caption.rectTransform;
+                float inner = width - box.offsetMin.x + box.offsetMax.x, ends = box.offsetMin.y - box.offsetMax.y;
+                float need = Mathf.Ceil(caption.GetPreferredValues(caption.text, inner, 0f).y) + ends + 4f * FontScale;
+                element.minHeight = Mathf.Max(element.minHeight, need);
+            }
         }
 
         /// <summary>
@@ -262,9 +284,10 @@ namespace Gamesim.Episode
                 string line = comparison ? "No receipt: they are weighing you against the other finalist."
                     : FinaleQuestions.ReceiptLine(state, exchange) ?? "The record no longer holds the row this question came from.";
                 ReceiptCard(line, comparison ? null : questioner, week, comparison ? null : FinaleQuestions.ReceiptTally(state, exchange));
-                // The week's recap headline, unquoted, only where it says who went and the line
-                // does not (review correction 19). The recap is the player's own, and public.
-                if (week != null && !FinaleQuestions.ReceiptSaysWhoWent(state, exchange))
+                // The week's recap headline, unquoted, only under a receipt about that week's vote
+                // whose line does not say who went (review correction 19). The recap is the
+                // player's own, and public.
+                if (week != null && FinaleQuestions.RecapAdds(state, exchange))
                 {
                     var recap = WeeklyRecap.Build(state, week.Value);
                     if (recap.evicted != null) FlowText(recap.Headline, 13, UiTheme.Muted).name = JuryRecapName;

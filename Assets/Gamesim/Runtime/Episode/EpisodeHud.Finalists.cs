@@ -136,6 +136,9 @@ namespace Gamesim.Episode
             var headlines = new List<TMP_Text>();
             var consequences = new List<TMP_Text>();
             for (int i = 0; i < finalists.Count; i++) FinalistColumnIn(row, finalists[i], columnWidth, beside, i, headlines, consequences);
+            // The columns' lights answer to one another, so one card is lit at a time.
+            var lights = row.GetComponentsInChildren<ChoiceLight>(true);
+            foreach (var light in lights) light.Group = lights;
             if (!beside) return;
             LevelHeights(headlines, columnWidth);
             LevelHeights(consequences, columnWidth);
@@ -236,9 +239,10 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The ring inside a finalist's control (mockup 59), filled while the control has the
-        /// keyboard or the pointer, and the gold edge of the card it is about lit with it: the
-        /// choice the player is about to make, shown on the person it is about. Decoration on the
-        /// column's one control, never a second one; a single press still commits.
+        /// pointer, or the keyboard the player moved there, and the gold edge of the card it is
+        /// about lit with it: the choice the player is about to make, shown on the person it is
+        /// about. Decoration on the column's one control, never a second one; a single press still
+        /// commits.
         /// </summary>
         private void SelectionMark(Button button, GameObject edge)
         {
@@ -264,34 +268,67 @@ namespace Gamesim.Episode
             }
             if (fill == null && edge == null) return;
             var light = button.gameObject.AddComponent<ChoiceLight>();
-            light.Edge = edge; light.Fill = fill;
+            light.Hud = this; light.Edge = edge; light.Fill = fill;
             light.Apply();
         }
 
         /// <summary>
-        /// Lights a finalist's column while its control has the keyboard or the pointer: the card's
+        /// Lights a finalist's column while its control is the one a press would take: the card's
         /// gold edge and the filled ring on the control. It is not a control - the Button beside it
         /// is the column's only one - and it listens to the same select and pointer events the
         /// Button does, so the column says which choice a press would make before it is made.
         ///
+        /// <para>The columns are one group, and one card in it is lit at a time. The pointer's column
+        /// wins while the pointer is on a control, because a click lands there whatever the keyboard
+        /// is on; with the pointer on neither, the keyboard's column is lit. Lit separately, the two
+        /// could light both cards at once.</para>
+        ///
+        /// <para>The keyboard lights a column only when the player put it there. Every panel opens
+        /// with the keyboard on its first control, which here is the first finalist's; a card lit
+        /// before the player has done anything would read as the game's pick, on a screen whose head
+        /// says nothing on it is a prediction. So a selection the HUD makes on its own account
+        /// (<see cref="RestoreFocus"/>) lights nothing, unless it hands back the control the player
+        /// had lit before a rebuild. The Button's own tint still shows where the keyboard is.</para>
+        ///
         /// <para>No OnDisable reset: the HUD deactivates a whole panel before it destroys it, and a
         /// SetActive on the edge from inside that deactivation is one Unity refuses. A rebuilt panel
-        /// is lit again by the selection the HUD restores to it.</para>
+        /// is lit again by the selection the HUD restores to it and the pointer still on it.</para>
         /// </summary>
         [DisallowMultipleComponent]
         private sealed class ChoiceLight : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
         {
+            public EpisodeHud Hud;
             public GameObject Edge, Fill;
+            /// <summary>Every column's light on the screen, this one among them.</summary>
+            public ChoiceLight[] Group;
             private bool focused, hovered;
 
-            public void OnSelect(BaseEventData data) { focused = true; Apply(); }
-            public void OnDeselect(BaseEventData data) { focused = false; Apply(); }
-            public void OnPointerEnter(PointerEventData data) { hovered = true; Apply(); }
-            public void OnPointerExit(PointerEventData data) { hovered = false; Apply(); }
+            public void OnSelect(BaseEventData data)
+            {
+                bool restored = Hud != null && Hud.restoringFocus;
+                if (!restored && Hud != null) Hud.litChoice = gameObject.name;
+                focused = !restored || gameObject.name == Hud.litChoice;
+                Refresh();
+            }
+
+            public void OnDeselect(BaseEventData data) { focused = false; Refresh(); }
+            public void OnPointerEnter(PointerEventData data) { hovered = true; Refresh(); }
+            public void OnPointerExit(PointerEventData data) { hovered = false; Refresh(); }
+
+            /// <summary>Lights the whole group again: one change can move the light from one column to the other.</summary>
+            private void Refresh()
+            {
+                if (Group == null) { Apply(); return; }
+                foreach (var light in Group)
+                    if (light != null) light.Apply();
+            }
 
             public void Apply()
             {
-                bool lit = focused || hovered;
+                bool pointed = hovered;
+                if (Group != null)
+                    foreach (var light in Group) pointed |= light != null && light.hovered;
+                bool lit = pointed ? hovered : focused;
                 if (Edge != null) Edge.SetActive(lit);
                 if (Fill != null) Fill.SetActive(lit);
             }

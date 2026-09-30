@@ -463,9 +463,10 @@ namespace Gamesim.Simulation
         {
             if (string.IsNullOrEmpty(finalistId) || finalistId == s.playerId || s.Find(finalistId) == null) return null;
             var parts = new List<string>();
-            // The week an alliance began is on the ledger; one without a row is said by the standing word already.
+            // The week the player's alliance began, where the record can say; an alliance it cannot
+            // date is said by the standing word already.
             var weeks = s.alliances.Where(a => a.active && a.members.Contains(s.playerId) && a.members.Contains(finalistId))
-                .Select(a => s.ledger?.alliances?.FirstOrDefault(row => row.id == a.id)?.startedWeek ?? 0)
+                .Select(a => PlayerAlliedSince(s, a))
                 .Where(week => week > 0).ToList();
             if (weeks.Count > 0) parts.Add("Allied since week " + weeks.Min());
             int kept = s.deals.Count(d => d.status == DealStatus.Fulfilled && Between(d.proposerId, d.recipientId, s.playerId, finalistId));
@@ -473,6 +474,29 @@ namespace Gamesim.Simulation
             var acts = TowardYou(s, finalistId);
             if (acts.certainty == Confirmed) parts.Add(acts.value);
             return parts.Count == 0 ? null : string.Join(" · ", parts);
+        }
+
+        /// <summary>
+        /// The week the player has been in <paramref name="alliance"/> since, as the player knows
+        /// it, or 0 when the record cannot say.
+        ///
+        /// <para>An alliance the player founded began with them, so its ledger row's week is theirs.
+        /// One they were brought into (the engine's invitation, which adds the player to an
+        /// alliance of the inviter's) was formed by others first: its row's week is when they made
+        /// it, before the player was in it, and for a pact of NPCs a week the player was never told.
+        /// That one is dated by the invitation the player accepted, from their own "brought you
+        /// into" event while the log still holds it.</para>
+        /// </summary>
+        internal static int PlayerAlliedSince(EpisodeState s, AllianceState alliance)
+        {
+            var row = s.ledger?.alliances?.FirstOrDefault(r => r.id == alliance.id);
+            if (row == null || row.startedWeek <= 0) return 0;
+            if (row.why != null && row.why.StartsWith("player", System.StringComparison.Ordinal)) return row.startedWeek;
+            string joined = " brought you into " + alliance.name + ".";
+            var invitation = s.events.LastOrDefault(e => e.kind == "alliance" && e.week >= row.startedWeek
+                && e.audienceIds != null && e.audienceIds.Contains(s.playerId)
+                && e.text != null && e.text.EndsWith(joined, System.StringComparison.Ordinal));
+            return invitation?.week ?? 0;
         }
 
         /// <summary>

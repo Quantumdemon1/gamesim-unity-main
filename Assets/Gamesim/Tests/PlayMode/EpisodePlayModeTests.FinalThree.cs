@@ -173,25 +173,46 @@ namespace Gamesim.Tests.PlayMode
                     if (Application.isBatchMode) yield return CaptureFraming("endgame-final-choice", settle: false);
 
                     // The selection lights its own column: the card's gold edge and the ring's fill
-                    // follow the control the keyboard is on, and move with it. Neither is a control.
-                    // Found again after each frame: a render in between rebuilds the panel and
-                    // restores the selection by its caption.
+                    // follow the control the player puts the keyboard on, and move with it. Neither is
+                    // a control. Found again after each frame: a render in between rebuilds the panel
+                    // and restores the selection by its caption.
                     RectTransform ControlFor(ContestantState taken) =>
                         (RectTransform)FindButton("Evict " + others.Single(finalist => finalist.id != taken.id).name).transform;
-                    foreach (var take in others)
+                    void AssertLit(ContestantState lit, string when)
                     {
-                        EventSystem.current.SetSelectedGameObject(ControlFor(take).gameObject);
-                        yield return null;
                         foreach (var shown in others)
                         {
-                            bool selected = shown.id == take.id;
+                            bool on = lit != null && shown.id == lit.id;
                             var edge = LastActive(EpisodeHud.FinalistCardPrefix + shown.name).Find(EpisodeHud.ChosenEdgeName);
-                            Assert.That(edge.gameObject.activeSelf, Is.EqualTo(selected),
-                                shown.name + "'s card is lit exactly when their control is the one selected (" + take.name + "'s is).");
-                            Assert.That(ControlFor(shown).Find("Selection ring/Selection fill").gameObject.activeSelf, Is.EqualTo(selected),
-                                "The ring fills on the selected control only.");
+                            Assert.That(edge.gameObject.activeSelf, Is.EqualTo(on), shown.name + "'s card is " + (on ? "" : "not ") + "lit " + when + ".");
+                            Assert.That(ControlFor(shown).Find("Selection ring/Selection fill").gameObject.activeSelf, Is.EqualTo(on),
+                                shown.name + "'s ring is " + (on ? "filled " : "empty ") + when + ".");
                         }
                     }
+                    // The screen opens with the keyboard on its first control, as every panel does, and
+                    // lights no card for it: that control is the HUD's pick, not the player's, on a
+                    // screen whose head says nothing on it is a prediction.
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.Not.Null, "The screen opens on a control.");
+                    AssertLit(null, "as the screen opens");
+                    foreach (var take in others)
+                    {
+                        // Through nothing, so that selecting even the control the screen opened on is a move.
+                        EventSystem.current.SetSelectedGameObject(null);
+                        EventSystem.current.SetSelectedGameObject(ControlFor(take).gameObject);
+                        yield return null;
+                        AssertLit(take, "with " + take.name + "'s control selected");
+                    }
+                    // The pointer's column wins while the pointer is on its control, because a click
+                    // lands there whatever the keyboard is on, and gives the light back as it leaves:
+                    // one card lit at a time, never both. The pointer moves no selection.
+                    var keyboardOn = others[1];
+                    var pointed = ControlFor(others[0]).gameObject;
+                    var pointer = new PointerEventData(EventSystem.current);
+                    ExecuteEvents.Execute(pointed, pointer, ExecuteEvents.pointerEnterHandler);
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.SameAs(ControlFor(keyboardOn).gameObject), "The keyboard stays where it was.");
+                    AssertLit(others[0], "under the pointer, with " + keyboardOn.name + "'s control selected");
+                    ExecuteEvents.Execute(pointed, pointer, ExecuteEvents.pointerExitHandler);
+                    AssertLit(keyboardOn, "once the pointer leaves");
 
                     // The decision screen from its top: the head, the cards' faces and who they are.
                     if (Application.isBatchMode)

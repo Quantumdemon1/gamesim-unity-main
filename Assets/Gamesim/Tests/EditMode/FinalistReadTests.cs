@@ -433,6 +433,39 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// An alliance the player was brought into was formed without them: its ledger row's week is
+        /// when the others made it, before the player was in it, and for a pact of NPCs a week the
+        /// player was never told. The card dates the player's alliance from the invitation they
+        /// accepted, while the log holds it, and otherwise leaves the week to the standing word.
+        /// </summary>
+        [Test]
+        public void AnAllianceThePlayerWasBroughtIntoIsDatedFromTheInvitation()
+        {
+            var s = FinalThree();
+            var finalist = Finalist(s, 0); var other = Finalist(s, 1);
+            var theirs = Alliance(s, "alliance-npc-4", true, finalist.id, other.id);
+            s.ledger.alliances.Add(new AllianceRow { id = theirs.id, startedWeek = 1, why = "npc/formed" });
+            theirs.members.Add(s.playerId);
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.Null,
+                "Week 1 was theirs, not the player's; with no invitation on the log the card names no week.");
+
+            // The engine's own words when an invitation brings the player in (EpisodeEngine.AllyThroughInvitation).
+            s.events.Add(new EpisodeEvent
+            {
+                week = 5, kind = "alliance", text = finalist.name + " brought you into " + theirs.name + ".",
+                audienceIds = new List<string> { s.playerId, finalist.id },
+            });
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.EqualTo("Allied since week 5"), "Dated from the week the player joined.");
+            Assert.That(FinalistRead.RelationshipLine(s, other.id), Is.EqualTo("Allied since week 5"), "Whoever in it brought them in.");
+
+            // A story's pact is the others' until the player is brought in, the same way.
+            var s2 = FinalThree();
+            var story = Alliance(s2, "alliance-story-6", true, Finalist(s2, 0).id, Finalist(s2, 1).id, s2.playerId);
+            s2.ledger.alliances.Add(new AllianceRow { id = story.id, startedWeek = 2, why = "story" });
+            Assert.That(FinalistRead.RelationshipLine(s2, Finalist(s2, 0).id), Is.Null, "A story's pact the player joined later is not theirs since week 2.");
+        }
+
+        /// <summary>
         /// The card's bar is the player's own score, as the cast strip draws it, never the
         /// finalist's view of the player; the parts they won are on the card; every juror is named
         /// by their first name.

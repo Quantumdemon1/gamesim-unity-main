@@ -200,6 +200,17 @@ namespace Gamesim.Episode
         /// <summary>The locked argument the speech editor was last filled from, so a draft the player cleared stays clear.</summary>
         private string speechSeededFor;
         private bool restoreSelection;
+        /// <summary>
+        /// True while the HUD hands the keyboard to a control on its own account - a panel opening
+        /// on its first control, a rebuild or a closed overlay giving it back - so a control that
+        /// answers being selected can tell that from the player's own move (<see cref="RestoreFocus"/>).
+        /// </summary>
+        private bool restoringFocus;
+        /// <summary>
+        /// The finalist choice's control the player last moved the keyboard to, by name: a rebuild
+        /// lights that column again, and a panel's own opening focus lights none.
+        /// </summary>
+        private string litChoice;
         private GameObject lastSelection;
         public float FontScale { get; set; } = 1;
         /// <summary>Mirrors the director's accessibility preference; suppresses every HUD animation.</summary>
@@ -255,6 +266,9 @@ namespace Gamesim.Episode
             // UI foley: a panel arriving or leaving says so. A rebuild of an open panel is neither.
             if (open && modal == null) Foley(HouseAudio.Cue.PanelOpen);
             else if (!open && modal != null && !recovery) Foley(HouseAudio.Cue.PanelClose);
+            // A panel arriving has no finalist's column the player lit on it yet; a rebuild of an
+            // open one keeps the one they did.
+            if (!open || modal == null) litChoice = null;
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
@@ -1727,7 +1741,7 @@ namespace Gamesim.Episode
                     ?? PinnedSelectable(eligible)
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
                     ?? eligible.FirstOrDefault();
-                events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
+                RestoreFocus(events, focus != null ? focus.gameObject : null);
                 restoreSelection = false;
             }
 
@@ -1753,7 +1767,7 @@ namespace Gamesim.Episode
                 var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
                     ?? (overlay == null && pinnedAction != null ? pinnedAction.GetComponent<Selectable>() : null)
                     ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
-                events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
+                RestoreFocus(events, focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;
             }
             if (selected != lastSelection)
@@ -1762,6 +1776,19 @@ namespace Gamesim.Episode
                 if (selected != null && content != null && modalScroll != null && selected.transform.IsChildOf(content))
                     RevealSelection(selected.transform);
             }
+        }
+
+        /// <summary>
+        /// Selects <paramref name="target"/> on the HUD's own account rather than the player's: a
+        /// panel's opening control, a rebuild's restore, the scope's fallback. A finalist's column
+        /// lights only for the player's own moves (<see cref="ChoiceLight"/>), so it is told which
+        /// this is.
+        /// </summary>
+        private void RestoreFocus(EventSystem events, GameObject target)
+        {
+            restoringFocus = true;
+            try { events.SetSelectedGameObject(target); }
+            finally { restoringFocus = false; }
         }
 
         /// <summary>Whether the keyboard ring holds a control that has been destroyed or hidden since it was wired.</summary>

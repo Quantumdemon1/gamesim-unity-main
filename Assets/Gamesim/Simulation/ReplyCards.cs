@@ -102,25 +102,46 @@ namespace Gamesim.Simulation
             }
         }
 
-        /// <summary>What they said, or what the player found out: the reference's lines.</summary>
+        /// <summary>
+        /// What they said, or what the player found out: the reference's lines.
+        ///
+        /// <para>Which of a card's two lines is said follows the player's own reading of whoever
+        /// came to them (PACK8-PASS-PLAN decision 8). It followed that houseguest's hidden view of
+        /// the player, re-read on every render, so the sentence on the card told the player whether
+        /// that view was over +20 (or under -40), and could change under them while the card was up.
+        /// The player's own reading is something they already see on every card they have of that
+        /// houseguest: warm when they are allied or at the relationship web's Friendly line, cold at
+        /// its Hostile line.</para>
+        /// </summary>
         public static string Message(EpisodeState s, ReplyCardState card)
         {
             string who = s.Find(card.fromId)?.name ?? "Somebody";
             switch (card.kind)
             {
                 case Confrontation:
-                    return s.Score(card.fromId, s.playerId) < -40
+                    return ReadsAsHostile(s, card.fromId)
                         ? "“I'm done pretending everything's fine between us. You've been playing me this whole time, and everyone can see it.”"
                         : "“We need to talk. I've been hearing things, and I need to know where we really stand in this game.”";
                 case Gossip:
                     return "You just found out that " + who + " has been talking behind your back to "
                         + (s.Find(card.aboutId)?.name ?? "somebody") + "! How do you want to handle this?";
                 default:
-                    return s.Score(card.fromId, s.playerId) > 20
+                    return ReadsAsClose(s, card.fromId)
                         ? "“Look, I know we've been close. I need you to vote to keep me. Don't let them break us apart.”"
                         : "“I know we haven't always seen eye to eye, but keeping me is better for your game. Think about it.”";
             }
         }
+
+        /// <summary>The player's own reading at which a houseguest is a friend, and at which one is hostile: the relationship web's thresholds.</summary>
+        public const double CloseReading = 15, HostileReading = -40;
+
+        /// <summary>Whether the player reads this houseguest as close: allied with them, or their own score of them at the Friendly line.</summary>
+        public static bool ReadsAsClose(EpisodeState s, string id) =>
+            s != null && id != null && (s.Allied(s.playerId, id) || s.Score(s.playerId, id) >= CloseReading);
+
+        /// <summary>Whether the player reads this houseguest as hostile: their own score of them at the Hostile line, and no pact between them.</summary>
+        public static bool ReadsAsHostile(EpisodeState s, string id) =>
+            s != null && id != null && !s.Allied(s.playerId, id) && s.Score(s.playerId, id) <= HostileReading;
 
         /// <summary>The note the relationship change carries.</summary>
         public static string Note(string kind, string label) =>

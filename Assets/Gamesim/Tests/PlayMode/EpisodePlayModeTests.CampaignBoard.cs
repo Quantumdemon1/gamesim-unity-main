@@ -129,6 +129,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator CampaignBoard_APleaIsAnsweredOnTheStageAndTheNextFollows()
         {
+            HoldTheHouseForTheFixture();
             yield return InstallCampaign(46, state =>
             {
                 state.replyCards.Add(new ReplyCardState { id = "reply-8", week = state.week, kind = ReplyCards.Plea, fromId = state.nominees[0], aboutId = state.nominees[1] });
@@ -189,6 +190,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator CampaignBoard_AFullHousePagesItsVotesAndTheTabsAreViewState()
         {
+            HoldTheHouseForTheFixture();
             var full = FullHouse(46, EpisodeValidation.MaximumCast);
             AtVetoMeeting(full, false);
             full.phase = EpisodePhase.Campaign;

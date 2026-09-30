@@ -577,10 +577,25 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// Each nominee's colour on the screen's board, by their place on the block and so fixed when
-        /// the card opens: the jury reveal's blue and pink. Neither is the eviction's red, which is
-        /// kept for the result, so nothing on the board is coloured by who is leaving.
+        /// the card opens: the jury reveal's blue, and its pink lifted toward paper. Neither is the
+        /// eviction's red, which is kept for the result, so nothing on the board is coloured by who
+        /// is leaving.
+        ///
+        /// <para>The colour is also the word on a roster row's chip ('EVICT CASEY'), which is body
+        /// text on the pack's dark red evict chip. The jury's pink reads at 4.2:1 there, under the
+        /// 4.5 floor, so the right side is lifted until it clears the floor on the art and on the
+        /// drawn chip alike (UiThemeContrastTests). It is one colour a side, so a chip still wears
+        /// exactly the colour of the figure it names.</para>
         /// </summary>
-        private static Color Side(int nominee) => nominee == 0 ? UiTheme.Accent : UiTheme.Flirt;
+        public static Color Side(int nominee) => nominee == 0 ? UiTheme.Accent : RightSide;
+
+        private static readonly Color RightSide = Color.Lerp(UiTheme.Flirt, UiTheme.Paper, 0.35f);
+
+        /// <summary>
+        /// The ground of a roster row's chip when the pack's art is missing: the eviction's red, faint.
+        /// The chip's word is measured on it as well as on the art (UiThemeContrastTests).
+        /// </summary>
+        public static Color DrawnChipGround => new Color(UiTheme.Danger.r, UiTheme.Danger.g, UiTheme.Danger.b, 0.22f);
 
         private static string FirstName(string name) =>
             string.IsNullOrEmpty(name) ? string.Empty : name.Split(' ')[0];
@@ -794,8 +809,8 @@ namespace Gamesim.Presentation
                 var name = HudPrimitives.Label("Nominee", tally, f.NamePt, UiTheme.Paper, TextAlignmentOptions.Center);
                 name.text = nominees[i].Name;
                 // A side column on the screen is narrower than a name can be: drawn smaller on one
-                // line, not cut and not wrapped.
-                if (f.Screen) SmallerNotCut(name, f.NamePt * 0.7f);
+                // line, not wrapped, and marked as shortened if it still does not fit.
+                if (f.Screen) SmallerThenShortened(name, f.NamePt * 0.7f);
                 Place(name.rectTransform, slot, f.NameH, f.NameY, x);
 
                 // On the screen each figure is in its nominee's side colour, the colour of the roster's
@@ -983,7 +998,7 @@ namespace Gamesim.Presentation
             var voter = HudPrimitives.Label("Ballot voter", row, ScreenBoard.VoterPt, deciding ? UiTheme.Gold : UiTheme.Paper,
                 TextAlignmentOptions.Left);
             voter.text = ballot.VoterName ?? string.Empty;
-            SmallerNotCut(voter, ScreenBoard.VoterPt * 0.7f);
+            SmallerThenShortened(voter, ScreenBoard.VoterPt * 0.7f);
             Pin(voter.rectTransform, 0f, nameX, width - nameX - chipWidth - ScreenBoard.Inset * 2f, ScreenBoard.VoterH);
 
             int named = nominees.FindIndex(n => n.Id == ballot.TargetId);
@@ -991,13 +1006,13 @@ namespace Gamesim.Presentation
             chip.SetParent(row, false);
             Pin(chip, 1f, -ScreenBoard.Inset, chipWidth, ScreenBoard.ChipH);
             Framed("Ballot chip art", chip, PackArt.VoteChipEvict, ScreenBoard.ChipBorder, ScreenBoard.ChipInset,
-                new Color(UiTheme.Danger.r, UiTheme.Danger.g, UiTheme.Danger.b, 0.22f), UiTheme.Danger);
+                DrawnChipGround, UiTheme.Danger);
             var target = HudPrimitives.Label("Ballot target", chip, ScreenBoard.ChipPt, named >= 0 ? Side(named) : UiTheme.Paper,
                 TextAlignmentOptions.Center);
             if (bold != null) target.font = bold;
             target.characterSpacing = 4f;
             target.text = named >= 0 ? "EVICT " + FirstName(nominees[named].Name).ToUpperInvariant() : "EVICT";
-            SmallerNotCut(target, ScreenBoard.ChipPt * 0.7f);
+            SmallerThenShortened(target, ScreenBoard.ChipPt * 0.7f);
             target.rectTransform.anchorMin = Vector2.zero;
             target.rectTransform.anchorMax = Vector2.one;
             target.rectTransform.offsetMin = new Vector2(ScreenBoard.Inset, 0f);
@@ -1046,8 +1061,9 @@ namespace Gamesim.Presentation
             resultName = HudPrimitives.Label("Result name", resultBlock, ScreenBoard.NamePt, UiTheme.Danger, TextAlignmentOptions.Center);
             if (bold != null) resultName.font = bold;
             resultName.characterSpacing = 2f;
-            // A long first name is drawn smaller, never cut: it is the one word the frame is for.
-            SmallerNotCut(resultName, ScreenBoard.NamePt * 0.6f);
+            // A long first name is drawn smaller before anything else gives: it is the one word the
+            // frame is for.
+            SmallerThenShortened(resultName, ScreenBoard.NamePt * 0.6f);
 
             resultLine = HudPrimitives.Label("Result line", resultBlock, ScreenBoard.LinePt, UiTheme.Paper, TextAlignmentOptions.Center);
             if (semibold != null) resultLine.font = semibold;
@@ -1060,13 +1076,18 @@ namespace Gamesim.Presentation
         /// Keeps <paramref name="label"/> to one line, drawn smaller down to <paramref name="least"/>
         /// when its words are wider than its box. Unwrapped, so the shrinking answers to the width:
         /// a wrapped chip could settle on two cramped lines instead.
+        ///
+        /// <para>A name can run to a hundred characters, and one still too wide at the floor ends in
+        /// an ellipsis. The label's own truncation would drop the glyphs that do not fit with no mark,
+        /// and a cut name reads as a whole, different one.</para>
         /// </summary>
-        private static void SmallerNotCut(TMP_Text label, float least)
+        private static void SmallerThenShortened(TMP_Text label, float least)
         {
             label.textWrappingMode = TextWrappingModes.NoWrap;
             label.enableAutoSizing = true;
             label.fontSizeMax = label.fontSize;
             label.fontSizeMin = least;
+            label.overflowMode = TextOverflowModes.Ellipsis;
         }
 
         /// <summary>One part of the result's count line, as tall as the line, at <paramref name="x"/> from its middle.</summary>

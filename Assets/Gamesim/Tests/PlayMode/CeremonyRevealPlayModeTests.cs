@@ -612,7 +612,8 @@ namespace Gamesim.Tests.PlayMode
         /// The roster holds from one vote to a full house's thirteen: one column up to seven rows and
         /// two past that, every row on the face, clear of the others and of the faces, names and
         /// figures at the sides. A deciding vote takes the next place without moving the house's
-        /// rows, so the columns do not say a tie is coming.
+        /// rows, so the columns do not say a tie is coming. A name too long for its row ends in an
+        /// ellipsis instead of being cut with no mark.
         /// </summary>
         [UnityTest]
         public IEnumerator VoteReveal_OnTheScreenTheRosterFitsTheFaceFromOneVoteToAFullHouse()
@@ -661,6 +662,48 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipToTheResult(tied);
             var deciding = OnTheCard(tied, RowsUp(tied).Last());
             Assert.That(deciding.yMin, Is.GreaterThan(OnTheCard(tied, Rect(tied, "Dots")).yMax), "and clear of the pips.");
+            untied.Cancel();
+            tied.Cancel();
+
+            // Long names where the rows are narrowest, a full house in two columns. A name can run to a
+            // hundred characters (CharacterDraft.NameLimit): one too wide even at the floor ends in an
+            // ellipsis rather than losing its tail with no mark, and a name that fits is drawn whole.
+            const string longVoter = "Alexandra Montgomery-Fitzwilliam";
+            var longBlock = new[]
+            {
+                new VoteReveal.Nominee(Jordan, "Christopherson Taylor", null),
+                new VoteReveal.Nominee(Casey, "Casey Wilson", null),
+            };
+            var longBallots = Enumerable.Range(0, 13)
+                .Select(i => new VoteReveal.Ballot("v" + i, i == 0 || i == 12 ? longVoter : "Houseguest " + (i + 1),
+                    i % 3 == 1 ? Casey : Jordan, false, null))
+                .ToArray();
+            var named = VoteReveal.Attach(owner);
+            cards.Add(named.gameObject);
+            Assert.That(named.Play(4, longBlock, longBallots, Jordan, true, CeremonyPace.Suspenseful, "Maya Hassan", screen: screen), Is.True);
+            yield return SkipToTheResult(named);
+            Canvas.ForceUpdateCanvases();
+            var words = RowsUp(named).SelectMany(row => new[] { Part(row, "Ballot voter"), Part(row, "Ballot target") }).ToArray();
+            Assert.That(words, Has.Length.EqualTo(26), "Thirteen rows, a name and a chip each.");
+            foreach (var word in words)
+            {
+                word.ForceMeshUpdate(true);
+                Assert.That(!word.isTextTruncated || Ellipsised(word), Is.True,
+                    "'" + word.text + "' (" + word.name + ", " + word.fontSize.ToString("0.#") + " in a box "
+                    + word.rectTransform.rect.width.ToString("0") + " wide) loses its tail with no ellipsis.");
+            }
+            Assert.That(words.Where(word => word.text == longVoter).Select(word => Ellipsised(word)), Is.EqualTo(new[] { true, true }),
+                "A voter's name too long for a row, in either column, is marked as shortened,");
+            var chips = words.Where(word => word.text == "EVICT CHRISTOPHERSON").ToArray();
+            Assert.That(chips, Is.Not.Empty);
+            Assert.That(chips.Select(chip => Ellipsised(chip)), Is.All.True, "and so is a first name too long for the chip.");
+            Assert.That(words.Where(word => word.text.StartsWith("Houseguest", System.StringComparison.Ordinal))
+                .Select(word => word.isTextTruncated), Is.All.False, "A name that fits is drawn whole.");
+            var result = Text(named, "Result name");
+            result.ForceMeshUpdate(true);
+            Assert.That(result.text, Is.EqualTo("CHRISTOPHERSON"));
+            Assert.That(result.isTextTruncated, Is.False, "The result's first name is drawn smaller, and whole.");
+            AssertEveryLabelDraws(named, "Long names at a full house");
         }
 
         /// <summary>
@@ -749,6 +792,17 @@ namespace Gamesim.Tests.PlayMode
 
         private static TMP_Text Part(RectTransform row, string name) =>
             row.GetComponentsInChildren<TMP_Text>(true).First(label => label.name == name);
+
+        /// <summary>
+        /// Whether <paramref name="label"/> draws the ellipsis TMP puts in place of the words that did
+        /// not fit. Its text is still the whole of them; only what is drawn is shortened.
+        /// </summary>
+        private static bool Ellipsised(TMP_Text label)
+        {
+            label.ForceMeshUpdate(true);
+            var info = label.textInfo;
+            return info.characterInfo.Take(info.characterCount).Any(glyph => glyph.character == '…');
+        }
 
         /// <summary><paramref name="rect"/> in the card's own space, where the screen's face runs ±600 by ±400.</summary>
         private static UnityEngine.Rect OnTheCard(Component card, RectTransform rect)

@@ -108,7 +108,7 @@ namespace Gamesim.Episode
             PushContent(LiveColumn(JuryAnswerColumnName, row, centre), centre);
             controls();
             FitActionRows(content, centre);
-            string reaction = Reaction(state, exchange, questioner);
+            string reaction = Reaction(state, exchange);
             if (reaction != null)
             {
                 bool impressed = exchange.category != null ? FinaleQuestions.Landed(state, exchange) : exchange.answerChoice == exchange.correctChoice;
@@ -250,20 +250,10 @@ namespace Gamesim.Episode
         /// <summary>
         /// The engine's own note for a committed answer, rebuilt from the saved exchange so it
         /// survives a reload: "{juror} was impressed by your response during jury questioning." or
-        /// "...unconvinced...". Null until the player finalist has answered.
+        /// "...unconvinced...". Null until the player finalist has answered. The jury house reads
+        /// the same note (<see cref="JuryHouseRead.Note"/>), so the two can never word it apart.
         /// </summary>
-        public static string Reaction(EpisodeState state, JuryExchangeState exchange, ContestantState questioner)
-        {
-            if (exchange == null || !exchange.completed || exchange.finalistId != state.playerId) return null;
-            // A history question's note, from what was saved, as the engine wrote it.
-            if (exchange.category != null)
-                return FinaleQuestions.Note(questioner?.name ?? "Unknown housemate", FinaleQuestions.Landed(state, exchange));
-            bool choice(string key) => key == "A" || key == "B";
-            if (!choice(exchange.answerChoice) || !choice(exchange.correctChoice)) return null;
-            if (string.IsNullOrEmpty(exchange.questionerId) || exchange.questionerId == exchange.finalistId) return null;
-            return WebJuryQuestioning.EvaluateChoice(new WebJuryQuestion { correctIs = exchange.correctChoice }, exchange.answerChoice,
-                exchange.questionerId, questioner?.name ?? "Unknown housemate", exchange.finalistId).note;
-        }
+        public static string Reaction(EpisodeState state, JuryExchangeState exchange) => JuryHouseRead.Note(state, exchange);
 
         /// <summary>
         /// The season's receipt for the juror asking: the row the question came from as a card, the

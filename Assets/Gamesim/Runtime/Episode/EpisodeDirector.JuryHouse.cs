@@ -21,6 +21,9 @@ namespace Gamesim.Episode
     /// opens has a panel flag of its own, as the notebook has: it is a panel by
     /// <see cref="IsPanelOpen"/>'s reckoning, the house pauses under it, and leaving it goes back
     /// to the house. Its caption is its own, never a second 'The jury house'.</para>
+    ///
+    /// <para>The final case, its lock and the theme's weight at the vote are the plan's F4b, built on
+    /// schema 21 (EpisodeDirector.FinalCase.cs); its door sits beside this one.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {

@@ -61,7 +61,7 @@ namespace Gamesim.Episode
             contentWidthOverride = width;
         }
 
-        private void ResetColumns() { columns.Clear(); contentWidthOverride = 0f; }
+        private void ResetColumns() { columns.Clear(); contentWidthOverride = 0f; caseColumns.Clear(); }
 
         private RectTransform columnsRow, mainColumn, sideColumn;
 
@@ -534,6 +534,13 @@ namespace Gamesim.Episode
             public string Caption, Description, Corner, Glyph, Foot, Value;
             public Color CornerTint, ValueTint;
             public Action Choose;
+            /// <summary>
+            /// A choice that stays chosen until something else is (MOCKUP-PASS M15): null for a move,
+            /// which is done when pressed; false for one of a set not chosen, true for the chosen one.
+            /// A row draws a radio ring at its right-hand end, filled when chosen, and the chosen row
+            /// Pack 1's selected panel.
+            /// </summary>
+            public bool? Selected;
         }
 
         /// <summary>
@@ -658,6 +665,10 @@ namespace Gamesim.Episode
         private void RowTile(RectTransform rect, MoveTile tile, float cellWidth)
         {
             float s = FontScale;
+            // A choice that stays chosen says so three ways: the selected panel, the filled ring and
+            // the corner's word, which is the one of them that is not a colour.
+            bool radio = tile.Selected.HasValue;
+            if (tile.Selected == true) SelectedEdge(rect);
             var mark = Panel("Choice tile", rect, UiTheme.SurfaceRaised, 8);
             Anchor(mark, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(12f * s, 0f), new Vector2(40f * s, 40f * s));
             mark.GetComponent<Image>().raycastTarget = false;
@@ -677,13 +688,16 @@ namespace Gamesim.Episode
             AutoSize(caption, 11);
             Anchor(caption.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -8f * s),
                 new Vector2(cellWidth - text - 92f * s, 22f * s));
+            // The ring sits below the corner's word at the row's right-hand end; the line stops short of it.
+            float ring = radio ? (RadioSide + 12f) * s : 0f;
             if (!string.IsNullOrEmpty(tile.Description))
             {
                 var line = NewText(rect, tile.Description, 13, UiTheme.Muted);
                 AutoSize(line, 10);
                 Anchor(line.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -32f * s),
-                    new Vector2(cellWidth - text - 12f * s, 40f * s));
+                    new Vector2(cellWidth - text - 12f * s - ring, 40f * s));
             }
+            if (radio) RadioRing(rect, tile.Selected.Value, RadioSide * s, new Vector2(1f, .5f), new Vector2(-12f * s, -6f * s));
         }
 
         /// <summary>A tile as a card: the glyph and the caption on top, the chips under them, the line, the cost at the foot.</summary>

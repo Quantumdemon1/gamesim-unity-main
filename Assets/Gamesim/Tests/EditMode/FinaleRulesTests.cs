@@ -611,5 +611,115 @@ namespace Gamesim.Tests.EditMode
             Assert.That(FinaleQuestions.ReceiptSaysWhoWent(state, plea), Is.False, "The line does not say who went,");
             Assert.That(FinaleQuestions.RecapAdds(state, plea), Is.True, "so the week's headline adds it.");
         }
+
+        // ------------------------------------------------------------ the final case's screen (MOCKUP-PASS M15)
+
+        /// <summary>
+        /// A season with a moment of every kind a row can give: two wins and a kept promise, a week
+        /// holding the house on a call in The Core, a veto used on somebody else, a whip count read
+        /// right, a kept deal, and an alliance still standing.
+        /// </summary>
+        private static EpisodeState EveryKindOfMoment()
+        {
+            var state = WithMoments(FinalThree());
+            string player = state.playerId;
+            var c = state.contestants;
+            state.ledger.power.Add(new PowerRow { week = 2, hohId = player, nominees = new List<string> { c[4].id, c[5].id },
+                evicteeId = c[5].id, tally = new List<int> { 2, 1 } });
+            state.ledger.power.Add(new PowerRow { week = 3, hohId = c[1].id, vetoHolderId = player, vetoUsed = true, savedId = c[4].id,
+                nominees = new List<string> { c[4].id, c[3].id }, evicteeId = c[3].id, tally = new List<int> { 2, 0 } });
+            state.ledger.ballots.Add(new BallotRow { week = 3, voterId = player, targetId = c[3].id, readBefore = c[3].id, correct = true });
+            state.ledger.calls.Add(new BlocCallRow { week = 2, allianceId = "a1", callerId = player, targetId = c[5].id });
+            state.alliances.Add(new AllianceState { id = "a1", name = "The Core", members = new List<string> { player, c[1].id, c[4].id } });
+            state.ledger.alliances.Add(new AllianceRow { id = "a1", startedWeek = 1 });
+            state.deals.Add(new DealState { id = "d1", type = DealKind.SafetyAgreement, proposerId = player, recipientId = c[1].id,
+                status = DealStatus.Fulfilled, week = 2, expiresWeek = 3 });
+            return state;
+        }
+
+        [Test]
+        public void EveryMomentHasATitleAndTheFaceItIsAbout()
+        {
+            var state = EveryKindOfMoment();
+            var c = state.contestants;
+            string player = state.playerId;
+            var faces = new Dictionary<string, string>
+            {
+                ["win:2:HoH"] = player, ["win:3:Veto"] = player, ["hoh:2"] = c[5].id, ["veto:3"] = c[4].id, ["whip:3"] = c[3].id,
+                ["call:a1:2"] = c[5].id, ["promise:kept"] = c[2].id, ["deal:d1"] = c[1].id, ["alliance:a1"] = c[1].id,
+                ["record:unnominated"] = player,
+            };
+            var moments = FinalArgument.Moments(state);
+            Assert.That(moments.Select(m => m.reference), Is.EquivalentTo(faces.Keys), "A moment of every kind the fixture writes.");
+            foreach (var moment in moments)
+            {
+                Assert.That(FinalArgument.SubjectOf(state, moment.reference), Is.EqualTo(faces[moment.reference]), moment.reference);
+                string title = FinalArgument.Title(moment.reference);
+                Assert.That(title, Is.Not.Null.And.Not.Empty, moment.reference);
+                Assert.That(title, Is.Not.EqualTo(moment.text), "A card's title never reads as its caption.");
+            }
+            Assert.That(FinalArgument.Title("win:2:HoH"), Is.EqualTo("Won Head of Household"));
+            Assert.That(FinalArgument.Title("win:5:FinalHoHPart2"), Is.EqualTo("Won Final HoH Part 2"));
+            Assert.That(FinalArgument.Title("record:off-the-block"), Is.EqualTo("Stayed off the block"));
+            Assert.That(FinalArgument.Title("nonsense"), Is.Null);
+            Assert.That(FinalArgument.SubjectOf(state, "hoh:7"), Is.Null, "A week the record does not hold has no face.");
+            Assert.That(FinalArgument.SubjectOf(state, "win:7:HoH"), Is.Null);
+            Assert.That(FinalArgument.SubjectOf(state, "promise:nobody"), Is.Null);
+            Assert.That(FinalArgument.SubjectOf(state, "nonsense"), Is.Null);
+            // Only the player's own rows: a promise somebody else kept is nobody's face here.
+            state.promises.Add(new PromiseState { id = "theirs", fromId = c[1].id, toId = c[4].id, kind = PromiseKind.Safety,
+                status = PromiseStatus.Fulfilled, week = 2, expiresWeek = 3 });
+            Assert.That(FinalArgument.SubjectOf(state, "promise:theirs"), Is.Null);
+        }
+
+        [Test]
+        public void TheResumeReadsThePlayersOwnRecordAndNeverDatesABreak()
+        {
+            var state = EnterQuestioning(EveryKindOfMoment());
+            var c = state.contestants;
+            state.promises.Add(new PromiseState { id = "broken", fromId = state.playerId, toId = c[4].id, kind = PromiseKind.Safety,
+                status = PromiseStatus.Broken, week = 3, expiresWeek = 3 });
+            state.promises.Add(new PromiseState { id = "theirs", fromId = c[1].id, toId = state.playerId, kind = PromiseKind.Safety,
+                status = PromiseStatus.Broken, week = 2, expiresWeek = 3 });
+            var you = state.Find(state.playerId);
+            var read = FinalCaseResume.Read(state);
+            Assert.That(read.wins, Is.EqualTo(FinalistRead.Wins(state, you)));
+            Assert.That(read.nominationsSurvived, Is.EqualTo(you.timesNominated));
+            Assert.That(read.weeks, Is.EqualTo(state.week));
+            Assert.That(read.weeksInPower, Is.EqualTo(state.ledger.power.Count(p => p.hohId == state.playerId)));
+
+            // Seven moves on the record, three shown: holding the house twice and the call, in week order.
+            Assert.That(read.majorMoves.Select(m => m.text), Is.EqualTo(new[] { "Held the house", "Called the vote", "Held the house" }));
+            Assert.That(read.majorMoves.Select(m => m.week), Is.EqualTo(new[] { 2, 2, state.week }));
+            Assert.That(read.alliances, Is.EqualTo(new[] { "The Core with " + FinalistRead.FirstName(c[1].name) + ", " + FinalistRead.FirstName(c[4].name)
+                + " · weeks 1–" + state.week }), "Its name, first names and weeks - never why it began or ended.");
+            Assert.That(read.moreAlliances, Is.Zero);
+
+            Assert.That(read.brokenByYou, Is.EqualTo(1));
+            Assert.That(read.brokenAgainstYou, Is.EqualTo(1));
+            Assert.That(read.betrayals, Is.EqualTo(new[] { "You broke your word to " + c[4].name + ".", c[1].name + " broke their word to you." }),
+                "The most recently made first.");
+            Assert.That(read.betrayals.Any(line => line.IndexOf("week", System.StringComparison.OrdinalIgnoreCase) >= 0), Is.False, "Never a break week.");
+
+            // The weeks the moves did not name, one a week, and last the week the player got here.
+            Assert.That(read.keyWeeks.Select(k => k.week), Is.EqualTo(new[] { 1, 2, 3, state.week }));
+            Assert.That(read.keyWeeks.Select(k => k.text), Is.EqualTo(new[] { "Built an alliance", "Kept a deal", "Used the veto", "Reached the Final 2" }));
+            Assert.That(read.keyWeeks, Has.Count.LessThanOrEqualTo(FinalCaseResume.MostKeyWeeks));
+
+            // At three, before the final eviction, the résumé says how far the player has come so far.
+            Assert.That(FinalCaseResume.Read(EveryKindOfMoment()).keyWeeks.Last().text, Is.EqualTo("Reached the Final 3"));
+            Assert.That(FinalCaseResume.Read(null).keyWeeks, Is.Empty);
+        }
+
+        [Test]
+        public void TheSpeechOpensWithTheThemesOpening()
+        {
+            var state = EnterQuestioning(WithMoments(FinalThree()));
+            var engine = new EpisodeEngine(state);
+            Assert.That(Lock(engine, FinalArgument.Social, "promise:kept", "win:2:HoH", "record:unnominated").accepted, Is.True);
+            foreach (var theme in FinalArgument.Themes) Assert.That(FinalArgument.Opening(theme), Is.Not.Null.And.Not.Empty, theme);
+            Assert.That(FinalArgument.Speech(engine.Snapshot), Does.StartWith(FinalArgument.Opening(FinalArgument.Social)),
+                "The résumé's quote slot reads back the speech's own first line.");
+        }
     }
 }

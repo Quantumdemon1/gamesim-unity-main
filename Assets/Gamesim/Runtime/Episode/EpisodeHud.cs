@@ -282,6 +282,7 @@ namespace Gamesim.Episode
             fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
+            bandTitle = bandLine = null; bandGlyph = bandStroke = null;
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
@@ -2013,12 +2014,14 @@ namespace Gamesim.Episode
             // Head of Household is played for: the title is the same over all three (MOCKUP-PASS M3).
             string part = EpisodeDirector.FinalHoHPartLabel(state.phase);
             if (part != null)
-                FixedText(rect,part + " · " + EpisodeEngine.CompetitionCategory(state),13,UiTheme.Gold,new Vector2(words,-36),new Vector2(540,20));
+                bandLine = FixedText(rect,part + " · " + EpisodeEngine.CompetitionCategory(state),13,UiTheme.Gold,new Vector2(words,-36),new Vector2(540,20));
             else
-                FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
+                bandLine = FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
                         ? "Season complete"
                         : state.Active.Count() + " houseguests remain"),
                     13,UiTheme.Muted,new Vector2(words,-36),new Vector2(540,20));
+            // Kept, so a screen that takes the station over can name itself here (StationScreen).
+            bandGlyph = glyph; bandTitle = title;
 
             // The phase's colour as a short stroke under the title, over a hairline the width of
             // the panel that separates the header from what it heads.
@@ -2029,7 +2032,8 @@ namespace Gamesim.Episode
             var stroke = Panel("Phase stroke",rect,tint,1);
             stroke.anchorMin = new Vector2(0,0); stroke.anchorMax = new Vector2(0,0); stroke.pivot = new Vector2(0,0);
             stroke.anchoredPosition = new Vector2(18,-1); stroke.sizeDelta = new Vector2(120,3);
-            stroke.GetComponent<Image>().raycastTarget = false;
+            bandStroke = stroke.GetComponent<Image>();
+            bandStroke.raycastTarget = false;
             return rect;
         }
 

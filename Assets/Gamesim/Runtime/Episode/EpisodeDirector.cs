@@ -1499,12 +1499,15 @@ namespace Gamesim.Episode
             // Who holds what this week, on one line, before whatever there is to decide: the stage
             // stands the strip and its badges down, so this is where the roles are read. The final
             // Head of Household's choice opens on its own gold head instead: the house is down to
-            // the three, and the two it is between are on its cards (MOCKUP-PASS M8).
+            // the three, and the two it is between are on its cards (MOCKUP-PASS M8). Not over a
+            // view at three either (the comparison, the final case, the jury house): those are
+            // screens of their own, and the roles they would sit under are the final-four week's,
+            // which stay in state until the window closes and can name a juror as a nominee.
             bool finalChoice = state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId;
             if (finalChoice) FinalTwoHead();
             else
             {
-                string houseStatus = HouseStatus(state);
+                string houseStatus = ViewOverPreparation(state) ? null : HouseStatus(state);
                 if (houseStatus != null) hud.Paragraph(houseStatus);
             }
             // A story beat waiting on the player comes before anything else they could do: it

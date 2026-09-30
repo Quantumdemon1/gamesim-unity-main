@@ -154,12 +154,25 @@ namespace Gamesim.Episode
         /// playing its card on the set's screen, or keeping its seats while the evicted walk out.
         /// Never otherwise - a card on the HUD frame says what moves it on in its own lines - and so
         /// never in a batch run not asking for stages, or under reduced motion, which stage nothing.
+        /// Exactly while the stage holds the house's input (<see cref="CeremonyStage.OwnsThePress"/>),
+        /// so the press the chip names is never also a press on the HUD.
         /// </summary>
-        private bool SkipChipWanted => IsCeremonyStaged && (ceremonyStage.Step != CeremonyStageStep.Release || walkingOutId != null);
+        private bool SkipChipWanted => IsCeremonyStaged && ceremonyStage.OwnsThePress;
+
+        /// <summary>The HUD's chrome on screen this frame, for the chip to stand clear of. Reused, never shared.</summary>
+        private readonly List<Rect> chromeUnderSkipChip = new List<Rect>();
 
         private void TickSkipChip()
         {
-            if (skipChip != null) skipChip.Show(SkipChipWanted);
+            if (skipChip == null) return;
+            bool wanted = SkipChipWanted;
+            skipChip.Show(wanted);
+            if (!wanted) return;
+            // The chrome is back while the evicted walk out, and the chip's corner is the cast
+            // strip's right-hand end: it stands clear of whatever the HUD has on screen there.
+            if (hud != null) hud.ChromeOnScreen(chromeUnderSkipChip);
+            else chromeUnderSkipChip.Clear();
+            skipChip.StandClearOf(chromeUnderSkipChip);
         }
 
         /// <summary>
@@ -287,6 +300,12 @@ namespace Gamesim.Episode
             public string StandingId { get; private set; }
             public bool Active => begun && !ended;
             public bool Narrating => Active && Step != CeremonyStageStep.Release;
+            /// <summary>
+            /// Whether a press on the devices is the stage's: while it narrates, and while the
+            /// evicted walk out under it. The skip chip is up exactly then, naming that press, and
+            /// the house takes none of its own until it is down.
+            /// </summary>
+            public bool OwnsThePress => Narrating || (Active && Step == CeremonyStageStep.Release && director.walkingOutId != null);
             /// <summary>Whether the stage has a place for this houseguest and has not let the house go.</summary>
             public bool Holds(string id) => !ended && id != null && placeOf.ContainsKey(id);
             public int SeatedCount => seated.Values.Count(seat => seat != null && seat.Active) + (playerSeat != null && playerSeat.Active ? 1 : 0);
@@ -579,8 +598,12 @@ namespace Gamesim.Episode
                 // the summons and the phase panel is still open under it, so the press that starts
                 // the card reached the house as well: Submit on whatever control had the keyboard,
                 // Escape closing the panels, the house's shortcuts. The gate the cards stamp says
-                // the press is spoken for (the card, once up, stamps it itself).
-                if (Narrating) CeremonyOverlays.Showing();
+                // the press is spoken for (the card, once up, stamps it itself). So is the walk
+                // out the stage keeps its seats for, while the skip chip names the press that ends
+                // it: the chrome is back by then, and the episode screen the eviction was committed
+                // from is still open with its way on focused, so the Enter that ended the walk
+                // pressed Continue under it too, and Escape closed the panel.
+                if (OwnsThePress) CeremonyOverlays.Showing();
                 director.cameraRig.ControlsEnabled = false;
                 director.npcMeetings.ResumeCeremonyActors();
                 if (Step != CeremonyStageStep.Release && now >= retryAt) { retryAt = now + RetrySeconds; SendTheLeftOut(); }

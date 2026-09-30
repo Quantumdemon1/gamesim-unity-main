@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -19,15 +20,18 @@ namespace Gamesim.Presentation
     /// its block or its result, a press on the card closes it, and a press on the walk out ends it.
     /// The outcome is never touched.</para>
     ///
-    /// <para>Its rect takes the pointer, with no handler behind it, and nothing else of it does. The
-    /// chrome is back while the evicted walk out, and a click on the chip would otherwise also have
-    /// pressed whichever face on the cast strip lay under it; the house's click guard asks the event
-    /// system the same question, so the player does not walk there either. It is small and up only
-    /// while a ceremony is staged, so nothing is stranded behind it.</para>
+    /// <para>Its rect takes the pointer, with no handler behind it, and nothing else of it does, so
+    /// a click on it presses nothing of the HUD's; the house's click guard asks the event system the
+    /// same question, so the player does not walk there either. It is small and up only while a
+    /// ceremony is staged, so nothing is stranded behind it.</para>
     ///
     /// <para>Its own canvas, above the cards and below the menus, in the bottom right: the rail
-    /// runs down the left, and the ceremony strip across the top. It lives on its own scene root,
-    /// out of the director's subtree the HUD's tests read, as the cards do.</para>
+    /// runs down the left, and the ceremony strip across the top. The chrome is back while the
+    /// evicted walk out, and that corner is the cast strip's right-hand end - the quote, the jury's
+    /// card at the endgame, the last faces of a large house - with the controls pill over it, so
+    /// the chip stands clear of whatever the HUD has on screen there (<see cref="StandClearOf"/>).
+    /// It lives on its own scene root, out of the director's subtree the HUD's tests read, as the
+    /// cards do.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CeremonySkipChip : MonoBehaviour
@@ -56,12 +60,18 @@ namespace Gamesim.Presentation
         private const float PadX = 12f, PadY = 8f, Gap = 10f, KeyPadX = 7f;
         /// <summary>A label box this many times its font: Inter's line is 1.21 of its size, and a box short of it draws nothing.</summary>
         private const float LineScale = 1.35f;
+        /// <summary>The gap the chip keeps above a piece of the chrome it stands clear of, as the HUD's own bands keep.</summary>
+        private const float Clearance = 8f;
 
         private CanvasGroup group;
         private RectTransform chip, keycap;
         private TMP_Text caption, key;
         private bool showing, usingPad;
         private float laidOutFor = -1f;
+        /// <summary>How high off the frame's floor the chip stands: the corner's margin, or above the chrome in it.</summary>
+        private float standAt = Margin;
+        /// <summary>The chrome handed to <see cref="StandClearOf"/>, in the chip's own units. Reused.</summary>
+        private readonly List<Rect> inFrame = new List<Rect>();
 
         /// <summary>Matches the HUD's accessibility preference, as the cards do.</summary>
         public float FontScale { get; set; } = 1f;
@@ -108,6 +118,8 @@ namespace Gamesim.Presentation
                 showing = false;
                 group.alpha = 0f;
                 group.blocksRaycasts = false;
+                // The next stage starts in the corner: the chrome is held from its summons.
+                standAt = Margin;
                 if (chip != null) chip.gameObject.SetActive(false);
                 return;
             }
@@ -118,6 +130,49 @@ namespace Gamesim.Presentation
             Layout();
             group.alpha = 1f;
             group.blocksRaycasts = true;
+        }
+
+        /// <summary>
+        /// Stands the chip clear of <paramref name="chrome"/>, the screen rects of whatever else is
+        /// drawn on the frame: in its corner when nothing is there, and otherwise lifted past each
+        /// piece it would stand on - the cast strip's glass, then the controls pill over it, while
+        /// the chrome is back for a walk out. Called each frame it is up; moved only when the
+        /// answer changes. A corner taken past the frame's lower half - a screen that fills the
+        /// frame - gives the corner back: the chip is small, and up only while a stage runs.
+        /// </summary>
+        public void StandClearOf(IReadOnlyList<Rect> chrome)
+        {
+            if (!showing || chip == null) return;
+            var root = (RectTransform)transform;
+            var frame = root.rect;
+            inFrame.Clear();
+            if (chrome != null)
+                foreach (var piece in chrome)
+                {
+                    // Into the chip's own units, from the frame's bottom-left, as the HUD's own
+                    // measurements read a canvas: an overlay canvas's root maps them to the screen.
+                    Vector2 low = (Vector2)root.InverseTransformPoint(new Vector3(piece.xMin, piece.yMin, 0f)) - frame.min;
+                    Vector2 high = (Vector2)root.InverseTransformPoint(new Vector3(piece.xMax, piece.yMax, 0f)) - frame.min;
+                    inFrame.Add(Rect.MinMaxRect(low.x, low.y, high.x, high.y));
+                }
+            Vector2 size = chip.sizeDelta;
+            float right = frame.width - Margin, left = right - size.x;
+            float y = Margin;
+            // Each lift passes the top of at least one piece for good, so there are never more
+            // lifts than pieces.
+            for (int lift = 0; lift <= inFrame.Count; lift++)
+            {
+                float next = y;
+                foreach (var area in inFrame)
+                    if (area.xMax > left && area.xMin < right && area.yMax > y && area.yMin < y + size.y)
+                        next = Mathf.Max(next, area.yMax + Clearance);
+                if (next <= y) break;
+                y = next;
+            }
+            if (y + size.y > frame.height * .5f) y = Margin;
+            if (Mathf.Abs(y - standAt) < .5f) return;
+            standAt = y;
+            chip.anchoredPosition = new Vector2(-Margin, standAt);
         }
 
         private void Update()
@@ -168,7 +223,7 @@ namespace Gamesim.Presentation
             float width = PadX + keyWidth + Gap + captionWidth + PadX;
 
             chip.anchorMin = chip.anchorMax = chip.pivot = new Vector2(1f, 0f);
-            chip.anchoredPosition = new Vector2(-Margin, Margin);
+            chip.anchoredPosition = new Vector2(-Margin, standAt);
             chip.sizeDelta = new Vector2(width, height);
 
             Place(keycap, PadX, keyWidth, keyHeight);

@@ -1638,6 +1638,8 @@ namespace Gamesim.Episode
             { competitionCard.VisibilityChanged -= SyncCompetitionResultInput; Destroy(competitionCard.gameObject); competitionCard = null; }
             if (competitionScreen != null) { Destroy(competitionScreen.gameObject); competitionScreen = null; }
             if (keyCeremony != null) { Destroy(keyCeremony.gameObject); keyCeremony = null; }
+            // The skip chip is a scene root as well: left behind, the next director attached a second.
+            if (skipChip != null) { Destroy(skipChip.gameObject); skipChip = null; }
             if (tutorial != null) { Destroy(tutorial.gameObject); tutorial = null; }
             if (opening != null) { Destroy(opening.gameObject); opening = null; }
         }

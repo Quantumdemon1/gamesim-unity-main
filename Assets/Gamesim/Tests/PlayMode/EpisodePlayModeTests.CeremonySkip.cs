@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.House;
@@ -7,6 +8,7 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
@@ -202,6 +204,127 @@ namespace Gamesim.Tests.PlayMode
             }
             director.SetLargeText(false);
             yield return SkipReveals();
+        }
+
+        /// <summary>
+        /// Commits eviction night until it is staged, skips the summons and the vote as a player
+        /// who has seen enough does, and leaves the evicted walking out under the stage, the chrome
+        /// back and the chip up.
+        /// </summary>
+        private IEnumerator SkipToTheStagedWalkOut()
+        {
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
+            Assert.That(director.CeremonyStageKind, Is.EqualTo(CeremonySting.EvictionKind));
+            string evicted = director.DepartingId;
+            Assert.That(evicted, Is.Not.Null, "A houseguest is evicted.");
+            director.SkipCeremonySummons();
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
+            yield return SkipReveals();
+            yield return Frames(3);
+            Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "The evicted walk out,");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release), "the house keeps its seats,");
+            Assert.That(director.CeremonySkipShowing, Is.True, "and the chip names the press that ends the walk.");
+            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back for the walk.");
+        }
+
+        /// <summary>
+        /// The press the chip names during a staged walk out ends the walk and nothing else. The
+        /// eviction is committed from the episode screen, as in play, and the screen is still open
+        /// under the walk with the chrome back and its way on focused: the stage held the house's
+        /// input only while it narrated, so Enter ended the walk and pressed the way on as well,
+        /// committing the next beat under the goodbye, and Escape closed the panel.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheWalkOutsPressEndsTheWalkAndNothingElse()
+        {
+            yield return InstallStagedSeason(52, AtEviction);
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            yield return null;
+            yield return SkipToTheStagedWalkOut();
+            string evicted = director.WalkingOutId;
+            Assert.That(director.IsPanelOpen, Is.True, "The episode screen is still open under the walk.");
+            Assert.That(CeremonyOverlays.OnScreen, Is.True, "The house's input gate says the press is the walk out's,");
+            Assert.That(director.IsSubmitHeldForCeremony, Is.True, "and the UI's Submit waits, as it does for a card.");
+            var committed = director.Snapshot;
+
+            // Past the guard that keeps the press that closed the card from ending the walk too,
+            // with the keyboard on the episode screen's way on, where the panel keeps it.
+            yield return RealSeconds(0.5f);
+            Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "They are still walking.");
+            string wayOn = KeyboardCaptions(committed).First();
+            var control = ControlCarrying(wayOn);
+            Assert.That(control, Is.Not.Null, "The episode screen offers '" + wayOn + "' under the walk.");
+            EventSystem.current.SetSelectedGameObject(control.gameObject);
+            yield return PressKey(Key.Enter);
+            Assert.That(director.WalkingOutId, Is.Null, "Enter ends the walk out,");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(committed.revision), "and presses nothing under it: '" + wayOn + "' was not pressed,");
+            Assert.That(director.IsPanelOpen, Is.True, "and the episode screen is still open.");
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "The house gets up");
+            yield return Frames(2);
+            Assert.That(director.CeremonySkipShowing, Is.False, "The chip goes with the stage,");
+            Assert.That(director.IsSubmitHeldForCeremony, Is.False, "and Submit is back with the house.");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The chip clear of the chrome while it is back for a staged walk out, at both text sizes.
+        /// Its corner is the cast strip's right-hand end - the quote, the jury's card at the endgame,
+        /// the last faces of a large house - and it stood on it there, its shield taking the faces'
+        /// clicks for the length of the walk. The controls pill stands over the strip in that
+        /// corner, so the chip stands above both, still in the frame's lower half.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheSkipChipStandsClearOfTheChromeThroughTheWalkOut()
+        {
+            yield return InstallStagedSeason(52, AtEviction);
+            yield return SkipToTheStagedWalkOut();
+            string evicted = director.WalkingOutId;
+            var chrome = new List<Rect>();
+            foreach (bool large in new[] { false, true })
+            {
+                director.SetLargeText(large);
+                yield return Frames(3);
+                string where = "The skip chip through the walk out at " + (large ? "the larger" : "the resting") + " text size";
+                Assert.That(director.WalkingOutId, Is.EqualTo(evicted), where + ": they are still walking,");
+                Assert.That(director.CeremonySkipShowing, Is.True, where + ": the chip is up,");
+                Assert.That(Hud.IsHeldForReveal, Is.False, where + ": the chrome is back.");
+                Canvas.ForceUpdateCanvases();
+                var chip = SkipChip();
+                var at = ScreenRect(chip);
+                // The live copies: a rebuild's old ones are inactive until they are destroyed.
+                var strip = director.GetComponentsInChildren<RectTransform>().LastOrDefault(rect => rect.name == CastRail.StripName);
+                Assert.That(strip, Is.Not.Null, where + ": the cast strip is on screen.");
+                Assert.That(at.Overlaps(ScreenRect(strip)), Is.False, where + ": clear of the cast strip, " + at + " against " + ScreenRect(strip) + ".");
+                var pill = director.GetComponentsInChildren<RectTransform>().LastOrDefault(rect => rect.name == "Exploration controls");
+                if (pill != null)
+                    Assert.That(at.Overlaps(ScreenRect(pill)), Is.False, where + ": clear of the controls pill, " + at + " against " + ScreenRect(pill) + ".");
+                Hud.ChromeOnScreen(chrome);
+                Assert.That(chrome, Is.Not.Empty, where + ": the HUD reports its chrome.");
+                foreach (var piece in chrome)
+                    Assert.That(at.Overlaps(piece), Is.False, where + ": clear of every piece of the chrome, " + at + " against " + piece + ".");
+                foreach (var label in chip.GetComponentsInChildren<TMP_Text>())
+                    Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - 0.01f),
+                        where + ": '" + label.text + "' has a box " + label.rectTransform.rect.height.ToString("0.0") + " high.");
+                AssertEveryLabelDraws(chip, where);
+
+                var space = (RectTransform)chip.GetComponentInParent<Canvas>().rootCanvas.transform;
+                var corners = new Vector3[4];
+                chip.GetWorldCorners(corners);
+                Vector2 low = space.InverseTransformPoint(corners[0]), high = space.InverseTransformPoint(corners[2]);
+                var bounds = space.rect;
+                Assert.That(high.x, Is.LessThanOrEqualTo(bounds.xMax + 0.5f), where + ": on the canvas at the right,");
+                Assert.That(low.y, Is.GreaterThanOrEqualTo(bounds.yMin - 0.5f), where + ": and at the bottom,");
+                Assert.That(high.y - bounds.yMin, Is.LessThan(bounds.height * 0.5f), where + ": in its lower half.");
+            }
+            director.SetLargeText(false);
+            yield return null;
+            director.SkipWalkOut();
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "The house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
         }
 
         /// <summary>Reduced motion stages nothing, so no chip goes up: the keys play on the HUD frame, whose own lines say what moves them on.</summary>

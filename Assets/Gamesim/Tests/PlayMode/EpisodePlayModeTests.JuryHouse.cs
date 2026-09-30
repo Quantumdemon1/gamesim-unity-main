@@ -49,7 +49,13 @@ namespace Gamesim.Tests.PlayMode
                 var line = callout.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Callout line").text;
                 if (said.when != null) Assert.That(line, Does.StartWith(said.when + ": “"), juror.name + "'s own recorded words, dated.");
                 else Assert.That(line, Is.EqualTo(said.words), juror.name + "'s reason, unquoted.");
-                Assert.That(line, Does.Not.Contain("feel"), "Never worded as how they feel about you.");
+                if (said.noteTail != null) Assert.That(line, Does.EndWith("” · " + said.noteTail), "The note under their name, without the name again.");
+                // The screen's own wording, never the juror's: a recorded question or plea may say
+                // "feel" ("Do you feel any remorse…"), and it is quoted, not the screen's claim.
+                int open = line.IndexOf('“'), close = line.LastIndexOf('”');
+                string wording = said.quoted && open >= 0 && close > open ? line.Remove(open, close - open + 1) : line;
+                Assert.That(wording, Does.Not.Contain("feel"), "Never worded as how they feel about you.");
+                AssertDecisionCopyFits(callout);
             }
             Assert.That(LastActive(EpisodeHud.JuryHighlightsName), Is.Not.Null, "The season's highlights beside the tableau.");
             var observe = LastActive(EpisodeHud.ObserveOnlyName);

@@ -411,7 +411,7 @@ namespace Gamesim.Episode
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) title.font = semibold;
             title.characterSpacing = 3f;
-            var subtitle = FixedText(tableau, "Their own recorded words where the record has them, dated. Otherwise, your last read of them.", 12, UiTheme.Muted,
+            var subtitle = FixedText(tableau, "Their own recorded words where the record has them, dated. Otherwise, why they stand where they do.", 12, UiTheme.Muted,
                 new Vector2(pad, -34f * s), new Vector2(width - 2f * pad, 18f * s));
             AutoSize(subtitle, 9);
 
@@ -474,9 +474,12 @@ namespace Gamesim.Episode
             if (line == null) return;
             float lineTop = pad + photo.y + 6f * s, lineWidth = w - 2f * pad;
             // A recorded question or plea is cut to its first sentence, and shorter still on a narrow
-            // callout; the reason is the read's own short line and is shown whole.
-            int limit = Mathf.Clamp(Mathf.FloorToInt(lineWidth / (6.2f * s)) * 2, 40, 110);
-            string text = line.quoted ? line.Compose(EndScreenKit.Excerpt(line.words, limit) ?? line.words) : line.Text;
+            // callout or once tonight's answer is in, whose note takes the rest of the room; the
+            // reason is the read's own short line and is shown whole. The name is on the callout
+            // already, so the note is drawn without it (Callout.Brief).
+            int after = string.IsNullOrEmpty(line.noteTail) ? 0 : line.noteTail.Length + 3;
+            int limit = Mathf.Clamp(Mathf.FloorToInt(lineWidth / (6.2f * s)) * 2 - after, 40, 110);
+            string text = line.Brief(line.quoted ? EndScreenKit.Excerpt(line.words, limit) ?? line.words : line.words);
             var words = FixedText(card, text, 12, line.quoted ? Paper : UiTheme.Muted, new Vector2(pad, -lineTop), new Vector2(lineWidth, h - lineTop - pad));
             if (line.quoted) words.fontStyle = FontStyles.Italic;
             words.name = "Callout line";

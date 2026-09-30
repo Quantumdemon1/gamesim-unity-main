@@ -77,16 +77,25 @@ namespace Gamesim.Simulation
             public bool quoted;
             /// <summary>The engine's recorded note on the player's answer to tonight's question, once answered.</summary>
             public string note;
+            /// <summary>The note without the juror's name or its full stop ("took your answer well"), for a line that already names them.</summary>
+            public string noteTail;
 
             /// <summary>The whole line, with the words as given: "Tonight: “…” Casey Lee took your answer well."</summary>
-            public string Text => Compose(words);
+            public string Text => Compose(words, note);
 
-            /// <summary>The whole line with <paramref name="shown"/> in place of the words: a narrow card passes an excerpt of them.</summary>
-            public string Compose(string shown)
+            /// <summary>
+            /// The line as a callout draws it, under the juror's own name: <paramref name="shown"/> in
+            /// place of the words, since a narrow callout passes an excerpt of them, and the note's
+            /// tail after a dot rather than the note naming them again ("Tonight: “…” · took your
+            /// answer well").
+            /// </summary>
+            public string Brief(string shown) => Compose(shown, string.IsNullOrEmpty(noteTail) ? null : "· " + noteTail);
+
+            private string Compose(string shown, string after)
             {
                 string said = quoted ? "“" + shown + "”" : shown;
                 string line = string.IsNullOrEmpty(when) ? said : when + ": " + said;
-                return string.IsNullOrEmpty(note) ? line : line + " " + note;
+                return string.IsNullOrEmpty(after) ? line : line + " " + after;
             }
         }
 
@@ -97,9 +106,10 @@ namespace Gamesim.Simulation
             public List<string> matters = new List<string>();
             /// <summary>
             /// Every juror's dated lines merged, newest first, each naming its juror: tonight's
-            /// questions on top at the Final 2 ("Tonight · Casey asked about week 4 · took your answer
-            /// well"), then "Week 6 · Casey · left on your nomination". The player's record with each
-            /// of them, never what the jurors say to one another, which nothing records.
+            /// questions on top at the Final 2, the latest first ("Tonight · Casey asked about week
+            /// 4 · took your answer well"), then "Week 6 · Casey · left on your nomination". The
+            /// player's record with each of them, never what the jurors say to one another, which
+            /// nothing records.
             /// </summary>
             public List<string> highlights = new List<string>();
         }
@@ -114,18 +124,16 @@ namespace Gamesim.Simulation
                     house.matters.Add(group.Count() + " of " + house.jurors.Count + " lead with " + group.Key + ".");
             if (house.matters.Count == 0 && house.jurors.Count > 0) house.matters.Add("No one trait leads this jury.");
 
-            // Tonight first, in the order the questions were asked; then the season, newest first,
-            // jurors in their cast order within a week and each juror's own lines in theirs.
-            foreach (var juror in house.jurors)
+            // Tonight first, newest first like the rest: the question being asked now on top and the
+            // ones before it under it. The questions go round the jury in cast order, so the house's
+            // own order would bury the current one under "and n more" in a large jury. Then the
+            // season, newest first, jurors in their cast order within a week and each juror's own
+            // lines in theirs.
+            var tonight = house.jurors.Select(juror => (juror, asked: Question(s, juror.id))).Where(pair => pair.asked != null)
+                .OrderByDescending(pair => s.juryExchanges.IndexOf(pair.asked)).ToList();
+            foreach (var (juror, asked) in tonight)
             {
-                var asked = Question(s, juror.id);
-                if (asked == null) continue;
-                string note = Note(s, asked), tail = null;
-                if (note != null)
-                {
-                    string name = s.Find(juror.id)?.name ?? "";
-                    tail = (name.Length > 0 && note.StartsWith(name + " ", System.StringComparison.Ordinal) ? note.Substring(name.Length + 1) : note).TrimEnd('.');
-                }
+                string tail = NoteTail(s, juror.id, Note(s, asked));
                 house.highlights.Add("Tonight · " + ShortName(s, juror.id) + " " + Asked(s, asked) + (tail == null ? "" : " · " + tail));
             }
             var season = house.jurors.SelectMany((juror, seat) => juror.dated.Select((line, order) => (line.week, seat, order, text: "Week " + line.week + " · " + ShortName(s, juror.id) + " · " + line.text)));
@@ -150,9 +158,9 @@ namespace Gamesim.Simulation
             s?.juryExchanges?.LastOrDefault(x => x != null && x.questionerId == jurorId && x.finalistId == s.playerId && !string.IsNullOrEmpty(x.question));
 
         /// <summary>
-        /// The engine's own note on the player's answer, rebuilt from the saved exchange as the
-        /// questioning screen rebuilds it: a history question's softer note, or the catalogue's.
-        /// Null until the answer is committed.
+        /// The engine's own note on the player's answer, rebuilt from the saved exchange: a history
+        /// question's softer note, or the catalogue's. Null until the answer is committed. The
+        /// questioning screen's reaction line is this note too.
         /// </summary>
         public static string Note(EpisodeState s, JuryExchangeState exchange)
         {
@@ -164,6 +172,17 @@ namespace Gamesim.Simulation
             if (!Choice(exchange.answerChoice) || !Choice(exchange.correctChoice)) return null;
             return WebJuryQuestioning.EvaluateChoice(new WebJuryQuestion { correctIs = exchange.correctChoice }, exchange.answerChoice,
                 exchange.questionerId, name, exchange.finalistId).note;
+        }
+
+        /// <summary>
+        /// The note without the juror's name or its full stop ("took your answer well"), for a line
+        /// that names them already. Null when there is no note.
+        /// </summary>
+        private static string NoteTail(EpisodeState s, string jurorId, string note)
+        {
+            if (note == null) return null;
+            string name = s.Find(jurorId)?.name ?? "";
+            return (name.Length > 0 && note.StartsWith(name + " ", System.StringComparison.Ordinal) ? note.Substring(name.Length + 1) : note).TrimEnd('.');
         }
 
         /// <summary>
@@ -223,7 +242,11 @@ namespace Gamesim.Simulation
         private static Callout LineFor(EpisodeState s, Juror juror)
         {
             var asked = Question(s, juror.id);
-            if (asked != null) return new Callout { when = "Tonight", words = asked.question.Trim(), quoted = true, note = Note(s, asked) };
+            if (asked != null)
+            {
+                string note = Note(s, asked);
+                return new Callout { when = "Tonight", words = asked.question.Trim(), quoted = true, note = note, noteTail = NoteTail(s, juror.id, note) };
+            }
             var plea = Plea(s, juror.id);
             if (plea != null) return new Callout { when = "Week " + plea.Value.week + ", from the block", words = plea.Value.words, quoted = true };
             return new Callout { words = juror.reason };

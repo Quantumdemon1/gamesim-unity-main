@@ -293,6 +293,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reason.when, Is.Null);
             Assert.That(reason.quoted, Is.False, "The reason is the player's evidence, never their words.");
             Assert.That(reason.Text, Is.EqualTo(Of(s, juror.id).reason));
+            Assert.That(reason.Brief(reason.words), Is.EqualTo(reason.Text), "A callout draws the reason whole.");
 
             // A plea somebody else heard in private is not one the player can quote.
             s.events.Add(new EpisodeEvent { sequence = 900, week = 4, kind = "eviction-speech", text = juror.name + ": Not for you.", audienceIds = new List<string> { Juror(s, 1).id } });
@@ -314,8 +315,11 @@ namespace Gamesim.Tests.EditMode
             exchange.answerChoice = FinaleQuestions.Own; exchange.completed = true;
             string note = FinaleQuestions.Note(juror.name, FinaleQuestions.Landed(s, exchange));
             Assert.That(JuryHouseRead.Line(s, juror.id).Text, Is.EqualTo("Tonight: “Why did you put me up?” " + note));
-            Assert.That(JuryHouseRead.Read(s).highlights.First(), Is.EqualTo("Tonight · " + JuryHouseRead.ShortName(s, juror.id) + " asked about week 4 · "
-                + note.Substring(juror.name.Length + 1).TrimEnd('.')));
+            string tail = note.Substring(juror.name.Length + 1).TrimEnd('.');
+            Assert.That(JuryHouseRead.Read(s).highlights.First(), Is.EqualTo("Tonight · " + JuryHouseRead.ShortName(s, juror.id) + " asked about week 4 · " + tail));
+            // The callout names them above the line, so it carries the note without the name.
+            Assert.That(JuryHouseRead.Line(s, juror.id).noteTail, Is.EqualTo(tail));
+            Assert.That(JuryHouseRead.Line(s, juror.id).Brief("Why did you put me up?"), Is.EqualTo("Tonight: “Why did you put me up?” · " + tail));
 
             // The catalogue's question, without the finale rules: its own note, and no receipt.
             var other = Juror(s, 1);
@@ -340,6 +344,25 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JuryHouseRead.ShortName(s, a.id), Is.EqualTo("Casey Lee"), "Two Caseys on the jury: full names.");
             Assert.That(JuryHouseRead.ShortName(s, b.id), Is.EqualTo("Robin"));
             Assert.That(JuryHouseRead.Read(s).highlights, Is.EqualTo(new[] { "Week 5 · Robin · you voted to evict them", "Week 3 · Casey Lee · your read: warm on you" }));
+        }
+
+        [Test]
+        public void TonightsLatestQuestionLeadsTheHighlights()
+        {
+            // The questions go round the jury in cast order, and the side card shows only its first
+            // rows: the question being asked now is the newest, so it goes on top.
+            var s = FinalThree();
+            var first = Juror(s, 0); var second = Juror(s, 1);
+            Read(s, first.id, 3, 40);
+            s.juryExchanges.Add(new JuryExchangeState { questionerId = first.id, finalistId = s.playerId, question = "Who are you?", optionA = "a", optionB = "b",
+                correctChoice = "A", answerChoice = "B", completed = true });
+            s.juryExchanges.Add(new JuryExchangeState { questionerId = second.id, finalistId = s.playerId, question = "Why me?", optionA = "a", optionB = "b", correctChoice = "A" });
+            var highlights = JuryHouseRead.Read(s).highlights;
+            Assert.That(highlights[0], Is.EqualTo("Tonight · " + JuryHouseRead.ShortName(s, second.id) + " asked you a question"), "The question being asked now.");
+            Assert.That(highlights[1], Is.EqualTo("Tonight · " + JuryHouseRead.ShortName(s, first.id)
+                + " asked you a question · was unconvinced by your response during jury questioning"), "The one before it.");
+            Assert.That(highlights[2], Is.EqualTo("Week 3 · " + JuryHouseRead.ShortName(s, first.id) + " · your read: warm on you"), "Then the season.");
+            Assert.That(highlights, Has.Count.EqualTo(3));
         }
 
         [Test]

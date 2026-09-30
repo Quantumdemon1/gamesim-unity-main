@@ -226,8 +226,15 @@ namespace Gamesim.Episode
             var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false); canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 70;
             var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1600,900); scaler.matchWidthOrHeight = .5f;
+            scaler.referenceResolution = new Vector2(ReferenceWidth,ReferenceHeight); scaler.matchWidthOrHeight = .5f;
         }
+
+        /// <summary>
+        /// The size the HUD is laid out at, whatever the text size: the larger-text preference grows
+        /// rows, never the reference. A screen on a canvas of its own that has to stand clear of the
+        /// HUD's chrome converts through this (the season report beside the rail, MOCKUP-PASS M5).
+        /// </summary>
+        public const float ReferenceWidth = 1600f, ReferenceHeight = 900f;
 
         /// <summary>
         /// Where the panel column starts: clear of the left gutter. The ceremony card insets

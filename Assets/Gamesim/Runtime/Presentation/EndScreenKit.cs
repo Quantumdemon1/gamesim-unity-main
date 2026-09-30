@@ -25,8 +25,14 @@ namespace Gamesim.Presentation
         /// frame is drawn out past its rect by that much, scaled, so the visible edge lands on the
         /// rect whichever kind it is and a winner's row lines up with a juror's.
         /// </summary>
-        private static float BodyInset(string path) =>
-            path == PackArt.SeasonWinnerHero || path == PackArt.SeasonStandingWinner || path == PackArt.SeasonButtonPrimary ? 38f : 8f;
+        private static float BodyInset(string path) => Glowing.Contains(path) ? 38f : 8f;
+
+        /// <summary>The pack files drawn inside a 38 px glow, as the catalogue measured them.</summary>
+        private static readonly HashSet<string> Glowing = new HashSet<string>
+        {
+            PackArt.SeasonWinnerHero, PackArt.SeasonStandingWinner, PackArt.SeasonButtonPrimary,
+            PackArt.SeasonSectionSelected, PackArt.SeasonButtonLegacy,
+        };
 
         /// <summary>
         /// Frames <paramref name="host"/> with a pack sprite on a child named "Art", drawn behind

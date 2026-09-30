@@ -233,6 +233,68 @@ namespace Gamesim.Tests.PlayMode
             Report().Hide();
         }
 
+        /// <summary>
+        /// The head of Season Complete (MOCKUP-PASS M5): the season's number over the title, the
+        /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
+        /// rather than over it at both text sizes - the rail dimmed, the scrim still taking every
+        /// click, and the brand line in the corner under the rail.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EndScreens_TheHeadCarriesTheSeasonNumberAndTheCardStandsBesideTheRail()
+        {
+            var state = FinishedWithWeeks();
+            var hud = director.GetComponentsInChildren<Canvas>(true).First(canvas => canvas.name == "Gamesim Episode HUD");
+            foreach (bool larger in new[] { false, true })
+            {
+                string size = larger ? "At the larger text, " : "At resting text, ";
+                Report().FontScale = larger ? 1.2f : 1f;
+                yield return null;
+                Report().Show(state, _ => null, () => { }, null, () => { }, () => { }, () => { }, 3);
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+
+                var title = ReportPart(SeasonReport.TitleCardName);
+                Assert.That(title, Is.Not.Null, size + "the title has its card.");
+                var titleWords = LabelsUnder(title);
+                Assert.That(titleWords, Does.Contain("SEASON 3").And.Contain("SEASON COMPLETE"), size + "the season's number is over the title.");
+                Assert.That(titleWords, Does.Contain(SeasonReport.CountLine(state)), size + "the season's counts are its second line.");
+
+                var numbers = ReportPart(SeasonReport.SeasonNumbersName);
+                Assert.That(numbers, Is.Not.Null, size + "the season's numbers have their card.");
+                string Tile(string caption) => numbers.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == caption)
+                    .GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Value").text;
+                Assert.That(Tile(SeasonReport.HouseguestsTileCaption), Is.EqualTo(state.contestants.Count.ToString()));
+                Assert.That(Tile("Weeks"), Is.EqualTo(state.week.ToString()), "Weeks, never days.");
+                Assert.That(Tile(SeasonReport.CompetitionsTileCaption), Is.EqualTo(state.contestants.Sum(c => FinalistRead.Wins(state, c)).ToString()),
+                    "One winner a competition, the final parts included.");
+                foreach (var part in new[] { title, numbers, ReportPart(SeasonReport.FooterName) })
+                    AssertDecisionCopyFits(part);
+
+                // Clear of the rail's ground, which runs 8 to 220 HUD units whatever the text size.
+                var sheet = ReportPart("Report card");
+                float railEdge = (8f + IconRail.Width + 12f) * hud.scaleFactor;
+                Assert.That(ScreenRect(sheet).xMin, Is.GreaterThanOrEqualTo(railEdge - .5f), size + "the card sits beside the rail, not over it.");
+                Assert.That(ScreenRect(sheet).xMax, Is.LessThanOrEqualTo(Screen.width + .5f), size + "and on the screen.");
+                var railDim = ReportPart("Rail dim").GetComponent<Image>();
+                var houseDim = ReportPart("House dim").GetComponent<Image>();
+                Assert.That(railDim.color.a, Is.LessThan(houseDim.color.a), "The rail is dimmed beside the card, not blacked out.");
+                Assert.That(railDim.raycastTarget || houseDim.raycastTarget, Is.False, "The clear scrim under them takes the clicks.");
+                var brand = ReportPart("Brand line").GetComponent<TMP_Text>();
+                Assert.That(brand.text, Is.EqualTo(SeasonReport.BrandWords));
+                Assert.That(ScreenRect(brand.rectTransform).xMax, Is.LessThanOrEqualTo(ScreenRect(sheet).xMin + .5f), "The brand line is beside the card.");
+                if (Application.isBatchMode) yield return CaptureFraming(larger ? "season-complete-head-large" : "season-complete-head");
+                Report().Hide();
+            }
+            Report().FontScale = 1f;
+            yield return null;
+
+            // Without a career record to count from, the number is left off rather than guessed.
+            Report().Show(state, _ => null, null);
+            yield return null;
+            Assert.That(LabelsUnder(ReportPart(SeasonReport.TitleCardName)).Any(text => text.StartsWith("SEASON ") && text != "SEASON COMPLETE"), Is.False);
+            Report().Hide();
+        }
+
         /// <summary>A season played to its first eviction, as a recap would close it.</summary>
         private static EpisodeState FirstWeekClosed()
         {

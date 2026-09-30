@@ -21,6 +21,10 @@ namespace Gamesim.Episode
     /// for a houseguest would land on a room instead; the house is a map from far away and a set
     /// from close up. They never take the keyboard: every place they go has its own control, and
     /// the notebook's panels keep their Tab ring to themselves.</para>
+    ///
+    /// <para>Each icon names its room under it, and at the endgame the overlay names the few left
+    /// in the house over their heads as well (MOCKUP-PASS M14): labels, never controls, shown and
+    /// faded with the icons, at the distance the houseguests' own name plates have faded out.</para>
     /// </summary>
     [DisallowMultipleComponent, DefaultExecutionOrder(1000)]
     public sealed class EpisodeTravelBeacons : MonoBehaviour
@@ -32,6 +36,12 @@ namespace Gamesim.Episode
         public const string StationCaption = "Travel to episode screen";
         public const string CompetitionCaption = "Travel to competition";
         public const string DiaryCaption = "Travel to diary room";
+
+        /// <summary>
+        /// The room's name under its icon, and the name chips over the endgame's few (MOCKUP-PASS
+        /// M14, mockup 60), so a test can find them. Labels, never controls.
+        /// </summary>
+        public const string RoomNameName = "Room name", NameChipPrefix = "Name chip · ";
 
         /// <summary>How far back the camera has to be before the icons show, and where they are fully in, in metres.</summary>
         public const float HiddenBelow = 14f, ShownFrom = 18f;
@@ -60,7 +70,7 @@ namespace Gamesim.Episode
             public bool ringed, pinned;
             public RectTransform pointer;
             public TMP_Text caption;
-            public GameObject tip;
+            public GameObject tip, roomName;
             public CanvasGroup group;
             public bool hovered;
             public string glyph, said;
@@ -190,6 +200,27 @@ namespace Gamesim.Episode
                 pointer.gameObject.SetActive(false);
                 beacon.pointer = pointer;
 
+                // The room's own name under its icon, in the floor paint's capitals the overview's
+                // chips use (MOCKUP-PASS M14, mockup 60): a map should say which room is which
+                // without a hover. A label, not a control, faded with the icon it hangs from, and
+                // made after the caption so the caption stays the icon's first words. The hover's
+                // tip takes its place while it is up - the tip says what a click on it does.
+                var nameTag = HudPrimitives.Fill(RoomNameName, rect, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .82f), 8);
+                nameTag.anchorMin = nameTag.anchorMax = new Vector2(.5f, 0f);
+                nameTag.pivot = new Vector2(.5f, 1f);
+                nameTag.anchoredPosition = new Vector2(0f, -4f);
+                nameTag.GetComponent<Image>().raycastTarget = false;
+                var title = HudPrimitives.Heading("Words", nameTag, 11f, UiTheme.Paper, TextAlignmentOptions.Center);
+                title.characterSpacing = 3f;
+                title.textWrappingMode = TextWrappingModes.NoWrap;
+                title.raycastTarget = false;
+                title.text = Localisation.Text(RoomLabels.Title(room));
+                title.rectTransform.anchorMin = Vector2.zero; title.rectTransform.anchorMax = Vector2.one;
+                title.rectTransform.offsetMin = new Vector2(8f, 0f); title.rectTransform.offsetMax = new Vector2(-8f, 0f);
+                // 20 tall for an 11: well over the 1.3 times its words a label needs to draw.
+                nameTag.sizeDelta = new Vector2(Mathf.Ceil(title.GetPreferredValues(title.text).x) + 20f, 20f);
+                beacon.roomName = nameTag.gameObject;
+
                 var button = rect.gameObject.AddComponent<Button>();
                 button.targetGraphic = face;
                 button.navigation = new Navigation { mode = Navigation.Mode.None };
@@ -259,6 +290,228 @@ namespace Gamesim.Episode
                 if (beacon.tip != null && beacon.tip.activeSelf) beacon.tip.SetActive(false);
                 if (beacon.rect != null && beacon.rect.gameObject.activeSelf) beacon.rect.gameObject.SetActive(false);
             }
+            namesShowing = false;
+            foreach (var chip in names)
+                if (chip.rect != null && chip.rect.gameObject.activeSelf) chip.rect.gameObject.SetActive(false);
+        }
+
+        /// <summary>One houseguest to name over the house: who, the words, and what to hang them over.</summary>
+        public readonly struct Named
+        {
+            public readonly string Id, Words;
+            /// <summary>The head bone, when the body has resolved one; null falls back to the root.</summary>
+            public readonly Transform Head;
+            public readonly Transform Body;
+            public Named(string id, string words, Transform head, Transform body) { Id = id; Words = words; Head = head; Body = body; }
+        }
+
+        private sealed class NameChip
+        {
+            public string id;
+            public RectTransform rect;
+            public TMP_Text word;
+            public CanvasGroup group;
+            public Transform head, body;
+            /// <summary>Whether the ground has been fitted to the words since they last changed. Measuring the words does not need the chip to be showing.</summary>
+            public bool fitted;
+        }
+
+        private readonly List<NameChip> names = new List<NameChip>();
+        private bool namesShowing;
+
+        /// <summary>The screen rects, in pixels, of the chips placed so far this frame. Kept, so placing them makes no garbage.</summary>
+        private readonly List<Rect> placedNames = new List<Rect>();
+
+        /// <summary>
+        /// Metres over the head bone a name chip floats, clear of the hair; and over the root, for a
+        /// body with no head bone to read yet, about a standing head's height and the same air.
+        /// </summary>
+        private const float OverHead = .32f, OverRoot = 2.05f;
+
+        /// <summary>Whether a houseguest's name chip is on screen. A read for tests.</summary>
+        public bool IsNaming(string id)
+        {
+            foreach (var chip in names)
+                if (chip.id == id) return chip.rect != null && chip.rect.gameObject.activeInHierarchy;
+            return false;
+        }
+
+        /// <summary>
+        /// Who wears a name chip while the icons show (MOCKUP-PASS M14, mockup 60): at the endgame
+        /// the few left in the house, whom the player has to find from across it after the name
+        /// plates have faded out with the distance. Null or empty names nobody. Kept between calls:
+        /// a chip is made once for a person and moved every frame.
+        ///
+        /// <para>The order matters. Chips are placed in the order they are given, and where two
+        /// would cover each other the one given first stays over its head while the later one is
+        /// lifted clear of it, so the caller puts first the chip that should never move.</para>
+        /// </summary>
+        public void Name(IList<Named> people)
+        {
+            for (int i = names.Count - 1; i >= 0; i--)
+            {
+                bool kept = false;
+                if (people != null)
+                    foreach (var person in people)
+                        if (person.Id == names[i].id) { kept = true; break; }
+                if (kept) continue;
+                if (names[i].rect != null) Destroy(names[i].rect.gameObject);
+                names.RemoveAt(i);
+            }
+            if (people == null) return;
+            // The chips before this index are in the order given. Every chip after it belongs to
+            // somebody still to come in the list, since everybody else was taken away above.
+            int ordered = 0;
+            foreach (var person in people)
+            {
+                int at = -1;
+                for (int i = 0; i < names.Count; i++)
+                    if (names[i].id == person.Id) { at = i; break; }
+                // Somebody named twice keeps the chip and the place of the first time.
+                if (at >= 0 && at < ordered) continue;
+                NameChip chip;
+                if (at < 0) { chip = NewNameChip(person.Id); names.Insert(ordered, chip); }
+                else
+                {
+                    chip = names[at];
+                    if (at != ordered) { names.RemoveAt(at); names.Insert(ordered, chip); }
+                }
+                ordered++;
+                chip.head = person.Head;
+                chip.body = person.Body;
+                if (chip.word.text == person.Words) continue;
+                chip.word.text = person.Words;
+                chip.fitted = false;
+            }
+        }
+
+        /// <summary>
+        /// A name on the icons' glass: no control, nothing that takes a click, and under every
+        /// icon, so a chip that drifts across a room's icon never hides the thing to press.
+        /// </summary>
+        private NameChip NewNameChip(string id)
+        {
+            var rect = new GameObject(NameChipPrefix + id, typeof(RectTransform), typeof(CanvasGroup)).GetComponent<RectTransform>();
+            rect.SetParent(root, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = rect.anchorMax = Vector2.zero;
+            rect.pivot = new Vector2(.5f, 0f);
+            var group = rect.GetComponent<CanvasGroup>();
+            group.interactable = false; group.blocksRaycasts = false;
+            var ground = HudPrimitives.Fill("Ground", rect, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .88f), 10);
+            ground.anchorMin = Vector2.zero; ground.anchorMax = Vector2.one;
+            ground.offsetMin = Vector2.zero; ground.offsetMax = Vector2.zero;
+            UiTheme.AddBorder(ground, 10, UiTheme.Edge(UiTheme.Emphasis.Resting));
+            var word = HudPrimitives.Label("Name", rect, 13f, UiTheme.Paper, TextAlignmentOptions.Center);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) word.font = semibold;
+            word.textWrappingMode = TextWrappingModes.NoWrap;
+            word.raycastTarget = false;
+            // 24 tall for a 13: over the 1.3 times its words a label needs to draw.
+            word.rectTransform.anchorMin = Vector2.zero; word.rectTransform.anchorMax = Vector2.one;
+            word.rectTransform.offsetMin = new Vector2(10f, 0f); word.rectTransform.offsetMax = new Vector2(-10f, 0f);
+            rect.sizeDelta = new Vector2(60f, 24f);
+            rect.gameObject.SetActive(false);
+            return new NameChip { id = id, rect = rect, word = word, group = group };
+        }
+
+        /// <summary>
+        /// Hangs each name chip over its houseguest's head, faded with the icons. The head bone
+        /// rather than the root: a body can stand metres from its transform, and a seated one is
+        /// lower than its root says.
+        ///
+        /// <para>Two people close together, two finalists talking or sharing the couch, would wear
+        /// one chip over the other, and the one drawn on top would hide the other's name. So the
+        /// chips are placed in the order they were given, and a chip that would touch one already
+        /// placed is lifted clear of it. The first one stays over its head.</para>
+        ///
+        /// <para>A chip is shown only when all of it is on the screen and clear of the HUD's
+        /// chrome, not just the point it hangs from. The chrome draws over this canvas, and a name
+        /// half under the right column or the strip reads as a different name.</para>
+        /// </summary>
+        private void PlaceNames(Camera eye, Rect frame, float fade)
+        {
+            bool any = false;
+            // Canvas units to screen pixels, for the chips' footprints and the air between them.
+            float pixels = scale * canvas.scaleFactor;
+            var bounds = eye.pixelRect;
+            placedNames.Clear();
+            foreach (var chip in names)
+            {
+                if (chip.rect == null) continue;
+                bool show = false;
+                Rect box = default;
+                bool headed = chip.head != null;
+                if (headed || chip.body != null)
+                {
+                    var at = headed ? chip.head.position + Vector3.up * OverHead : chip.body.position + Vector3.up * OverRoot;
+                    var screen = eye.WorldToScreenPoint(at);
+                    if (screen.z > .5f)
+                    {
+                        // Fitted before it is tested, so the test is of the whole chip as it will be drawn.
+                        if (!chip.fitted)
+                        {
+                            chip.rect.sizeDelta = new Vector2(Mathf.Ceil(chip.word.GetPreferredValues(chip.word.text).x) + 24f, 24f);
+                            chip.fitted = true;
+                        }
+                        var size = chip.rect.sizeDelta * pixels;
+                        // The chip hangs from the middle of its bottom edge.
+                        box = new Rect(screen.x - size.x * .5f, screen.y, size.x, size.y);
+                        LiftClearOfPlacedNames(ref box, 2f * pixels);
+                        show = bounds.Contains(box.min) && bounds.Contains(box.max) && !ChipCovered(box);
+                    }
+                }
+                if (!show)
+                {
+                    if (chip.rect.gameObject.activeSelf) chip.rect.gameObject.SetActive(false);
+                    continue;
+                }
+                if (!chip.rect.gameObject.activeSelf) chip.rect.gameObject.SetActive(true);
+                any = true;
+                placedNames.Add(box);
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, new Vector2(box.center.x, box.yMin), UiCamera, out var local);
+                chip.rect.anchoredPosition = local - frame.min;
+                chip.rect.localScale = Vector3.one * scale;
+                chip.group.alpha = fade;
+            }
+            namesShowing = any;
+        }
+
+        /// <summary>
+        /// Moves a chip's screen rect up until it is at least <paramref name="gap"/> clear of every
+        /// chip placed before it this frame. Each move takes it above one placed chip's top, and it
+        /// only ever goes up, so it passes each placed chip at most once and the loop ends.
+        /// </summary>
+        private void LiftClearOfPlacedNames(ref Rect box, float gap)
+        {
+            for (int pass = 0; pass <= placedNames.Count; pass++)
+            {
+                bool moved = false;
+                foreach (var placed in placedNames)
+                {
+                    bool touches = box.xMin < placed.xMax + gap && box.xMax > placed.xMin - gap
+                        && box.yMin < placed.yMax + gap && box.yMax > placed.yMin - gap;
+                    if (!touches) continue;
+                    box.y = placed.yMax + gap;
+                    moved = true;
+                }
+                if (!moved) return;
+            }
+        }
+
+        /// <summary>
+        /// Whether the chrome covers any of a chip: its bottom, middle and top, at both ends and at
+        /// points between them no further apart than the chip is tall, so a narrow piece of chrome
+        /// cannot slip between the points tested.
+        /// </summary>
+        private bool ChipCovered(Rect box)
+        {
+            if (covered == null) return false;
+            int spans = Mathf.Max(2, Mathf.CeilToInt(box.width / Mathf.Max(1f, box.height)));
+            for (int x = 0; x <= spans; x++)
+                for (int y = 0; y <= 2; y++)
+                    if (covered(new Vector2(box.xMin + box.width * x / spans, box.yMin + box.height * y * .5f))) return true;
+            return false;
         }
 
         private bool wanted, competition;
@@ -326,7 +579,7 @@ namespace Gamesim.Episode
 
         private void LateUpdate()
         {
-            if (!wanted || rig == null || where == null) { if (IsShowing) Hide(); return; }
+            if (!wanted || rig == null || where == null) { if (IsShowing || namesShowing) Hide(); return; }
             Place(rig.ViewCamera, rig.Distance);
         }
 
@@ -401,6 +654,7 @@ namespace Gamesim.Episode
                     tipRect.sizeDelta = new Vector2(Mathf.Ceil(beacon.caption.GetPreferredValues(beacon.caption.text).x) + 24f, 30f);
                 }
                 if (beacon.tip.activeSelf != beacon.hovered) beacon.tip.SetActive(beacon.hovered);
+                if (beacon.roomName != null && beacon.roomName.activeSelf == beacon.hovered) beacon.roomName.SetActive(!beacon.hovered);
                 if (beacon.pinned != pinned) { beacon.pinned = pinned; beacon.pointer.gameObject.SetActive(pinned); }
                 if (pinned) beacon.pointer.anchoredPosition = toward * (Side * .5f + 6f);
 
@@ -423,6 +677,7 @@ namespace Gamesim.Episode
                 if (beacon.ringed != next) { beacon.ringed = next; beacon.ring.name = next ? NextStopName : "Ring"; }
             }
             IsShowing = any;
+            PlaceNames(eye, frame, fade);
         }
 
         /// <summary>

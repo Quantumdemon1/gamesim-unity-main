@@ -1,6 +1,7 @@
 using System.Linq;
 using Gamesim.House;
 using Gamesim.Presentation;
+using Gamesim.Simulation;
 using UnityEngine;
 
 namespace Gamesim.Episode
@@ -10,9 +11,10 @@ namespace Gamesim.Episode
     /// looks, and what the card under it says.
     ///
     /// <para>The caption names the room and how many stand in it - which the notebook's "who is
-    /// where" already tells anyone - and never who is saying what, unless the player is standing
-    /// there to hear it. That is the witnessed caption's own rule, and the feed defers to it rather
-    /// than opening a second door into a conversation across the house.</para>
+    /// where" already tells anyone, and at the endgame names them, as that page does - and never
+    /// who is saying what, unless the player is standing there to hear it. That is the witnessed
+    /// caption's own rule, and the feed defers to it rather than opening a second door into a
+    /// conversation across the house.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -124,10 +126,33 @@ namespace Gamesim.Episode
         /// <summary>"KITCHEN · 2 HOUSEGUESTS": the room as the set names it, and the notebook's count for it.</summary>
         private string RoomCaption(HouseRoomMarker room)
         {
-            int count = 0;
+            System.Collections.Generic.IList<HouseMap.Occupant> here = null;
             foreach (var entry in WhoIsWhere())
-                if (entry.Name == room.RoomName) { count = entry.Occupants.Count; break; }
-            return RoomLabels.Title(room.RoomName) + " · " + count + (count == 1 ? " HOUSEGUEST" : " HOUSEGUESTS");
+                if (entry.Name == room.RoomName) { here = entry.Occupants; break; }
+            return RoomCaption(room.RoomName, here, EpisodeHud.IsFinalThree(projected) || EpisodeHud.IsFinalTwo(projected));
+        }
+
+        /// <summary>The most people a caption names rather than counts.</summary>
+        public const int NamedRoomMost = 3;
+
+        /// <summary>
+        /// The caption's words, from a room and who is in it. The room as the set names it and how
+        /// many stand in it; at the endgame, where a room holds three at most and every one of them
+        /// is a finalist the player is watching for, the people themselves (MOCKUP-PASS M14,
+        /// mockup 60): "LIVING ROOM · YOU, ALEX, JORDAN", the player first.
+        ///
+        /// <para>Who is in which room is the notebook's Who Is Where, which names them already.
+        /// What they are saying stays the witnessed caption's: this never says anybody is talking.
+        /// Public and pure for tests.</para>
+        /// </summary>
+        public static string RoomCaption(string room, System.Collections.Generic.IList<HouseMap.Occupant> here, bool nameThem)
+        {
+            int count = here != null ? here.Count : 0;
+            string title = RoomLabels.Title(room);
+            if (nameThem && count > 0 && count <= NamedRoomMost)
+                return title + " · " + string.Join(", ", here.OrderByDescending(person => person.IsPlayer)
+                    .Select(person => person.IsPlayer ? "YOU" : FinalistRead.FirstName(person.Name).ToUpperInvariant()));
+            return title + " · " + count + (count == 1 ? " HOUSEGUEST" : " HOUSEGUESTS");
         }
 
         private static HouseRoomMarker NearestMarker(HouseRoomMarker[] markers, Vector3 at)

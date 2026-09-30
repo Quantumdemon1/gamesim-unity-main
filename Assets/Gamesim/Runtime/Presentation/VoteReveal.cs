@@ -37,6 +37,14 @@ namespace Gamesim.Presentation
     /// ceremony cut scenes - the living room's own screen (<see cref="ScreenSurface"/>), the same
     /// card at the screen's shape with the two faces and their counts large enough to read from
     /// the sofa. Every child keeps its name in both.</para>
+    ///
+    /// <para>The screen's frame is a broadcast's vote board as well (MOCKUP-PASS-PLAN M18): the
+    /// faces and counts stand at the sides, and between them a roster of the voters fills in a row
+    /// a vote, each row naming the nominee that voter evicts. No row says EVICT or KEEP against
+    /// whoever is leaving: a row's colour is the side of the nominee it names, fixed when the card
+    /// opens, so the board reads the same whoever the result turns out to be. At the result the
+    /// board gives way to three lines read like the host's - the count, the name, and that they are
+    /// evicted. The HUD's card has none of this and is drawn as it always was.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class VoteReveal : MonoBehaviour
@@ -50,6 +58,8 @@ namespace Gamesim.Presentation
         /// <summary>One committed ballot, as the card needs it.</summary>
         public readonly struct Ballot
         {
+            /// <summary>Who cast it, by id; null where the caller did not say.</summary>
+            public readonly string VoterId;
             public readonly string VoterName;
             public readonly string TargetId;
 
@@ -59,9 +69,19 @@ namespace Gamesim.Presentation
             /// </summary>
             public readonly bool TieBreak;
 
+            /// <summary>
+            /// The voter as they look, for their face on the screen's roster; null draws the row's
+            /// plain ground where the face would be. The HUD's card draws no voters' faces.
+            /// </summary>
+            public readonly ContestantState Character;
+
             public Ballot(string voterName, string targetId, bool tieBreak = false)
+                : this(null, voterName, targetId, tieBreak, null) { }
+
+            public Ballot(string voterId, string voterName, string targetId, bool tieBreak, ContestantState character)
             {
-                VoterName = voterName; TargetId = targetId; TieBreak = tieBreak;
+                VoterId = voterId; VoterName = voterName; TargetId = targetId; TieBreak = tieBreak;
+                Character = character?.Clone();
             }
         }
 
@@ -111,6 +131,15 @@ namespace Gamesim.Presentation
         private bool playing, reduced, hohIsPlayer, evictedIsPlayer, lastVotePending, tieCalled, tieBroken, usingPad;
         private Frame frame;
         private ScreenSurface surface;
+
+        // The screen's board (MOCKUP-PASS-PLAN M18), null on the HUD: the layer the tally and the
+        // roster stand on, a row per ballot the house cast and one for the deciding vote, and the
+        // result block that takes the board's place when the count is read.
+        private RectTransform board, tieRow, resultBlock, resultTally, resultGlow;
+        private CanvasGroup boardGroup, blockGroup;
+        private readonly List<RectTransform> ballotRows = new List<RectTransform>();
+        private TMP_Text resultLead, resultCount, resultOther, resultName, resultLine;
+        private float resultShownAt;
 
         public float FontScale { get; set; } = 1f;
         public bool IsPlaying => playing;
@@ -314,6 +343,15 @@ namespace Gamesim.Presentation
             if (tieBreak.HasValue && elapsed >= HouseEnd && !tieCalled) CallTie();
             if (tieBreak.HasValue && elapsed >= TieBreakAt && !tieBroken) BreakTie(true);
             if (elapsed >= ResultAt && !ShowingResult) Result();
+
+            // On the screen the board hands over to the result block, on the card's clock so a
+            // sped-up count hands over sooner. Reduced motion swapped them at once in Result.
+            if (ShowingResult && boardGroup != null && blockGroup != null && !reduced)
+            {
+                float swap = Eased(Mathf.Clamp01((elapsed - resultShownAt) / ScreenBoard.ResultFade));
+                boardGroup.alpha = 1f - swap;
+                blockGroup.alpha = swap;
+            }
         }
 
         private static float Eased(float t) => 1f - (1f - t) * (1f - t);
@@ -381,6 +419,9 @@ namespace Gamesim.Presentation
                 dots[i].GetComponent<Image>().color = i < count ? UiTheme.Danger
                     : pending && i == dots.Count - 1 ? UiTheme.Gold : UiTheme.Outline;
 
+            // The screen's roster: a row for every ballot on the board, none for the one held back.
+            for (int b = 0; b < ballotRows.Count; b++) ballotRows[b].gameObject.SetActive(b < count);
+
             progress.text = pending ? "One vote left"
                 : count == 0 ? (house.Count == 1 ? "1 vote to reveal" : house.Count + " votes to reveal")
                 : "Revealing vote " + count + " of " + house.Count;
@@ -424,6 +465,8 @@ namespace Gamesim.Presentation
                 tiePip.GetComponent<Image>().color = UiTheme.Gold;
             }
             if (tieMark != null) tieMark.gameObject.SetActive(true);
+            // And the roster's gold row, under the house's: nothing held a place for it until now.
+            if (tieRow != null) tieRow.gameObject.SetActive(true);
             progress.text = hohIsPlayer ? "You have cast the deciding vote."
                 : "The Head of Household has cast the deciding vote.";
             Beat(new CeremonyBeat(CeremonyBeatKind.TieBroken, -1, tieBreak?.TargetId, !announce));
@@ -445,6 +488,7 @@ namespace Gamesim.Presentation
             }
             progress.text = "All votes are in";
             host.text = Verdict();
+            if (resultBlock != null) ReadTheResultOnTheScreen();
             Raise(HouseAudio.Cue.Eviction);
             Beat(new CeremonyBeat(CeremonyBeatKind.ResultShown, -1, evictedId, elapsed < ResultAt));
         }
@@ -472,16 +516,105 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// The screen's result block: the board fades and the result is read in lines, the way the
+        /// host reads it - by how many votes or by whose, the first name, and that they are evicted.
+        /// The count is the house's alone, as the board's was, so a tie-break is credited to the Head
+        /// of Household rather than counted; the evictee's figure is red and the other nominee's is
+        /// in their side's colour; an evicted player is addressed under their name, the way a host
+        /// says it to them ("YOU ARE EVICTED."). The Host line and the banner at the foot keep their
+        /// words.
+        /// </summary>
+        private void ReadTheResultOnTheScreen()
+        {
+            int leaving = nominees.FindIndex(n => n.Id == evictedId);
+            string first = FirstName(evictedName).ToUpperInvariant();
+            bool named = leaving >= 0 && first.Length > 0;
+            bool counted = named && !tieBreak.HasValue;
+
+            resultLead.text = !named ? "THE HOUSE HAS VOTED."
+                : tieBreak.HasValue ? "BY THE HEAD OF HOUSEHOLD'S VOTE" : "BY A VOTE OF";
+            if (counted)
+            {
+                int other = leaving == 0 ? 1 : 0;
+                resultCount.text = HouseVotes(evictedId, house.Count).ToString();
+                resultOther.text = HouseVotes(nominees[other].Id, house.Count).ToString();
+                resultOther.color = Side(other);
+            }
+            resultName.text = first;
+            resultLine.text = evictedIsPlayer ? "YOU ARE EVICTED." : "IS EVICTED.";
+
+            // Stacked in the middle of the band the board leaves, with only the lines this result has:
+            // a tie-break has no count to give, and a result without a name has only its lead.
+            var lines = new List<(RectTransform Rect, float Height)> { (resultLead.rectTransform, ScreenBoard.LeadH) };
+            if (counted) lines.Add((resultTally, ScreenBoard.TallyH));
+            if (named)
+            {
+                lines.Add((resultName.rectTransform, ScreenBoard.NameH));
+                lines.Add((resultLine.rectTransform, ScreenBoard.LineH));
+            }
+            resultTally.gameObject.SetActive(counted);
+            resultName.gameObject.SetActive(named);
+            resultLine.gameObject.SetActive(named);
+            if (resultGlow != null) resultGlow.gameObject.SetActive(named);
+
+            float total = -ScreenBoard.Stack;
+            foreach (var line in lines) total += line.Height + ScreenBoard.Stack;
+            float y = ScreenBoard.BandTop - (ScreenBoard.BandTop - ScreenBoard.BandBottom - total) * 0.5f;
+            foreach (var line in lines)
+            {
+                Place(line.Rect, ScreenBoard.BlockWidth, line.Height, y);
+                if (line.Rect == resultName.rectTransform && resultGlow != null)
+                    Place(resultGlow, ScreenBoard.GlowWidth, ScreenBoard.GlowHeight, y + (ScreenBoard.GlowHeight - line.Height) * 0.5f);
+                y -= line.Height + ScreenBoard.Stack;
+            }
+
+            resultBlock.gameObject.SetActive(true);
+            resultShownAt = elapsed;
+            // Reduced motion swaps them at once; otherwise Update crossfades them on the card's clock.
+            boardGroup.alpha = reduced ? 0f : 1f;
+            blockGroup.alpha = reduced ? 1f : 0f;
+        }
+
+        /// <summary>
+        /// Each nominee's colour on the screen's board, by their place on the block and so fixed when
+        /// the card opens: the jury reveal's blue, and its pink lifted toward paper. Neither is the
+        /// eviction's red, which is kept for the result, so nothing on the board is coloured by who
+        /// is leaving.
+        ///
+        /// <para>The colour is also the word on a roster row's chip ('EVICT CASEY'), which is body
+        /// text on the pack's dark red evict chip. The jury's pink reads at 4.2:1 there, under the
+        /// 4.5 floor, so the right side is lifted until it clears the floor on the art and on the
+        /// drawn chip alike (UiThemeContrastTests). It is one colour a side, so a chip still wears
+        /// exactly the colour of the figure it names.</para>
+        /// </summary>
+        public static Color Side(int nominee) => nominee == 0 ? UiTheme.Accent : RightSide;
+
+        private static readonly Color RightSide = Color.Lerp(UiTheme.Flirt, UiTheme.Paper, 0.35f);
+
+        /// <summary>
+        /// The ground of a roster row's chip when the pack's art is missing: the eviction's red, faint.
+        /// The chip's word is measured on it as well as on the art (UiThemeContrastTests).
+        /// </summary>
+        public static Color DrawnChipGround => new Color(UiTheme.Danger.r, UiTheme.Danger.g, UiTheme.Danger.b, 0.22f);
+
+        private static string FirstName(string name) =>
+            string.IsNullOrEmpty(name) ? string.Empty : name.Split(' ')[0];
+
+        /// <summary>
         /// The card's frame: how big its parts are and where they sit, in canvas units, with the type
         /// sizes that fit their boxes (Inter's line is 1.21 of its size; every box here is at least
         /// 1.3). The HUD's is the 880-wide card in the middle of the screen, scaled by the large-text
         /// preference; the screen's is the screen's whole face at 3:2, the faces and their counts
         /// large enough to read from the sofa.
+        ///
+        /// <para>A nominee's column is <see cref="Slot"/> wide and stands <see cref="ColumnX"/> either
+        /// side of the middle. On the HUD the two columns touch, so that is half a slot; on the screen
+        /// they stand at the sides with the roster between them.</para>
         /// </summary>
         private readonly struct Frame
         {
             public readonly bool Screen;
-            public readonly float Width, Height, Portrait, Slot;
+            public readonly float Width, Height, Portrait, Slot, ColumnX;
             public readonly float EyebrowY, EyebrowH, EyebrowPt, TitleY, TitleH, TitlePt, RimY, NameY, NameH, NamePt,
                 CountY, CountH, CountPt, CaptionY, CaptionH, CaptionPt, VersusSize, VersusY, VersusPt, DotsY, DotsH, Pip, Step,
                 TieMarkY, TieMarkW, TieMarkH, TieMarkDx, TiePt, ProgressY, ProgressH, ProgressPt, HostY, HostH, HostPt,
@@ -493,9 +626,10 @@ namespace Gamesim.Presentation
                 float versusY, float versusPt, float dotsY, float dotsH, float pip, float step, float tieMarkY, float tieMarkW,
                 float tieMarkH, float tieMarkDx, float tiePt, float progressY, float progressH, float progressPt, float hostY,
                 float hostH, float hostPt, float bannerY, float bannerW, float bannerH, float bannerPt, float controlsY,
-                float controlsH, float controlsPt, float glassX, float glassY, float ring)
+                float controlsH, float controlsPt, float glassX, float glassY, float ring, float columnX = float.NaN)
             {
                 Screen = screen; Width = width; Height = height; Portrait = portrait; Slot = slot;
+                ColumnX = float.IsNaN(columnX) ? slot * 0.5f : columnX;
                 EyebrowY = eyebrowY; EyebrowH = eyebrowH; EyebrowPt = eyebrowPt; TitleY = titleY; TitleH = titleH; TitlePt = titlePt;
                 RimY = rimY; NameY = nameY; NameH = nameH; NamePt = namePt; CountY = countY; CountH = countH; CountPt = countPt;
                 CaptionY = captionY; CaptionH = captionH; CaptionPt = captionPt; VersusSize = versusSize; VersusY = versusY; VersusPt = versusPt;
@@ -519,14 +653,57 @@ namespace Gamesim.Presentation
                     -(top + 272f) * s, 18f * s, 12f * s, 34f * s, 26f * s, 4f * s);
             }
 
-            /// <summary>The living room's screen: its whole face, the two faces 240 across and the counts 96 high.</summary>
-            public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 240f, 560f,
-                -16f, 36f, 26f, -52f, 84f, 64f, -146f,
-                -396f, 44f, 32f, -446f, 130f, 96f, float.NaN, 0f, 0f,
-                120f, -242f, 40f, -590f, 40f, 24f, 40f,
-                -500f, 120f, 44f, 150f, 30f, -636f, 36f, 26f,
+            /// <summary>
+            /// The living room's screen: its whole face, the two faces 160 across at the sides with
+            /// their counts 84 high under them, the roster between them (<see cref="ScreenBoard"/>),
+            /// and a small VS disc over the roster. The HOH chip goes under the figure it marks,
+            /// since beside it would run off the face. The foot is as it was.
+            /// </summary>
+            public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 160f, 220f,
+                -16f, 36f, 26f, -52f, 84f, 64f, -176f,
+                -354f, 40f, 28f, -394f, 110f, 84f, float.NaN, 0f, 0f,
+                56f, -174f, 22f, -590f, 40f, 24f, 40f,
+                -508f, 96f, 40f, 0f, 26f, -636f, 36f, 26f,
                 -676f, 40f, 30f, -724f, 720f, 56f, 40f,
-                -782f, 18f, 13f, 0f, 0f, 8f);
+                -782f, 18f, 13f, 0f, 0f, 6f, 470f);
+        }
+
+        /// <summary>
+        /// The screen's vote board (MOCKUP-PASS-PLAN M18), in canvas units on the 1200 × 800 face.
+        /// The band under the title runs from the top of the faces to the pips; the roster fills its
+        /// middle under the VS disc, one column up to seven rows and two past that - thirteen at a
+        /// full house - and the result block is centred in the whole band once the board has gone.
+        /// Every label box is at least 1.3 times its type: Inter draws nothing in a box under 1.21.
+        /// </summary>
+        private static class ScreenBoard
+        {
+            /// <summary>'THE VOTE', under the title.</summary>
+            public const float VoteY = -134f, VoteH = 34f, VotePt = 24f, VoteWidth = 420f;
+
+            /// <summary>The band the board stands in, and the result block after it.</summary>
+            public const float BandTop = -176f, BandBottom = -584f;
+
+            /// <summary>The roster: its top, its rows, and one column or two.</summary>
+            public const float RosterY = -242f, Row = 44f, Gap = 5f, OneWide = 520f, TwoWide = 322f, Between = 16f;
+            public const int RowsInAColumn = 7;
+
+            /// <summary>A row's parts: the face at its left, the voter's name, the chip at its right.</summary>
+            public const float Inset = 8f, Face = 32f, VoterPt = 19f, VoterH = 28f, ChipOne = 180f, ChipTwo = 140f,
+                ChipH = 30f, ChipPt = 15f;
+
+            /// <summary>
+            /// The pack art's corners in canvas units, and how deep the art's glow sits inside its
+            /// image in pixels (UiPackCatalogue's body inset: 40 for the strip, 8 for the chip), so a
+            /// frame is drawn out past its rect by that much and the visible edge lands on the rect.
+            /// </summary>
+            public const float StripBorder = 16f, StripInset = 40f, ChipBorder = 12f, ChipInset = 8f;
+
+            /// <summary>The result block's lines, the gap between them, and the glow behind the name.</summary>
+            public const float BlockWidth = 1100f, LeadH = 40f, LeadPt = 30f, TallyH = 84f, TallyPt = 64f, NameH = 196f,
+                NamePt = 150f, LineH = 52f, LinePt = 40f, Stack = 6f, GlowWidth = 1000f, GlowHeight = 260f;
+
+            /// <summary>How long the board takes to hand over to the result, on the card's clock.</summary>
+            public const float ResultFade = 0.4f;
         }
 
         private void Build()
@@ -535,6 +712,12 @@ namespace Gamesim.Presentation
             var canvas = GetComponent<Canvas>();
             if (surface != null) surface.Mount(canvas);
             else ScreenSurface.Unmount(canvas);
+
+            // The screen's board is built afresh for a screen and not at all for the HUD.
+            board = null; tieRow = null; resultBlock = null; resultTally = null; resultGlow = null;
+            boardGroup = null; blockGroup = null;
+            resultLead = null; resultCount = null; resultOther = null; resultName = null; resultLine = null;
+            ballotRows.Clear();
 
             if (column != null)
             {
@@ -591,13 +774,31 @@ namespace Gamesim.Presentation
             title.colorGradient = new VertexGradient(Color.white, Color.white, UiTheme.Glow, UiTheme.Glow);
             Place(title.rectTransform, width, f.TitleH, f.TitleY);
 
+            // On the screen the tally stands on a layer of its own, so the result can fade the whole
+            // board - faces, names, counts, the VS disc, the pips and the roster - in one, and keep
+            // every piece of it. On the HUD the pieces stand on the column, as they always have.
+            var tally = column;
+            if (f.Screen)
+            {
+                var heading = HudPrimitives.Label("Vote heading", column, ScreenBoard.VotePt, UiTheme.Glow, TextAlignmentOptions.Center);
+                heading.text = "THE VOTE";
+                heading.characterSpacing = 12f;
+                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (semibold != null) heading.font = semibold;
+                Place(heading.rectTransform, ScreenBoard.VoteWidth, ScreenBoard.VoteH, ScreenBoard.VoteY);
+
+                board = Layer("Board", column);
+                boardGroup = Faded(board, 1f);
+                tally = board;
+            }
+
             // The two columns, with the tally between them.
             float slot = f.Slot;
             for (int i = 0; i < nominees.Count; i++)
             {
-                float x = (i == 0 ? -1f : 1f) * slot * 0.5f;
+                float x = (i == 0 ? -1f : 1f) * f.ColumnX;
 
-                var rim = HudPrimitives.Portrait(column, nominees[i].Portrait, UiTheme.Danger, portrait, f.Ring, false, nominees[i].Character);
+                var rim = HudPrimitives.Portrait(tally, nominees[i].Portrait, UiTheme.Danger, portrait, f.Ring, false, nominees[i].Character);
 
                 // Both faces here are on the block, so both carry the target the web build uses.
                 HudPrimitives.AddRoleMark(rim, HudPrimitives.RoleMark.Nominee, portrait);
@@ -605,11 +806,16 @@ namespace Gamesim.Presentation
                 rim.anchoredPosition = new Vector2(x, f.RimY);
                 rims.Add(rim);
 
-                var name = HudPrimitives.Label("Nominee", column, f.NamePt, UiTheme.Paper, TextAlignmentOptions.Center);
+                var name = HudPrimitives.Label("Nominee", tally, f.NamePt, UiTheme.Paper, TextAlignmentOptions.Center);
                 name.text = nominees[i].Name;
+                // A side column on the screen is narrower than a name can be: drawn smaller on one
+                // line, not wrapped, and marked as shortened if it still does not fit.
+                if (f.Screen) SmallerThenShortened(name, f.NamePt * 0.7f);
                 Place(name.rectTransform, slot, f.NameH, f.NameY, x);
 
-                var count = HudPrimitives.Label("Votes", column, f.CountPt, UiTheme.Paper, TextAlignmentOptions.Center);
+                // On the screen each figure is in its nominee's side colour, the colour of the roster's
+                // chips that name them; on the HUD it is the paper white it always was.
+                var count = HudPrimitives.Label("Votes", tally, f.CountPt, f.Screen ? Side(i) : UiTheme.Paper, TextAlignmentOptions.Center);
                 count.text = "0";
                 // Taller than the figure's line: Inter's line is 1.21 of its size, and a 58-point
                 // figure in a 66 box was truncated whole - the tally counted to nothing on screen.
@@ -618,7 +824,7 @@ namespace Gamesim.Presentation
 
                 if (!f.Screen)
                 {
-                    var caption = HudPrimitives.Label("Votes caption", column, f.CaptionPt, UiTheme.Muted, TextAlignmentOptions.Center);
+                    var caption = HudPrimitives.Label("Votes caption", tally, f.CaptionPt, UiTheme.Muted, TextAlignmentOptions.Center);
                     caption.text = "VOTES";
                     caption.characterSpacing = 8f;
                     Place(caption.rectTransform, slot, f.CaptionH, f.CaptionY, x);
@@ -628,7 +834,7 @@ namespace Gamesim.Presentation
             // A filled red disc with the word inside it, not red lettering on the ground. The web
             // build makes this the one solid mark between the two faces, and it is what stops the
             // eye reading the pair as a row of portraits rather than as an opposition.
-            var versusDisc = HudPrimitives.Disc("Versus disc", column, UiTheme.Danger);
+            var versusDisc = HudPrimitives.Disc("Versus disc", tally, UiTheme.Danger);
             Place(versusDisc, f.VersusSize, f.VersusSize, f.VersusY);
 
             var versus = HudPrimitives.Label("Versus", versusDisc, f.VersusPt, UiTheme.OnColor(UiTheme.Danger),
@@ -641,7 +847,7 @@ namespace Gamesim.Presentation
 
             // One pip per ballot the house cast, filling as the votes come in.
             dotRow = new GameObject("Dots", typeof(RectTransform)).GetComponent<RectTransform>();
-            dotRow.SetParent(column, false);
+            dotRow.SetParent(tally, false);
             Place(dotRow, width, f.DotsH, f.DotsY);
 
             float pip = f.Pip, step = f.Step;
@@ -672,9 +878,10 @@ namespace Gamesim.Presentation
                 int named = nominees.FindIndex(n => n.Id == tieBreak.Value.TargetId);
                 if (named >= 0)
                 {
-                    float x = (named == 0 ? -1f : 1f) * slot * 0.5f;
-                    tieMark = HudPrimitives.Fill("Tie-break vote", column, UiTheme.Gold, UiTheme.ControlRadius);
-                    // Beside the figure, level with its middle, clear of a two-digit count.
+                    float x = (named == 0 ? -1f : 1f) * f.ColumnX;
+                    tieMark = HudPrimitives.Fill("Tie-break vote", tally, UiTheme.Gold, UiTheme.ControlRadius);
+                    // Beside the figure, level with its middle, clear of a two-digit count (under it
+                    // on the screen, where beside the outer column would run off the face).
                     Place(tieMark, f.TieMarkW, f.TieMarkH, f.TieMarkY, x + f.TieMarkDx);
                     var chip = HudPrimitives.Label("Tie-break", tieMark, f.TiePt, UiTheme.OnColor(UiTheme.Gold),
                         TextAlignmentOptions.Center);
@@ -686,6 +893,12 @@ namespace Gamesim.Presentation
                     chip.rectTransform.offsetMax = Vector2.zero;
                     tieMark.gameObject.SetActive(false);
                 }
+            }
+
+            if (f.Screen)
+            {
+                BuildRoster(board, bold);
+                BuildResultBlock(column, bold);
             }
 
             progress = HudPrimitives.Label("Progress", column, f.ProgressPt, UiTheme.Muted, TextAlignmentOptions.Center);
@@ -715,6 +928,248 @@ namespace Gamesim.Presentation
             controls = HudPrimitives.Label("Controls", column, f.ControlsPt, UiTheme.Muted, TextAlignmentOptions.Center);
             controls.text = CeremonyTakeover.ControlsFor(usingPad);
             Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
+        }
+
+        /// <summary>
+        /// The screen's roster: a row for each of the house's ballots in the order they were cast,
+        /// and a gold one for the Head of Household's deciding vote after them. Every row is built
+        /// hidden and put up as its vote is read. The shape comes from the house's ballots alone -
+        /// one column up to seven rows, two past that - and the deciding vote takes the next free
+        /// place, so neither the columns nor a place held open say a tie is coming.
+        /// </summary>
+        private void BuildRoster(RectTransform parent, TMP_FontAsset bold)
+        {
+            int rows = house.Count;
+            bool split = rows > ScreenBoard.RowsInAColumn;
+            int perColumn = split ? (rows + 1) / 2 : ScreenBoard.RowsInAColumn;
+            float rowWidth = split ? ScreenBoard.TwoWide : ScreenBoard.OneWide;
+            float chipWidth = split ? ScreenBoard.ChipTwo : ScreenBoard.ChipOne;
+
+            var roster = new GameObject("Roster", typeof(RectTransform)).GetComponent<RectTransform>();
+            roster.SetParent(parent, false);
+            Place(roster, split ? 2f * rowWidth + ScreenBoard.Between : rowWidth,
+                ScreenBoard.RowsInAColumn * (ScreenBoard.Row + ScreenBoard.Gap) - ScreenBoard.Gap, ScreenBoard.RosterY);
+
+            int total = rows + (tieBreak.HasValue ? 1 : 0);
+            for (int b = 0; b < total; b++)
+            {
+                bool deciding = b == rows;
+                var ballot = deciding ? tieBreak.Value : house[b];
+                // The house's rows fill the first column and then the second; the deciding vote goes
+                // under the last of them, in the second column when there are two.
+                int lane = !split ? 0 : deciding ? 1 : b / perColumn;
+                int place = !split ? b : deciding ? rows - perColumn : b % perColumn;
+                float x = split ? (lane == 0 ? -1f : 1f) * (rowWidth + ScreenBoard.Between) * 0.5f : 0f;
+
+                var row = BallotRow(roster, ballot, rowWidth, chipWidth, deciding, bold);
+                Place(row, rowWidth, ScreenBoard.Row, -place * (ScreenBoard.Row + ScreenBoard.Gap), x);
+                if (deciding) tieRow = row;
+                else ballotRows.Add(row);
+            }
+        }
+
+        /// <summary>
+        /// One roster row, hidden: the strip, the voter's face and name, and a chip naming the nominee
+        /// they evict in that nominee's side colour. The chip is the pack's evict chip on every row -
+        /// every ballot here is a vote to evict somebody - and the name on it says whom.
+        /// </summary>
+        private RectTransform BallotRow(RectTransform parent, Ballot ballot, float width, float chipWidth, bool deciding,
+            TMP_FontAsset bold)
+        {
+            var row = new GameObject("Ballot", typeof(RectTransform)).GetComponent<RectTransform>();
+            row.SetParent(parent, false);
+            Framed("Ballot strip", row, PackArt.VoteRevealStrip, ScreenBoard.StripBorder, ScreenBoard.StripInset,
+                UiTheme.SurfaceRaised, UiTheme.Hairline);
+            // The deciding vote's row is edged in gold, the Head of Household's colour on this card,
+            // over the strip's own edge.
+            if (deciding) UiTheme.AddBorder(row, UiTheme.ControlRadius, UiTheme.Gold);
+
+            var face = HudPrimitives.RectPortrait(row, "Ballot face", null, ballot.Character,
+                new Vector2(ScreenBoard.Face, ScreenBoard.Face), 6);
+            Pin(face, 0f, ScreenBoard.Inset, ScreenBoard.Face, ScreenBoard.Face);
+            // With no look to bind there is no face to draw: the frame's ground shows, not a white square.
+            if (ballot.Character == null)
+            {
+                var blank = face.GetComponentInChildren<RawImage>();
+                if (blank != null) blank.enabled = false;
+            }
+
+            float nameX = ScreenBoard.Inset * 2f + ScreenBoard.Face;
+            var voter = HudPrimitives.Label("Ballot voter", row, ScreenBoard.VoterPt, deciding ? UiTheme.Gold : UiTheme.Paper,
+                TextAlignmentOptions.Left);
+            voter.text = ballot.VoterName ?? string.Empty;
+            SmallerThenShortened(voter, ScreenBoard.VoterPt * 0.7f);
+            Pin(voter.rectTransform, 0f, nameX, width - nameX - chipWidth - ScreenBoard.Inset * 2f, ScreenBoard.VoterH);
+
+            int named = nominees.FindIndex(n => n.Id == ballot.TargetId);
+            var chip = new GameObject("Ballot chip", typeof(RectTransform)).GetComponent<RectTransform>();
+            chip.SetParent(row, false);
+            Pin(chip, 1f, -ScreenBoard.Inset, chipWidth, ScreenBoard.ChipH);
+            Framed("Ballot chip art", chip, PackArt.VoteChipEvict, ScreenBoard.ChipBorder, ScreenBoard.ChipInset,
+                DrawnChipGround, UiTheme.Danger);
+            var target = HudPrimitives.Label("Ballot target", chip, ScreenBoard.ChipPt, named >= 0 ? Side(named) : UiTheme.Paper,
+                TextAlignmentOptions.Center);
+            if (bold != null) target.font = bold;
+            target.characterSpacing = 4f;
+            target.text = named >= 0 ? "EVICT " + FirstName(nominees[named].Name).ToUpperInvariant() : "EVICT";
+            SmallerThenShortened(target, ScreenBoard.ChipPt * 0.7f);
+            target.rectTransform.anchorMin = Vector2.zero;
+            target.rectTransform.anchorMax = Vector2.one;
+            target.rectTransform.offsetMin = new Vector2(ScreenBoard.Inset, 0f);
+            target.rectTransform.offsetMax = new Vector2(-ScreenBoard.Inset, 0f);
+
+            row.gameObject.SetActive(false);
+            return row;
+        }
+
+        /// <summary>
+        /// The screen's result block, built empty and hidden over the board: nothing on it is written
+        /// until the result is read (<see cref="ReadTheResultOnTheScreen"/>), so the card holds
+        /// nothing about the result before then.
+        /// </summary>
+        private void BuildResultBlock(RectTransform parent, TMP_FontAsset bold)
+        {
+            resultBlock = Layer("Result block", parent);
+            blockGroup = Faded(resultBlock, 0f);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+
+            // The name's glow first, so the name draws over it.
+            var red = UiTheme.Pack(PackArt.GlowRed);
+            if (red != null)
+            {
+                var glow = new GameObject("Result glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                glow.rectTransform.SetParent(resultBlock, false);
+                glow.sprite = red;
+                glow.color = new Color(1f, 1f, 1f, .55f);
+                glow.raycastTarget = false;
+                resultGlow = glow.rectTransform;
+            }
+
+            resultLead = HudPrimitives.Label("Result lead", resultBlock, ScreenBoard.LeadPt, UiTheme.Paper, TextAlignmentOptions.Center);
+            if (semibold != null) resultLead.font = semibold;
+            resultLead.characterSpacing = 12f;
+
+            // '{n} TO {m}': the figures either side of a centred TO, each in its own colour.
+            resultTally = new GameObject("Result tally", typeof(RectTransform)).GetComponent<RectTransform>();
+            resultTally.SetParent(resultBlock, false);
+            const float half = 70f, figure = 400f;
+            resultCount = TallyPart("Result count", resultTally, TextAlignmentOptions.Right, 1f, -half, figure, UiTheme.Danger, bold);
+            var to = TallyPart("Result to", resultTally, TextAlignmentOptions.Center, .5f, 0f, half * 2f, UiTheme.Paper, bold);
+            to.text = "TO";
+            resultOther = TallyPart("Result other count", resultTally, TextAlignmentOptions.Left, 0f, half, figure, UiTheme.Paper, bold);
+
+            resultName = HudPrimitives.Label("Result name", resultBlock, ScreenBoard.NamePt, UiTheme.Danger, TextAlignmentOptions.Center);
+            if (bold != null) resultName.font = bold;
+            resultName.characterSpacing = 2f;
+            // A long first name is drawn smaller before anything else gives: it is the one word the
+            // frame is for.
+            SmallerThenShortened(resultName, ScreenBoard.NamePt * 0.6f);
+
+            resultLine = HudPrimitives.Label("Result line", resultBlock, ScreenBoard.LinePt, UiTheme.Paper, TextAlignmentOptions.Center);
+            if (semibold != null) resultLine.font = semibold;
+            resultLine.characterSpacing = 8f;
+
+            resultBlock.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Keeps <paramref name="label"/> to one line, drawn smaller down to <paramref name="least"/>
+        /// when its words are wider than its box. Unwrapped, so the shrinking answers to the width:
+        /// a wrapped chip could settle on two cramped lines instead.
+        ///
+        /// <para>A name can run to a hundred characters, and one still too wide at the floor ends in
+        /// an ellipsis. The label's own truncation would drop the glyphs that do not fit with no mark,
+        /// and a cut name reads as a whole, different one.</para>
+        /// </summary>
+        private static void SmallerThenShortened(TMP_Text label, float least)
+        {
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.enableAutoSizing = true;
+            label.fontSizeMax = label.fontSize;
+            label.fontSizeMin = least;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+        }
+
+        /// <summary>One part of the result's count line, as tall as the line, at <paramref name="x"/> from its middle.</summary>
+        private static TMP_Text TallyPart(string name, RectTransform parent, TextAlignmentOptions alignment, float pivotX, float x,
+            float width, Color colour, TMP_FontAsset bold)
+        {
+            var label = HudPrimitives.Label(name, parent, ScreenBoard.TallyPt, colour, alignment);
+            if (bold != null) label.font = bold;
+            var rect = label.rectTransform;
+            rect.anchorMin = new Vector2(.5f, 0f);
+            rect.anchorMax = new Vector2(.5f, 1f);
+            rect.pivot = new Vector2(pivotX, .5f);
+            rect.anchoredPosition = new Vector2(x, 0f);
+            rect.sizeDelta = new Vector2(width, 0f);
+            return label;
+        }
+
+        /// <summary>A layer stretched over <paramref name="parent"/>: a piece placed on it sits where it would on the parent.</summary>
+        private static RectTransform Layer(string name, RectTransform parent)
+        {
+            var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            return rect;
+        }
+
+        /// <summary>A group to fade <paramref name="rect"/> by, that takes no input: the card never does.</summary>
+        private static CanvasGroup Faded(RectTransform rect, float alpha)
+        {
+            var fade = rect.gameObject.AddComponent<CanvasGroup>();
+            fade.alpha = alpha;
+            fade.interactable = false;
+            fade.blocksRaycasts = false;
+            return fade;
+        }
+
+        /// <summary>
+        /// A pack frame behind <paramref name="host"/>'s other children: the sprite sliced at
+        /// <paramref name="border"/> units a side and drawn out past the rect by the depth of the
+        /// art's glow (<paramref name="inset"/> of its pixels), so the visible edge lands on the rect.
+        /// Without the pack, the drawn card in <paramref name="fallback"/> with an <paramref name="edge"/>
+        /// hairline, flush with the rect.
+        /// </summary>
+        private static Image Framed(string name, RectTransform host, string path, float border, float inset, Color fallback, Color edge)
+        {
+            var art = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            var rect = art.rectTransform;
+            rect.SetParent(host, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(.5f, .5f);
+            art.raycastTarget = false;
+            float overhang = 0f;
+            if (UiTheme.PackSliced(art, path, border))
+            {
+                var sprite = art.sprite;
+                float authored = Mathf.Max(1f, Mathf.Max(sprite.border.x, sprite.border.y, sprite.border.z, sprite.border.w));
+                overhang = inset * border / authored;
+            }
+            else
+            {
+                UiTheme.Style(art, fallback, UiTheme.ControlRadius);
+                UiTheme.AddBorder(rect, UiTheme.ControlRadius, edge);
+            }
+            rect.offsetMin = new Vector2(-overhang, -overhang);
+            rect.offsetMax = new Vector2(overhang, overhang);
+            return art;
+        }
+
+        /// <summary>Sets <paramref name="rect"/> at its parent's left (0) or right (1) edge, level with the middle.</summary>
+        private static void Pin(RectTransform rect, float side, float x, float width, float height)
+        {
+            rect.anchorMin = new Vector2(side, .5f);
+            rect.anchorMax = new Vector2(side, .5f);
+            rect.pivot = new Vector2(side, .5f);
+            rect.anchoredPosition = new Vector2(x, 0f);
+            rect.sizeDelta = new Vector2(width, height);
         }
 
         /// <summary>

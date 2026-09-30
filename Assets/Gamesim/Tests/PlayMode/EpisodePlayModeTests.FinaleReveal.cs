@@ -96,12 +96,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.FinalHoHPart1));
             var takeover = SceneComponents<CeremonyTakeover>().Single();
             Assert.That(takeover.IsPlaying, Is.True, "The finale opens with a card.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The card has the frame to itself: no chrome under it (MOCKUP-PASS-PLAN M2).");
             var texts = takeover.GetComponentsInChildren<TMP_Text>(true).Select(label => label.text).ToList();
             Assert.That(texts, Does.Contain(CeremonyTakeover.TitleFor(CeremonyTakeover.FinalThreeKind)));
             Assert.That(texts, Does.Contain("Only three remain. The final battle for power begins now."));
             Assert.That(texts.Count(text => text == "FINAL 3"), Is.EqualTo(3), "The three of them, each badged.");
             takeover.Cancel();
             yield return Frames(2);
+            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down.");
         }
 
         [UnityTest]
@@ -123,10 +125,13 @@ namespace Gamesim.Tests.PlayMode
             var stoodAt = cutBody.transform.position;
             ButtonWithCaption("Evict " + cut.name).onClick.Invoke();
             yield return Frames(2);
+            Assert.That(director.Snapshot.Find(cut.id).status, Is.EqualTo(ContestantStatus.Jury),
+                "One press commits the choice: the ring and the gold edge on its column are decoration (MOCKUP-PASS M8).");
             Assert.That(Flat(cutBody.transform.position, stoodAt), Is.LessThan(0.3f),
                 "The new juror is not taken to the jury while the card is about them.");
             var takeover = SceneComponents<CeremonyTakeover>().Single();
             Assert.That(takeover.IsPlaying, Is.True, "The choice gets a card: it used to pass without one.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "and the frame to itself: no chrome under it (MOCKUP-PASS-PLAN M2).");
             var texts = takeover.GetComponentsInChildren<TMP_Text>(true).Select(label => label.text).ToList();
             Assert.That(texts, Does.Contain(CeremonyTakeover.TitleFor(CeremonySting.FinalEvictionKind)));
             Assert.That(texts, Does.Contain("FINAL HOH").And.Contain("FINAL 2").And.Contain("JURY"));
@@ -137,6 +142,7 @@ namespace Gamesim.Tests.PlayMode
             foreach (var sting in SceneComponents<CeremonySting>()) sting.Cancel();
             yield return Frames(3);
             Assert.That(director.DepartingId, Is.Null, "and goes when the card does:");
+            Assert.That(Hud.IsHeldForReveal, Is.False, "the chrome back with them,");
             Assert.That(director.WalkingOutId, Is.Null, "not out of the door, since this eviction opens finale night,");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
             Assert.That(cutBody.gameObject.activeInHierarchy, Is.True, "but to the jury in the living room.");

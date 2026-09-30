@@ -322,14 +322,17 @@ namespace Gamesim.Episode
                     case CeremonySting.EvictionKind:
                     {
                         var hot = CeremonySeating.Anchors(scene, CeremonySeating.HotSeat);
+                        var gallery = CeremonySeating.Anchors(scene, CeremonySeating.GallerySeat);
                         var sofa = CeremonySeating.Anchors(scene, CeremonySeating.SofaSeat);
                         var marks = CeremonySeating.Anchors(scene, CeremonySeating.LivingMark);
                         if (hot.Count < 2) { reason = "no hot seats"; return false; }
                         int hotSeat = 0;
                         // The committed state has already evicted one of them: the evicted, whom the
                         // walk-out takes after the card, sits in the hot seat to hear it all the same.
+                        // The player too, when the vote has already sent them to the jury: their body is
+                        // in the house until the card is over.
                         foreach (var id in nominees)
-                            if ((active.Contains(id) || id == director.departingId) && hotSeat < hot.Count) Place(id, hot[hotSeat++]);
+                            if ((active.Contains(id) || id == director.departingId || id == state.playerId) && hotSeat < hot.Count) Place(id, hot[hotSeat++]);
                         int mark = 0;
                         // A standing mark nobody could be sent to - laid on a NavMesh edge, or where a
                         // body already stands - is passed over, not handed out.
@@ -344,15 +347,19 @@ namespace Gamesim.Episode
                             }
                             return null;
                         }
-                        if (!string.IsNullOrEmpty(state.hohId) && active.Contains(state.hohId) && !placeOf.ContainsKey(state.hohId))
+                        // With a gallery the Head of Household sits with the house (the owner's call,
+                        // MOCKUP-PASS-PLAN decision 3); without one they stand at the head as before.
+                        if (gallery.Count == 0 && !string.IsNullOrEmpty(state.hohId) && active.Contains(state.hohId) && !placeOf.ContainsKey(state.hohId))
                         {
                             var head = NextMark();
                             if (head != null) { Place(state.hohId, head); StandingId = state.hohId; }
                         }
-                        int sofaSeat = 0;
+                        if (gallery.Count > 0 && hot.Count >= 2) galleryFocus = (hot[0].Position + hot[1].Position) * 0.5f;
+                        int gallerySeat = 0, sofaSeat = 0;
                         foreach (var id in active)
                         {
                             if (placeOf.ContainsKey(id)) continue;
+                            if (gallerySeat < gallery.Count) { Place(id, gallery[gallerySeat++]); continue; }
                             if (sofaSeat < sofa.Count) { Place(id, sofa[sofaSeat++]); continue; }
                             var next = NextMark();
                             if (next != null) Place(id, next);
@@ -1012,11 +1019,25 @@ namespace Gamesim.Episode
             }
 
             /// <summary>The wide from across the set, looking at the screen over the chairs, as the house gathers.</summary>
-            private HouseCameraRig.Shot Wide(float seconds) => new HouseCameraRig.Shot
-            {
-                Focus = new Vector3(roomCentre.x, 1.0f, roomCentre.z), Distance = 7f, Pitch = 22f, Yaw = Screen.LookYaw,
-                FieldOfView = Lens, Seconds = seconds, DepthOfFieldWeight = 0f,
-            };
+            /// <summary>
+            /// The establishing wide. On the gallery it looks over the U's base at the red chairs and
+            /// the screen behind them, as the storyboard's first frame does, low enough to keep the
+            /// seated heads in the foreground; elsewhere it frames the room from its marker.
+            /// </summary>
+            private HouseCameraRig.Shot Wide(float seconds) => galleryFocus.HasValue
+                ? new HouseCameraRig.Shot
+                {
+                    Focus = new Vector3(galleryFocus.Value.x, 1.0f, galleryFocus.Value.z), Distance = 6f, Pitch = 13f, Yaw = Screen.LookYaw,
+                    FieldOfView = Lens, Seconds = seconds, DepthOfFieldWeight = 0.3f,
+                }
+                : new HouseCameraRig.Shot
+                {
+                    Focus = new Vector3(roomCentre.x, 1.0f, roomCentre.z), Distance = 7f, Pitch = 22f, Yaw = Screen.LookYaw,
+                    FieldOfView = Lens, Seconds = seconds, DepthOfFieldWeight = 0f,
+                };
+
+            /// <summary>The red chairs' midpoint, when the eviction is staged on the gallery; the wide looks at it.</summary>
+            private Vector3? galleryFocus;
 
             /// <summary>A medium shot of somebody in their place, from in front of them.</summary>
             private HouseCameraRig.Shot SeatShot(string id)

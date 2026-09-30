@@ -117,10 +117,11 @@ namespace Gamesim.Episode
                 foreach(var pair in competitionArenaActors.Where(pair=>contestants.Contains(pair.Key)))
                     AddCompetitionStationMarker(pair.Value,state.phase==EpisodePhase.Veto?"Veto station":IsFinalHoHPart(state.phase)?"Final HoH station":"HoH station");
             }
-            var sign=new GameObject("Award and discipline",typeof(TextMeshPro));
+            var sign=new GameObject(CompetitionSignName,typeof(TextMeshPro));
             sign.transform.SetParent(competitionArenaRoot.transform,false);
-            sign.transform.position=new Vector3(bounds.center.x,bounds.max.y+2.7f,bounds.max.z-.4f);
-            sign.transform.rotation=Quaternion.Euler(0,180,0);sign.transform.localScale=Vector3.one;
+            // Facing the deck, where the house and the competition camera look from - the backdrop's
+            // lit face is toward -z. Turned half round, it read mirrored from every seat (MOCKUP-PASS-PLAN M2).
+            sign.transform.rotation=Quaternion.identity;sign.transform.localScale=Vector3.one;
             var label=sign.GetComponent<TextMeshPro>();label.fontSize=5;label.alignment=TextAlignmentOptions.Center;
             // The final parts name their part where HEAD OF HOUSEHOLD stands (ENDGAME-PLAN F3).
             string award=state.phase==EpisodePhase.Veto?"POWER OF VETO"
@@ -129,7 +130,46 @@ namespace Gamesim.Episode
             label.text=award+"\n"+EpisodeEngine.CompetitionCategory(state).ToUpperInvariant();
             var definition=CompetitionDefinitions.For(state);if(definition!=null)label.text+="\n"+definition.Title;
             label.color=state.phase==EpisodePhase.Veto?UiTheme.Award:UiTheme.Gold;
+            // Lifted clear of the centre gate's head: at 2.7 m the gate's neon ran through the words.
+            // Measured from the laid-out text, so the lowest line's foot stands over the gate.
+            label.ForceMeshUpdate();
+            var laid=label.textBounds;
+            float foot=label.textInfo.characterCount>0 && laid.size.y>0f && laid.size.y<10f ? -laid.min.y : 1f;
+            sign.transform.position=new Vector3(bounds.center.x,CentreGateTop(bounds)+CompetitionSignClearance+foot,bounds.max.z-.4f);
             TickCompetitionArena(); return competitionArenaStaging;
+        }
+
+        /// <summary>The arena's sign of the award and the discipline, as the yard names it. A read, for tests.</summary>
+        public const string CompetitionSignName="Award and discipline";
+
+        /// <summary>The course's gates, as the set-piece pass names them (bb_set_comp_gate.py).</summary>
+        public const string CompetitionGateName="bb_set_comp_gate";
+
+        /// <summary>A gate's authored height over the deck, for a yard dressed without the course.</summary>
+        public const float CompetitionGateHeight=2.6f;
+
+        /// <summary>How far the sign's lowest line stands over the centre gate's head.</summary>
+        public const float CompetitionSignClearance=.25f;
+
+        /// <summary>
+        /// The top of the course's centre gate - the one on the yard's middle - measured from its
+        /// renderers, or a gate's authored height over the deck when the yard has none.
+        /// </summary>
+        private float CentreGateTop(Bounds deck)
+        {
+            float top=deck.max.y+CompetitionGateHeight;
+            Transform centre=null;
+            foreach(var root in gameObject.scene.GetRootGameObjects())
+                foreach(var part in root.GetComponentsInChildren<Transform>())
+                {
+                    if(!part.name.StartsWith(CompetitionGateName,System.StringComparison.Ordinal))continue;
+                    var at=part.position;
+                    if(at.x<deck.min.x || at.x>deck.max.x || at.z<deck.min.z || at.z>deck.max.z)continue;
+                    if(centre==null || Mathf.Abs(at.x-deck.center.x)<Mathf.Abs(centre.position.x-deck.center.x))centre=part;
+                }
+            if(centre==null)return top;
+            foreach(var renderer in centre.GetComponentsInChildren<Renderer>())top=Mathf.Max(top,renderer.bounds.max.y);
+            return top;
         }
 
         private void CreateCompetitionStationMesh()

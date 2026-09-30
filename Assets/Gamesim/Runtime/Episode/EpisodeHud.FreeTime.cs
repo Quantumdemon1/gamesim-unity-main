@@ -61,7 +61,7 @@ namespace Gamesim.Episode
             contentWidthOverride = width;
         }
 
-        private void ResetColumns() { columns.Clear(); contentWidthOverride = 0f; }
+        private void ResetColumns() { columns.Clear(); contentWidthOverride = 0f; caseColumns.Clear(); }
 
         private RectTransform columnsRow, mainColumn, sideColumn;
 
@@ -137,7 +137,20 @@ namespace Gamesim.Episode
         /// A screen's head: the screen's name in the accent, the one line that matters large under it
         /// - "1 ACTION LEFT" - and a line of what to do here, all centred.
         /// </summary>
-        public void ScreenHead(string title, string headline, string line)
+        public void ScreenHead(string title, string headline, string line) => ScreenHead(title, headline, line, Accent, null);
+
+        /// <summary>
+        /// The same head in the crown's gold, under the crown: the final Head of Household's own
+        /// screen, the choice of who joins them in the Final 2 (MOCKUP-PASS M8, mockup 59).
+        /// </summary>
+        public void CrownedScreenHead(string title, string headline, string line) =>
+            ScreenHead(title, headline, line, UiTheme.Gold, PackArt.KitIconCrown);
+
+        /// <summary>
+        /// A screen's head with its title in <paramref name="tint"/> and, when there is one, the pack
+        /// mark <paramref name="mark"/> centred over it in the same colour.
+        /// </summary>
+        private void ScreenHead(string title, string headline, string line, Color tint, string mark)
         {
             if (content == null) return;
             var head = new GameObject(ScreenHeadName, typeof(RectTransform), typeof(VerticalLayoutGroup)).GetComponent<RectTransform>();
@@ -147,9 +160,20 @@ namespace Gamesim.Episode
             layout.childControlWidth = true; layout.childControlHeight = true;
             layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
             PushContent(head, ContentWidth());
+            var sprite = string.IsNullOrEmpty(mark) ? null : UiTheme.Pack(mark);
+            if (sprite != null)
+            {
+                // Its own row, as tall as the mark: the image is stretched across the row and
+                // keeps its shape, so it stands centred over the title.
+                var crown = new GameObject("Screen mark", typeof(RectTransform), typeof(Image), typeof(LayoutElement)).GetComponent<Image>();
+                crown.rectTransform.SetParent(head, false);
+                crown.sprite = sprite; crown.color = tint; crown.preserveAspect = true; crown.raycastTarget = false;
+                var size = crown.GetComponent<LayoutElement>();
+                size.minHeight = size.preferredHeight = 34f * FontScale;
+            }
             if (!string.IsNullOrEmpty(title))
             {
-                var name = FlowText(title, 34, Accent);
+                var name = FlowText(title, 34, tint);
                 name.alignment = TextAlignmentOptions.Center;
                 var bold = UiTheme.Font(UiTheme.Weight.Bold);
                 if (bold != null) name.font = bold;
@@ -510,10 +534,21 @@ namespace Gamesim.Episode
             public string Caption, Description, Corner, Glyph, Foot, Value;
             public Color CornerTint, ValueTint;
             public Action Choose;
+            /// <summary>
+            /// A choice that stays chosen until something else is (MOCKUP-PASS M15): null for a move,
+            /// which is done when pressed; false for one of a set not chosen, true for the chosen one.
+            /// A row draws a radio ring at its right-hand end, filled when chosen, and the chosen row
+            /// Pack 1's selected panel.
+            /// </summary>
+            public bool? Selected;
         }
 
-        /// <summary>How tiles are laid: two rows to a column, as cards several to a row (the free-time screens), or one to a row (a column of choices).</summary>
-        public enum TileStyle { Rows, Cards, List }
+        /// <summary>
+        /// How tiles are laid: two rows to a column, as cards several to a row (the free-time screens),
+        /// one to a row (a column of choices), or one to a thin row as tall as its words (a jury
+        /// response, MOCKUP-PASS M11).
+        /// </summary>
+        public enum TileStyle { Rows, Cards, List, Compact }
 
         /// <summary>The moves that name nobody, as cards several to a row on a wide column, else two to a row.</summary>
         public void MoveTiles(IList<MoveTile> tiles, TileStyle style = TileStyle.Rows)
@@ -539,14 +574,16 @@ namespace Gamesim.Episode
         /// </summary>
         private void ChoiceTiles(string gridName, IList<MoveTile> tiles, TileStyle style = TileStyle.Rows)
         {
-            float s = FontScale, spacing = 10f * s;
+            bool compact = style == TileStyle.Compact;
+            float s = FontScale, spacing = (compact ? 6f : 10f) * s;
             bool cards = style == TileStyle.Cards && FontScale <= 1.05f && ContentWidth() >= 560f;
             int columns = cards ? Mathf.Clamp(Mathf.FloorToInt((ContentWidth() + spacing) / (176f * s + spacing)), 2, Mathf.Max(2, tiles.Count))
-                : style == TileStyle.List ? 1 : tiles.Count > 1 ? 2 : 1;
+                : style == TileStyle.List || compact ? 1 : tiles.Count > 1 ? 2 : 1;
             float cellWidth = (ContentWidth() - spacing * (columns - 1)) / columns;
             // Tall enough for a caption and two lines under it at the player's text size; a card
-            // stacks its chips and its foot as well.
-            float cellHeight = (cards ? 150f : 78f) * FontScale;
+            // stacks its chips and its foot as well. A compact row starts at one line and grows to
+            // its tallest tile's words once they are measured, below.
+            float cellHeight = (cards ? 150f : compact ? CompactTileHeight : 78f) * FontScale;
             int rows = Mathf.CeilToInt(tiles.Count / (float)columns);
             var grid = new GameObject(gridName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
             grid.SetParent(content, false);
@@ -558,6 +595,7 @@ namespace Gamesim.Episode
             var size = grid.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = rows * cellHeight + (rows - 1) * spacing;
 
+            float tallest = cellHeight;
             foreach (var tile in tiles)
             {
                 var rect = Chrome(tile.Caption, grid, UiTheme.Emphasis.Interactive);
@@ -568,13 +606,69 @@ namespace Gamesim.Episode
                 colours.selectedColor = colours.highlightedColor;
                 button.colors = colours;
                 if (cards) CardTile(rect, tile, cellWidth, cellHeight);
+                else if (compact) tallest = Mathf.Max(tallest, CompactTile(rect, tile, cellWidth));
                 else RowTile(rect, tile, cellWidth);
             }
+            if (!compact) return;
+            // Every row as tall as the tallest one's words, so a line that wraps to two is never cut.
+            layout.cellSize = new Vector2(cellWidth, tallest);
+            size.minHeight = size.preferredHeight = rows * tallest + (rows - 1) * spacing;
+        }
+
+        /// <summary>A compact row's height with its line on one line, at the resting text size: the mockup's 52.</summary>
+        private const float CompactTileHeight = 52f;
+
+        /// <summary>
+        /// A tile as a compact row (MOCKUP-PASS M11): a small glyph, the caption at 14 in the
+        /// semibold cut with the risk as a chip in its corner, the line at 13 on one or two lines
+        /// under it, and the chevron at the end saying the row acts. Returns the height its words
+        /// need, which the grid takes for every row.
+        /// </summary>
+        private float CompactTile(RectTransform rect, MoveTile tile, float cellWidth)
+        {
+            float s = FontScale, pad = 10f * s, top = 7f * s;
+            var mark = HudPrimitives.Glyph("Choice mark", rect, tile.Glyph ?? "journal", Accent, new Vector2(pad, -(top + 1f * s)), 20f * s);
+            float text = mark != null ? pad + 28f * s : pad + 4f * s;
+            float chevron = 14f * s;
+            HudPrimitives.Chevron(rect, UiTheme.Hairline, chevron).anchoredPosition = new Vector2(-pad, 0f);
+            float right = pad + chevron + 8f * s;
+            float chip = 0f;
+            if (!string.IsNullOrEmpty(tile.Corner))
+            {
+                chip = Mathf.Clamp(tile.Corner.Length * 7f + 18f, 44f, 120f) * s;
+                var corner = HudPrimitives.Chip("Risk chip", rect, tile.Corner, tile.CornerTint, chip, 18f * s);
+                Anchor(corner, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-right, -top), corner.sizeDelta);
+                chip += 6f * s;
+            }
+            // The caption's box at 1.3 times its size: under 1.21 TMP draws nothing.
+            float captionHeight = 19f * s;
+            var caption = NewText(rect, tile.Caption, 14, Paper);
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) caption.font = semibold;
+            AutoSize(caption, 11);
+            Anchor(caption.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -top),
+                new Vector2(Mathf.Max(40f * s, cellWidth - text - right - chip), captionHeight));
+            float y = top + captionHeight + 1f * s;
+            if (string.IsNullOrEmpty(tile.Description)) return y + 6f * s;
+            var line = NewText(rect, tile.Description, 13, UiTheme.Muted);
+            float width = Mathf.Max(40f * s, cellWidth - text - right);
+            // One line or two: what the words need, up to two lines of the size. A line that would
+            // want a third is taken down a size or two by the auto-size rather than cut.
+            float need = line.GetPreferredValues(line.text, width, 0f).y;
+            float two = line.GetPreferredValues("Ag\nAg", width, 0f).y;
+            float height = Mathf.Ceil(Mathf.Min(need, two)) + 3f * s;
+            AutoSize(line, 10);
+            Anchor(line.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -y), new Vector2(width, height));
+            return y + height + 6f * s;
         }
 
         private void RowTile(RectTransform rect, MoveTile tile, float cellWidth)
         {
             float s = FontScale;
+            // A choice that stays chosen says so three ways: the selected panel, the filled ring and
+            // the corner's word, which is the one of them that is not a colour.
+            bool radio = tile.Selected.HasValue;
+            if (tile.Selected == true) SelectedEdge(rect);
             var mark = Panel("Choice tile", rect, UiTheme.SurfaceRaised, 8);
             Anchor(mark, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(12f * s, 0f), new Vector2(40f * s, 40f * s));
             mark.GetComponent<Image>().raycastTarget = false;
@@ -594,13 +688,16 @@ namespace Gamesim.Episode
             AutoSize(caption, 11);
             Anchor(caption.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -8f * s),
                 new Vector2(cellWidth - text - 92f * s, 22f * s));
+            // The ring sits below the corner's word at the row's right-hand end; the line stops short of it.
+            float ring = radio ? (RadioSide + 12f) * s : 0f;
             if (!string.IsNullOrEmpty(tile.Description))
             {
                 var line = NewText(rect, tile.Description, 13, UiTheme.Muted);
                 AutoSize(line, 10);
                 Anchor(line.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -32f * s),
-                    new Vector2(cellWidth - text - 12f * s, 40f * s));
+                    new Vector2(cellWidth - text - 12f * s - ring, 40f * s));
             }
+            if (radio) RadioRing(rect, tile.Selected.Value, RadioSide * s, new Vector2(1f, .5f), new Vector2(-12f * s, -6f * s));
         }
 
         /// <summary>A tile as a card: the glyph and the caption on top, the chips under them, the line, the cost at the foot.</summary>

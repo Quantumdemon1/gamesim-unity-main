@@ -186,5 +186,25 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ballots.Select(ballot => ballot.TieBreak), Is.EqualTo(new[] { false, false, true }),
                 "Only the Head of Household's vote breaks the tie; counted with the house's, a 1-1 tie read 2-1.");
         }
+
+        /// <summary>
+        /// The screen's roster (MOCKUP-PASS-PLAN M18) needs to know who cast each ballot and how they
+        /// look: every ballot carries its voter's id, name and a copy of their look, in the order cast.
+        /// </summary>
+        [Test]
+        public void EachBallotCarriesItsVoterForTheScreensRoster()
+        {
+            var state = new EpisodeState { playerId = "p", hohId = "h" };
+            foreach (var id in new[] { "p", "h", "a", "b", "c" })
+                state.contestants.Add(new ContestantState { id = id, name = id.ToUpperInvariant(), status = ContestantStatus.Active });
+            state.votes.Add(new VoteState { voterId = "c", targetId = "a" });
+            state.votes.Add(new VoteState { voterId = "p", targetId = "b" });
+            var ballots = EpisodeDirector.EvictionBallots(state);
+            Assert.That(ballots.Select(ballot => ballot.VoterId), Is.EqualTo(new[] { "c", "p" }), "Who cast each, in the order cast,");
+            Assert.That(ballots.Select(ballot => ballot.VoterName), Is.EqualTo(new[] { "C", "P" }), "by name,");
+            Assert.That(ballots.Select(ballot => ballot.Character.id), Is.EqualTo(new[] { "c", "p" }), "with their look for the face,");
+            Assert.That(ballots[0].Character, Is.Not.SameAs(state.Find("c")), "copied, as the nominees' are.");
+            Assert.That(ballots.Select(ballot => ballot.TargetId), Is.EqualTo(new[] { "a", "b" }));
+        }
     }
 }

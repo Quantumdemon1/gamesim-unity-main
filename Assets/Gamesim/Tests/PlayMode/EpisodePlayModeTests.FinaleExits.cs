@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
 using Gamesim.Presentation;
@@ -161,6 +162,116 @@ namespace Gamesim.Tests.PlayMode
             FinaleControl(SeasonReportRowCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.IsSeasonReportOpen, Is.True, "and the report is one press from there.");
+            director.ClosePanels();
+        }
+
+        /// <summary>The finale's ways on, as its panel and its keyboard ring carry them: each once.</summary>
+        private static readonly string[] FinaleWaysOn =
+        {
+            SeasonReportRowCaption, SeasonReport.NewSeasonCaption, SeasonReport.ReviewCaption, SeasonReport.MainMenuCaption,
+            EpisodeDirector.WatchFinaleReplayCaption, EpisodeDirector.JuryQuestionsCaption,
+        };
+
+        /// <summary>How many live controls on the finale's panel carry these words.</summary>
+        private int FinaleControlCount(string caption)
+        {
+            var panel = ActiveRect(ModalRoot);
+            Assert.That(panel, Is.Not.Null, "The finale's panel is open.");
+            return panel.GetComponentsInChildren<Button>().Count(control => control.IsActive() && control.IsInteractable()
+                && control.GetComponentsInChildren<TMP_Text>(true).Any(label => label.text == caption));
+        }
+
+        /// <summary>The words of the finale panel's labels carrying these names.</summary>
+        private string[] FinalePanelLines(params string[] names) => ActiveRect(ModalRoot).GetComponentsInChildren<TMP_Text>()
+            .Where(label => label.gameObject.activeInHierarchy && names.Contains(label.name)).Select(label => label.text).ToArray();
+
+        /// <summary>
+        /// The panel's replay reads the jury again from the committed ballots, in the season's own
+        /// deal and with the chrome stepped aside as on the night; it commits nothing, and the panel
+        /// is back when the card is done (MOCKUP-PASS-PLAN M4).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Finale_WatchFinaleReplayReadsTheJuryAgainAndGivesThePanelBack()
+        {
+            yield return InstallFinishedSeason();
+            director.SuspendNpcAutonomyForDiagnostics();
+            var finale = director.Snapshot;
+            yield return OpenFinalePanel();
+            foreach (var caption in FinaleWaysOn)
+                Assert.That(FinaleControlCount(caption), Is.EqualTo(1), "The finale's panel offers '" + caption + "' once.");
+            var reveal = SceneComponents<JuryReveal>().Single();
+            Assert.That(reveal.IsPlaying, Is.False, "A finished season loads with nothing playing.");
+
+            FinaleControl(EpisodeDirector.WatchFinaleReplayCaption).onClick.Invoke();
+            yield return Frames(2);
+            Assert.That(reveal.IsPlaying, Is.True, "The jury is read again,");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "with the chrome stepped aside, as it was on the night,");
+            var expected = EpisodeDirector.JuryOrder(SeasonReport.JuryBallots(finale).Select(ballot => ballot.JurorId), finale.seed)
+                .Select(id => finale.Find(id)).Select(juror => juror.isPlayer ? "You" : juror.name.Split(' ')[0]).ToArray();
+            Assert.That(reveal.GetComponentsInChildren<TMP_Text>(true).Where(label => label.name == "Juror").Select(label => label.text),
+                Is.EqualTo(expected), "in the season's own deal.");
+
+            yield return SkipReveals();
+            Assert.That(director.Snapshot.revision, Is.EqualTo(finale.revision), "A replay commits nothing.");
+            Assert.That(director.IsPhasePanelOpen, Is.True, "The finale's panel is back when the card is done,");
+            Assert.That(FinaleControlCount(EpisodeDirector.WatchFinaleReplayCaption), Is.EqualTo(1), "with the replay on it once, to watch again.");
+            director.ClosePanels();
+        }
+
+        /// <summary>
+        /// The jury's questions, folded under the panel's ways on. Open, they read what each juror
+        /// asked, both finalists' answers and each ballot's reason in full, from the record - and
+        /// nothing a question was scored by: not the answer the player passed over, and not whether
+        /// an answer landed (MOCKUP-PASS-PLAN M4).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Finale_TheJurysQuestionsReadTheRecordAndNotTheAnswerKey()
+        {
+            yield return InstallFinishedSeason();
+            director.SuspendNpcAutonomyForDiagnostics();
+            var finale = director.Snapshot;
+            var exchanges = finale.juryExchanges.Where(x => x.completed && !string.IsNullOrEmpty(x.question)).ToList();
+            Assert.That(exchanges, Is.Not.Empty, "The finale put its questions.");
+            yield return OpenFinalePanel();
+            Assert.That(FinaleControlCount(EpisodeDirector.JuryQuestionsCaption), Is.EqualTo(1), "The finale's panel offers the jury's questions once,");
+            Assert.That(FinalePanelLines(EpisodeDirector.JuryQuestionsQuestionName), Is.Empty, "folded until asked for.");
+
+            FinaleControl(EpisodeDirector.JuryQuestionsCaption).onClick.Invoke();
+            yield return Frames(2);
+            Assert.That(FinaleControlCount(EpisodeDirector.JuryQuestionsCaption), Is.EqualTo(1), "Open, it is still one control.");
+            var questions = FinalePanelLines(EpisodeDirector.JuryQuestionsQuestionName);
+            var answers = FinalePanelLines(EpisodeDirector.JuryQuestionsAnswerName);
+            var reasons = FinalePanelLines(EpisodeDirector.JuryQuestionsReasonName);
+            string Quoted(string words) => "\u201C" + words + "\u201D";
+            foreach (var exchange in exchanges)
+            {
+                Assert.That(questions.Any(line => line.EndsWith(Quoted(exchange.question))), Is.True,
+                    "Each question as it was put: " + exchange.question + " (shown: " + string.Join(" | ", questions) + ")");
+                if (!string.IsNullOrEmpty(exchange.answer))
+                    Assert.That(answers.Any(line => line.EndsWith(Quoted(exchange.answer))), Is.True, "and the answer it was given: " + exchange.answer);
+                if (!string.IsNullOrEmpty(exchange.opponentAnswer))
+                    Assert.That(answers.Any(line => line.EndsWith(Quoted(exchange.opponentAnswer))), Is.True,
+                        "and the other finalist's: " + exchange.opponentAnswer);
+            }
+            var ballots = SeasonReport.JuryBallots(finale);
+            Assert.That(reasons.Length, Is.EqualTo(ballots.Count), "A line for each juror's ballot.");
+            foreach (var ballot in ballots.Where(ballot => !string.IsNullOrEmpty(ballot.Reason)))
+                Assert.That(reasons.Any(line => line.EndsWith(Quoted(ballot.Reason))), Is.True, "Each reason in full: " + ballot.Reason);
+
+            // Nothing a question was scored by. The option the player passed over is not the
+            // record, unless somebody said those words; and whether an answer landed is not here.
+            var said = new HashSet<string>(exchanges.Select(x => x.answer).Concat(exchanges.Select(x => x.opponentAnswer)).Where(x => x != null));
+            var passedOver = exchanges.Select(x => x.answerChoice == "A" ? x.optionB : x.answerChoice == "B" ? x.optionA : null)
+                .Where(x => !string.IsNullOrEmpty(x) && !said.Contains(x)).ToList();
+            string shown = string.Join("\n", FinalePanelLines(EpisodeDirector.JuryQuestionsJurorName, EpisodeDirector.JuryQuestionsQuestionName,
+                EpisodeDirector.JuryQuestionsAnswerName, EpisodeDirector.JuryQuestionsReasonName));
+            foreach (var option in passedOver) Assert.That(shown, Does.Not.Contain(option), "The answer passed over is not shown.");
+            Assert.That(shown, Does.Not.Contain("impressed").And.Not.Contain("unconvinced"), "Nor whether an answer landed.");
+            AssertEveryLabelDraws("The jury's questions, open");
+
+            FinaleControl(EpisodeDirector.JuryQuestionsCaption).onClick.Invoke();
+            yield return Frames(2);
+            Assert.That(FinalePanelLines(EpisodeDirector.JuryQuestionsQuestionName), Is.Empty, "A second press folds them again.");
             director.ClosePanels();
         }
     }

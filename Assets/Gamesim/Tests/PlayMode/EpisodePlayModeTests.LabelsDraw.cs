@@ -21,11 +21,13 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
-        /// <summary>Fails on any label with copy that draws not a single character.</summary>
-        private static void AssertEveryLabelDraws(string where)
+        /// <summary>Fails on any label with copy that draws not a single character: the scene's, or one screen's under <paramref name="root"/>.</summary>
+        private static void AssertEveryLabelDraws(string where, Transform root = null)
         {
             Canvas.ForceUpdateCanvases();
-            var empty = Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+            var labels = root != null ? root.GetComponentsInChildren<TMP_Text>()
+                : Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var empty = labels
                 .Where(label => label.enabled && label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text))
                 .Where(label =>
                 {
@@ -37,6 +39,23 @@ namespace Gamesim.Tests.PlayMode
                     + "; font " + (label.font != null ? label.font.name : "none") + " " + label.fontSize.ToString("0.#")
                     + ", box " + label.rectTransform.rect.size.ToString("0")
                     + ", chars " + label.textInfo.characterCount + ", truncated " + label.isTextTruncated + ")")
+                .ToArray();
+            Assert.That(empty, Is.Empty, where + ": copy that draws nothing: " + string.Join(" | ", empty));
+        }
+
+        /// <summary>The same sweep over one part of the screen: every label with copy under <paramref name="root"/> draws some of it.</summary>
+        private static void AssertEveryLabelDraws(RectTransform root, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var empty = root.GetComponentsInChildren<TMP_Text>()
+                .Where(label => label.enabled && label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text))
+                .Where(label =>
+                {
+                    label.ForceMeshUpdate(true);
+                    var info = label.textInfo;
+                    return !info.characterInfo.Take(info.characterCount).Any(glyph => glyph.isVisible);
+                })
+                .Select(label => "'" + label.text + "' (" + label.name + ", box " + label.rectTransform.rect.size.ToString("0") + ")")
                 .ToArray();
             Assert.That(empty, Is.Empty, where + ": copy that draws nothing: " + string.Join(" | ", empty));
         }

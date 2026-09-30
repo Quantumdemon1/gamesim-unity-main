@@ -209,7 +209,7 @@ namespace Gamesim.Editor
                 RenderSettings.ambientLight = new Color(0.14f, 0.16f, 0.22f);
                 RenderSettings.sun = light;
 
-                Room("Living", new Vector3(-5, 0, -7));
+                Room("Living", new Vector3(-5, 0, -7.6f)); // Clear of the eviction gallery's east arm (HouseLivingGallery.Marker).
                 Room("Kitchen", new Vector3(4, 0, -7));
                 Room("Bedroom", new Vector3(-7, 0, 2));
                 Room("Private", new Vector3(7, 0, 3));

@@ -157,16 +157,37 @@ namespace Gamesim.Episode
         /// record, this one aside, plus one. Presentation only - it reads the career file, never the
         /// season - and a record that cannot be read counts as none.
         /// </summary>
-        private int SeasonNumberFor(EpisodeState state)
+        private int SeasonNumberFor(EpisodeState state) => SeasonNumber(state) ?? 1;
+
+        /// <summary>The session the cached season number was read for, and the number, or null when unknown.</summary>
+        private string seasonNumberSession;
+        private int? seasonNumber;
+
+        /// <summary>
+        /// The season's number as <see cref="SeasonNumberFor"/> counts it, or null when there is no
+        /// career record to count from or it cannot be read. Read once a session and kept: the
+        /// frame asks on every render from finale night on (MOCKUP-PASS M3), and the count cannot
+        /// move under a session, because the one season it leaves out is the one being played.
+        /// Setting the record aside is the one thing that changes it, and that forgets the number.
+        /// </summary>
+        public int? SeasonNumber(EpisodeState state)
         {
-            if (career == null || state == null) return 1;
+            if (state == null) return null;
+            if (seasonNumberSession == state.sessionId) return seasonNumber;
+            seasonNumberSession = state.sessionId;
+            seasonNumber = null;
+            if (career == null) return null;
             try
             {
                 var record = career.Load();
-                return 1 + (record?.seasons?.Count(season => season != null && season.sessionId != state.sessionId) ?? 0);
+                seasonNumber = 1 + (record?.seasons?.Count(season => season != null && season.sessionId != state.sessionId) ?? 0);
             }
-            catch (Exception error) when (SaveJson.IsExpected(error)) { return 1; }
+            catch (Exception error) when (SaveJson.IsExpected(error)) { seasonNumber = null; }
+            return seasonNumber;
         }
+
+        /// <summary>Forgets the cached season number, for a career record that has just been set aside.</summary>
+        private void ForgetSeasonNumber() { seasonNumberSession = null; seasonNumber = null; }
 
         private IEnumerator WaitForTutorial(Action done)
         {
@@ -433,6 +454,15 @@ namespace Gamesim.Episode
         /// <summary>The player's selection disc, named as the scene builds it under the player.</summary>
         public const string PlayerMarkerName = "Selected player marker";
 
+        /// <summary>Whether the opening has the house's labels down.</summary>
+        private bool openingPlatesDown;
+
+        /// <summary>Whether a ceremony has them down (<see cref="TickCeremonyPlates"/>).</summary>
+        private bool ceremonyPlatesDown;
+
+        /// <summary>What the player's disc was last set to, so a frame that changes nothing looks nothing up.</summary>
+        private bool? discSuppressed;
+
         /// <summary>
         /// The house's labels down for the show and up again after it: the houseguests' name plates,
         /// and the disc under the player, which stood in the doorway under a shut front door and
@@ -440,13 +470,29 @@ namespace Gamesim.Episode
         /// </summary>
         private void SetPlatesSuppressed(bool suppressed)
         {
-            if (player != null)
+            openingPlatesDown = suppressed;
+            ApplyPlates();
+        }
+
+        /// <summary>
+        /// The labels as the opening and the ceremonies between them want them: down while either
+        /// has them down. Kept apart so a ceremony's card coming down never brings the plates back
+        /// under the opening, or the other way round. The houseguests' flags are set every time, so
+        /// a body the house takes back mid-card is down with the rest.
+        /// </summary>
+        private void ApplyPlates()
+        {
+            bool suppressed = openingPlatesDown || ceremonyPlatesDown;
+            if (player != null && discSuppressed != suppressed)
+            {
+                discSuppressed = suppressed;
                 foreach (var part in player.GetComponentsInChildren<Transform>(true))
                     if (part.name == PlayerMarkerName)
                     {
                         var disc = part.GetComponent<Renderer>();
                         if (disc != null) disc.enabled = !suppressed;
                     }
+            }
             if (housemates == null) return;
             foreach (var npc in housemates)
                 if (npc != null) npc.PlateSuppressed = suppressed;

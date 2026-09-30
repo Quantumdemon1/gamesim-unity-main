@@ -58,6 +58,35 @@ def box(name, size, center, mat=None):
     return _finish(bm, name, mat)
 
 
+def soft_box(name, size, center, mat=None, radius=0.04, segments=3):
+    """A box with every edge rounded to radius: upholstery - cushions, arms, backs - reads soft
+    where a plain box reads as a crate. The corner patches are triangulated wherever the bevel
+    leaves a face of more than four sides, so the piece stays quads and triangles only."""
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts:
+        v.co = Vector((v.co.x * size[0], v.co.y * size[1], v.co.z * size[2])) + Vector(center)
+    r = min(radius, min(size) * 0.45)
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=r, offset_type='OFFSET', segments=segments,
+                    profile=0.5, affect='EDGES', clamp_overlap=True)
+    big = [f for f in bm.faces if len(f.verts) > 4]
+    if big:
+        bmesh.ops.triangulate(bm, faces=big)
+    bm.normal_update()
+    _box_uv(bm)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    if mat is not None:
+        mesh.materials.append(mat)
+    return obj
+
+
 def tilted_box(name, size, hinge, angle_degrees, mat=None):
     """A box rotated about the x axis at its bottom edge (the hinge), for backrests and lids."""
     bm = bmesh.new()

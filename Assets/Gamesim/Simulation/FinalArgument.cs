@@ -72,6 +72,24 @@ namespace Gamesim.Simulation
             }
         }
 
+        /// <summary>
+        /// What a juror of this theme values, as the jury house's what-matters rows word it
+        /// (MOCKUP-PASS M12): a plain noun phrase for the game they reward, never a promise of how
+        /// they will vote.
+        /// </summary>
+        public static string Value(string theme)
+        {
+            switch (theme)
+            {
+                case Cerebral: return "Strategy and planning";
+                case Social: return "Relationships in the house";
+                case Aggressive: return "Competition wins";
+                case Sneaky: return "Staying under the radar";
+                case Emotional: return "Loyalty and keeping your word";
+                default: return null;
+            }
+        }
+
         /// <summary>The theme a juror values: their lead trait, read as the questioning reads it, through the web's table.</summary>
         public static string ThemeOf(ContestantState juror) =>
             juror == null ? null : WebFinalSpeeches.TraitFlavor(new[] { WebJuryQuestioning.GetPrimaryTrait(juror.traits) });
@@ -195,6 +213,80 @@ namespace Gamesim.Simulation
             return list;
         }
 
+        /// <summary>
+        /// Whose face a moment's card carries (MOCKUP-PASS M15): the houseguest the moment is about,
+        /// read from the row its reference names - who went home the week the player held the house,
+        /// who the veto saved, who the call or the whip count named, who the word was given to, the
+        /// other side of a deal, an alliance's first ally - and the player's own for a win, a week on
+        /// the block and the season's two records. Null when the row is gone. Only the player's own
+        /// rows, so a card never shows a face the player had no part in the moment with.
+        /// </summary>
+        public static string SubjectOf(EpisodeState s, string reference)
+        {
+            if (s == null || string.IsNullOrEmpty(reference)) return null;
+            var ledger = s.ledger ?? new SeasonLedger();
+            string player = s.playerId;
+            var parts = reference.Split(':');
+            bool Week(string text, out int week) => int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out week);
+            switch (parts[0])
+            {
+                case "win": case "block": case "record": return Resolves(s, reference) ? player : null;
+                case "hoh":
+                    return parts.Length == 2 && Week(parts[1], out int w1) ? ledger.power.FirstOrDefault(p => p.week == w1 && p.hohId == player)?.evicteeId : null;
+                case "veto":
+                    return parts.Length == 2 && Week(parts[1], out int w2) ? ledger.power.FirstOrDefault(p => p.week == w2 && p.vetoHolderId == player)?.savedId : null;
+                case "whip":
+                    return parts.Length == 2 && Week(parts[1], out int w3)
+                        ? ledger.ballots.FirstOrDefault(b => b.week == w3 && b.voterId == player && b.readBefore != null)?.readBefore : null;
+                case "call":
+                    int at = reference.LastIndexOf(':');
+                    if (at <= parts[0].Length || !Week(reference.Substring(at + 1), out int w4)) return null;
+                    string allianceId = reference.Substring(parts[0].Length + 1, at - parts[0].Length - 1);
+                    return ledger.calls.FirstOrDefault(c => c.week == w4 && c.allianceId == allianceId && c.callerId == player)?.targetId;
+                case "promise": return s.promises.FirstOrDefault(x => "promise:" + x.id == reference && x.fromId == player)?.toId;
+                case "deal":
+                    var deal = s.deals.FirstOrDefault(x => "deal:" + x.id == reference && (x.proposerId == player || x.recipientId == player));
+                    return deal == null ? null : deal.proposerId == player ? deal.recipientId : deal.proposerId;
+                case "alliance":
+                    return s.alliances.FirstOrDefault(a => "alliance:" + a.id == reference && a.members.Contains(player))?.members.FirstOrDefault(id => id != player);
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// A moment's title in a few words, from its reference alone (MOCKUP-PASS M15): "Won Head of
+        /// Household", "Held the house", "Kept your word". The card's bold line and the tray's slot;
+        /// the moment's own text stays the control's caption, so the two never read the same. Null
+        /// for a reference of no kind the screen offers.
+        /// </summary>
+        public static string Title(string reference)
+        {
+            int colon = reference == null ? -1 : reference.IndexOf(':');
+            switch (colon < 0 ? reference : reference.Substring(0, colon))
+            {
+                case "win":
+                    switch (reference.Substring(reference.LastIndexOf(':') + 1))
+                    {
+                        case "HoH": return "Won Head of Household";
+                        case "Veto": return "Won the Power of Veto";
+                        case "FinalHoHPart1": return "Won Final HoH Part 1";
+                        case "FinalHoHPart2": return "Won Final HoH Part 2";
+                        case "FinalHoHPart3": return "Won Final HoH Part 3";
+                        default: return "Won a competition";
+                    }
+                case "hoh": return "Held the house";
+                case "veto": return "Used the veto";
+                case "block": return "Survived the block";
+                case "call": return "Called the vote";
+                case "whip": return "Read the vote right";
+                case "promise": return "Kept your word";
+                case "deal": return "Kept a deal";
+                case "alliance": return "Built an alliance";
+                case "record": return reference == "record:unnominated" ? "Never nominated" : "Stayed off the block";
+                default: return null;
+            }
+        }
+
         /// <summary>The weeks on the record the player was nobody's nominee: not up, not saved, not the replacement.</summary>
         private static int OffTheBlock(EpisodeState s) =>
             (s.ledger?.power ?? new List<PowerRow>()).Count(p => !(p.tally.Count == 0 && p.evicteeId != null && p.vetoHolderId == null)
@@ -293,7 +385,12 @@ namespace Gamesim.Simulation
             return speech.Length <= 2000 ? speech : speech.Substring(0, 2000);
         }
 
-        private static string Opening(string theme)
+        /// <summary>
+        /// The speech's first line for a theme: the templated speech opens with it, and after the
+        /// lock the final case's résumé reads it back in its quote slot (MOCKUP-PASS decision 44) -
+        /// the player's own words to come, never anybody else's.
+        /// </summary>
+        public static string Opening(string theme)
         {
             switch (theme)
             {

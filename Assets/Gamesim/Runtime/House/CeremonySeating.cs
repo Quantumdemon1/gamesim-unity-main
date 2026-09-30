@@ -25,8 +25,14 @@ namespace Gamesim.House
         public const string NominationHead = "nomination-head";
         /// <summary>The nominees' two chairs on eviction night, facing the living room's screen; seated.</summary>
         public const string HotSeat = "hot-seat";
-        /// <summary>The living room sofa's seats; seated.</summary>
+        /// <summary>The living room sofa's seats, where the room has no gallery; seated.</summary>
         public const string SofaSeat = "sofa-seat";
+        /// <summary>
+        /// The living room gallery's couch seats (MOCKUP-PASS-PLAN M22): the U's base from its middle
+        /// outward, then its arms from the base's end; seated. Everyone at an eviction but the two
+        /// nominees sits here, the Head of Household included.
+        /// </summary>
+        public const string GallerySeat = "gallery-seat";
         /// <summary>Standing marks in the living room: slot 0 beside the screen for the Head of Household, the rest behind the sofa.</summary>
         public const string LivingMark = "living-mark";
 

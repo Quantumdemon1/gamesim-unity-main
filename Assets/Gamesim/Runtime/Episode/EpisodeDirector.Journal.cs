@@ -819,13 +819,15 @@ namespace Gamesim.Episode
         {
             if (seasonReport == null) return;
             var committed = Snapshot;
-            // Every way on from the top of the report; each closes it first. Close redraws the
-            // house behind it, whose music the report had silenced.
+            // Every way on from the foot of the report; each closes it first. Close redraws the
+            // house behind it, whose music the report had silenced. The season's number is the one
+            // the finale's strap prints, read once a session from the career record (MOCKUP-PASS
+            // M3 and M5).
             seasonReport.Show(committed, id =>
             {
                 var actor = committed.Find(id);
                 return actor == null ? null : CharacterPortraits.Get(actor);
-            }, OpenJournal, CareerNow(), NewSeason, OpenMainMenu, Render);
+            }, OpenJournal, CareerNow(), NewSeason, OpenMainMenu, Render, SeasonNumber(committed));
             // The final stats are one of the screens the music rule silences, and nothing repaints
             // when the report opens: a HUD button only runs its action, and the panel left under
             // the report keeps the house paused. Asked here, or the season's track plays on.

@@ -146,12 +146,29 @@ namespace Gamesim.Episode
             word.colorGradient = new VertexGradient(crown, crown, feet, feet);
             word.color = Color.white;
 
-            var strap = FixedText(brand, "THE HOUSE  |  " + (state == null ? "A SEASON" : state.contestants.Count + "-PERSON SEASON"),
+            // The number is asked for only on finale night, the one place the strap prints it: the
+            // director reads it from the career file once a session.
+            int? season = state != null && EpisodeDirector.FinaleNight(state.phase) && director != null ? director.SeasonNumber(state) : null;
+            var strap = FixedText(brand, BrandStrap(state, season),
                 11, UiTheme.Muted, new Vector2(left + 1f, -36f), new Vector2(BrandWidth - left - 1f, 17f));
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) strap.font = medium;
             strap.characterSpacing = 2f;
             AutoSize(strap, 9);
+        }
+
+        /// <summary>
+        /// The strap under the wordmark: the house and the size of its season, and on finale night
+        /// the finale, by its number when the career record gives one (MOCKUP-PASS M3; the review's
+        /// correction 22 settles that the number wins over the plain 'SEASON FINALE' wherever it is
+        /// known). The number is the player's count of seasons, never a fact about this one.
+        /// </summary>
+        public static string BrandStrap(EpisodeState state, int? season)
+        {
+            if (state == null) return "THE HOUSE  |  A SEASON";
+            if (EpisodeDirector.FinaleNight(state.phase))
+                return "THE HOUSE  |  " + (season.HasValue && season.Value > 0 ? "SEASON " + season.Value + " FINALE" : "SEASON FINALE");
+            return "THE HOUSE  |  " + state.contestants.Count + "-PERSON SEASON";
         }
 
         /// <summary>
@@ -172,6 +189,9 @@ namespace Gamesim.Episode
             : state.phase == EpisodePhase.Finished ? "Next stop: episode screen · season report"
             : "Next stop: episode screen";
 
+        /// <summary>The objective chip's endgame mark, named apart from the objectives card's row marks.</summary>
+        public const string ObjectiveCrownName = "Objective crown";
+
         /// <summary>
         /// The objective, as the mockups' top-bar chip: a ringed mark, the title in the heading
         /// blue, and the next stop under it.
@@ -189,8 +209,25 @@ namespace Gamesim.Episode
                 new Vector2(ObjectiveChipWidth, TopBarHeight));
 
             float words = 16f;
-            var ring = UiTheme.Pack(PackArt.SelectionRing);
-            if (ring != null)
+            // At the endgame the chip wears a crown in the power's gold in place of the ring and its
+            // '!' (MOCKUP-PASS M3, mockups 59 and 60). The words beside it are the ones they always
+            // were, and pinned: only the mark says the season is being decided.
+            Sprite crown = null;
+            if (IsEndgame(state))
+            {
+                crown = UiTheme.Pack(PackArt.KitIconCrown);
+                if (crown == null) crown = UiTheme.Icon("crown");
+            }
+            var ring = crown == null ? UiTheme.Pack(PackArt.SelectionRing) : null;
+            if (crown != null)
+            {
+                var mark = new GameObject(ObjectiveCrownName, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(objective, false);
+                Anchor(mark.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f, -11f), new Vector2(30f, 30f));
+                mark.sprite = crown; mark.color = UiTheme.Gold; mark.preserveAspect = true; mark.raycastTarget = false;
+                words = 54f;
+            }
+            else if (ring != null)
             {
                 var mark = new GameObject("Objective mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
                 mark.rectTransform.SetParent(objective, false);
@@ -330,7 +367,7 @@ namespace Gamesim.Episode
             var rule = Panel("Week divider", chip, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .8f), 0);
             Anchor(rule, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x + 88f, -12f), new Vector2(1f, 28f));
             rule.GetComponent<Image>().raycastTarget = false;
-            var dot = HudPrimitives.Disc("Phase dot", chip, PhaseTint(state.phase));
+            var dot = HudPrimitives.Disc("Phase dot", chip, PhaseTint(state));
             Anchor(dot, new Vector2(0, 1), new Vector2(0, 1), new Vector2(x + 100f, -21f), new Vector2(10f, 10f));
             dot.GetComponent<Image>().raycastTarget = false;
             var phase = FixedText(chip, label != null ? "Week " + state.week + " · " + PhaseShort(state.phase) : PhaseShort(state.phase),
@@ -356,6 +393,9 @@ namespace Gamesim.Episode
             ClickThrough(chip);
         }
 
+        /// <summary>The house pill's jury cell's label.</summary>
+        public const string JuryCellLabel = "Jury members";
+
         /// <summary>
         /// The house's numbers, as the mockups' stat chip: who is still in, how many social actions
         /// are left this week, and who holds the house.
@@ -371,14 +411,26 @@ namespace Gamesim.Episode
 
             var holder = state.Find(state.hohId);
             int left = Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
-            StatCell(pill, 0f, "people", Accent, state.Active.Count() + "/" + state.contestants.Count, "Houseguests");
-            StatCell(pill, PillCell, "star", left == 0 ? UiTheme.Muted : UiTheme.Joke, left.ToString(), "Actions left");
+            // A finished season has nobody left to count down to: the cell is the season's size,
+            // where '0/12' read as a house that had emptied (MOCKUP-PASS M3).
+            StatCell(pill, 0f, "people", Accent, state.phase == EpisodePhase.Finished
+                ? state.contestants.Count.ToString() : state.Active.Count() + "/" + state.contestants.Count, "Houseguests");
+            // The Final 2 spend no actions: the two facing the jury are the number instead.
+            if (IsFinalTwo(state))
+                StatCell(pill, PillCell, "houseguest", Accent, state.Active.Count().ToString(), "Finalists");
+            else
+                StatCell(pill, PillCell, "star", left == 0 ? UiTheme.Muted : UiTheme.Joke, left.ToString(), "Actions left");
             // The first name only: a full name does not fit a cell, and the pill is a glance. At the
-            // endgame, while nobody holds the house, the cell is the jury's size instead: the number
-            // the last decisions turn on (ENDGAME-PLAN F1).
+            // endgame the cell is the jury's size instead, the number the last decisions turn on
+            // (ENDGAME-PLAN F1): while nobody holds the house, at the final decision (the owner's
+            // decision 51) and all finale night, when the jury is the house that matters.
             int jurors = state.contestants.Count(IsJuror);
-            if (holder == null && jurors > 0 && IsEndgame(state))
-                StatCell(pill, 2f * PillCell, "people", UiTheme.Gold, jurors.ToString(), "Jury");
+            bool juryCell = IsEndgame(state) && (holder == null || EpisodeDirector.FinaleNight(state.phase)
+                || state.phase == EpisodePhase.FinalEviction);
+            // 'Jury members' under the count, as mockup 60 labels it (MOCKUP-PASS M14): the word
+            // Jury leads it, as it always did.
+            if (juryCell && jurors > 0)
+                StatCell(pill, 2f * PillCell, "people", UiTheme.Gold, jurors.ToString(), JuryCellLabel);
             else
                 StatCell(pill, 2f * PillCell, "crown", UiTheme.Gold, holder == null ? "Awaiting" : holder.name.Split(' ')[0], "HoH");
             for (int i = 1; i < 3; i++)
@@ -602,6 +654,15 @@ namespace Gamesim.Episode
         /// <summary>The objectives card's line for a player out of the game.</summary>
         public const string SpectatorLineName = "Spectator line";
         public const string JuryStripName = "Jury strip";
+        /// <summary>
+        /// The card's crown before its heading, its tagline, and a done row's check. Each is named
+        /// apart from the rows' 'Objective mark', which a test counts one to a row.
+        /// </summary>
+        public const string ObjectivesCrownName = "Objectives crown";
+        public const string ObjectivesTaglineName = "Objectives tagline";
+        public const string ObjectiveCheckName = "Objective check";
+        /// <summary>The mockups' line under the Final 3's heading (59, 60), moved off the objective chip, whose next stop is pinned.</summary>
+        public const string ObjectivesTagline = "Last competition. Last decision.";
         private const float ObjectiveRowHeight = 34f;
         private const float JurorDisc = 22f;
 
@@ -623,6 +684,11 @@ namespace Gamesim.Episode
         /// <para>One card rather than the plan's two. The column clears the status band by 24
         /// units with the vibe card in it and the two-row feed at the endgame buys 58 more; two
         /// cards and the gap between them did not fit, and a strip at the foot of one does.</para>
+        ///
+        /// <para>Dressed as the mockups' gold card (MOCKUP-PASS M3): its own edge in gold, a crown
+        /// before the heading, and for a finalist at three the tagline under it. The tagline takes
+        /// the spectator line's slot and a spectator is never a finalist, so the card is never
+        /// taller than the spectator's was.</para>
         /// </summary>
         private float EndgameCard(Transform parent, float top, EpisodeState state)
         {
@@ -631,13 +697,33 @@ namespace Gamesim.Episode
             float width = RightColumnWidth;
             // A player out of the game reads it here, in the frame, with no panel open (ENDGAME-PLAN F6).
             bool watching = EpisodeDirector.Spectating(state);
-            float rowsTop = watching ? 60f : 42f;
+            bool tagline = !watching && ObjectivesTaglineShows(state);
+            float rowsTop = watching || tagline ? 60f : 42f;
             float juryTop = rowsTop + 2f + rows.Count * ObjectiveRowHeight + 6f;
             float height = juryTop + 18f + JurorDisc + 14f;
             var card = Chrome(ObjectivesCardName, parent);
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
+            // The card's own hairline turned gold, not a second edge drawn over it: every card
+            // carries its border once.
+            var edge = card.Find("Border");
+            var edgeImage = edge != null ? edge.GetComponent<Image>() : null;
+            if (edgeImage != null) edgeImage.color = new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .7f);
+
+            float headingX = 14f;
+            var crown = UiTheme.Pack(PackArt.KitIconCrown);
+            if (crown == null) crown = UiTheme.Icon("crown");
+            if (crown != null)
+            {
+                var mark = new GameObject(ObjectivesCrownName, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(card, false);
+                Anchor(mark.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(14f, -12f), new Vector2(20f, 20f));
+                mark.sprite = crown; mark.color = UiTheme.Gold; mark.preserveAspect = true; mark.raycastTarget = false;
+                headingX = 40f;
+            }
             // The heading keeps no room for a corner control: none is coming, and the word needs it.
-            CardHeading(card, (IsFinalTwo(state) ? "FINAL 2" : "FINAL 3") + " OBJECTIVES").rectTransform.sizeDelta = new Vector2(width - 28f, 22f);
+            var heading = CardHeading(card, (IsFinalTwo(state) ? "FINAL 2" : "FINAL 3") + " OBJECTIVES");
+            heading.rectTransform.anchoredPosition = new Vector2(headingX, -11f);
+            heading.rectTransform.sizeDelta = new Vector2(width - headingX - 14f, 22f);
 
             if (watching)
             {
@@ -645,17 +731,31 @@ namespace Gamesim.Episode
                 line.name = SpectatorLineName;
                 line.characterSpacing = 3f;
             }
+            else if (tagline)
+            {
+                var line = FixedText(card, ObjectivesTagline, 11, UiTheme.Muted, new Vector2(14f, -36f), new Vector2(width - 28f, 16f));
+                line.name = ObjectivesTaglineName;
+            }
 
-            var open = UiTheme.Muted; open.a = .45f;
+            var open = UiTheme.Muted; open.a = .8f;
+            var check = UiTheme.Pack(PackArt.KitIconCheck);
             for (int i = 0; i < rows.Count; i++)
             {
                 var row = rows[i];
                 float y = -(rowsTop + i * ObjectiveRowHeight);
-                // The mark: gold for a row that is done, a dim dot for one that is not. Where the
-                // row stands goes under its words rather than beside them: beside, the words had
-                // 120 units and lost their ends.
+                // The mark: a hollow ring while the row is open, and the gold disc with a check on it
+                // once it is done. Where the row stands goes under its words rather than beside
+                // them: beside, the words had 120 units and lost their ends.
                 var mark = HudPrimitives.Disc("Objective mark", card, row.Done ? UiTheme.Gold : open);
-                Anchor(mark, new Vector2(0, 1), new Vector2(0, 1), new Vector2(16f, y - 6f), new Vector2(12f, 12f));
+                if (!row.Done) mark.GetComponent<Image>().sprite = UiTheme.Ring();
+                Anchor(mark, new Vector2(0, 1), new Vector2(0, 1), new Vector2(15f, y - 5f), new Vector2(14f, 14f));
+                if (row.Done && check != null)
+                {
+                    var tick = new GameObject(ObjectiveCheckName, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                    tick.rectTransform.SetParent(card, false);
+                    Anchor(tick.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(17f, y - 7f), new Vector2(10f, 10f));
+                    tick.sprite = check; tick.color = UiTheme.Ink; tick.preserveAspect = true; tick.raycastTarget = false;
+                }
                 const float words = 36f;
                 FixedText(card, row.Word, 13, Paper, new Vector2(words, y - 2f), new Vector2(width - words - 14f, 18f));
                 FixedText(card, row.Status, 11, row.Done ? UiTheme.Gold : UiTheme.Muted,
@@ -665,7 +765,13 @@ namespace Gamesim.Episode
             var strip = new GameObject(JuryStripName, typeof(RectTransform)).GetComponent<RectTransform>();
             strip.SetParent(card, false);
             Anchor(strip, new Vector2(0, 1), new Vector2(0, 1), new Vector2(14f, -juryTop), new Vector2(width - 28f, 18f + JurorDisc));
-            FixedText(strip, "The jury (" + jurors.Count + ")", 12, UiTheme.Muted, Vector2.zero, new Vector2(width - 28f, 16f));
+            // The strip is a door to the jury house wherever the house can open it from here (the
+            // owner's decision 42, MOCKUP-PASS M14): a link in its heading's corner, so the faces
+            // stay faces.
+            bool door = director.JuryStripIsADoor(state);
+            FixedText(strip, "The jury (" + jurors.Count + ")", 12, UiTheme.Muted, Vector2.zero,
+                new Vector2(width - 28f - (door ? JuryStripLinkWidth + 4f : 0f), 16f));
+            if (door) JuryStripLink(strip);
             // A face per juror in a row; a jury too wide for the strip overlaps like a fanned hand.
             float pitch = jurors.Count > 1 ? Mathf.Min(JurorDisc + 2f, (width - 28f - JurorDisc) / (jurors.Count - 1)) : 0f;
             for (int i = 0; i < jurors.Count; i++)
@@ -695,6 +801,62 @@ namespace Gamesim.Episode
             return height;
         }
 
+        private const float JuryStripLinkWidth = 92f;
+
+        /// <summary>
+        /// The jury strip's door (the owner's decision 42, MOCKUP-PASS M14): a corner link drawn as
+        /// the other cards' corner links are, captioned with words of its own. 'The jury house' is
+        /// the free tile's and the Final 2's row's caption, and a second control with those words
+        /// would be two controls a test or a screen reader cannot tell apart. The director builds
+        /// it only while nothing is open over the house, so it is never live beside those doors.
+        /// </summary>
+        private void JuryStripLink(RectTransform strip)
+        {
+            var link = Panel(EpisodeDirector.JuryStripCaption, strip, Color.white, 6);
+            Anchor(link, new Vector2(1, 1), new Vector2(1, 1), new Vector2(0f, 1f), new Vector2(JuryStripLinkWidth, 18f));
+            var button = Pressable(link, director.OpenJuryHouseFromStrip);
+            var colours = button.colors;
+            colours.normalColor = new Color(1f, 1f, 1f, 0f);
+            colours.highlightedColor = new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f);
+            colours.selectedColor = colours.highlightedColor;
+            button.colors = colours;
+            var navigation = button.navigation; navigation.mode = Navigation.Mode.None; button.navigation = navigation;
+            // 20 tall for a 12, which is a 14 at the larger text size: over 1.3 times the words, as
+            // 'View all' keeps them. The box is centred on the 18 tall link, so the words sit where
+            // they did, and it reaches down no further than the top of the faces under the heading.
+            var words = FixedText(link, EpisodeDirector.JuryStripCaption, 12, Accent, new Vector2(4f, 1f), new Vector2(JuryStripLinkWidth - 24f, 20f));
+            words.alignment = TextAlignmentOptions.Right;
+            HudPrimitives.Chevron(link, Accent, 9f).anchoredPosition = new Vector2(-6f, 0f);
+        }
+
+        /// <summary>The Final 2's leading row under the finale rules: the screen it names is the final case's.</summary>
+        public const string FinalCaseObjective = "Prepare your final case";
+
+        /// <summary>
+        /// Whether the Final 3's tagline heads the card: for a finalist, while the competition or
+        /// the decision it names is still theirs to come. A finalist who lost the final Head of
+        /// Household has neither left, and the line would not be true of them.
+        ///
+        /// <para>Part 3 is the Part 1 and Part 2 winners' (EpisodeEngine.CompetitionPlayers), so
+        /// a finalist beaten in Part 2 has played their last competition from the moment Part 2 is
+        /// decided, and sits Part 3 out. Once Part 3 is decided the decision is its winner's alone,
+        /// though the phase holds until the house moves on.</para>
+        /// </summary>
+        public static bool ObjectivesTaglineShows(EpisodeState state)
+        {
+            if (!IsFinalThree(state)) return false;
+            var me = state.Find(state.playerId);
+            if (me == null || me.status != ContestantStatus.Active) return false;
+            bool inPartThree = state.playerId == state.finalPart1WinnerId || state.playerId == state.finalPart2WinnerId;
+            switch (state.phase)
+            {
+                case EpisodePhase.FinalHoHPart2: return !state.competitionResolved || inPartThree;
+                case EpisodePhase.FinalHoHPart3: return inPartThree && (!state.competitionResolved || state.hohId == state.playerId);
+                case EpisodePhase.FinalEviction: return state.hohId == state.playerId;
+                default: return true;
+            }
+        }
+
         /// <summary>
         /// The endgame's three objectives, from the committed state: for a finalist, the outline's
         /// three (the final Head of Household, who to trust, the case to the jury; then the
@@ -714,8 +876,15 @@ namespace Gamesim.Episode
                 {
                     bool won = decided && state.hohId == player;
                     rows.Add(new Objective("Win the Final HoH", won ? "Won" : decided ? "Lost" : part, won));
-                    var partner = FinalTwoPartner(state, player);
-                    rows.Add(new Objective("Decide who to trust", partner != null ? FinalistRead.FirstName(partner.name) : "Open", partner != null));
+                    // The final Head of Household's one decision (MOCKUP-PASS M3, mockup 59): who
+                    // sits beside them. The row says what the choice is and that it is final, not
+                    // who a deal points at - the choice screen reads the evidence.
+                    if (won) rows.Add(new Objective("Take one to the Final 2", "Cannot be undone", false));
+                    else
+                    {
+                        var partner = FinalTwoPartner(state, player);
+                        rows.Add(new Objective("Decide who to trust", partner != null ? FinalistRead.FirstName(partner.name) : "Open", partner != null));
+                    }
                     // The case itself is the Final 2's to prepare (ENDGAME-PLAN F4): the row says so
                     // rather than promising a screen the Final 3 does not have.
                     rows.Add(new Objective("Prepare your case", "At the Final 2", false));
@@ -736,10 +905,23 @@ namespace Gamesim.Episode
                 bool voting = state.phase == EpisodePhase.Jury;
                 if (finalist)
                 {
-                    var mine = state.juryExchanges.Where(exchange => exchange.finalistId == player).ToList();
-                    int answered = mine.Count(exchange => exchange.completed);
-                    rows.Add(new Objective("Answer the jury's questions",
-                        !questioning ? "Done" : mine.Count > 0 ? answered + " of " + mine.Count : "Open", !questioning));
+                    if (EpisodeEngine.FinaleOn(state))
+                    {
+                        // Under the finale rules the final case leads, in the questions' place (the
+                        // owner's decision 46): the questions still come, but the argument is what
+                        // there is to prepare. Once the speech is in, a case never locked can no
+                        // longer be, and the row says so rather than calling it open.
+                        bool locked = state.finalArgument != null;
+                        rows.Add(new Objective(FinalCaseObjective,
+                            locked ? "Locked" : EpisodeDirector.FinalCaseAvailable(state) ? "Open" : "Not locked", locked));
+                    }
+                    else
+                    {
+                        var mine = state.juryExchanges.Where(exchange => exchange.finalistId == player).ToList();
+                        int answered = mine.Count(exchange => exchange.completed);
+                        rows.Add(new Objective("Answer the jury's questions",
+                            !questioning ? "Done" : mine.Count > 0 ? answered + " of " + mine.Count : "Open", !questioning));
+                    }
                     bool spoke = voting || state.finalSpeeches.Any(speech => speech.speakerId == player);
                     rows.Add(new Objective("Deliver your final speech",
                         spoke ? "Done" : state.phase == EpisodePhase.FinalSpeeches ? "Now" : "Ahead", spoke));
@@ -1025,6 +1207,7 @@ namespace Gamesim.Episode
             Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
                 new Vector2(width, height));
             CardHeading(card, "Recent Events");
+            ViewAllEventsLink(card);
 
             if (entries.Count == 0)
             {
@@ -1055,6 +1238,33 @@ namespace Gamesim.Episode
                 }
             }
             return height;
+        }
+
+        /// <summary>The Recent Events card's corner link. Not "See all": that is the relationships card's.</summary>
+        public const string ViewAllEventsCaption = "View all";
+
+        /// <summary>
+        /// The card's corner link to the whole story (MOCKUP-PASS M3): the notebook's Story page,
+        /// where every event the player may have seen is kept. Drawn as the relationships card's
+        /// 'See all' is, in the 72 units the heading leaves for a corner control, and with its own
+        /// words so the two captions never meet.
+        /// </summary>
+        private void ViewAllEventsLink(RectTransform card)
+        {
+            var link = Panel(ViewAllEventsCaption, card, Color.white, 6);
+            Anchor(link, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-8f, -8f), new Vector2(72f, 26f));
+            var button = Pressable(link, () => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story));
+            var colours = button.colors;
+            colours.normalColor = new Color(1f, 1f, 1f, 0f);
+            colours.highlightedColor = new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f);
+            colours.selectedColor = colours.highlightedColor;
+            button.colors = colours;
+            var navigation = button.navigation; navigation.mode = Navigation.Mode.None; button.navigation = navigation;
+            // A letter longer than 'See all', so the box is wider: 52 still clears the chevron, and
+            // 20 tall keeps it over 1.3 times the words at the larger text size.
+            var words = FixedText(link, ViewAllEventsCaption, 12, Accent, new Vector2(4f, -3f), new Vector2(52f, 20f));
+            words.alignment = TextAlignmentOptions.Right;
+            HudPrimitives.Chevron(link, Accent, 9f).anchoredPosition = new Vector2(-6f, 0f);
         }
 
         /// <summary>The colour a kind of event's glyph is drawn in: the block and the vote in red,

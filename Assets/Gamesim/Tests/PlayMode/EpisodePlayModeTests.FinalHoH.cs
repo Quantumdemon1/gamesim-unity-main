@@ -82,6 +82,24 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption("Continue to the next ceremony").onClick.Invoke();
             yield return Frames(2);
             Assert.That(director.Snapshot.phase, Is.EqualTo(expected));
+            AssertTheStatusLineWordsThePhase(expected);
+        }
+
+        /// <summary>
+        /// The status line after a commit into a new phase says it in words ("Week 4 · Final HoH,
+        /// Part 2 of 3"), never by the enum's own name, which the saved event keeps.
+        /// </summary>
+        private void AssertTheStatusLineWordsThePhase(EpisodePhase phase)
+        {
+            string status = director.StatusMessage;
+            // The names run together from two words or more ("FinalHoHPart2", "VetoMeeting"); "HoH"
+            // alone is a word the line uses itself.
+            foreach (EpisodePhase each in System.Enum.GetValues(typeof(EpisodePhase)))
+                if (each != EpisodePhase.HoH && each.ToString().Skip(1).Any(char.IsUpper))
+                    Assert.That(status, Does.Not.Contain(each.ToString()), "A raw phase name in the status line: " + status);
+            Assert.That(status, Does.StartWith(EpisodeDirector.PhaseLine(phase, director.Snapshot.week)), status);
+            var entry = director.Snapshot.events.Last(e => e.kind == "phase");
+            Assert.That(entry.text, Is.EqualTo("Week " + entry.week + " · " + phase), "The saved event keeps its own text.");
         }
 
         /// <summary>
@@ -107,6 +125,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ContinueFromFinalPart(EpisodePhase.FinalHoHPart2);
             var state = director.Snapshot;
             Assert.That(takeover.PlayingKind, Is.EqualTo(CeremonyTakeover.FinalHoHPartKind), "Part 2 opens with the bracket.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The card has the frame to itself: no chrome under it (MOCKUP-PASS-PLAN M2).");
             var words = TakeoverWords(takeover);
             Assert.That(words, Does.Contain("Final HoH · Part 2"));
             Assert.That(words.Count(text => text == "WON PART 1"), Is.EqualTo(1), "The Part 1 winner, badged.");
@@ -136,6 +155,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ContinueFromFinalPart(EpisodePhase.FinalHoHPart3);
             state = director.Snapshot;
             Assert.That(takeover.PlayingKind, Is.EqualTo(CeremonyTakeover.FinalHoHPartKind), "Part 3 opens with the bracket.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "No chrome under the bracket.");
             words = TakeoverWords(takeover);
             Assert.That(words, Does.Contain("Final HoH · Part 3"));
             Assert.That(words.Count(text => text == "WON PART 1"), Is.EqualTo(1));
@@ -153,6 +173,7 @@ namespace Gamesim.Tests.PlayMode
             yield return ContinueFromFinalPart(EpisodePhase.FinalEviction);
             state = director.Snapshot;
             Assert.That(takeover.PlayingKind, Is.EqualTo(CeremonyTakeover.FinalHoHCrownedKind), "The final eviction opens with the crowning.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "No chrome under the crowning.");
             words = TakeoverWords(takeover);
             Assert.That(words, Does.Contain("Final Head of Household"));
             Assert.That(words.Count(text => text == "FINAL HOH"), Is.EqualTo(1));
@@ -169,6 +190,7 @@ namespace Gamesim.Tests.PlayMode
             if (Application.isBatchMode) yield return CaptureFraming("endgame-final-hoh-crowned", settle: false);
             takeover.Cancel();
             yield return Frames(1);
+            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down.");
         }
 
         /// <summary>

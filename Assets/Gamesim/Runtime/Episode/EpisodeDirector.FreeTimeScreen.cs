@@ -80,6 +80,22 @@ namespace Gamesim.Episode
             TalkFromCastMenu(id);
         }
 
+        /// <summary>
+        /// Whether free time will draw one of the views over Endgame Preparation - the comparison,
+        /// the final case read early, the jury house - rather than its root or a houseguest's
+        /// screen: the checks <see cref="FreeTimeScreen"/> makes, in its order. Each is a screen of
+        /// its own, as it is at the Final 2, so the week's status line does not head it.
+        /// </summary>
+        private bool ViewOverPreparation(EpisodeState state)
+        {
+            if (!Preparing(state)) return false;
+            var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
+            if (chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active) return false;
+            return comparingFinalists
+                || (finalCaseOpen && (finalCaseEarly ? FinalCaseEarlyAvailable(state) : FinalCaseAvailable(state)))
+                || (juryHouseOpen && JuryHouseAvailable(state));
+        }
+
         private void FreeTimeScreen(EpisodeState state)
         {
             var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
@@ -88,7 +104,9 @@ namespace Gamesim.Episode
             // The comparison over Endgame Preparation (EpisodeDirector.FinalThree.cs), while the window lasts.
             if (comparingFinalists && Preparing(state)) { FinalistComparison(state); return; }
             comparingFinalists = false;
-            // The jury house over Endgame Preparation (EpisodeDirector.JuryHouse.cs), while the window lasts.
+            // The final case read early, and the jury house, over Endgame Preparation
+            // (EpisodeDirector.FinalCase.cs, EpisodeDirector.JuryHouse.cs), while the window lasts.
+            if (FinalCaseIfOpen(state)) return;
             if (JuryHouseIfOpen(state)) return;
             // Before anything the player chose to do: something has happened to them, and a
             // situation buried under the ordinary controls is a situation they will not see.
@@ -257,6 +275,8 @@ namespace Gamesim.Episode
             // At three, first of all: the comparison, which costs nothing (ENDGAME-PLAN F2).
             if (asCards && Preparing(state)) tiles.Insert(0, CompareTile(OpenFinalistComparison));
             if (asCards && Preparing(state) && JuryHouseAvailable(state)) tiles.Insert(1, JuryHouseTile(OpenJuryHouse));
+            // The final case to read early, beside the jury house, under the finale rules (MOCKUP-PASS M15).
+            if (asCards && FinalCaseEarlyAvailable(state)) tiles.Insert(JuryHouseAvailable(state) ? 2 : 1, FinalCaseTile(OpenFinalCase));
             // Listening in needs no one to talk to, so it sits here rather than in a conversation.
             if (state.Active.Count(c => !c.isPlayer) >= 2)
                 tiles.Add(Tile("Listen in on a conversation", "Works seven times in ten; the rest of the time somebody notices.",

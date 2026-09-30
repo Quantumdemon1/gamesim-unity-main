@@ -200,6 +200,17 @@ namespace Gamesim.Episode
         /// <summary>The locked argument the speech editor was last filled from, so a draft the player cleared stays clear.</summary>
         private string speechSeededFor;
         private bool restoreSelection;
+        /// <summary>
+        /// True while the HUD hands the keyboard to a control on its own account - a panel opening
+        /// on its first control, a rebuild or a closed overlay giving it back - so a control that
+        /// answers being selected can tell that from the player's own move (<see cref="RestoreFocus"/>).
+        /// </summary>
+        private bool restoringFocus;
+        /// <summary>
+        /// The finalist choice's control the player last moved the keyboard to, by name: a rebuild
+        /// lights that column again, and a panel's own opening focus lights none.
+        /// </summary>
+        private string litChoice;
         private GameObject lastSelection;
         public float FontScale { get; set; } = 1;
         /// <summary>Mirrors the director's accessibility preference; suppresses every HUD animation.</summary>
@@ -226,8 +237,15 @@ namespace Gamesim.Episode
             var root = new GameObject("Gamesim Episode HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             root.transform.SetParent(transform, false); canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 70;
             var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1600,900); scaler.matchWidthOrHeight = .5f;
+            scaler.referenceResolution = new Vector2(ReferenceWidth,ReferenceHeight); scaler.matchWidthOrHeight = .5f;
         }
+
+        /// <summary>
+        /// The size the HUD is laid out at, whatever the text size: the larger-text preference grows
+        /// rows, never the reference. A screen on a canvas of its own that has to stand clear of the
+        /// HUD's chrome converts through this (the season report beside the rail, MOCKUP-PASS M5).
+        /// </summary>
+        public const float ReferenceWidth = 1600f, ReferenceHeight = 900f;
 
         /// <summary>
         /// Where the panel column starts: clear of the left gutter. The ceremony card insets
@@ -255,12 +273,16 @@ namespace Gamesim.Episode
             // UI foley: a panel arriving or leaving says so. A rebuild of an open panel is neither.
             if (open && modal == null) Foley(HouseAudio.Cue.PanelOpen);
             else if (!open && modal != null && !recovery) Foley(HouseAudio.Cue.PanelClose);
+            // A panel arriving has no finalist's column the player lit on it yet; a rebuild of an
+            // open one keeps the one they did.
+            if (!open || modal == null) litChoice = null;
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
             fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
+            bandTitle = bandLine = null; bandGlyph = bandStroke = null;
             // The dial belongs to the panel that was just thrown away; a stale one would seat the
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
@@ -272,8 +294,11 @@ namespace Gamesim.Episode
             // on screen at all times is what makes the rest of the HUD able to say "the replacement
             // nominee" and have that mean a person rather than a name.
             // A chip opens its houseguest's card (EpisodeDirector.PressCastChip), drawn over the strip.
+            // At the endgame the strip's quote card is the jury's (MOCKUP-PASS M14), counted as the
+            // pill and the objectives card count it.
+            bool endgame = IsEndgame(state);
             CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.PressCastChip,
-                director.FollowedId, IsEndgame(state));
+                director.FollowedId, endgame, endgame ? state.contestants.Where(IsJuror).ToList() : null);
             FollowChip(director.FollowedName);
 
             // The top bar (mockup-01): the brand, the week, the objective, the house's numbers
@@ -333,8 +358,14 @@ namespace Gamesim.Episode
             // Above the cast strip, in the band the docked panel also uses. They never share the
             // screen: the director clears the prompt outright while a panel is open, which is why
             // one band can carry both.
-            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,PromptLift),new Vector2(425,52));
+            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,PromptLift),new Vector2(425,PromptHeight));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
+            // The muted line a prompt can carry under its words (MOCKUP-PASS M14): a label of its
+            // own, so the prompt's words and the control's caption are what they always were. 22
+            // tall: a 13 is a 16 at the larger text size, and the box has to be 1.3 times that.
+            promptHint = FixedText(promptRoot,"",13,UiTheme.Muted,new Vector2(14,-46),new Vector2(397,22)); promptHint.alignment = TextAlignmentOptions.Center;
+            promptHint.name = PromptHintName;
+            promptHint.gameObject.SetActive(false);
             // The prompt is also the thing it prompts: a click on "E · Get up" gets up. Its words
             // change with what E would do, so the control carries a fixed caption of its own, and
             // the keyboard keeps the key rather than a stop in the Tab ring.
@@ -910,13 +941,19 @@ namespace Gamesim.Episode
                 Mathf.Clamp01(1f - offset / travel);
         }
 
-        public void JuryQuestioning(EpisodeState state)
+        /// <summary>
+        /// The questioning's panel. <paramref name="after"/> draws the director's doors - the final
+        /// case, the jury house - into the thin row of ways on, after Skip (MOCKUP-PASS M11).
+        /// </summary>
+        public void JuryQuestioning(EpisodeState state, Action after = null)
         {
-            Paragraph("Public questions and recorded answers. A response is not a guaranteed jury vote.");
+            const string disclaimer = "Public questions and recorded answers. A response is not a guaranteed jury vote.";
             if (state.juryExchanges == null || state.juryQuestionIndex < 0 || state.juryQuestionIndex >= state.juryExchanges.Count)
             {
+                Paragraph(disclaimer);
                 Paragraph("The questions are complete. Continue to the final speeches.");
                 Action(JuryContinueCaption,director.ContinueEpisode);
+                after?.Invoke();
                 return;
             }
             var exchange = state.juryExchanges[state.juryQuestionIndex];
@@ -925,16 +962,14 @@ namespace Gamesim.Episode
             int questionCount = state.Active.Any(actor => actor.isPlayer)
                 ? state.contestants.Count(actor => actor.status == ContestantStatus.Jury || actor.status == ContestantStatus.Evicted)
                 : state.Active.Count();
-            Heading("Question " + (state.juryQuestionIndex + 1) + " of " + questionCount);
             // "You ask", not "You asks": the default player is called "You".
-            Paragraph(exchange.questionerId == state.playerId ? "You ask " + (finalist?.name ?? "the finalist")
+            string asks = exchange.questionerId == state.playerId ? "You ask " + (finalist?.name ?? "the finalist")
                 : exchange.finalistId == state.playerId ? (questioner?.name ?? "Juror") + " asks you"
-                : (questioner?.name ?? "Juror") + " asks " + (finalist?.name ?? "Finalist"));
-            var hint = FlowText(JuryHintWords, 13, UiTheme.Muted);
-            hint.name = JuryHintName;
-            // The live layout (EpisodeHud.JuryLive.cs; ENDGAME-PLAN F5): the juror and the question
-            // left, these controls in the centre exactly as they were, the season's receipt right.
-            JuryLive(state, exchange, questioner, finalist, () =>
+                : (questioner?.name ?? "Juror") + " asks " + (finalist?.name ?? "Finalist");
+            // The live layout (EpisodeHud.JuryLive.cs; ENDGAME-PLAN F5, MOCKUP-PASS M11): the asker's
+            // card - the heading and the line above, word for word - and the question left, these
+            // controls in the centre exactly as they were, the season's receipt right.
+            JuryLive(state, exchange, questioner, finalist, state.juryQuestionIndex + 1, questionCount, asks, () =>
             {
                 if (exchange.completed)
                 {
@@ -962,8 +997,9 @@ namespace Gamesim.Episode
                 }
                 else if (exchange.finalistId == state.playerId && EpisodeEngine.FinaleOn(state))
                 {
-                    // A history question (ENDGAME-PLAN F5b): the five responses, one to a row.
-                    Paragraph("Choose your response. Only the committed response changes the record.");
+                    // A history question (ENDGAME-PLAN F5b): the five responses, one to a compact
+                    // row under their eyebrow (MOCKUP-PASS M11).
+                    ReceiptEyebrow("YOUR RESPONSE");
                     ResponseTiles(state, exchange);
                 }
                 else if (exchange.finalistId == state.playerId)
@@ -978,7 +1014,15 @@ namespace Gamesim.Episode
                     Action(JuryContinueCaption,director.ContinueEpisode);
                 }
             });
+            // The hint, framed, with what to take care over while a choice is open and the line the
+            // panel used to open with.
+            string care = exchange.completed ? "" : exchange.finalistId == state.playerId ? "Choose your response carefully. "
+                : exchange.questionerId == state.playerId ? "Choose your question carefully. " : "";
+            JuryFooter(care + JuryHintWords + " " + disclaimer);
+            var ways = BeginWaysOn();
             Action(JurySkipCaption,director.SkipQuestioning);
+            after?.Invoke();
+            EndWaysOn(ways);
         }
 
         public void FinalSpeech(EpisodeState state)
@@ -1545,7 +1589,39 @@ namespace Gamesim.Episode
         }
         public void SetChallenge(float value,int hits)
         { if(challengeMeter!=null) challengeMeter.value=value; if(challengeCaption!=null) challengeCaption.text="Attempt " + (hits+1) + " of 3 · Aim for the center"; }
-        public void SetPrompt(string value) { if(prompt==null)return; prompt.text=Localisation.Text(value); prompt.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value)); }
+        public void SetPrompt(string value) => SetPrompt(value, null);
+
+        /// <summary>
+        /// The prompt's words, and a muted line under them when there is a <paramref name="hint"/>.
+        /// The box grows upward to hold the line - its foot stays on the band it shares with the
+        /// docked panel - and back when the line goes. Called every frame, so nothing is touched
+        /// that has not changed.
+        /// </summary>
+        public void SetPrompt(string value, string hint)
+        {
+            if (prompt == null) return;
+            prompt.text = Localisation.Text(value);
+            var root = (RectTransform)prompt.transform.parent;
+            root.gameObject.SetActive(!string.IsNullOrEmpty(value));
+            if (promptHint == null) return;
+            bool hinted = !string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(hint);
+            if (hinted)
+            {
+                string words = Localisation.Text(hint);
+                if (promptHint.text != words) promptHint.text = words;
+            }
+            if (promptHint.gameObject.activeSelf == hinted) return;
+            promptHint.gameObject.SetActive(hinted);
+            root.sizeDelta = new Vector2(root.sizeDelta.x, hinted ? PromptHintedHeight : PromptHeight);
+        }
+
+        /// <summary>The Talk prompt's line at the Final 3 (MOCKUP-PASS M14, mockup 60): what a conversation there is for.</summary>
+        public const string TalkHint = "Talk, strategize, or spend time together.";
+        /// <summary>The prompt's hint line, so a test can find it.</summary>
+        public const string PromptHintName = "Prompt hint";
+        private TMP_Text promptHint;
+        /// <summary>The prompt's height, and its height with a hint line under its words: the line's 22 and the same 6 of air under it.</summary>
+        private const float PromptHeight = 52f, PromptHintedHeight = 74f;
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 
@@ -1727,7 +1803,7 @@ namespace Gamesim.Episode
                     ?? PinnedSelectable(eligible)
                     ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
                     ?? eligible.FirstOrDefault();
-                events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
+                RestoreFocus(events, focus != null ? focus.gameObject : null);
                 restoreSelection = false;
             }
 
@@ -1753,7 +1829,7 @@ namespace Gamesim.Episode
                 var focus = (overlay != null ? overlay : content).GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable())
                     ?? (overlay == null && pinnedAction != null ? pinnedAction.GetComponent<Selectable>() : null)
                     ?? scope.GetComponentsInChildren<Selectable>().FirstOrDefault(item => item.IsActive() && item.IsInteractable());
-                events.SetSelectedGameObject(focus != null ? focus.gameObject : null);
+                RestoreFocus(events, focus != null ? focus.gameObject : null);
                 selected = events.currentSelectedGameObject;
             }
             if (selected != lastSelection)
@@ -1762,6 +1838,19 @@ namespace Gamesim.Episode
                 if (selected != null && content != null && modalScroll != null && selected.transform.IsChildOf(content))
                     RevealSelection(selected.transform);
             }
+        }
+
+        /// <summary>
+        /// Selects <paramref name="target"/> on the HUD's own account rather than the player's: a
+        /// panel's opening control, a rebuild's restore, the scope's fallback. A finalist's column
+        /// lights only for the player's own moves (<see cref="ChoiceLight"/>), so it is told which
+        /// this is.
+        /// </summary>
+        private void RestoreFocus(EventSystem events, GameObject target)
+        {
+            restoringFocus = true;
+            try { events.SetSelectedGameObject(target); }
+            finally { restoringFocus = false; }
         }
 
         /// <summary>Whether the keyboard ring holds a control that has been destroyed or hidden since it was wired.</summary>
@@ -1830,10 +1919,15 @@ namespace Gamesim.Episode
         /// The colour a phase announces itself in. Deliberately the same vocabulary the ceremony
         /// takeover uses — gold for the veto, red for the block and the vote — so a player learns
         /// one palette rather than two.
+        ///
+        /// <para>Read from the state, not the phase alone: the final eviction is the block's red
+        /// when somebody else holds the house, and the crown's gold when the player does and the
+        /// choice is theirs (MOCKUP-PASS M3).</para>
         /// </summary>
-        private static Color PhaseTint(EpisodePhase phase)
+        private static Color PhaseTint(EpisodeState state)
         {
-            switch (phase)
+            if (PlayerDecidesTheFinalEviction(state)) return UiTheme.Gold;
+            switch (state.phase)
             {
                 case EpisodePhase.Nomination:
                 case EpisodePhase.Eviction:
@@ -1860,10 +1954,16 @@ namespace Gamesim.Episode
             }
         }
 
+        /// <summary>Whether the season is at its final eviction with the player holding the house: the choice is theirs.</summary>
+        private static bool PlayerDecidesTheFinalEviction(EpisodeState state) =>
+            state != null && state.phase == EpisodePhase.FinalEviction && !string.IsNullOrEmpty(state.hohId) && state.hohId == state.playerId;
+
         /// <summary>The glyph a phase's header carries, drawn in its <see cref="PhaseTint"/>.</summary>
-        private static string PhaseGlyph(EpisodePhase phase)
+        private static string PhaseGlyph(EpisodeState state)
         {
-            switch (phase)
+            // The final Head of Household's choice wears the crown it was won with.
+            if (PlayerDecidesTheFinalEviction(state)) return "crown";
+            switch (state.phase)
             {
                 case EpisodePhase.Nomination: return "target";
                 case EpisodePhase.Eviction:
@@ -1894,7 +1994,7 @@ namespace Gamesim.Episode
         /// </summary>
         private RectTransform PhaseBand(RectTransform parent, EpisodeState state)
         {
-            var tint = PhaseTint(state.phase);
+            var tint = PhaseTint(state);
 
             var rect = Panel("Phase band",parent,new Color(0,0,0,0),UiTheme.PanelRadius);
             rect.anchorMin = new Vector2(0,1); rect.anchorMax = new Vector2(1,1); rect.pivot = new Vector2(.5f,1);
@@ -1903,17 +2003,25 @@ namespace Gamesim.Episode
 
             // Where the words start: past the glyph when there is one, flush when a clone without
             // the icon set draws none.
-            var glyph = HudPrimitives.Glyph("Phase glyph",rect,PhaseGlyph(state.phase),tint,new Vector2(22,-14),26);
+            var glyph = HudPrimitives.Glyph("Phase glyph",rect,PhaseGlyph(state),tint,new Vector2(22,-14),26);
             float words = glyph != null ? 58f : 22f;
-            var title = FixedText(rect,EpisodeDirector.PhaseTitle(state.phase).ToUpperInvariant(),20,Paper,
+            var title = FixedText(rect,EpisodeDirector.PhaseTitle(state).ToUpperInvariant(),20,Paper,
                 new Vector2(words,-9),new Vector2(540,27));
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) title.font = bold;
             title.characterSpacing = 4f;
-            FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
-                    ? "Season complete"
-                    : state.Active.Count() + " houseguests remain"),
-                13,UiTheme.Muted,new Vector2(words,-36),new Vector2(540,20));
+            // A final part says which of the three it is and what it tests, in the gold the final
+            // Head of Household is played for: the title is the same over all three (MOCKUP-PASS M3).
+            string part = EpisodeDirector.FinalHoHPartLabel(state.phase);
+            if (part != null)
+                bandLine = FixedText(rect,part + " · " + EpisodeEngine.CompetitionCategory(state),13,UiTheme.Gold,new Vector2(words,-36),new Vector2(540,20));
+            else
+                bandLine = FixedText(rect,"WEEK " + state.week + " · " + (state.phase == EpisodePhase.Finished
+                        ? "Season complete"
+                        : state.Active.Count() + " houseguests remain"),
+                    13,UiTheme.Muted,new Vector2(words,-36),new Vector2(540,20));
+            // Kept, so a screen that takes the station over can name itself here (StationScreen).
+            bandGlyph = glyph; bandTitle = title;
 
             // The phase's colour as a short stroke under the title, over a hairline the width of
             // the panel that separates the header from what it heads.
@@ -1924,7 +2032,8 @@ namespace Gamesim.Episode
             var stroke = Panel("Phase stroke",rect,tint,1);
             stroke.anchorMin = new Vector2(0,0); stroke.anchorMax = new Vector2(0,0); stroke.pivot = new Vector2(0,0);
             stroke.anchoredPosition = new Vector2(18,-1); stroke.sizeDelta = new Vector2(120,3);
-            stroke.GetComponent<Image>().raycastTarget = false;
+            bandStroke = stroke.GetComponent<Image>();
+            bandStroke.raycastTarget = false;
             return rect;
         }
 

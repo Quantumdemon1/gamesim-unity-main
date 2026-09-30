@@ -135,6 +135,9 @@ namespace Gamesim.Editor
             {
                 var go = renderer.gameObject;
                 if (go.GetComponent<Animator>() != null || go.GetComponentInParent<Animator>() != null) continue;
+                // The room finish is probe-lit dressing on a lightmapped set (ROOM-FINISH-PLAN 4.3): it
+                // stays out of the bake, whichever pass ran last.
+                if (UnderRoomFinish(go.transform)) continue;
                 GameObjectUtility.SetStaticEditorFlags(go, flags);
                 renderer.receiveGI = ReceiveGI.Lightmaps;
                 // Small clutter takes a fraction of the atlas; the shell takes its full share.
@@ -184,12 +187,19 @@ namespace Gamesim.Editor
         }
 
         /// <summary>The neon strips, the glow materials and the screens light their surroundings in the bake.</summary>
+        private static bool UnderRoomFinish(Transform node)
+        {
+            for (var t = node; t != null; t = t.parent)
+                if (t.name == HouseRoomFinish.RootName) return true;
+            return false;
+        }
+
         private static int MarkEmitters(Scene scene)
         {
             var seen = new HashSet<Material>();
             foreach (var renderer in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (renderer.gameObject.scene != scene) continue;
+                if (renderer.gameObject.scene != scene || UnderRoomFinish(renderer.transform)) continue;
                 foreach (var material in renderer.sharedMaterials)
                 {
                     if (material == null || !seen.Add(material)) continue;

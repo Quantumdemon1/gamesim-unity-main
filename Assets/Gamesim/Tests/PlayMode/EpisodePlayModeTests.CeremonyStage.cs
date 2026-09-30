@@ -138,6 +138,45 @@ namespace Gamesim.Tests.PlayMode
             return animator != null ? animator.GetBoneTransform(HumanBodyBones.Hips) : null;
         }
 
+        /// <summary>The houseguests in the house whose name plate the director has left up, by id.</summary>
+        private static string[] PlatesUp() => SceneComponents<HouseNpc>()
+            .Where(npc => npc.gameObject.activeInHierarchy && !npc.PlateSuppressed).Select(npc => npc.Id).ToArray();
+
+        /// <summary>The houseguests in the house whose name plate the director has taken down, by id.</summary>
+        private static string[] PlatesDown() => SceneComponents<HouseNpc>()
+            .Where(npc => npc.gameObject.activeInHierarchy && npc.PlateSuppressed).Select(npc => npc.Id).ToArray();
+
+        /// <summary>The houseguests whose plate is drawn at all, by id: a plate taken down or faded out by distance is not.</summary>
+        private static string[] PlatesDrawn() => SceneComponents<HouseNpc>()
+            .Where(npc => npc.gameObject.activeInHierarchy)
+            .Where(npc =>
+            {
+                var plate = Plate(npc);
+                var group = plate != null ? plate.GetComponent<CanvasGroup>() : null;
+                return group != null && group.alpha > 0.01f;
+            })
+            .Select(npc => npc.Id).ToArray();
+
+        /// <summary>The selection disc under the player, as the scene builds it.</summary>
+        private Renderer PlayerDisc() => player.GetComponentsInChildren<Transform>(true)
+            .Where(part => part.name == EpisodeDirector.PlayerMarkerName)
+            .Select(part => part.GetComponent<Renderer>()).SingleOrDefault(disc => disc != null);
+
+        /// <summary>A rect's lowest and highest points, as x and y, in another rect's own space.</summary>
+        private static Vector2 VerticalSpan(RectTransform space, RectTransform rect)
+        {
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            float low = float.MaxValue, high = float.MinValue;
+            foreach (var corner in corners)
+            {
+                float y = space.InverseTransformPoint(corner).y;
+                low = Mathf.Min(low, y);
+                high = Mathf.Max(high, y);
+            }
+            return new Vector2(low, high);
+        }
+
         [UnityTest]
         public IEnumerator CeremonyStage_TheNominationGathersTheHouseToTheTableAndPlaysTheKeysOnTheScreen()
         {
@@ -190,6 +229,78 @@ namespace Gamesim.Tests.PlayMode
                     || npc.GetComponent<HouseSeatPresentation>().IsExiting), Is.True, "The chairs empty.");
             Assert.That(player.HasActivityOwner, Is.False, "The player has their body back.");
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back.");
+        }
+
+        /// <summary>
+        /// The card plays to a clean frame (MOCKUP-PASS-PLAN M2). The name plates and the player's
+        /// disc are up through the summons, so the player can find a seat by them; they go down as
+        /// the card starts on the screen, where a plate hung over every face the camera cut to; and
+        /// they come back once the house is let go.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheCardPlaysWithNoPlateUpAndTheHouseGetsThemBack()
+        {
+            yield return InstallStagedSeason(51, AtNomination);
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged in the house.");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Summons), "The house is summoned first.");
+            var disc = PlayerDisc();
+            Assert.That(disc, Is.Not.Null, "The scene gives the player a selection disc.");
+            Assert.That(PlatesDown(), Is.Empty, "The plates are up through the summons: the player finds a seat by them.");
+            Assert.That(disc.enabled, Is.True, "and so is the disc under the player.");
+
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the card plays once the seats have filled or the summons has run its course");
+            // The director takes the plates down in its Update and each plate draws what it was told
+            // in its own LateUpdate, which the frame the card started in has not reached yet.
+            yield return null;
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Playing), "The card is still up.");
+            Assert.That(PlatesUp(), Is.Empty, "Every plate is down once the card plays on the screen.");
+            Assert.That(PlatesDrawn(), Is.Empty, "No plate is drawn over the faces the camera cuts to.");
+            Assert.That(disc.enabled, Is.False, "nor the disc at the player's feet.");
+
+            yield return SkipReveals();
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
+            yield return Frames(2);
+            Assert.That(PlatesDown(), Is.Empty, "The plates come back with the house.");
+            Assert.That(disc.enabled, Is.True, "and so does the disc.");
+        }
+
+        /// <summary>
+        /// The SAFE chip on the set's screen sits inside the photo it labels (MOCKUP-PASS-PLAN M2).
+        /// Pinned across the photo's top edge, as on the HUD's board, at the screen's scale it covered
+        /// the foot of the Head of Household's line above. The keys are played straight onto the
+        /// nomination room's screen - the screen's own frame, with nobody summoned.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheSafeChipOnTheScreenClearsTheHeadOfHouseholdsLine()
+        {
+            Assert.That(ScreenSurface.TryFind(director.gameObject.scene, CeremonySets.NominationRoom, out var screen), Is.True,
+                "The nomination room has its ceremony screen.");
+            var state = director.Snapshot;
+            // Houseguests first, so the Head of Household and the block are theirs and the player draws a key.
+            var people = state.Active.OrderBy(actor => actor.isPlayer ? 1 : 0)
+                .Select(actor => new KeyCeremony.Person(actor.id, actor.name, null, actor)).ToList();
+            Assert.That(people.Count, Is.GreaterThanOrEqualTo(4), "A Head of Household, two on the block, and a key to hand out.");
+            var keys = SceneComponents<KeyCeremony>().Single();
+            Assert.That(keys.Play(state.week, people[0].Name, false, people.Skip(3).ToList(), people.Skip(1).Take(2).ToList(),
+                true, CeremonyPace.Quick, screen), Is.True, "The keys play.");
+            Assert.That(keys.Surface, Is.SameAs(screen), "on the screen's frame.");
+            yield return WaitFor(() => keys.KeysShown >= 1, 12f, "the first key is out");
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+
+            var space = (RectTransform)keys.transform;
+            var hoh = keys.GetComponentsInChildren<TMPro.TMP_Text>().Single(label => label.name == "HoH");
+            var line = VerticalSpan(space, hoh.rectTransform);
+            // Every chip up, the one a new key is replacing included: they share the key's place.
+            var chips = keys.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == "Badge").ToList();
+            Assert.That(chips, Is.Not.Empty, "The key's holder wears the SAFE chip.");
+            foreach (var chip in chips)
+                Assert.That(VerticalSpan(space, chip).y, Is.LessThanOrEqualTo(line.x + 0.5f),
+                    "The chip's top stands under the foot of \"" + hoh.text + "\": the chip spans " + VerticalSpan(space, chip)
+                    + " and the line " + line + " on the screen's frame.");
+            yield return SkipReveals();
         }
 
         /// <summary>
@@ -309,10 +420,11 @@ namespace Gamesim.Tests.PlayMode
             while (!BothSeated() && Time.realtimeSinceStartup < seatsBy) yield return null;
             if (!BothSeated()) Debug.Log(StageReport());
             Assert.That(BothSeated(), Is.True, "both nominees sit in the hot seats");
-            // The sofa's three fill too: the third seat's approach, 0.52 m from the second's, was
-            // blocked by the parked agents of the two already sat until they were parked as points.
-            yield return WaitFor(() => director.CeremonyStageSeated >= director.CeremonyStagePlaces - 1, 8f,
-                "everyone but the Head of Household sits down, the sofa's third seat included");
+            // The whole house sits on the gallery (MOCKUP-PASS-PLAN M22), the Head of Household
+            // included: fourteen couch seats and the two red chairs, no standing marks.
+            yield return WaitFor(() => director.CeremonyStageSeated >= director.CeremonyStagePlaces, 8f,
+                "everyone sits down, the Head of Household with the house");
+            Assert.That(director.CeremonyStageStanding, Is.Null, "Nobody stands at the head at an eviction.");
             foreach (var id in block)
             {
                 var npc = SceneComponents<HouseNpc>().First(each => each.Id == id);
@@ -332,8 +444,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsCeremonyStaged, Is.True, "The house keeps its seats while they go.");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release));
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down.");
+            // MOCKUP-PASS-PLAN M2: the walk out is the card's last beat, and its frame is as clean.
+            Assert.That(PlatesUp(), Is.Empty, "The plates stay down while the evicted walk out.");
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            yield return null;
+            Assert.That(PlatesDown(), Is.Empty, "The plates come back once the house is let go.");
         }
 
         [UnityTest]
@@ -351,6 +467,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(keys.IsPlaying, Is.True, "The keys play on the HUD at once.");
                 Assert.That(keys.Surface, Is.Null);
                 Assert.That(keys.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+                // MOCKUP-PASS-PLAN M2: a plate showed through the card's scrim on the HUD frame.
+                Assert.That(PlatesUp(), Is.Empty, "No plate is up under the keys on the HUD frame.");
             }
             yield return SkipReveals();
         }
@@ -371,6 +489,44 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitFor(() => keys.ShowingBlock, 40f, "the block is up");
             yield return CaptureFraming("ceremony-stage-block", settle: false);
             yield return SkipReveals();
+        }
+
+        /// <summary>
+        /// The look sheet's frames of the vote on the living room's screen (MOCKUP-PASS-PLAN M18): the
+        /// roster with votes on it, and the result read in lines once the board has given way. The
+        /// stage cuts to the hot seats between votes, so each frame puts the rig on the screen's own
+        /// shot first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_CapturesTheVoteOnTheLivingScreenAndItsResult()
+        {
+            if (!Application.isBatchMode) yield break;
+            yield return InstallStagedSeason(52, AtEviction);
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the reveal plays");
+            var vote = SceneComponents<VoteReveal>().Single();
+            Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
+            var screen = vote.Surface;
+            yield return WaitFor(() => vote.VotesShown >= 2, 20f, "two votes are on the board");
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen");
+            yield return WaitFor(() => vote.ShowingResult, 60f, "the result is read");
+            // The board hands over to the result block over the result's first moment.
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.That(vote.IsPlaying, Is.True, "The result is still up to be photographed.");
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result");
+            yield return SkipReveals();
+            yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+        }
+
+        /// <summary>A frame of a card on its screen: the rig on the screen's own shot for two frames, then the capture.</summary>
+        private IEnumerator CaptureTheScreen(ScreenSurface screen, string name)
+        {
+            cameraRig.MoveTo(screen.Shot());
+            yield return Frames(2);
+            yield return CaptureFraming(name, settle: false);
         }
 
         // ---------------------------------------------------------------- the full house (CEREMONY-CUTSCENES-PLAN §7.1)
@@ -453,7 +609,11 @@ namespace Gamesim.Tests.PlayMode
             Debug.Log(start);
             foreach (var id in block)
                 Assert.That(start, Does.Contain("  " + id + " -> " + CeremonySeating.HotSeat + " "), id + " holds a hot seat's place, whoever is sitting where.");
-            Assert.That(start.Split('\n').Length - 1, Is.GreaterThanOrEqualTo(6), "The nominees, the head, and the sofa's three are placed at the least.");
+            var placed = start.Split('\n').Where(line => line.Contains(" -> ")).ToList();
+            Assert.That(placed.Count(line => line.Contains(" -> " + CeremonySeating.GallerySeat + " ")), Is.EqualTo(EpisodeValidation.MaximumCast - 2),
+                "Fourteen on the U's couches:\n" + start);
+            Assert.That(placed.Count(line => line.Contains(" -> " + CeremonySeating.HotSeat + " ")), Is.EqualTo(2), "two in the red chairs,");
+            Assert.That(placed.Any(line => line.Contains(" -> " + CeremonySeating.LivingMark + " ")), Is.False, "and nobody on a standing mark.");
             // D1: the summons sends the house although the evicted is still binding on that frame.
             Assert.That(start, Does.Not.Contain("The house is not free"), "The summons sent the house; nobody waited for the retry.");
             Debug.Log("Full-house eviction: " + (start.Split('\n').Length - 1) + " places for " + state.Active.Count() + " houseguests.");
@@ -461,11 +621,10 @@ namespace Gamesim.Tests.PlayMode
             yield return LetTheHouseSettle();
             var later = StageReport("eight seconds into the card");
             Debug.Log(later);
-            // D1: everyone is in their place, and the sofa's seats fill now that a seated body's
-            // parked agent no longer blocks the approach beside it.
+            // Everyone is in their place, and every place is a seat: the whole house sits together.
             Assert.That(director.CeremonyStageInPlace, Is.EqualTo(director.CeremonyStagePlaces), "Everyone has reached their place eight seconds into the card:\n" + later);
-            foreach (var line in later.Split('\n').Where(each => each.Contains(" -> " + CeremonySeating.SofaSeat + " ")))
-                Assert.That(line.Trim(), Does.EndWith(":: seated"), "The sofa's seats all fill: " + line.Trim());
+            foreach (var line in later.Split('\n').Where(each => each.Contains(" -> ")))
+                Assert.That(line.Trim(), Does.EndWith(":: seated"), "Every place is sat in: " + line.Trim());
             yield return CaptureLivingRoom("ceremony-stage-full-house-living-later");
             yield return SkipReveals();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");

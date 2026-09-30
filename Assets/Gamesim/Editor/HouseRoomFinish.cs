@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Gamesim.House;
 using Gamesim.Presentation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -238,11 +239,16 @@ namespace Gamesim.Editor
         }
 
         /// <summary>
-        /// The living room (plan §5.3): the north partition - the wall the eviction's screen stands
-        /// against - becomes the feature wall in warm oak slats with a lit strip either side of the
-        /// screen's place and the house mark beside it; the teal rug binds the sofa and the coffee
-        /// table; the table gets its cluster; two framed prints hang on the south wall; a plant takes
-        /// the empty corner. The seats do not move: they are anchors.
+        /// The living room (plan §5.3, rebuilt for MOCKUP-PASS-PLAN M21): the eviction's set. The
+        /// room's screen stands on its stage against the south wall now, behind the two red chairs,
+        /// with the U of couches facing it, so the south wall is the feature wall: warm oak slats, a
+        /// warm gold strip either side of the stage, the house mark beside it and a plant at each of
+        /// its ends. The screen gets the gold linework frame the nomination room's wears, its own
+        /// idle board - the house's GAMESIM, not the nomination room's NOMINATIONS - and the dark
+        /// marble on its stage. The north partition keeps its oak (the storyboard's gold slats run
+        /// behind the couches too) and takes the two framed prints. The navy rug binds the U, the low
+        /// table and the red chairs; the table gets its cluster and a small plant. The seats do not
+        /// move: they are anchors, laid on the pieces at runtime.
         /// </summary>
         private static int LivingRoom(House house, Transform group)
         {
@@ -250,56 +256,86 @@ namespace Gamesim.Editor
             if (room == null) { Debug.LogWarning("[Gamesim] room finish · no living room floor"); return 0; }
             int count = 0;
             const string oak = Pack6 + "WallTreatments/wall_warm_oak_slats.png";
+            var warm = new Color(1.00f, 0.85f, 0.45f);
+
+            // The partition behind the U keeps its slats and hangs the prints, one on each segment,
+            // clear of the bedroom door between them.
             var left = Band(house, room, group, "Living / bedroom left", oak, 1.0f);
             var right = Band(house, room, group, "Living / bedroom right", oak, 1.0f);
-            count += 2;
+            count += (left.HasValue ? 1 : 0) + (right.HasValue ? 1 : 0);
+            if (left.HasValue && Poster(group, "Framed print", left.Value, Pack6 + "WallArt/wall_art_01.png", Pack6 + "PhotoFrames/frame_portrait_single.png",
+                0.6f, room.Bounds.center.x - 2.5f - left.Value.Centre.x, 0.95f) != null) count++;
+            if (right.HasValue && Poster(group, "Framed print", right.Value, Pack6 + "WallArt/wall_art_05.png", Pack6 + "PhotoFrames/frame_portrait_single.png",
+                0.6f, room.Bounds.center.x + 2.7f - right.Value.Centre.x, 0.95f) != null) count++;
 
-            // The screen's place is the prototype television's: its box stands at the partition, and
-            // the cut scene's clone stands where it stood. The strips flank it symmetrically, one on
-            // each segment, across the doorway between them.
-            var television = house.PiecesMatching(room, name => name == "Television").FirstOrDefault();
-            float screenX = television != null ? television.position.x : room.Bounds.center.x + 2f;
-            if (left.HasValue && Strip(group, "Feature strip", left.Value, screenX - 3.6f - left.Value.Centre.x, 0.75f, 1.35f) != null) count++;
-            if (right.HasValue && Strip(group, "Feature strip", right.Value, screenX + 3.6f - right.Value.Centre.x, 0.75f, 1.35f) != null) count++;
-            if (right.HasValue)
-            {
-                var f = right.Value;
-                var centre = new Vector3(screenX + 2.6f, f.Bottom + 0.72f, f.Centre.z) + f.Normal * SignLift;
-                if (Decal(group, "House mark", Pack5 + "EnvironmentWallGraphics/gamesim_house_geometry.png", centre, 0.7f, f.Normal) != null) count++;
-            }
-
-            // The conversation group: the sofa and the coffee table on one rug.
-            var sofa = house.Pieces(room, "loungeDesignSofa").FirstOrDefault();
-            var table = house.PiecesMatching(room, name => name == "Coffee table (model)" || name == "tableCoffee").FirstOrDefault();
-            if (sofa != null)
-            {
-                var sb = Measure(sofa.gameObject);
-                var centre = new Vector2(sb.center.x, sb.center.z);
-                if (table != null)
-                {
-                    var tb = Measure(table.gameObject);
-                    centre = (centre + new Vector2(tb.center.x, tb.center.z)) * 0.5f;
-                    // Its cluster, on the table's top.
-                    float top = tb.max.y - room.FloorTop;
-                    float x = (tb.center.x - room.Bounds.center.x) / room.Bounds.size.x, z = (tb.center.z - room.Bounds.center.z) / room.Bounds.size.z;
-                    float dx = 0.22f / room.Bounds.size.x, dz = 0.16f / room.Bounds.size.z;
-                    if (Piece(house, room, group, "bb_set_bookstack", x - dx, z + dz * 0.5f, 15f, 0f, top) != null) count++;
-                    if (Piece(house, room, group, "bb_set_candle", x + dx * 0.6f, z - dz, 0f, 0f, top) != null) count++;
-                    if (Piece(house, room, group, "bb_set_tray", x + dx * 0.9f, z + dz, 100f, 0f, top) != null) count++;
-                }
-                // The neutral abstract rather than the teal: under the room's own light the teal read
-                // as a black patch from above, and the rug is there to be seen from above.
-                count += HideRugsUnder(house, room, centre, 4.4f);
-                if (Rug(group, "Living rug", room, Pack6 + "Rugs/rug_living_neutral_abstract.png", 4.4f, centre, 0f) != null) count++;
-            }
-
-            // Two framed prints on the south wall, at a wall 1.1 m tall's own height.
-            var south = WallFace(house, room, "South wing link left");
+            // The screen and its wall. Where the pass found no screen of the room's own, the strips
+            // flank the room's middle-west, where the plan puts it.
+            var screen = house.PiecesMatching(room, name => name == CeremonySets.LivingScreenName).FirstOrDefault();
+            float screenX = screen != null ? screen.position.x : room.Bounds.center.x - 1f;
+            var south = Band(house, room, group, "South wing link left", oak, 1.0f);
             if (south.HasValue)
             {
-                var s = south.Value;
-                if (Poster(group, "Framed print", s, Pack6 + "WallArt/wall_art_01.png", Pack6 + "PhotoFrames/frame_portrait_single.png", 0.6f, room.Bounds.center.x - 4.5f - s.Centre.x, 0.6f) != null) count++;
-                if (Poster(group, "Framed print", s, Pack6 + "WallArt/wall_art_05.png", Pack6 + "PhotoFrames/frame_portrait_single.png", 0.6f, room.Bounds.center.x + 2.5f - s.Centre.x, 0.6f) != null) count++;
+                count++;
+                var f = south.Value;
+                if (Strip(group, "Feature strip", f, screenX - 3.6f - f.Centre.x, 0.75f, 1.35f, warm) != null) count++;
+                if (Strip(group, "Feature strip", f, screenX + 3.6f - f.Centre.x, 0.75f, 1.35f, warm) != null) count++;
+                var mark = new Vector3(screenX + 3.0f, f.Bottom + 0.62f, f.Centre.z) + f.Normal * SignLift;
+                if (Decal(group, "House mark", Pack5 + "EnvironmentWallGraphics/gamesim_house_geometry.png", mark, 0.6f, f.Normal) != null) count++;
+            }
+            if (screen != null)
+            {
+                var face = ScreenSurface.Measure(screen, CeremonySets.LivingRoom, room.Bounds.center);
+                if (face != null)
+                {
+                    var lines = Glow("bb_mat_p6_glow_gold_linework_mask", Pack6 + "NominationRoom/gold_linework_mask.png", warm * 1.4f);
+                    if (lines != null)
+                    {
+                        Quad(group, "Ceremony frame", lines, face.Centre - face.Normal * 0.16f,
+                            new Vector2(face.Width + 0.5f, face.Height + 0.4f), face.Normal, Vector3.up);
+                        count++;
+                    }
+                    // The house's idle board (16:9), inside the board's face.
+                    var idle = Finish("bb_mat_p6_decal_display_idle_gamesim", Pack5 + "DigitalDisplays/display_idle_gamesim.png", Vector2.one, Color.white, 0.2f, 0f, true);
+                    if (idle != null)
+                    {
+                        foreach (var old in screen.GetComponentsInChildren<Transform>(true).Where(t => t.name == ScreenSurface.IdleDisplayName).ToList())
+                            UnityEngine.Object.DestroyImmediate(old.gameObject);
+                        float w = Mathf.Min(face.Width * 0.94f, face.Height * 0.94f * 1920f / 1080f);
+                        Quad(screen, ScreenSurface.IdleDisplayName, idle, face.Centre + face.Normal * 0.006f, new Vector2(w, w * 1080f / 1920f), face.Normal, Vector3.up);
+                        count++;
+                    }
+                }
+                count += Skin(house, room, CeremonySets.LivingScreenName, "bb_mat_ink_stage",
+                    Finish("bb_mat_p6_nomination_stage_marble", Pack6 + "NominationRoom/dark_marble_detail.png", Vector2.one, Color.white, 0.5f, 0f, false));
+                var sb = Measure(screen.gameObject);
+                float plantZ = (sb.center.z - room.Bounds.center.z) / room.Bounds.size.z;
+                foreach (float end in new[] { sb.min.x - 0.35f, sb.max.x + 0.35f })
+                    if (Piece(house, room, group, "bb_set_ph_plant", (end - room.Bounds.center.x) / room.Bounds.size.x, plantZ, 20f, 0f) != null) count++;
+            }
+
+            // The gallery on one rug: the U, the low table and the red chairs.
+            var table = house.Pieces(room, "bb_set_lowtable").FirstOrDefault();
+            var couches = house.PiecesMatching(room, name => name == "bb_set_lounge4" || name == "bb_set_lounge3").ToList();
+            if (table != null)
+            {
+                var tb = Measure(table.gameObject);
+                float top = tb.max.y - room.FloorTop;
+                float x = (tb.center.x - room.Bounds.center.x) / room.Bounds.size.x, z = (tb.center.z - room.Bounds.center.z) / room.Bounds.size.z;
+                float dx = 0.20f / room.Bounds.size.x, dz = 0.16f / room.Bounds.size.z;
+                if (Piece(house, room, group, "bb_set_bookstack", x - dx, z + dz * 0.5f, 15f, 0f, top) != null) count++;
+                if (Piece(house, room, group, "bb_set_candle", x + dx * 0.7f, z - dz, 0f, 0f, top) != null) count++;
+                if (Piece(house, room, group, "bb_set_ph_plantsmall", x + dx * 0.4f, z + dz * 0.9f, 0f, 0f, top) != null) count++;
+            }
+            if (couches.Count > 0)
+            {
+                var gallery = couches.Select(c => Measure(c.gameObject)).Aggregate((a, b) => { a.Encapsulate(b); return a; });
+                // 7 m across, ending at the stage's front: under the whole U - the arms' feet too -
+                // the table and the red chairs, and not under the stage.
+                const float across = 7f;
+                float stageFront = screen != null ? Measure(screen.gameObject).max.z : gallery.min.z - 1.2f;
+                var centre = new Vector2(gallery.center.x, stageFront + across * 0.5f);
+                count += HideRugsUnder(house, room, centre, across);
+                if (Rug(group, "Living rug", room, Pack6 + "Rugs/rug_living_navy_cream.png", across, centre, 0f, true) != null) count++;
             }
 
             if (Piece(house, room, group, "bb_set_ph_plant", 0.44f, -0.44f, 30f, 0f) != null) count++;
@@ -753,10 +789,16 @@ namespace Gamesim.Editor
             return new Face(centre, normal, alongX ? Vector3.right : Vector3.forward, length, h, low);
         }
 
-        /// <summary>A lit strip on a band: a plain glow quad <paramref name="width"/> wide and <paramref name="height"/> tall, standing on the band's foot.</summary>
-        private static GameObject Strip(Transform group, string name, Face face, float along, float height, float tint)
+        /// <summary>
+        /// A lit strip on a band: a plain glow quad 0.06 m wide and <paramref name="height"/> tall,
+        /// standing on the band's foot. Cool blue-white unless a colour is given; a warm strip is a
+        /// material of its own, because Glow rewrites a material by name.
+        /// </summary>
+        private static GameObject Strip(Transform group, string name, Face face, float along, float height, float tint, Color? colour = null)
         {
-            var material = Glow("bb_mat_p6_glow_strip", null, new Color(0.62f, 0.70f, 1.00f) * tint);
+            var material = colour.HasValue
+                ? Glow("bb_mat_p6_glow_strip_warm", null, colour.Value * tint)
+                : Glow("bb_mat_p6_glow_strip", null, new Color(0.62f, 0.70f, 1.00f) * tint);
             if (material == null) return null;
             float h = Mathf.Min(height, face.Height - 0.1f);
             var centre = new Vector3(face.Centre.x, face.Bottom + 0.05f + h * 0.5f, face.Centre.z) + face.Along * along + face.Normal * SignLift;

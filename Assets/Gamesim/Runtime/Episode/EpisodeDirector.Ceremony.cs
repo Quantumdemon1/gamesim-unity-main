@@ -128,6 +128,40 @@ namespace Gamesim.Episode
             return field;
         }
 
+        /// <summary>
+        /// The veto field card's line when the house is bigger than the field: the card's own line
+        /// says everyone still in the house plays, which is true only up to six. Who plays by right,
+        /// and how many the draw added. Null when everyone plays, and the card keeps its line.
+        /// </summary>
+        public static string VetoFieldLine(EpisodeState state)
+        {
+            var players = state?.vetoPlayers;
+            if (players == null || players.Count == 0 || players.Count >= state.Active.Count()) return null;
+            int drawn = players.Count(id => id != state.hohId && (state.nominees == null || !state.nominees.Contains(id)));
+            return Spelled(players.Count) + " play for the Golden Power of Veto: the Head of Household, both nominees and "
+                + Spelled(drawn).ToLowerInvariant() + " drawn from the house.";
+        }
+
+        /// <summary>The veto meeting card's line, as the mockup's VETO USED and VETO NOT USED say it.</summary>
+        public const string VetoUsedLine = "Veto used: a nominee is removed and a replacement is named.",
+            VetoNotUsedLine = "Veto not used: the nominations stay the same.";
+
+        /// <summary>
+        /// Which way the veto meeting went, read from the block before the commit and after it: a
+        /// used veto takes a nominee down and puts a replacement up, so the two differ; an unused one
+        /// leaves them the same. Read from committed state, not parsed out of the event sentence.
+        /// </summary>
+        public static string VetoMeetingLine(IEnumerable<string> blockBefore, IEnumerable<string> blockAfter) =>
+            new HashSet<string>(blockBefore ?? Enumerable.Empty<string>()).SetEquals(blockAfter ?? Enumerable.Empty<string>())
+                ? VetoNotUsedLine : VetoUsedLine;
+
+        /// <summary>A small count as a card says it aloud: "Six", "Three".</summary>
+        private static string Spelled(int count)
+        {
+            string[] words = { "None", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten" };
+            return count >= 0 && count < words.Length ? words[count] : count.ToString();
+        }
+
         private static string NameOf(EpisodeState state, string id) => state?.Find(id)?.name;
 
         /// <summary>
@@ -192,6 +226,9 @@ namespace Gamesim.Episode
         /// <para>The Head of Household votes only to break a tie, and the engine's tally leaves that
         /// vote out; the card has to know it is the tie-break, or it counts it with the house's and
         /// a 2-2 tie reads 3-2.</para>
+        ///
+        /// <para>Each ballot also carries its voter's id and look, for the voter's row and face on
+        /// the living room's screen (MOCKUP-PASS-PLAN M18). Presentation only: nothing is saved.</para>
         /// </summary>
         public static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
         {
@@ -200,8 +237,8 @@ namespace Gamesim.Episode
             foreach (var vote in state.votes)
             {
                 var voter = state.Find(vote.voterId);
-                ballots.Add(new VoteReveal.Ballot(voter?.name ?? "A housemate", vote.targetId,
-                    tieBreak: !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId));
+                ballots.Add(new VoteReveal.Ballot(vote.voterId, voter?.name ?? "A housemate", vote.targetId,
+                    !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId, voter));
             }
             return ballots;
         }

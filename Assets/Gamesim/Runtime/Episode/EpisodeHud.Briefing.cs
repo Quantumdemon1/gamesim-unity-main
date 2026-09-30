@@ -35,9 +35,12 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The hero card: the player's face down the left, fading into the card, and beside it the
-        /// competition's category on a chip, its title large, and what winning it means.
+        /// competition's category on a chip, its title large, and what winning it means. A final
+        /// part the player watches passes <paramref name="partArt"/> ("PART 2") instead of a face:
+        /// the photo becomes the part's art, the crown over the gold it is played for, since the
+        /// watcher's own face is not what the part is about (MOCKUP-PASS-PLAN M13).
         /// </summary>
-        public void CompetitionHero(ContestantState player, string category, string title, string stakes)
+        public void CompetitionHero(ContestantState player, string category, string title, string stakes, string partArt = null)
         {
             if (content == null) return;
             float s = FontScale;
@@ -98,7 +101,8 @@ namespace Gamesim.Episode
             photo.pivot = new Vector2(0f, .5f);
             photo.offsetMin = new Vector2(1f, 1f); photo.offsetMax = new Vector2(photoWidth, -1f);
             photo.gameObject.AddComponent<Mask>().showMaskGraphic = true;
-            var silhouette = UiTheme.Icon("houseguest");
+            if (!string.IsNullOrEmpty(partArt)) { PartArt(photo, partArt, photoWidth, height); player = null; }
+            var silhouette = string.IsNullOrEmpty(partArt) ? UiTheme.Icon("houseguest") : null;
             if (silhouette != null)
             {
                 var art = new GameObject("Silhouette", typeof(RectTransform), typeof(Image)).GetComponent<Image>();

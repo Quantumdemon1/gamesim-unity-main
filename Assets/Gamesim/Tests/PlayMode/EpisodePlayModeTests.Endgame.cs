@@ -4,6 +4,7 @@ using Gamesim.Episode;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -27,6 +28,13 @@ namespace Gamesim.Tests.PlayMode
 
         private RectTransform TheRail() => director.GetComponentsInChildren<RectTransform>(true)
             .Last(rect => rect.name == CastRail.RootName && rect.gameObject.activeInHierarchy);
+
+        /// <summary>Whether this copy carries a crown to draw: the refinement kit's, or the HUD icon set's.</summary>
+        private static bool CrownArt() => UiTheme.Pack(PackArt.KitIconCrown) != null || UiTheme.Icon("crown") != null;
+
+        /// <summary>The objectives card's words, top to bottom, as its labels are laid down.</summary>
+        private static System.Collections.Generic.List<string> CardLines(RectTransform card) =>
+            card.GetComponentsInChildren<TMP_Text>().Select(label => label.text).ToList();
 
         /// <summary>
         /// ENDGAME-PLAN F1: at three the frame strips down to what is left. The week chip leads
@@ -74,6 +82,19 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(words, Does.Contain("The jury (" + jurors + ")"), "The jury's size heads its faces.");
             Assert.That(card.GetComponentsInChildren<Image>().Count(image => image.name == "Objective mark"), Is.EqualTo(3),
                 "A mark per row.");
+            // MOCKUP-PASS M3: the mockups' tagline under the heading, for a finalist with the final
+            // Head of Household ahead, and the crown in the objective chip's ring's place.
+            var lines = CardLines(card);
+            Assert.That(lines.IndexOf(EpisodeHud.ObjectivesTagline), Is.EqualTo(lines.IndexOf("FINAL 3 OBJECTIVES") + 1),
+                "The tagline sits under the heading.");
+            if (CrownArt())
+            {
+                Assert.That(objective.GetComponentsInChildren<Image>().Count(image => image.name == EpisodeHud.ObjectiveCrownName), Is.EqualTo(1),
+                    "The objective chip wears the crown at the endgame,");
+                Assert.That(objective.GetComponentsInChildren<Image>().Any(image => image.name == "Objective mark"), Is.False, "in place of the ring.");
+                Assert.That(card.GetComponentsInChildren<Image>().Count(image => image.name == EpisodeHud.ObjectivesCrownName), Is.EqualTo(1),
+                    "and the objectives card a crown before its heading.");
+            }
             var strip = ActiveRect(EpisodeHud.JuryStripName);
             Assert.That(strip, Is.Not.Null);
             Assert.That(strip.GetComponentsInChildren<Image>().Count(image => image.name == "Juror"), Is.EqualTo(jurors), "One face per juror.");
@@ -119,7 +140,78 @@ namespace Gamesim.Tests.PlayMode
             int jurors = state.contestants.Count(EpisodeHud.IsJuror);
             Assert.That(ActiveRect(EpisodeHud.JuryStripName).GetComponentsInChildren<Image>().Count(image => image.name == "Juror"), Is.EqualTo(jurors));
             Assert.That(TheRail().Cast<Transform>().Count(), Is.EqualTo(2), "The strip is the two finalists.");
+
+            // MOCKUP-PASS M3: the pill carries the jury all finale night, whoever holds the house, and
+            // the Final 2 in the actions' place; the strap names the finale; the card keeps a mark a
+            // row, and the rules-off rows above, with its tagline left to the Final 3.
+            Assume.That(jurors, Is.GreaterThan(0), "A jury is seated by the Final 2.");
+            var pill = ActiveRect("House pill");
+            Assert.That(pill, Is.Not.Null);
+            Assert.That(Words(pill), Does.Contain("Jury").And.Contain(jurors.ToString()).And.Not.Contain("HoH"),
+                "Finale night: the pill's third cell is the jury's size, whoever holds the house.");
+            Assert.That(Words(pill), Does.Contain("Finalists").And.Not.Contain("Actions left"),
+                "The cell after the house's count is the two facing the jury, not actions nobody spends.");
+            Assert.That(Words(ActiveRect("Brand")), Does.Contain(EpisodeHud.BrandStrap(state, director.SeasonNumber(state))).And.Contain("FINALE"),
+                "The strap under the wordmark names the finale.");
+            Assert.That(card.GetComponentsInChildren<Image>().Count(image => image.name == "Objective mark"), Is.EqualTo(3), "A mark per row.");
+            Assert.That(Words(card), Does.Not.Contain(EpisodeHud.ObjectivesTagline), "The tagline is the Final 3's.");
             if (Application.isBatchMode) yield return CaptureFraming("endgame-final-two", settle: false);
+        }
+
+        /// <summary>
+        /// The owner's decision 46 (MOCKUP-PASS M3, review correction 15): under the finale rules
+        /// the final case leads the Final 2's objectives in the questions' place, open until the
+        /// argument is locked and locked after, its mark gold. The pin above runs with the rules
+        /// off and keeps the questions' row.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Endgame_UnderTheFinaleRulesTheFinalCaseLeadsTheFinalTwosObjectives()
+        {
+            HoldTheHouseForTheFixture();
+            yield return InstallFinaleFixture(true, finaleRules: true);
+            yield return PutAwayTheCards();
+            var state = director.Snapshot;
+            Assume.That(EpisodeHud.IsFinalTwo(state), Is.True, "Two active, the jury's questioning under way.");
+            Assert.That(EpisodeEngine.FinaleOn(state), Is.True);
+            Assert.That(state.finalArgument, Is.Null, "Nothing is locked yet.");
+
+            var card = ActiveRect(EpisodeHud.ObjectivesCardName);
+            Assert.That(card, Is.Not.Null, "The objectives card is up for the Final 2.");
+            var lines = CardLines(card);
+            int lead = lines.IndexOf(EpisodeHud.FinalCaseObjective);
+            Assert.That(lead, Is.GreaterThanOrEqualTo(0), "The final case is an objective under the rules,");
+            Assert.That(lines, Does.Not.Contain("Answer the jury's questions"), "in the questions' place,");
+            Assert.That(lead, Is.EqualTo(lines.IndexOf("FINAL 2 OBJECTIVES") + 1), "and first under the heading.");
+            Assert.That(lines[lead + 1], Is.EqualTo("Open"), "Open until the argument is locked.");
+            Assert.That(lines, Does.Contain("Deliver your final speech").And.Contain("Await the jury vote"));
+            Assert.That(card.GetComponentsInChildren<Image>().Count(image => image.name == "Objective mark"), Is.EqualTo(3), "Still a mark per row.");
+
+            // The lock, through the final case's own calls; the row reads it from the commit.
+            var moments = FinalArgument.Moments(state);
+            int required = FinalArgument.Required(state);
+            Assume.That(required, Is.GreaterThan(0), "A season played to the final has moments to choose.");
+            yield return OpenFinalePanel();
+            director.OpenFinalCase();
+            yield return Frames(1);
+            Assert.That(director.InFinalCase, Is.True);
+            director.ChooseTheme(FinalArgument.Cerebral);
+            foreach (var moment in moments.Take(required)) director.ToggleMoment(moment.reference);
+            director.LockFinalArgument();
+            yield return Frames(2);
+            Assert.That(director.Snapshot.finalArgument, Is.Not.Null, "The argument is locked.");
+            director.ClosePanels();
+            yield return Frames(2);
+            Canvas.ForceUpdateCanvases();
+
+            card = ActiveRect(EpisodeHud.ObjectivesCardName);
+            Assert.That(card, Is.Not.Null);
+            lines = CardLines(card);
+            lead = lines.IndexOf(EpisodeHud.FinalCaseObjective);
+            Assert.That(lead, Is.GreaterThanOrEqualTo(0));
+            Assert.That(lines[lead + 1], Is.EqualTo("Locked"), "Locked once the argument is.");
+            var marks = card.GetComponentsInChildren<Image>().Where(image => image.name == "Objective mark").ToList();
+            Assert.That(marks, Has.Count.EqualTo(3));
+            Assert.That(marks[0].color, Is.EqualTo(UiTheme.Gold), "The locked case's mark is the done gold.");
         }
 
         /// <summary>
@@ -205,6 +297,56 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EpisodeHud.IsEndgame(finished), Is.True);
             Assert.That(EpisodeHud.EndgameLabel(finished), Is.EqualTo("FINALE"));
             Assert.That(EpisodeHud.ObjectiveTitle(finished), Is.EqualTo("Season complete"));
+
+            // MOCKUP-PASS M3: the header's titles. One for the final Head of Household's three
+            // parts, which the line under it tells apart; the finale's two jury beats; and the final
+            // eviction the player's to choose only while they hold the house.
+            foreach (var part in new[] { EpisodePhase.FinalHoHPart1, EpisodePhase.FinalHoHPart2, EpisodePhase.FinalHoHPart3 })
+                Assert.That(EpisodeDirector.PhaseTitle(part), Is.EqualTo("FINAL HEAD OF HOUSEHOLD"), part.ToString());
+            Assert.That(EpisodeDirector.PhaseTitle(EpisodePhase.JuryQuestioning), Is.EqualTo("FINALE · FACE THE JURY"));
+            Assert.That(EpisodeDirector.PhaseTitle(EpisodePhase.Jury), Is.EqualTo("FINALE · JURY VOTE"));
+            Assert.That(EpisodeDirector.PhaseTitle(finished), Is.EqualTo("SEASON FINALE"));
+            three.phase = EpisodePhase.FinalEviction; three.hohId = three.playerId;
+            Assert.That(EpisodeDirector.PhaseTitle(three), Is.EqualTo("CHOOSE YOUR FINAL TWO"));
+            three.hohId = three.Active.First(actor => !actor.isPlayer).id;
+            Assert.That(EpisodeDirector.PhaseTitle(three), Is.EqualTo("THE FINAL EVICTION"), "Somebody else decides.");
+
+            // The objectives card's tagline, a finalist's only while the competition or the decision
+            // it names is still theirs to come: Part 3 is the Part 1 and Part 2 winners', and the
+            // decision is the Part 3 winner's.
+            var parts = three.Clone();
+            var rivals = parts.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList();
+            parts.hohId = null; parts.competitionResolved = false; parts.finalPart1WinnerId = null; parts.finalPart2WinnerId = null;
+            parts.phase = EpisodePhase.FinalHoHPart1;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Every finalist plays Part 1.");
+            parts.phase = EpisodePhase.FinalHoHPart2; parts.finalPart1WinnerId = rivals[0];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Beaten in Part 1, the player plays Part 2.");
+            parts.competitionResolved = true; parts.finalPart2WinnerId = rivals[1];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "Beaten in Part 2, the player has played their last competition,");
+            parts.phase = EpisodePhase.FinalHoHPart3; parts.competitionResolved = false;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and sits Part 3 out.");
+            parts.finalPart2WinnerId = parts.playerId;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 2's winner has Part 3 ahead,");
+            parts.competitionResolved = true; parts.hohId = rivals[0];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and nothing left once Part 3 goes to somebody else.");
+            parts.hohId = parts.playerId;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 3's winner has the decision to come.");
+            parts.phase = EpisodePhase.FinalHoHPart2; parts.hohId = null;
+            parts.finalPart1WinnerId = parts.playerId; parts.finalPart2WinnerId = rivals[1];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "Part 1's winner sits Part 2 out with Part 3 still ahead.");
+            parts.phase = EpisodePhase.FinalEviction; parts.competitionResolved = false; parts.hohId = parts.playerId;
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.True, "The final Head of Household makes the decision,");
+            parts.hohId = rivals[0];
+            Assert.That(EpisodeHud.ObjectivesTaglineShows(parts), Is.False, "and nobody else does.");
+
+            // The strap: the season's size through the weeks, the finale all finale night, by its
+            // number wherever the career record gives one (review correction 22).
+            Assert.That(EpisodeHud.BrandStrap(state, 3), Is.EqualTo("THE HOUSE  |  " + state.contestants.Count + "-PERSON SEASON"));
+            Assert.That(EpisodeHud.BrandStrap(finished, 3), Is.EqualTo("THE HOUSE  |  SEASON 3 FINALE"));
+            Assert.That(EpisodeHud.BrandStrap(finished, null), Is.EqualTo("THE HOUSE  |  SEASON FINALE"), "No number known, none printed.");
+            var questioning = finished.Clone();
+            questioning.phase = EpisodePhase.JuryQuestioning;
+            Assert.That(EpisodeHud.BrandStrap(questioning, 2), Is.EqualTo("THE HOUSE  |  SEASON 2 FINALE"));
         }
     }
 }

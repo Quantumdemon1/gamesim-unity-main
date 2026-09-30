@@ -66,6 +66,10 @@ namespace Gamesim.Presentation
         public const string IconFire = "Pack4_Presentation/Icons_PNG/fire";
         /// <summary>A story moment in the house: the Pull's mark (plan §5.1).</summary>
         public const string IconDrama = "Pack4_Presentation/SocialEvents/icon_drama";
+        /// <summary>A voter's row on the eviction's board on the living room's screen (MOCKUP-PASS-PLAN M18).</summary>
+        public const string VoteRevealStrip = "Pack4_Presentation/CeremonyCinematics/vote_reveal_strip_9slice";
+        /// <summary>The chip on that row naming the nominee the voter evicts. Its keep twin is not used: see VoteReveal.</summary>
+        public const string VoteChipEvict = "Pack4_Presentation/CeremonyCinematics/vote_chip_evict_9slice";
 
         // Refinement Kit 6: white, tintable parts. A fill, a resting edge and a focus edge share one
         // size and one border per family, so a state changes a tint or a layer, never a rect.
@@ -110,6 +114,8 @@ namespace Gamesim.Presentation
         // The competition art Pack 2 and Pack 3 drew for the games.
         public const string AnswerTile = "Pack2_Gameplay/Competition/answer_tile_9slice";
         public const string StaminaPanel = "Pack3_Systems/CompetitionHUD/endurance_stamina_panel_9slice";
+        /// <summary>The panel a juror's question sits in, beside the asker's card (MOCKUP-PASS M11).</summary>
+        public const string JuryQuestionPanel = "Pack3_Systems/FinaleJury/jury_question_panel_9slice";
         public const string KitSelectionStripe = "Kit6_Refinement/Widgets/selection_stripe";
         public const string KitDivider = "Kit6_Refinement/Widgets/divider_h";
         public const string KitIconBed = "Kit6_Refinement/Icons/ic_bed";
@@ -135,14 +141,22 @@ namespace Gamesim.Presentation
         public const string KitEmptyVotes = "Kit6_Refinement/EmptyStates/votes_no_records";
         public const string KitEmptyPrivate = "Kit6_Refinement/EmptyStates/private_no_decision";
 
+        // The finale's card (Pack 3): the juror's two cases on the vote (MOCKUP-PASS M8, mockup 50).
+        public const string FinalistCard = "Pack3_Systems/FinaleJury/finalist_card_9slice";
+
         // Season Complete Pack 7: the season's end and the week's (SeasonReport, WeeklyRecapScreen;
         // ASSET-PACKS.md, Pack 7). The chart strips (Charts/bar_*, jury_vote_stacked_bar) are not
         // here on purpose: each bakes a fill into its pixels, and a bar drawn from one would show
         // a number the season never had. Bars are drawn from the real counts instead.
         public const string SeasonSection = "Pack7_SeasonComplete/Shells/section_panel_9slice";
+        /// <summary>The report's title card (MOCKUP-PASS M5): the section frame lit, with a 38 px glow.</summary>
+        public const string SeasonSectionSelected = "Pack7_SeasonComplete/Shells/section_panel_selected_9slice";
         public const string SeasonQuote = "Pack7_SeasonComplete/Shells/quote_panel_9slice";
         public const string SeasonWinnerHero = "Pack7_SeasonComplete/WinnerHero/winner_hero_frame_9slice";
         public const string SeasonRunnerUpHero = "Pack7_SeasonComplete/WinnerHero/runnerup_hero_frame_9slice";
+        /// <summary>The plates the finalists' names sit on in the hero (MOCKUP-PASS M6); the winner's has a 38 px glow.</summary>
+        public const string SeasonWinnerNameplate = "Pack7_SeasonComplete/WinnerHero/winner_nameplate_9slice";
+        public const string SeasonRunnerUpNameplate = "Pack7_SeasonComplete/WinnerHero/runnerup_nameplate_9slice";
         public const string SeasonWinnerCrown = "Pack7_SeasonComplete/WinnerHero/winner_crown";
         public const string SeasonTrophy = "Pack7_SeasonComplete/WinnerHero/winner_trophy";
         public const string SeasonStatNeutral = "Pack7_SeasonComplete/StatCards/stat_card_neutral_9slice";
@@ -179,6 +193,13 @@ namespace Gamesim.Presentation
         public const string SeasonTabInactive = "Pack7_SeasonComplete/FiltersTabs/tab_inactive_9slice";
         public const string SeasonButtonPrimary = "Pack7_SeasonComplete/Buttons/button_new_season_9slice";
         public const string SeasonButton = "Pack7_SeasonComplete/Buttons/button_close_9slice";
+        /// <summary>
+        /// The report's footer faces (MOCKUP-PASS M5): the notebook's, and the gold 'Continue to
+        /// Legacy' face the pinned <c>Main menu</c> wears (decision 21). The pack's
+        /// <c>button_main_menu</c> is not named: it is pixel-identical to <see cref="SeasonButton"/>.
+        /// </summary>
+        public const string SeasonButtonReview = "Pack7_SeasonComplete/Buttons/button_review_season_9slice";
+        public const string SeasonButtonLegacy = "Pack7_SeasonComplete/Buttons/button_continue_legacy_9slice";
         public const string SeasonBadgeJury = "Pack7_SeasonComplete/Badges/badge_jury";
         public const string SeasonBadgeRunnerUp = "Pack7_SeasonComplete/Badges/badge_runnerup";
     }

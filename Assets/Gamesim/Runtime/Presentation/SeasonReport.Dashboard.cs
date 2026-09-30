@@ -10,15 +10,17 @@ using UnityEngine.UI;
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// The season at a glance (the owner's Season Complete mockup, Pack 7): the winner and the
-    /// runner-up with the jury's count, the five Game Sense cards, then three columns - the final
+    /// The season at a glance (the owner's Season Complete mockup, Pack 7): the winner, large, with
+    /// the final jury vote under them - the runner-up, the verdict, a card for every ballot and the
+    /// count as a bar (MOCKUP-PASS M6) - the five Game Sense cards, then three columns - the final
     /// standings, how the jury voted, and the season week by week - and the career under them.
     ///
     /// <para>Nothing here is invented. The quote under a finalist is the first sentence of their own
-    /// final speech, or nothing; the count is the jury's ballots; a card's line is that face's own
-    /// strongest row in the notebook; the weeks are the ledger's power rows, one a week, the final
-    /// week's three parts and the last Head of Household's choice included. The mockup's taglines,
-    /// its "3 — 2 — 1" and its quotes had no source, and are not here.</para>
+    /// final speech (the runner-up's next one where the first repeats the winner's), or nothing; the
+    /// count is the jury's ballots; a card's line is that face's own strongest row in the notebook;
+    /// the weeks are the ledger's power rows, one a week, the final week's three parts and the last
+    /// Head of Household's choice included. The mockup's taglines, its "3 — 2 — 1" and its quotes
+    /// had no source, and are not here.</para>
     ///
     /// <para>Words tests read are kept word for word: the Game Sense captions, "How the jury voted",
     /// "voted for {name}" and each juror's recorded reason, the crown line "{winner} beat
@@ -35,6 +37,12 @@ namespace Gamesim.Presentation
 
         private const float Gap = 16f;
 
+        /// <summary>
+        /// The muted line under the career's COMP WINS caption, and its label's name: what the career
+        /// counts, which is not what the season's own COMP WINS counts (<see cref="CareerStrip"/>).
+        /// </summary>
+        public const string CareerCompWinsNote = "HoH and veto", CareerCaptionNoteName = "Caption note";
+
         private void Dashboard(EpisodeState state, Func<string, Texture> portrait)
         {
             float inner = Width - Pad * 2f;
@@ -50,11 +58,38 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- the hero
 
+        /// <summary>The parts of the hero, by name, for a test and a screen reader (MOCKUP-PASS M6).</summary>
+        public const string FinalJuryVoteName = "Final jury vote", JurorStripName = "Juror strip", TallyName = "Tally",
+            HeroStatsName = "Hero stats", JurorCardName = "Juror card";
+
         /// <summary>
-        /// The winner in gold and the runner-up in steel, each with their face, their place, the
-        /// first line of their final speech and their share of the jury; and the verdict beside
-        /// them: the crown line, the count in words and as a bar. A season still being played has
-        /// no winner, and says so.
+        /// The hero's four counts. Worded apart from the report's pinned HOH WINS and COMP WINS,
+        /// which tests count exactly: these are the same numbers said the way the mockup says them.
+        /// </summary>
+        public const string CompetitionWinsWords = "Competition wins", HohWinsWords = "HoH wins", VetoWinsWords = "Veto wins",
+            NominationsSurvivedWords = "Nominations survived";
+
+        /// <summary>Past this many ballots the juror strip wraps to two rows.</summary>
+        private const int StripRowLimit = 8;
+
+        /// <summary>The winner's portrait, about as the mockup draws it, and the lit well around it.</summary>
+        private static readonly Vector2 WinnerFace = new Vector2(230f, 270f);
+        private const float WinnerWell = 10f;
+
+        /// <summary>The name's gold, lit from above as the title's blue is.</summary>
+        private static readonly Color LightGold = new Color(1f, .9f, .58f);
+
+        /// <summary>
+        /// The winner, large, and under them the final jury vote (MOCKUP-PASS M6): the winner's face
+        /// in a lit well, the season's number and the crown before 'WINNER', the name on the pack's
+        /// gold plate, their traits, the first line of their final speech, their share of the jury
+        /// and their four counts; then the runner-up beside the verdict - the crown line and the
+        /// count word for word - with a card for every ballot and the count as a bar. A season still
+        /// being played has no winner, and says so.
+        ///
+        /// <para>Everything the runner-up's card and the verdict said before is here, in the same
+        /// words and inside the hero, so the lines the finale's exits and the whole-season walk read
+        /// are where they were.</para>
         /// </summary>
         private float Hero(RectTransform board, EpisodeState state, Func<string, Texture> portrait, float inner)
         {
@@ -76,46 +111,405 @@ namespace Gamesim.Presentation
             var ballots = JuryBallots(state);
             int forWinner = ballots.Count(b => b.FinalistId == winner.id);
             int forRunnerUp = runnerUp == null ? 0 : ballots.Count(b => b.FinalistId == runnerUp.id);
-            bool wide = inner >= 1150f;
-            float height = 206f;
-            float winnerWidth = wide ? inner * .41f : (inner - Gap) * .55f;
-            float runnerWidth = runnerUp == null ? 0f : wide ? inner * .30f : inner - winnerWidth - Gap;
-            float verdictX = wide ? winnerWidth + (runnerUp == null ? 0f : runnerWidth + Gap) + Gap : 0f;
-            float verdictWidth = wide ? inner - verdictX : inner;
+            float winnerHeight = WinnerCard(hero, state, winner, portrait, inner, forWinner);
+            float voteHeight = FinalJuryVote(hero, state, winner, runnerUp, portrait, winnerHeight + Gap, inner, ballots, forWinner, forRunnerUp);
+            float total = winnerHeight + Gap + voteHeight;
+            hero.sizeDelta = new Vector2(inner, total);
+            return total;
+        }
 
-            Finalist(hero, state, winner, portrait, 0f, winnerWidth, height, true, forWinner);
-            if (runnerUp != null) Finalist(hero, state, runnerUp, portrait, winnerWidth + Gap, runnerWidth, height, false, forRunnerUp);
+        /// <summary>
+        /// The winner's card: their face in a well lit gold from below, a few gold sparkles on its
+        /// edge, and beside it the season's number, the crown and 'WINNER' (its own label, as it
+        /// always was), the name large on the gold plate, a chip for each trait and, for a player who
+        /// won, one for the final argument they made; the first line of their final speech and their
+        /// share of the jury; and their four counts in a column of their own, or under it all on a
+        /// narrow card. Returns the card's height.
+        /// </summary>
+        private float WinnerCard(RectTransform hero, EpisodeState state, ContestantState winner, Func<string, Texture> portrait,
+            float width, int votes)
+        {
+            var card = EndScreenKit.Box("WINNER", hero, 0f, 0f, width, 10f);
+            const float pad = 26f, statsWidth = 240f, statsGap = 24f, narrowestText = 380f;
+            var well = new Vector2(WinnerFace.x + WinnerWell * 2f, WinnerFace.y + WinnerWell * 2f);
 
-            float verdictY = wide ? 0f : height + Gap;
-            float verdictHeight = wide ? height : 132f;
-            var verdict = EndScreenKit.Box("Verdict", hero, verdictX, verdictY, verdictWidth, verdictHeight);
-            EndScreenKit.Frame(verdict, PackArt.SeasonJurySummary, 14f, UiTheme.Surface);
-            float pad = 20f;
-            EndScreenKit.Text("Eyebrow", verdict, "THE JURY'S VERDICT", 13f, UiTheme.Heading, pad, 16f, verdictWidth - pad * 2f, 20f,
+            // The winner lit in gold: this is where the season is won.
+            var gold = UiTheme.Pack(PackArt.GlowGold);
+            if (gold != null)
+            {
+                var light = new GameObject("Winner glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                light.rectTransform.SetParent(card, false);
+                float side = well.y + 80f;
+                EndScreenKit.Place(light.rectTransform, pad + well.x * .5f - side * .5f, pad + well.y * .5f - side * .5f, side, side);
+                light.sprite = gold; light.color = new Color(1f, 1f, 1f, .45f); light.preserveAspect = true; light.raycastTarget = false;
+            }
+            var ground = HudPrimitives.Fill("Portrait well", card, new Color(.07f, .06f, .04f, 1f), 12);
+            EndScreenKit.Place(ground, pad, pad, well.x, well.y);
+            ground.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            EndScreenKit.Ramp("Gold light", ground, new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .7f));
+            var face = HudPrimitives.RectPortrait(ground, "Winner portrait", portrait(winner.id), winner, WinnerFace, 10);
+            EndScreenKit.Place(face, WinnerWell, WinnerWell, WinnerFace.x, WinnerFace.y);
+            UiTheme.AddBorder(ground, 12, new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .85f));
+            Sparkles(card, state, pad, pad, well.x, well.y);
+
+            float textX = pad + well.x + 28f;
+            bool statsBeside = width - textX - pad - statsWidth - statsGap >= narrowestText;
+            float textWidth = Mathf.Max(160f, statsBeside ? width - textX - pad - statsWidth - statsGap : width - textX - pad);
+
+            // The season's number and the crown before 'WINNER', which is a label of its own.
+            float y = 30f, x = textX;
+            var crown = EndScreenKit.Picture("Crown mark", card, PackArt.SeasonWinnerCrown, "crown", UiTheme.Gold, new Vector2(x + 14f, -(y + 10f)), 28f);
+            if (crown != null) x += 38f;
+            if (shownSeason.HasValue)
+            {
+                var season = EndScreenKit.Text("Season", card, "SEASON " + shownSeason.Value, 15f, new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .8f),
+                    x, y, 150f, 20f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
+                season.characterSpacing = 3f;
+                float used = Mathf.Ceil(season.GetPreferredValues(season.text).x) + 4f;
+                season.rectTransform.sizeDelta = new Vector2(used, 20f);
+                x += used + 14f;
+            }
+            var badge = EndScreenKit.Text("Badge", card, "WINNER", 15f, UiTheme.Gold, x, y, Mathf.Max(80f, textX + textWidth - x), 20f,
+                TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
+            badge.characterSpacing = 3f;
+            y += 30f;
+
+            // The name, large and in gold on the pack's plate; shrunk to fit rather than wrapped.
+            const float plateHeight = 78f;
+            var plate = EndScreenKit.Box("Nameplate", card, textX, y, textWidth, plateHeight);
+            EndScreenKit.Frame(plate, PackArt.SeasonWinnerNameplate, 16f, new Color(.2f, .17f, .06f, .95f), UiTheme.Gold);
+            var name = EndScreenKit.Text("Name", plate, HudPrimitives.WithYou(winner.name, winner.isPlayer).ToUpperInvariant(), 50f, Color.white,
+                18f, 6f, textWidth - 36f, 66f, TextAlignmentOptions.Left, UiTheme.Weight.Bold);
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            name.enableAutoSizing = true; name.fontSizeMax = 50f; name.fontSizeMin = 28f;
+            name.enableVertexGradient = true;
+            name.colorGradient = new VertexGradient(LightGold, LightGold, UiTheme.Gold, UiTheme.Gold);
+            y += plateHeight + 12f;
+
+            y = TraitChips(card, state, winner, textX, y, textWidth);
+
+            string SpeechOf(string id) => state.finalSpeeches?.FirstOrDefault(s => s.speakerId == id)?.text;
+            string quote = EndScreenKit.Excerpt(SpeechOf(winner.id), 110);
+            if (quote != null)
+            {
+                var said = EndScreenKit.Text("Quote", card, "“" + quote + "”", 15f, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .86f),
+                    textX, y, textWidth, 20f);
+                said.fontStyle = FontStyles.Italic;
+                y += EndScreenKit.Wrapped(said, textWidth, 2) + 2f;
+                EndScreenKit.Text("Attribution", card, "From the final speech", 12f, UiTheme.Muted, textX, y, textWidth, 18f);
+                y += 22f;
+            }
+            EndScreenKit.Text("Votes", card, votes + (votes == 1 ? " jury vote" : " jury votes"), 16f, UiTheme.Gold,
+                textX, y + 4f, textWidth, 22f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
+            y += 30f;
+
+            float bottom = Mathf.Max(pad + well.y, y);
+            if (statsBeside) bottom = Mathf.Max(bottom, HeroStats(card, state, winner, width - pad - statsWidth, 34f, statsWidth, 1));
+            else bottom = HeroStats(card, state, winner, pad, bottom + 16f, width - pad * 2f, 2);
+            float height = bottom + pad;
+            card.sizeDelta = new Vector2(width, height);
+            EndScreenKit.Frame(card, PackArt.SeasonWinnerHero, 18f, UiTheme.SurfaceRaised, UiTheme.Gold);
+            return height;
+        }
+
+        /// <summary>
+        /// A chip for each of the winner's traits, as the house knows them, and a gold one for the
+        /// final argument a player who won made; wrapped under each other when they run out of room.
+        /// Never padded to a count the mockup draws. Returns where the line under them starts.
+        /// </summary>
+        private static float TraitChips(RectTransform card, EpisodeState state, ContestantState who, float x, float y, float width)
+        {
+            var words = (who.traits ?? new List<string>()).Where(trait => !string.IsNullOrWhiteSpace(trait))
+                .Select(trait => (word: trait, filled: false)).ToList();
+            string argued = who.isPlayer && state.finalArgument != null ? FinalArgument.Label(state.finalArgument.theme) : null;
+            if (argued != null) words.Add((argued, true));
+            if (words.Count == 0) return y;
+            const float height = 26f, gap = 8f;
+            float at = x;
+            foreach (var (word, filled) in words)
+            {
+                var pill = EndScreenKit.Pill(card, word, filled ? UiTheme.Gold : UiTheme.Heading, at, y, 120f, height, filled);
+                var label = pill.GetComponentInChildren<TMP_Text>();
+                float chip = Mathf.Min(width, (label != null ? Mathf.Ceil(label.GetPreferredValues(label.text).x) : 80f) + 20f);
+                if (at > x && at + chip > x + width)
+                {
+                    at = x;
+                    y += height + 6f;
+                }
+                EndScreenKit.Place(pill, at, y, chip, height);
+                at += chip + gap;
+            }
+            return y + height + 12f;
+        }
+
+        /// <summary>
+        /// The winner's four counts, a row each with its glyph: every competition won, the final
+        /// Head of Household's parts included (<see cref="FinalistRead.Wins"/>); Heads of Household;
+        /// vetoes; and nominations survived, which for the winner is every nomination. In one column
+        /// beside the card's words, or two under them. Returns where the column ends.
+        /// </summary>
+        private static float HeroStats(RectTransform card, EpisodeState state, ContestantState winner, float x, float y, float width, int columns)
+        {
+            var rows = new (string words, int value, string icon, string fallback, Color tint)[]
+            {
+                (CompetitionWinsWords, FinalistRead.Wins(state, winner), PackArt.SeasonIconCompetitions, "trophy", UiTheme.Positive),
+                (HohWinsWords, winner.hohWins, PackArt.KitIconCrown, "crown", UiTheme.Accent),
+                (VetoWinsWords, winner.vetoWins, null, "veto-token", UiTheme.Gold),
+                (NominationsSurvivedWords, winner.timesNominated, PackArt.KitIconShield, "target", UiTheme.Warning),
+            };
+            const float rowHeight = 44f, rowGap = 6f, columnGap = 12f, glyphSide = 24f;
+            int perColumn = (rows.Length + columns - 1) / columns;
+            float columnWidth = (width - columnGap * (columns - 1)) / columns;
+            var stats = EndScreenKit.Box(HeroStatsName, card, x, y, width, perColumn * rowHeight + (perColumn - 1) * rowGap);
+            for (int i = 0; i < rows.Length; i++)
+            {
+                var (words, value, icon, fallback, tint) = rows[i];
+                int column = columns == 1 ? 0 : i % columns, line = columns == 1 ? i : i / columns;
+                var row = EndScreenKit.Box(words, stats, column * (columnWidth + columnGap), line * (rowHeight + rowGap), columnWidth, rowHeight);
+                EndScreenKit.Frame(row, PackArt.SeasonCareerCell, 10f, UiTheme.Surface, null, 8);
+                // The pack's own icon keeps its colours; Kit 6's white glyphs and the generated ones take the row's tint.
+                var glyph = EndScreenKit.Picture("Glyph", row, icon, fallback, tint, new Vector2(12f + glyphSide * .5f, -rowHeight * .5f), glyphSide);
+                if (glyph != null && icon != null && icon.StartsWith("Kit6_") && glyph.sprite == UiTheme.Pack(icon)) glyph.color = tint;
+                float wordsX = glyph != null ? 12f + glyphSide + 10f : 12f;
+                var label = EndScreenKit.Text("Words", row, words, 13f, UiTheme.Paper, wordsX, (rowHeight - 18f) * .5f, columnWidth - wordsX - 58f, 18f);
+                label.enableAutoSizing = true; label.fontSizeMax = 13f; label.fontSizeMin = 10f;
+                var number = EndScreenKit.Text("Value", row, value.ToString(), 24f, tint, columnWidth - 56f, (rowHeight - 32f) * .5f, 44f, 32f,
+                    TextAlignmentOptions.Right, UiTheme.Weight.SemiBold);
+                number.enableAutoSizing = true; number.fontSizeMax = 24f; number.fontSizeMin = 16f;
+            }
+            return y + stats.sizeDelta.y;
+        }
+
+        /// <summary>
+        /// The final jury vote: the runner-up's card - their face, their place, the first line of
+        /// their final speech that is not the winner's, their share of the jury - beside the
+        /// verdict, or over it on a narrow card. Returns the panel's height.
+        /// </summary>
+        private float FinalJuryVote(RectTransform hero, EpisodeState state, ContestantState winner, ContestantState runnerUp,
+            Func<string, Texture> portrait, float y, float width, List<JuryBallot> ballots, int forWinner, int forRunnerUp)
+        {
+            var panel = EndScreenKit.Box(FinalJuryVoteName, hero, 0f, y, width, 10f);
+            const float pad = 18f;
+            bool beside = width >= 980f;
+            float runnerWidth = runnerUp == null ? 0f : beside ? Mathf.Clamp(width * .34f, 320f, 470f) : width - pad * 2f;
+            float runnerHeight = runnerUp == null ? 0f : RunnerUpCard(panel, state, runnerUp, portrait, pad, pad, runnerWidth, forRunnerUp);
+            float verdictX = runnerUp != null && beside ? pad + runnerWidth + 22f : pad;
+            float verdictY = runnerUp != null && !beside ? pad + runnerHeight + 16f : pad;
+            float verdictHeight = Verdict(panel, state, winner, runnerUp, portrait, verdictX, verdictY, width - verdictX - pad,
+                ballots, forWinner, forRunnerUp);
+            float height = Mathf.Max(runnerUp != null ? pad + runnerHeight : 0f, verdictY + verdictHeight) + pad;
+            panel.sizeDelta = new Vector2(width, height);
+            EndScreenKit.Frame(panel, PackArt.SeasonJurySummary, 14f, UiTheme.Surface);
+            return height;
+        }
+
+        /// <summary>The runner-up's card, in steel: their face, 'RUNNER-UP', the name on the pack's plate, their line and their votes.</summary>
+        private static float RunnerUpCard(RectTransform parent, EpisodeState state, ContestantState who, Func<string, Texture> portrait,
+            float x, float y, float width, int votes)
+        {
+            var card = EndScreenKit.Box("RUNNER-UP", parent, x, y, width, 10f);
+            const float pad = 16f;
+            var faceSize = new Vector2(96f, 116f);
+            var face = HudPrimitives.RectPortrait(card, "Runner-up portrait", portrait(who.id), who, faceSize, 10);
+            EndScreenKit.Place(face, pad, pad, faceSize.x, faceSize.y);
+            UiTheme.AddBorder(face, 10, new Color(Steel.r, Steel.g, Steel.b, .8f));
+            EndScreenKit.Picture("Runner-up mark", card, PackArt.SeasonBadgeRunnerUp, "star", Steel, new Vector2(pad + faceSize.x - 4f, -(pad + 4f)), 28f);
+
+            float textX = pad + faceSize.x + 16f, textWidth = Mathf.Max(80f, width - textX - pad);
+            var badge = EndScreenKit.Text("Badge", card, "RUNNER-UP", 14f, Steel, textX, pad, textWidth, 20f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
+            badge.characterSpacing = 3f;
+            const float plateHeight = 44f;
+            var plate = EndScreenKit.Box("Nameplate", card, textX, pad + 24f, textWidth, plateHeight);
+            EndScreenKit.Frame(plate, PackArt.SeasonRunnerUpNameplate, 12f, UiTheme.SurfaceRaised, Steel);
+            var name = EndScreenKit.Text("Name", plate, HudPrimitives.WithYou(who.name, who.isPlayer), 22f, UiTheme.Paper,
+                12f, 6f, textWidth - 24f, 32f, TextAlignmentOptions.Left, UiTheme.Weight.Bold);
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            name.enableAutoSizing = true; name.fontSizeMax = 22f; name.fontSizeMin = 14f;
+            float at = pad + 24f + plateHeight + 10f;
+
+            string SpeechOf(string id) => state.finalSpeeches?.FirstOrDefault(s => s.speakerId == id)?.text;
+            // The runner-up's line never repeats the winner's: two speeches that open alike give the
+            // runner-up their next sentence, or no quote.
+            string quote = EndScreenKit.ExcerptBeside(SpeechOf(who.id), 80, SpeechOf(state.winnerId));
+            if (quote != null)
+            {
+                var said = EndScreenKit.Text("Quote", card, "“" + quote + "”", 14f, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .86f),
+                    textX, at, textWidth, 20f);
+                said.fontStyle = FontStyles.Italic;
+                at += EndScreenKit.Wrapped(said, textWidth, 3) + 2f;
+                EndScreenKit.Text("Attribution", card, "From the final speech", 12f, UiTheme.Muted, textX, at, textWidth, 18f);
+                at += 22f;
+            }
+            EndScreenKit.Text("Votes", card, votes + (votes == 1 ? " jury vote" : " jury votes"), 15f, Steel,
+                textX, at + 2f, textWidth, 22f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
+            at += 26f;
+            float height = Mathf.Max(pad + faceSize.y + pad, at + pad);
+            card.sizeDelta = new Vector2(width, height);
+            EndScreenKit.Frame(card, PackArt.SeasonRunnerUpHero, 16f, UiTheme.SurfaceRaised, Steel);
+            return height;
+        }
+
+        /// <summary>
+        /// The verdict: 'FINAL JURY VOTE', the crown line and the count in words - each word for
+        /// word, as the finale's exits and the whole-season walk read them - then a card for every
+        /// ballot and the count as a bar between the two finalists' numbers. Returns its height.
+        /// </summary>
+        private float Verdict(RectTransform panel, EpisodeState state, ContestantState winner, ContestantState runnerUp,
+            Func<string, Texture> portrait, float x, float y, float width, List<JuryBallot> ballots, int forWinner, int forRunnerUp)
+        {
+            var verdict = EndScreenKit.Box("Verdict", panel, x, y, width, 10f);
+            EndScreenKit.Text("Eyebrow", verdict, "FINAL JURY VOTE", 13f, UiTheme.Heading, 0f, 0f, width, 20f,
                 TextAlignmentOptions.Left, UiTheme.Weight.SemiBold).characterSpacing = 3f;
             // The crown line, word for word: the finale's exits and the whole-season walk read it.
             var crown = EndScreenKit.Text("Crown", verdict, runnerUp != null
                     ? winner.name + " beat " + runnerUp.name + " in the jury vote."
-                    : winner.name + " wins the season.", 18f, UiTheme.Paper, pad, 40f, verdictWidth - pad * 2f, 26f,
+                    : winner.name + " wins the season.", 18f, UiTheme.Paper, 0f, 24f, width, 26f,
                 TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
-            float at = 40f + EndScreenKit.Wrapped(crown, verdictWidth - pad * 2f) + 6f;
+            float at = 24f + EndScreenKit.Wrapped(crown, width) + 4f;
             foreach (string line in VerdictLines(winner, runnerUp, forWinner, forRunnerUp))
             {
-                var words = EndScreenKit.Text("Count", verdict, line, 14f, UiTheme.Muted, pad, at, verdictWidth - pad * 2f, 20f);
-                at += EndScreenKit.Wrapped(words, verdictWidth - pad * 2f) + 2f;
+                var words = EndScreenKit.Text("Count", verdict, line, 14f, UiTheme.Muted, 0f, at, width, 20f);
+                at += EndScreenKit.Wrapped(words, width) + 2f;
             }
-            if (runnerUp != null && forWinner + forRunnerUp > 0)
+            if (ballots.Count > 0) at += 10f + JurorStrip(verdict, state, portrait, ballots, winner, 0f, at + 10f, width);
+            if (runnerUp != null && forWinner + forRunnerUp > 0) at += 14f + Tally(verdict, winner, runnerUp, forWinner, forRunnerUp, 0f, at + 14f, width);
+            verdict.sizeDelta = new Vector2(width, at);
+            return at;
+        }
+
+        /// <summary>
+        /// A card for every ballot, in the order they were cast: the juror's face, their first name
+        /// or 'You', and 'VOTED' over the first name of the finalist they chose, in that finalist's
+        /// gold or steel. Never the words 'voted for', which the jury column below counts, one a
+        /// ballot. Two rows past <see cref="StripRowLimit"/> ballots, and narrower cards before more
+        /// rows. Returns the strip's height.
+        /// </summary>
+        private static float JurorStrip(RectTransform parent, EpisodeState state, Func<string, Texture> portrait, List<JuryBallot> ballots,
+            ContestantState winner, float x, float y, float width)
+        {
+            var strip = EndScreenKit.Box(JurorStripName, parent, x, y, width, 10f);
+            const float gap = 8f, widest = 80f, narrowest = 60f;
+            int count = ballots.Count;
+            int perRow = count > StripRowLimit ? (count + 1) / 2 : count;
+            float cardWidth = Mathf.Min(widest, (width - gap * (perRow - 1)) / perRow);
+            if (cardWidth < narrowest)
             {
-                float barY = Mathf.Max(at + 8f, verdictHeight - 50f);
-                EndScreenKit.SplitBar(verdict, pad, barY, verdictWidth - pad * 2f, 12f, forWinner, forRunnerUp, UiTheme.Gold, Steel);
-                EndScreenKit.Text("Winner count", verdict, FinalistRead.FirstName(winner.name) + " " + forWinner, 13f, UiTheme.Gold,
-                    pad, barY + 16f, (verdictWidth - pad * 2f) * .5f, 20f);
-                EndScreenKit.Text("Runner-up count", verdict, forRunnerUp + " " + FinalistRead.FirstName(runnerUp.name), 13f, Steel,
-                    verdictWidth * .5f, barY + 16f, verdictWidth * .5f - pad, 20f, TextAlignmentOptions.Right);
+                cardWidth = narrowest;
+                perRow = Mathf.Max(1, Mathf.FloorToInt((width + gap) / (narrowest + gap)));
             }
-            float total = wide ? height : height + Gap + verdictHeight;
-            hero.sizeDelta = new Vector2(inner, total);
-            return total;
+            float side = Mathf.Min(64f, cardWidth - 12f), cardHeight = side + 66f;
+            int rows = (count + perRow - 1) / perRow;
+            for (int i = 0; i < count; i++)
+            {
+                var ballot = ballots[i];
+                bool forWinner = winner != null && ballot.FinalistId == winner.id;
+                var tint = forWinner ? UiTheme.Gold : Steel;
+                var card = EndScreenKit.Box(JurorCardName, strip, (i % perRow) * (cardWidth + gap), (i / perRow) * (cardHeight + gap), cardWidth, cardHeight);
+                EndScreenKit.Frame(card, forWinner ? PackArt.SeasonJuryRowWinner : ballot.IsPlayer ? PackArt.SeasonJuryRowNeutral : PackArt.SeasonJuryRowRunnerUp,
+                    10f, UiTheme.SurfaceRaised, forWinner ? UiTheme.Gold : (Color?)null, 8);
+                var juror = ballot.JurorId == null ? null : state.Find(ballot.JurorId);
+                var face = HudPrimitives.RectPortrait(card, "Juror portrait", ballot.JurorId == null ? null : portrait(ballot.JurorId), juror,
+                    new Vector2(side, side), 8);
+                EndScreenKit.Place(face, (cardWidth - side) * .5f, 8f, side, side);
+                var name = EndScreenKit.Text("Juror name", card, ballot.IsPlayer ? "You" : FinalistRead.FirstName(ballot.Juror), 12f,
+                    ballot.IsPlayer ? UiTheme.Accent : UiTheme.Paper, 4f, side + 12f, cardWidth - 8f, 16f, TextAlignmentOptions.Center, UiTheme.Weight.Medium);
+                name.enableAutoSizing = true; name.fontSizeMax = 12f; name.fontSizeMin = 9f;
+                var voted = EndScreenKit.Text("Voted", card, "VOTED", 9f, UiTheme.Muted, 4f, side + 30f, cardWidth - 8f, 12f,
+                    TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
+                voted.characterSpacing = 1.5f;
+                var pick = EndScreenKit.Text("Their vote", card, FinalistRead.FirstName(ballot.Finalist), 12f, tint, 4f, side + 43f, cardWidth - 8f, 16f,
+                    TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
+                pick.enableAutoSizing = true; pick.fontSizeMax = 12f; pick.fontSizeMin = 9f;
+            }
+            float height = rows * cardHeight + (rows - 1) * gap;
+            strip.sizeDelta = new Vector2(width, height);
+            return height;
+        }
+
+        /// <summary>
+        /// The count as a bar between the two finalists' numbers, each in a tile of its colour, and
+        /// their full names under the ends. A tie draws equal halves. Returns the tally's height.
+        /// </summary>
+        private static float Tally(RectTransform parent, ContestantState winner, ContestantState runnerUp, int forWinner, int forRunnerUp,
+            float x, float y, float width)
+        {
+            var tally = EndScreenKit.Box(TallyName, parent, x, y, width, 10f);
+            const float tile = 48f, tileHeight = 40f, barHeight = 28f, gap = 10f;
+            NumberTile(tally, "Winner tally", forWinner, UiTheme.Gold, 0f, 0f, tile, tileHeight);
+            NumberTile(tally, "Runner-up tally", forRunnerUp, Steel, width - tile, 0f, tile, tileHeight);
+            EndScreenKit.SplitBar(tally, tile + gap, (tileHeight - barHeight) * .5f, Mathf.Max(20f, width - (tile + gap) * 2f), barHeight,
+                forWinner, forRunnerUp, UiTheme.Gold, Steel);
+            float half = width * .5f - 6f;
+            var first = EndScreenKit.Text("Winner name", tally, HudPrimitives.WithYou(winner.name, winner.isPlayer), 13f, UiTheme.Gold,
+                0f, tileHeight + 6f, half, 18f, TextAlignmentOptions.Left, UiTheme.Weight.Medium);
+            first.enableAutoSizing = true; first.fontSizeMax = 13f; first.fontSizeMin = 10f;
+            var second = EndScreenKit.Text("Runner-up name", tally, HudPrimitives.WithYou(runnerUp.name, runnerUp.isPlayer), 13f, Steel,
+                width - half, tileHeight + 6f, half, 18f, TextAlignmentOptions.Right, UiTheme.Weight.Medium);
+            second.enableAutoSizing = true; second.fontSizeMax = 13f; second.fontSizeMin = 10f;
+            float height = tileHeight + 6f + 18f;
+            tally.sizeDelta = new Vector2(width, height);
+            return height;
+        }
+
+        /// <summary>One end of the tally: the count in 26 pt, in a tile of the finalist's colour.</summary>
+        private static void NumberTile(RectTransform parent, string name, int count, Color tint, float x, float y, float width, float height)
+        {
+            var tile = HudPrimitives.Fill(name, parent, new Color(tint.r, tint.g, tint.b, .18f), 8);
+            EndScreenKit.Place(tile, x, y, width, height);
+            UiTheme.AddBorder(tile, 8, new Color(tint.r, tint.g, tint.b, .8f));
+            EndScreenKit.Text("Number", tile, count.ToString(), 26f, tint, 0f, (height - 34f) * .5f, width, 34f,
+                TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
+        }
+
+        /// <summary>How many sparkles the winner's well carries.</summary>
+        private const int SparkleCount = 7;
+
+        /// <summary>
+        /// A few gold sparkles on the edge of the winner's well, placed from the season's seed so a
+        /// season's report draws the same ones every time it opens. They twinkle (<see cref="Twinkle"/>)
+        /// only while reduced motion is off; with it on they hold still.
+        /// </summary>
+        private void Sparkles(RectTransform card, EpisodeState state, float x, float y, float width, float height)
+        {
+            var star = UiTheme.Icon("star");
+            if (star == null) return;
+            // On a canvas of their own inside the report's. The twinkle writes their colour every
+            // frame, and a graphic that changes has its whole canvas batched again: on the report's
+            // one canvas that was the hero, the columns and the house table, every frame, on a
+            // screen that otherwise holds still. Nested, only these are. It keeps the report's
+            // sorting (no override), so they draw where they always drew, still clipped by the
+            // season's window and faded with the report.
+            var layer = new GameObject("Sparkles", typeof(RectTransform)).GetComponent<RectTransform>();
+            layer.SetParent(card, false);
+            layer.anchorMin = Vector2.zero; layer.anchorMax = Vector2.one;
+            layer.offsetMin = Vector2.zero; layer.offsetMax = Vector2.zero;
+            layer.gameObject.AddComponent<Canvas>().overrideSorting = false;
+            var random = new System.Random(unchecked((int)state.seed) ^ 0x5A17);
+            for (int i = 0; i < SparkleCount; i++)
+            {
+                float side = 9f + (float)random.NextDouble() * 9f;
+                float along = (float)random.NextDouble(), off = ((float)random.NextDouble() - .5f) * 14f;
+                // Round the well's edge, a side each in turn, where the frame's gold is: never on the face's middle.
+                Vector2 at;
+                switch (i % 4)
+                {
+                    case 0: at = new Vector2(x + along * width, y + off); break;
+                    case 1: at = new Vector2(x + width + off, y + along * height); break;
+                    case 2: at = new Vector2(x + along * width, y + height + off); break;
+                    default: at = new Vector2(x + off, y + along * height); break;
+                }
+                var image = new GameObject("Sparkle", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                image.rectTransform.SetParent(layer, false);
+                EndScreenKit.Place(image.rectTransform, at.x - side * .5f, at.y - side * .5f, side, side);
+                image.sprite = star;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+                float glow = .55f + (float)random.NextDouble() * .4f;
+                image.color = new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, glow);
+                sparkles.Add((image, (float)random.NextDouble() * Mathf.PI * 2f, 1.4f + (float)random.NextDouble() * 1.6f, glow));
+            }
         }
 
         /// <summary>The count in words, the house's own: a majority, a tie and its rule, or a jury of one.</summary>
@@ -129,56 +523,6 @@ namespace Gamesim.Presentation
             }
             else if (forWinner + forRunnerUp == 1) yield return "With the jury's only vote.";
             else yield return "By a vote of " + forWinner + " to " + forRunnerUp + ".";
-        }
-
-        /// <summary>One finalist's half of the hero.</summary>
-        private void Finalist(RectTransform hero, EpisodeState state, ContestantState who, Func<string, Texture> portrait,
-            float x, float width, float height, bool won, int votes)
-        {
-            var card = EndScreenKit.Box(won ? "WINNER" : "RUNNER-UP", hero, x, 0f, width, height);
-            EndScreenKit.Frame(card, won ? PackArt.SeasonWinnerHero : PackArt.SeasonRunnerUpHero, won ? 18f : 16f,
-                UiTheme.SurfaceRaised, won ? UiTheme.Gold : Steel);
-            // The winner lit in gold: this is where the season is won.
-            if (won)
-            {
-                var gold = UiTheme.Pack(PackArt.GlowGold);
-                if (gold != null)
-                {
-                    var light = new GameObject("Winner glow", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-                    light.rectTransform.SetParent(card, false);
-                    EndScreenKit.Place(light.rectTransform, -20f, -20f, 220f, 220f);
-                    light.sprite = gold; light.color = new Color(1f, 1f, 1f, .45f); light.preserveAspect = true; light.raycastTarget = false;
-                }
-            }
-            float diameter = won ? 132f : 110f;
-            float faceX = 22f + diameter * .5f + 4f;
-            var face = HudPrimitives.Portrait(card, portrait(who.id), won ? UiTheme.Gold : Steel, diameter, 4f, false, who);
-            face.anchorMin = face.anchorMax = new Vector2(0f, 1f);
-            face.pivot = new Vector2(.5f, .5f);
-            face.anchoredPosition = new Vector2(faceX, -height * .5f);
-            var mark = EndScreenKit.Picture(won ? "Crown mark" : "Runner-up mark", card, won ? PackArt.SeasonWinnerCrown : PackArt.SeasonBadgeRunnerUp,
-                won ? "crown" : "star", won ? UiTheme.Gold : Steel, new Vector2(faceX - diameter * .38f, -(height * .5f - diameter * .40f)), won ? 40f : 32f);
-
-            float textX = faceX + diameter * .5f + 22f;
-            float textWidth = Mathf.Max(80f, width - textX - 18f);
-            var badge = EndScreenKit.Text("Badge", card, won ? "WINNER" : "RUNNER-UP", 15f, won ? UiTheme.Gold : Steel,
-                textX, 26f, textWidth, 22f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
-            badge.characterSpacing = 3f;
-            var name = EndScreenKit.Text("Name", card, HudPrimitives.WithYou(who.name, who.isPlayer), won ? 30f : 24f, UiTheme.Paper,
-                textX, 50f, textWidth, won ? 40f : 34f, TextAlignmentOptions.Left, UiTheme.Weight.Bold);
-            name.enableAutoSizing = true; name.fontSizeMax = won ? 30f : 24f; name.fontSizeMin = 16f;
-            float y = won ? 94f : 88f;
-            string quote = EndScreenKit.Excerpt(state.finalSpeeches?.FirstOrDefault(s => s.speakerId == who.id)?.text, won ? 110 : 80);
-            if (quote != null)
-            {
-                var said = EndScreenKit.Text("Quote", card, "“" + quote + "”", 15f, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .86f),
-                    textX, y, textWidth, 20f);
-                said.fontStyle = FontStyles.Italic;
-                y += EndScreenKit.Wrapped(said, textWidth, 2) + 2f;
-                EndScreenKit.Text("Attribution", card, "From the final speech", 12f, UiTheme.Muted, textX, y, textWidth, 18f);
-            }
-            EndScreenKit.Text("Votes", card, votes + (votes == 1 ? " jury vote" : " jury votes"), 16f, won ? UiTheme.Gold : Steel,
-                textX, height - 42f, textWidth, 22f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
         }
 
         // ---------------------------------------------------------------- the stat cards
@@ -277,11 +621,7 @@ namespace Gamesim.Presentation
         {
             const float pad = 16f, rowHeight = 42f, rowGap = 6f;
             float y = pad + EndScreenKit.Heading(column, "Final standings", null, "trophy", pad, pad, width - pad * 2f);
-            var order = state.contestants
-                .Select(c => (who: c, place: c.status == ContestantStatus.Active ? 0 : CareerLedger.Placement(state, c)))
-                .OrderBy(e => e.place == 0 ? int.MaxValue : e.place).ThenBy(e => PlacementRank(e.who.status)).ThenBy(e => e.who.name, StringComparer.CurrentCulture)
-                .ToList();
-            foreach (var (who, place) in order)
+            foreach (var (who, place) in StandingsOrder(state))
             {
                 var row = EndScreenKit.Box("Standing", column, pad, y, width - pad * 2f, rowHeight);
                 string frame = who.status == ContestantStatus.Winner ? PackArt.SeasonStandingWinner
@@ -310,6 +650,64 @@ namespace Gamesim.Presentation
                 y += rowHeight + rowGap;
             }
             return y + pad - rowGap;
+        }
+
+        /// <summary>
+        /// Everybody in the order they finished, with the place the standings print: the one
+        /// placement every screen reads (<see cref="CareerLedger.Placement"/>), and 0 for anyone
+        /// still in the house, who comes last.
+        ///
+        /// <para>Without the jury ledger (a save from before it, or a season built for a test) that
+        /// placement falls back to a coarse count, and every juror shares one number: a house of
+        /// eight printed "7" five times. The week each of them left, their power row, breaks the
+        /// tie: the latest to leave finished highest, and the tied group takes the run of places its
+        /// number stands for, between the rows around it and inside the house. Two who left in the
+        /// same week, or two the ledger has no row for, share the lowest place of their part of the
+        /// run, as the coarse count gives a tied jury, rather than an order nothing on the record
+        /// gives. A group whose run does not fit there keeps the number it shares.</para>
+        /// </summary>
+        public static List<(ContestantState who, int place)> StandingsOrder(EpisodeState state)
+        {
+            int? Left(ContestantState who) => JuryHouseRead.LeftWeek(state, who.id);
+            var order = state.contestants
+                .Select(c => (who: c, place: c.status == ContestantStatus.Active ? 0 : CareerLedger.Placement(state, c)))
+                .OrderBy(e => e.place == 0 ? int.MaxValue : e.place).ThenBy(e => PlacementRank(e.who.status))
+                .ThenByDescending(e => Left(e.who) ?? int.MinValue).ThenBy(e => e.who.name, StringComparer.CurrentCulture)
+                .ToList();
+            int above = 0, house = state.contestants.Count;
+            for (int start = 0; start < order.Count;)
+            {
+                int place = order[start].place, end = start;
+                while (end < order.Count && order[end].place == place) end++;
+                int size = end - start;
+                if (place > 0 && size > 1)
+                {
+                    // The run a coarse number stands for. A juror's number is the lowest seat the jury
+                    // holds, so their run reaches back from it. A pre-jury evictee's is the highest
+                    // seat below the jury, and the row before it is the jury's last, so their run
+                    // starts at the number and goes down the table. Either run holds the number
+                    // itself, because the row before printed a smaller one.
+                    int first = Math.Max(above + 1, place - size + 1), last = first + size - 1;
+                    // A save whose jury ledger began part way through the season mixes the ledger's
+                    // places with the fallback's, and there a run can reach the next row's number or
+                    // pass the foot of the house. That group keeps the number it shares, as it always
+                    // printed, rather than a place printed twice or a place the house never had.
+                    int next = end < order.Count && order[end].place > 0 ? order[end].place : house + 1;
+                    if (last <= house && last < next)
+                    {
+                        for (int i = start; i < end;)
+                        {
+                            int same = i;
+                            while (same < end && Left(order[same].who) == Left(order[i].who)) same++;
+                            for (int n = i; n < same; n++) order[n] = (order[n].who, first + (same - start) - 1);
+                            i = same;
+                        }
+                    }
+                }
+                if (place > 0) above = order[end - 1].place;
+                start = end;
+            }
+            return order;
         }
 
         /// <summary>A status as short as a standings pill holds it; the house table keeps the long words.</summary>
@@ -491,10 +889,16 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The player's record across seasons, under this one, in a strip: the five numbers with the
         /// captions they have always had, and the career's own line. Only when there is a career.
+        ///
+        /// <para>The career's COMP WINS counts Heads of Household and vetoes, the two a
+        /// <see cref="CareerSeason"/> stores, while the season's own COMP WINS below counts the final
+        /// Head of Household's first two parts as well (<see cref="FinalistRead.Wins"/>). A one-season
+        /// career would show two different numbers under one caption, so the career's cell says
+        /// what it counts in a muted line under its caption, which stays word for word.</para>
         /// </summary>
         private float CareerStrip(RectTransform board, CareerSummary career, float y, float inner)
         {
-            const float height = 104f, pad = 18f;
+            const float height = 112f, pad = 18f;
             var strip = EndScreenKit.Box(CareerStripName, board, 0f, y, inner, height);
             EndScreenKit.Frame(strip, PackArt.SeasonCareerStrip, 16f, UiTheme.Surface);
             bool wide = inner >= 1150f;
@@ -509,24 +913,28 @@ namespace Gamesim.Presentation
             }
             float noteWidth = wide ? Mathf.Min(330f, inner * .24f) : 0f;
             float cellsX = pad + titleWidth, cellsWidth = inner - cellsX - noteWidth - pad * (wide ? 2f : 1f);
-            var cells = new[]
+            var cells = new (string caption, string value, Color tint, bool best, string note)[]
             {
-                ("SEASONS", career.Seasons.ToString(), UiTheme.Paper, false),
-                ("WINS", career.Wins.ToString(), UiTheme.Gold, false),
-                ("MEDIAN FINISH", CareerSummary.PlaceWord(career.MedianPlacement), UiTheme.Accent, false),
-                ("BEST FINISH", CareerSummary.PlaceWord(career.BestPlacement), UiTheme.Positive, true),
-                ("COMP WINS", (career.HohWins + career.VetoWins).ToString(), UiTheme.Positive, false),
+                ("SEASONS", career.Seasons.ToString(), UiTheme.Paper, false, null),
+                ("WINS", career.Wins.ToString(), UiTheme.Gold, false, null),
+                ("MEDIAN FINISH", CareerSummary.PlaceWord(career.MedianPlacement), UiTheme.Accent, false, null),
+                ("BEST FINISH", CareerSummary.PlaceWord(career.BestPlacement), UiTheme.Positive, true, null),
+                ("COMP WINS", (career.HohWins + career.VetoWins).ToString(), UiTheme.Positive, false, CareerCompWinsNote),
             };
             float cellGap = 10f, cellWidth = (cellsWidth - cellGap * (cells.Length - 1)) / cells.Length;
             for (int i = 0; i < cells.Length; i++)
             {
-                var (caption, value, tint, best) = cells[i];
+                var (caption, value, tint, best, note) = cells[i];
                 var cell = EndScreenKit.Box(caption, strip, cellsX + i * (cellWidth + cellGap), 14f, cellWidth, height - 28f);
                 EndScreenKit.Frame(cell, best ? PackArt.SeasonCareerBest : PackArt.SeasonCareerCell, 10f, UiTheme.SurfaceRaised, null, 8);
                 var number = EndScreenKit.Text("Value", cell, value, 26f, tint, 6f, 8f, cellWidth - 12f, 34f, TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
                 number.enableAutoSizing = true; number.fontSizeMax = 26f; number.fontSizeMin = 14f;
                 var label = EndScreenKit.Text("Caption", cell, caption, 12f, UiTheme.Muted, 6f, 44f, cellWidth - 12f, 18f, TextAlignmentOptions.Center);
                 label.enableAutoSizing = true; label.fontSizeMax = 12f; label.fontSizeMin = 9f;
+                if (note == null) continue;
+                // A label of its own under the pinned caption, never words added to it.
+                var counts = EndScreenKit.Text(CareerCaptionNoteName, cell, note, 11f, UiTheme.Muted, 6f, 62f, cellWidth - 12f, 16f, TextAlignmentOptions.Center);
+                counts.enableAutoSizing = true; counts.fontSizeMax = 11f; counts.fontSizeMin = 9f;
             }
             if (wide)
             {

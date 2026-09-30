@@ -70,8 +70,11 @@ namespace Gamesim.Episode
                 case EpisodePhase.FinalHoHPart2:
                 case EpisodePhase.FinalHoHPart3:
                     return "A competition is next. Whoever wins it holds the week's power; preparation banked beforehand counts.";
+                // The endgame's beats have no rule line of their own, so the dashboard names the
+                // beat: by the state, so the final eviction reads as the player's choice only when
+                // it is theirs.
                 default:
-                    return PhaseTitle(state.phase);
+                    return PhaseTitle(state);
             }
         }
 

@@ -54,18 +54,42 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(receipt.GetComponentsInChildren<Button>(), Is.Empty, "The receipt is read, not pressed.");
                 Assert.That(asker.GetComponentsInChildren<Button>(), Is.Empty);
                 Assert.That(Words(LastActive("Episode panel")), Does.Contain(EpisodeHud.JuryHintWords));
+                // The mockup pass (MOCKUP-PASS M11): Skip leads the thin row of ways on, and the row
+                // stays in the panel's own column, after the live layout.
                 var skip = ButtonWithCaption(EpisodeHud.JurySkipCaption);
-                Assert.That(skip.transform.parent, Is.SameAs(live.parent), "Skip stays in the panel's own column,");
-                Assert.That(skip.transform.GetSiblingIndex(), Is.GreaterThan(live.GetSiblingIndex()), "after the live layout.");
+                var ways = LastActive(EpisodeHud.JuryWaysOnName);
+                Assert.That(skip.transform.parent, Is.SameAs(ways), "Skip is in the ways on,");
+                Assert.That(ways.parent, Is.SameAs(live.parent), "which stay in the panel's own column,");
+                Assert.That(ways.GetSiblingIndex(), Is.GreaterThan(live.GetSiblingIndex()), "after the live layout.");
+                // The juror in a card of their own, with the heading and the line the panel opened
+                // with, word for word; the hint in the framed footer, with the disclaimer; and until
+                // the answer, a line under the receipt that the jury will react to it.
+                var card = LastActive(EpisodeHud.JuryAskerCardName);
+                Assert.That(card.IsChildOf(asker), Is.True, "The juror's card, left,");
+                Assert.That(ColumnWords(card), Does.Contain(juror.name).And.Contain(juror.name + " asks you")
+                    .And.Contain("Juror · Question " + (state.juryQuestionIndex + 1) + " of "), "with its heading and its line.");
+                var footer = LastActive(EpisodeHud.JuryFooterName);
+                Assert.That(LastActive(EpisodeHud.JuryHintName).IsChildOf(footer), Is.True, "The hint, framed.");
+                Assert.That(ColumnWords(footer), Does.Contain("A response is not a guaranteed jury vote."));
+                Assert.That(footer.GetSiblingIndex(), Is.GreaterThan(live.GetSiblingIndex()).And.LessThan(ways.GetSiblingIndex()));
+                Assert.That(LastActive(EpisodeHud.JuryReactNoteName).IsChildOf(receipt), Is.True, "The jury will react, under the receipt.");
                 string before = Words(LastActive("Episode panel"));
                 Assert.That(before, Does.Not.Contain("impressed").And.Not.Contain("unconvinced"), "Nothing says how an answer will land.");
                 AssertDecisionCopyFits(asker);
                 AssertDecisionCopyFits(receipt);
+                // The A and B answers are whole sentences in a centre column about a third of the
+                // row: each row is as tall as its caption needs, so none loses a line.
+                AssertDecisionCopyFits(answers);
                 var a = ScreenRect(asker); var c = ScreenRect(answers); var r = ScreenRect(receipt);
                 if (!larger)
                 {
                     Assert.That(c.xMin, Is.GreaterThanOrEqualTo(a.xMax - 1f), "Side by side at the resting text.");
                     Assert.That(r.xMin, Is.GreaterThanOrEqualTo(c.xMax - 1f));
+                    var question = LastActive(EpisodeHud.JuryQuestionPanelName);
+                    Assert.That(question.IsChildOf(asker), Is.True);
+                    Assert.That(ScreenRect(question).xMin, Is.GreaterThanOrEqualTo(ScreenRect(card).xMax - 1f), "The card and the question side by side.");
+                    Assert.That(ScreenRect(ways.GetChild(ways.childCount - 1) as RectTransform).yMax, Is.GreaterThan(ScreenRect(skip.transform as RectTransform).yMin),
+                        "The ways on, abreast.");
                     if (Application.isBatchMode) yield return CaptureFraming("endgame-jury-live", settle: false);
                 }
                 else Assert.That(c.yMax, Is.LessThanOrEqualTo(a.yMin + 1f), "One under another at the larger text.");
@@ -84,6 +108,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(reaction, Is.Not.Null, "The reaction line after the commit.");
             Assert.That(reaction.GetComponent<TMP_Text>().text, Is.EqualTo(note), "The engine's own note, never a number.");
             Assert.That(reaction.IsChildOf(LastActive(EpisodeHud.JuryAnswerColumnName)), Is.True);
+            Assert.That(LastActive(EpisodeHud.JuryReactNoteName), Is.Null, "The reaction takes the waiting line's place.");
             yield return ReloadEpisode();
             yield return OpenFinalePanel();
             yield return Frames(1);
@@ -100,11 +125,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(exchange.questionerId, Is.EqualTo(state.playerId), "The player asks.");
             var finalist = state.Find(exchange.finalistId);
             Assert.That(ColumnWords(LastActive(EpisodeHud.JuryAskerColumnName)), Does.Contain(finalist.name));
+            Assert.That(ColumnWords(LastActive(EpisodeHud.JuryAskerCardName)), Does.Contain("Finalist · Question "), "The finalist on the spot.");
             Assert.That(ColumnWords(LastActive(EpisodeHud.JuryReceiptColumnName)),
                 Does.Contain("WHAT YOU KNOW OF " + FinalistRead.FirstName(finalist.name).ToUpperInvariant()));
             Assert.That(Words(LastActive("Episode panel")), Does.Contain("You ask " + finalist.name));
             var tone = WebJuryQuestioning.GetJurorQuestionOptions(state.juryQuestionIndex).First();
             Assert.That(ButtonWithCaption(tone.tone + " · " + tone.text).transform.IsChildOf(LastActive(EpisodeHud.JuryAnswerColumnName)), Is.True);
+            Canvas.ForceUpdateCanvases();
+            AssertDecisionCopyFits(LastActive(EpisodeHud.JuryAnswerColumnName));
         }
     }
 }

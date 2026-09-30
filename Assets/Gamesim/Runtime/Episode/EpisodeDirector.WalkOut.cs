@@ -213,8 +213,22 @@ namespace Gamesim.Episode
             occupied.Add(StationPosition);
             var spots = JuryPlaces(marker.transform.position, jurors.Count, occupied,
                 (Vector3 wanted, out Vector3 sampled, out string room) => rooms.TrySampleFloor(wanted, 0.35f, filter, 0.25f, out sampled, out room),
-                sampled => rooms.HasCapsuleClearance(sampled, 0.35f, 1.9f, player.transform));
+                sampled => rooms.HasCapsuleClearance(sampled, 0.35f, 1.9f, player.transform) && !InFurniture(sampled));
             for (int i = 0; i < jurors.Count && i < spots.Count; i++) juryBench[jurors[i]] = spots[i];
+        }
+
+        private static readonly Collider[] furnitureHits = new Collider[4];
+
+        /// <summary>
+        /// Whether a body standing here would stand in a couch or a chair. The clearance query looks
+        /// through the furniture layer on purpose - it is the camera's too - so a juror's place asks
+        /// the layer itself, as the start-spot audit does.
+        /// </summary>
+        private bool InFurniture(Vector3 feet)
+        {
+            Physics.SyncTransforms();
+            return gameObject.scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * 0.35f, feet + Vector3.up * (1.9f - 0.35f), 0.35f,
+                furnitureHits, 1 << HouseLayers.Furniture, QueryTriggerInteraction.Ignore) > 0;
         }
 
         /// <summary>Samples the floor under a wanted place: where a body would stand, and in which room.</summary>

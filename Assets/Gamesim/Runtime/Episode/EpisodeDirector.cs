@@ -827,10 +827,13 @@ namespace Gamesim.Episode
                 if (field != null && takeover != null)
                 {
                     EndCeremonyCards(includingResult: competition == null);
-                    // A house bigger than the field gets a line that says who plays and why; the
-                    // card's own says everyone does (VetoFieldLine is null when that is true).
-                    takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
-                        VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
+                    // The draw itself when there was one and this house plays it: the chips turning
+                    // into the faces they drew (EpisodeDirector.VetoDraw.cs). Otherwise the field's
+                    // card: a house bigger than the field gets a line that says who plays and why;
+                    // the card's own says everyone does (VetoFieldLine is null when that is true).
+                    if (!PlayVetoDrawReveal(result.state))
+                        takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
+                            VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
                 }
 
                 var ceremony = result.state.events.Skip(knownEvents)
@@ -970,6 +973,7 @@ namespace Gamesim.Episode
             if (voteReveal != null) voteReveal.Cancel();
             if (juryReveal != null) juryReveal.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
+            CancelVetoDrawReveal();
             if (includingResult && competitionCard != null) competitionCard.Cancel();
         }
 
@@ -1455,7 +1459,12 @@ namespace Gamesim.Episode
             // (EpisodeDirector.CeremonyScreen). The week's four strategy screens take the taller
             // strategy stage (PACK8-PASS-PLAN A3).
             if (QuietBeat(state) && !CeremonyScreenBeat(state)) hud.FitPanelToContent();
-            else if (StrategyScreenBeat(state)) hud.StrategyStage(StrategyShell(state));
+            else if (StrategyScreenBeat(state))
+            {
+                hud.StrategyStage(StrategyShell(state));
+                // The veto's draw is laid out for the frame's whole width (EpisodeDirector.VetoDraw.cs).
+                if (VetoDrawBeat(state)) hud.StrategyWholeWidth();
+            }
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1578,7 +1587,9 @@ namespace Gamesim.Episode
             if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage
                 || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Strategy)
             {
-                hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
+                var wayOn = hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
+                // The veto's draw wears the draw it makes, beside the caption (EpisodeDirector.VetoDraw.cs).
+                if (VetoDrawBeat(state)) VetoDrawWayOn(state, wayOn);
                 // What free time's way on costs, under it: the actions that go unused.
                 string unused = UnusedActionsNote(state);
                 if (unused != null) hud.PinnedNote(unused);
@@ -1604,6 +1615,7 @@ namespace Gamesim.Episode
             if (juryReveal != null) juryReveal.Cancel();
             if (competitionCard != null) competitionCard.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
+            CancelVetoDrawReveal();
             EndCeremonyStage();
             DisposeNpcSocialWorld();
         }
@@ -1641,6 +1653,7 @@ namespace Gamesim.Episode
             { competitionCard.VisibilityChanged -= SyncCompetitionResultInput; Destroy(competitionCard.gameObject); competitionCard = null; }
             if (competitionScreen != null) { Destroy(competitionScreen.gameObject); competitionScreen = null; }
             if (keyCeremony != null) { Destroy(keyCeremony.gameObject); keyCeremony = null; }
+            DestroyVetoDrawReveal();
             // The skip chip is a scene root as well: left behind, the next director attached a second.
             if (skipChip != null) { Destroy(skipChip.gameObject); skipChip = null; }
             if (tutorial != null) { Destroy(tutorial.gameObject); tutorial = null; }

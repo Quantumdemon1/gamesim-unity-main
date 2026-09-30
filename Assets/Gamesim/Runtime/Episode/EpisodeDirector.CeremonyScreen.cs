@@ -64,20 +64,9 @@ namespace Gamesim.Episode
                     hud.CeremonyFaces("On the block, and who put them there", named, 150f);
                     break;
                 case EpisodePhase.VetoSelection:
-                {
-                    int seats = EpisodeEngine.VetoPlayerCount(s.Active.Count());
-                    var byRight = new List<EpisodeHud.CeremonyFace> { crown };
-                    byRight.AddRange(block);
-                    var pool = s.Active.Where(c => c.id != hoh.id && !s.nominees.Contains(c.id)).ToList();
-                    int toDraw = System.Math.Max(0, System.Math.Min(pool.Count, seats - byRight.Count));
-                    hud.CeremonyTitle(week, "Power of Veto Player Selection",
-                        seats + " play for the Golden Power of Veto: the Head of Household and both nominees by right, and "
-                        + toDraw + " drawn from the house.", UiTheme.Gold);
-                    hud.CeremonyFaces("Playing by right", byRight, 128f);
-                    hud.ChipBag(toDraw, toDraw == 1 ? "One chip to draw from the bag." : toDraw + " chips to draw from the bag.");
-                    hud.CeremonyFaces("In the bag", pool.Select(c => Face(c.id, null, UiTheme.Muted)).ToList(), 110f);
+                    // One row across the frame, and no draw at six or fewer (EpisodeDirector.VetoDraw.cs).
+                    VetoDrawScreen(s);
                     break;
-                }
                 case EpisodePhase.VetoMeeting:
                 {
                     var holder = s.Find(s.vetoHolderId);

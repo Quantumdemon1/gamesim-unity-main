@@ -1542,7 +1542,8 @@ namespace Gamesim.Episode
             else
             {
                 string houseStatus = ViewOverPreparation(state) ? null : HouseStatus(state);
-                if (houseStatus != null) hud.Paragraph(houseStatus);
+                // The veto meeting says it in a strip across the stage's header (PACK8-PASS-PLAN B3).
+                if (houseStatus != null && !VetoMeetingStatus(state, houseStatus)) hud.Paragraph(houseStatus);
             }
             // A story beat waiting on the player comes before anything else they could do: it
             // closes with the week's next beat, and a card buried under the ordinary controls is a
@@ -1584,6 +1585,8 @@ namespace Gamesim.Episode
                 if (unused != null) hud.PinnedNote(unused);
             }
             else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
+            // The veto meeting's row of cards, in the height the step leaves it, and its words on the way on.
+            VetoMeetingWayOn(state);
         }
 
         /// <summary>What a Have-Not player reads beside their interactions: what it costs, and until when.</summary>

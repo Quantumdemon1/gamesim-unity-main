@@ -66,13 +66,20 @@ namespace Gamesim.Presentation
             return screen;
         }
 
+        /// <summary>
+        /// Builds the frame for one attempt. A final Head of Household part also hands over its
+        /// <paramref name="bracket"/> (MOCKUP-PASS-PLAN M13): the part tracker and the scoring line
+        /// go in the challenge card and the gold band on the legend row. Every other competition
+        /// passes none and is drawn as it always was.
+        /// </summary>
         public void Show(MiniGameRun attempt, string title, string field, bool practice, Action<int> flip,
             Action tap, Action<MiniGameRun.Direction> direction, Action toggleGrip, Action onCancel, Action missedTarget = null,
-            bool assemble = false, IList<CompetitionEntrant> entrants = null)
+            bool assemble = false, IList<CompetitionEntrant> entrants = null, FinalBracket bracket = null)
         {
             ClearAssembly();
             if (panel != null) { panel.gameObject.SetActive(false); Destroy(panel.gameObject); }
             run = attempt; cancelAction = onCancel; playing = false; Paused = false; held = false;
+            finalBracket = bracket;
             ranked = !practice; leaveArmed = false; holdKeyWasDown = false;
             previewStarted = false;
             lastGameFocus = null;
@@ -102,6 +109,7 @@ namespace Gamesim.Presentation
             // challenge and the clock across the top, the board filling the space under them with
             // the controls legend at its foot, and the field and the controls down the right.
             BuildChallenge(title, practice);
+            BuildFinalPartChallenge();
             BuildTimer();
 
             // The board, on glass the stage shows through.
@@ -110,6 +118,7 @@ namespace Gamesim.Presentation
             controls = playArea.gameObject.AddComponent<CanvasGroup>(); controls.interactable = false;
             BuildBoardHeader();
             BuildLegend();
+            BuildFinalBand();
             BuildField(field, entrants);
             BuildFooter();
             switch (run.Kind)

@@ -191,6 +191,9 @@ namespace Gamesim.Episode
         {
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Competition);
             FrameBriefing();
+            // A final part heads its sheet with the bracket: the parts played and who won them, the
+            // part in hand, and what is still locked (MOCKUP-PASS-PLAN M13). Nothing in other weeks.
+            hud.FinalHoHBracket(state);
             var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
             var definition = CompetitionDefinitions.For(state);
@@ -248,28 +251,39 @@ namespace Gamesim.Episode
                         : "Zero performance bonus. Your statistics and seeded rolls still count, so you may still win.", "exit",
                     () => ThrowCompetition(state), compact: true);
             }
+            // And its foot says what the part's winner goes on to, in the final Head of Household's gold.
+            hud.FinalPartBand(state);
         }
 
         /// <summary>
         /// The competition for a houseguest who is not in its field: the same full-screen briefing -
         /// the arena beside the sheet, what is at stake, how it is played, who is competing - with
         /// the one thing there is to do, which is to watch it.
+        ///
+        /// <para>A final part the player sits out (MOCKUP-PASS-PLAN M13, mockup 58) is about the two
+        /// who play it: the bracket heads the sheet, the hero wears the part's art rather than the
+        /// watcher's own face, the pair stand under it as cards, and the gold band closes it.</para>
         /// </summary>
         private void SpectatorBriefing(EpisodeState state)
         {
             hud.SetActivityLayout(EpisodeHud.ActivityLayout.Competition);
             FrameBriefing();
+            hud.FinalHoHBracket(state);
             var game = CompetitionMiniGames.For(EpisodeEngine.CompetitionCategory(state));
             var field = EpisodeEngine.CompetitionPlayers(state).ToArray();
             var definition = CompetitionDefinitions.For(state);
             string stakes = (state.phase == EpisodePhase.Veto ? "At stake: the power to save a nominee from eviction."
                 : state.phase == EpisodePhase.HoH ? "At stake: Head of Household safety and nomination power."
                 : FinalPartStakes(state)) + HaveNotStakes(state);
-            hud.CompetitionHero(state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
-                definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes);
+            bool finalPart = IsFinalHoHPart(state.phase);
+            hud.CompetitionHero(finalPart ? null : state.Find(state.playerId), EpisodeEngine.CompetitionCategory(state),
+                definition?.Title ?? CompetitionMiniGames.DisplayName(game), stakes,
+                finalPart ? "PART " + FinalBracket.PartOf(state.phase) : null);
+            if (finalPart) hud.CompetitorCards(field);
             hud.CompetitionBrief(CompetitionMiniGames.Brief(game, state.competitionRulesVersion));
             hud.Paragraph("Competing: " + string.Join(", ", field.Select(c => c.name)) + ". You are not in this field.");
             hud.Action("Watch eligible housemates compete", () => Commit(state, EpisodeCommandKind.Advance));
+            hud.FinalPartBand(state);
         }
 
         /// <summary>
@@ -362,7 +376,9 @@ namespace Gamesim.Episode
                 competitionScreen.Show(challengeRun, CompetitionTitle(state),
                     string.Join("\n", field.Select(c => HudPrimitives.WithYou(c.name, c.isPlayer))),
                     practice, FlipCard, TapTarget, TapDirection, ToggleChallengeGrip, CancelChallenge, MissReactionTarget, !reducedMotion,
-                    field.Select(c => new CompetitionEntrant(c.id, c.name, c.isPlayer, CharacterPortraits.Get(c), c)).ToList());
+                    field.Select(c => new CompetitionEntrant(c.id, c.name, c.isPlayer, CharacterPortraits.Get(c), c)).ToList(),
+                    // A final part carries its bracket onto the game screen (MOCKUP-PASS-PLAN M13); null otherwise.
+                    FinalBracket.For(state));
             }
             // The start sting belongs to GO now, when input goes live; opening the attempt is a panel.
             audioBed.PlayCue(challengeRun != null ? HouseAudio.Cue.PanelOpen : HouseAudio.Cue.CompetitionStart); Render();

@@ -100,15 +100,18 @@ namespace Gamesim.Presentation
             }
         }
 
-        /// <summary>How tall the header row has to be for this width at this text size.</summary>
-        private float HeaderFor(float challengeWidth)
+        /// <summary>How tall the header row has to be for this width and frame at this text size.</summary>
+        private float HeaderFor(float challengeWidth, float frameHeight)
         {
             float inner = challengeWidth - 32f;
             float rules = PreferredHeight(rulesLabel, inner);
             float policy = PreferredHeight(policyLabel, inner - 22f);
             float challenge = 14f + 18f * FontScale + 6f + 34f * FontScale + 4f + rules + 8f + policy + 12f;
             float timer = 44f + 126f * FontScale;
-            return Mathf.Clamp(Mathf.Max(HeaderHeight, challenge, timer), HeaderHeight, 300f);
+            float header = Mathf.Clamp(Mathf.Max(HeaderHeight, challenge, timer), HeaderHeight, 300f);
+            // A final part's tracker and scoring line take a little more of the frame, out of the
+            // board its game can spare.
+            return FinalPartHeaderFor(header, challenge, timer, inner, frameHeight);
         }
 
         private static float PreferredHeight(TMP_Text label, float width)
@@ -134,7 +137,9 @@ namespace Gamesim.Presentation
             float rulesY = titleY + 34f * FontScale + 4f;
             float policy = PreferredHeight(policyLabel, inner - 22f);
             float policyY = height - 12f - policy;
-            Place(rulesLabel.rectTransform, 16f, rulesY, inner, Mathf.Max(line, policyY - 8f - rulesY));
+            // A final part's tracker sits under the title and its scoring line over the policy.
+            var (top, bottom) = LayoutFinalPartChallenge(inner, rulesY, policyY);
+            Place(rulesLabel.rectTransform, 16f, top, inner, Mathf.Max(line, bottom - top));
             if (policyMark != null) Place(policyMark.rectTransform, 16f, policyY + 1f, 14f * FontScale, 14f * FontScale);
             Place(policyLabel.rectTransform, 16f + 22f, policyY, inner - 22f, policy);
         }
@@ -398,8 +403,10 @@ namespace Gamesim.Presentation
 
         private void LayoutLegend(float x, float y, float width, float height)
         {
-            Place(legendRoot, x, y, width, height);
-            legendRoom = width;
+            // A final part's gold band takes the row's right-hand end; the keys keep the rest.
+            float room = LayoutFinalBand(x, y, width, height);
+            Place(legendRoot, x, y, room, height);
+            legendRoom = room;
             FitLegend();
         }
 
@@ -444,7 +451,13 @@ namespace Gamesim.Presentation
             fieldHeading = Label("Field heading", fieldCard, "COMPETITORS", 12, 0, 0, 10, 10, UiTheme.Accent);
             fieldHeading.characterSpacing = 6f; fieldHeading.textWrappingMode = TextWrappingModes.NoWrap;
             youRow = null;
-            if (entrants != null && entrants.Count > 0)
+            competitorCards.Clear();
+            // A final part's pair are cards of their own (MOCKUP-PASS-PLAN M13). Keyed on the bracket
+            // as well as the count: a sit-out can leave an ordinary week's field at two, and that
+            // field keeps its list and faces as it always had them.
+            bool cards = finalBracket != null && entrants != null && entrants.Count == 2;
+            if (cards) BuildCompetitorCards(entrants);
+            else if (entrants != null && entrants.Count > 0)
             {
                 youRow = HudPrimitives.Fill("You row", fieldCard, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, .10f), 8);
                 youRow.gameObject.SetActive(false);
@@ -454,7 +467,13 @@ namespace Gamesim.Presentation
             entrantsLabel.alignment = TextAlignmentOptions.TopLeft;
             entrantsLabel.textWrappingMode = TextWrappingModes.NoWrap;
             entrantsLabel.overflowMode = TextOverflowModes.Ellipsis;
-            if (entrants != null)
+            if (cards)
+            {
+                // The cards carry the names in the list's own words, a line to a card.
+                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+                if (semibold != null) entrantsLabel.font = semibold;
+            }
+            else if (entrants != null)
                 foreach (var entrant in entrants)
                 {
                     var face = HudPrimitives.Portrait(fieldCard, entrant.Portrait, entrant.IsPlayer ? UiTheme.Accent : UiTheme.Outline,
@@ -471,6 +490,7 @@ namespace Gamesim.Presentation
             fieldCard.anchoredPosition = new Vector2(-FrameEdge, -FrameEdge); fieldCard.sizeDelta = new Vector2(SideWidth, fieldHeight);
             float line = 18f * FontScale;
             Place(fieldHeading.rectTransform, 16f, 14f, SideWidth - 32f, line);
+            if (competitorCards.Count > 0) { LayoutCompetitorCards(fieldHeight); return; }
             bool faces = entrantFaces.Count > 0;
             float listTop = 14f + line + 12f, box = fieldHeight - listTop - 70f;
             int rows = Mathf.Max(1, faces ? entrantFaces.Count : entrantsLabel.text.Split('\n').Length);

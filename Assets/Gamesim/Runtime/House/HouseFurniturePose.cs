@@ -110,13 +110,20 @@ namespace Gamesim.House
             if(seat!=null && seat.Active)seat.RequestExit();else FinishNow();
         }
 
-        public void End()
+        public void End()=>End(false);
+
+        private void End(bool teardown)
         {
             if(!Active)return;
             // A body taken from its seat - the activity released for a conversation, a stage or a
             // reload - gets up at the seat before it goes back to its root, as one whose activity
             // ran out does. The seat ends itself at once when there is nothing to get up from.
-            Active=false;ending=false;RestoreArm();if(seat!=null)seat.RequestExit();
+            // A pose that is itself taken away, disabled or destroyed, ends its seat at once, as it
+            // always did: its owner finds the presentation gone on the next frame and hands the body
+            // back then, and a stand-up left running held the body at the chair for another 0.7 s
+            // with nothing left to answer for it.
+            Active=false;ending=false;RestoreArm();
+            if(seat!=null){if(teardown)seat.End();else seat.RequestExit();}
             // Standing: a seat pose is the only thing that may seat a body (HouseSeatPresentation.End).
             if(visual!=null){visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetSeated(false);visual.SetFacing(previousFacing);}
             valid=null;arrived=null;isPaused=null;finished=null;anchor=null;body=arm=null;
@@ -129,7 +136,7 @@ namespace Gamesim.House
         }
         private void FinishNow(){var done=finished;End();done?.Invoke();}
         // Owner reconciliation/disposal retires the lease. Never rebuild UI during unload.
-        private void OnDisable()=>End();
-        private void OnDestroy()=>End();
+        private void OnDisable()=>End(true);
+        private void OnDestroy()=>End(true);
     }
 }

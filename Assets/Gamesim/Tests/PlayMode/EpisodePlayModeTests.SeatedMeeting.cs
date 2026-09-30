@@ -204,7 +204,21 @@ namespace Gamesim.Tests.PlayMode
             director.OpenJournal();
             yield return null;
             Check("under the notebook");
+            // The house's first world tick after the close is put on the frame it resumes, while both
+            // bodies are still arriving again (two motion frames), so the tick that decides the seats
+            // sees the pair's proof fail. Left to the clock, a batchmode frame is so short that the
+            // tick came after the bodies had arrived, and this half passed without the fix. A whole
+            // tenth of a second is due: the paused house adds nothing to the fraction, and closing
+            // the panel does not clear it, so the resuming frame ticks whatever its delta.
+            NpcWrite("npcWorldFraction", .1d);
             director.ClosePanels();
+            yield return null;
+            bool resumedOnATick = NpcRead<double>("npcWorldFraction") < .1d;
+            bool resumedUnproved = !director.IsNpcConversationPhysicallyReady(1);
+            Check("as the notebook closed");
+            Assert.That(resumedOnATick && resumedUnproved, Is.True,
+                "The house resumed on a world tick while the pair was still arriving again; that is the case asked about. "
+                + "Ticked: " + resumedOnATick + ", proof failing: " + resumedUnproved + ".");
             yield return Hold(.6f, "after the notebook closed");
             Assert.That(broken, Is.Empty, "The pair stood up and sat down again:\n" + string.Join("\n", broken));
 

@@ -475,6 +475,17 @@ namespace Gamesim.Presentation
         {
             var star = UiTheme.Icon("star");
             if (star == null) return;
+            // On a canvas of their own inside the report's. The twinkle writes their colour every
+            // frame, and a graphic that changes has its whole canvas batched again: on the report's
+            // one canvas that was the hero, the columns and the house table, every frame, on a
+            // screen that otherwise holds still. Nested, only these are. It keeps the report's
+            // sorting (no override), so they draw where they always drew, still clipped by the
+            // season's window and faded with the report.
+            var layer = new GameObject("Sparkles", typeof(RectTransform)).GetComponent<RectTransform>();
+            layer.SetParent(card, false);
+            layer.anchorMin = Vector2.zero; layer.anchorMax = Vector2.one;
+            layer.offsetMin = Vector2.zero; layer.offsetMax = Vector2.zero;
+            layer.gameObject.AddComponent<Canvas>().overrideSorting = false;
             var random = new System.Random(unchecked((int)state.seed) ^ 0x5A17);
             for (int i = 0; i < SparkleCount; i++)
             {
@@ -490,7 +501,7 @@ namespace Gamesim.Presentation
                     default: at = new Vector2(x + off, y + along * height); break;
                 }
                 var image = new GameObject("Sparkle", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-                image.rectTransform.SetParent(card, false);
+                image.rectTransform.SetParent(layer, false);
                 EndScreenKit.Place(image.rectTransform, at.x - side * .5f, at.y - side * .5f, side, side);
                 image.sprite = star;
                 image.preserveAspect = true;

@@ -236,8 +236,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The head of Season Complete (MOCKUP-PASS M5): the season's number over the title, the
         /// season's numbers in tiles, its counts in a line, and the card beside the house's rail
-        /// rather than over it at both text sizes - the rail dimmed, the scrim still taking every
-        /// click, and the brand line in the corner under the rail.
+        /// rather than over it at both text sizes - the rail dimmed down to the cast strip, the
+        /// corner under it dimmed as the house is, the scrim still taking every click, and the
+        /// brand line in that corner.
         /// </summary>
         [UnityTest]
         public IEnumerator EndScreens_TheHeadCarriesTheSeasonNumberAndTheCardStandsBesideTheRail()
@@ -282,6 +283,21 @@ namespace Gamesim.Tests.PlayMode
                 var brand = ReportPart("Brand line").GetComponent<TMP_Text>();
                 Assert.That(brand.text, Is.EqualTo(SeasonReport.BrandWords));
                 Assert.That(ScreenRect(brand.rectTransform).xMax, Is.LessThanOrEqualTo(ScreenRect(sheet).xMin + .5f), "The brand line is beside the card.");
+
+                // The cast strip runs under the rail's column too. The rail's lighter dim stops
+                // above it, the corner under the rail is dimmed as the house is, and the brand line
+                // stands in that corner rather than over the first chips at half light. The strip's
+                // top is where the HUD draws it at the report's text size; the HUD here may be at
+                // resting text, and a strip at resting text only stands lower.
+                var stripDim = ReportPart("Strip dim").GetComponent<Image>();
+                float stripTop = CastRail.GroundTop(larger ? 1.2f : 1f) * hud.scaleFactor;
+                Assert.That(stripDim.color.a, Is.EqualTo(houseDim.color.a), size + "the strip under the rail is dimmed as the house is.");
+                Assert.That(stripDim.raycastTarget, Is.False, "The clear scrim under it takes the clicks.");
+                Assert.That(ScreenRect(stripDim.rectTransform).yMax, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the corner's dim covers the strip.");
+                Assert.That(ScreenRect(railDim.rectTransform).yMin, Is.GreaterThanOrEqualTo(stripTop - .5f), size + "the rail's lighter dim stops above the strip.");
+                var brandRect = ScreenRect(brand.rectTransform);
+                Assert.That(brandRect.yMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).yMax + .5f), size + "the brand line stands in the dark corner.");
+                Assert.That(brandRect.xMax, Is.LessThanOrEqualTo(ScreenRect(stripDim.rectTransform).xMax + .5f), size + "the brand line stands in the dark corner.");
                 if (Application.isBatchMode) yield return CaptureFraming(larger ? "season-complete-head-large" : "season-complete-head");
                 Report().Hide();
             }
@@ -337,6 +353,18 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(Count(SeasonReport.HohWinsWords), Is.EqualTo(champion.hohWins.ToString()));
                     Assert.That(Count(SeasonReport.VetoWinsWords), Is.EqualTo(champion.vetoWins.ToString()));
                     Assert.That(Count(SeasonReport.NominationsSurvivedWords), Is.EqualTo(champion.timesNominated.ToString()));
+
+                    // The sparkles twinkle on a canvas nested in the report's, so a frame's twinkle
+                    // batches them again and not the whole report; nested without an override, they
+                    // keep the report's sorting and the season window's clip.
+                    var sparkles = winnerCard.GetComponentsInChildren<Image>().Where(image => image.name == "Sparkle").ToList();
+                    if (UiTheme.Icon("star") != null) Assert.That(sparkles, Is.Not.Empty, where + "the winner's well has its sparkles.");
+                    foreach (var sparkle in sparkles)
+                    {
+                        Assert.That(sparkle.canvas.isRootCanvas, Is.False, where + "a sparkle is on a canvas of its own inside the report's.");
+                        Assert.That(sparkle.canvas.overrideSorting, Is.False, where + "and that canvas keeps the report's sorting.");
+                        Assert.That(sparkle.canvas.rootCanvas, Is.SameAs(Report().GetComponent<Canvas>()), where + "under the report's own.");
+                    }
 
                     var vote = ReportPart(SeasonReport.FinalJuryVoteName);
                     Assert.That(vote != null && vote.IsChildOf(hero), Is.True, "The final jury vote is part of the hero, where its lines were read before.");

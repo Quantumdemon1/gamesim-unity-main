@@ -56,6 +56,9 @@ namespace Gamesim.Presentation
         /// <summary>How dark the scrim is over the house's rail: dimmed beside the card, still there to be seen.</summary>
         private const float RailDimAlpha = .55f;
 
+        /// <summary>How dark the scrim is over the rest of the house: the room behind the season, and the cast strip along its foot.</summary>
+        private const float HouseDimAlpha = .88f;
+
         /// <summary>
         /// The width the season is laid out at, inside the card: the room the screen gives it, from
         /// the canvas the report is drawn on, so the dashboard fills a wide screen and still fits a
@@ -294,21 +297,31 @@ namespace Gamesim.Presentation
             // The house dimmed behind the season rather than blacked out, and the season on a
             // glass card, as the mockups set every summary over the room it is about. Both take
             // the mouse: a modal that catches nothing lets every click through to the HUD behind.
-            // The scrim itself is clear and catches every click; the dim is drawn by the two bands
-            // on it, lighter over the rail, which is there to be seen and not pressed.
+            // The scrim itself is clear and catches every click; the dim is drawn by the bands on
+            // it, lighter over the rail, which is there to be seen and not pressed.
             var scrim = HudPrimitives.Fill("Scrim", transform, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, 0f), 1);
             scrim.GetComponent<Image>().raycastTarget = true;
             Stretch(scrim);
             float dimFrom = besideRail ? rail : 0f;
             if (besideRail)
             {
+                // The lighter dim stops above the house's cast strip. The strip runs the frame's
+                // whole width, under the rail's column as well as the card, and it is the house's,
+                // not the rail's: at the rail's dim its first chips showed at half light, with the
+                // brand line drawn over their faces. The corner under the rail is dimmed as the
+                // house is, and the brand line stands on that dark ground.
+                float strip = StripTop();
                 var railDim = HudPrimitives.Fill("Rail dim", scrim, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, RailDimAlpha), 1);
                 railDim.anchorMin = Vector2.zero; railDim.anchorMax = new Vector2(0f, 1f);
                 railDim.pivot = new Vector2(0f, .5f);
-                railDim.sizeDelta = new Vector2(rail, 0f);
-                railDim.anchoredPosition = Vector2.zero;
+                railDim.offsetMin = new Vector2(0f, strip); railDim.offsetMax = new Vector2(rail, 0f);
+                var stripDim = HudPrimitives.Fill("Strip dim", scrim, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, HouseDimAlpha), 1);
+                stripDim.anchorMin = stripDim.anchorMax = Vector2.zero;
+                stripDim.pivot = Vector2.zero;
+                stripDim.sizeDelta = new Vector2(rail, strip);
+                stripDim.anchoredPosition = Vector2.zero;
             }
-            var houseDim = HudPrimitives.Fill("House dim", scrim, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .88f), 1);
+            var houseDim = HudPrimitives.Fill("House dim", scrim, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, HouseDimAlpha), 1);
             houseDim.anchorMin = Vector2.zero; houseDim.anchorMax = Vector2.one;
             houseDim.offsetMin = new Vector2(dimFrom, 0f); houseDim.offsetMax = Vector2.zero;
             HudPrimitives.Vignette(scrim);
@@ -775,6 +788,10 @@ namespace Gamesim.Presentation
         /// The house's brand line in the corner under the rail (MOCKUP-PASS M5, decision 23): the
         /// mockup's night exterior has no set and no photo art, so its place holds the line the cast
         /// screen already says, over the scrim's vignette. Decoration: it takes no click.
+        ///
+        /// <para>The corner is the cast strip's, dimmed as the house is (<see cref="StripTop"/>),
+        /// and the line keeps inside it: two lines of 16 from 32 up at either text size, about 72,
+        /// under a strip that stands at least 135 report units.</para>
         /// </summary>
         private static void BrandLine(RectTransform scrim, float rail)
         {
@@ -808,6 +825,22 @@ namespace Gamesim.Presentation
         {
             float reference = scaler != null ? scaler.referenceResolution.x : 1920f;
             return Episode.EpisodeHud.LeftColumnX * reference / Episode.EpisodeHud.ReferenceWidth;
+        }
+
+        /// <summary>
+        /// How high the house's cast strip stands off the floor, in the report's own units: its
+        /// glass at the text size the HUD shares with the report (the director sets both from one
+        /// setting), converted as the rail's edge is.
+        ///
+        /// <para>The report's text size is its reference width over 1920. The strip's chips grow
+        /// with the text and the conversion shrinks as it grows, so the chips' 96 always come to
+        /// 115 report units; only the strip's margins change, which puts its top at 139 at resting
+        /// text and 135 at the larger.</para>
+        /// </summary>
+        private float StripTop()
+        {
+            float reference = scaler != null ? scaler.referenceResolution.x : 1920f;
+            return CastRail.GroundTop(1920f / reference) * reference / Episode.EpisodeHud.ReferenceWidth;
         }
 
         private static float TabWidth(string caption) => Mathf.Clamp(caption.Length * 8.2f + 36f, 140f, 220f);

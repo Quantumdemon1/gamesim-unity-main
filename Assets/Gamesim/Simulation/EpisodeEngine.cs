@@ -2109,9 +2109,18 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The object form of a houseguest: their name, "you", or "yourself" when the actor is
         /// acting on themselves.
+        ///
+        /// <para>A houseguest acting on themselves takes their own reflexive - herself, himself or
+        /// themselves, from their pronouns - as the player takes "yourself". Only the player's was
+        /// known, so a houseguest who held the veto from the block logged "Emma Brown saves Emma
+        /// Brown", and the veto meeting's screen, the status line and the week's recap all said it
+        /// (PACK8-PASS-PLAN B3). The veto's self-save is the one sentence that reaches here with an
+        /// actor acting on themselves; its relationship note is never written, because a houseguest
+        /// has no relationship with themselves.</para>
         /// </summary>
         private static string Target(EpisodeState s, string id, string actorId)
-            => id != s.playerId ? Name(s, id) : (id == actorId ? "yourself" : "you");
+            => id == s.playerId ? (id == actorId ? "yourself" : "you")
+                : id == actorId ? StoryPeople.Pronouns(s.Find(id)).themselves : Name(s, id);
 
         /// <summary>The same, for a pronoun that opens a sentence.</summary>
         private static string TargetStart(EpisodeState s, string id, string actorId)

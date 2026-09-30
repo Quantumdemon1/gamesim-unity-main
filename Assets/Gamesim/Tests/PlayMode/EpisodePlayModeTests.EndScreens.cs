@@ -295,6 +295,80 @@ namespace Gamesim.Tests.PlayMode
             Report().Hide();
         }
 
+        /// <summary>
+        /// Season Complete's hero (MOCKUP-PASS M6) for a jury of six and a jury of fourteen, at both
+        /// text sizes: the winner's card with 'WINNER' and the season's number before it, a chip for
+        /// each trait and the four counts; the final jury vote inside the hero, with the crown line
+        /// and the count word for word and a card for every ballot - never 'voted for', which the jury
+        /// column counts - in one row, or two past eight, inside the panel; and the tally's numbers.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EndScreens_TheWinnerHeroAndTheFinalJuryVoteHoldForSixAndFourteenJurors()
+        {
+            foreach (int house in new[] { 8, 16 })
+            {
+                var state = Finished(house);
+                var champion = state.Find(state.winnerId);
+                var runnerUp = state.Find(state.runnerUpId);
+                var ballots = SeasonReport.JuryBallots(state);
+                Assert.That(ballots.Count, Is.EqualTo(house - 2), "A jury of " + (house - 2) + ".");
+                int forChampion = ballots.Count(b => b.FinalistId == champion.id), forRunnerUp = ballots.Count(b => b.FinalistId == runnerUp.id);
+                foreach (bool larger in new[] { false, true })
+                {
+                    string where = ballots.Count + " jurors" + (larger ? " at the larger text" : "") + ": ";
+                    Report().FontScale = larger ? 1.2f : 1f;
+                    yield return null;
+                    Report().Show(state, _ => null, null, null, null, null, null, 2);
+                    yield return null;
+                    Canvas.ForceUpdateCanvases();
+
+                    var hero = ReportPart(SeasonReport.HeroName);
+                    var winnerCard = hero.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == "WINNER");
+                    var winnerWords = LabelsUnder(winnerCard);
+                    Assert.That(winnerWords, Does.Contain("WINNER").And.Contain("SEASON 2"), where + "'WINNER', with the season's number before it.");
+                    Assert.That(winnerWords, Does.Contain(forChampion + " jury votes"));
+                    foreach (var trait in champion.traits)
+                        Assert.That(winnerWords, Does.Contain(Localisation.Text(trait)), where + "a chip for " + trait + ".");
+                    var stats = ReportPart(SeasonReport.HeroStatsName);
+                    Assert.That(stats.IsChildOf(winnerCard), Is.True);
+                    string Count(string words) => stats.GetComponentsInChildren<RectTransform>().Last(rect => rect.name == words)
+                        .GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Value").text;
+                    Assert.That(Count(SeasonReport.CompetitionWinsWords), Is.EqualTo(FinalistRead.Wins(state, champion).ToString()));
+                    Assert.That(Count(SeasonReport.HohWinsWords), Is.EqualTo(champion.hohWins.ToString()));
+                    Assert.That(Count(SeasonReport.VetoWinsWords), Is.EqualTo(champion.vetoWins.ToString()));
+                    Assert.That(Count(SeasonReport.NominationsSurvivedWords), Is.EqualTo(champion.timesNominated.ToString()));
+
+                    var vote = ReportPart(SeasonReport.FinalJuryVoteName);
+                    Assert.That(vote != null && vote.IsChildOf(hero), Is.True, "The final jury vote is part of the hero, where its lines were read before.");
+                    var voteWords = LabelsUnder(vote);
+                    Assert.That(voteWords, Does.Contain("RUNNER-UP").And.Contain(champion.name + " beat " + runnerUp.name + " in the jury vote."));
+                    Assert.That(voteWords, Does.Contain("By a vote of " + forChampion + " to " + forRunnerUp + "."));
+                    Assert.That(LabelsUnder(hero).Any(text => text.Contains("voted for")), Is.False, where + "the hero never says 'voted for'.");
+
+                    var strip = ReportPart(SeasonReport.JurorStripName);
+                    var cards = strip.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == SeasonReport.JurorCardName).ToList();
+                    Assert.That(cards, Has.Count.EqualTo(ballots.Count), where + "a card for every ballot.");
+                    string On(RectTransform card, string label) => card.GetComponentsInChildren<TMP_Text>().Single(text => text.name == label).text;
+                    Assert.That(cards.Select(card => On(card, "Voted")), Is.All.EqualTo("VOTED"));
+                    Assert.That(cards.Count(card => On(card, "Their vote") == FinalistRead.FirstName(champion.name)), Is.EqualTo(forChampion),
+                        where + "each card names the finalist its juror chose, by first name.");
+                    Assert.That(cards.Count(card => On(card, "Juror name") == "You"), Is.EqualTo(1), "The player's own ballot says so.");
+                    int rows = cards.Select(card => Mathf.RoundToInt(ScreenRect(card).yMax)).Distinct().Count();
+                    Assert.That(rows, Is.EqualTo(ballots.Count > 8 ? 2 : 1), where + "one row, or two past eight ballots.");
+                    foreach (var card in cards) Assert.That(Inside(vote, card), Is.True, where + "every card is inside the panel.");
+
+                    var tally = ReportPart(SeasonReport.TallyName);
+                    Assert.That(LabelsUnder(tally), Does.Contain(forChampion.ToString()).And.Contain(forRunnerUp.ToString())
+                        .And.Contain(champion.name).And.Contain(runnerUp.name), where + "the count at the bar's ends, and whose it is.");
+                    foreach (var part in new[] { strip, stats, tally }) AssertDecisionCopyFits(part);
+                    if (Application.isBatchMode && house == 16) yield return CaptureFraming(larger ? "season-complete-hero-14-large" : "season-complete-hero-14");
+                    Report().Hide();
+                }
+            }
+            Report().FontScale = 1f;
+            yield return null;
+        }
+
         /// <summary>A season played to its first eviction, as a recap would close it.</summary>
         private static EpisodeState FirstWeekClosed()
         {

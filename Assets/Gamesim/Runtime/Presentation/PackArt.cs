@@ -145,6 +145,9 @@ namespace Gamesim.Presentation
         public const string SeasonQuote = "Pack7_SeasonComplete/Shells/quote_panel_9slice";
         public const string SeasonWinnerHero = "Pack7_SeasonComplete/WinnerHero/winner_hero_frame_9slice";
         public const string SeasonRunnerUpHero = "Pack7_SeasonComplete/WinnerHero/runnerup_hero_frame_9slice";
+        /// <summary>The plates the finalists' names sit on in the hero (MOCKUP-PASS M6); the winner's has a 38 px glow.</summary>
+        public const string SeasonWinnerNameplate = "Pack7_SeasonComplete/WinnerHero/winner_nameplate_9slice";
+        public const string SeasonRunnerUpNameplate = "Pack7_SeasonComplete/WinnerHero/runnerup_nameplate_9slice";
         public const string SeasonWinnerCrown = "Pack7_SeasonComplete/WinnerHero/winner_crown";
         public const string SeasonTrophy = "Pack7_SeasonComplete/WinnerHero/winner_trophy";
         public const string SeasonStatNeutral = "Pack7_SeasonComplete/StatCards/stat_card_neutral_9slice";

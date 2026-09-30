@@ -189,6 +189,12 @@ namespace Gamesim.Presentation
 
         public bool IsShowing => group != null && group.alpha > 0f;
 
+        /// <summary>The reduced-motion preference: the winner's sparkles hold still under it.</summary>
+        public bool ReducedMotion { get; set; }
+
+        /// <summary>The winner's sparkles, and how each twinkles: its phase, its speed and its resting light.</summary>
+        private readonly List<(Image image, float phase, float speed, float glow)> sparkles = new List<(Image, float, float, float)>();
+
         /// <summary>
         /// A canvas of its own, above the ceremony cards. Unlike those it *does* raycast: this
         /// screen is read and scrolled rather than watched, so it needs to take input.
@@ -271,6 +277,7 @@ namespace Gamesim.Presentation
         {
             foreach (Transform child in transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             tabs.Clear();
+            sparkles.Clear();
             litTab = -1;
 
             var room = Room();
@@ -453,7 +460,9 @@ namespace Gamesim.Presentation
         /// </summary>
         private void Update()
         {
-            if (!IsShowing || scroller == null || content == null || viewport == null) return;
+            if (!IsShowing) return;
+            Twinkle();
+            if (scroller == null || content == null || viewport == null) return;
             float travel = Travel;
             if (travel <= 0f) return;
             float from = content.anchoredPosition.y, to = from;
@@ -473,6 +482,23 @@ namespace Gamesim.Presentation
             if (Mathf.Abs(to - from) < .01f) return;
             scroller.StopMovement();
             content.anchoredPosition = new Vector2(content.anchoredPosition.x, to);
+        }
+
+        /// <summary>
+        /// The winner's sparkles brighten and fade, each at its own pace. Only their light moves,
+        /// never their place, and not at all under reduced motion.
+        /// </summary>
+        private void Twinkle()
+        {
+            if (ReducedMotion || sparkles.Count == 0) return;
+            float time = Time.unscaledTime;
+            foreach (var (image, phase, speed, glow) in sparkles)
+            {
+                if (image == null) continue;
+                var colour = image.color;
+                colour.a = glow * (.45f + .55f * (.5f + .5f * Mathf.Sin(time * speed + phase)));
+                image.color = colour;
+            }
         }
 
         /// <summary>

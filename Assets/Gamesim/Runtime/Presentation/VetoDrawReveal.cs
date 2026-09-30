@@ -311,7 +311,7 @@ namespace Gamesim.Presentation
                 title = HudPrimitives.Label("Draw title", column, 44f, UiTheme.Paper, TextAlignmentOptions.Center);
                 var bold = UiTheme.Font(UiTheme.Weight.Bold);
                 if (bold != null) title.font = bold;
-                line = HudPrimitives.Label("Draw line", column, 18f, UiTheme.Muted, TextAlignmentOptions.Center);
+                line = HudPrimitives.Label("Field line", column, 18f, UiTheme.Muted, TextAlignmentOptions.Center);
                 line.fontStyle = FontStyles.Italic;
                 progress = HudPrimitives.Label(ProgressName, column, 17f, UiTheme.Gold, TextAlignmentOptions.Center);
                 rule = HudPrimitives.Fill("Draw rule", column, new Color(UiTheme.Muted.r, UiTheme.Muted.g, UiTheme.Muted.b, 0.35f), 1);

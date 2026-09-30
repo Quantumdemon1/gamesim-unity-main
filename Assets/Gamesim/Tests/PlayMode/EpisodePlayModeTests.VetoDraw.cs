@@ -155,6 +155,10 @@ namespace Gamesim.Tests.PlayMode
                             where + "'s '" + card.name + "' is narrower than a name reads at.");
                     }
                     AssertEveryLabelDraws(row, where);
+                    var wayOn = (RectTransform)FindButton("Continue episode").transform;
+                    Assert.That(wayOn.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.WayOnHeadlineName).text,
+                        Is.EqualTo("REVEAL THE DRAW"), where + "'s way on wears the draw it makes.");
+                    AssertEveryLabelDraws(wayOn, where + "'s way on");
                 });
             }
         }

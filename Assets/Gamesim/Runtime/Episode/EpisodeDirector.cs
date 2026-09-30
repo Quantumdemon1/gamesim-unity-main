@@ -652,6 +652,8 @@ namespace Gamesim.Episode
             if (focusedNpc != null) conversationIntent = null;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
+            // The nomination's view goes with the panel, which opens again on the week's current step.
+            ForgetNominationView();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -1530,6 +1532,10 @@ namespace Gamesim.Episode
                 }
                 return;
             }
+            // The nomination is a screen of steps on the strategy stage - its status cards, its
+            // tracker, one step's body and a footer - in place of everything below (PACK8-PASS-PLAN
+            // B1, EpisodeDirector.NominationScreen.cs).
+            if (NominationScreen(state)) return;
             // Who holds what this week, on one line, before whatever there is to decide: the stage
             // stands the strip and its badges down, so this is where the roles are read. The final
             // Head of Household's choice opens on its own gold head instead: the house is down to

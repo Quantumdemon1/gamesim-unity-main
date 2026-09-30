@@ -135,8 +135,9 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The Head of Household's decision out of the diary (mockup-09): the candidates as a grid
-        /// of cards in a band between the rail and the right column, with the house, the strip and
-        /// the column left up around it, and a pick lit on its card without rebuilding the input.
+        /// of cards on the strategy stage - the nomination's picker step (PACK8-PASS-PLAN B1) - with
+        /// the rail and the status line left up around it, and a pick lit on its card without
+        /// rebuilding the input.
         /// </summary>
         [UnityTest]
         public IEnumerator Nominations_TheDecisionIsABandOfCandidateCards()
@@ -148,8 +149,8 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Canvas.ForceUpdateCanvases();
             var hud=director.GetComponentInChildren<EpisodeHud>();
-            Assert.That(hud.CurrentActivityLayout,Is.EqualTo(EpisodeHud.ActivityLayout.Nominations),
-                "Out of the diary the nominations take the band, not the docked panel.");
+            Assert.That(hud.CurrentActivityLayout,Is.EqualTo(EpisodeHud.ActivityLayout.Strategy),
+                "Out of the diary the nominations are the strategy stage's picker step, not the docked panel.");
 
             var grid=ActiveRect(EpisodeHud.NomineeGridName);
             Assert.That(grid,Is.Not.Null,"The candidates are a grid of cards.");

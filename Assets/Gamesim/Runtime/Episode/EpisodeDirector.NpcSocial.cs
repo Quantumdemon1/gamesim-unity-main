@@ -136,10 +136,11 @@ namespace Gamesim.Episode
             // (the commit makes them a non-contestant at once, and a body unbound at the commit could
             // not take its hot seat) and while they walk out; otherwise they go as they always did -
             // unbound at the commit, and let go by the walk-out if their body cannot take its
-            // navigation back.
+            // navigation back. Never a body Project has switched off: RoutedByTheHouse reads the
+            // same terms as its KeepsBody, so the stage lets go of the evicted the moment the walk
+            // out does, whoever ends it.
             if (!npcMeetings.Reconcile(NpcWorldGeneration, housemates, cast.Select(actor => actor.id).ToArray(),
-                cast.Where(actor => actor.status == ContestantStatus.Active || actor.id == walkingOutId || CeremonyStageHolds(actor.id))
-                    .Select(actor => actor.id), out var reason))
+                cast.Where(actor => RoutedByTheHouse(projected, actor)).Select(actor => actor.id), out var reason))
             { StopNpcWorld(reason); return; }
             foreach (long sequence in npcPendingWorld.Keys.ToArray())
                 if (!projected.npcSocial.pending.Any(row => row.sequence == sequence))
@@ -448,6 +449,10 @@ namespace Gamesim.Episode
 
         private void StopNpcWorld(string reason)
         {
+            // Said once, in the log, where a play session's report can find it: the status line
+            // below is overwritten by the next commit, and a stopped world refuses every staged
+            // ceremony and walk out until the season is loaded again.
+            if (!npcWorldFailed) Debug.LogWarning("House world stopped: " + (reason ?? "Housemate navigation is unavailable."));
             npcWorldFailed = true; npcWorldFailure = reason ?? "Housemate navigation is unavailable.";
             SetNpcWorldPaused(true); npcCaption?.Hide();
             message = "Housemate activity is paused: " + npcWorldFailure + " Your episode and saved history remain available.";

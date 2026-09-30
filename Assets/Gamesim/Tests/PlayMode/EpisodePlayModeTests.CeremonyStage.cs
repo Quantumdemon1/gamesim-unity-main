@@ -450,6 +450,9 @@ namespace Gamesim.Tests.PlayMode
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
             yield return null;
             Assert.That(PlatesDown(), Is.Empty, "The plates come back once the house is let go.");
+            // The stage ends itself on a stopped world, so "the house gets up" held on a dead one
+            // (PACK8-PASS-PLAN A1): the walk out has to leave the house's world running.
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
         [UnityTest]
@@ -519,6 +522,7 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipReveals();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
         /// <summary>A frame of a card on its screen: the rig on the screen's own shot for two frames, then the capture.</summary>
@@ -629,6 +633,7 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipReveals();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out at a full house too.");
         }
     }
 }

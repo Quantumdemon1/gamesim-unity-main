@@ -1067,9 +1067,7 @@ namespace Gamesim.Episode
                 // Imported IDs are rebound by saved slot, never guessed from display names.
                 var model = npcStates[i];
                 npc.Configure(model.id, model.name);
-                npc.gameObject.SetActive(model.status == ContestantStatus.Active || model.status == ContestantStatus.Winner
-                    || model.status == ContestantStatus.RunnerUp || model.id == departingId || model.id == walkingOutId
-                    || OnJuryBench(state, model));
+                npc.gameObject.SetActive(KeepsBody(state, model));
                 // The phase's clothes - or, for the player's company in the hot tub, swimwear, kept
                 // through a render and changed back behind the body when they get out.
                 DressHousemate(model.id);
@@ -1082,6 +1080,36 @@ namespace Gamesim.Episode
             // After the house's world has let the jurors go: nobody it routes is ever placed.
             StandTheJury(state);
         }
+
+        /// <summary>
+        /// Whether a houseguest's body is in the house: everyone still playing, the winner and the
+        /// runner-up, the jury on finale night, and the evicted while a card narrates their eviction
+        /// and while they walk out. <see cref="Project"/> switches every other body off.
+        /// </summary>
+        public static bool KeepsBody(ContestantStatus status, bool departing, bool walkingOut, bool onJuryBench) =>
+            status == ContestantStatus.Active || status == ContestantStatus.Winner || status == ContestantStatus.RunnerUp
+            || departing || walkingOut || onJuryBench;
+
+        /// <summary>
+        /// Whether the house's world routes a houseguest: everyone still playing, whoever is walking
+        /// out, and whoever a staged ceremony holds a place for - the evicted in the hot seat - but
+        /// only ever a body <see cref="KeepsBody(ContestantStatus, bool, bool, bool)"/> keeps. Both
+        /// read the same terms, so a body switched off is never one the world still counts on. A
+        /// stage that held the evicted past the end of their walk out once did exactly that: the
+        /// walk out switched the body off, the coordinator failed the whole house with "An eligible
+        /// NPC root is inactive.", and every ceremony after the first staged eviction played on the
+        /// HUD. An unstaged eviction still lets the evicted go at the commit: the card narrates them
+        /// in the room, but nothing routes them until they walk out.
+        /// </summary>
+        public static bool RoutedByTheHouse(ContestantStatus status, bool departing, bool walkingOut, bool onJuryBench, bool stageHolds) =>
+            KeepsBody(status, departing, walkingOut, onJuryBench) && (status == ContestantStatus.Active || walkingOut || stageHolds);
+
+        private bool KeepsBody(EpisodeState state, ContestantState model) =>
+            KeepsBody(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model));
+
+        private bool RoutedByTheHouse(EpisodeState state, ContestantState model) =>
+            RoutedByTheHouse(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model),
+                CeremonyStageHolds(model.id));
 
 
         /// <summary>The season as it has been lived: weeks, mood, promises, oaths, memories.</summary>

@@ -206,5 +206,44 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ballots[0].Character, Is.Not.SameAs(state.Find("c")), "copied, as the nominees' are.");
             Assert.That(ballots.Select(ballot => ballot.TargetId), Is.EqualTo(new[] { "a", "b" }));
         }
+
+        /// <summary>
+        /// The house's world routes only bodies the house keeps (PACK8-PASS-PLAN A1). A staged
+        /// eviction's stage still held the evicted after their walk out had switched the body off,
+        /// the coordinator failed the whole house on "An eligible NPC root is inactive.", and every
+        /// ceremony after the first staged eviction played on the HUD. Both answers read one set of
+        /// terms, so no combination of them can route a body that is off.
+        /// </summary>
+        [Test]
+        public void TheHouseRoutesOnlyBodiesItKeeps()
+        {
+            var statuses = (ContestantStatus[])System.Enum.GetValues(typeof(ContestantStatus));
+            var flags = new[] { false, true };
+            foreach (var status in statuses)
+                foreach (bool departing in flags)
+                    foreach (bool walkingOut in flags)
+                        foreach (bool bench in flags)
+                            foreach (bool held in flags)
+                                if (EpisodeDirector.RoutedByTheHouse(status, departing, walkingOut, bench, held))
+                                    Assert.That(EpisodeDirector.KeepsBody(status, departing, walkingOut, bench), Is.True,
+                                        status + (departing ? ", departing" : "") + (walkingOut ? ", walking out" : "")
+                                        + (bench ? ", on the jury bench" : "") + (held ? ", held by a stage" : "")
+                                        + ": routed by the house with its body switched off.");
+
+            Assert.That(EpisodeDirector.RoutedByTheHouse(ContestantStatus.Jury, false, false, false, true), Is.False,
+                "The walk out over, the stage still in its release lets the evicted go with their body.");
+            Assert.That(EpisodeDirector.KeepsBody(ContestantStatus.Jury, true, false, false), Is.True,
+                "The evicted are in the room while the card narrates them,");
+            Assert.That(EpisodeDirector.RoutedByTheHouse(ContestantStatus.Jury, true, false, false, false), Is.False,
+                "but an unstaged eviction still lets them go from the house's world at the commit,");
+            Assert.That(EpisodeDirector.RoutedByTheHouse(ContestantStatus.Jury, true, false, false, true), Is.True,
+                "a staged one takes them back for the hot seat,");
+            Assert.That(EpisodeDirector.RoutedByTheHouse(ContestantStatus.Evicted, false, true, false, false), Is.True,
+                "and the walk out routes them to the door.");
+            Assert.That(EpisodeDirector.RoutedByTheHouse(ContestantStatus.Active, false, false, false, false), Is.True,
+                "Everyone still playing is the house's.");
+            Assert.That(EpisodeDirector.RoutedByTheHouse(ContestantStatus.Jury, false, false, true, false), Is.False,
+                "The jury on finale night is placed, never routed.");
+        }
     }
 }

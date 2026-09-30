@@ -91,20 +91,49 @@ namespace Gamesim.Episode
         /// </summary>
         private bool TryBeginCeremonyStage(string kind, EpisodeState state, Func<ScreenSurface, bool> playCard)
         {
+            // The policy first, and silently: the look sheet, reduced motion and a batch run not
+            // asking never stage, by design, and a line for each of their ceremonies would be noise
+            // in every audited walk (and a failure wherever a test asks for a log with nothing
+            // unexpected in it).
             if (!CeremonyStages || reducedMotion || (Application.isBatchMode && !StagesInBatchRuns) || state == null) return false;
-            if (npcMeetings == null || !npcMeetings.IsReady || npcWorldFailed || npcDiagnosticsSuspended || competitionArenaStaging) return false;
-            if (openingStage != null && openingStage.Active) return false;
-            if (walkingOutId != null || FinaleNight(state.phase)) return false;
-            if (player == null || player.Agent == null || !player.Agent.isOnNavMesh || cameraRig == null) return false;
+            // Past it, a house that cannot stage says why. Every guard below used to decline in
+            // silence, and a world stopped after the first staged eviction kept every later
+            // ceremony on the HUD with nothing in the log to say so.
+            string declined = StageDeclined(state);
+            if (declined != null) { Debug.Log("Ceremony stage declined (" + kind + "): " + declined); return false; }
             EndCeremonyStage();
             var stage = CeremonyStage.TryCreate(this, kind, state, playCard, out var reason);
             if (stage == null) { if (reason != null) Debug.Log("Ceremony stage: " + reason); return false; }
             ceremonyStage = stage;
             // The commit's projection unbound the evicted; now that the stage holds a place for
             // them the world takes them back, and the summons' retries send them once they are bound.
+            // A body that cannot take its navigation back ("The feet are not inside one bound
+            // floor's safe interior.") is let go on its own, as the walk out lets its candidate
+            // go, and the card stops waiting for them: it used to fail the whole house instead.
+            if (kind == CeremonySting.EvictionKind && departingId != null) npcMeetings.DepartureCandidate = departingId;
             ReconcileNpcSocialWorld();
             stage.Begin();
             return true;
+        }
+
+        /// <summary>
+        /// Why this house cannot stage a ceremony now, in words for the log, or null when it can.
+        /// Asked only past the policy checks, which decline in silence.
+        /// </summary>
+        private string StageDeclined(EpisodeState state)
+        {
+            if (npcMeetings == null) return "the house's world is not built";
+            if (npcWorldFailed) return "the house's world stopped: " + npcWorldFailure;
+            if (npcDiagnosticsSuspended) return "the house's world is suspended for diagnostics";
+            if (!npcMeetings.IsReady) return "the house's world is still binding its people";
+            if (competitionArenaStaging) return "the competition arena has the yard";
+            if (openingStage != null && openingStage.Active) return "the opening has the house";
+            if (walkingOutId != null) return walkingOutId + " is still walking out";
+            if (FinaleNight(state.phase)) return "it is finale night";
+            if (player == null || player.Agent == null) return "the player has no body";
+            if (!player.Agent.isOnNavMesh) return "the player is off the NavMesh";
+            if (cameraRig == null) return "there is no camera rig";
+            return null;
         }
 
         /// <summary>Each frame: the stage kept moving, and forgotten once it has let the house go.</summary>
@@ -447,15 +476,17 @@ namespace Gamesim.Episode
 
             public void SkipSummons()
             {
-                if (Active && Step == CeremonyStageStep.Summons) summonsUntil = summonsHardBy = Time.unscaledTime;
+                // The ceremony's own people are not waited for either: the card plays now.
+                if (Active && Step == CeremonyStageStep.Summons) summonsUntil = summonsHardBy = summonsPatienceBy = Time.unscaledTime;
             }
 
             /// <summary>
             /// Whether everyone the stage placed has reached their place - the player by their own
-            /// move - leaving out only whoever the coordinator has refused twice over, who is not
-            /// coming. Not the leases' count against their arrivals: a body the summons could not
-            /// send (the evicted, still binding on that frame) holds no lease yet, and the card
-            /// would have started without them.
+            /// move - leaving out only whoever the coordinator has refused twice over, or let go
+            /// because their body could not take its navigation back, who are not coming. Not the
+            /// leases' count against their arrivals: a body the summons could not send (the
+            /// evicted, still binding on that frame) holds no lease yet, and the card would have
+            /// started without them.
             /// </summary>
             private bool EveryoneArrived
             {
@@ -473,20 +504,28 @@ namespace Gamesim.Episode
                         }
                         if (arrived.Contains(id) || meetings.CeremonyActorArrived(id)) continue;
                         if (refusalCounts.TryGetValue(id, out int refused) && refused >= 2) continue;
+                        if (LetGo(id)) continue;
                         return false;
                     }
                     return true;
                 }
             }
 
-            /// <summary>The people the card is about: an eviction's nominees, a nomination's or a veto's Head of Household.</summary>
+            /// <summary>
+            /// Whether the house let this houseguest go because their body could not take its
+            /// navigation back for their place - the evicted, re-bound for the hot seat. They are
+            /// not coming, and no card waits out its patience in front of their empty chair.
+            /// </summary>
+            private bool LetGo(string id) => director.npcMeetings != null && director.npcMeetings.CandidateDropped(id);
+
+            /// <summary>The people the card is about: an eviction's nominees, a nomination's or a veto's Head of Household - whoever of them is coming.</summary>
             private IEnumerable<string> Principals
             {
                 get
                 {
                     if (Kind == CeremonySting.EvictionKind)
-                        foreach (var id in state.nominees ?? new List<string>()) { if (placeOf.ContainsKey(id)) yield return id; }
-                    else if (StandingId != null && placeOf.ContainsKey(StandingId)) yield return StandingId;
+                        foreach (var id in state.nominees ?? new List<string>()) { if (placeOf.ContainsKey(id) && !LetGo(id)) yield return id; }
+                    else if (StandingId != null && placeOf.ContainsKey(StandingId) && !LetGo(StandingId)) yield return StandingId;
                 }
             }
 
@@ -557,7 +596,7 @@ namespace Gamesim.Episode
                 foreach (var pair in places)
                 {
                     string id = pair.Key;
-                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id)) continue;
+                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
                     if (meetings.JoinCeremonyStage(id, pair.Value, out var why))
                     {
@@ -925,6 +964,7 @@ namespace Gamesim.Episode
                     string verdict = sitting ? "seated"
                         : !place.Posed && there ? "standing in place"
                         : there ? "arrived, not seated"
+                        : LetGo(id) ? "let go (their body could not take its navigation back)"
                         : !holds ? "never sent" + (refusals.TryGetValue(id, out var why) ? " (" + why + ")" : summonsRefusals != null ? " (at the summons)" : " (no reason recorded)")
                         : stalled ? "stuck " + away.ToString("F2") + " m short of the approach" + arrival + Nearest(id, npc.transform.position)
                         : "walking" + arrival + Nearest(id, npc.transform.position);

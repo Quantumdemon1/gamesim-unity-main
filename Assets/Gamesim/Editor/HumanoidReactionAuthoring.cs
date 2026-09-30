@@ -11,18 +11,49 @@ namespace Gamesim.Editor
     {
         public static readonly string[] Takes = { "Listen_loop", "React_nominated", "React_saved", "React_evicted" };
 
+        /// <summary>
+        /// The pose every authored clip is built on: the at-ease stance, as its living pose holds it
+        /// (the still's first frame, facing forward, with the head turned to the chest).
+        ///
+        /// <para>They were built on the talk take's first frame, and that take was captured sitting:
+        /// its root at 0.675 of standing height and its lower legs at 0.22 and 0.33. So every
+        /// listener and every nominee sat down on nothing wherever they stood, which was the
+        /// "sitting in the middle of the room" the owner saw (PACK8-PASS-PLAN A2). The at-ease
+        /// pose stands at 0.978 with its lower legs at 1.04 and 1.00, read from its clip, and its
+        /// arms hang at its sides rather than working a gesture.</para>
+        /// </summary>
+        public const string Source = "PoseAtEase_loop";
+
+        /// <summary>
+        /// Batch entry for the lead's regeneration on a Unity copy:
+        /// <c>-executeMethod Gamesim.Editor.HumanoidReactionAuthoring.BuildFromCommandLine</c>.
+        /// Re-authors the four clips from <see cref="Source"/> and rebuilds the controller over them
+        /// (<see cref="HumanoidClipWiring.Apply"/>). A failure throws, which fails the batch run.
+        /// </summary>
+        public static void BuildFromCommandLine()
+        {
+            Apply();
+            Debug.Log("[Gamesim] humanoid · " + string.Join(", ", Takes) + " authored from " + Source
+                + " and the controller rebuilt at " + HumanoidClipWiring.Controller + ".");
+        }
+
         [MenuItem("Gamesim/Characters/Author missing humanoid reactions")]
         public static void Apply()
         {
-            var source = AssetDatabase.LoadAllAssetsAtPath(HumanoidClipWiring.Path("Talk_loop"))
+            var source = AssetDatabase.LoadAllAssetsAtPath(HumanoidClipWiring.Path(Source))
                 .OfType<AnimationClip>().FirstOrDefault(clip => !clip.name.StartsWith("__preview", StringComparison.Ordinal));
-            if (source == null || !source.humanMotion) throw new InvalidOperationException("The existing Humanoid talk take is required.");
-            var names = new HashSet<string>(HumanTrait.MuscleName);
-            var pose = AnimationUtility.GetCurveBindings(source).Where(binding => binding.type == typeof(Animator)
-                && (names.Contains(binding.propertyName) || binding.propertyName.StartsWith("RootT.", StringComparison.Ordinal)
-                    || binding.propertyName.StartsWith("RootQ.", StringComparison.Ordinal)))
-                .ToDictionary(binding => binding.propertyName, binding => AnimationUtility.GetEditorCurve(source, binding).Evaluate(0f));
-            if (!pose.ContainsKey("Head Nod Down-Up")) throw new InvalidOperationException("The source take does not expose Humanoid muscle curves.");
+            if (source == null || !source.humanMotion)
+                throw new InvalidOperationException("The standing pose " + HumanoidClipWiring.Path(Source)
+                    + " is required; the living poses are built by Gamesim > Characters > Author the living poses.");
+            var pose = HumanoidPoseAuthoring.Frame(source);
+            // Held here as well as by the controller's test: a source that sits would sit every
+            // listener and every nominee again, and nothing else would say so until a playtest.
+            pose.TryGetValue("RootT.y", out float height);
+            pose.TryGetValue("Left Lower Leg Stretch", out float left);
+            pose.TryGetValue("Right Lower Leg Stretch", out float right);
+            if (height < HumanoidClipWiring.StandingRootHeight || Mathf.Max(left, right) < HumanoidClipWiring.StraightLowerLeg)
+                throw new InvalidOperationException(Source + " does not stand (root " + height.ToString("0.000")
+                    + ", lower legs " + left.ToString("0.00") + " and " + right.ToString("0.00") + "); the reactions need a standing source.");
             FaceForward(pose);
             var clips = new[]
             {
@@ -55,9 +86,11 @@ namespace Gamesim.Editor
         }
 
         /// <summary>
-        /// The talk take's first frame carries the Mixamo file's heading, about 164 degrees from
-        /// forward, and every reaction built on it played facing away from the room. The body keeps
-        /// its lean and loses its turn, and stands where its root is.
+        /// A take's first frame carries the Mixamo file's heading - the talk take's was about 164
+        /// degrees from forward, and every reaction built on it played facing away from the room.
+        /// The body keeps its lean and loses its turn, and stands where its root is. The living
+        /// poses are faced forward the same way when they are authored, so on them this changes
+        /// nothing and is kept for any source that is not.
         /// </summary>
         public static void FaceForward(IDictionary<string, float> pose)
         {

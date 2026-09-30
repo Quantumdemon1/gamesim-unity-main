@@ -118,7 +118,7 @@ namespace Gamesim.Tests.EditMode
                 var ahead = body * Vector3.forward; ahead.y = 0f;
                 float heading = Vector3.SignedAngle(Vector3.forward, ahead, Vector3.up);
                 Assert.That(Mathf.Abs(heading), Is.LessThan(2f),
-                    take + " keeps the talk take's lean and loses its turn; it was built facing " + heading + " degrees round");
+                    take + " keeps its source's lean and loses its turn; it was built facing " + heading + " degrees round");
                 Assert.That(Value("RootT.x"), Is.Zero, take + " stands where its root is");
                 Assert.That(Value("RootT.z"), Is.Zero, take + " stands where its root is");
             }
@@ -364,7 +364,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Leads(sitIdle, sitTalk, HumanoidClipWiring.TalkingParameter), Is.True, "a seated body talks");
             Assert.That(Leads(sitTalk, sitIdle, HumanoidClipWiring.TalkingParameter), Is.True, "and stops");
 
-            // Three standing takes, played in a ring on exit time, so a long conversation varies
+            // The standing takes, played in a ring on exit time, so a long conversation varies
             // instead of looping the same gesture.
             for (int i = 0; i < HumanoidClipWiring.TalkRing.Length; i++)
             {
@@ -395,6 +395,143 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(state.transitions.Any(t => t.destinationState == idle && t.hasExitTime), Is.True,
                     stateName + " returns to idle");
             }
+        }
+
+        /// <summary>
+        /// Every state stands unless it is a seat, and every seat sits (PACK8-PASS-PLAN A2).
+        ///
+        /// <para>The standing talk played a take captured sitting, and the listen and the three
+        /// ceremony reactions were built on its first frame, so every standing conversation and
+        /// every standing nominee sat down on nothing: "sitting in the middle of the room". Nothing
+        /// looked at what a clip did with the body, only at which clip a state named. This reads
+        /// each state's own curves: the root's height (RootT.y, the body's centre in its own
+        /// heights) averaged over the clip, and how straight its lower legs are. A standing state
+        /// keeps its root high and straightens a leg at some point; a seat keeps its root low and
+        /// a knee bent. The bed and the pool lie and float, and are neither.</para>
+        /// </summary>
+        [Test]
+        public void EveryStateStandsUnlessItIsASeat()
+        {
+            var controller = Controller();
+            var machine = Machine(controller);
+            var lying = machine.anyStateTransitions.Where(t => t.conditions.Any(c => c.mode == AnimatorConditionMode.If
+                    && (c.parameter == HumanoidClipWiring.SleepingParameter || c.parameter == HumanoidClipWiring.SwimmingParameter)))
+                .Select(t => t.destinationState.name).Distinct().OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            Assert.That(lying, Is.EqualTo(new[] { "Sleep", "SwimForward", "SwimIdle" }),
+                "Only the bed and the pool are let off standing or sitting.");
+
+            var wrong = new System.Collections.Generic.List<string>();
+            int seats = 0, standing = 0;
+            foreach (var state in machine.states.Select(s => s.state))
+            {
+                if (lying.Contains(state.name)) continue;
+                var clip = state.motion as AnimationClip;
+                if (clip == null || !clip.humanMotion) { wrong.Add(state.name + " plays no Humanoid clip"); continue; }
+                if (!Stance(clip, out float height, out float straightest, out float bent))
+                { wrong.Add(state.name + " (" + clip.name + ") has no root height or lower-leg curves"); continue; }
+                string measured = state.name + " (" + clip.name + ": root " + height.ToString("0.000")
+                    + ", straightest lower leg " + straightest.ToString("0.00") + ", most bent " + bent.ToString("0.00") + ")";
+                if (state.name.StartsWith("Sit", StringComparison.Ordinal))
+                {
+                    seats++;
+                    if (height >= HumanoidClipWiring.StandingRootHeight || bent >= HumanoidClipWiring.StraightLowerLeg)
+                        wrong.Add(measured + " is a seat that does not sit");
+                }
+                else
+                {
+                    standing++;
+                    if (height < HumanoidClipWiring.StandingRootHeight || straightest < HumanoidClipWiring.StraightLowerLeg)
+                        wrong.Add(measured + " is not a seat and does not stand");
+                }
+            }
+            Assert.That(wrong, Is.Empty, "The controller at " + HumanoidClipWiring.Controller + " needs regenerating "
+                + "(-executeMethod Gamesim.Editor.HumanoidReactionAuthoring.BuildFromCommandLine) or a take is wired "
+                + "to the wrong kind of state:\n" + string.Join("\n", wrong));
+            Assert.That(seats, Is.EqualTo(5), "SitIdle, the two seated talks, the clap and the fist pump are measured as seats.");
+            Assert.That(standing, Is.GreaterThan(20), "and everything else as standing.");
+        }
+
+        /// <summary>
+        /// The talk take captured sitting talks only from a seat, as the seated ring's second take;
+        /// the standing ring is the two standing takes; and the standing talk's way in keeps its
+        /// name, plays the ring's first take and hands the floor to its second (PACK8-PASS-PLAN A2).
+        /// </summary>
+        [Test]
+        public void TheTalkCapturedSittingIsPlayedOnlyFromASeat()
+        {
+            Assert.That(HumanoidClipWiring.States.Where(s => s.take == "Talk_loop").Select(s => s.state).ToArray(),
+                Is.EqualTo(new[] { "SitTalkB" }), "Talk_loop was captured sitting: only a seat plays it.");
+            Assert.That(HumanoidClipWiring.TalkRing, Is.EqualTo(new[] { "TalkB", "TalkC" }), "The standing ring is the two standing takes.");
+            Assert.That(HumanoidClipWiring.SeatedTalkRing, Is.EqualTo(new[] { "SitTalk", "SitTalkB" }));
+            Assert.That(HumanoidClipWiring.TalkEntry, Is.EqualTo("Talk"), "Every standing cue asks for the way in by this name.");
+            Assert.That(HumanoidClipWiring.States.Single(s => s.state == HumanoidClipWiring.TalkEntry).take,
+                Is.EqualTo(HumanoidClipWiring.States.Single(s => s.state == HumanoidClipWiring.TalkRing[0]).take),
+                "The way in plays the ring's first take.");
+            Assert.That(HumanoidPoseAuthoring.Takes, Does.Contain(HumanoidReactionAuthoring.Source),
+                "The listen and the reactions are built on a standing living pose.");
+
+            var controller = Controller();
+            var idle = State(controller, "Idle");
+            var sitIdle = State(controller, "SitIdle");
+            var entry = State(controller, HumanoidClipWiring.TalkEntry);
+            var second = State(controller, HumanoidClipWiring.TalkRing[1]);
+            var handsOn = entry.transitions.FirstOrDefault(t => t.destinationState == second);
+            Assert.That(handsOn, Is.Not.Null, "The way in hands the floor to the ring's second take.");
+            Assert.That(handsOn.hasExitTime && handsOn.conditions.Any(c => c.parameter == HumanoidClipWiring.TalkingParameter), Is.True,
+                "after its take has played, while the body still talks.");
+            Assert.That(Leads(entry, idle, HumanoidClipWiring.TalkingParameter), Is.True, "The way in stops talking,");
+            Assert.That(Leads(entry, State(controller, "Walk"), HumanoidClipWiring.SpeedParameter), Is.True, "walks,");
+            Assert.That(Leads(entry, sitIdle, HumanoidClipWiring.SeatedParameter), Is.True, "sits");
+            Assert.That(Leads(entry, State(controller, "Argue"), HumanoidClipWiring.ArguingParameter), Is.True, "and rows as the ring does.");
+
+            var seatedRing = HumanoidClipWiring.SeatedTalkRing.Select(name => State(controller, name)).ToArray();
+            Assert.That(seatedRing, Has.None.Null, "Every seated talk is a state of the controller - regenerate it "
+                + "(-executeMethod Gamesim.Editor.HumanoidReactionAuthoring.BuildFromCommandLine).");
+            Assert.That(Leads(sitIdle, seatedRing[0], HumanoidClipWiring.TalkingParameter), Is.True,
+                "A seated body starts talking with the seated talk.");
+            for (int i = 0; i < seatedRing.Length; i++)
+            {
+                var here = seatedRing[i];
+                var next = seatedRing[(i + 1) % seatedRing.Length];
+                var ring = here.transitions.FirstOrDefault(t => t.destinationState == next);
+                Assert.That(ring, Is.Not.Null, here.name + " hands the floor to " + next.name);
+                Assert.That(ring.hasExitTime, Is.True, here.name + " plays its take out first");
+                Assert.That(Leads(here, sitIdle, HumanoidClipWiring.TalkingParameter), Is.True, here.name + " stops talking in the seat");
+                Assert.That(Leads(here, idle, HumanoidClipWiring.SeatedParameter), Is.True, here.name + " stands up with the body");
+                Assert.That(Leads(here, State(controller, "SitClap"), HumanoidClipWiring.SeatedClapTrigger), Is.True, here.name + " claps from the seat");
+                Assert.That(Leads(here, State(controller, "SitVictory"), HumanoidClipWiring.SeatedVictoryTrigger), Is.True, here.name + " pumps a fist from the seat");
+            }
+        }
+
+        /// <summary>
+        /// A clip's stance: its root height averaged over the clip, the straightest either lower leg
+        /// gets at any moment, and the more bent lower leg averaged over the clip. Read from the
+        /// Humanoid curves the clip carries, as the reactions' authoring reads them.
+        /// </summary>
+        private static bool Stance(AnimationClip clip, out float height, out float straightest, out float bent)
+        {
+            height = 0f; straightest = float.NegativeInfinity; bent = 0f;
+            var bindings = AnimationUtility.GetCurveBindings(clip).Where(b => b.type == typeof(Animator)).ToArray();
+            AnimationCurve Curve(string property)
+            {
+                foreach (var binding in bindings)
+                    if (binding.propertyName == property) return AnimationUtility.GetEditorCurve(clip, binding);
+                return null;
+            }
+            var root = Curve("RootT.y");
+            var left = Curve("Left Lower Leg Stretch");
+            var right = Curve("Right Lower Leg Stretch");
+            if (root == null || left == null || right == null) return false;
+            const int Samples = 24;
+            for (int i = 0; i < Samples; i++)
+            {
+                float time = clip.length * i / (Samples - 1);
+                float l = left.Evaluate(time), r = right.Evaluate(time);
+                height += root.Evaluate(time) / Samples;
+                straightest = Mathf.Max(straightest, Mathf.Max(l, r));
+                bent += Mathf.Min(l, r) / Samples;
+            }
+            return true;
         }
 
         /// <summary>

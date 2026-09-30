@@ -227,7 +227,12 @@ namespace Gamesim.Episode
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
             ClosePanels(); focusedNpc = npc; player.SetInputEnabled(false); cameraRig.SetConversationFocus(player.transform, npc.transform);
-            npc.GetComponent<CharacterPresentation>()?.SetTalking(true); Render(); return true;
+            // The houseguest has the floor, said here rather than inherited: the house's own chats
+            // hand the floor back and forth every tick, and left it with whoever last had it - for
+            // anybody not in a chat, nobody - so the player talked to somebody listening.
+            var talker = npc.GetComponent<CharacterPresentation>();
+            if (talker != null) { talker.SetSpeaking(true); talker.SetTalking(true); }
+            Render(); return true;
         }
 
         /// <summary>

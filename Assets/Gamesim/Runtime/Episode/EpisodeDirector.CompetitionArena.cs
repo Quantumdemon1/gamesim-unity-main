@@ -220,7 +220,9 @@ namespace Gamesim.Episode
                 visual.SetTalking(false);visual.SetArguing(false);visual.SetFacing(arrived?pair.Value.Facing:float.NaN);
                 if(arrived && pair.Value.Seated)
                 {
-                    var seat=npc.GetComponent<HouseSeatPresentation>() ?? npc.gameObject.AddComponent<HouseSeatPresentation>();
+                    // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+                    var seat=npc.GetComponent<HouseSeatPresentation>();
+                    if(seat==null)seat=npc.gameObject.AddComponent<HouseSeatPresentation>();
                     if(seat.isActiveAndEnabled && !seat.Active)
                     {
                         string id=pair.Key;

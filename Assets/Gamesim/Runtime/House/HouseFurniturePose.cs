@@ -67,7 +67,9 @@ namespace Gamesim.House
             if(!visual.ReducedMotion && Time.unscaledTime-arrivedAt<.25f)return;
             if(anchor.Posed)
             {
-                seat=GetComponent<HouseSeatPresentation>() ?? gameObject.AddComponent<HouseSeatPresentation>();
+                // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+                seat=GetComponent<HouseSeatPresentation>();
+                if(seat==null)seat=gameObject.AddComponent<HouseSeatPresentation>();
                 seat.Begin(anchor,()=>Active && valid!=null && valid());
                 if(!seat.Active){FinishNow();return;}
             }
@@ -111,7 +113,10 @@ namespace Gamesim.House
         public void End()
         {
             if(!Active)return;
-            Active=false;ending=false;RestoreArm();seat?.End();
+            // A body taken from its seat - the activity released for a conversation, a stage or a
+            // reload - gets up at the seat before it goes back to its root, as one whose activity
+            // ran out does. The seat ends itself at once when there is nothing to get up from.
+            Active=false;ending=false;RestoreArm();if(seat!=null)seat.RequestExit();
             // Standing: a seat pose is the only thing that may seat a body (HouseSeatPresentation.End).
             if(visual!=null){visual.SetActivity(CharacterPresentation.BodyActivity.None);visual.SetSeated(false);visual.SetFacing(previousFacing);}
             valid=null;arrived=null;isPaused=null;finished=null;anchor=null;body=arm=null;

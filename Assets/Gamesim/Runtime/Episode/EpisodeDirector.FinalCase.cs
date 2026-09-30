@@ -6,22 +6,29 @@ using Gamesim.Simulation;
 namespace Gamesim.Episode
 {
     /// <summary>
-    /// Prepare your final case (ENDGAME-PLAN F4b, mockup 37), under the finale rules: choose the
-    /// narrative, read the season's résumé, choose three signature moments, and lock the argument
-    /// (<see cref="FinalArgument"/>). A view over the station's panel, as the jury house is: a row
-    /// after the questioning's and the speech's own controls opens it, so neither the opening focus
-    /// nor any pinned caption moves. The theme and the moments are view state until the lock, which
-    /// is the one command, carrying keys; after it the screen reads the argument back.
+    /// Prepare your final case (ENDGAME-PLAN F4b, mockup 37; MOCKUP-PASS M15, mockup 57), under the
+    /// finale rules: choose the narrative, read the season's résumé, choose three signature moments,
+    /// and lock the argument (<see cref="FinalArgument"/>). A view over the station's panel, as the
+    /// jury house is: a row after the questioning's and the speech's own controls opens it, so
+    /// neither the opening focus nor any pinned caption moves. The theme and the moments are view
+    /// state until the lock, which is the one command, carrying keys; after it the screen reads the
+    /// argument back.
+    ///
+    /// <para>The screen is the station's own (EpisodeHud.FinalCase.cs): its band names it, and three
+    /// columns - the narratives, the résumé, the moments as cards with the faces they are about -
+    /// stand over a tray of the moments chosen, in the order they were chosen, and the gold lock.</para>
     ///
     /// <para>The locked argument fills the speech editor when the speeches open, and counts at the
-    /// vote for the jurors whose theme it argues. Not built this round: a tile in the window at
-    /// three to read the screen early.</para>
+    /// vote for the jurors whose theme it argues.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
         public const string FinalCaseCaption = "Prepare your final case";
         public const string LeaveFinalCaseCaption = "Close your final case";
         public const string LockArgumentCaption = "Lock final argument";
+
+        /// <summary>The brand's line over the case (decision 10): an existing one, unattributed.</summary>
+        public const string FinalCaseBrandLine = "“Same house. Different stories.”";
 
         /// <summary>Whether the final case is open over the station's panel. View state.</summary>
         private bool finalCaseOpen;
@@ -108,76 +115,93 @@ namespace Gamesim.Episode
         {
             var argument = state.finalArgument;
             var moments = FinalArgument.Moments(state);
-            hud.ScreenHead("PREPARE YOUR FINAL CASE", argument != null ? "YOUR ARGUMENT IS LOCKED" : "WHAT WILL THE JURY REMEMBER?",
-                "The story of your game and three moments that prove it. Your speech opens with it, and a juror who values it weighs it.");
+            int required = FinalArgument.Required(state);
+            // The station's panel is the screen: its band names it, and the columns take the frame.
+            hud.StationScreen("PREPARE YOUR FINAL CASE", "Shape your story. Show the jury why you should win.", "crown", UiTheme.Gold);
+            hud.FinalCaseHead(argument != null ? "YOUR ARGUMENT IS LOCKED" : "WHAT WILL THE JURY REMEMBER?",
+                "The story of your game and three moments that prove it. Your speech opens with it, and a juror who values it weighs it.",
+                "FINAL 2 · Jury review", "gavel", FinalCaseBrandLine);
             hud.Action(LeaveFinalCaseCaption, CloseFinalCase);
 
-            hud.BeginSideCard(EpisodeHud.FinalCaseResumeName, "YOUR SEASON RÉSUMÉ");
-            foreach (var line in Resume(state)) hud.CardLine(line, 14, UiTheme.Paper);
-            hud.EndSideCard();
+            hud.BeginCaseColumns(.30f, .34f, .36f);
+            hud.SectionHead("journal", "1 · YOUR NARRATIVE", argument != null ? "The story you locked." : "Choose how the jury remembers you.");
+            if (argument != null)
+                hud.ChosenTile(EpisodeHud.FinalCaseLockedName, new EpisodeHud.MoveTile
+                {
+                    Caption = FinalArgument.Label(argument.theme), Description = FinalArgument.Claim(argument.theme),
+                    Corner = "Locked", CornerTint = UiTheme.Gold, Glyph = ThemeGlyph(argument.theme),
+                });
+            else
+                hud.Tiles(EpisodeHud.FinalCaseThemesName, FinalArgument.Themes.Select(theme => new EpisodeHud.MoveTile
+                {
+                    Caption = FinalArgument.Label(theme), Description = FinalArgument.Claim(theme),
+                    Corner = theme == chosenTheme ? EpisodeHud.ChosenWord : null, CornerTint = UiTheme.Allied, Glyph = ThemeGlyph(theme),
+                    Selected = theme == chosenTheme, Choose = () => ChooseTheme(theme),
+                }).ToList(), EpisodeHud.TileStyle.List);
 
+            hud.NextCaseColumn();
+            hud.SectionHead("trophy", "2 · YOUR SEASON RÉSUMÉ", "Your record, as the house saw it.");
+            // The quote slot (decision 44): the chosen claim, unquoted; after the lock, the opening
+            // of the speech it templates. Nobody else's words.
+            string argued = argument != null ? argument.theme : chosenTheme;
+            hud.FinalCaseResumeCard(new EpisodeHud.ResumeCard
+            {
+                Actor = state.Find(state.playerId), Standing = "Final " + state.Active.Count(),
+                QuoteLabel = argument != null ? "YOUR SPEECH OPENS" : "YOUR CLAIM",
+                Quote = argued == null ? null : argument != null ? FinalArgument.Opening(argued) : FinalArgument.Claim(argued),
+                QuoteEmpty = "Choose a narrative, and your claim reads here.",
+                Read = FinalCaseResume.Read(state),
+            });
+
+            hud.NextCaseColumn();
             if (argument != null)
             {
-                hud.Heading("1 · Your narrative");
-                hud.Paragraph(FinalArgument.Label(argument.theme) + ". " + FinalArgument.Claim(argument.theme));
-                hud.Heading("2 · Your signature moments");
-                foreach (var reference in argument.momentRefs)
-                    hud.Paragraph(moments.FirstOrDefault(m => m.reference == reference)?.text ?? "A moment the record no longer holds.");
+                hud.SectionHead("star", "3 · YOUR MOMENTS", "The moments you locked.");
+                hud.MomentCards(EpisodeHud.FinalCaseMomentsName, (argument.momentRefs ?? new List<string>()).Select(reference =>
+                {
+                    var moment = moments.FirstOrDefault(m => m.reference == reference);
+                    return new EpisodeHud.MomentCard
+                    {
+                        Caption = moment?.text ?? "A moment the record no longer holds.", SubjectId = FinalArgument.SubjectOf(state, reference),
+                        Week = moment?.week ?? 0, Title = FinalArgument.Title(reference), Glyph = ThemeGlyph(FinalArgument.ThemeOfReference(reference)),
+                        Backs = "Backs " + FinalArgument.Label(FinalArgument.ThemeOfReference(reference)), Selected = true,
+                    };
+                }).ToList());
+                hud.EndCaseColumns();
                 hud.Footnote("Your final speech opens with this argument. You can still change the words, or skip the speech.");
                 return;
             }
-
-            hud.Heading("1 · Choose your narrative");
-            hud.Tiles(EpisodeHud.FinalCaseThemesName, FinalArgument.Themes.Select(theme => new EpisodeHud.MoveTile
-            {
-                Caption = FinalArgument.Label(theme), Description = FinalArgument.Claim(theme),
-                Corner = theme == chosenTheme ? "Chosen" : null, CornerTint = UiTheme.Allied, Glyph = ThemeGlyph(theme),
-                Choose = () => ChooseTheme(theme),
-            }).ToList(), EpisodeHud.TileStyle.Rows);
-
-            int required = FinalArgument.Required(state);
-            hud.Heading("2 · Select signature moments");
-            if (moments.Count == 0) hud.Paragraph("The record holds no moment of yours to choose. Your narrative stands on its own.");
+            hud.SectionHead("star", "3 · SIGNATURE MOMENTS", required == 0 ? "None on the record yet."
+                : required == 1 ? "Choose the one that backs your story." : "Choose " + required + " that back your story.");
+            if (moments.Count == 0) hud.CardLine("The record holds no moment of yours to choose. Your narrative stands on its own.", 15, UiTheme.Paper);
             else
             {
-                hud.Footnote(chosenMoments.Count + " of " + required + " chosen. A moment backs one narrative; a juror who values it weighs the ones that back it.");
-                hud.Tiles(EpisodeHud.FinalCaseMomentsName, moments.Select(moment => new EpisodeHud.MoveTile
+                hud.Footnote("A moment backs one narrative; a juror who values it weighs the ones that back it.");
+                hud.MomentCards(EpisodeHud.FinalCaseMomentsName, moments.Select(moment => new EpisodeHud.MomentCard
                 {
-                    Caption = moment.text, Description = "Backs " + FinalArgument.Label(moment.theme) + ".",
-                    Corner = chosenMoments.Contains(moment.reference) ? "Chosen" : null, CornerTint = UiTheme.Allied,
-                    Glyph = ThemeGlyph(moment.theme), Choose = () => ToggleMoment(moment.reference),
-                }).ToList(), EpisodeHud.TileStyle.List);
+                    Caption = moment.text, SubjectId = FinalArgument.SubjectOf(state, moment.reference), Week = moment.week,
+                    Title = FinalArgument.Title(moment.reference), Backs = "Backs " + FinalArgument.Label(moment.theme), Glyph = ThemeGlyph(moment.theme),
+                    Selected = chosenMoments.Contains(moment.reference), Choose = () => ToggleMoment(moment.reference),
+                }).ToList());
             }
+            hud.EndCaseColumns();
 
-            hud.Heading("3 · Lock final argument");
+            hud.SectionHead("key", "4 · LOCK YOUR CASE", "Your narrative and your moments, in the order you chose them.");
+            if (required > 0)
+            {
+                var slots = new List<EpisodeHud.TraySlot>();
+                for (int i = 0; i < required; i++)
+                {
+                    var moment = i < chosenMoments.Count ? moments.FirstOrDefault(m => m.reference == chosenMoments[i]) : null;
+                    slots.Add(moment == null ? new EpisodeHud.TraySlot()
+                        : new EpisodeHud.TraySlot { SubjectId = FinalArgument.SubjectOf(state, moment.reference), Week = moment.week, Title = FinalArgument.Title(moment.reference) });
+                }
+                hud.FinalCaseTray(required == 1 ? "YOUR FINAL MOMENT" : "YOUR FINAL " + required + " MOMENTS",
+                    chosenMoments.Count + " / " + required + " selected", slots);
+            }
             bool ready = ReadyToLock(state);
-            var lockButton = hud.Action(LockArgumentCaption, LockFinalArgument);
-            if (lockButton != null) lockButton.interactable = ready;
-            hud.Footnote(ready ? "Locking is final. Your speech is still yours to write."
-                : "Choose a narrative and " + (required == 1 ? "one moment" : required + " moments") + " to lock your argument.");
-        }
-
-        /// <summary>The season's résumé, from the record: wins, the block, the weeks, power, alliances, and broken word both ways.</summary>
-        private static List<string> Resume(EpisodeState state)
-        {
-            var you = state.Find(state.playerId);
-            var ledger = state.ledger ?? new SeasonLedger();
-            var lines = new List<string>();
-            int hoh = you?.hohWins ?? 0, veto = you?.vetoWins ?? 0;
-            int parts = you == null ? 0 : FinalistRead.Wins(state, you) - hoh - veto;
-            lines.Add("Wins: " + hoh + " HoH · " + veto + " veto" + (parts > 0 ? " · " + parts + " final HoH part" + (parts == 1 ? "" : "s") : ""));
-            lines.Add("Nominations survived: " + (you?.timesNominated ?? 0));
-            lines.Add("Weeks: " + state.week);
-            int reign = ledger.power.Count(p => p.hohId == state.playerId);
-            lines.Add("Weeks in power: " + reign);
-            var allies = state.alliances.Where(a => a.members.Contains(state.playerId)).ToList();
-            lines.Add(allies.Count == 0 ? "Key alliances: none" : "Key alliances: " + string.Join(", ", allies.Select(a => a.name)));
-            int brokeTo = state.promises.Count(p => p.fromId == state.playerId && p.status == PromiseStatus.Broken)
-                + state.deals.Count(d => FinalistRead.DealBreaker(state, d) == state.playerId);
-            int brokeFrom = state.promises.Count(p => p.toId == state.playerId && p.status == PromiseStatus.Broken)
-                + state.deals.Count(d => { string by = FinalistRead.DealBreaker(state, d); return by != null && by != state.playerId; });
-            lines.Add("Betrayals: " + brokeTo + " by you · " + brokeFrom + " against you");
-            return lines;
+            hud.FinalCaseLock(LockArgumentCaption, LockFinalArgument, ready, "Next: deliver your final speech to the jury. Locking is final.",
+                ready ? null : "Choose a narrative and " + (required == 1 ? "one moment" : required + " moments") + " to lock your argument.");
         }
 
         private static string ThemeGlyph(string theme)

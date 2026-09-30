@@ -21,11 +21,13 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
-        /// <summary>Fails on any label with copy that draws not a single character.</summary>
-        private static void AssertEveryLabelDraws(string where)
+        /// <summary>Fails on any label with copy that draws not a single character: the scene's, or one screen's under <paramref name="root"/>.</summary>
+        private static void AssertEveryLabelDraws(string where, Transform root = null)
         {
             Canvas.ForceUpdateCanvases();
-            var empty = Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+            var labels = root != null ? root.GetComponentsInChildren<TMP_Text>()
+                : Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var empty = labels
                 .Where(label => label.enabled && label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text))
                 .Where(label =>
                 {

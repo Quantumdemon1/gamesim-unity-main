@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Episode;
+using Gamesim.Persistence;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -195,6 +196,95 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(lockLabel.fontStyle & FontStyles.UpperCase, Is.EqualTo(FontStyles.UpperCase), "Capitals by style; the caption is unchanged.");
             AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseMomentsName));
             AssertDecisionCopyFits(tray);
+        }
+
+        /// <summary>The window at three under the finale rules: a season played there from its start, installed and reloaded.</summary>
+        private IEnumerator InstallTheWindowAtThreeUnderTheFinaleRules()
+        {
+            EpisodeState fixture = null;
+            for (uint seed = 1; seed <= 120 && fixture == null; seed++)
+            {
+                var initial = ContentCatalog.Create(seed);
+                EpisodeEngine.EnableFinale(initial);
+                var engine = new EpisodeEngine(initial);
+                for (int guard = 0; guard < 150; guard++)
+                {
+                    var current = engine.Snapshot;
+                    if (current.phase == EpisodePhase.Social && current.Active.Count() == 3 && current.Active.Any(actor => actor.isPlayer)
+                        && current.pendingDiary == null) { fixture = current; break; }
+                    if (current.phase == EpisodePhase.Finished || !current.Active.Any(actor => actor.isPlayer)) break;
+                    var result = engine.Apply(NextCommand(current));
+                    Assert.That(result.accepted, Is.True, result.reason);
+                }
+            }
+            Assert.That(fixture, Is.Not.Null, "No bounded legal season reached the window at three with the player in it.");
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
+            AssertEquivalent(fixture, director.Snapshot);
+        }
+
+        /// <summary>
+        /// MOCKUP-PASS M15's second part: at three a free tile beside the jury house's opens the
+        /// final case to read early - the same columns and the same choices, at both text sizes -
+        /// with the lock's place saying when it opens. Choosing commits nothing, and the choice goes
+        /// with the screen.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Endgame_TheFinalCaseReadsEarlyAtThreeWithoutALock()
+        {
+            HoldTheHouseForTheFixture();
+            yield return InstallTheWindowAtThreeUnderTheFinaleRules();
+            yield return PutAwayTheCards();
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return ApplyTextSize(larger);
+                yield return OpenFreeTime();
+                var before = director.Snapshot;
+                Assert.That(EpisodeDirector.FinalCaseEarlyAvailable(before), Is.True, "The window at three, under the finale rules.");
+                Assert.That(EpisodeDirector.FinalCaseAvailable(before), Is.False, "Not yet the case that locks.");
+                var moments = FinalArgument.Moments(before);
+                var tile = ButtonWithCaption(EpisodeDirector.FinalCaseCaption);
+                Assert.That(tile.transform.IsChildOf(LastActive(EpisodeHud.HouseMovesName)), Is.True, "A tile among the moves at three,");
+                // A card says what it costs at its foot; at the larger text the moves are rows, which do not.
+                if (!larger) Assert.That(Words((RectTransform)tile.transform), Does.Contain("Costs no action"), "and a free one,");
+                if (EpisodeDirector.JuryHouseAvailable(before))
+                    Assert.That(tile.transform.GetSiblingIndex(), Is.EqualTo(FindButton(EpisodeDirector.JuryHouseCaption).transform.GetSiblingIndex() + 1),
+                        "beside the jury house's.");
+                tile.onClick.Invoke();
+                yield return Frames(2);
+                Canvas.ForceUpdateCanvases();
+                Assert.That(director.InFinalCase, Is.True);
+                var panel = LastActive("Episode panel");
+                Assert.That(Words(panel), Does.Contain("PREPARE YOUR FINAL CASE").And.Contain(EpisodeDirector.FinalCaseLockLaterLine));
+                Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.LockArgumentCaption), Is.Null, "No lock before the Final 2.");
+                foreach (var theme in FinalArgument.Themes)
+                    Assert.That(ButtonWithCaption(FinalArgument.Label(theme)).transform.IsChildOf(LastActive(EpisodeHud.FinalCaseThemesName)), Is.True, theme);
+                foreach (var moment in moments)
+                    Assert.That(ButtonWithCaption(moment.text).transform.IsChildOf(LastActive(EpisodeHud.FinalCaseMomentsName)), Is.True, moment.reference);
+                AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseThemesName));
+                AssertDecisionCopyFits(LastActive(EpisodeHud.FinalCaseResumeName));
+                AssertEveryLabelDraws("The final case at three" + (larger ? " at the larger text" : ""), panel);
+                if (!larger && Application.isBatchMode) yield return CaptureFraming("endgame-final-case-three", settle: false);
+
+                // Choosing is view state: nothing commits, and closing lets it go.
+                ButtonWithCaption(FinalArgument.Label(FinalArgument.Social)).onClick.Invoke();
+                yield return Frames(1);
+                if (moments.Count > 0) { ButtonWithCaption(moments[0].text).onClick.Invoke(); yield return Frames(1); }
+                Assert.That(FindButton(FinalArgument.Label(FinalArgument.Social)).GetComponentsInChildren<Image>().Any(image => image.name == "Chosen mark"), Is.True);
+                AssertEquivalent(before, director.Snapshot);
+                ButtonWithCaption(EpisodeDirector.LeaveFinalCaseCaption).onClick.Invoke();
+                yield return Frames(2);
+                Assert.That(director.InFinalCase, Is.False);
+                Assert.That(Words(LastActive(EpisodeHud.ScreenHeadName)), Does.Contain(EpisodeDirector.EndgamePreparationTitle), "Back in the window.");
+                ButtonWithCaption(EpisodeDirector.FinalCaseCaption).onClick.Invoke();
+                yield return Frames(2);
+                Assert.That(LastActive(EpisodeHud.FinalCaseThemesName).GetComponentsInChildren<Image>().Any(image => image.name == "Chosen mark"), Is.False,
+                    "The choice went with the screen.");
+                AssertEquivalent(before, director.Snapshot);
+                director.ClosePanels();
+                yield return null;
+            }
+            yield return ApplyTextSize(false);
         }
 
         /// <summary>

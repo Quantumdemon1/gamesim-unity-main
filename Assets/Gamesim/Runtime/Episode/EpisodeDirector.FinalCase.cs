@@ -18,8 +18,10 @@ namespace Gamesim.Episode
     /// columns - the narratives, the résumé, the moments as cards with the faces they are about -
     /// stand over a tray of the moments chosen, in the order they were chosen, and the gold lock.</para>
     ///
-    /// <para>The locked argument fills the speech editor when the speeches open, and counts at the
-    /// vote for the jurors whose theme it argues.</para>
+    /// <para>At three, a free tile beside the jury house's opens the same screen to read early: the
+    /// same choices, as view state dropped on close, and in the lock's place the line that it opens
+    /// at the Final 2. The locked argument fills the speech editor when the speeches open, and
+    /// counts at the vote for the jurors whose theme it argues.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -27,11 +29,17 @@ namespace Gamesim.Episode
         public const string LeaveFinalCaseCaption = "Close your final case";
         public const string LockArgumentCaption = "Lock final argument";
 
+        /// <summary>The line in the lock's place at three.</summary>
+        public const string FinalCaseLockLaterLine = "The lock opens at the Final 2.";
+
         /// <summary>The brand's line over the case (decision 10): an existing one, unattributed.</summary>
         public const string FinalCaseBrandLine = "“Same house. Different stories.”";
 
         /// <summary>Whether the final case is open over the station's panel. View state.</summary>
         private bool finalCaseOpen;
+
+        /// <summary>Whether the open case was opened at three, to read: it closes with the window rather than carrying on to the Final 2.</summary>
+        private bool finalCaseEarly;
 
         /// <summary>The theme and moments chosen and not yet locked. View state, gone with the panel.</summary>
         private string chosenTheme;
@@ -46,12 +54,18 @@ namespace Gamesim.Episode
             && (state.phase == EpisodePhase.JuryQuestioning || state.phase == EpisodePhase.FinalSpeeches)
             && !state.finalSpeeches.Any(speech => speech.speakerId == state.playerId);
 
-        /// <summary>Opens the final case. Public for tests.</summary>
+        /// <summary>Where the final case opens to read, with no lock: a finalist in the window at three under the finale rules.</summary>
+        public static bool FinalCaseEarlyAvailable(EpisodeState state) => Preparing(state) && EpisodeEngine.FinaleOn(state);
+
+        /// <summary>Opens the final case, or at three its early read. Public for tests.</summary>
         public void OpenFinalCase()
         {
-            if (!FinalCaseAvailable(projected)) return;
+            var state = projected;
+            bool early = FinalCaseEarlyAvailable(state);
+            if (!early && !FinalCaseAvailable(state)) return;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false;
             finalCaseOpen = true;
+            finalCaseEarly = early;
             Render();
         }
 
@@ -96,11 +110,15 @@ namespace Gamesim.Episode
             Commit(state, EpisodeCommandKind.LockFinalArgument, second: theme, text: references);
         }
 
-        /// <summary>Draws the final case when it is open and may be, and says whether it did; closes it when it may not be.</summary>
+        /// <summary>
+        /// Draws the final case when it is open and may be, and says whether it did; closes it when
+        /// it may not be. An early read closes with the window at three, so it never reopens itself
+        /// at the Final 2.
+        /// </summary>
         private bool FinalCaseIfOpen(EpisodeState state)
         {
             if (!finalCaseOpen) return false;
-            if (!FinalCaseAvailable(state)) { finalCaseOpen = false; ForgetFinalCaseChoice(); return false; }
+            if (!(finalCaseEarly ? FinalCaseEarlyAvailable(state) : FinalCaseAvailable(state))) { finalCaseOpen = false; ForgetFinalCaseChoice(); return false; }
             FinalCaseScreen(state);
             return true;
         }
@@ -111,16 +129,25 @@ namespace Gamesim.Episode
             if (FinalCaseAvailable(state)) hud.Action(FinalCaseCaption, OpenFinalCase);
         }
 
+        /// <summary>The free tile at three, beside the jury house's: the case to read before it can be locked.</summary>
+        private static EpisodeHud.MoveTile FinalCaseTile(System.Action open) => new EpisodeHud.MoveTile
+        {
+            Caption = FinalCaseCaption,
+            Description = "Read your case before the lock opens at the Final 2: your story, résumé and moments.",
+            Corner = "Free", CornerTint = UiTheme.Allied, Glyph = "crown", Foot = "Costs no action", Choose = open,
+        };
+
         private void FinalCaseScreen(EpisodeState state)
         {
             var argument = state.finalArgument;
+            bool early = !FinalCaseAvailable(state);
             var moments = FinalArgument.Moments(state);
             int required = FinalArgument.Required(state);
             // The station's panel is the screen: its band names it, and the columns take the frame.
             hud.StationScreen("PREPARE YOUR FINAL CASE", "Shape your story. Show the jury why you should win.", "crown", UiTheme.Gold);
             hud.FinalCaseHead(argument != null ? "YOUR ARGUMENT IS LOCKED" : "WHAT WILL THE JURY REMEMBER?",
                 "The story of your game and three moments that prove it. Your speech opens with it, and a juror who values it weighs it.",
-                "FINAL 2 · Jury review", "gavel", FinalCaseBrandLine);
+                early ? "FINAL 3 · Read early" : "FINAL 2 · Jury review", "gavel", FinalCaseBrandLine);
             hud.Action(LeaveFinalCaseCaption, CloseFinalCase);
 
             hud.BeginCaseColumns(.30f, .34f, .36f);
@@ -186,7 +213,7 @@ namespace Gamesim.Episode
             }
             hud.EndCaseColumns();
 
-            hud.SectionHead("key", "4 · LOCK YOUR CASE", "Your narrative and your moments, in the order you chose them.");
+            hud.SectionHead("key", "4 · LOCK YOUR CASE", early ? "Read it now; lock it at the Final 2." : "Your narrative and your moments, in the order you chose them.");
             if (required > 0)
             {
                 var slots = new List<EpisodeHud.TraySlot>();
@@ -199,6 +226,8 @@ namespace Gamesim.Episode
                 hud.FinalCaseTray(required == 1 ? "YOUR FINAL MOMENT" : "YOUR FINAL " + required + " MOMENTS",
                     chosenMoments.Count + " / " + required + " selected", slots);
             }
+            // At three the case is read, not locked: the lock's place says when it opens.
+            if (early) { hud.CardLine(FinalCaseLockLaterLine, 15, UiTheme.Gold); return; }
             bool ready = ReadyToLock(state);
             hud.FinalCaseLock(LockArgumentCaption, LockFinalArgument, ready, "Next: deliver your final speech to the jury. Locking is final.",
                 ready ? null : "Choose a narrative and " + (required == 1 ? "one moment" : required + " moments") + " to lock your argument.");

@@ -31,7 +31,7 @@ namespace Gamesim.Editor
     /// where the U stands, are switched off (kept for the layout record, as the room finish keeps the
     /// rugs it covers); the living room's screen is named apart from the nomination room's, so each
     /// room finds its own; the room's marker, and the chat pair that stood inside the U, step out of
-    /// it; and the three bodies the scene starts inside it start on the open floor to the east.</para>
+    /// it; and the three bodies the scene started where the U stands start on the U's own open floor.</para>
     /// </summary>
     internal static class HouseLivingGallery
     {
@@ -65,12 +65,20 @@ namespace Gamesim.Editor
         /// <summary>The U and the chairs, grown by a stride: no body starts inside it (x, z).</summary>
         public static readonly Rect Footprint = Rect.MinMaxRect(-12.8f, -8.2f, -3.3f, -1.3f);
 
-        /// <summary>Where a body the scene started inside the footprint starts instead, by name; anyone else takes the next spare.</summary>
+        /// <summary>
+        /// Where the three bodies the scene started where the U stands start instead: inside the U,
+        /// on its open floor, 1.35 m and more from every seat's approach and clear of the table - the
+        /// house at home round its couches. Not the east lane beside the arm: a body standing there
+        /// leaves 0.2 m between itself and the arm's baked edge, and every walker the path sends
+        /// along the arm stops against it (measured 2026-09-29: the hot tub's companion, from the
+        /// south, stood still at the pinch for the whole twenty seconds). Placed by name every run.
+        /// Anyone else the scene starts inside the footprint takes the next spare.
+        /// </summary>
         private static readonly Dictionary<string, Vector3> Moved = new Dictionary<string, Vector3>
         {
-            { "Player", new Vector3(-3.0f, 0f, -6.9f) },
-            { "Casey Wilson", new Vector3(-2.6f, 0f, -8.2f) },
-            { "Maya Hassan", new Vector3(-2.8f, 0f, -5.4f) },
+            { "Player", new Vector3(-8.0f, 0f, -4.2f) },
+            { "Maya Hassan", new Vector3(-9.4f, 0f, -4.6f) },
+            { "Casey Wilson", new Vector3(-6.6f, 0f, -4.6f) },
         };
         private static readonly Vector3[] Spare = { new Vector3(-1.8f, 0f, -7.4f), new Vector3(-1.8f, 0f, -4.4f) };
 
@@ -162,11 +170,15 @@ namespace Gamesim.Editor
             foreach (var body in bodies)
             {
                 var p = body.position;
-                if (!Footprint.Contains(new Vector2(p.x, p.z))) continue;
                 Vector3 to;
-                if (!Moved.TryGetValue(body.name, out to))
+                if (Moved.TryGetValue(body.name, out to))
                 {
-                    if (spare >= Spare.Length) { moved.Add(body.name + " (no spare spot; left inside the U)"); continue; }
+                    if (new Vector2(p.x - to.x, p.z - to.z).sqrMagnitude < 0.0001f) continue;
+                }
+                else
+                {
+                    if (!Footprint.Contains(new Vector2(p.x, p.z))) continue;
+                    if (spare >= Spare.Length) { moved.Add(body.name + " (no spare spot; left where it stood)"); continue; }
                     to = Spare[spare++];
                 }
                 body.position = new Vector3(to.x, p.y, to.z);

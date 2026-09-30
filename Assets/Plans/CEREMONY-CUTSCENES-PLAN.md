@@ -980,8 +980,10 @@ and the table at (-8, -5.6).
 television, and three plan rows (the sofa by the kitchen door and the two armchairs, which stood on
 the east arm's end and in the west chair's approach). It also switches off the broadcast dressing's
 decor from the old layout (books, a vase, a pendant, a frame) and the television's fitted practicals. It moves the room marker to (-5, -7.6) and
-the chat pair to (-3.4, -3.0) and (-2.0, -3.0). It also moves the three bodies the scene started
-inside the U: the player, Casey and Maya.
+the chat pair to (-3.4, -3.0) and (-2.0, -3.0). The three bodies the scene started where the U
+stands (the player, Casey and Maya) start on the U's open floor, at (-8, -4.2), (-6.6, -4.6) and
+(-9.4, -4.6). The east lane beside the arm was tried first: a body standing there pinched the lane
+to 0.2 m against the arm's baked edge, and a walker from the south stopped at it.
 
 `CeremonySets` lays anchors on the pieces where they stand, filling slots from the base's middle
 outward and then down the arms. It keeps the prototype's clone path only for a room with no

@@ -367,6 +367,15 @@ namespace Gamesim.Editor
             // Before the collision and the bake, so both see the living room as it will be played.
             string gallery = HouseLivingGallery.Dress(world.transform, root);
 
+            // The anchors that hang on set pieces - the dining chairs' and loungers' meeting seats,
+            // the counter's and the tub's activities, the diary chair, the episode station - went
+            // with the root this pass rebuilt. They are authored again on the new pieces before the
+            // resolver runs, because the resolver keeps a bake from sealing the approaches it can
+            // see, and it can only see the anchors that exist (measured 2026-09-29: rebuilt without
+            // them, the bake kept 9 approaches of 16 and the dining chairs' were obstructed).
+            var anchorIssues = HouseInteractionAnchorAuthoring.Author(scene);
+            foreach (var issue in anchorIssues) Debug.LogWarning("[Gamesim] set pieces · anchors: " + issue);
+
             // Placement, collision, the back-off and the bake travel together. Set dressing was
             // re-placed once without the lighting pass that follows it and the house lost its
             // lightmaps for three days without anybody noticing; a separate "and now run the other

@@ -1541,7 +1541,8 @@ namespace Gamesim.Episode
             if (finalChoice) FinalTwoHead();
             else
             {
-                string houseStatus = ViewOverPreparation(state) ? null : HouseStatus(state);
+                // Not over the campaign, whose situation card says each of these on a row of its own.
+                string houseStatus = ViewOverPreparation(state) || state.phase == EpisodePhase.Campaign ? null : HouseStatus(state);
                 if (houseStatus != null) hud.Paragraph(houseStatus);
             }
             // A story beat waiting on the player comes before anything else they could do: it

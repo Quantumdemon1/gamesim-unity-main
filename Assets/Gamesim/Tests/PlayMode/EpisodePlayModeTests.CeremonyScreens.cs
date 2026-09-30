@@ -102,6 +102,8 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(ButtonWithCaptionOrNull("Listen in on a conversation"), Is.Null, "The rest waits behind More.");
             Assert.That(ButtonWithCaption("Close campaigning and open voting").transform.parent, Is.SameAs(panel), "The way on is pinned.");
+            // One screen now (PACK8-PASS-PLAN B4): the board fits the stage until More asks for the rest.
+            AssertCampaignFits("The campaign");
 
             ButtonWithCaption(EpisodeDirector.CampaignMoreCaption).onClick.Invoke();
             yield return null;

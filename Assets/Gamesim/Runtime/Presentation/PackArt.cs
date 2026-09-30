@@ -66,6 +66,10 @@ namespace Gamesim.Presentation
         public const string IconFire = "Pack4_Presentation/Icons_PNG/fire";
         /// <summary>A story moment in the house: the Pull's mark (plan §5.1).</summary>
         public const string IconDrama = "Pack4_Presentation/SocialEvents/icon_drama";
+        /// <summary>A voter's row on the eviction's board on the living room's screen (MOCKUP-PASS-PLAN M18).</summary>
+        public const string VoteRevealStrip = "Pack4_Presentation/CeremonyCinematics/vote_reveal_strip_9slice";
+        /// <summary>The chip on that row naming the nominee the voter evicts. Its keep twin is not used: see VoteReveal.</summary>
+        public const string VoteChipEvict = "Pack4_Presentation/CeremonyCinematics/vote_chip_evict_9slice";
 
         // Refinement Kit 6: white, tintable parts. A fill, a resting edge and a focus edge share one
         // size and one border per family, so a state changes a tint or a layer, never a rect.

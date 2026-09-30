@@ -491,6 +491,44 @@ namespace Gamesim.Tests.PlayMode
             yield return SkipReveals();
         }
 
+        /// <summary>
+        /// The look sheet's frames of the vote on the living room's screen (MOCKUP-PASS-PLAN M18): the
+        /// roster with votes on it, and the result read in lines once the board has given way. The
+        /// stage cuts to the hot seats between votes, so each frame puts the rig on the screen's own
+        /// shot first.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_CapturesTheVoteOnTheLivingScreenAndItsResult()
+        {
+            if (!Application.isBatchMode) yield break;
+            yield return InstallStagedSeason(52, AtEviction);
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the reveal plays");
+            var vote = SceneComponents<VoteReveal>().Single();
+            Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
+            var screen = vote.Surface;
+            yield return WaitFor(() => vote.VotesShown >= 2, 20f, "two votes are on the board");
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen");
+            yield return WaitFor(() => vote.ShowingResult, 60f, "the result is read");
+            // The board hands over to the result block over the result's first moment.
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.That(vote.IsPlaying, Is.True, "The result is still up to be photographed.");
+            yield return CaptureTheScreen(screen, "ceremony-stage-vote-result");
+            yield return SkipReveals();
+            yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+        }
+
+        /// <summary>A frame of a card on its screen: the rig on the screen's own shot for two frames, then the capture.</summary>
+        private IEnumerator CaptureTheScreen(ScreenSurface screen, string name)
+        {
+            cameraRig.MoveTo(screen.Shot());
+            yield return Frames(2);
+            yield return CaptureFraming(name, settle: false);
+        }
+
         // ---------------------------------------------------------------- the full house (CEREMONY-CUTSCENES-PLAN §7.1)
 
         /// <summary>A frame of a set from above, for the look sheet: the rig put on the shot for two frames, then the capture. Batch runs only.</summary>

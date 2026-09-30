@@ -11,15 +11,25 @@ namespace Gamesim.Episode
     /// speech's own controls opens it at the Final 2, so neither the opening focus nor any
     /// pinned caption moves. It commits nothing, and "Leave the jury house" goes back.
     ///
-    /// <para>Not built this round: the door on the jury strip. The strip is chrome, drawn only in
-    /// free roam, and a screen that opens from anywhere needs a panel flag of its own, as the
-    /// notebook has. The final case's preparation, the lock and the theme's effect wait for
-    /// schema 21 (the plan's F4b).</para>
+    /// <para>The mockup pass (MOCKUP-PASS-PLAN M12, mockup 56) makes it a dashboard: the stage's
+    /// whole width with the station band naming the screen, compact cards across the top, the
+    /// jury as a 2D tableau of callouts in their own recorded words (decisions 40 C and 41 A),
+    /// and beside it the season's highlights and what the jury values.</para>
+    ///
+    /// <para>Not built: the door on the objectives card's jury strip (decision 42). The strip is
+    /// chrome, drawn only in free roam, and a screen that opens from anywhere needs a panel flag
+    /// of its own, as the notebook has.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
         public const string JuryHouseCaption = "The jury house";
         public const string LeaveJuryHouseCaption = "Leave the jury house";
+
+        /// <summary>The screen's name: the head's title and, while it is open, the station band's.</summary>
+        private const string JuryHouseTitle = "THE JURY HOUSE";
+
+        /// <summary>How many highlights the side card shows before "and n more".</summary>
+        private const int JuryHighlightsShown = 6;
 
         /// <summary>Whether the jury house is open over the station's panel. View state.</summary>
         private bool juryHouseOpen;
@@ -71,41 +81,83 @@ namespace Gamesim.Episode
             if (JuryHouseAvailable(state)) hud.Action(JuryHouseCaption, OpenJuryHouse);
         }
 
-        /// <summary>"May be swayed by": the theme a juror values and the answers that land with them, whatever they ask.</summary>
+        /// <summary>
+        /// "May be swayed by", in one line: the theme a juror values and the answers that land with
+        /// them, whatever they ask ("Loyal to the end · answers that stand by your people").
+        /// </summary>
         private static System.Collections.Generic.List<string> SwayedBy(ContestantState juror)
         {
             if (juror == null) return null;
             string theme = FinalArgument.ThemeOf(juror);
             return new System.Collections.Generic.List<string>
             {
-                "An argument of " + FinalArgument.Label(theme),
-                "Answers that " + string.Join(" or ", FinaleQuestions.Values(theme).Select(r => FinaleQuestions.Caption(r).ToLowerInvariant())),
+                FinalArgument.Label(theme) + " · answers that "
+                    + string.Join(" or ", FinaleQuestions.Values(theme).Select(r => FinaleQuestions.Caption(r).ToLowerInvariant())),
             };
         }
+
+        private static readonly string[] CountWords =
+        {
+            "No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+            "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+        };
+
+        /// <summary>The jury's size as the head says it: "SEVEN JURORS · ONE DECISION".</summary>
+        private static string JurySizeHeadline(int count) =>
+            (count >= 0 && count < CountWords.Length ? CountWords[count] : count.ToString()).ToUpperInvariant()
+            + (count == 1 ? " JUROR" : " JURORS") + " · ONE DECISION";
 
         private void JuryHouseScreen(EpisodeState state)
         {
             var house = JuryHouseRead.Read(state);
-            hud.ScreenHead("THE JURY HOUSE", house.jurors.Count + (house.jurors.Count == 1 ? " JUROR" : " JURORS"),
-                "Where each juror stands with you, as far as you know it. Nothing here acts.");
-            hud.Action(LeaveJuryHouseCaption, CloseJuryHouse);
-            hud.Footnote(string.Join(" · ", JuryHouseRead.Bands)
-                + ": from your last read of them, and what the house saw you do since. Never a count of votes.");
-            hud.BeginSideCard(EpisodeHud.JuryMattersName, "WHAT MATTERS TO THIS JURY");
-            foreach (var line in house.matters) hud.CardLine(line, 14, UiTheme.Paper);
-            hud.CardLine("The trait each juror leads with is the one their questions come from.", 12, UiTheme.Muted);
             bool rules = EpisodeEngine.FinaleOn(state);
+            hud.StageAsPlace(JuryHouseTitle, "people");
+            hud.JuryHouseHead(JuryHouseTitle, JurySizeHeadline(house.jurors.Count),
+                "Relationships still matter. Where each juror stands with you, as far as you know it.",
+                FinalCaseAvailable(state) ? "You can't sway the jury from here. Your final case can." : null);
+            hud.Action(LeaveJuryHouseCaption, CloseJuryHouse);
+            hud.BandLegend(JuryHouseRead.Bands);
+            hud.Footnote("From your last read of each juror and what the house saw you do since. Never a count of votes.");
+
+            var jurors = house.jurors.Select(read => (read, actor: state.Find(read.id))).Where(juror => juror.actor != null).ToList();
+            hud.JurorCards(jurors.Select(juror => new EpisodeHud.JurorCard
+            {
+                Actor = juror.actor, Read = juror.read, Name = JuryHouseRead.ShortName(state, juror.read.id),
+                Swayed = rules ? SwayedBy(juror.actor) : null,
+            }).ToList());
+
+            hud.BeginColumns(320f);
+            hud.JuryTableau(jurors.Select(juror => new EpisodeHud.JurorCallout
+            {
+                Actor = juror.actor, Name = JuryHouseRead.ShortName(state, juror.read.id), Band = juror.read.band, Line = juror.read.line,
+            }).ToList());
+            hud.SideColumn();
+
+            // The season between the player and each juror, newest first, and tonight's questions on
+            // top at the Final 2. Never what the jurors say to each other: nothing records it.
+            hud.BeginSideCard(EpisodeHud.JuryHighlightsName, "JURY DISCUSSION HIGHLIGHTS");
+            hud.CardLine("What the record holds between you and each juror, newest first.", 12, UiTheme.Muted);
+            foreach (var line in house.highlights.Take(JuryHighlightsShown))
+                hud.CardLine(line, 13, line.StartsWith("Tonight", System.StringComparison.Ordinal) ? UiTheme.Glow : UiTheme.Paper);
+            if (house.highlights.Count > JuryHighlightsShown) hud.CardLine("and " + (house.highlights.Count - JuryHighlightsShown) + " more", 12, UiTheme.Muted);
+            if (house.highlights.Count == 0) hud.CardLine("Nothing on the record between you and the jury yet.", 13, UiTheme.Muted);
+            hud.EndSideCard();
+
+            hud.BeginSideCard(EpisodeHud.JuryMattersName, "WHAT MATTERS TO THIS JURY");
             if (rules)
             {
-                // Under the finale rules, what the jury values: the theme each juror's lead trait reads as.
-                var themes = FinalistRead.Jurors(state).Where(j => j.status != ContestantStatus.Expelled)
-                    .GroupBy(FinalArgument.ThemeOf).OrderByDescending(g => g.Count()).ThenBy(g => System.Array.IndexOf(FinalArgument.Themes, g.Key));
+                // Under the finale rules, what the jury values: the theme each juror's lead trait
+                // reads as, one row a theme, the most-held first. A value nobody holds is not drawn.
+                var voting = FinalistRead.Jurors(state).Where(j => j.status != ContestantStatus.Expelled).ToList();
+                var themes = voting.GroupBy(FinalArgument.ThemeOf).Where(group => group.Key != null)
+                    .OrderByDescending(group => group.Count()).ThenBy(group => System.Array.IndexOf(FinalArgument.Themes, group.Key));
                 foreach (var theme in themes)
-                    hud.CardLine(theme.Count() + " of " + house.jurors.Count + " value " + FinalArgument.Label(theme.Key) + ".", 13, UiTheme.Paper);
+                    hud.MattersRow(ThemeGlyph(theme.Key), FinalArgument.Value(theme.Key), theme.Count() + " of " + house.jurors.Count);
             }
+            foreach (var line in house.matters) hud.CardLine(line, rules ? 13 : 14, rules ? UiTheme.Muted : UiTheme.Paper);
+            hud.CardLine("The trait each juror leads with is the one their questions come from.", 12, UiTheme.Muted);
             hud.EndSideCard();
-            hud.JurorCards(house.jurors.Select(juror => new EpisodeHud.JurorCard { Actor = state.Find(juror.id), Read = juror, Swayed = rules ? SwayedBy(state.Find(juror.id)) : null })
-                .Where(card => card.Actor != null).ToList());
+            hud.EndColumns();
         }
     }
 }

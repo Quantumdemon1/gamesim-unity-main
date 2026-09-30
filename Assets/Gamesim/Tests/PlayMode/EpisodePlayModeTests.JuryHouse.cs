@@ -34,6 +34,28 @@ namespace Gamesim.Tests.PlayMode
                 AssertDecisionCopyFits(card);
             }
             Assert.That(director.GetComponentsInChildren<Button>().Any(button => button.IsActive() && button.name.StartsWith("Evict ")), Is.False);
+
+            // MOCKUP-PASS M12: the tableau, a callout per juror in their recorded words or the
+            // band's reason, the highlights beside it, and the observe-only chip - none a control.
+            var tableau = LastActive(EpisodeHud.JuryTableauName);
+            Assert.That(tableau, Is.Not.Null, "The jury as a tableau.");
+            Assert.That(tableau.GetComponentsInChildren<Button>(), Is.Empty, "Observe only: the tableau is not a control.");
+            foreach (var juror in jurors)
+            {
+                var callout = LastActive(EpisodeHud.JurorCalloutPrefix + juror.name);
+                Assert.That(callout, Is.Not.Null, juror.name + " has a callout.");
+                Assert.That(callout.IsChildOf(tableau), Is.True);
+                var said = JuryHouseRead.Line(state, juror.id);
+                var line = callout.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Callout line").text;
+                if (said.when != null) Assert.That(line, Does.StartWith(said.when + ": “"), juror.name + "'s own recorded words, dated.");
+                else Assert.That(line, Is.EqualTo(said.words), juror.name + "'s reason, unquoted.");
+                Assert.That(line, Does.Not.Contain("feel"), "Never worded as how they feel about you.");
+            }
+            Assert.That(LastActive(EpisodeHud.JuryHighlightsName), Is.Not.Null, "The season's highlights beside the tableau.");
+            var observe = LastActive(EpisodeHud.ObserveOnlyName);
+            Assert.That(observe, Is.Not.Null, "Observe only.");
+            Assert.That(observe.IsChildOf(LastActive(EpisodeHud.ScreenHeadName)), Is.True, "In the head.");
+            Assert.That(observe.GetComponentInParent<Button>(), Is.Null, "A chip, not a control.");
         }
 
         /// <summary>
@@ -63,6 +85,7 @@ namespace Gamesim.Tests.PlayMode
                 Canvas.ForceUpdateCanvases();
                 AssertTheJuryHouse(before);
                 AssertEquivalent(before, director.Snapshot);
+                if (!larger && Application.isBatchMode) yield return CaptureFraming("endgame-jury-house-three", settle: false);
                 ButtonWithCaption(EpisodeDirector.LeaveJuryHouseCaption).onClick.Invoke();
                 yield return null; yield return null;
                 Assert.That(director.InJuryHouse, Is.False);
@@ -102,6 +125,31 @@ namespace Gamesim.Tests.PlayMode
                 yield return CaptureFraming("endgame-jury-house", settle: false);
                 director.CloseJuryHouse();
             }
+
+            // The Final 2 under the finale rules (MOCKUP-PASS M12): what the jury values by theme,
+            // and tonight's question on top of the highlights before it is answered.
+            HoldTheHouseForTheFixture();
+            yield return InstallFinaleFixture(true, finaleRules: true);
+            yield return PutAwayTheCards();
+            yield return OpenFinalePanel();
+            var ruled = director.Snapshot;
+            Assert.That(ruled.phase, Is.EqualTo(EpisodePhase.JuryQuestioning));
+            Assert.That(EpisodeEngine.FinaleOn(ruled), Is.True);
+            ButtonWithCaption(EpisodeDirector.JuryHouseCaption).onClick.Invoke();
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases();
+            AssertTheJuryHouse(ruled);
+            AssertEquivalent(ruled, director.Snapshot);
+            string matters = Words(LastActive(EpisodeHud.JuryMattersName));
+            Assert.That(FinalArgument.Themes.Any(theme => matters.Contains(FinalArgument.Value(theme))), Is.True, "What the jury values, by theme.");
+            var asked = ruled.juryExchanges[ruled.juryQuestionIndex];
+            string highlights = Words(LastActive(EpisodeHud.JuryHighlightsName));
+            Assert.That(highlights, Does.Contain("Tonight · " + JuryHouseRead.ShortName(ruled, asked.questionerId) + " " + JuryHouseRead.Asked(ruled, asked)),
+                "Tonight's question on top of the season.");
+            Assert.That(highlights, Does.Not.Contain("took your answer").And.Not.Contain("was not moved"), "Nothing says how an answer will land before it is given.");
+            if (Application.isBatchMode) yield return CaptureFraming("endgame-jury-house-finale", settle: false);
+            director.CloseJuryHouse();
+            yield return null;
         }
     }
 }

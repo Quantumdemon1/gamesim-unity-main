@@ -280,6 +280,7 @@ namespace Gamesim.Episode
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
             fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
+            ForgetStrategyStage();
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
             bandTitle = bandLine = null; bandGlyph = bandStroke = null;

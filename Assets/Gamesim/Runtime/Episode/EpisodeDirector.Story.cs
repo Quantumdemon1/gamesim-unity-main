@@ -267,8 +267,10 @@ namespace Gamesim.Episode
                 var lapse = item.choices.FirstOrDefault(c => c.optionId == item.lapseOptionId);
                 return StoryText.Title(item) + (lapse != null ? " (" + lapse.label + ")" : "");
             }
-            hud.NamedParagraph(AdvanceWarningName, "Moving on lets " + (passing.Count == 1 ? "1 storyline" : passing.Count + " storylines")
-                + " pass: " + string.Join("; ", passing.Select(Each)) + ".", UiTheme.Warning);
+            // In the footer's strip on the strategy stage, beside the way on it is about; a paragraph
+            // above it everywhere else.
+            hud.PinnedNote("Moving on lets " + (passing.Count == 1 ? "1 storyline" : passing.Count + " storylines")
+                + " pass: " + string.Join("; ", passing.Select(Each)) + ".", AdvanceWarningName, true);
         }
 
         /// <summary>The warning's name, so a test can find it without reading its words.</summary>

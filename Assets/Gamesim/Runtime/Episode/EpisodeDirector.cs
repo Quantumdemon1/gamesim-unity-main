@@ -1420,8 +1420,10 @@ namespace Gamesim.Episode
             // reflection prompt - stays a card sized to its few lines. A dedicated layout (the
             // briefing, the nominations, a house event) sizes itself instead.
             // Except the week's ceremonies, which are screens even with nothing to decide
-            // (EpisodeDirector.CeremonyScreen).
+            // (EpisodeDirector.CeremonyScreen). The week's four strategy screens take the taller
+            // strategy stage (PACK8-PASS-PLAN A3).
             if (QuietBeat(state) && !CeremonyScreenBeat(state)) hud.FitPanelToContent();
+            else if (StrategyScreenBeat(state)) hud.StrategyStage(StrategyShell(state));
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1541,7 +1543,8 @@ namespace Gamesim.Episode
             AdvanceWarning(state);
             // Pinned under the scroll, where it is always seen - except under a house event, whose
             // choices keep the panel and the priority; the way on stays inline after them there.
-            if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage)
+            if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage
+                || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Strategy)
             {
                 hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
                 // What free time's way on costs, under it: the actions that go unused.

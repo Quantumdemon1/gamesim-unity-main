@@ -79,7 +79,7 @@ namespace Gamesim.Episode
             HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             rect.anchorMin = new Vector2(0f, 0f); rect.anchorMax = new Vector2(1f, 0f); rect.pivot = new Vector2(.5f, 0f);
             // Under the column it moves on from: on a capped stage, as wide as the column.
-            float side = 20f + (contentCap > 0f ? Mathf.Max(0f, (modal.sizeDelta.x - 40f - 18f - 16f - contentCap) * .5f) : 0f);
+            float side = PinnedSide();
             rect.offsetMin = new Vector2(side, PinnedMargin);
             rect.offsetMax = new Vector2(-side, PinnedMargin + PinnedHeight * s);
             float mark = 18f * s;
@@ -87,13 +87,20 @@ namespace Gamesim.Episode
             HudPrimitives.Chevron(rect, UiTheme.Hairline, mark).anchoredPosition = new Vector2(-16f, 0f);
             pinnedAction = rect;
             ApplyPinnedInset();
+            // On the strategy stage the way on shares its row with the footer's other parts.
+            LayoutStrategyFooter();
             return button;
         }
+
+        /// <summary>How far in from the panel's sides the pinned row stands: under the column, on a capped stage.</summary>
+        private float PinnedSide() =>
+            20f + (contentCap > 0f ? Mathf.Max(0f, (modal.sizeDelta.x - 40f - 18f - 16f - contentCap) * .5f) : 0f);
 
         /// <summary>Keeps the scroll's foot clear of the pinned action, whatever layout re-stretched it.</summary>
         private void ApplyPinnedInset()
         {
-            if (pinnedAction == null || modalScroll == null) return;
+            // The strategy stage's footer holds the row whichever of its parts it has.
+            if ((pinnedAction == null && footerStrip == null && footerSecondary == null) || modalScroll == null) return;
             var scroll = (RectTransform)modalScroll.transform;
             scroll.offsetMin = new Vector2(scroll.offsetMin.x, PinnedMargin + pinnedNoteHeight + PinnedHeight * FontScale + 10f);
         }
@@ -136,8 +143,11 @@ namespace Gamesim.Episode
                     Canvas.ForceUpdateCanvases();
                 }
             }
+            // Said of a hidden hint too: a layout that stands the hint down (the strategy stage, a
+            // screen of its own) still has a scroll, and the words it built with - "Scroll for more"
+            // - are not true of one that fits.
             var hint = modal.Find(PanelHintName);
-            if (hint != null && hint.gameObject.activeSelf && hint.GetComponent<TMP_Text>() is TMP_Text words)
+            if (hint != null && hint.GetComponent<TMP_Text>() is TMP_Text words)
                 words.text = Localisation.Text(content.rect.height > modalScroll.viewport.rect.height + .5f ? PanelHintScrollCopy : PanelHintCopy);
         }
 

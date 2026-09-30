@@ -53,7 +53,9 @@ namespace Gamesim.House
             colliderEnabled=body!=null && body.enabled; previousFacing=visual.FacingYaw;
             // Keep the proven navigation location and path while the actor occupies furniture.
             // The visual returns there before controls resume; the navigation root never teleports.
-            seatPose=GetComponent<HouseSeatPresentation>() ?? gameObject.AddComponent<HouseSeatPresentation>();
+            // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+            seatPose=GetComponent<HouseSeatPresentation>();
+            if(seatPose==null)seatPose=gameObject.AddComponent<HouseSeatPresentation>();
             head=null; nextHeadScan=0; Active=true;Phase=VisitPhase.Approaching;
             return true;
         }

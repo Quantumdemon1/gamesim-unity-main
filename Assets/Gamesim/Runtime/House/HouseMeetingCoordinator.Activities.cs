@@ -128,7 +128,9 @@ namespace Gamesim.House
             if(entry==null)return;
             activities.Remove(entry);lease.Released=true;
             var actorRoot=ActivityRoot(entry);
-            if(actorRoot!=null)actorRoot.GetComponent<HouseFurniturePose>()?.End();
+            // The pose gets the body up at its seat (HouseFurniturePose.End asks the seat to stand).
+            var pose=actorRoot!=null ? actorRoot.GetComponent<HouseFurniturePose>() : null;
+            if(pose!=null)pose.End();
             if(entry.npc?.motion!=null)entry.npc.motion.Release(lease.Token);
             if(entry.player!=null)entry.player.ReleaseActivityMove(lease);
         }

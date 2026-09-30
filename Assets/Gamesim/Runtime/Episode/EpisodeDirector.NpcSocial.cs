@@ -29,6 +29,11 @@ namespace Gamesim.Episode
         private const float CaptionHeadHeight = 1.95f;
         private HouseMeetingLease npcShownLease;
         private readonly Dictionary<long, HouseMeetingLease> npcPendingWorld = new Dictionary<long, HouseMeetingLease>();
+        /// <summary>
+        /// The seated conversations whose pair has arrived and sat down at least once. Transient,
+        /// like the leases it names: nothing about it is saved, and a load starts it empty.
+        /// </summary>
+        private readonly HashSet<HouseMeetingLease> npcSatDown = new HashSet<HouseMeetingLease>();
         private readonly List<NpcApproach> npcApproaches = new List<NpcApproach>();
         private readonly Dictionary<long, double> npcObstructionSince = new Dictionary<long, double>();
         private double npcFrameFraction, npcWorldFraction, npcFreeSeconds;
@@ -406,11 +411,26 @@ namespace Gamesim.Episode
         {
             if (!NpcCanAdvance) { npcCaption?.Hide(); return; }
             var talking = new HashSet<string>(); var seated = new HashSet<string>(); var speaking = new HashSet<string>();
-            var arguing = new HashSet<string>();
+            var arguing = new HashSet<string>(); var held = new HashSet<string>();
             var facing = new Dictionary<string, float>(); bool witnessed = false;
             foreach (var pending in projected.npcSocial.pending)
             {
-                if (!npcPendingWorld.TryGetValue(pending.sequence, out var lease) || !npcMeetings.ValidateArrivedPair(lease, out _)) continue;
+                if (!npcPendingWorld.TryGetValue(pending.sequence, out var lease)) continue;
+                if (!npcMeetings.ValidateArrivedPair(lease, out _))
+                {
+                    // A pair that has sat down keeps its seats while its lease holds, whatever one
+                    // tick's proof says. The proof is strict - anybody passing within 0.7 m of a
+                    // parked root fails it, and so does every unpause, which makes both bodies
+                    // arrive again - and each failure stood the pair up and sat it down again
+                    // (PACK8-PASS-PLAN A2). Talking and the witnessed caption still follow the proof.
+                    if (lease.Seated && npcSatDown.Contains(lease)
+                        && npcMeetings.TryGetLease(lease.Token, out var current) && ReferenceEquals(current, lease))
+                    {
+                        held.Add(pending.firstId); held.Add(pending.secondId);
+                        facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
+                    }
+                    continue;
+                }
                 talking.Add(pending.firstId); talking.Add(pending.secondId);
                 // They take turns: the floor changes hands every four seconds of world time, offset
                 // by the conversation's sequence so two pairs in the house are not in step.
@@ -422,7 +442,7 @@ namespace Gamesim.Episode
                 // across the house tells a passer-by that something is going on, which is exactly
                 // what the caption already tells whoever is close enough to witness it.
                 if (IsTenseTopic(pending.topic)) { arguing.Add(pending.firstId); arguing.Add(pending.secondId); }
-                if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); }
+                if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); npcSatDown.Add(lease); }
                 facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
                 if (!witnessed && npcMeetings.CanWitness(player, lease,out var visibleMidpoint))
                 {
@@ -436,6 +456,7 @@ namespace Gamesim.Episode
                 }
             }
             if (!witnessed) { npcCaption?.Hide(); npcShownLease = null; }
+            npcSatDown.RemoveWhere(lease => !npcMeetings.TryGetLease(lease.Token, out var current) || !ReferenceEquals(current, lease));
             // Arrived pairs talk; at a seated venue they sit; either way each settles on the lease's
             // heading. A pair still travelling, or released, has none of the three.
             foreach (var npc in housemates)
@@ -446,13 +467,18 @@ namespace Gamesim.Episode
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
                 var seatPose=npc.GetComponent<HouseSeatPresentation>();
-                if(seated.Contains(npc.Id) && npcMeetings.TryGetSeat(npc.Id,out var seat))
+                // A held body stays in the seat it is in; one whose seat has ended meanwhile - its
+                // root pushed off the approach - waits for the pair's proof before it sits again.
+                bool sits=seated.Contains(npc.Id)
+                    || held.Contains(npc.Id) && seatPose!=null && seatPose.Active && !seatPose.IsExiting;
+                if(sits && npcMeetings.TryGetSeat(npc.Id,out var seat))
                 {
                     if(seatPose==null)seatPose=npc.gameObject.AddComponent<HouseSeatPresentation>();
                     string id=npc.Id;
                     seatPose.Begin(seat,()=>npcMeetings!=null && npcMeetings.TryGetSeat(id,out var current) && current==seat);
                 }
-                else seatPose?.End();
+                // Up at the seat, then back to the root: the seat's own stand-up.
+                else if(seatPose!=null)seatPose.RequestExit();
                 // Only a pose holding the body in its chair seats it (its Cue says so every frame).
                 // Saying "seated" for an arrived pair whose pose had not begun sat that one down in
                 // the air at the table's approach, and a pose begun over that flag later handed it back.
@@ -500,7 +526,7 @@ namespace Gamesim.Episode
                 }
             npcCaption?.Hide(); npcMeetings?.Dispose(); npcMeetings = null;
             npcShownLease = null;
-            npcPendingWorld.Clear(); npcApproaches.Clear(); npcObstructionSince.Clear();
+            npcPendingWorld.Clear(); npcSatDown.Clear(); npcApproaches.Clear(); npcObstructionSince.Clear();
             npcFrameFraction = npcWorldFraction = npcFreeSeconds = 0;
             npcNextBindingCheck = 0;
             npcWorldPaused = true;

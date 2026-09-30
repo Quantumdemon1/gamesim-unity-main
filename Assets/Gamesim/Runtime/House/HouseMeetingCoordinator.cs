@@ -494,11 +494,22 @@ namespace Gamesim.House
         {
             if (!Current(lease)) return false;
             if (actors.TryGetValue(lease.FirstId,out var first) && first.motion != null)
-            {first.motion.GetComponent<HouseSeatPresentation>()?.End();first.motion.Release(lease.Token);}
+            {StandUp(first.motion);first.motion.Release(lease.Token);}
             if (actors.TryGetValue(lease.SecondId,out var second) && second.motion != null)
-            {second.motion.GetComponent<HouseSeatPresentation>()?.End();second.motion.Release(lease.Token);}
+            {StandUp(second.motion);second.motion.Release(lease.Token);}
             leases.Remove(lease.Token); lease.Status = status; lease.FailureReason = reason;
             return true;
+        }
+
+        /// <summary>
+        /// A conversation that ends gets its pair up at their chairs before they go back to their
+        /// roots: the seat's own stand-up, which outlives the lease (PACK8-PASS-PLAN A2). Ending the
+        /// seat here snapped both bodies from the chairs to the approaches while they still sat.
+        /// </summary>
+        private static void StandUp(HouseNpcMotion motion)
+        {
+            var seat = motion.GetComponent<HouseSeatPresentation>();
+            if (seat != null) seat.RequestExit();
         }
         private bool VenueInUse(string venue)
         {

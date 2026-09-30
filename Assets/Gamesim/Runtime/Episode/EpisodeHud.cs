@@ -272,8 +272,11 @@ namespace Gamesim.Episode
             // on screen at all times is what makes the rest of the HUD able to say "the replacement
             // nominee" and have that mean a person rather than a name.
             // A chip opens its houseguest's card (EpisodeDirector.PressCastChip), drawn over the strip.
+            // At the endgame the strip's quote card is the jury's (MOCKUP-PASS M14), counted as the
+            // pill and the objectives card count it.
+            bool endgame = IsEndgame(state);
             CastRail.Build(canvas.transform, state, FontScale, font, Portrait, director.PressCastChip,
-                director.FollowedId, IsEndgame(state));
+                director.FollowedId, endgame, endgame ? state.contestants.Where(IsJuror).ToList() : null);
             FollowChip(director.FollowedName);
 
             // The top bar (mockup-01): the brand, the week, the objective, the house's numbers
@@ -333,8 +336,13 @@ namespace Gamesim.Episode
             // Above the cast strip, in the band the docked panel also uses. They never share the
             // screen: the director clears the prompt outright while a panel is open, which is why
             // one band can carry both.
-            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,PromptLift),new Vector2(425,52));
+            var promptRoot = Chrome("Interaction prompt",canvas.transform); Anchor(promptRoot,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,PromptLift),new Vector2(425,PromptHeight));
             prompt = FixedText(promptRoot,"",21,Accent,new Vector2(14,-7),new Vector2(397,39)); prompt.alignment = TextAlignmentOptions.Center;
+            // The muted line a prompt can carry under its words (MOCKUP-PASS M14): a label of its
+            // own, so the prompt's words and the control's caption are what they always were.
+            promptHint = FixedText(promptRoot,"",13,UiTheme.Muted,new Vector2(14,-46),new Vector2(397,20)); promptHint.alignment = TextAlignmentOptions.Center;
+            promptHint.name = PromptHintName;
+            promptHint.gameObject.SetActive(false);
             // The prompt is also the thing it prompts: a click on "E · Get up" gets up. Its words
             // change with what E would do, so the control carries a fixed caption of its own, and
             // the keyboard keeps the key rather than a stop in the Tab ring.
@@ -1545,7 +1553,39 @@ namespace Gamesim.Episode
         }
         public void SetChallenge(float value,int hits)
         { if(challengeMeter!=null) challengeMeter.value=value; if(challengeCaption!=null) challengeCaption.text="Attempt " + (hits+1) + " of 3 · Aim for the center"; }
-        public void SetPrompt(string value) { if(prompt==null)return; prompt.text=Localisation.Text(value); prompt.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value)); }
+        public void SetPrompt(string value) => SetPrompt(value, null);
+
+        /// <summary>
+        /// The prompt's words, and a muted line under them when there is a <paramref name="hint"/>.
+        /// The box grows upward to hold the line - its foot stays on the band it shares with the
+        /// docked panel - and back when the line goes. Called every frame, so nothing is touched
+        /// that has not changed.
+        /// </summary>
+        public void SetPrompt(string value, string hint)
+        {
+            if (prompt == null) return;
+            prompt.text = Localisation.Text(value);
+            var root = (RectTransform)prompt.transform.parent;
+            root.gameObject.SetActive(!string.IsNullOrEmpty(value));
+            if (promptHint == null) return;
+            bool hinted = !string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(hint);
+            if (hinted)
+            {
+                string words = Localisation.Text(hint);
+                if (promptHint.text != words) promptHint.text = words;
+            }
+            if (promptHint.gameObject.activeSelf == hinted) return;
+            promptHint.gameObject.SetActive(hinted);
+            root.sizeDelta = new Vector2(root.sizeDelta.x, hinted ? PromptHintedHeight : PromptHeight);
+        }
+
+        /// <summary>The Talk prompt's line at the Final 3 (MOCKUP-PASS M14, mockup 60): what a conversation there is for.</summary>
+        public const string TalkHint = "Talk, strategize, or spend time together.";
+        /// <summary>The prompt's hint line, so a test can find it.</summary>
+        public const string PromptHintName = "Prompt hint";
+        private TMP_Text promptHint;
+        /// <summary>The prompt's height, and its height with a hint line under its words.</summary>
+        private const float PromptHeight = 52f, PromptHintedHeight = 72f;
         public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 

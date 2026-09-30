@@ -181,6 +181,33 @@ namespace Gamesim.Episode
         /// <summary>How many houseguests besides the player the room icons last counted in a room.</summary>
         public int HouseguestsIn(string room) => beaconCounts.TryGetValue(room, out var n) ? n : 0;
 
+        private readonly System.Collections.Generic.List<EpisodeTravelBeacons.Named> endgameNames
+            = new System.Collections.Generic.List<EpisodeTravelBeacons.Named>();
+
+        /// <summary>
+        /// The endgame's few by name over the house at map distance (MOCKUP-PASS M14, mockup 60).
+        /// At three and at two, everyone left is somebody the player has to find from across the
+        /// house, and the name plates are gone by the distance the map begins at. Everyone still
+        /// in the house with a body - the player among them, named as the lists name them, 'Emma
+        /// (You)' - hung over the head bone where the body has one. Nobody the rest of the season.
+        /// </summary>
+        private void NameTheEndgame()
+        {
+            endgameNames.Clear();
+            var state = projected;
+            if (state != null && (EpisodeHud.IsFinalThree(state) || EpisodeHud.IsFinalTwo(state)))
+                foreach (var actor in state.Active)
+                {
+                    var body = BodyFor(actor.id);
+                    if (body == null) continue;
+                    var visual = body.GetComponent<CharacterPresentation>();
+                    endgameNames.Add(new EpisodeTravelBeacons.Named(actor.id,
+                        HudPrimitives.WithYou(FinalistRead.FirstName(actor.name), actor.id == state.playerId),
+                        visual != null ? visual.HeadBone : null, body));
+                }
+            travelBeacons.Name(endgameNames);
+        }
+
         /// <summary>The icons over the rooms, once they have been built; null before.</summary>
         public EpisodeTravelBeacons TravelBeacons => travelBeacons;
 
@@ -229,6 +256,8 @@ namespace Gamesim.Episode
                 // Twice a second: people walk between rooms, not between frames.
                 nextBeaconCount = Time.unscaledTime + .5f;
                 CountHouseguestsByRoom();
+                // And who is named over the house; a head bone a body resolves late is picked up here.
+                NameTheEndgame();
             }
             // The objective's next stop, in the room the icon stands for.
             string next = projected == null ? null : projected.pendingDiary != null ? (HasDiaryRoom ? "Private" : null) : StationRoomId();

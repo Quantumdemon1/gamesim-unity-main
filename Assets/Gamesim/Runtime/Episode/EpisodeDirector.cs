@@ -89,7 +89,7 @@ namespace Gamesim.Episode
         // The opening counts too: it owns the house while it plays, so the player cannot walk, the
         // houseguests do not tick and nothing underneath answers a key.
         public bool IsPanelOpen => blockedRecovery || focusedNpc != null || phaseOpen || settingsOpen || sceneCardOpen
-                                   || journalOpen || diaryOpen || houseActivitiesOpen || IsWeeklyRecapOpen || IsSeasonReportOpen
+                                   || journalOpen || diaryOpen || houseActivitiesOpen || juryHouseOverHouse || IsWeeklyRecapOpen || IsSeasonReportOpen
                                    || (competitionCard != null && competitionCard.IsPlaying) || OpeningOwnsHouse;
         /// <summary>Whether the season report is up: a full-screen card over the house, a panel by any reckoning.</summary>
         public bool IsSeasonReportOpen => seasonReport != null && seasonReport.IsShowing;
@@ -481,13 +481,20 @@ namespace Gamesim.Episode
                 // chain in two places, which is two chances to disagree about what E does.
                 var choice = ChooseInteraction(out var npc);
                 if (npc != promptNpc) { promptNpc = npc; npcPrompt = npc != null ? "E  ·  Talk to " + npc.DisplayName : null; }
-                string prompt = "";
+                string prompt = "", hint = null;
                 if (IsPlayerHouseActivityActive && playerActivityInHouse) prompt = HouseFurniture.StopPrompt(playerActivityKind);
                 else if (choice == InteractTarget.Diary) prompt = "E  ·  Enter private diary room";
                 else if (choice == InteractTarget.Station) prompt = "E  ·  Open episode screen";
-                else if (choice == InteractTarget.Talk) prompt = npcPrompt;
+                else if (choice == InteractTarget.Talk)
+                {
+                    prompt = npcPrompt;
+                    // At three, every conversation is with somebody the player may sit beside at
+                    // the end or send to the jury: the line under the prompt says what one is for
+                    // (MOCKUP-PASS M14, mockup 60).
+                    if (EpisodeHud.IsFinalThree(projected)) hint = EpisodeHud.TalkHint;
+                }
                 else if (choice == InteractTarget.StepIn) prompt = "E  \u00b7  " + EpisodeHud.StepInCaption;
-                hud.SetPrompt(prompt);
+                hud.SetPrompt(prompt, hint);
             }
             else hud.SetPrompt("");
         }
@@ -639,7 +646,7 @@ namespace Gamesim.Episode
             // What the player came into a conversation for goes with the conversation; a houseguest's
             // screen over free time goes with the panel.
             if (focusedNpc != null) conversationIntent = null;
-            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; reviewingSpeeches = false; juryQuestionsOpen = false;
+            moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
@@ -1148,7 +1155,10 @@ namespace Gamesim.Episode
             // score that exists before the result commits.
             var run = challengeRun;
             CastRail.PlayerProgress = CastRail.CompetitionField != null && run != null ? () => ProgressWord(run) : (System.Func<string>)null;
-            hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen);
+            // The jury house the strip opened goes the moment the house can no longer open it from
+            // there - a load, the vote begun - and takes the pause it put on the house with it.
+            if (juryHouseOverHouse && !JuryStripDoorAvailable(state)) ClosePanelsInternal(false);
+            hud.Begin(state, message, blockedRecovery, phaseOpen || focusedNpc != null || settingsOpen || journalOpen || diaryOpen || houseActivitiesOpen || sceneCardOpen || juryHouseOverHouse);
             // The Pull's card and the Nearby card are rebuilt hidden with the rest of the chrome, and a
             // render that Update orders (a body finishing assembly) comes after this frame's ticks: put
             // them back now, or they are gone for the rest of the frame and a press on one lands on
@@ -1161,6 +1171,7 @@ namespace Gamesim.Episode
             if (settingsOpen || blockedRecovery) { Settings(state); return; }
             if (diaryOpen) { RenderDiary(state); return; }
             if (houseActivitiesOpen) { RenderHouseActivities(); return; }
+            if (JuryHouseOverHouseIfOpen(state)) return;
             if (journalOpen)
             {
                 // Every page of the notebook takes the notebook's own frame, not only the web: the

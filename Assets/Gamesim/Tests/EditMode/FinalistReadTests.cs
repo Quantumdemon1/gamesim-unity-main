@@ -47,7 +47,8 @@ namespace Gamesim.Tests.EditMode
 
         private static string AllText(FinalistRead.Finalist read, IEnumerable<string> bullets = null) =>
             string.Join("\n", read.Facts.Select(f => f.label + ": " + f.value + " (" + f.certainty + ")")
-                .Concat(read.jurors.Select(j => j.reason)).Concat(new[] { read.line }).Concat(bullets ?? Enumerable.Empty<string>()));
+                .Concat(read.jurors.Select(j => j.name + " (" + j.reason + ")")).Concat(new[] { read.line, read.standingLine })
+                .Concat(bullets ?? Enumerable.Empty<string>()));
 
         [Test]
         public void WithNothingLearnedEveryJurorIsUncertainAndNothingIsInvented()
@@ -399,6 +400,132 @@ namespace Gamesim.Tests.EditMode
             Assert.That(fact.value, Is.EqualTo("Week 6: nominated you · Broke 3 deals with you · Your voting block fell apart · Broke a promise to you"));
             Assert.That(FinalistRead.TowardYou(s, other.id).value, Is.EqualTo("Week 7: nominated you"),
                 "The other finalist's own week is theirs, and none of the deals, the block or the promises are.");
+        }
+
+        /// <summary>
+        /// MOCKUP-PASS M8: the line under the player's standing on a finalist's card is the record
+        /// between the two of them - the alliance and the week it began, the deals kept, what the
+        /// finalist did to the player - and nothing of anybody else's.
+        /// </summary>
+        [Test]
+        public void TheStandingLineIsTheRecordBetweenThem()
+        {
+            var s = FinalThree();
+            var finalist = Finalist(s, 0); var other = Finalist(s, 1);
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.Null, "Nothing on the record between them.");
+            var ours = Alliance(s, "ours", true, s.playerId, finalist.id);
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.Null, "An alliance with no ledger row says nothing the standing word does not.");
+            s.ledger.alliances.Add(new AllianceRow { id = ours.id, startedWeek = 3, why = "player/formed" });
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.EqualTo("Allied since week 3"));
+            s.deals.Add(new DealState { id = "kept", type = DealKind.SafetyAgreement, proposerId = finalist.id, recipientId = s.playerId, status = DealStatus.Fulfilled, week = 4 });
+            s.ledger.power.Add(new PowerRow { week = 6, hohId = finalist.id, nominees = new List<string> { s.playerId, other.id } });
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.EqualTo("Allied since week 3 · Kept a deal with you · Week 6: nominated you"));
+
+            // Their alliance with somebody else, and a deal they kept with somebody else, are not the player's record.
+            var theirs = Alliance(s, "theirs", true, finalist.id, other.id);
+            s.ledger.alliances.Add(new AllianceRow { id = theirs.id, startedWeek = 1, why = "npc/formed" });
+            s.deals.Add(new DealState { id = "theirs", type = DealKind.SafetyAgreement, proposerId = finalist.id, recipientId = other.id, status = DealStatus.Fulfilled, week = 2 });
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.EqualTo("Allied since week 3 · Kept a deal with you · Week 6: nominated you"));
+            ours.active = false;
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.EqualTo("Kept a deal with you · Week 6: nominated you"), "An alliance that ended is not one they are in.");
+            Assert.That(FinalistRead.Read(s, finalist.id).standingLine, Is.EqualTo(FinalistRead.RelationshipLine(s, finalist.id)));
+            Assert.That(FinalistRead.RelationshipLine(s, s.playerId), Is.Null, "Nobody has a record with themselves.");
+        }
+
+        /// <summary>
+        /// An alliance the player was brought into was formed without them: its ledger row's week is
+        /// when the others made it, before the player was in it, and for a pact of NPCs a week the
+        /// player was never told. The card dates the player's alliance from the invitation they
+        /// accepted, while the log holds it, and otherwise leaves the week to the standing word.
+        /// </summary>
+        [Test]
+        public void AnAllianceThePlayerWasBroughtIntoIsDatedFromTheInvitation()
+        {
+            var s = FinalThree();
+            var finalist = Finalist(s, 0); var other = Finalist(s, 1);
+            var theirs = Alliance(s, "alliance-npc-4", true, finalist.id, other.id);
+            s.ledger.alliances.Add(new AllianceRow { id = theirs.id, startedWeek = 1, why = "npc/formed" });
+            theirs.members.Add(s.playerId);
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.Null,
+                "Week 1 was theirs, not the player's; with no invitation on the log the card names no week.");
+
+            // The engine's own words when an invitation brings the player in (EpisodeEngine.AllyThroughInvitation).
+            s.events.Add(new EpisodeEvent
+            {
+                week = 5, kind = "alliance", text = finalist.name + " brought you into " + theirs.name + ".",
+                audienceIds = new List<string> { s.playerId, finalist.id },
+            });
+            Assert.That(FinalistRead.RelationshipLine(s, finalist.id), Is.EqualTo("Allied since week 5"), "Dated from the week the player joined.");
+            Assert.That(FinalistRead.RelationshipLine(s, other.id), Is.EqualTo("Allied since week 5"), "Whoever in it brought them in.");
+
+            // A story's pact is the others' until the player is brought in, the same way.
+            var s2 = FinalThree();
+            var story = Alliance(s2, "alliance-story-6", true, Finalist(s2, 0).id, Finalist(s2, 1).id, s2.playerId);
+            s2.ledger.alliances.Add(new AllianceRow { id = story.id, startedWeek = 2, why = "story" });
+            Assert.That(FinalistRead.RelationshipLine(s2, Finalist(s2, 0).id), Is.Null, "A story's pact the player joined later is not theirs since week 2.");
+        }
+
+        /// <summary>
+        /// The card's bar is the player's own score, as the cast strip draws it, never the
+        /// finalist's view of the player; the parts they won are on the card; every juror is named
+        /// by their first name.
+        /// </summary>
+        [Test]
+        public void TheCardsCountsAreThePlayersOwnAndTheRecords()
+        {
+            var s = FinalThree();
+            var finalist = Finalist(s, 0);
+            SetScore(s, s.playerId, finalist.id, 37);
+            SetScore(s, finalist.id, s.playerId, -80);
+            var read = FinalistRead.Read(s, finalist.id);
+            Assert.That(read.standing, Is.EqualTo(37), "The player's reading of them.");
+            Assert.That(read.finalPartsWon, Is.Empty);
+            s.finalPart2WinnerId = finalist.id;
+            Assert.That(FinalistRead.Read(s, finalist.id).finalPartsWon, Is.EqualTo(new[] { 2 }));
+            s.finalPart1WinnerId = finalist.id;
+            Assert.That(FinalistRead.Read(s, finalist.id).finalPartsWon, Is.EqualTo(new[] { 1, 2 }));
+            foreach (var juror in FinalistRead.Read(s, finalist.id).jurors)
+                Assert.That(juror.name, Is.EqualTo(FinalistRead.FirstName(s.Find(juror.jurorId).name)));
+        }
+
+        /// <summary>
+        /// Decision 32's tile: the eviction votes a finalist sat on the block through and stayed. A
+        /// veto save, a week with no vote on the record and the final eviction are not votes survived.
+        /// </summary>
+        [Test]
+        public void VotesSurvivedAreTheVotesTheySatThroughOnTheBlock()
+        {
+            var s = FinalThree();
+            var finalist = Finalist(s, 0); var gone = Juror(s, 0); var saved = Juror(s, 1); var other = Finalist(s, 1);
+            Assert.That(FinalistRead.VotesSurvived(s, finalist.id), Is.Zero);
+            s.ledger.power.Add(new PowerRow { week = 2, hohId = saved.id, nominees = new List<string> { finalist.id, gone.id }, evicteeId = gone.id, tally = new List<int> { 3, 1 } });
+            s.ledger.power.Add(new PowerRow { week = 3, hohId = gone.id, vetoUsed = true, savedId = finalist.id, replacementId = saved.id,
+                nominees = new List<string> { saved.id, other.id }, evicteeId = saved.id, tally = new List<int> { 2, 1 } });
+            s.ledger.power.Add(new PowerRow { week = 4, hohId = other.id, nominees = new List<string> { finalist.id, s.playerId } });
+            s.ledger.power.Add(new PowerRow { week = 5, hohId = s.playerId, nominees = new List<string> { finalist.id, other.id }, evicteeId = finalist.id, tally = new List<int> { 1, 2 } });
+            Assert.That(FinalistRead.VotesSurvived(s, finalist.id), Is.EqualTo(1),
+                "Week 2 only: saved by the veto in week 3, no vote on the record in week 4, and week 5's row names them the evictee.");
+            Assert.That(FinalistRead.Read(s, finalist.id).votesSurvived, Is.EqualTo(1));
+            Assert.That(FinalistRead.VotesSurvived(s, other.id), Is.EqualTo(2), "Week 3's final block, and week 5's.");
+        }
+
+        /// <summary>
+        /// Decision 33: the crown on a juror's case marks the final Head of Household, read from the
+        /// final eviction's own row, and nobody before that choice is made.
+        /// </summary>
+        [Test]
+        public void TheFinalHeadOfHouseholdIsCrownedOnlyOnceTheyHaveChosen()
+        {
+            var s = FinalThree();
+            var a = Finalist(s, 0); var b = Finalist(s, 1);
+            s.ledger.power.Add(new PowerRow { week = 7, hohId = b.id, nominees = new List<string> { a.id, Juror(s, 0).id }, evicteeId = Juror(s, 0).id, tally = new List<int> { 2, 0 } });
+            Assert.That(FinalistRead.FinalHeadOfHousehold(s), Is.Null, "Before the choice nobody is crowned.");
+            s.ledger.power.Add(new PowerRow { week = 9, hohId = a.id, nominees = new List<string> { s.playerId, b.id }, evicteeId = b.id });
+            Assert.That(FinalistRead.FinalHeadOfHousehold(s), Is.Null, "Not while the season still stands at the final eviction.");
+            s.phase = EpisodePhase.Jury;
+            Assert.That(FinalistRead.FinalHeadOfHousehold(s), Is.EqualTo(a.id));
+            Assert.That(FinalistRead.Read(s, a.id).finalHead, Is.True);
+            Assert.That(FinalistRead.Read(s, b.id).finalHead, Is.False, "Holding the house in week 7 is not the final crown.");
         }
 
 #if UNITY_5_3_OR_NEWER

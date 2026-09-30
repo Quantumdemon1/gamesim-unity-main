@@ -6,6 +6,7 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -64,6 +65,16 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(Words(panel), Does.Contain(EpisodeDirector.FinalChoiceWarning).And.Contain(EpisodeHud.CertaintyLegendWords),
                     "The warning and what the certainty words mean.");
                 Assert.That(LastActive(EpisodeHud.FinalistColumnsName), Is.Not.Null, "The finalists as columns.");
+                // MOCKUP-PASS M8 (mockup 59): the screen's own gold head, and no line of who holds
+                // what over it - the house is the three, and the two it is between are on the cards.
+                var head = LastActive(EpisodeHud.ScreenHeadName);
+                Assert.That(head, Is.Not.Null, "The choice has a head.");
+                Assert.That(Words(head), Does.Contain(EpisodeDirector.FinalTwoHeadTitle).And.Contain(EpisodeDirector.FinalTwoHeadLine));
+                Assert.That(head.IsChildOf(panel) && ScreenRect(head).yMin >= ScreenRect(LastActive(EpisodeHud.FinalistColumnsName)).yMax - 1f, Is.True,
+                    "The head is over the cards.");
+                string status = EpisodeDirector.HouseStatus(state);
+                if (status != null) Assert.That(Words(panel), Does.Not.Contain(status), "The house's status line stands down on this screen.");
+                AssertEveryLabelDraws(panel, "The final choice (" + (larger ? "larger" : "resting") + " text)");
 
                 // Both controls whole as the screen opens, still before anything is scrolled for the
                 // test: each inside its own column with its caption drawn to the end, and neither cut
@@ -129,6 +140,22 @@ namespace Gamesim.Tests.PlayMode
                         "then the control they are about.");
                     Assert.That(column.GetComponentsInChildren<Button>().Count(b => b.interactable), Is.EqualTo(1),
                         "The caption's control is the only thing to press in a column.");
+
+                    // MOCKUP-PASS M8: what the choice does, under the warning and over the control;
+                    // the jury read as three counts that between them count every juror once; the
+                    // record's counts; and a gold edge on the card waiting for its control's focus.
+                    var consequence = column.GetComponentsInChildren<TMP_Text>().Single(text => text.name == EpisodeHud.FinalistConsequenceName);
+                    Assert.That(consequence.text, Is.EqualTo(EpisodeDirector.FinalChoiceConsequence(take, cut)));
+                    Assert.That(ScreenRect(warning.rectTransform).yMin, Is.GreaterThanOrEqualTo(ScreenRect(consequence.rectTransform).yMax - 1f), "The warning over what the choice does,");
+                    Assert.That(ScreenRect(consequence.rectTransform).yMin, Is.GreaterThanOrEqualTo(ScreenRect((RectTransform)button.transform).yMax - 1f), "and that over the control.");
+                    Assert.That(words, Does.Contain("JURY READ (" + FinalistRead.Jurors(state).Count), "The jury read, headed with the jury's size.");
+                    var counts = card.GetComponentsInChildren<TMP_Text>().Where(text => text.name == "Jury count value").Select(text => int.Parse(text.text)).ToList();
+                    Assert.That(counts, Has.Count.EqualTo(3), "Known support, bitterness and uncertain, a count each.");
+                    Assert.That(counts.Sum(), Is.EqualTo(FinalistRead.Jurors(state).Count), "Every juror counted once.");
+                    Assert.That(words, Does.Contain("HoH wins").And.Contain("Veto wins").And.Contain("Your standing"));
+                    Assert.That(card.GetComponentsInChildren<Image>(true).Count(image => image.name == EpisodeHud.ChosenEdgeName), Is.EqualTo(1),
+                        "One gold edge, lit by the control.");
+                    Assert.That(words, Does.Not.Contain("FINAL HEAD OF HOUSEHOLD"), "The crown is the player's tonight, not a finalist's.");
                 }
 
                 var first = LastActive("Finalist column · " + others[0].name);
@@ -138,9 +165,68 @@ namespace Gamesim.Tests.PlayMode
                 {
                     Assert.That(b.xMin, Is.GreaterThanOrEqualTo(a.xMax - 1f), "Side by side at the resting text.");
                     Assert.That(Mathf.Abs(a.width - b.width), Is.LessThan(2f), "As equals.");
+                    // The VS stands in the gap between them, over neither.
+                    var versus = LastActive(EpisodeHud.VersusName);
+                    Assert.That(versus, Is.Not.Null, "The two are set against each other.");
+                    float middle = ScreenRect(versus).center.x;
+                    Assert.That(middle >= a.xMax - 1f && middle <= b.xMin + 1f, Is.True, "The VS is in the gap: " + middle + " between " + a.xMax + " and " + b.xMin + ".");
                     if (Application.isBatchMode) yield return CaptureFraming("endgame-final-choice", settle: false);
+
+                    // The selection lights its own column: the card's gold edge and the ring's fill
+                    // follow the control the player puts the keyboard on, and move with it. Neither is
+                    // a control. Found again after each frame: a render in between rebuilds the panel
+                    // and restores the selection by its caption.
+                    RectTransform ControlFor(ContestantState taken) =>
+                        (RectTransform)FindButton("Evict " + others.Single(finalist => finalist.id != taken.id).name).transform;
+                    void AssertLit(ContestantState lit, string when)
+                    {
+                        foreach (var shown in others)
+                        {
+                            bool on = lit != null && shown.id == lit.id;
+                            var edge = LastActive(EpisodeHud.FinalistCardPrefix + shown.name).Find(EpisodeHud.ChosenEdgeName);
+                            Assert.That(edge.gameObject.activeSelf, Is.EqualTo(on), shown.name + "'s card is " + (on ? "" : "not ") + "lit " + when + ".");
+                            Assert.That(ControlFor(shown).Find("Selection ring/Selection fill").gameObject.activeSelf, Is.EqualTo(on),
+                                shown.name + "'s ring is " + (on ? "filled " : "empty ") + when + ".");
+                        }
+                    }
+                    // The screen opens with the keyboard on its first control, as every panel does, and
+                    // lights no card for it: that control is the HUD's pick, not the player's, on a
+                    // screen whose head says nothing on it is a prediction.
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.Not.Null, "The screen opens on a control.");
+                    AssertLit(null, "as the screen opens");
+                    foreach (var take in others)
+                    {
+                        // Through nothing, so that selecting even the control the screen opened on is a move.
+                        EventSystem.current.SetSelectedGameObject(null);
+                        EventSystem.current.SetSelectedGameObject(ControlFor(take).gameObject);
+                        yield return null;
+                        AssertLit(take, "with " + take.name + "'s control selected");
+                    }
+                    // The pointer's column wins while the pointer is on its control, because a click
+                    // lands there whatever the keyboard is on, and gives the light back as it leaves:
+                    // one card lit at a time, never both. The pointer moves no selection.
+                    var keyboardOn = others[1];
+                    var pointed = ControlFor(others[0]).gameObject;
+                    var pointer = new PointerEventData(EventSystem.current);
+                    ExecuteEvents.Execute(pointed, pointer, ExecuteEvents.pointerEnterHandler);
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.SameAs(ControlFor(keyboardOn).gameObject), "The keyboard stays where it was.");
+                    AssertLit(others[0], "under the pointer, with " + keyboardOn.name + "'s control selected");
+                    ExecuteEvents.Execute(pointed, pointer, ExecuteEvents.pointerExitHandler);
+                    AssertLit(keyboardOn, "once the pointer leaves");
+
+                    // The decision screen from its top: the head, the cards' faces and who they are.
+                    if (Application.isBatchMode)
+                    {
+                        panel.GetComponentsInChildren<ScrollRect>().First(scroll => scroll.gameObject.activeInHierarchy).verticalNormalizedPosition = 1f;
+                        yield return null;
+                        yield return CaptureFraming("endgame-final-choice-top", settle: false);
+                    }
                 }
-                else Assert.That(b.yMax, Is.LessThanOrEqualTo(a.yMin + 1f), "One under the other at the larger text.");
+                else
+                {
+                    Assert.That(b.yMax, Is.LessThanOrEqualTo(a.yMin + 1f), "One under the other at the larger text.");
+                    Assert.That(LastActive(EpisodeHud.VersusName), Is.Null, "No VS between columns stacked one under the other.");
+                }
 
                 director.ClosePanels();
                 yield return null;

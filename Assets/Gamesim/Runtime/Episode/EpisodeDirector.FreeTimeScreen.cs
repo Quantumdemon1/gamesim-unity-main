@@ -80,6 +80,22 @@ namespace Gamesim.Episode
             TalkFromCastMenu(id);
         }
 
+        /// <summary>
+        /// Whether free time will draw one of the views over Endgame Preparation - the comparison,
+        /// the final case read early, the jury house - rather than its root or a houseguest's
+        /// screen: the checks <see cref="FreeTimeScreen"/> makes, in its order. Each is a screen of
+        /// its own, as it is at the Final 2, so the week's status line does not head it.
+        /// </summary>
+        private bool ViewOverPreparation(EpisodeState state)
+        {
+            if (!Preparing(state)) return false;
+            var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
+            if (chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active) return false;
+            return comparingFinalists
+                || (finalCaseOpen && (finalCaseEarly ? FinalCaseEarlyAvailable(state) : FinalCaseAvailable(state)))
+                || (juryHouseOpen && JuryHouseAvailable(state));
+        }
+
         private void FreeTimeScreen(EpisodeState state)
         {
             var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;

@@ -13,8 +13,8 @@ namespace Gamesim.Episode
     ///
     /// <para>Not built this round: the door on the jury strip. The strip is chrome, drawn only in
     /// free roam, and a screen that opens from anywhere needs a panel flag of its own, as the
-    /// notebook has. The final case's preparation, the lock and the theme's effect wait for
-    /// schema 21 (the plan's F4b).</para>
+    /// notebook has. The final case, its lock and the theme's weight at the vote are the plan's
+    /// F4b, built on schema 21 (EpisodeDirector.FinalCase.cs); its door sits beside this one.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {

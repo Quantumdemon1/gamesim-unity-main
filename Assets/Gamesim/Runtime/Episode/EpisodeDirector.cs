@@ -1485,8 +1485,11 @@ namespace Gamesim.Episode
                 return;
             }
             // Who holds what this week, on one line, before whatever there is to decide: the stage
-            // stands the strip and its badges down, so this is where the roles are read.
-            string houseStatus = HouseStatus(state);
+            // stands the strip and its badges down, so this is where the roles are read. Not over a
+            // view at three (the comparison, the final case, the jury house): those are screens of
+            // their own, and the roles they would sit under are the final-four week's, which stay in
+            // state until the window closes and can name a juror as a nominee.
+            string houseStatus = ViewOverPreparation(state) ? null : HouseStatus(state);
             if (houseStatus != null) hud.Paragraph(houseStatus);
             // A story beat waiting on the player comes before anything else they could do: it
             // closes with the week's next beat, and a card buried under the ordinary controls is a

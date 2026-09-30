@@ -256,6 +256,11 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.InFinalCase, Is.True);
                 var panel = LastActive("Episode panel");
                 Assert.That(Words(panel), Does.Contain("PREPARE YOUR FINAL CASE").And.Contain(EpisodeDirector.FinalCaseLockLaterLine));
+                // A screen of its own, as at the Final 2: the final-four week's roles, still in state
+                // until the window closes, do not head it.
+                string status = EpisodeDirector.HouseStatus(before);
+                Assert.That(status, Is.Not.Null, "The final-four week's roles are still in state at three,");
+                Assert.That(Words(panel), Does.Not.Contain(status), "and the case does not open under them.");
                 Assert.That(ButtonWithCaptionOrNull(EpisodeDirector.LockArgumentCaption), Is.Null, "No lock before the Final 2.");
                 foreach (var theme in FinalArgument.Themes)
                     Assert.That(ButtonWithCaption(FinalArgument.Label(theme)).transform.IsChildOf(LastActive(EpisodeHud.FinalCaseThemesName)), Is.True, theme);
@@ -276,6 +281,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return Frames(2);
                 Assert.That(director.InFinalCase, Is.False);
                 Assert.That(Words(LastActive(EpisodeHud.ScreenHeadName)), Does.Contain(EpisodeDirector.EndgamePreparationTitle), "Back in the window.");
+                Assert.That(Words(LastActive("Episode panel")), Does.Contain(status), "The window's own screen keeps its status line.");
                 ButtonWithCaption(EpisodeDirector.FinalCaseCaption).onClick.Invoke();
                 yield return Frames(2);
                 Assert.That(LastActive(EpisodeHud.FinalCaseThemesName).GetComponentsInChildren<Image>().Any(image => image.name == "Chosen mark"), Is.False,

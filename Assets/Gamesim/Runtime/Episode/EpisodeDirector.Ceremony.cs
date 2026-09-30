@@ -226,6 +226,9 @@ namespace Gamesim.Episode
         /// <para>The Head of Household votes only to break a tie, and the engine's tally leaves that
         /// vote out; the card has to know it is the tie-break, or it counts it with the house's and
         /// a 2-2 tie reads 3-2.</para>
+        ///
+        /// <para>Each ballot also carries its voter's id and look, for the voter's row and face on
+        /// the living room's screen (MOCKUP-PASS-PLAN M18). Presentation only: nothing is saved.</para>
         /// </summary>
         public static List<VoteReveal.Ballot> EvictionBallots(EpisodeState state)
         {
@@ -234,8 +237,8 @@ namespace Gamesim.Episode
             foreach (var vote in state.votes)
             {
                 var voter = state.Find(vote.voterId);
-                ballots.Add(new VoteReveal.Ballot(voter?.name ?? "A housemate", vote.targetId,
-                    tieBreak: !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId));
+                ballots.Add(new VoteReveal.Ballot(vote.voterId, voter?.name ?? "A housemate", vote.targetId,
+                    !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId, voter));
             }
             return ballots;
         }

@@ -1,3 +1,4 @@
+using System.IO;
 using Gamesim.Presentation;
 using NUnit.Framework;
 using UnityEngine;
@@ -200,6 +201,47 @@ namespace Gamesim.Tests.EditMode
                     "The " + kind + " tag sits over the portrait; a translucent ground lets the face "
                     + "through behind the word.");
             }
+        }
+
+        /// <summary>
+        /// The eviction board's chip word (MOCKUP-PASS-PLAN M18) names the nominee a voter evicts,
+        /// in that nominee's side colour, at 15 points and down to 10.5: body text. It sits on the
+        /// pack's dark red evict chip, not on glass, so the sides are measured on that chip's body as
+        /// the living room's screen draws it - the chip over the vote strip over the night ground -
+        /// and on the drawn chip that stands in when the pack is missing.
+        ///
+        /// <para>The body is read from the art itself, so repainted art is measured as it is. The
+        /// jury's Flirt pink read 4.15:1 on it, which is why the right side is lifted.</para>
+        /// </summary>
+        [Test]
+        public void TheEvictionBoardsChipWord_IsReadableOnTheChipForEitherSide()
+        {
+            var strip = Over(Body(PackArt.VoteRevealStrip), UiTheme.Background);
+            var chip = Over(Body(PackArt.VoteChipEvict), strip);
+            var drawn = Over(VoteReveal.DrawnChipGround, Over(UiTheme.SurfaceRaised, UiTheme.Background));
+            for (int side = 0; side < 2; side++)
+            {
+                AssertContrast(VoteReveal.Side(side), chip, BodyMinimum, "side " + side + "'s chip word on the evict chip");
+                AssertContrast(VoteReveal.Side(side), drawn, BodyMinimum, "side " + side + "'s chip word on the drawn chip");
+            }
+            AssertContrast(UiTheme.Paper, chip, BodyMinimum, "a chip word that names nobody");
+            Assert.That(VoteReveal.Side(0), Is.Not.EqualTo(VoteReveal.Side(1)), "The two sides differ.");
+        }
+
+        /// <summary>
+        /// The colour in the middle of a pack sprite's image: a nine-slice's body. Read from the PNG,
+        /// since the imported texture is not readable, and as the file's own bytes, with no colour
+        /// space conversion, since that is what the contrast maths above expects.
+        /// </summary>
+        private static Color Body(string path)
+        {
+            var image = new Texture2D(2, 2);
+            try
+            {
+                Assert.That(image.LoadImage(File.ReadAllBytes("Assets/Gamesim/Resources/Packs/" + path + ".png")), Is.True, path);
+                return image.GetPixels32()[image.height / 2 * image.width + image.width / 2];
+            }
+            finally { Object.DestroyImmediate(image); }
         }
 
         private static void AssertContrast(Color foreground, Color background, double minimum, string what)

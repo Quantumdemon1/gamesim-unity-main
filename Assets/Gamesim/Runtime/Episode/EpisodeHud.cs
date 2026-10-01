@@ -1129,6 +1129,8 @@ namespace Gamesim.Episode
         {
             if (target == null || string.IsNullOrEmpty(text)) return;
             if (dialRoot != null && target.transform.parent == dialRoot) { PetalTag(target, text); return; }
+            // One of a person picker's people carries its tag on its foot (EpisodeHud.ConversationGroups.cs).
+            if (PickerTag(target, text)) return;
             // A row carrying a trust reading has already spent its right-hand end on it: a tag
             // seated at the row's end sat on top of "Trust 9" (the Vent and rumour rows).
             if (seat == TagSeat.RowEnd && readingRows.Contains(target)) seat = TagSeat.PastReading;
@@ -1400,6 +1402,8 @@ namespace Gamesim.Episode
         /// </summary>
         public Button ActionFor(string contestantId,string caption,Action action)
         {
+            // Inside a person picker the row is one of the picker's people (EpisodeHud.ConversationGroups.cs).
+            if (PickerTakes(caption)) return PickerChoice(contestantId,caption,action);
             var button = Action(caption,Portrait(contestantId),action);
             Annotate(button,contestantId);
             return button;

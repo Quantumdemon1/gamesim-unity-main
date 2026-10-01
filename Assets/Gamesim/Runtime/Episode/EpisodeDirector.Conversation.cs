@@ -237,6 +237,8 @@ namespace Gamesim.Episode
             if (npc == null || !CanTalk(npc)) return false;
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
+            // A conversation opens with every person picker shut (EpisodeDirector.ConversationGroups.cs).
+            conversationPick = null;
             ClosePanels(); focusedNpc = npc; player.SetInputEnabled(false); cameraRig.SetConversationFocus(player.transform, npc.transform);
             // The houseguest has the floor, said here rather than inherited: the house's own chats
             // hand the floor back and forth every tick, and left it with whoever last had it - for
@@ -247,68 +249,88 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// A social action's category, drawn as a pill beside the control.
+        /// The pill drawn beside a control: in a conversation, what the move is for; on the house's
+        /// moves and the decision screens, the category they have always carried.
         ///
-        /// <para>The grouping is real rather than invented: these commands already divide by what
-        /// they commit. Talking and sharing information move a relationship and nothing else;
-        /// promises and alliances write a binding record that comes due later; studying the house
-        /// banks a competition bonus and touches no one. Unlike the confession "risk" badges, which
-        /// have no counterpart in this simulation at all, this is a name for structure that is
-        /// already there.</para>
+        /// <para>A conversation's verbs say what they are for (ACTIONS-DEALS-ALLIANCES-PLAN V5, V6):
+        /// warmth for the ones that only bring the two of you closer, learn for the ones that tell you
+        /// something, risk for the ones that can turn on you, binds you for the ones that come due
+        /// later, and free beside any that spends no action. Each is what the engine does, not what
+        /// the verb sounds like: venting was filed as social for its whole life while a listener who
+        /// does not already dislike its subject takes ten off you half the time, and the pill is the
+        /// only warning a player gets before an action is spent on it.</para>
+        ///
+        /// <para>The house's moves, the plea and the deal table keep the words their tiles and rows
+        /// have always shown: their screens read these, and those screens are not the conversation.</para>
         /// </summary>
         private static string Category(EpisodeCommandKind kind)
         {
             switch (kind)
             {
-                case EpisodeCommandKind.Talk:
-                case EpisodeCommandKind.ShareInformation:
-                case EpisodeCommandKind.AskForIntel:
-                case EpisodeCommandKind.AskVote:
-                case EpisodeCommandKind.VentAbout:
+                // Closer, and nothing that can rebound: the safe topics, an afternoon together, a
+                // thing you know handed over, and the room acts (D-E). The suite's invitation is
+                // warmth too: those left out think a little less of you, but that is its known
+                // price, not a roll that can land against you.
                 case EpisodeCommandKind.SmallTalk:
                 case EpisodeCommandKind.PersonalChat:
                 case EpisodeCommandKind.RelationshipBuilding:
-                // The room acts (D-E): time spent, nothing that can rebound.
+                case EpisodeCommandKind.StrategicDiscussion:
+                case EpisodeCommandKind.Talk:
+                case EpisodeCommandKind.ShareInformation:
                 case EpisodeCommandKind.PillowTalk:
                 case EpisodeCommandKind.Cook:
                 case EpisodeCommandKind.InviteUp:
                 case EpisodeCommandKind.PublicDefense:
                 case EpisodeCommandKind.AllianceMeet:
                 case EpisodeCommandKind.PlayAGame:
-                    return "social";
-                // Their own category for the same reason Eavesdrop and SpreadLie have one: these
-                // are the conversations that can rebound, and the chip is the only warning before
-                // an action is spent on one.
+                    return WarmthTag;
+                case EpisodeCommandKind.AskForIntel:
+                    return LearnTag;
+                // The question and the look are free, once a week each, and neither is safe: a read
+                // they notice costs three with them, and a voter caught lying about their vote at the
+                // reveal sours things between you both ways.
+                case EpisodeCommandKind.AskVote:
+                case EpisodeCommandKind.ReadPerson:
+                    return LearnTag + " · " + RiskTag + " · " + FreeTag;
+                // A roll that can land against you: talking game (-5), a secret (-15), venting to
+                // someone who does not share it (-10), a lie found out, a rumour traced back.
                 case EpisodeCommandKind.DiscussGame:
                 case EpisodeCommandKind.ShareSecret:
-                case EpisodeCommandKind.SpreadRumor:
-                case EpisodeCommandKind.HouseMeeting:
-                    return "risky";
-                case EpisodeCommandKind.StrategicDiscussion:
-                case EpisodeCommandKind.ReadPerson:
-                case EpisodeCommandKind.CallTheVote:
-                case EpisodeCommandKind.BuyActionPoint:
-                    return "strategic";
-                // Their own category on purpose. These are the actions that can rebound on you, and
-                // the chip is the only warning before you spend an action on one.
-                case EpisodeCommandKind.Eavesdrop:
+                case EpisodeCommandKind.VentAbout:
                 case EpisodeCommandKind.SpreadLie:
+                case EpisodeCommandKind.SpreadRumor:
+                    return RiskTag;
+                // Their relationships take the damage and nothing comes back to you.
                 case EpisodeCommandKind.SchemeAgainst:
+                    return "undermines them";
+                // Not a roll: leaving costs fifteen with them, every time.
+                case EpisodeCommandKind.LeaveAlliance:
+                    return "costs warmth";
+                case EpisodeCommandKind.PromiseSafety:
+                case EpisodeCommandKind.PromiseVote:
+                case EpisodeCommandKind.PromiseFinalTwo:
+                case EpisodeCommandKind.FormAlliance:
+                    return BindsYouTag;
+                case EpisodeCommandKind.SwearLoyalty:
+                    return BindsYouTag + " · " + FreeTag;
+                case EpisodeCommandKind.DeclineLoyalty:
+                    return FreeTag;
+                // The members who follow vote where you point them, and the ones who do not are named.
+                case EpisodeCommandKind.CallTheVote:
+                    return "steers the vote";
+                case EpisodeCommandKind.CompPractice:
+                    return "practice";
+                // The house's moves, the plea, the deal table and the decision screens.
+                case EpisodeCommandKind.HouseMeeting:
+                case EpisodeCommandKind.Eavesdrop:
                     return "risky";
+                case EpisodeCommandKind.BuyActionPoint:
                 case EpisodeCommandKind.SetBackdoorPlan:
                 case EpisodeCommandKind.ProposeDeal:
                 case EpisodeCommandKind.RespondToDeal:
                 case EpisodeCommandKind.Lobby:
                     return "strategic";
-                case EpisodeCommandKind.PromiseSafety:
-                case EpisodeCommandKind.PromiseVote:
-                case EpisodeCommandKind.PromiseFinalTwo:
-                case EpisodeCommandKind.FormAlliance:
-                case EpisodeCommandKind.LeaveAlliance:
-                case EpisodeCommandKind.SwearLoyalty:
-                    return "strategic";
                 case EpisodeCommandKind.StudyHouse:
-                case EpisodeCommandKind.CompPractice:
                     return "preparation";
                 default:
                     return null;

@@ -90,16 +90,25 @@ namespace Gamesim.Episode
         private static uint KeyRank(uint seed, int week, string id) => Rank(seed, week, 0x6B657973u, id); // "keys"
 
         /// <summary>
-        /// The order the house's ballots go on the board in: shuffled like the keys, the same way for
-        /// the same week of the same season, under a salt of its own so the votes do not come out in
-        /// the keys' order. The engine casts ballots in the cast's order, and a count that climbed in
-        /// that order would say whose vote each was (UI-UX-PASS-PLAN B0). Presentation only.
+        /// The order the house's ballots go on the board in: a fresh draw every time the card plays.
+        /// The engine casts ballots in the cast's order, and a count that climbed in that order would
+        /// say whose vote each was (UI-UX-PASS-PLAN B0); an order hashed from the seed, the week and
+        /// the voters' ids - as the keys' is - would be recoverable by anybody who ran the hash, so
+        /// the board's order is drawn from the engine's own stream never, and from the season's seed
+        /// never: UnityEngine.Random, which nothing of the record is keyed on. A reload of the same
+        /// week deals the ballots in another order, which tells the player nothing either. The draw
+        /// is the key ceremony's Fisher-Yates over a copy; presentation only.
         /// </summary>
-        public static List<string> VoteOrder(IEnumerable<string> ids, uint seed, int week) =>
-            (ids ?? Enumerable.Empty<string>())
-                .Select((id, index) => (id, index, rank: Rank(seed, week, 0x766F7465u, id))) // "vote"
-                .OrderBy(entry => entry.rank).ThenBy(entry => entry.index)
-                .Select(entry => entry.id).ToList();
+        public static List<string> VoteOrder(IEnumerable<string> ids)
+        {
+            var order = (ids ?? Enumerable.Empty<string>()).ToList();
+            for (int i = order.Count - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                (order[i], order[j]) = (order[j], order[i]);
+            }
+            return order;
+        }
 
         private static uint Rank(uint seed, int week, uint salt, string id)
         {

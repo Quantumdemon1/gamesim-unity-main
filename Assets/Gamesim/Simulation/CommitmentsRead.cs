@@ -233,14 +233,15 @@ namespace Gamesim.Simulation
                     bool theirs = entry.reason.EndsWith(" you in week " + entry.week, StringComparison.Ordinal);
                     bool vote = entry.reason.StartsWith(OathBreachReason + "voting", StringComparison.Ordinal);
                     broken.Add(arc.npcId);
-                    // Their breach by a vote is their ballot: told once the player knows it (decision
-                    // 4). The house is told of an oath's breach in the open, so it is known while that
-                    // line is on the record; it is withheld only once the log has rolled past it.
-                    bool withheld = theirs && vote && !KnownBallots.Knows(s, entry.week, arc.npcId);
-                    var c = Oath(arc.npcId, "oath-broken:" + arc.npcId + ":" + entry.week, 0, withheld ? Outcomes.Unresolved : Outcomes.Broken,
-                        withheld ? KnownBallots.Unresolved : (theirs ? "broken by them" : "broken by you") + (vote ? " with a vote" : " with a nomination"),
+                    // Their breach by a vote is their ballot, and the house is told of an oath's breach
+                    // in the open (a designed leak, the Accounting's twin, until R1): the breach is
+                    // known from the announcement, keyed here on the arc the rule wrote - which
+                    // outlives the line on the log - so a verdict once told never un-knows itself.
+                    // KnownBallots reads the same arc, so the sheet agrees.
+                    var c = Oath(arc.npcId, "oath-broken:" + arc.npcId + ":" + entry.week, 0, Outcomes.Broken,
+                        (theirs ? "broken by them" : "broken by you") + (vote ? " with a vote" : " with a nomination"),
                         "held until week " + entry.week, entry.week);
-                    c.brokenById = withheld ? null : theirs ? arc.npcId : player;
+                    c.brokenById = theirs ? arc.npcId : player;
                     into.Add(c);
                 }
             }

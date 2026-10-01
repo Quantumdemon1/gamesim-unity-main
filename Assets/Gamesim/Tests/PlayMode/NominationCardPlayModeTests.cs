@@ -456,10 +456,12 @@ namespace Gamesim.Tests.PlayMode
                 new VoteReveal.Nominee(Jordan, "Jordan Taylor", null),
                 new VoteReveal.Nominee(Casey, "Casey Wilson", null),
             };
+            // No ballot carries its voter (UI-UX-PASS-PLAN B0): the card is handed whom each went
+            // against, and the deciding vote last.
             var ballots = new[]
             {
-                new VoteReveal.Ballot(Names[0], Jordan), new VoteReveal.Ballot(Names[1], Casey), new VoteReveal.Ballot(Names[2], Jordan),
-                new VoteReveal.Ballot(Names[3], Casey), new VoteReveal.Ballot(Hoh, Jordan, tieBreak: true),
+                new VoteReveal.Ballot(Jordan), new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan),
+                new VoteReveal.Ballot(Casey), new VoteReveal.Ballot(Jordan, tieBreak: true),
             };
             Assert.That(reveal.Play(4, block, ballots, Jordan, true, CeremonyPace.Quick, Hoh, false, false, screen), Is.True,
                 "Two nominees and a ballot is a shape the reveal narrates.");

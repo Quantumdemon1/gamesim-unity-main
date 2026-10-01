@@ -17,29 +17,28 @@ namespace Gamesim.Tests.PlayMode
     /// <summary>
     /// The privacy sentinel over the screens (UI-UX-PASS-PLAN B0): on a week whose count the player
     /// knows but whose ballots they can only partly place, the notebook's vote page, its story and
-    /// notes, the weekly recap on every tab and the HUD's Recent events never print a voter the
-    /// player cannot place beside the nominee they voted against; the Known ballots page shows the
-    /// player's own, what they were told and what the count proves, each by its basis, and an
-    /// unknown slot for the rest; and the recap's vote breakdown shows the count and only the known
+    /// notes, the diary room's memories, a houseguest's profile, the weekly recap on every tab and
+    /// the HUD's Recent events never print a voter the player cannot place beside the nominee they
+    /// voted against, nor the engine's verdict line that would tell it; the Known ballots page shows
+    /// the player's own, what they were told and what the count proves, each by its basis, and how
+    /// many they cannot place; and the recap's vote breakdown shows the count and only the known
     /// faces. Captured at both text sizes: notebook-known-ballots and recap-vote-breakdown.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
-        /// <summary>The verbs a line says a ballot with, right after the voter's name (the subset's BallotPrivacyTests has the same rule).</summary>
+        /// <summary>The verbs a line says a ballot with, after the voter's name in the same sentence (the subset's BallotPrivacyTests has the same rule).</summary>
         private static readonly string[] PrivacyBallotVerbs = { "voted", "votes", "is voting", "broke", "kept", "honoured", "followed", "ignored", "lied", "defected", "fell out" };
 
-        private static readonly string[] PrivacyAccounts =
-        {
-            "told you", "Overheard", "An ally heard", "wouldn't say", "at the call", "your call", "put a ", "(about ", "agreed", "waiting on",
-            KnownBallots.Unresolved, "Says: evict", "promised", "proposed", "offered", "Trust", "whip count", " to win", "jury",
-            "pact", "agreement", "commitment", "final two", "Safety promise", "FinalTwo promise", "AllianceLoyalty promise", "Information promise",
-        };
+        /// <summary>Lines that are a record of what was said, never a ballot read, by the words they open with: a voter's own stated lean on a whip count, and the claims the player gathered.</summary>
+        private static readonly string[] PrivacyAccountPrefixes = { "Says: evict", "Overheard", "An ally heard" };
 
         /// <summary>
         /// An eight-house walked to its first reveal with the player among the voters: the player
-        /// asked two voters where their heads were - one told the truth, one lied - and the engine
-        /// judged both at the reveal. The count is not unanimous, so at least one ballot stays the
-        /// voter's own.
+        /// asked two voters where their heads were - one told the truth, one lied - and a third
+        /// promised them a vote they did not cast; the engine judged all three at the reveal, and
+        /// wrote the broken promise to the player's memories, where it tells that third ballot. The
+        /// count does not place the third voter, so that memory waits for the ballot, and at least
+        /// one ballot stays the voter's own.
         /// </summary>
         private static EpisodeState PartlyKnownReveal()
         {
@@ -58,10 +57,15 @@ namespace Gamesim.Tests.PlayMode
                 }
                 if (!voting) continue;
                 var s = engine.Snapshot;
-                var voters = EpisodeEngine.Voters(s).Where(v => !v.isPlayer).Take(2).ToArray();
+                var voters = EpisodeEngine.Voters(s).Where(v => !v.isPlayer).Take(3).ToArray();
                 string first = EpisodeEngine.ProjectBallot(s, voters[0].id).selectedNomineeId;
                 s.ledger.claims.Add(new ClaimRow { week = s.week, voterId = voters[0].id, targetId = first, source = ClaimSource.Told });
                 s.ledger.claims.Add(new ClaimRow { week = s.week, voterId = voters[1].id, targetId = s.nominees.First(id => id != EpisodeEngine.ProjectBallot(s, voters[1].id).selectedNomineeId), source = ClaimSource.Told });
+                // A vote promise from the third voter for the nominee they will not vote against: the
+                // engine settles it broken at the reveal and writes the verdict to the player's memories.
+                string third = EpisodeEngine.ProjectBallot(s, voters[2].id).selectedNomineeId;
+                s.promises.Add(new PromiseState { id = "sentinel-promise", fromId = voters[2].id, toId = s.playerId, targetId = s.nominees.First(id => id != third),
+                    kind = PromiseKind.Vote, status = PromiseStatus.Active, week = s.week, expiresWeek = s.week });
                 engine = new EpisodeEngine(s);
                 for (int guard = 0; guard < 20 && !engine.Snapshot.evictionResolved; guard++)
                 {
@@ -72,10 +76,12 @@ namespace Gamesim.Tests.PlayMode
                 var revealed = engine.Snapshot;
                 if (!revealed.evictionResolved) continue;
                 var sheet = KnownBallots.Read(revealed, revealed.week);
-                if (sheet.Unknown == 0 || sheet.ballots.Count(b => b.basis == KnownBallots.Basis.Told) < 2) continue;
+                if (sheet.Unknown == 0 || sheet.ballots.Count(b => b.basis == KnownBallots.Basis.Told) < 2 || sheet.Knows(voters[2].id)) continue;
+                if (!revealed.memories.Any(m => m.ownerId == revealed.playerId && m.subjectId == voters[2].id
+                        && KnownBallots.TellsAnUnknownBallot(revealed, voters[2].id, m.text, m.week))) continue;
                 return revealed;
             }
-            Assert.Fail("No eight-house from seed 50 reached a reveal with two told claims and a ballot still unknown.");
+            Assert.Fail("No eight-house from seed 50 reached a reveal with two told claims, a broken promise the player cannot place and a ballot still unknown.");
             return null;
         }
 
@@ -90,33 +96,75 @@ namespace Gamesim.Tests.PlayMode
             return ballots;
         }
 
+        /// <summary>
+        /// Whether a line says the voter's ballot: in any sentence of it, the voter's name as the
+        /// sentence's subject - the first houseguest it names - followed by a ballot verb, with the
+        /// nominee it went against named anywhere in the line. The words that say a ballot is not
+        /// known (KnownBallots.Unresolved) are not a ballot said.
+        /// </summary>
         private static bool PrivacyNamesTheBallot(EpisodeState s, string line, string voterId, string targetId)
         {
             if (string.IsNullOrEmpty(line)) return false;
             string voter = s.Find(voterId)?.name, target = s.Find(targetId)?.name;
             if (voter == null || target == null) return false;
-            int at = line.IndexOf(voter, StringComparison.Ordinal);
-            if (at < 0) return false;
+            if (PrivacyAccountPrefixes.Any(prefix => line.StartsWith(prefix, StringComparison.Ordinal))) return false;
+            string said = line.Replace(KnownBallots.Unresolved, string.Empty);
             string targetWord = targetId == s.playerId ? "you" : FinalistRead.FirstName(target);
-            if (line.IndexOf(targetWord, StringComparison.Ordinal) < 0) return false;
-            if (PrivacyAccounts.Any(account => line.IndexOf(account, StringComparison.Ordinal) >= 0)) return false;
-            string after = line.Substring(at + voter.Length);
-            int stop = after.IndexOf('.');
-            if (stop >= 0) after = after.Substring(0, stop);
-            return PrivacyBallotVerbs.Any(verb => after.IndexOf(" " + verb, StringComparison.Ordinal) >= 0);
+            if (said.IndexOf(targetWord, StringComparison.Ordinal) < 0) return false;
+            foreach (var sentence in said.Split(new[] { ". ", "? ", "! ", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                int at = sentence.IndexOf(voter, StringComparison.Ordinal);
+                if (at < 0) continue;
+                if (s.contestants.Any(c => !string.IsNullOrEmpty(c.name) && sentence.IndexOf(c.name, StringComparison.Ordinal) is int first && first >= 0 && first < at)) continue;
+                string after = sentence.Substring(at + voter.Length);
+                if (PrivacyBallotVerbs.Any(verb => after.IndexOf(" " + verb, StringComparison.Ordinal) >= 0)) return true;
+            }
+            return false;
         }
 
         private List<string> VisibleLines() =>
             director.GetComponentsInChildren<TMP_Text>(true).Where(label => label.gameObject.activeInHierarchy)
                 .SelectMany(label => label.text.Split('\n')).ToList();
 
+        /// <summary>A line as the engine wrote it, without the "Week 3: " or "Week 3 · " a screen dates it with.</summary>
+        private static string PrivacyUnprefixed(string line)
+        {
+            if (line == null || !line.StartsWith("Week ", StringComparison.Ordinal)) return line;
+            int colon = line.IndexOf(": ", StringComparison.Ordinal), dot = line.IndexOf(" · ", StringComparison.Ordinal);
+            int cut = colon >= 0 && (dot < 0 || colon < dot) ? colon + 2 : dot >= 0 ? dot + 3 : -1;
+            return cut >= 0 ? line.Substring(cut) : line;
+        }
+
+        /// <summary>The week a line is dated to by its "Week 3: " or "Week 3 · ", or null where it carries none.</summary>
+        private static int? PrivacyWeekOf(string line)
+        {
+            if (line == null || !line.StartsWith("Week ", StringComparison.Ordinal)) return null;
+            int end = 5;
+            while (end < line.Length && char.IsDigit(line[end])) end++;
+            return end > 5 && end < line.Length && (line[end] == ':' || line[end] == ' ') ? int.Parse(line.Substring(5, end - 5)) : (int?)null;
+        }
+
+        /// <summary>The player's memories that tell a ballot the player cannot place: the engine's own verdict lines, which every memory reader withholds until the ballot is known.</summary>
+        private static List<MemoryState> WithheldMemories(EpisodeState s) =>
+            s.memories.Where(m => m.ownerId == s.playerId && KnownBallots.TellsAnUnknownBallot(s, m.subjectId, m.text, m.week)).ToList();
+
         private void AssertNoUnknownBallotOnScreen(EpisodeState s, IEnumerable<(int week, string voterId, string targetId)> unknown, string where)
         {
             var lines = VisibleLines();
+            var withheld = WithheldMemories(s);
             foreach (var (week, voterId, targetId) in unknown)
                 foreach (var line in lines)
+                {
+                    // A line dated to another week is that week's: held against that week's ballots.
+                    if (PrivacyWeekOf(line) is int dated && dated != week) continue;
                     Assert.That(PrivacyNamesTheBallot(s, line, voterId, targetId), Is.False,
                         where + ": " + s.Find(voterId).name + "'s ballot (week " + week + ") is not the player's to know, and the screen says it: \"" + line + "\"");
+                    Assert.That(KnownBallots.TellsAnUnknownBallot(s, voterId, PrivacyUnprefixed(line), week), Is.False,
+                        where + ": " + s.Find(voterId).name + "'s ballot (week " + week + ") is not the player's to know, and the screen tells its verdict: \"" + line + "\"");
+                }
+            foreach (var memory in withheld)
+                Assert.That(lines.Any(line => line.Contains(memory.text)), Is.False,
+                    where + ": a memory that tells a ballot the player cannot place is on the screen: \"" + memory.text + "\"");
         }
 
         [UnityTest]
@@ -136,12 +184,40 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(unknown, Is.Not.Empty, "A ballot the player cannot place, or the sentinel guards nothing.");
             var known = sheet.ballots.Where(b => b.Known && b.voterId != shown.playerId).ToList();
             Assert.That(known, Is.Not.Empty, "A ballot the player can place.");
+            var withheld = WithheldMemories(shown);
+            Assert.That(withheld, Is.Not.Empty, "A memory that tells a ballot the player cannot place, or the memory readers guard nothing.");
+            Assert.That(KnownBallots.PlayerMemories(shown).Select(m => m.text), Has.None.EqualTo(withheld[0].text), "The one list every memory reader prints leaves it out.");
 
-            // The HUD over the house: Recent events carries the count, never a ballot.
+            // The diary room: the confessional's caption under the player's name is their latest
+            // memory they may know, and the Memories tab their reflections.
+            yield return OpenDiaryFixturePanel();
+            ButtonWithCaption(EpisodeDirector.DiaryMemoriesTabCaption).onClick.Invoke();
+            yield return Frames(2);
+            Canvas.ForceUpdateCanvases();
+            AssertNoUnknownBallotOnScreen(shown, unknown, "The diary room's memories");
+            var latest = KnownBallots.PlayerMemories(shown).LastOrDefault();
+            if (latest != null)
+                Assert.That(VisibleLines(), Has.Some.EqualTo("Week " + latest.week + ": " + latest.text), "The reflections read the memories the player may know.");
+            director.ClosePanels();
+            yield return WaitForDiaryExit();
+            yield return null;
+
+            // A houseguest's profile: the latest three memories the player may know of them.
+            director.ShowHouseguestProfile(withheld[0].subjectId);
+            yield return Frames(2);
+            Canvas.ForceUpdateCanvases();
+            AssertNoUnknownBallotOnScreen(shown, unknown, "The profile of " + shown.Find(withheld[0].subjectId).name);
+            director.ClosePanels();
+            yield return null;
+
+            // The HUD over the house: Recent events reads the house's record, where the count rides
+            // the public eviction line and never a ballot. The record is pinned rather than the
+            // card, whose lines after a reveal may have scrolled the eviction off it.
             Canvas.ForceUpdateCanvases();
             AssertNoUnknownBallotOnScreen(shown, unknown, "The HUD");
-            Assert.That(VisibleLines().Any(line => line.StartsWith("By a vote of ", StringComparison.Ordinal) || line.StartsWith("By a single vote", StringComparison.Ordinal)),
-                Is.True, "The count is on the HUD's Recent events.");
+            var gone = shown.events.Single(e => e.week == week && e.kind == "eviction");
+            Assert.That(gone.audienceIds, Is.Empty, "The count is the house's,");
+            Assert.That(gone.text, Does.Contain(" the jury. By a vote of ").Or.Contain(" the jury. By a single vote."), "on the eviction line.");
 
             foreach (bool larger in new[] { false, true })
             {
@@ -198,7 +274,7 @@ namespace Gamesim.Tests.PlayMode
                     if (WeeklyRecapScreen.TabCaptions[tab] == "Vote breakdown")
                     {
                         var words = VisibleLines();
-                        Assert.That(words.Any(line => line.StartsWith("By a vote of ", StringComparison.Ordinal) || line.StartsWith("By a single vote", StringComparison.Ordinal)), Is.True, "The count.");
+                        Assert.That(words.Any(line => line.Contains("By a vote of ") || line.Contains("By a single vote")), Is.True, "The count.");
                         Assert.That(words.Count(line => line.Contains(" ballots you do not know") || line.Contains("1 ballot you do not know")), Is.GreaterThan(0), "and how many are unknown.");
                         AssertDecisionCopyFits(LastActive(WeeklyRecapScreen.TabBodyName));
                         if (Application.isBatchMode) yield return CaptureFraming(larger ? "recap-vote-breakdown-large" : "recap-vote-breakdown");

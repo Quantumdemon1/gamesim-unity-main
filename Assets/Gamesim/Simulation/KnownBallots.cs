@@ -198,6 +198,11 @@ namespace Gamesim.Simulation
                 else if (read.voterId == frame.hohId) read.basis = Basis.TieBreak;
                 Place(read);
             }
+            // An oath's breach by a vote against the player was announced to the house and is on the
+            // player's own arc with the breaker in the rule's words: known from the announcement,
+            // and still known once the log has rolled past the line.
+            foreach (var breach in OathBreaches(s, week))
+                if (breach.voterId != frame.hohId) Place(breach);
 
             // What the player was told, overheard or had reported, judged at the reveal.
             foreach (var claim in (s.ledger?.claims ?? new List<ClaimRow>()).Where(k => k != null && k.week == week && k.status != ClaimStatus.Open))
@@ -371,6 +376,26 @@ namespace Gamesim.Simulation
             return new Ballot { voterId = breaker.id, targetId = victim.id, basis = Basis.Revealed };
         }
 
+        /// <summary>The words an oath's breach by a vote against the player is recorded under on the player's arc with the breaker (<see cref="WebLoyaltyOaths"/>; <see cref="CommitmentsRead"/> reads the same entry).</summary>
+        public const string OathBreachByVoteAgainstYou = "Broke loyalty oath by voting to evict you in week ";
+
+        /// <summary>
+        /// The ballots the player's own relationship arcs record: a houseguest who broke a loyalty
+        /// oath by voting to evict the player in <paramref name="week"/>, in the words the oath's rule
+        /// writes on the arc. The house was told of the breach in the open, so the basis is
+        /// <see cref="Basis.Revealed"/>; the arc outlives the line on the log.
+        /// </summary>
+        private static IEnumerable<Ballot> OathBreaches(EpisodeState s, int week)
+        {
+            string reason = OathBreachByVoteAgainstYou + week;
+            foreach (var arc in s.relationshipArcs ?? new List<RelationshipArcState>())
+            {
+                if (arc?.weeklyHistory == null || string.IsNullOrEmpty(arc.npcId) || arc.npcId == s.playerId || s.Find(arc.npcId) == null) continue;
+                if (arc.weeklyHistory.Any(entry => entry != null && entry.week == week && entry.reason == reason))
+                    yield return new Ballot { voterId = arc.npcId, targetId = s.playerId, basis = Basis.Revealed };
+            }
+        }
+
         private static ContestantState Subject(EpisodeState s, string line) =>
             s.contestants.Where(c => !string.IsNullOrEmpty(c.name) && line.StartsWith(c.name, StringComparison.Ordinal))
                 .OrderByDescending(c => c.name.Length).FirstOrDefault();
@@ -404,6 +429,9 @@ namespace Gamesim.Simulation
             int week = DealSettledWeek(s, d, partner);
             if (week == 0) return false;
             var sheet = Read(s, week);
+            // A partner who cast no ballot that week - the Head of Household with no tie to break,
+            // a nominee - had nothing the player needs to learn: the player's own ballot settled it.
+            if (!sheet.voters.Contains(partner) && !(sheet.tieBroken && sheet.hohId == partner)) return true;
             if (d.type != DealKind.VoteTogether && d.targetId != null)
             {
                 string own = sheet.TargetOf(player);
@@ -428,7 +456,7 @@ namespace Gamesim.Simulation
             return week > 0 && Knows(s, week, p.fromId);
         }
 
-        /// <summary>The week the reveal judged a vote promise: the first on the record, from the week it was made, in which the promiser voted. 0 where the record cannot say.</summary>
+        /// <summary>The week the reveal judged a vote promise: the first on the record, from the week it was made, in which the promiser voted - with the house, or as the Head of Household breaking a tie. 0 where the record cannot say.</summary>
         public static int PromiseSettledWeek(EpisodeState s, PromiseState p)
         {
             if (s == null || p == null) return 0;
@@ -437,12 +465,12 @@ namespace Gamesim.Simulation
             {
                 if (week < p.week || week > last) continue;
                 var frame = Frame.Of(s, week);
-                if (frame.revealed && frame.voters.Contains(p.fromId)) return week;
+                if (frame.revealed && Voted(frame, p.fromId)) return week;
             }
             return 0;
         }
 
-        /// <summary>The week the reveal judged a vote deal: the first on the record in its term in which a party voted on it. 0 where the record cannot say.</summary>
+        /// <summary>The week the reveal judged a vote deal: the first on the record in its term in which a party voted on it - with the house, or as the Head of Household breaking a tie. 0 where the record cannot say.</summary>
         public static int DealSettledWeek(EpisodeState s, DealState d, string partnerId)
         {
             if (s == null || d == null) return 0;
@@ -454,13 +482,17 @@ namespace Gamesim.Simulation
                 if (!frame.revealed) continue;
                 if (d.type == DealKind.VoteTogether)
                 {
-                    if (frame.voters.Contains(d.proposerId) && frame.voters.Contains(d.recipientId)) return week;
+                    if (Voted(frame, d.proposerId) && Voted(frame, d.recipientId)) return week;
                 }
                 else if (d.targetId != null && frame.nominees.Contains(d.targetId)
-                    && (frame.voters.Contains(d.proposerId) || frame.voters.Contains(d.recipientId))) return week;
+                    && (Voted(frame, d.proposerId) || Voted(frame, d.recipientId))) return week;
             }
             return 0;
         }
+
+        /// <summary>Whether <paramref name="id"/> cast a ballot in the week of <paramref name="frame"/>: among the house's voters, or the Head of Household breaking its tie, which the engine counts as a ballot when it judges a deal or a promise.</summary>
+        private static bool Voted(Frame frame, string id) =>
+            id != null && (frame.voters.Contains(id) || (frame.tieBroken && frame.hohId == id));
 
         /// <summary>
         /// Whether a line of record written to the player - a memory, or an entry on their own record
@@ -488,6 +520,21 @@ namespace Gamesim.Simulation
             }
             if (!tells) return false;
             return !Knows(s, week, partnerId);
+        }
+
+        /// <summary>
+        /// The player's own memories, in the order they were written, less any that tells them a
+        /// ballot they do not know (<see cref="TellsAnUnknownBallot"/>). Every reader that prints the
+        /// player's memories - the notebook's story and its notes, the diary room's confessional and
+        /// its reflections, a houseguest's profile and their notes, the web's secrets - reads this
+        /// list, so one rule gates them all.
+        /// </summary>
+        public static IEnumerable<MemoryState> PlayerMemories(EpisodeState s)
+        {
+            if (s?.memories == null || s.playerId == null) yield break;
+            foreach (var memory in s.memories)
+                if (memory != null && memory.ownerId == s.playerId && !TellsAnUnknownBallot(s, memory.subjectId, memory.text, memory.week))
+                    yield return memory;
         }
 
         // ---------------------------------------------------------------- the week's frame

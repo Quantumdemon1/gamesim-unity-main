@@ -74,7 +74,7 @@ namespace Gamesim.Episode
             var addedEvents = after.events.Where(item => item.sequence >= before.nextSequence).ToArray();
             if (!after.evictionResolved)
             {
-                RequireSeason(!addedEvents.Any(item => item.kind == "vote-reveal" || item.kind == "vote-tally" || item.kind == "eviction"),
+                RequireSeason(!addedEvents.Any(item => item.kind == "vote-reveal" || item.kind == "eviction"),
                     "Pending ballots must remain unrevealed by public events.");
                 RequireSeason(before.randomState == after.randomState,
                     "Pending private ballots/coordination must not consume persisted episode RNG.");
@@ -82,10 +82,15 @@ namespace Gamesim.Episode
             }
             else
             {
-                // The reveal reads the count, not the ballots (UI-UX-PASS-PLAN B0): one public tally
-                // line, and each ballot's line in its existing words to its voter alone, once.
-                RequireSeason(addedEvents.Count(item => item.kind == "vote-tally" && item.audienceIds.Count == 0) == 1,
-                    "The reveal must publish exactly one public tally line.");
+                // The reveal reads the count, not the ballots (UI-UX-PASS-PLAN B0): the count on the
+                // tail of the one public eviction line - no line of the reveal's own, since the story
+                // mints its ids from the sequence - and each ballot's line in its existing words to its
+                // voter alone, once.
+                RequireSeason(addedEvents.Count(item => item.kind == "eviction" && item.audienceIds.Count == 0
+                        && (item.text.Contains(" By a vote of ") || item.text.EndsWith(" By a single vote."))) == 1,
+                    "The reveal must publish exactly one public eviction line, carrying the count.");
+                RequireSeason(!addedEvents.Any(item => item.kind == "vote-tally"),
+                    "The reveal must log no line of its own beside the eviction line.");
                 RequireSeason(!addedEvents.Any(item => item.kind == "vote-reveal" && item.audienceIds.Count == 0),
                     "No ballot may be published to the house at the reveal.");
                 foreach (var ballot in after.votes)

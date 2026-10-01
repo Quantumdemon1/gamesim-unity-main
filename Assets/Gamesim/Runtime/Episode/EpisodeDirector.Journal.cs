@@ -401,8 +401,8 @@ namespace Gamesim.Episode
                 TrustNote = "This is your character\u2019s relationship value, not " + first + "\u2019s private opinion of you.",
                 Character = actor,
                 Traits = actor.traits != null ? actor.traits.Where(t => !string.IsNullOrEmpty(t)).ToList() : new List<string>(),
-                Memories = state.memories
-                    .Where(m => m.ownerId == state.playerId && m.subjectId == actor.id && !string.IsNullOrEmpty(m.text))
+                Memories = KnownBallots.PlayerMemories(state)
+                    .Where(m => m.subjectId == actor.id && !string.IsNullOrEmpty(m.text))
                     .OrderByDescending(m => m.week).Take(3)
                     .Select(m => "Week " + m.week + " \u00b7 " + m.text).ToList(),
                 Records = ProfileRecords(state, actor, first),

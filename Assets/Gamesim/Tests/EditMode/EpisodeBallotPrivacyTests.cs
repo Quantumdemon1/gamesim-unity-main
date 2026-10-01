@@ -79,9 +79,12 @@ namespace Gamesim.Tests.EditMode
             Assert.That(revealEvents.Single(entry => entry.kind == "promise-outcome").audienceIds, Is.EqualTo(new[] { pending.playerId }));
             Assert.That(revealEvents.Count(entry => entry.kind == "eviction"), Is.EqualTo(1));
             Assert.That(revealEvents.Count(entry => entry.kind == "vote-reveal"), Is.EqualTo(3));
-            // The reveal reads the count to the house and each ballot to its voter alone.
-            Assert.That(revealEvents.Count(entry => entry.kind == "vote-tally" && entry.audienceIds.Count == 0), Is.EqualTo(1));
-            Assert.That(revealEvents.Single(entry => entry.kind == "vote-tally").text, Does.StartWith("By a vote of 2 to 1, ").Or.StartWith("By a vote of 3 to 0, "));
+            // The reveal reads the count to the house on the eviction line's tail and each ballot to
+            // its voter alone; it logs no line of its own (the story mints its ids from the sequence).
+            var gone = revealEvents.Single(entry => entry.kind == "eviction");
+            Assert.That(gone.audienceIds, Is.Empty);
+            Assert.That(gone.text, Does.EndWith(" the jury. By a vote of 2 to 1.").Or.EndWith(" the jury. By a vote of 3 to 0."));
+            Assert.That(revealEvents.Any(entry => entry.kind == "vote-tally"), Is.False);
             foreach (var line in revealEvents.Where(entry => entry.kind == "vote-reveal"))
                 Assert.That(after.votes.Any(vote => line.audienceIds.SequenceEqual(new[] { vote.voterId })), Is.True, line.text);
             Assert.That(revealEvents.Single(entry => entry.kind == "vote-reveal" && entry.audienceIds.Contains(pending.playerId)).text,

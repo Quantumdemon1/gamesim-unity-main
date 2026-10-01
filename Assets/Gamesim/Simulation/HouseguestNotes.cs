@@ -135,8 +135,7 @@ namespace Gamesim.Simulation
             }
             // A memory of a vote deal's or a vote promise's ending tells the ballot that ended it:
             // left out while that ballot is not yours to know (KnownBallots; decision 4).
-            foreach (var memory in s.memories.Where(m => m.ownerId == s.playerId && m.subjectId == id && !string.IsNullOrEmpty(m.text)
-                         && !KnownBallots.TellsAnUnknownBallot(s, id, m.text, m.week)))
+            foreach (var memory in KnownBallots.PlayerMemories(s).Where(m => m.subjectId == id && !string.IsNullOrEmpty(m.text)))
                 notes.Add(new Note { week = memory.week, kind = Kinds.Memory, text = memory.text });
 
             return notes.OrderByDescending(n => n.week).ThenBy(n => Array.IndexOf(KindOrder, n.kind)).ToList();

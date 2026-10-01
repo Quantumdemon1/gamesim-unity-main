@@ -120,7 +120,6 @@ namespace Gamesim.Tests.EditMode
             string first = leaving.name.Split(' ')[0];
             const string after = " They'll be waiting in the jury house.";
             const string neutral = " walks to the door without looking back.";
-            const string warm = " gives you one last look before walking out the door.";
             const string cold = " glares at you from the doorway.";
             const string dealt = " pauses at the door and turns to you…";
             leaving.status = ContestantStatus.Jury;
@@ -156,11 +155,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Line(), Is.EqualTo(first + neutral + after), "A split count says nothing of your ballot to the one going.");
             Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
             theirs.targetId = leaving.id;
-            Assert.That(Line(), Is.EqualTo(first + cold + after), "A unanimous vote against them proves yours, and it is a glare,");
+            Assert.That(Line(), Is.EqualTo(first + cold + after), "A unanimous vote against them proves yours, and it is a glare.");
             Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Cold));
-            ballot.targetId = other.id; theirs.targetId = other.id;
-            Assert.That(Line(), Is.EqualTo(first + warm + after), "and a unanimous vote the other way proves your vote to keep them: a last look.");
-            Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Warm));
+            // There is no warm goodbye: a count that evicts them never proves the player's ballot to
+            // keep them from their seat (R1 may restore one on a told source).
+            Assert.That(System.Enum.GetNames(typeof(EpisodeDirector.GoodbyeKind)), Is.EquivalentTo(new[] { "Neutral", "Cold", "Dealt" }));
             state.votes.Clear();
             state.votes.Add(new VoteState { voterId = other.id, targetId = leaving.id });
             Assert.That(Line(), Is.EqualTo(first + neutral + after), "Somebody else's vote is not yours.");
@@ -235,8 +234,8 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// No ballot carries its voter (UI-UX-PASS-PLAN B0): the card is handed whom each went
-        /// against and nothing else - no id, no name, no look - in an order that is not the cast's,
-        /// the same on every reload of the same week, with the deciding vote last.
+        /// against and nothing else - no id, no name, no look - in an order drawn fresh each play,
+        /// never the cast's and never one the record could reproduce, with the deciding vote last.
         /// </summary>
         [Test]
         public void NoBallotCarriesItsVoterAndTheOrderIsNotTheCasts()
@@ -256,22 +255,19 @@ namespace Gamesim.Tests.EditMode
             Assert.That(ballots.Take(4).Select(ballot => ballot.TargetId).OrderBy(id => id), Is.EqualTo(new[] { "a", "a", "b", "b" }), "Every house ballot's target,");
             Assert.That(ballots.Take(4).Select(ballot => ballot.TieBreak), Is.All.False);
             Assert.That((ballots[4].TargetId, ballots[4].TieBreak), Is.EqualTo(("a", true)), "and the deciding vote last.");
-            Assert.That(EpisodeDirector.EvictionBallots(state).Select(ballot => ballot.TargetId), Is.EqualTo(ballots.Select(ballot => ballot.TargetId)),
-                "The same order on a reload of the same week.");
 
-            // The engine casts in the cast's order; the card is handed another, or the climbing count would say whose vote each was.
-            var castOrder = state.votes.Where(vote => vote.voterId != "h").Select(vote => vote.targetId).ToList();
-            bool shuffled = false;
-            for (int week = 1; week <= 12 && !shuffled; week++)
-            {
-                state.week = week;
-                shuffled = !EpisodeDirector.EvictionBallots(state).Take(4).Select(ballot => ballot.TargetId).SequenceEqual(castOrder);
-            }
-            Assert.That(shuffled, Is.True, "Across twelve weeks the order leaves the cast's at least once.");
+            // The engine casts in the cast's order; the card is handed another, drawn fresh each play
+            // - an order hashed from the seed, the week and the voters, as the keys' is, would be
+            // recoverable by anybody who ran the hash against the climbing count - so across many
+            // plays the order leaves the cast's, and the plays are not all one order.
+            string castOrder = string.Join("", state.votes.Where(vote => vote.voterId != "h").Select(vote => vote.targetId));
+            var plays = Enumerable.Range(0, 40).Select(_ => string.Join("", EpisodeDirector.EvictionBallots(state).Take(4).Select(ballot => ballot.TargetId))).ToList();
+            Assert.That(plays, Has.Some.Not.EqualTo(castOrder), "Across forty plays the order leaves the cast's at least once,");
+            Assert.That(plays.Distinct().Count(), Is.GreaterThan(1), "and it is a draw, not a fixed order.");
             var ids = new[] { "a", "b", "c", "d", "e" };
-            Assert.That(Enumerable.Range(1, 20).Any(seed => !EpisodeDirector.VoteOrder(ids, (uint)seed, 3).SequenceEqual(EpisodeDirector.KeyOrder(ids, (uint)seed, 3))),
-                Is.True, "and it is not the keys' order either.");
-            Assert.That(EpisodeDirector.VoteOrder(ids, 7u, 3), Is.EquivalentTo(ids), "Everybody's ballot is on the board, once.");
+            Assert.That(EpisodeDirector.VoteOrder(ids), Is.EquivalentTo(ids), "Everybody's ballot is on the board, once.");
+            Assert.That(Enumerable.Range(0, 40).Select(_ => string.Join("", EpisodeDirector.VoteOrder(ids))).Distinct().Count(), Is.GreaterThan(1));
+            Assert.That(EpisodeDirector.VoteOrder(null), Is.Empty);
             Assert.That(EpisodeDirector.EvictionBallots(null), Is.Empty);
         }
 

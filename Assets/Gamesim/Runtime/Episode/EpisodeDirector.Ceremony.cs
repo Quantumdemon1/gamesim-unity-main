@@ -244,10 +244,10 @@ namespace Gamesim.Episode
         /// <para>Read from state rather than re-derived, so the card counts to the same total the
         /// save holds. No ballot carries its voter (UI-UX-PASS-PLAN B0): the card reads the count,
         /// never who cast what, and a card handed voters would be one line from drawing them. The
-        /// house's ballots are shuffled the way the keys are (<see cref="VoteOrder"/>) - the same
-        /// way for the same week of the same season, presentation only, no draw from the season's
-        /// generator - because the engine casts them in the cast's order, and a count that climbed
-        /// in that order would say whose vote each was.</para>
+        /// house's ballots are shuffled afresh each time the card plays (<see cref="VoteOrder"/>) -
+        /// presentation only, no draw from the season's generator and nothing hashed from the record
+        /// - because the engine casts them in the cast's order, and a count that climbed in that
+        /// order, or in one anybody could recompute, would say whose vote each was.</para>
         ///
         /// <para>The Head of Household votes only to break a tie, and the engine's tally leaves that
         /// vote out; the card has to know it is the tie-break, or it counts it with the house's and
@@ -259,7 +259,7 @@ namespace Gamesim.Episode
             if (state?.votes == null) return ballots;
             bool TieBreak(VoteState vote) => !string.IsNullOrEmpty(state.hohId) && vote.voterId == state.hohId;
             var house = state.votes.Where(vote => vote != null && !TieBreak(vote)).ToList();
-            foreach (var id in VoteOrder(house.Select(vote => vote.voterId), state.seed, state.week))
+            foreach (var id in VoteOrder(house.Select(vote => vote.voterId)))
                 ballots.Add(new VoteReveal.Ballot(house.First(vote => vote.voterId == id).targetId));
             foreach (var vote in state.votes.Where(vote => vote != null && TieBreak(vote)))
                 ballots.Add(new VoteReveal.Ballot(vote.targetId, true));

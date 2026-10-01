@@ -314,8 +314,8 @@ namespace Gamesim.Episode
                 return;
             }
             // What the player has to talk about in here, as mockup-11 captions the chair: their
-            // own latest memory under their name.
-            var latest = state.memories.LastOrDefault(memory => memory.ownerId == state.playerId);
+            // own latest memory under their name - one they may know (KnownBallots.PlayerMemories).
+            var latest = KnownBallots.PlayerMemories(state).LastOrDefault();
             var self = state.Find(state.playerId);
             if (latest != null && self != null)
                 hud.Confessional((self.name ?? "You").Split(' ')[0], latest.text);
@@ -460,7 +460,7 @@ namespace Gamesim.Episode
         private void RenderDiaryMemories(EpisodeState state)
         {
             hud.DiarySection("YOUR PRIVATE REFLECTIONS");
-            var memories = state.memories.Where(memory => memory.ownerId == state.playerId).Reverse().Take(20).ToArray();
+            var memories = KnownBallots.PlayerMemories(state).Reverse().Take(20).ToArray();
             if (memories.Length == 0) hud.Aside("You have no recorded personal memories yet. Explore and talk to the housemates.");
             foreach (var memory in memories) hud.Aside("Week " + memory.week + ": " + memory.text);
         }
@@ -695,9 +695,8 @@ namespace Gamesim.Episode
 
             // A memory of a vote deal's or a vote promise's ending tells the ballot that ended it:
             // left out while that ballot is not the player's to know (KnownBallots; decision 4).
-            var remembered = state.memories
-                .Where(memory => memory.ownerId == state.playerId && memory.subjectId == voter.id
-                    && !KnownBallots.TellsAnUnknownBallot(state, voter.id, memory.text, memory.week))
+            var remembered = KnownBallots.PlayerMemories(state)
+                .Where(memory => memory.subjectId == voter.id)
                 .OrderByDescending(memory => memory.week)
                 .FirstOrDefault();
 

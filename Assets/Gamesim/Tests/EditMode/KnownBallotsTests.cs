@@ -359,6 +359,96 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KnownBallots.TellsAnUnknownBallot(s, npcs[3].id, them + " broke a Vote promise.", 1), Is.False, "Once the ballot is known the line tells nothing new.");
         }
 
+        /// <summary>
+        /// A vote deal with somebody who cast no ballot that week - the Head of Household with no tie
+        /// to break, a nominee - was settled by the player's own ballot alone: theirs to know with
+        /// nothing of the partner's to learn. A voter's side of one is their ballot, still theirs.
+        /// </summary>
+        [Test]
+        public void ADealThePlayerSettledAloneIsKnownWithoutThePartnersBallot()
+        {
+            var s = PastWeek(2, 1);
+            var npcs = Npcs(s);
+            Own(s, 1, npcs[1].id);
+            string hoh = npcs[0].id;
+            var withHoh = new DealState { id = "h", type = DealKind.VoteEvict, proposerId = hoh, recipientId = s.playerId, targetId = npcs[1].id, status = DealStatus.Fulfilled, week = 1, expiresWeek = 1 };
+            Assert.That(KnownBallots.DealSettledWeek(s, withHoh, hoh), Is.EqualTo(1), "Settled the week the player voted on it,");
+            Assert.That(KnownBallots.Knows(s, 1, hoh), Is.False, "with no ballot of the Head of Household's to know:");
+            Assert.That(KnownBallots.DealOutcomeKnown(s, withHoh), Is.True, "the player's own ballot fulfilled it.");
+            var withNominee = new DealState { id = "n", type = DealKind.VoteSave, proposerId = npcs[2].id, recipientId = s.playerId, targetId = npcs[2].id, status = DealStatus.Fulfilled, week = 1, expiresWeek = 1 };
+            Assert.That(KnownBallots.DealOutcomeKnown(s, withNominee), Is.True, "A nominee cast no ballot either.");
+            var withVoter = new DealState { id = "v", type = DealKind.VoteEvict, proposerId = npcs[3].id, recipientId = s.playerId, targetId = npcs[1].id, status = DealStatus.Fulfilled, week = 1, expiresWeek = 1 };
+            Assert.That(KnownBallots.DealOutcomeKnown(s, withVoter), Is.False, "A voter's side of it is their ballot, and a 2-1 count proves neither of the other two.");
+        }
+
+        /// <summary>The Head of Household's tie-break is a ballot the engine judges deals and promises by, and it is read live: a promise or a deal of theirs settles the week they broke the tie, and the player knows how.</summary>
+        [Test]
+        public void ATieBreakSettlesTheHeadOfHouseholdsPromiseAndDealInTheOpen()
+        {
+            var s = PastWeek(1, 1);
+            var npcs = Npcs(s);
+            string hoh = npcs[0].id;
+            // Two house voters, so a 1-1 count is the whole house: the player and the fourth houseguest.
+            npcs[4].status = ContestantStatus.Jury;
+            Own(s, 1, npcs[2].id);
+            var sheet = KnownBallots.Read(s, 1);
+            Assert.That((sheet.tieBroken, sheet.voters.Count), Is.EqualTo((true, 2)));
+            Assert.That(sheet.TargetOf(hoh), Is.EqualTo(npcs[1].id), "The deciding vote is read live,");
+            Assert.That(sheet.TargetOf(npcs[3].id), Is.EqualTo(npcs[1].id), "and the player's own ballot proves the other voter's.");
+            var promise = new PromiseState { id = "p", fromId = hoh, toId = s.playerId, targetId = npcs[1].id, kind = PromiseKind.Vote, status = PromiseStatus.Fulfilled, week = 1, expiresWeek = 1 };
+            Assert.That(KnownBallots.PromiseSettledWeek(s, promise), Is.EqualTo(1), "A vote promise of the Head of Household's settled with the tie-break,");
+            Assert.That(KnownBallots.PromiseOutcomeKnown(s, promise), Is.True, "in the open.");
+            var block = new DealState { id = "b", type = DealKind.VoteTogether, proposerId = s.playerId, recipientId = hoh, status = DealStatus.Broken, week = 1, expiresWeek = 1 };
+            Assert.That(KnownBallots.DealSettledWeek(s, block, hoh), Is.EqualTo(1), "So did a voting block with them,");
+            Assert.That(KnownBallots.DealOutcomeKnown(s, block), Is.True, "known.");
+            var evict = new DealState { id = "e", type = DealKind.VoteEvict, proposerId = hoh, recipientId = s.playerId, targetId = npcs[1].id, status = DealStatus.Broken, week = 1, expiresWeek = 1 };
+            Assert.That(KnownBallots.DealOutcomeKnown(s, evict), Is.True, "The player's own ballot broke a vote to evict with them.");
+        }
+
+        /// <summary>An oath broken by a vote against the player was announced to the house; the breach on the player's own arc, in the oath rule's words, keeps the ballot known once the announcement has rolled off the log.</summary>
+        [Test]
+        public void AnOathsBreachOnThePlayersArcIsKnownOnceItsLineHasRolledOff()
+        {
+            var s = PastWeek(2, 1);
+            var npcs = Npcs(s);
+            var row = s.ledger.power[0];
+            row.nominees = new List<string> { s.playerId, npcs[2].id };
+            row.evicteeId = npcs[2].id;
+            row.tally = new List<int> { 1, 2 };
+            s.relationshipArcs.Add(new RelationshipArcState { npcId = npcs[3].id, npcName = npcs[3].name, weeklyHistory = new List<ArcHistory>
+                { new ArcHistory { week = 1, delta = -20, reason = KnownBallots.OathBreachByVoteAgainstYou + "1" } } });
+            Assert.That(s.events.Any(e => e.kind == "loyalty_oath_broken"), Is.False, "No line of the announcement is on the log,");
+            var sheet = KnownBallots.Read(s, 1);
+            var breach = sheet.Of(npcs[3].id);
+            Assert.That(breach, Is.Not.Null, "and the breach is known from the arc:");
+            Assert.That((breach.targetId, breach.basis, breach.Certain), Is.EqualTo((s.playerId, KnownBallots.Basis.Revealed, true)));
+            Assert.That(sheet.Unknown, Is.Zero, "The breach placed, a 1-2 count leaves the other nominee's two votes to the two voters left: proven.");
+            Assert.That(sheet.ballots.Where(b => b.voterId != npcs[3].id).Select(b => (b.targetId, b.basis)),
+                Is.EquivalentTo(new[] { (npcs[2].id, KnownBallots.Basis.Proven), (npcs[2].id, KnownBallots.Basis.Proven) }));
+            s.relationshipArcs[0].weeklyHistory[0].reason = "Broke loyalty oath by nominating you in week 1";
+            Assert.That(KnownBallots.Knows(s, 1, npcs[3].id), Is.False, "A breach by a nomination tells no ballot,");
+            Assert.That(KnownBallots.Read(s, 1).Unknown, Is.EqualTo(3), "and nothing is placed.");
+        }
+
+        /// <summary>The player's memories, less any that tells a ballot they do not know, for every reader that prints them.</summary>
+        [Test]
+        public void ThePlayersMemoriesLeaveOutTheOnesThatTellAnUnknownBallot()
+        {
+            var s = PastWeek(2, 1);
+            var npcs = Npcs(s);
+            string them = npcs[3].name;
+            s.memories.Clear();
+            s.memories.Add(new MemoryState { ownerId = s.playerId, subjectId = npcs[3].id, week = 1, text = them + " talked about me to somebody.", isPrivate = true });
+            s.memories.Add(new MemoryState { ownerId = s.playerId, subjectId = npcs[3].id, week = 1, text = them + " broke a Vote promise.", isPrivate = true });
+            s.memories.Add(new MemoryState { ownerId = npcs[3].id, subjectId = s.playerId, week = 1, text = "Theirs, not yours.", isPrivate = true });
+            Assert.That(KnownBallots.PlayerMemories(s).Select(m => m.text), Is.EqualTo(new[] { them + " talked about me to somebody." }),
+                "The verdict waits for the ballot; another's memory is never the player's.");
+            Claim(s, 1, npcs[3].id, npcs[1].id, ClaimSource.Told, ClaimStatus.Kept);
+            Assert.That(KnownBallots.PlayerMemories(s).Select(m => m.text), Is.EqualTo(new[] { them + " talked about me to somebody.", them + " broke a Vote promise." }),
+                "Known, the memory reads, in the order it was written.");
+            Assert.That(KnownBallots.PlayerMemories(null), Is.Empty);
+        }
+
         [Test]
         public void ReadingChangesNothing()
         {

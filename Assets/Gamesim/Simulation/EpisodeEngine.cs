@@ -402,15 +402,16 @@ namespace Gamesim.Simulation
                     s.evictionStage = EvictionStage.Results;
                     s.jurySentiment = WebJurySentiment.AddJuror(s.jurySentiment, evicted, Name(s, evicted), s.Score(s.playerId, evicted));
                     s.oathOpportunities.Remove(evicted);
+                    // The reveal reads the count, never the ballots (UI-UX-PASS-PLAN B0): the
+                    // eviction line carries the house's count on its tail - the Head of Household's
+                    // deciding vote named, since the format reads it live - and each ballot's line is
+                    // the voter's own, logged to them alone in the words it always had. The reveal
+                    // logs no line of its own: the story mints its cycle and house-event ids from the
+                    // sequence, so one more event here would re-roll a recorded season from its first
+                    // eviction. What the player knows of the others is KnownBallots' to say: their
+                    // own, the tie-break, what the count proves, what they were told.
                     Log(s, "eviction", Name(s, evicted) + Verb(s, evicted, " is evicted and joins ", " are evicted and join ")
-                        + "the jury.");
-                    // The reveal reads the count, never the ballots (UI-UX-PASS-PLAN B0): one public
-                    // line says the tally - the Head of Household's deciding vote named, since the
-                    // format reads it live - and each ballot's line is the voter's own, logged to them
-                    // alone in the words it always had. What the player knows of the others is
-                    // KnownBallots' to say: their own, the tie-break, what the count proves, what
-                    // they were told.
-                    Log(s, "vote-tally", TallyLine(s, evicted, tally.Select(x => (x.id, x.count)).ToList()));
+                        + "the jury. " + CountTail(s, evicted, tally.Select(x => (x.id, x.count)).ToList()));
                     foreach (var vote in s.votes) Log(s, "vote-reveal", Name(s, vote.voterId) + " voted to evict "
                         + Target(s, vote.targetId, vote.voterId) + ". " + vote.reason, vote.voterId);
                     SettleVoteRead(s, evicted);
@@ -907,20 +908,22 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// The public line of the reveal: "By a vote of 3 to 1, Taylor Kim is evicted." - the
-        /// house's count, the evictee's first, and the Head of Household's deciding vote named when
-        /// the house tied ("Maya Hassan broke the tie."), since the format reads that live. A single
-        /// voter is "by a single vote", naming nobody. The player is spoken to ("you are evicted").
+        /// The count on the tail of the eviction line: "By a vote of 3 to 1." - the house's count,
+        /// the evictee's first - and the Head of Household's deciding vote named when the house tied
+        /// ("By a vote of 2 to 2; Maya Hassan broke the tie.", "you broke the tie" for a player Head
+        /// of Household, who is spoken to), since the format reads that live. A single voter is "By a
+        /// single vote.", naming nobody. The line still opens with the evictee's name, which the
+        /// readers parse the subject from.
         /// </summary>
-        public static string TallyLine(EpisodeState s, string evicted, IReadOnlyList<(string id, int count)> tally)
+        public static string CountTail(EpisodeState s, string evicted, IReadOnlyList<(string id, int count)> tally)
         {
-            string who = evicted == s.playerId ? "you are evicted" : Name(s, evicted) + " is evicted";
             int against = tally.FirstOrDefault(x => x.id == evicted).count;
             int others = tally.Where(x => x.id != evicted).Sum(x => x.count);
-            if (against + others == 1) return "By a single vote, " + who + ".";
-            string line = "By a vote of " + against + " to " + others + ", " + who + ".";
-            if (against == others && !string.IsNullOrEmpty(s.hohId)) line += " " + Name(s, s.hohId) + " broke the tie.";
-            return line;
+            if (against + others == 1) return "By a single vote.";
+            string tail = "By a vote of " + against + " to " + others;
+            if (against == others && !string.IsNullOrEmpty(s.hohId))
+                tail += "; " + (s.hohId == s.playerId ? "you" : Name(s, s.hohId)) + " broke the tie";
+            return tail + ".";
         }
 
         private static void Vote(EpisodeState s, string voter, string target, string reason)

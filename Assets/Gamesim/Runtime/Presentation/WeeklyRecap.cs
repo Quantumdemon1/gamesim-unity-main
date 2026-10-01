@@ -73,10 +73,11 @@ namespace Gamesim.Presentation
             // Only what the player saw: an alliance or a deal between two other houseguests is
             // theirs, logged to them alone, and never the player's news.
             bool Seen(EpisodeEvent e) => e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId);
-            // The reveal's lines as the player heard them: the count, read to the house, and the
-            // player's own ballot, logged to them alone. Every other ballot's line is its voter's.
+            // The reveal's lines as the player heard them: the eviction line, which carries the
+            // count read to the house, and the player's own ballot, logged to them alone. Every
+            // other ballot's line is its voter's.
             recap.ballots = events
-                .Where(e => (e.kind == "vote-tally" || e.kind == "vote-reveal") && Seen(e))
+                .Where(e => (e.kind == "eviction" || e.kind == "vote-reveal") && Seen(e))
                 .Select(e => e.text)
                 .ToList();
 

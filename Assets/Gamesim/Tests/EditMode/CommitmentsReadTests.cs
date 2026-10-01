@@ -118,6 +118,31 @@ namespace Gamesim.Tests.EditMode
                 "A voting block is settled by both ballots at once, and the other's is not the player's to know (decision 4).");
         }
 
+        /// <summary>
+        /// An oath's breach by a vote against the player is announced to the house (a designed leak
+        /// beside the Accounting until R1), so its verdict is the player's from the reveal. It is keyed
+        /// on the arc the oath's rule wrote, which outlives the line on the log: once the log has rolled
+        /// past the announcement the verdict still reads, and the ballot sheet agrees.
+        /// </summary>
+        [Test]
+        public void AnOathsBreachByAVoteStaysKnownOnceItsLineHasRolledOff()
+        {
+            var s = Season();
+            var npc = Npcs(s);
+            s.week = 6;
+            s.ledger.power.Add(new PowerRow { week = 5, hohId = npc[5].id, nominees = new List<string> { s.playerId, npc[6].id },
+                evicteeId = npc[6].id, tally = new List<int> { 2, 3 } });
+            s.relationshipArcs.Add(new RelationshipArcState { npcId = npc[2].id, npcName = npc[2].name, weeklyHistory = new List<ArcHistory>
+                { new ArcHistory { week = 5, delta = -20, reason = KnownBallots.OathBreachByVoteAgainstYou + "5" } } });
+            Assert.That(s.events.Any(e => e.kind == "loyalty_oath_broken"), Is.False, "The announcement has rolled off the log.");
+            var oath = CommitmentsRead.Of(s).Single(c => c.kind == CommitmentsRead.Kinds.Oath && c.withId == npc[2].id);
+            Assert.That((oath.outcome, oath.status, oath.brokenById, oath.settledWeek, oath.term),
+                Is.EqualTo((CommitmentsRead.Outcomes.Broken, "broken by them with a vote", npc[2].id, 5, "held until week 5")));
+            Assert.That(oath.status, Is.Not.EqualTo(KnownBallots.Unresolved), "A verdict once told never un-knows itself.");
+            Assert.That(KnownBallots.Knows(s, 5, npc[2].id), Is.True, "The sheet reads the same arc:");
+            Assert.That((KnownBallots.Read(s, 5).Of(npc[2].id).basis, KnownBallots.TargetOf(s, 5, npc[2].id)), Is.EqualTo((KnownBallots.Basis.Revealed, s.playerId)));
+        }
+
         [Test]
         public void AnOathIsKeptWhenEitherLeavesAndItsBreachIsOnThePlayersOwnRecord()
         {

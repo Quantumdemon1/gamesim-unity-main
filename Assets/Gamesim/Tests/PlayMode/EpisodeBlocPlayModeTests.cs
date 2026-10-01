@@ -120,9 +120,11 @@ namespace Gamesim.Tests.PlayMode
                 && entry.text.StartsWith("Maya Hassan voted to evict", StringComparison.Ordinal));
             Assert.That(mayaLine.text, Is.EqualTo(mayaReveal));
             Assert.That(mayaLine.audienceIds, Is.EqualTo(new[] { ContentCatalog.MayaId }));
-            string tallyLine = revealed.events.Single(entry => entry.kind == "vote-tally").text;
-            Assert.That(tallyLine, Does.StartWith("By a vote of ").Or.StartWith("By a single vote, "));
-            bool mayaKnown = KnownBallots.Knows(revealed, revealed.week, ContentCatalog.MayaId);
+            // The count rides the tail of the eviction line; the reveal logs no line of its own, since
+            // the story mints its ids from the sequence and this witness is a recorded season.
+            string evictionLine = revealed.events.Single(entry => entry.kind == "eviction" && entry.week == revealed.week).text;
+            Assert.That(evictionLine, Does.Contain(" the jury. By a vote of ").Or.Contain(" the jury. By a single vote."));
+            Assert.That(revealed.events.Any(entry => entry.kind == "vote-tally"), Is.False);
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             var bytesAfterReveal = File.ReadAllBytes(director.SavePath);
             reveal.Invoke(); confirm.Invoke();
@@ -134,10 +136,10 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
-            // The count is an event, and events are the story page; Maya's ballot is not the house's.
+            // The count is on the eviction line, and events are the story page; Maya's ballot is not the house's.
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
-            Assert.That(ActiveDiaryText(), Does.Contain(tallyLine));
+            Assert.That(ActiveDiaryText(), Does.Contain(evictionLine));
             Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
             // And the vote page holds the result, the player's own ballot, and Maya's only where the
             // count proves it - never her public reason, which is hers alone.
@@ -149,8 +151,10 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption("Known ballots").onClick.Invoke();
             yield return null; yield return null;
             Assert.That(ActiveDiaryText(), Does.Contain("You voted to evict Taylor Kim"));
-            if (mayaKnown) Assert.That(ActiveDiaryText(), Does.Contain("Maya Hassan voted to evict Casey Wilson"));
-            else Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
+            // This witness reads 2 to 1 against Taylor with the player's own ballot among the two,
+            // so the count places neither Maya's nor the third voter's ballot: Maya's stays hers.
+            Assert.That(KnownBallots.Knows(revealed, revealed.week, ContentCatalog.MayaId), Is.False, "The count does not prove Maya's ballot.");
+            Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
             Assert.That(ActiveDiaryText(), Does.Not.Contain(publicReason));
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             AssertEquivalent(revealed, director.Snapshot);
@@ -168,10 +172,10 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
-            // The count is an event, and events are the story page.
+            // The count is on the eviction line, and events are the story page.
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
-            Assert.That(ActiveDiaryText(), Does.Contain(tallyLine));
+            Assert.That(ActiveDiaryText(), Does.Contain(evictionLine));
             Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             AssertBlocPlanNotSerialized(revealed);

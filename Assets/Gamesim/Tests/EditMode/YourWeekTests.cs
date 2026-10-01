@@ -41,7 +41,9 @@ namespace Gamesim.Tests.EditMode
             // claim the reveal judged (KnownBallots: told, with its verdict), never on the house's record.
             var read = after.events.Single(e => e.week == week && e.kind == "vote-reveal" && e.text.StartsWith(voter.name + " voted to evict ", StringComparison.Ordinal));
             Assert.That(read.audienceIds, Is.EqualTo(new[] { voter.id }), "The ballot's line is the voter's own.");
-            Assert.That(after.events.Count(e => e.week == week && e.kind == "vote-tally" && e.audienceIds.Count == 0), Is.EqualTo(1), "The house hears the count.");
+            var gone = after.events.Single(e => e.week == week && e.kind == "eviction");
+            Assert.That(gone.audienceIds, Is.Empty, "The house hears the count,");
+            Assert.That(gone.text, Does.Contain(" the jury. By a vote of ").Or.Contain(" the jury. By a single vote."), "on the eviction line's tail.");
             string votedOut = after.nominees.Single(id => read.text.StartsWith(voter.name + " voted to evict " + after.Find(id).name + ".", StringComparison.Ordinal));
             string spared = after.nominees.Single(id => id != votedOut);
             var told = claims.Single(l => l.text.StartsWith(voter.name + " told you", StringComparison.Ordinal));

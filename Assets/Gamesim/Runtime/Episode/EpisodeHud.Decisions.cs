@@ -73,6 +73,7 @@ namespace Gamesim.Episode
                     DecisionText(card, candidate.Record, 17, Paper);
                     DecisionText(card, candidate.Relationship, 17, Paper);
                     DecisionText(card, candidate.Promises, 16, UiTheme.Muted);
+                    if (!string.IsNullOrEmpty(candidate.Deals)) DecisionText(card, candidate.Deals, 16, UiTheme.Muted);
                 }
             };
             refresh();
@@ -157,11 +158,14 @@ namespace Gamesim.Episode
         /// one you choose. Each card IS the "Vote to evict" control and carries that caption as its
         /// visible foot line, so the caption a test or a screen reader finds the control by is
         /// still the words on it. <paramref name="chosenId"/> marks the card already chosen, while
-        /// the choice is waiting to be confirmed.
+        /// the choice is waiting to be confirmed. A <paramref name="warning"/> - what a ballot would
+        /// break of the player's word (EpisodeHud.YourWord) - stands under the line and over the
+        /// cards it is about, and the cards give it the room, so what follows them stays in view.
         /// </summary>
         public void BallotCards(EpisodeState state, System.Collections.Generic.IList<string> nominees, string chosenId,
             Func<string, string> caption, Action<string> press,
-            string heading = "EVICTION VOTE", string line = "Choose one houseguest to evict from the house.", string glyph = "gavel")
+            string heading = "EVICTION VOTE", string line = "Choose one houseguest to evict from the house.", string glyph = "gavel",
+            string warning = null)
         {
             string headingWords = heading;
             var headingRow = new GameObject("Ballot heading", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
@@ -181,6 +185,7 @@ namespace Gamesim.Episode
             HudPrimitives.Glyph("Ballot mark", headingRow, glyph, Paper,
                 new Vector2((ContentWidth() - words) * .5f - markSide - 10f * FontScale, -4f), markSide);
             DecisionText(content, line, 16, Paper).alignment = TextAlignmentOptions.Center;
+            float warned = BallotWarningLine(warning);
 
             var row = new GameObject(BallotRowName, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
             row.SetParent(content, false);
@@ -197,8 +202,9 @@ namespace Gamesim.Episode
             {
                 var scroll = (RectTransform)modalScroll.transform;
                 float viewport = modal.sizeDelta.y + scroll.offsetMax.y - scroll.offsetMin.y;
-                // The heading, the line under it, the spacing, and a Confirm row under the cards.
-                fitsHeight = (viewport - (6f + 40f + 30f + 3f * 12f + 57f) * FontScale) / BallotCardHeight;
+                // The heading, the line under it, the spacing, a warning over the cards, and a
+                // Confirm row under them.
+                fitsHeight = (viewport - (6f + 40f + 30f + 3f * 12f + 57f) * FontScale - warned) / BallotCardHeight;
             }
             float scale = Mathf.Max(Mathf.Min(FontScale, fitsWidth), Mathf.Min(1.4f * FontScale, Mathf.Min(fitsWidth, fitsHeight)));
             row.GetComponent<LayoutElement>().minHeight = BallotCardHeight * scale + 4f;

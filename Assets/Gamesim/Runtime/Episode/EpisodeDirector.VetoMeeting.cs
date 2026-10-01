@@ -187,6 +187,8 @@ namespace Gamesim.Episode
                 int mark = hud.MeetingColumnMark();
                 var named = MeetingCardsBefore(state, savedByNpc);
                 hud.MeetingEyebrow(NameTheReplacementEyebrow, UiTheme.Danger, PackArt.Pack8IconTarget, "target");
+                // Which names would break the player's word, over the names (EpisodeDirector.YourWord).
+                hud.BreachStrip(VetoWarning(state, null));
                 VetoReplacementGrid(state, savedByNpc);
                 hud.MeetingCards(named, -1, null, hud.MeetingRoomLeft(), mark);
                 return true;
@@ -205,6 +207,7 @@ namespace Gamesim.Episode
             {
                 KeepTheBlock(state);
                 hud.Paragraph(locked ? VetoLockedLine : VetoNoReplacementLine);
+                hud.BreachStrip(VetoWarning(state, null));
             }
             else
             {
@@ -242,6 +245,9 @@ namespace Gamesim.Episode
                 }
                 KeepTheBlock(state);
                 hud.MeetingInfoStrip(VetoInfoLine, PackArt.Pack8InfoStrip, PackArt.Pack8IconInfo, "bulb", UiTheme.Accent);
+                // What each way would break of the player's word, under the rule and over who goes up
+                // (EpisodeDirector.YourWord): a label, never a control, measured into the step.
+                hud.BreachStrip(VetoWarning(state, saving));
                 // Who goes up comes last, under the way to keep the block and the rule that says a
                 // replacement follows: in a large house the list is taller than the stage has left,
                 // and it is the end of the list that scrolls then, never the way to decline.

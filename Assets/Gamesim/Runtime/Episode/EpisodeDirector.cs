@@ -1034,6 +1034,8 @@ namespace Gamesim.Episode
             public const string Notes = "Section · notes";
             /// <summary>Your pacts and the ones you know of (EpisodeDirector.Alliances.cs). Not a rail row; the relationship web's door opens it.</summary>
             public const string Alliances = "Section · alliances";
+            /// <summary>Your word: every commitment you are a party to (EpisodeDirector.YourWord.cs). Not a rail row; the notes page opens it.</summary>
+            public const string Word = "Section · word";
         }
 
         /// <summary>
@@ -1240,7 +1242,8 @@ namespace Gamesim.Episode
                 // command at their top, where the web's layout and the activities tests expect it.
                 bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
                     || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes
-                    || journalSection == NotebookSection.Alliances;
+                    || journalSection == NotebookSection.Alliances
+                    || journalSection == NotebookSection.Word;
                 if (kitPage)
                 {
                     var head = NotebookPageHead(journalSection);
@@ -1283,6 +1286,10 @@ namespace Gamesim.Episode
                 else if (journalSection == NotebookSection.Alliances)
                 {
                     RenderNotebookAlliances(state);
+                }
+                else if (journalSection == NotebookSection.Word)
+                {
+                    RenderNotebookWord(state);
                 }
                 else
                 {

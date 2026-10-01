@@ -64,6 +64,8 @@ namespace Gamesim.Episode
             public string Warning;
             /// <summary>A line under the warning: what the choice does, as the engine settles it. Optional.</summary>
             public string Consequence;
+            /// <summary>What the choice would break of the player's word (ACTIONS-DEALS-ALLIANCES-PLAN V1), over its headline. Optional.</summary>
+            public string Breach;
             public Action Choose;
             /// <summary>
             /// The juror's variant (mockup 50): the case the player on the jury reads, framed in the
@@ -171,6 +173,9 @@ namespace Gamesim.Episode
             // The card takes whatever height the row gives the column past its own, so the lines
             // under it sit at the foot of every column alike.
             if (level) card.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
+            // Over the headline, so the card takes up its height and the lines under it - and the
+            // control - stay level with the other column's.
+            BreachLine(finalist.Breach);
             if (!string.IsNullOrEmpty(finalist.Headline))
             {
                 // "Take {name} to the Final 2", large and in the crown's gold: the choice in the words

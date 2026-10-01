@@ -78,6 +78,9 @@ namespace Gamesim.Episode
             else if (state.nominees.Count == 0) NominationCeremony(state, hoh);
             else NominationOutcome(state, hoh);
             NominationFooter(state, hoh, current, picking);
+            // The picks a render restored, warned of in the footer it just built (EpisodeDirector.YourWord).
+            if (picking && current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView)
+                WarnOfThePicks(state, nominationFirst, nominationSecond);
             return true;
         }
 
@@ -234,7 +237,13 @@ namespace Gamesim.Episode
             var aimed = string.IsNullOrEmpty(state.backdoorTargetId) ? null : state.Find(state.backdoorTargetId);
             string aim = aimed == null ? null : "This week is aimed at " + aimed.name + ". Nominate two others and use the veto to put them up.";
             hud.NominationPicker(candidates, nominationFirst, nominationSecond,
-                (first, second) => { nominationFirst = first; nominationSecond = second; },
+                (first, second) =>
+                {
+                    nominationFirst = first; nominationSecond = second;
+                    // Once two are picked, what committing them would break - in the footer's strip,
+                    // in place, as the picks are lit in place: nothing is rebuilt or committed.
+                    WarnOfThePicks(state, first, second);
+                },
                 (first, second) => OfferPlayerDecision(state, false, EpisodeCommandKind.Nominate,
                     "Nominate " + state.Find(first)?.name + " and " + state.Find(second)?.name
                     + ". Confirmed nominations become part of the episode record.", first, second),

@@ -501,6 +501,7 @@ namespace Gamesim.Tests.PlayMode
                 }),
                 ("the vote", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes); return director.IsPanelOpen; }),
                 ("the alliances", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances); return director.IsPanelOpen; }),
+                ("your word", () => { director.ShowNotebookSection(EpisodeDirector.NotebookSection.Word); return director.IsPanelOpen; }),
                 // The episode screen, fitted to what it holds with its way on pinned.
                 ("the episode screen", () => { WarpPlayer(director.StationPosition); return director.TryOpenPhasePanel(); }),
                 ("the settings", () => { director.OpenSettings(); return director.IsPanelOpen; }),

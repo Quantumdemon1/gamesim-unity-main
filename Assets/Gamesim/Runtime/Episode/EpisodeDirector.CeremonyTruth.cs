@@ -143,8 +143,8 @@ namespace Gamesim.Episode
             // A staged ceremony counts as a reveal from its summons: the chrome is drawn from the
             // committed result, and the house walking to its seats is the reveal's first beat.
             // The veto's draw holds it too: the status line names the drawn before its chips come out.
-            bool revealing = (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
-                || JuryRevealPlaying || CeremonyStageNarrating || VetoDrawRevealing;
+            bool revealing = VetoDrawRevealing || (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
+                || JuryRevealPlaying || CeremonyStageNarrating;
             if (revealHeld && !revealing && !EndgameCardPlaying)
             {
                 revealHeld = false;

@@ -26,9 +26,13 @@ namespace Gamesim.Episode
     /// </summary>
     public sealed partial class EpisodeHud
     {
-        /// <summary>The draw's parts, by the names a test finds them by.</summary>
+        /// <summary>
+        /// The draw's parts, by the names a test finds them by. The way on's headline is named as the
+        /// veto meeting's is, "Way on headline", under an identifier of the draw's own: the screens
+        /// were built side by side, and two constants of one name in this partial class do not compile.
+        /// </summary>
         public const string VetoDrawBoardName = "Veto draw", VetoDrawLineName = "Draw line", DrawPlayingName = "Playing by right",
-            DrawColumnName = "Draw column", DrawEligibleName = "Eligible for draw", WayOnHeadlineName = "Way on headline";
+            DrawColumnName = "Draw column", DrawEligibleName = "Eligible for draw", DrawWayOnHeadlineName = "Way on headline";
 
         /// <summary>How wide the bag's column stands, and the room a chevron takes between two columns, at the resting text size.</summary>
         private const float DrawColumnWidth = 190f, DrawSeparator = 44f;
@@ -36,6 +40,11 @@ namespace Gamesim.Episode
         private const float DrawCardWidest = 150f;
         /// <summary>A column's heading, its rule, and the gap under them before the cards.</summary>
         private const float DrawHeadingBox = 20f, DrawCardsTop = 34f;
+        /// <summary>
+        /// The bag's column at the resting text size: the least and the most the bag stands, the chips
+        /// under it, the line under them, and how far the column's frame stands proud of it all.
+        /// </summary>
+        private const float DrawBagLeast = 60f, DrawBagMost = 124f, DrawChipSide = 30f, DrawChipsLineBox = 24f, DrawAreaProud = 8f;
 
         /// <summary>
         /// Gives the strategy stage's rows the frame's whole width rather than the reading column's,
@@ -54,7 +63,7 @@ namespace Gamesim.Episode
         /// less the phase band and any header rows over it, less the footer's row. Worked out rather
         /// than read, because the footer is pinned after the rows it stands under are built.
         /// </summary>
-        private float StrategyBodyHeight()
+        private float VetoDrawBodyHeight()
         {
             if (modal == null) return 0f;
             float top = StrategyBandFoot + strategyHeaderUsed;
@@ -100,7 +109,7 @@ namespace Gamesim.Episode
             LayoutRebuilder.ForceRebuildLayoutImmediate(content);
             var column = content.GetComponent<VerticalLayoutGroup>();
             float spacing = column != null ? column.spacing : 12f;
-            float budget = StrategyBodyHeight() - content.rect.height - spacing - 2f;
+            float budget = VetoDrawBodyHeight() - content.rect.height - spacing - 2f;
             float floorCard = FaceCardFloor * s * 1.12f + 50f * s;
             float cardsHeight = Mathf.Max(floorCard, budget - top);
 
@@ -132,18 +141,18 @@ namespace Gamesim.Episode
             playingWidth = playingColumns * playingCard + (playingColumns - 1) * gap;
             int playingRows = Mathf.CeilToInt(playing.Count / (float)playingColumns);
             int eligibleRows = others > 0 ? Mathf.CeilToInt(others / (float)eligibleColumns) : 0;
-            float playingTall = playingRows * CardHeight(playingCard) + (playingRows - 1) * gap;
-            float eligibleTall = eligibleRows > 0 ? eligibleRows * CardHeight(eligibleCard) + (eligibleRows - 1) * gap : 0f;
+            float playingTall = playingRows * DrawCardHeight(playingCard) + (playingRows - 1) * gap;
+            float eligibleTall = eligibleRows > 0 ? eligibleRows * DrawCardHeight(eligibleCard) + (eligibleRows - 1) * gap : 0f;
 
-            // The bag's column: the bag, a row of chips under it, and how many there are.
-            float chip = 30f * s, wordsBox = 24f * s;
-            float bag = Mathf.Clamp(Mathf.Min(playingTall, cardsHeight) - chip - wordsBox - 20f * s, 60f * s, 124f * s);
-            float bagTall = bag + 10f * s + chip + 10f * s + wordsBox;
+            // The bag's column: the bag, a row of chips under it, and how many there are, with its
+            // frame inside the height the cards were solved for.
+            float chip = DrawChipSide * s, wordsBox = DrawChipsLineBox * s, proud = DrawAreaProud * s;
+            VetoDrawBagColumn(playingTall, eligibleTall, cardsHeight, s, out float bag, out float bagDrop, out float cardsTall);
+            float bagTall = bag + DrawUnderBag(s);
 
             float total = playingWidth + sep + drawWidth + (others > 0 ? sep + eligibleWidth : 0f);
             float x = Mathf.Max(0f, (width - total) * .5f);
-            // The bag's frame stands 8 units proud of what it holds, above and below.
-            float height = top + Mathf.Max(playingTall, Mathf.Max(eligibleTall, bagTall + 8f * s));
+            float height = top + cardsTall;
 
             var row = new GameObject(VetoDrawBoardName, typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
             row.SetParent(content, false);
@@ -153,25 +162,25 @@ namespace Gamesim.Episode
 
             // By right.
             var left = EndScreenKit.Box(DrawPlayingName, row, x, 0f, playingWidth, height);
-            DrawHeading(left, playingHeading, playingWidth);
+            VetoDrawColumnHeading(left, playingHeading, playingWidth);
             for (int i = 0; i < playing.Count; i++)
             {
                 var face = playing[i];
                 string frame = face.Role == "HOH" ? PackArt.Pack8VetoAutoHoh
                     : string.IsNullOrEmpty(face.Role) ? PackArt.Pack8VetoEligible : PackArt.Pack8VetoAutoNominee;
-                DrawCard(left, state, face, (i % playingColumns) * (playingCard + gap), top + (i / playingColumns) * (CardHeight(playingCard) + gap),
-                    playingCard, frame);
+                VetoDrawCard(left, state, face, (i % playingColumns) * (playingCard + gap),
+                    top + (i / playingColumns) * (DrawCardHeight(playingCard) + gap), playingCard, frame);
             }
             x += playingWidth;
-            float middle = top + Mathf.Min(playingTall, CardHeight(playingCard)) * .5f;
-            if (others > 0) DrawChevron(row, x + sep * .5f, middle);
+            float middle = top + Mathf.Min(playingTall, DrawCardHeight(playingCard)) * .5f;
+            if (others > 0) VetoDrawChevron(row, x + sep * .5f, middle);
             x += sep;
 
             // The bag, framed as the row's middle.
             var draw = EndScreenKit.Box(DrawColumnName, row, x, 0f, drawWidth, height);
-            DrawHeading(draw, drawHeading, drawWidth);
-            float bagTop = top + Mathf.Max(0f, (playingTall - bagTall) * .5f);
-            var area = EndScreenKit.Box("Draw area", draw, 0f, bagTop - 8f * s, drawWidth, bagTall + 16f * s);
+            VetoDrawColumnHeading(draw, drawHeading, drawWidth);
+            float bagTop = top + bagDrop;
+            var area = EndScreenKit.Box("Draw area", draw, 0f, bagTop - proud, drawWidth, bagTall + 2f * proud);
             EndScreenKit.Frame(area, PackArt.Pack8DrawArea, 12f * s, new Color(Surface.r, Surface.g, Surface.b, .6f),
                 new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .45f));
             ChipBagIn(draw, toDraw, drawWidth, bagTop, bag, chip);
@@ -184,15 +193,42 @@ namespace Gamesim.Episode
             // The pool.
             if (others > 0)
             {
-                DrawChevron(row, x + sep * .5f, middle);
+                VetoDrawChevron(row, x + sep * .5f, middle);
                 x += sep;
                 var right = EndScreenKit.Box(DrawEligibleName, row, x, 0f, eligibleWidth, height);
-                DrawHeading(right, eligibleHeading, eligibleWidth);
+                VetoDrawColumnHeading(right, eligibleHeading, eligibleWidth);
                 for (int i = 0; i < others; i++)
-                    DrawCard(right, state, eligible[i], (i % eligibleColumns) * (eligibleCard + gap),
-                        top + (i / eligibleColumns) * (CardHeight(eligibleCard) + gap), eligibleCard, PackArt.Pack8VetoEligible);
+                    VetoDrawCard(right, state, eligible[i], (i % eligibleColumns) * (eligibleCard + gap),
+                        top + (i / eligibleColumns) * (DrawCardHeight(eligibleCard) + gap), eligibleCard, PackArt.Pack8VetoEligible);
             }
             return row;
+        }
+
+        /// <summary>The bag's column under the bag: a gap, the row of chips, a gap, and the line that says how many.</summary>
+        private static float DrawUnderBag(float scale) => (10f + DrawChipSide + 10f + DrawChipsLineBox) * scale;
+
+        /// <summary>
+        /// The bag's column on the draw's row, worked out without a HUD: how big the bag stands
+        /// (<paramref name="bag"/>), how far under the cards' top its column starts
+        /// (<paramref name="columnTop"/>), and how tall the row must be under its headings
+        /// (<paramref name="rowTall"/>) to hold the cards by right (<paramref name="playingTall"/>),
+        /// the pool (<paramref name="eligibleTall"/>) and the bag's frame, which stands 8 units proud
+        /// of the column above and below.
+        ///
+        /// <para>The frame is sized inside the height the cards were solved for
+        /// (<paramref name="cardsHeight"/>). Left out of it, a row whose cards that height set ran 8
+        /// units past it, and the step scrolled - with a story beat open over the draw, say. Only a
+        /// bag already at its least can make the row taller than its cards, and then the row says
+        /// so: its height always holds the frame.</para>
+        /// </summary>
+        public static void VetoDrawBagColumn(float playingTall, float eligibleTall, float cardsHeight, float scale,
+            out float bag, out float columnTop, out float rowTall)
+        {
+            float proud = DrawAreaProud * scale, under = DrawUnderBag(scale);
+            bag = Mathf.Clamp(Mathf.Min(playingTall, cardsHeight) - under - 2f * proud, DrawBagLeast * scale, DrawBagMost * scale);
+            float column = bag + under;
+            columnTop = Mathf.Max(0f, (playingTall - column) * .5f);
+            rowTall = Mathf.Max(playingTall, Mathf.Max(eligibleTall, columnTop + column + proud));
         }
 
         /// <summary>
@@ -215,9 +251,9 @@ namespace Gamesim.Episode
             {
                 float pool = room - (byRight * width + (byRight - 1) * gap);
                 if (pool < floor) continue;
-                FaceGrid(others, pool, width, oneBand ? CardHeight(width) : cardsHeight, s, out float cards, out int columns);
+                FaceGrid(others, pool, width, oneBand ? DrawCardHeight(width) : cardsHeight, s, out float cards, out int columns);
                 // At the floor FaceGrid gives up the height, which a band cannot.
-                if (oneBand && Mathf.CeilToInt(others / (float)columns) * CardHeight(cards) > CardHeight(width) + .5f) continue;
+                if (oneBand && Mathf.CeilToInt(others / (float)columns) * DrawCardHeight(cards) > DrawCardHeight(width) + .5f) continue;
                 float score = Mathf.Min(width, cards);
                 if (score > best + .01f) { best = score; card = width; fitted = cards; across = columns; }
             }
@@ -228,10 +264,10 @@ namespace Gamesim.Episode
         private const float DrawBandComfort = 96f;
 
         /// <summary>A card on the draw: a photo 1.12 of its width and a 50-unit foot for the name, as a ceremony's face card is.</summary>
-        private float CardHeight(float width) => width * 1.12f + 50f * FontScale;
+        private float DrawCardHeight(float width) => width * 1.12f + 50f * FontScale;
 
         /// <summary>A column's heading in the accent, letterspaced, over a rule the column's width.</summary>
-        private void DrawHeading(RectTransform column, string words, float width)
+        private void VetoDrawColumnHeading(RectTransform column, string words, float width)
         {
             if (string.IsNullOrEmpty(words)) return;
             float s = FontScale;
@@ -249,7 +285,7 @@ namespace Gamesim.Episode
         }
 
         /// <summary>The mockup's chevron between two columns: Pack 8's arrow, or the drawn one without the pack.</summary>
-        private void DrawChevron(RectTransform row, float centreX, float centreY)
+        private void VetoDrawChevron(RectTransform row, float centreX, float centreY)
         {
             float s = FontScale, side = 28f * s;
             var holder = EndScreenKit.Box("Chevron", row, centreX - side * .5f, centreY - side * .5f, side, side);
@@ -321,7 +357,7 @@ namespace Gamesim.Episode
         /// pill on its foot when they have one, the name under it. Named as every ceremony's face card
         /// is, 'Face · {name}', with the pill 'Role'. Not a control.
         /// </summary>
-        private void DrawCard(RectTransform parent, EpisodeState state, CeremonyFace face, float x, float y, float width, string frame)
+        private void VetoDrawCard(RectTransform parent, EpisodeState state, CeremonyFace face, float x, float y, float width, string frame)
         {
             float s = FontScale, photo = width * 1.12f;
             var actor = state != null ? state.Find(face.Id) : null;
@@ -368,7 +404,7 @@ namespace Gamesim.Episode
             // The headline over the caption, each in a box 1.3 times its type.
             float headlineBox = 18f * 1.3f * s, captionBox = 14f * 1.3f * s;
             var words = NewText(rect, headline, 18, Paper);
-            words.name = WayOnHeadlineName;
+            words.name = DrawWayOnHeadlineName;
             var bold = UiTheme.Font(UiTheme.Weight.Bold);
             if (bold != null) words.font = bold;
             words.characterSpacing = 3f;

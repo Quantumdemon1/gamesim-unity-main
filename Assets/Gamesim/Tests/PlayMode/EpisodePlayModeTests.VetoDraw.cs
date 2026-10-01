@@ -95,7 +95,7 @@ namespace Gamesim.Tests.PlayMode
 
             var wayOn = FindButton("Continue episode");
             Assert.That(wayOn.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("Continue episode"), "The caption stays the way on's first label,");
-            var headline = wayOn.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.WayOnHeadlineName);
+            var headline = wayOn.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.DrawWayOnHeadlineName);
             Assert.That(headline.text, Is.EqualTo("REVEAL THE DRAW"), "with the mockup's words beside it, never in it.");
             AssertEveryLabelDraws((RectTransform)wayOn.transform, "The way on");
             var strip = ActiveRect(EpisodeHud.StrategyStripName);
@@ -156,10 +156,20 @@ namespace Gamesim.Tests.PlayMode
                     }
                     AssertEveryLabelDraws(row, where);
                     var wayOn = (RectTransform)FindButton("Continue episode").transform;
-                    Assert.That(wayOn.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.WayOnHeadlineName).text,
+                    Assert.That(wayOn.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeHud.DrawWayOnHeadlineName).text,
                         Is.EqualTo("REVEAL THE DRAW"), where + "'s way on wears the draw it makes.");
                     AssertEveryLabelDraws(wayOn, where + "'s way on");
                 });
+            }
+            // The largest house, photographed for review: how the row splits between the three by
+            // right and a pool of thirteen is a judgement the owner makes by eye, and the strategy
+            // stage's own capture is the house of six, where nobody is drawn.
+            if (Application.isBatchMode)
+            {
+                yield return OpenStation();
+                yield return CaptureFraming("strategy-veto-draw-sixteen");
+                director.ClosePanels();
+                yield return null;
             }
         }
 
@@ -181,8 +191,11 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var eligible = VetoDraw.Before(director.Snapshot).Eligible;
             ButtonWithCaption("Continue episode").onClick.Invoke();
-            yield return null;
 
+            // The card opens inside the commit, so its opening is read before the next frame. It runs
+            // on the unscaled clock, which Time.captureDeltaTime does not pin, and the frame after a
+            // commit carries the save, the render and the panel closing for the competition: one
+            // that long would already have brought a chip out of the bag.
             var committed = director.Snapshot;
             var reveal = director.DrawRevealCard;
             Assert.That(reveal != null && reveal.IsPlaying, Is.True, "The draw plays as chips turning into faces,");
@@ -192,6 +205,8 @@ namespace Gamesim.Tests.PlayMode
                 .Where(id => id != committed.hohId && !committed.nominees.Contains(id)).OrderBy(id => id)), "and they are the committed draw,");
             Assert.That(reveal.Order.All(eligible.Contains), Is.True, "every one from the pool the screen showed.");
             Assert.That(reveal.ChipsOut, Is.Zero, "Every chip is in the bag as the card opens.");
+            // The hold is read a frame on: the ceremonies' tick lets it go as soon as nothing it counts is playing.
+            yield return null;
             Assert.That(hud.IsHeldForReveal, Is.True, "The chrome stands aside: the status line names the drawn.");
 
             // Past the read-first delay and the first chip, on the wall clock.

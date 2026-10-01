@@ -154,7 +154,9 @@ namespace Gamesim.Tests.EditMode
                 // 8 and 38 px insets are Pack 7's and Pack 8's, not these).
                 var inset = entry.BodyInset;
                 Assert.That(Mathf.Max(inset.x, inset.y, inset.z, inset.w), Is.LessThanOrEqualTo(frame ? 2f : 0f), entry.Path + "'s body inset.");
-                Assert.That(Mathf.Max(entry.Width, entry.Height), Is.LessThanOrEqualTo(256), entry.Path + ": every sprite of the pack is small and imports uncompressed.");
+                // The key's pedestal mask is the one wide picture, 512 by 256; everything else is 256 or under, and all of it is far inside the importer's uncompressed limit.
+                Assert.That(Mathf.Max(entry.Width, entry.Height), Is.LessThanOrEqualTo(entry.Path.EndsWith("key_pedestal_mask.png") ? 512 : 256),
+                    entry.Path + ": every sprite of the pack is small and imports uncompressed (UiPackImporter.UncompressedLimit).");
             }
             Assert.That(pack9.Count(entry => entry.Kind == UiPackCatalogue.Kind.UiSliced), Is.EqualTo(27),
                 "The pack's 27 edges and fills: Shared 8, LiveEviction 4, NominationCeremony 4, SeasonFinale 11.");

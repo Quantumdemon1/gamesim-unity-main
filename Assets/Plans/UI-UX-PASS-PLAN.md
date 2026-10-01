@@ -103,6 +103,8 @@ The repo's own slicer (bb_ui_packs.measure) gives the pack's panels 17-20 px bor
 
 The slices take the recommended option unless the owner rules otherwise.
 
+*Answered on 2026-10-01: the owner took every recommended option ("go with recommendations").*
+
 1. **The HoH's tie-break.** (A, recommended) Public: the format reads it live, the gold row stays, "{X} broke the tie: {Y} goes home." stays. (B) Private like any ballot.
 2. **The player's own ballot on the board.** (A, recommended) The player knows it and the notebook shows it; the stage board shows anonymous slots only, never "You · EVICT X". (B) Show the player's own row on the board.
 3. **What the count proves.** (A, recommended) A unanimous vote, a sole vote, and a count that leaves one unknown reveal those ballots to the player and to every houseguest alike, marked "proven by the count". (B) Only what was said reveals a ballot.
@@ -225,3 +227,5 @@ The minors of both sweeps, grouped by renderer: the settings sheet's copy and fi
 **Tell the story session:** the schema 23 claim and the new command kinds; that ballots become private knowledge and the Accounting is the designed leak; that the story's grudges from `s.votes` move onto the knowledge store in R1.
 
 ## Build log
+
+**P0, the pack (2026-10-01, dbe6199 on claude/nearby-render-gap).** `bb_ui_pack9.py` carries the 62 files itself (no manifest) and slices by an `edge` / `fill` name segment (a suffix rule misses the four Shared edges). 27 sliced, 35 whole; the measured borders: panel 20/19, ceremony panel and finalist card 18/17, winner card 19/17, tally card and jury panel 17/16, card, action tile and stat tile 15/14, pill, status tag and anonymous badge 27/26 (edge/fill), every inset 2/1 - the README's 24/18/30 are nominal. Every file is named (`Pack9<Category><File>`, 62), the twins included and pinned as twins by PackArtTests (33 distinct pictures under 62 names: the eleven Icons/ twins, pill = status tag = anonymous badge, portrait_ring_glow = both nominee rings, safe_ring = portrait_ring, tally card = jury panel, ceremony panel = finalist card, card = action tile = stat tile, focus_halo = winner_card_halo) - a departure from this plan's "one set named for the Icons twins". The importer rule needed no change (IsPack covers everything under Resources/Packs; KindOf comes from the catalogue). The pack's frames sit 1-2 px in where EndScreenKit.Frame assumes 8, so the cards draw them through HudPrimitives / UiTheme.PackSliced. The README, preview and the twelve SVGs are reference files under ArtSource/ui-packs/Pack9_CeremonyFinale. Unity's expanded metas come from the D: import at the merge.

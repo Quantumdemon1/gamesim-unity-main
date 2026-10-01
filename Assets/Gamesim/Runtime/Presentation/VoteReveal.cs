@@ -694,20 +694,24 @@ namespace Gamesim.Presentation
             /// <summary>The band the board stands in, and the result block after it.</summary>
             public const float BandTop = -176f, BandBottom = -584f;
 
-            /// <summary>The tally card: its top, its width, its padding, and the pack art's corners in canvas units (the catalogue's 16-17 px on a 128 px sprite).</summary>
-            public const float CardY = -190f, CardWidth = 520f, CardPad = 18f, CardBorder = 16f;
+            /// <summary>
+            /// The tally card: its top (under the VS disc the frame keeps at -174), its width, its
+            /// padding, and the pack art's corners in canvas units (the catalogue's 16-17 px on a
+            /// 128 px sprite). At thirteen votes and a tie the card ends at -540, clear of the pips at -590.
+            /// </summary>
+            public const float CardY = -236f, CardWidth = 520f, CardPad = 18f, CardBorder = 16f;
 
             /// <summary>The card's parts, top down: the ballot mark, CURRENT TALLY, the line under it, the badge.</summary>
-            public const float IconY = -204f, Icon = 28f, HeadingY = -238f, HeadingH = 34f, HeadingPt = 24f,
-                TallyLineY = -276f, TallyLineH = 28f, TallyLinePt = 19f;
-            public const float BadgeY = -312f, BadgeWidth = 440f, BadgeH = 56f, BadgePt = 17f, BadgeBorder = 24f, BadgeIcon = 26f, BadgeInset = 16f;
+            public const float IconY = -246f, Icon = 22f, HeadingY = -272f, HeadingH = 32f, HeadingPt = 22f,
+                TallyLineY = -306f, TallyLineH = 26f, TallyLinePt = 18f;
+            public const float BadgeY = -336f, BadgeWidth = 440f, BadgeH = 48f, BadgePt = 16f, BadgeBorder = 24f, BadgeIcon = 24f, BadgeInset = 16f;
 
             /// <summary>The slots: a small tally card each with the ballot mark, in rows of eight.</summary>
-            public const float SlotsY = -386f, Slot = 40f, SlotGap = 10f, SlotIcon = 24f, SlotBorder = 10f;
+            public const float SlotsY = -396f, Slot = 36f, SlotGap = 8f, SlotIcon = 22f, SlotBorder = 9f;
             public const int SlotsInARow = 8;
 
             /// <summary>The deciding row under the slots: the HOH chip, the Head of Household's name, the chip naming whom they evict.</summary>
-            public const float DecidingGap = 14f, DecidingH = 44f, DecidingPt = 19f, DecidingTextH = 28f, Inset = 8f,
+            public const float DecidingGap = 14f, DecidingH = 40f, DecidingPt = 19f, DecidingTextH = 28f, Inset = 8f,
                 HohChipW = 54f, ChipW = 160f, ChipH = 30f, ChipPt = 15f;
 
             /// <summary>
@@ -999,7 +1003,7 @@ namespace Gamesim.Presentation
             if (lockIcon != null) Pin(lockIcon, 0f, ScreenBoard.BadgeInset, ScreenBoard.BadgeIcon, ScreenBoard.BadgeIcon);
             var secret = HudPrimitives.Label("Anonymous badge text", badge, ScreenBoard.BadgePt, UiTheme.Paper, TextAlignmentOptions.Left);
             secret.text = "The identity of each voter remains a secret.";
-            Pin(secret.rectTransform, 0f, textX, ScreenBoard.BadgeWidth - textX - ScreenBoard.BadgeInset, ScreenBoard.BadgeH - 8f);
+            Pin(secret.rectTransform, 0f, textX, ScreenBoard.BadgeWidth - textX - ScreenBoard.BadgeInset, ScreenBoard.BadgeH - 6f);
 
             // The slots, in rows of eight, centred.
             int count = house.Count;

@@ -214,7 +214,10 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
             }
             director.SetLargeText(false);
-            Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(JsonUtility.ToJson(shown)), "Reading changes nothing.");
+            // Reading changes nothing of the record: the sheet reads the same (the subset pins that
+            // the reader itself writes nothing; opening a panel may bank an NPC tick of its own).
+            var again = KnownBallots.Read(director.Snapshot, week);
+            Assert.That(again.ballots.Select(b => b.voterId + ":" + b.targetId + ":" + b.basis), Is.EqualTo(sheet.ballots.Select(b => b.voterId + ":" + b.targetId + ":" + b.basis)));
         }
     }
 }

@@ -48,6 +48,7 @@
     <Compile Include="$(EditMode)HaveNotTests.cs" />
     <Compile Include="$(EditMode)StrategyRulesTests.cs" />
     <Compile Include="$(EditMode)VoteReadTests.cs" />
+    <Compile Include="$(EditMode)VetoMeetingReadTests.cs" />
     <Compile Include="$(EditMode)VoteLeverTests.cs" />
     <Compile Include="$(EditMode)VotePleaAndCallTests.cs" />
     <Compile Include="$(EditMode)SeasonLedgerWriterTests.cs" />

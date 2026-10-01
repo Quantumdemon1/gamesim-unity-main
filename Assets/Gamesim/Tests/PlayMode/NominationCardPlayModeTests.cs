@@ -15,9 +15,9 @@ namespace Gamesim.Tests.PlayMode
     /// key hangs left of the whole title on every play of the card, not only the first; the set's
     /// screen frame stands on an opaque ground, so the screen's own lit face no longer glows through
     /// the glass; every label on both frames of both ceremony cards stands inside the card, clear of
-    /// its edge, in a box Inter draws in; the screen frame carries a roster of the house whose chips
-    /// say only what the keys have said; and the key stands on its pedestal through every beat, gold
-    /// only while the last key waits.
+    /// its edge, in a box Inter draws in, and on the screen frames no two cross; the screen frame
+    /// carries a roster of the house whose chips say only what the keys have said; and the key
+    /// stands on its pedestal through every beat, gold only while the last key waits.
     ///
     /// <para>Each card is attached to a plain owner, as <see cref="CeremonyGlassPlayModeTests"/> does,
     /// and the screen frame is mounted on a board measured the way the set's screen is, so what is
@@ -41,7 +41,7 @@ namespace Gamesim.Tests.PlayMode
         private const float LargeText = 1.2f;
 
         private GameObject owner;
-        private readonly List<GameObject> props = new List<GameObject>();
+        private readonly List<Object> props = new List<Object>();
 
         [SetUp]
         public void CreateFixture() => owner = new GameObject("Nomination card owner");
@@ -97,9 +97,10 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The glass alone let fifteen percent of the screen's lit face through the card: a warm blob
         /// in the band and lighter diagonals from the corners. On the screen frame the column's first
-        /// child is an opaque ground, and a frame of the card's first beat on the screen's shot reads
-        /// the card's own colour where the blob was and in the band's middle. The HUD's card keeps
-        /// its 85 % glass over the room.
+        /// child is a ground tinted opaque, and a frame of the card's first beat on the screen's shot
+        /// reads the card's own colour where the blob was and in the band's middle - nearer the card's
+        /// colour than the bright, unlit board behind it, which is read beside the card for the
+        /// comparison. The HUD's card keeps its 85 % glass over the room.
         /// </summary>
         [UnityTest]
         public IEnumerator TheScreenFrameStandsOnAnOpaqueGround()
@@ -110,7 +111,7 @@ namespace Gamesim.Tests.PlayMode
             var column = Rect(keys, "Card");
             var ground = column.GetChild(0).GetComponent<Image>();
             Assert.That(column.GetChild(0).name, Is.EqualTo("Screen ground"), "The column's first child on the screen frame is the ground.");
-            Assert.That(ground.color.a, Is.EqualTo(1f).Within(0.001f), "and it is opaque.");
+            Assert.That(ground.color.a, Is.EqualTo(1f).Within(0.001f), "and its tint is opaque.");
             var glass = Rect(keys, "Card glass").GetComponent<Image>();
             Assert.That(glass.color.a, Is.EqualTo(UiTheme.GlassFill.a).Within(0.005f), "The glass over it is still the glass.");
             Assert.That(keys.KeysShown, Is.Zero, "The first beat: the Head of Household's line and the unlit keys.");
@@ -119,11 +120,22 @@ namespace Gamesim.Tests.PlayMode
             var expected = Color.Lerp(ground.color, glass.color, glass.color.a);
             yield return CaptureTheFace(screen, "nomination-card-ground", (frame, camera) =>
             {
-                foreach (var at in new[] { new Vector2(0f, -230f), new Vector2(0f, -400f) })
+                Color Pixel(Vector2 at)
                 {
                     var world = column.TransformPoint(new Vector3(at.x, at.y, 0f));
                     var pixel = camera.WorldToScreenPoint(world);
-                    var colour = frame.GetPixel(Mathf.RoundToInt(pixel.x), Mathf.RoundToInt(pixel.y));
+                    return frame.GetPixel(Mathf.RoundToInt(pixel.x), Mathf.RoundToInt(pixel.y));
+                }
+                // The board beside the card, in the face's bezel: bright, so a leak through the card is seen.
+                var board = Pixel(new Vector2(-625f, -400f));
+                Assert.That(Distance(board, expected), Is.GreaterThan(0.3f),
+                    "The board behind the card reads " + ColorUtility.ToHtmlStringRGB(board) + ": not bright enough beside the card's "
+                    + ColorUtility.ToHtmlStringRGB(expected) + " to tell a leak from the ground.");
+                foreach (var at in new[] { new Vector2(0f, -230f), new Vector2(0f, -400f) })
+                {
+                    var colour = Pixel(at);
+                    Assert.That(Distance(colour, expected), Is.LessThan(Distance(colour, board)),
+                        "The card at " + at + " is " + ColorUtility.ToHtmlStringRGB(colour) + ": nearer the board behind it than its own ground.");
                     foreach (var (channel, got, want) in new[] { ("r", colour.r, expected.r), ("g", colour.g, expected.g), ("b", colour.b, expected.b) })
                         Assert.That(got, Is.EqualTo(want).Within(0.03f),
                             "The card at " + at + " is " + ColorUtility.ToHtmlStringRGB(colour) + " where its ground is "
@@ -140,14 +152,19 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Rect(hud, "Screen ground"), Is.Null, "There is no ground on the HUD's card.");
         }
 
+        private static float Distance(Color a, Color b) =>
+            Mathf.Sqrt((a.r - b.r) * (a.r - b.r) + (a.g - b.g) * (a.g - b.g) + (a.b - b.b) * (a.b - b.b));
+
         // ------------------------------------------------------------------ the labels (N0, 6.4 and 6.8)
 
         /// <summary>
         /// Every label on the key card, the live eviction and the takeover - on the HUD at both text
         /// sizes and on the screen frame - stands inside the card's glass, its words at least 3 % of
-        /// the card's height from the edge, in a box at least 1.3 times its type, and draws. The
-        /// screen frames' controls lines ended on the face's edge (one at 13 points), and the HUD
-        /// vote's title, names and figures and the takeover's names sat under the 1.3 floor.
+        /// the card's height from the edge, in a box at least 1.3 times its type, and draws; on the
+        /// screen frames no two labels' boxes cross, and no ring's art reaches a label it does not
+        /// carry. The screen frames' controls lines ended on the face's edge (one at 13 points), the
+        /// vote screen's result banner and controls overprinted, and the HUD vote's title, names and
+        /// figures and the takeover's names sat under the 1.3 floor.
         /// </summary>
         [UnityTest]
         public IEnumerator EveryLabelStandsInsideTheCardOnBothFramesAtBothSizes()
@@ -279,18 +296,18 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The roster at eight and at sixteen, the house's largest: every face inside the card, no two
         /// overlapping, and the stage's own column between them clear - the key over the pedestal,
-        /// the beat's face over that - at both text sizes, for the look sheet.
+        /// the beat's face over that - for the look sheet. One text size: the screen frame is the
+        /// screen's own and does not grow with the large-text preference.
         /// </summary>
         [UnityTest]
         public IEnumerator TheRosterFitsEightAndSixteenFacesOnTheFace()
         {
             var screen = Screen();
             foreach (int house in new[] { 8, 16 })
-            foreach (float fontScale in new[] { 1f, LargeText })
             {
-                var keys = Keys(house - 3, CeremonyPace.Suspenseful, fontScale, screen);
+                var keys = Keys(house - 3, CeremonyPace.Suspenseful, 1f, screen);
                 yield return null;
-                string where = "A house of " + house + " at " + fontScale;
+                string where = "A house of " + house;
                 var column = Rect(keys, "Card");
                 var faces = Rects(keys, "Roster face").Select(rect => OnTheCard(keys, rect)).ToArray();
                 Assert.That(faces, Has.Length.EqualTo(house), where + ": a face for everyone.");
@@ -309,7 +326,7 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(stage.Contains(key.center), Is.True, where + ": the key stands in the stage's band.");
                 foreach (var face in faces) Assert.That(face.Overlaps(key), Is.False, where + ": a face covers the key.");
                 AssertLabelsStandInsideTheCard(keys, where);
-                yield return CaptureTheFace(screen, "nomination-card-roster-" + house + (fontScale > 1f ? "-large" : ""));
+                yield return CaptureTheFace(screen, "nomination-card-roster-" + house);
                 yield return Until(() => keys.KeysShown >= 1, 10f);
                 Assert.That(Rects(keys, "Stage face"), Has.Length.EqualTo(1), where + ": the beat's face is on the stage,");
                 Assert.That(Rects(keys, "Badge"), Has.Length.EqualTo(1), where + ": wearing the SAFE chip,");
@@ -326,15 +343,15 @@ namespace Gamesim.Tests.PlayMode
         // ------------------------------------------------------------------ the key on its pedestal (N1, 6.6)
 
         /// <summary>
-        /// A glyph stands under the stage in every beat - the Head of Household's line, each key, the
-        /// beat before the last and the block - so Show(0) no longer leaves the stage empty, and it is
-        /// gold only while the progress line reads "One key left".
+        /// On the screen a glyph stands on its pedestal under the stage in every beat - the Head of
+        /// Household's line, each key, the beat before the last and the block - so Show(0) no longer
+        /// leaves the stage empty, and it is gold only while the progress line reads "One key left".
         /// </summary>
         [UnityTest]
         public IEnumerator TheKeyStandsOnTheStageThroughEveryBeatAndGoesGoldOnlyForTheLastKey()
         {
             // One key: the line, the beat before the last key, the key, the block - every phase in seven seconds.
-            var keys = Keys(1, CeremonyPace.Suspenseful);
+            var keys = Keys(1, CeremonyPace.Suspenseful, 1f, Screen());
             var seen = new List<string>();
             string last = null;
             float until = Time.realtimeSinceStartup + 25f;
@@ -358,6 +375,38 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(seen, Is.EqualTo(new[] { "1 key. Two will not get one.", "One key left", "Revealing key 1 of 1", "Nominated for eviction" }),
                 "Every beat was seen in order.");
+            keys.Cancel();
+        }
+
+        /// <summary>
+        /// The HUD's board has no pedestal and shows the gold key alone while the last key waits, as it
+        /// always did: at the block its two nominee frames stand 44 units apart, and a key and a
+        /// pedestal built under the stage showed through the gap between them.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheHudBoardShowsTheGoldKeyOnlyWhileTheLastKeyWaitsAndNothingBetweenTheBlocksFrames()
+        {
+            var keys = Keys(1, CeremonyPace.Suspenseful);
+            yield return Until(() => Text(keys, "Progress").text == "One key left", 10f);
+            Assert.That(Text(keys, "Progress").text, Is.EqualTo("One key left"), "The beat before the last key never came.");
+            var held = Rect(keys, "Last key");
+            Assert.That(held != null && held.gameObject.activeInHierarchy, Is.True, "While the last key waits the HUD shows the key,");
+            Assert.That(held.GetComponent<Image>().color, Is.EqualTo(UiTheme.Gold), "in gold.");
+            Assert.That(Rect(keys, "Pedestal"), Is.Null, "The HUD's board has no pedestal.");
+
+            yield return Until(() => keys.ShowingBlock, 15f);
+            Assert.That(keys.ShowingBlock, Is.True, "The block never came.");
+            var slots = Rects(keys, "Nominee slot").Where(slot => slot.gameObject.activeInHierarchy).Select(slot => OnTheCard(keys, slot)).OrderBy(slot => slot.xMin).ToArray();
+            Assert.That(slots, Has.Length.EqualTo(2), "The block's two frames are up.");
+            var gap = UnityEngine.Rect.MinMaxRect(slots[0].xMax, Mathf.Min(slots[0].yMin, slots[1].yMin), slots[1].xMin, Mathf.Max(slots[0].yMax, slots[1].yMax));
+            Assert.That(gap.width, Is.GreaterThan(0f), "The frames stand apart: " + gap);
+            var between = keys.GetComponentsInChildren<RectTransform>()
+                .Where(rect => (rect.name == "Last key" || rect.name == "Pedestal") && rect.gameObject.activeInHierarchy)
+                .Where(rect => OnTheCard(keys, rect).Overlaps(gap))
+                .Select(rect => rect.name + " " + OnTheCard(keys, rect)).ToArray();
+            Assert.That(between, Is.Empty, "Nothing of the key's stands in the gap " + gap + " between the block's frames: " + string.Join(", ", between));
+            Assert.That(keys.GetComponentsInChildren<RectTransform>().Any(rect => rect.name == "Last key" && rect.gameObject.activeInHierarchy), Is.False,
+                "and the HUD's key is down once the block is up.");
             keys.Cancel();
         }
 
@@ -419,7 +468,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A stand-in for the set's screen: a board 2.6 by 1.5 metres, measured the way the set's own
-        /// is, stood well away from whatever another fixture left in the scene.
+        /// is, stood well away from whatever another fixture left in the scene, and painted a bright
+        /// unlit colour so that anything a card lets through it is seen in a frame.
         /// </summary>
         private ScreenSurface Screen()
         {
@@ -428,6 +478,14 @@ namespace Gamesim.Tests.PlayMode
             board.transform.position = new Vector3(0f, 40f, 0f);
             board.transform.localScale = new Vector3(2.6f, 1.5f, 0.05f);
             props.Add(board);
+            var unlit = Shader.Find("Universal Render Pipeline/Unlit");
+            if (unlit == null) unlit = Shader.Find("Unlit/Color");
+            if (unlit != null)
+            {
+                var paint = new Material(unlit) { color = new Color(1f, 0.85f, 0.4f, 1f) };
+                props.Add(paint);
+                board.GetComponent<Renderer>().material = paint;
+            }
             var screen = ScreenSurface.Measure(board.transform, "Nomination", new Vector3(0f, 40f, 10f));
             Assert.That(screen, Is.Not.Null, "A board with a renderer is a screen to play a card on.");
             return screen;
@@ -461,8 +519,31 @@ namespace Gamesim.Tests.PlayMode
             return UnityEngine.Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
         }
 
-        /// <summary>The words a label draws, in the card's column's space: its mesh bounds, not its box.</summary>
+        /// <summary>
+        /// The words a label draws, in the card's column's space: the lines its visible characters
+        /// stand on - from the first origin to the last advance, the descender to the ascender - not
+        /// its box, and not its mesh, whose quads carry the font's padding past the glyphs.
+        /// </summary>
         private static UnityEngine.Rect TextOnTheCard(Component card, TMP_Text label)
+        {
+            var info = label.textInfo;
+            float xMin = float.MaxValue, xMax = float.MinValue, yMin = float.MaxValue, yMax = float.MinValue;
+            for (int i = 0; i < info.characterCount; i++)
+            {
+                var glyph = info.characterInfo[i];
+                if (!glyph.isVisible) continue;
+                xMin = Mathf.Min(xMin, glyph.origin); xMax = Mathf.Max(xMax, glyph.xAdvance);
+                yMin = Mathf.Min(yMin, glyph.descender); yMax = Mathf.Max(yMax, glyph.ascender);
+            }
+            if (xMin > xMax) { xMin = xMax = 0f; yMin = yMax = 0f; }
+            var space = Rect(card, "Card");
+            var a = space.InverseTransformPoint(label.rectTransform.TransformPoint(new Vector3(xMin, yMin, 0f)));
+            var b = space.InverseTransformPoint(label.rectTransform.TransformPoint(new Vector3(xMax, yMax, 0f)));
+            return UnityEngine.Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
+        }
+
+        /// <summary>The mesh a label draws, in the card's column's space: its quads, the font's padding included - the whole of what is painted.</summary>
+        private static UnityEngine.Rect MeshOnTheCard(Component card, TMP_Text label)
         {
             var space = Rect(card, "Card");
             var bounds = label.textBounds;
@@ -473,7 +554,7 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// The title's mark is the key, and as drawn it hangs wholly left of the title's words: its
-        /// rect and the title's mesh bounds do not cross, in the card's own space.
+        /// rect and the title's painted mesh do not cross, in the card's own space.
         /// </summary>
         private static void AssertTheMarkClearsTheTitle(KeyCeremony keys, string where)
         {
@@ -487,7 +568,7 @@ namespace Gamesim.Tests.PlayMode
             if (key == null) key = UiTheme.Icon("key");
             Assert.That(sprite, Is.SameAs(key), where + ": the mark is the key, not the trophy.");
             title.ForceMeshUpdate();
-            var words = TextOnTheCard(keys, title);
+            var words = MeshOnTheCard(keys, title);
             var glyph = OnTheCard(keys, mark);
             Assert.That(words.width, Is.GreaterThan(100f), where + ": the title was measured as drawn (" + words + ").");
             Assert.That(glyph.Overlaps(words), Is.False, where + ": the mark " + glyph + " crosses the title's words " + words + ".");
@@ -497,7 +578,9 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Every label up on the card - the ones named as outside by design excepted - stands inside the
         /// card's glass, draws its words at least 3 % of the card's height inside the glass's edge, in
-        /// a box at least 1.3 times its type (Inter draws nothing in one under 1.21), and draws.
+        /// a box at least 1.3 times its type (Inter draws nothing in one under 1.21), and draws. On a
+        /// screen frame no two labels' boxes cross (the speed mark, which shares the eyebrow's row by
+        /// design, excepted), and no ring's art reaches a label the ring does not carry.
         /// </summary>
         private static void AssertLabelsStandInsideTheCard(Component card, string where, params string[] outsideByDesign)
         {
@@ -526,6 +609,26 @@ namespace Gamesim.Tests.PlayMode
                         && words.yMin >= frame.yMin + inset - 0.5f && words.yMax <= frame.yMax - inset + 0.5f,
                     Is.True, what + " is drawn at " + words + ", within " + inset.ToString("0.#") + " of the card's edge " + frame + ".");
             }
+
+            var canvas = card.GetComponent<Canvas>();
+            if (canvas == null || canvas.renderMode != RenderMode.WorldSpace) return;
+            var boxes = labels.Where(label => label.name != "Speed")
+                .Select(label => (What: label.name + " '" + label.text + "'", Box: OnTheCard(card, label.rectTransform), At: label.transform)).ToArray();
+            for (int i = 0; i < boxes.Length; i++)
+                for (int j = i + 1; j < boxes.Length; j++)
+                    Assert.That(boxes[i].Box.Overlaps(boxes[j].Box), Is.False,
+                        where + ": " + boxes[i].What + " " + boxes[i].Box + " crosses " + boxes[j].What + " " + boxes[j].Box + ".");
+            foreach (var ring in card.GetComponentsInChildren<Image>().Where(image => image.name == "Ring art" && image.gameObject.activeInHierarchy))
+            {
+                var rim = ring.transform.parent;
+                var art = OnTheCard(card, ring.rectTransform);
+                foreach (var box in boxes)
+                {
+                    if (box.At.IsChildOf(rim)) continue;
+                    Assert.That(art.Overlaps(box.Box), Is.False,
+                        where + ": the ring art " + art + " under " + rim.name + " reaches " + box.What + " " + box.Box + ".");
+                }
+            }
         }
 
         /// <summary>Fails on any label on the card with copy that draws not a single character.</summary>
@@ -548,9 +651,9 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// A frame of the mounted card from the screen's own shot (<see cref="ScreenSurface.Shot"/>),
-        /// rendered by a camera of the test's own with no post-processing, over a loud ground, so a
-        /// pixel reads the card and anything the card lets through is seen. Written beside the other
-        /// look-sheet frames, and handed to <paramref name="inspect"/> before it goes.
+        /// rendered by a camera of the test's own with no post-processing, so a pixel reads the card
+        /// and anything the card lets through is seen. Written beside the other look-sheet frames in
+        /// a batch run, and handed to <paramref name="inspect"/> before it goes.
         /// </summary>
         private IEnumerator CaptureTheFace(ScreenSurface screen, string name, System.Action<Texture2D, Camera> inspect = null)
         {
@@ -560,7 +663,7 @@ namespace Gamesim.Tests.PlayMode
             props.Add(rig);
             var camera = rig.GetComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.95f, 0.45f, 0.10f, 1f);
+            camera.backgroundColor = new Color(0.05f, 0.07f, 0.10f, 1f);
             camera.fieldOfView = shot.FieldOfView;
             camera.nearClipPlane = 0.1f;
             camera.transform.SetPositionAndRotation(screen.Centre + screen.Normal * shot.Distance, Quaternion.LookRotation(-screen.Normal, Vector3.up));
@@ -607,9 +710,12 @@ namespace Gamesim.Tests.PlayMode
                 var distinct = new HashSet<int>();
                 for (int i = 0; i < pixels.Length; i += 29) distinct.Add((pixels[i].r << 16) | (pixels[i].g << 8) | pixels[i].b);
                 Assert.That(distinct.Count, Is.GreaterThan(8), "The capture '" + name + "' is nearly one flat colour, so the card did not draw.");
-                var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", name + ".png"));
-                System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
-                Debug.Log("[Gamesim] nomination card capture -> " + path);
+                if (Application.isBatchMode)
+                {
+                    var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", name + ".png"));
+                    System.IO.File.WriteAllBytes(path, readback.EncodeToPNG());
+                    Debug.Log("[Gamesim] nomination card capture -> " + path);
+                }
                 inspect?.Invoke(readback, camera);
             }
             finally

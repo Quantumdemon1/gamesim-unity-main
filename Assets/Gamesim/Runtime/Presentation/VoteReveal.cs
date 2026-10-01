@@ -675,20 +675,22 @@ namespace Gamesim.Presentation
             /// The living room's screen: its whole face, the two faces 160 across at the sides with
             /// their counts 84 high under them, the roster between them (<see cref="ScreenBoard"/>),
             /// and a small VS disc over the roster. The HOH chip goes under the figure it marks,
-            /// since beside it would run off the face. The foot has the HUD's margin: the controls
-            /// line at the key ceremony's 26 points in a 36 box ending thirty units off the face's
-            /// edge, where it was 13 points in an 18 box ending on it, and the banner, the host, the
-            /// progress line stand sixteen units higher to make room, and the pips' row is its own
-            /// height just under the roster's last row (UI-UX-PASS-PLAN N0). The eyebrow starts 3 %
-            /// of the face's height inside its top, as every label does.
+            /// since beside it would run off the face. The foot has the HUD's margin (UI-UX-PASS-PLAN
+            /// N0): the controls line at the key ceremony's 26 points in a 36 box, −740 to −776, where
+            /// it was 13 points in an 18 box ending on the edge; above it the banner at 34 points in
+            /// 46 (−692 to −738), the host's line (−650 to −690), the progress line (−612 to −648) and
+            /// the pips' row at its own height (−582 to −610), two units under the roster's seventh
+            /// row at a full house. The eyebrow (21 points in 28) starts 3 % of the face's height
+            /// inside its top and ends where the title (63 points in 82) starts, and the title ends
+            /// where THE VOTE starts: no two rows' boxes cross.
             /// </summary>
             public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 160f, 220f,
-                -24f, 36f, 26f, -52f, 84f, 64f, -176f,
+                -24f, 28f, 21f, -52f, 82f, 63f, -176f,
                 -354f, 40f, 28f, -394f, 110f, 84f, float.NaN, 0f, 0f,
                 56f, -174f, 22f, -582f, 28f, 24f, 40f,
-                -508f, 96f, 40f, 0f, 26f, -620f, 36f, 26f,
-                -660f, 40f, 30f, -704f, 720f, 56f, 40f,
-                -734f, 36f, 26f, 0f, 0f, 6f, 470f);
+                -508f, 96f, 40f, 0f, 26f, -612f, 36f, 26f,
+                -650f, 40f, 30f, -692f, 720f, 46f, 34f,
+                -740f, 36f, 26f, 0f, 0f, 6f, 470f);
         }
 
         /// <summary>

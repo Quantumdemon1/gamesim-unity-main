@@ -289,15 +289,16 @@ namespace Gamesim.House
         /// so the screen shot (<see cref="ScreenSurface.Shot"/>, 2.2 m back from a 1.5 m face at 40
         /// degrees) has no body in it. Stepped further aside, then further out, while it is within a
         /// chair's approach's clearance, inside furniture, or off the floor the house walks - judged
-        /// only where the head's line itself is on a NavMesh, since a preview scene has none. Null
-        /// when no such place clears, and the mark stays on the head's line.
+        /// only where the head's line itself is on a NavMesh, since a preview scene has none - and
+        /// snapped onto the mesh where there is one, so an arrival at the mark is an arrival on the
+        /// floor. Null when no such place clears, and the mark stays on the head's line.
         /// </summary>
         private static Vector3? HeadMarkBesideTheScreen(Scene scene, ScreenSurface screen, Vector3 centre, Vector3 toHead, Vector3 aside,
             Vector3 headLine, System.Func<Vector3, bool> clear)
         {
             var face = screen.Centre; face.y = centre.y;
             var inward = -toHead;
-            bool walkableHere = Walkable(headLine);
+            bool walkableHere = TryWalkable(headLine, out _);
             float[] besides = { 0f, 0.2f, 0.4f, 0.6f };
             float[] fronts = { 0f, 0.2f, 0.4f };
             foreach (float front in fronts)
@@ -305,15 +306,21 @@ namespace Gamesim.House
                 {
                     var at = face + inward * (HeadMarkFromScreen + front) + aside * (screen.Width * 0.5f + HeadMarkBesideScreen + beside);
                     if (!clear(at) || InsideFurniture(scene, at)) continue;
-                    if (walkableHere && !Walkable(at)) continue;
-                    return at;
+                    if (!walkableHere) return at;
+                    if (TryWalkable(at, out var onTheFloor) && clear(onTheFloor) && !InsideFurniture(scene, onTheFloor)) return onTheFloor;
                 }
             return null;
         }
 
-        /// <summary>Whether a body can stand here on the floor the house walks: a NavMesh point within a stride.</summary>
-        private static bool Walkable(Vector3 at) =>
-            NavMesh.SamplePosition(at, out var hit, 0.5f, NavMesh.AllAreas) && Flat(hit.position, at) < 0.3f && Mathf.Abs(hit.position.y - at.y) < 0.5f;
+        /// <summary>Whether a body can stand here on the floor the house walks: a NavMesh point within a stride, which is the place to stand.</summary>
+        private static bool TryWalkable(Vector3 at, out Vector3 onTheFloor)
+        {
+            onTheFloor = at;
+            if (!NavMesh.SamplePosition(at, out var hit, 0.5f, NavMesh.AllAreas)) return false;
+            if (Flat(hit.position, at) >= 0.3f || Mathf.Abs(hit.position.y - at.y) >= 0.5f) return false;
+            onTheFloor = hit.position;
+            return true;
+        }
 
         // ------------------------------------------------------------ the living room
 

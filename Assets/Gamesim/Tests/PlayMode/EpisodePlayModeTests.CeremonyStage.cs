@@ -642,9 +642,17 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
-        /// <summary>A frame of a card on its screen: the rig on the screen's own shot for two frames, then the capture, handed to <paramref name="inspect"/> while the camera still holds it.</summary>
+        /// <summary>
+        /// A frame of a card on its screen: the faces the card has bound given their time to land
+        /// (bounded, as CaptureFraming's own settle is - a frame of empty discs says nothing about the
+        /// screen), then the rig on the screen's own shot for two frames, then the capture, handed to
+        /// <paramref name="inspect"/> while the camera still holds it. The rig is put on the shot
+        /// after the wait, since the stage's cuts move it between beats.
+        /// </summary>
         private IEnumerator CaptureTheScreen(ScreenSurface screen, string name, System.Action<Texture2D> inspect = null)
         {
+            float until = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < until && AnyBoundFaceIsStillMissing()) yield return null;
             cameraRig.MoveTo(screen.Shot());
             yield return Frames(2);
             yield return CaptureFraming(name, settle: false, inspect: inspect);

@@ -50,10 +50,13 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator CampaignBoard_TheCampaignIsOneScreenAtBothTextSizes()
         {
             yield return InstallCampaign(46);
-            var state = director.Snapshot;
-            var hoh = state.Find(state.hohId);
             yield return AtBothTextSizes(larger =>
             {
+                // The state the open panel was drawn from, read once it is open: opening it flushes
+                // the house's ticks, and a houseguest's move toward the player moves the player's own
+                // reading of them, which is what the heroes print.
+                var state = director.Snapshot;
+                var hoh = state.Find(state.hohId);
                 string where = "The campaign" + (larger ? " at the larger text" : "");
                 AssertOnTheStrategyStage(CloseCampaigning, where);
                 AssertCampaignFits(where);
@@ -156,8 +159,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ButtonWithCaptionOrNull(EpisodeHud.CampaignTabGoals), Is.Not.Null, "A plea folds the foot cards into a tab.");
             Assert.That(ActiveRect(EpisodeHud.CampaignCardsName), Is.Null);
             yield return null;
+            // Found again after the frame: a render in it - a body finishing its assembly - rebuilds
+            // the strip, and the grid found before it would be the copy on its way out.
+            var answers = ActiveRect(EpisodeHud.EventChoicesName);
             var focus = EventSystem.current.currentSelectedGameObject;
-            Assert.That(focus != null && focus.transform.IsChildOf(choices), Is.True,
+            Assert.That(focus != null && answers != null && focus.transform.IsChildOf(answers), Is.True,
                 "The panel opens on the plea's answers: " + (focus != null ? focus.name : "nothing") + ".");
 
             ButtonWithCaption(EpisodeHud.ReplyCaption("Stay noncommittal")).onClick.Invoke();
@@ -200,6 +206,8 @@ namespace Gamesim.Tests.PlayMode
             yield return ReloadEpisode();
             var state = director.Snapshot;
             int expected = EpisodeEngine.Voters(state).Count(actor => !actor.isPlayer) + (state.Find(state.hohId).isPlayer ? 0 : 1);
+            // Sixteen in the house still fit the stage at the larger text, before the pages are walked at the resting size.
+            yield return AtBothTextSizes(larger => AssertCampaignFits("A full house's campaign" + (larger ? " at the larger text" : "")));
             yield return OpenStation();
             yield return null;
             AssertOnTheStrategyStage(CloseCampaigning, "A full house's campaign");
@@ -267,6 +275,130 @@ namespace Gamesim.Tests.PlayMode
             yield return AssertKeyboardRing("campaign", ModalRoot);
             director.ClosePanels();
             yield return null;
+        }
+
+        /// <summary>
+        /// The board keeps its tabs, or gives them way to the line that says where they went - one or
+        /// the other - and "More ways to campaign" is on it either way.
+        /// </summary>
+        private void AssertTabsOrWaiting(string where)
+        {
+            var board = ActiveRect(EpisodeHud.CampaignBoardName);
+            bool tabs = ActiveRect(EpisodeHud.CampaignTabsName) != null;
+            var waiting = ActiveRect(EpisodeHud.CampaignWaitingName);
+            Assert.That(tabs != (waiting != null), Is.True, where + " keeps its tabs or the line that says where they went, one or the other.");
+            if (waiting != null)
+                Assert.That(waiting.GetComponentsInChildren<TMP_Text>().Select(label => label.text), Does.Contain(EpisodeHud.CampaignWaitingLine),
+                    where + " says where the tabs went.");
+            Assert.That(ButtonWithCaption(EpisodeDirector.CampaignMoreCaption).transform.IsChildOf(board), Is.True,
+                where + " keeps 'More ways to campaign' on the board.");
+        }
+
+        /// <summary>
+        /// A plea and a Have-Not's line at once, at both text sizes - the most a board with nothing
+        /// over it carries: it fits the stage with the plea's answers on it and the foot cards folded
+        /// away, and where even a folded tab has no room the tabs give way to the line that says
+        /// where they went.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CampaignBoard_APleaAndAHaveNotsLineFitAtBothTextSizes()
+        {
+            HoldTheHouseForTheFixture();
+            yield return InstallCampaign(46, state =>
+            {
+                state.haveNots.Add(state.playerId);
+                state.replyCards.Add(new ReplyCardState { id = "reply-8", week = state.week, kind = ReplyCards.Plea, fromId = state.nominees[0], aboutId = state.nominees[1] });
+            });
+            yield return AtBothTextSizes(larger =>
+            {
+                string where = "The campaign with a plea and a Have-Not's line" + (larger ? " at the larger text" : "");
+                AssertOnTheStrategyStage(CloseCampaigning, where);
+                AssertCampaignFits(where);
+                var plea = ActiveRect(EpisodeHud.CampaignPleaName);
+                var answers = ActiveRect(EpisodeHud.EventChoicesName);
+                Assert.That(plea != null && answers != null && answers.IsChildOf(plea), Is.True, where + ": the plea's answers are on its strip.");
+                Assert.That(ActiveRect(EpisodeHud.CampaignHaveNotName), Is.Not.Null, where + " says what being a Have-Not costs.");
+                Assert.That(ActiveRect(EpisodeHud.CampaignCardsName), Is.Null, where + ": the plea folds the foot cards away.");
+                AssertTabsOrWaiting(where);
+                AssertEveryLabelDraws(ActiveRect(EpisodeHud.CampaignBoardName), where + "'s board");
+            });
+        }
+
+        /// <summary>
+        /// A season played to the second week's campaign - the first week asks nothing of a story -
+        /// with one story beat waiting on the player and nothing else: no plea and no legacy house
+        /// event. The beat is the first arc that casts at the block's anchor with a houseguest's
+        /// approach of at most four options, two rows of tiles, put to the player by the engine's own
+        /// seam. The player competes to win, so the walk keeps them in the house to that week.
+        /// </summary>
+        private IEnumerator InstallCampaignWithABeat()
+        {
+            EpisodeState fixture = null;
+            var arcs = StoryCatalog.All.Where(arc => arc.startAnchors.Contains(StoryAnchors.BlockSet)).Select(arc => arc.id).ToList();
+            for (uint seed = 1; seed <= 20 && fixture == null; seed++)
+            {
+                var engine = new EpisodeEngine(ContentCatalog.Create(seed));
+                for (int guard = 0; guard < 200; guard++)
+                {
+                    var current = engine.Snapshot;
+                    if (current.phase == EpisodePhase.Finished || current.Find(current.playerId).status != ContestantStatus.Active) break;
+                    if (current.phase == EpisodePhase.Campaign && current.week >= 2 && current.nominees.Count == 2 && current.pendingDiary == null)
+                    {
+                        foreach (var arc in arcs)
+                        {
+                            var trial = current.Clone();
+                            // Only the beat waits: the walk answers no plea and no house event.
+                            trial.replyCards.Clear();
+                            trial.houseEvents.RemoveAll(e => !e.resolved && !e.IsStory);
+                            EpisodeEngine.EnableStory(trial, trial.week);
+                            if (!EpisodeEngine.StartStory(trial, arc, StoryAnchors.BlockSet)) continue;
+                            var open = EpisodeEngine.OpenStoryBeats(trial);
+                            if (open.Count == 1 && open[0].surface == StorySurfaces.Approach && open[0].choices.Count <= 4
+                                && EpisodeValidation.TryValidate(trial, out _)) { fixture = trial; break; }
+                        }
+                        break;
+                    }
+                    var next = NextCommand(current);
+                    if (next.kind == EpisodeCommandKind.Compete) next.performance = 1.0;
+                    Assert.That(engine.Apply(next).accepted, Is.True);
+                }
+            }
+            Assert.That(fixture, Is.Not.Null, "No bounded season reached a later campaign with a houseguest's approach to put to the player.");
+            // The house's own clock must neither write over the fixture nor commit under the test.
+            HoldTheHouseForTheFixture();
+            new EpisodeSaveStore(director.SavePath).Save(fixture);
+            yield return ReloadEpisode();
+            HoldTheHouseForTheFixture();
+            yield return null; yield return null;
+        }
+
+        /// <summary>
+        /// A story beat waiting on the campaign is the step (PACK8-PASS-PLAN decision 7): it comes
+        /// before the board, inside the stage, and the board makes room for it rather than pushing
+        /// the column into a scroll - its foot cards folded away, and its tabs too where even a
+        /// folded tab has no room - with the way on pinned, at both text sizes. Opening the screen
+        /// answers nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CampaignBoard_AStoryBeatComesFirstAndTheBoardMakesRoomForIt()
+        {
+            yield return InstallCampaignWithABeat();
+            Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(1), "The fixture has a beat waiting.");
+            yield return AtBothTextSizes(larger =>
+            {
+                string where = "The campaign with a beat waiting" + (larger ? " at the larger text" : "");
+                AssertOnTheStrategyStage(CloseCampaigning, where);
+                AssertCampaignFits(where);
+                var choices = ActiveRect(EpisodeHud.StoryChoicesName);
+                Assert.That(choices, Is.Not.Null, where + ": the beat's choices are on the screen,");
+                Assert.That(choices.parent, Is.SameAs(ActiveRect("Episode content")), "inside the stage's column,");
+                var board = ActiveRect(EpisodeHud.CampaignBoardName);
+                Assert.That(choices.GetSiblingIndex(), Is.LessThan(board.GetSiblingIndex()), "and before the board: the beat is the step.");
+                Assert.That(ActiveRect(EpisodeHud.CampaignCardsName), Is.Null, where + ": a beat folds the foot cards away.");
+                AssertTabsOrWaiting(where);
+                AssertEveryLabelDraws(board, where + "'s board");
+            });
+            Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(1), "Opening the screen answers nothing.");
         }
     }
 }

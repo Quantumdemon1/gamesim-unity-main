@@ -102,10 +102,9 @@ namespace Gamesim.Simulation
             }
 
             // Calling the vote, once a week in each alliance the player is in, while there is a vote
-            // to call and a nominee who is not the player.
+            // to call, a nominee who is not the player, and somebody in it who votes.
             if (EpisodeEngine.LeverRulesOn(s) && VoteRead.Available(s) && s.nominees.Any(id => id != s.playerId))
-                foreach (var pact in s.alliances.Where(a => a.active && a.members.Contains(s.playerId)
-                             && a.members.Any(id => id != s.playerId && s.Find(id)?.status == ContestantStatus.Active)))
+                foreach (var pact in s.alliances.Where(a => CanCallIn(s, a)))
                 {
                     bool called = s.ledger.calls.Any(k => k.week == s.week && k.allianceId == pact.id && k.callerId == s.playerId);
                     goals.Add(new Goal { kind = GoalKinds.Call, text = "Call the vote in " + pact.name, progress = called ? "Called" : "Once this week", done = called });
@@ -120,6 +119,18 @@ namespace Gamesim.Simulation
                 });
             return goals;
         }
+
+        /// <summary>
+        /// Whether the player has a vote to call in this pact this week, as the engine's call takes
+        /// one: an active pact of theirs with a member besides them who votes - still in the game,
+        /// not on the block, and not the Head of Household. A pact whose only partner is nominated
+        /// or holds the house has nobody to follow the call, and the engine refuses it ("Nobody in
+        /// {pact} votes this week."), so neither the goals nor the talking points offer it.
+        /// </summary>
+        public static bool CanCallIn(EpisodeState s, AllianceState a) =>
+            s != null && a != null && a.active && a.members != null && a.members.Contains(s.playerId)
+            && a.members.Any(id => id != s.playerId && s.Find(id)?.status == ContestantStatus.Active
+                                   && !s.nominees.Contains(id) && id != s.hohId);
 
         /// <summary>
         /// The newest things the player has learned, newest first, at most <paramref name="count"/>:

@@ -106,6 +106,17 @@ namespace Gamesim.Tests.EditMode
 
             Assert.That(CampaignBrief.Goals(s).Any(g => g.kind == CampaignBrief.GoalKinds.Call), Is.False, "No pact, no call.");
             EpisodeEngine.EnableLevers(s);
+            // A pact whose only partner holds the house, or is on the block, has nobody who votes to
+            // follow a call, and the engine refuses one there.
+            var head = new AllianceState { id = "alliance-head", name = "The Head", members = new List<string> { s.playerId, s.hohId }, active = true };
+            var block = new AllianceState { id = "alliance-block", name = "The Block", members = new List<string> { s.playerId, second }, active = true };
+            s.alliances.Add(head);
+            s.alliances.Add(block);
+            Assert.That(CampaignBrief.CanCallIn(s, head), Is.False, "The Head of Household votes only on a tie,");
+            Assert.That(CampaignBrief.CanCallIn(s, block), Is.False, "and a nominee does not vote,");
+            Assert.That(CampaignBrief.Goals(s).Any(g => g.kind == CampaignBrief.GoalKinds.Call), Is.False, "so neither pact is a call to make.");
+            s.alliances.Remove(head);
+            s.alliances.Remove(block);
             var pact = new AllianceState { id = "alliance-brief", name = "The Brief", members = new List<string> { s.playerId, voters[0].id }, active = true };
             s.alliances.Add(pact);
             var call = CampaignBrief.Goals(s).Single(g => g.kind == CampaignBrief.GoalKinds.Call);
@@ -121,6 +132,48 @@ namespace Gamesim.Tests.EditMode
             s.phase = EpisodePhase.Eviction;
             Assert.That(CampaignBrief.Goals(s), Is.Empty, "Outside the campaign there are none.");
         }
+
+        /// <summary>
+        /// The goal to call the vote and the engine's call agree on a season that played its way to
+        /// the campaign: a pact with nobody in it who votes is no goal, and the engine refuses the
+        /// call there; a voter joins it, and it is both.
+        /// </summary>
+        [Test]
+        public void ACallIsAGoalExactlyWhereTheEngineTakesOne()
+        {
+            var s = Campaign(31);
+            EpisodeEngine.EnableLevers(s);
+            s.strategyRulesStartWeek = 1;
+            s.socialActions = 0; s.outOfPhaseSocialActions = 0;
+            s.alliances.RemoveAll(a => a.members.Contains(s.playerId));
+            s.ledger.calls.Clear();
+            // Somebody who cannot vote this week: the Head of Household, or a nominee when the player holds the house.
+            string partner = s.hohId != s.playerId ? s.hohId : s.nominees[0];
+            string target = s.nominees.First(id => id != s.playerId && id != partner);
+            var voter = NpcVoters(s).FirstOrDefault(v => v.id != partner);
+            Assert.That(voter, Is.Not.Null, "The campaign has a voter besides the partner.");
+            var pact = new AllianceState { id = "alliance-call", name = "The Call", members = new List<string> { s.playerId, partner }, active = true };
+            s.alliances.Add(pact);
+
+            Assert.That(CampaignBrief.CanCallIn(s, pact), Is.False, "Nobody in it votes this week,");
+            Assert.That(CampaignBrief.Goals(s).Any(g => g.kind == CampaignBrief.GoalKinds.Call), Is.False, "so calling the vote in it is no goal,");
+            var refused = new EpisodeEngine(s.Clone()).Apply(CallTheVote(s, partner, target, pact.id));
+            Assert.That(refused.accepted, Is.False, "and the engine does not take the call.");
+            Assert.That(refused.reason, Does.Contain("votes this week"), refused.reason);
+
+            pact.members.Add(voter.id);
+            Assert.That(CampaignBrief.CanCallIn(s, pact), Is.True, "With a voter in it,");
+            Assert.That(CampaignBrief.Goals(s).Count(g => g.kind == CampaignBrief.GoalKinds.Call), Is.EqualTo(1), "the call is a goal,");
+            var taken = new EpisodeEngine(s.Clone()).Apply(CallTheVote(s, partner, target, pact.id));
+            Assert.That(taken.accepted, Is.True, "and the engine takes it through the same partner: " + taken.reason);
+        }
+
+        private static EpisodeCommand CallTheVote(EpisodeState s, string allyId, string targetId, string allianceId) =>
+            new EpisodeCommand
+            {
+                id = "brief-call-" + s.revision + "-" + allyId, actorId = s.playerId, kind = EpisodeCommandKind.CallTheVote,
+                targetId = allyId, secondTargetId = targetId, text = allianceId, expectedRevision = s.revision, expectedPhase = s.phase,
+            };
 
         [Test]
         public void FromTheBlockTheGoalIsToAskTheVotersToKeepYou()

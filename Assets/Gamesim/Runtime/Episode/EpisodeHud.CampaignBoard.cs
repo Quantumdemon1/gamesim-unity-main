@@ -19,7 +19,9 @@ namespace Gamesim.Episode
     /// waiting, then the block as heroes beside the week's title and situation, a row of tabs, the
     /// chosen tab's body, and the goals, the intel and a tip along the foot. When the height is
     /// short - a plea, a story beat, the larger text on a wide screen - the three foot cards fold
-    /// into a tab of their own rather than the board growing a scroll. Every word on it is the
+    /// into a tab of their own rather than the board growing a scroll, and when what is waiting
+    /// leaves no room for a tab at all, the tabs give way to a line saying where they went until
+    /// it is answered. Every word on it is the
     /// player's own reading, a public fact, a row the player owns, or existing rule copy; it
     /// commits nothing, and the tab and the page are view state the director holds.</para>
     ///
@@ -35,7 +37,11 @@ namespace Gamesim.Episode
             CampaignActionsName = "Campaign actions", CampaignPleaName = "Campaign plea", CampaignPleaCountName = "Plea count",
             CampaignTabsName = "Campaign tabs", CampaignBodyName = "Campaign tab body", CampaignCardsName = "Campaign cards",
             CampaignGoalsName = "Campaign goals", CampaignIntelName = "Campaign intel", CampaignTipName = "Campaign tip",
-            CampaignOutlookName = "Campaign outlook", CampaignHaveNotName = "Campaign have-not line", CampaignTabLineName = "Tab line";
+            CampaignOutlookName = "Campaign outlook", CampaignHaveNotName = "Campaign have-not line", CampaignTabLineName = "Tab line",
+            CampaignWaitingName = "Campaign waiting";
+
+        /// <summary>What the board says in place of its tabs while something waiting above it leaves no room for them.</summary>
+        public const string CampaignWaitingLine = "The rest of the campaign comes back here once you answer what is waiting above.";
 
         /// <summary>The tabs' captions, new with the board and found by these words.</summary>
         public const string CampaignTabTalk = "Talk to Houseguests", CampaignTabIntel = "Relationship Intel",
@@ -91,8 +97,15 @@ namespace Gamesim.Episode
         private const float CampaignCardChrome = 115f;
         /// <summary>A voter card's photo: never shorter than the first, folded below the second, never taller than the third.</summary>
         private const float CampaignPhotoLeast = 40f, CampaignPhotoUnfolded = 64f, CampaignPhotoMost = 100f;
-        private const float CampaignCardNarrowest = 112f, CampaignCardWidest = 150f;
+        /// <summary>
+        /// A voter card's width: the tallest photo, square, and its margins. It was clamped between
+        /// this and 150 by the photo's height, but the photo is never taller than 100, so the clamp
+        /// always gave this.
+        /// </summary>
+        private const float CampaignCardWidth = 112f;
         private const float CampaignGap = 10f;
+        /// <summary>The key the conversations left are remembered under between renders, so their bar drains: the caption of the meter the chip replaced.</summary>
+        private const string CampaignActionsMeter = "Interactions available";
 
         /// <summary>
         /// Lays the campaign's column at the stage's whole width, before the director draws anything
@@ -103,7 +116,8 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// Draws the campaign's board into the stage's column and returns the tab it shows: the one
-        /// asked for, except the folded cards' tab when there is room for the cards themselves.
+        /// asked for, except the folded cards' tab when there is room for the cards themselves. While
+        /// the board gives way to what is waiting above it, that is the tab it comes back on.
         /// </summary>
         public CampaignTab CampaignBoard(CampaignBoardSpec spec)
         {
@@ -126,24 +140,28 @@ namespace Gamesim.Episode
             float hero = CampaignHeroHeight * s, tabs = CampaignTabsHeight * s, line = CampaignLineHeight * s, cards = CampaignCardsHeight * s;
             float haveNot = spec.HaveNot ? 22f * s : 0f;
             float fixedPart = y + hero + gap + tabs + 8f * s + haveNot + line + 6f * s;
+            float least = (CampaignCardChrome + CampaignPhotoLeast) * s;
+            var size = board.GetComponent<LayoutElement>();
+            // Something waiting above the board - a story beat, a house event, a plea - is the step
+            // (PACK8-PASS-PLAN decision 7). When it leaves no room for a tab's body even with the
+            // foot cards folded, the board gives way to it rather than holding its least height and
+            // pushing the column past the stage: the tabs make way for a line saying where they
+            // went, and the heroes go too when even they would not fit. Answered, it is gone and
+            // the whole board is back. With nothing waiting, the board keeps its least height.
+            if (spec.Folded && room - fixedPart < least)
+            {
+                size.minHeight = size.preferredHeight = CampaignWaiting(board, y, width, room, state, sheet, spec);
+                return spec.Tab;
+            }
             bool folded = spec.Folded || room - fixedPart - gap - cards < (CampaignCardChrome + CampaignPhotoUnfolded) * s;
-            float body = Mathf.Clamp(room - fixedPart - (folded ? 0f : gap + cards),
-                (CampaignCardChrome + CampaignPhotoLeast) * s, (CampaignCardChrome + CampaignPhotoMost) * s);
+            float body = Mathf.Clamp(room - fixedPart - (folded ? 0f : gap + cards), least, (CampaignCardChrome + CampaignPhotoMost) * s);
             var tab = spec.Tab == CampaignTab.Goals && !folded ? CampaignTab.Talk : spec.Tab;
 
             CampaignHeroRow(board, y, width, hero, state, sheet, spec);
             y += hero + gap;
             CampaignTabs(board, y, width, tabs, spec, tab, folded);
             y += tabs + 8f * s;
-            if (spec.HaveNot)
-            {
-                // What being a Have-Not costs, beside the conversations it costs one of.
-                var cost = FixedText(board, EpisodeDirector.HaveNotLine, 12, UiTheme.Warning, new Vector2(0f, -y), new Vector2(width, 18f * s));
-                cost.name = CampaignHaveNotName;
-                cost.overflowMode = TextOverflowModes.Ellipsis;
-                AutoSize(cost, 9);
-                y += haveNot;
-            }
+            if (spec.HaveNot) y += CampaignHaveNot(board, y, width);
             var bodyRect = EndScreenKit.Box(CampaignBodyName, board, 0f, y, width, line + 6f * s + body);
             switch (tab)
             {
@@ -164,9 +182,47 @@ namespace Gamesim.Episode
                 CampaignCards(board, y, width, cards, state, spec);
                 y += cards;
             }
-            var size = board.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = y;
             return tab;
+        }
+
+        /// <summary>
+        /// The board while something waiting above it leaves no room for a tab: the heroes when they
+        /// still fit, then a row with the line that says where the rest went and "More ways to
+        /// campaign" at its end, so the house's other ways are as near as they always are, and the
+        /// Have-Not line under it. Returns the board's height.
+        /// </summary>
+        private float CampaignWaiting(RectTransform board, float y, float width, float room, EpisodeState state, VoteRead.Sheet sheet, CampaignBoardSpec spec)
+        {
+            float s = FontScale, gap = CampaignGap * s, hero = CampaignHeroHeight * s, row = CampaignTabsHeight * s;
+            float haveNot = spec.HaveNot ? 8f * s + 22f * s : 0f;
+            if (room - y - (hero + gap + row + haveNot) >= 0f)
+            {
+                CampaignHeroRow(board, y, width, hero, state, sheet, spec);
+                y += hero + gap;
+            }
+            var strip = EndScreenKit.Box(CampaignWaitingName, board, 0f, y, width, row);
+            var more = FilterPill(strip, spec.More ? EpisodeDirector.CampaignLessCaption : EpisodeDirector.CampaignMoreCaption, spec.More,
+                () => spec.ToggleMore?.Invoke(), row);
+            var moreRect = (RectTransform)more.transform;
+            Anchor(moreRect, new Vector2(1f, 1f), new Vector2(1f, 1f), Vector2.zero, moreRect.sizeDelta);
+            CampaignTabLine(strip, Mathf.Max(100f * s, width - moreRect.sizeDelta.x - 12f * s), row, CampaignWaitingLine);
+            // Built first to measure what it leaves the line, and read after it, as it stands.
+            moreRect.SetAsLastSibling();
+            y += row;
+            if (spec.HaveNot) y += 8f * s + CampaignHaveNot(board, y + 8f * s, width);
+            return y;
+        }
+
+        /// <summary>What being a Have-Not costs, beside the conversations it costs one of, as a line across the board. Returns the height it takes.</summary>
+        private float CampaignHaveNot(RectTransform board, float y, float width)
+        {
+            float s = FontScale;
+            var cost = FixedText(board, EpisodeDirector.HaveNotLine, 12, UiTheme.Warning, new Vector2(0f, -y), new Vector2(width, 18f * s));
+            cost.name = CampaignHaveNotName;
+            cost.overflowMode = TextOverflowModes.Ellipsis;
+            AutoSize(cost, 9);
+            return 22f * s;
         }
 
         /// <summary>
@@ -444,11 +500,16 @@ namespace Gamesim.Episode
             if (semibold != null) title.font = semibold;
             AutoSize(title, 10);
             y += 18f * s;
-            var headline = FixedText(row, spec.Headline ?? "", 20, UiTheme.Gold, new Vector2(x + pad, -y), new Vector2(inner, 26f * s));
-            headline.name = CampaignHeadlineName;
-            if (semibold != null) headline.font = semibold;
-            AutoSize(headline, 13);
-            y += 27f * s;
+            // No headline for a player who is out of the game: there is no case to build or vote
+            // to swing, and the line moves up under the title.
+            if (!string.IsNullOrEmpty(spec.Headline))
+            {
+                var headline = FixedText(row, spec.Headline, 20, UiTheme.Gold, new Vector2(x + pad, -y), new Vector2(inner, 26f * s));
+                headline.name = CampaignHeadlineName;
+                if (semibold != null) headline.font = semibold;
+                AutoSize(headline, 13);
+                y += 27f * s;
+            }
             if (!string.IsNullOrEmpty(spec.Line))
             {
                 var line = FixedText(row, spec.Line, 13, UiTheme.Muted, new Vector2(x + pad, -y), new Vector2(inner, 34f * s));
@@ -475,6 +536,30 @@ namespace Gamesim.Episode
             count.name = "Actions count";
             if (semibold != null) count.font = semibold;
             AutoSize(count, 11);
+            CampaignActionsBar(chip, words + Mathf.Ceil(count.GetPreferredValues(count.text).x) + 10f * s, 26f * s, chipWidth - 12f * s, left, budget);
+        }
+
+        /// <summary>
+        /// The conversations left as a slim bar after the count, from <paramref name="x"/> to
+        /// <paramref name="right"/>: the drain the meter this chip replaced had. It travels from
+        /// where it was last drawn to where it is now, so a conversation spent is seen leaving when
+        /// the campaign opens again; under reduced motion it is simply where it is. Nothing where
+        /// the chip has no width left for it beside the count.
+        /// </summary>
+        private void CampaignActionsBar(RectTransform chip, float x, float y, float right, int left, int budget)
+        {
+            float s = FontScale, width = right - x;
+            if (width < 24f * s) return;
+            var track = HudPrimitives.Fill("Actions track", chip, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .55f), 2);
+            EndScreenKit.Place(track, x, y, width, 4f * s);
+            float target = budget <= 0 ? 0f : Mathf.Clamp01((float)left / budget);
+            float shown = meterShown.TryGetValue(CampaignActionsMeter, out var previous) ? previous : target;
+            meterShown[CampaignActionsMeter] = target;
+            var fill = HudPrimitives.Fill("Actions fill", track, UiTheme.Gold, 2);
+            fill.anchorMin = Vector2.zero;
+            fill.anchorMax = new Vector2(target, 1f);
+            fill.offsetMin = fill.offsetMax = Vector2.zero;
+            if (!ReducedMotion && Mathf.Abs(shown - target) > .001f) fill.gameObject.AddComponent<HudFill>().Play(shown, target);
         }
 
         /// <summary>
@@ -654,7 +739,7 @@ namespace Gamesim.Episode
             if (hoh != null && !hoh.isPlayer && hoh.status == ContestantStatus.Active) ids.Add(hoh.id);
             ids.AddRange(EpisodeEngine.Voters(state).Where(voter => !voter.isPlayer).Select(voter => voter.id));
             float photo = Mathf.Max(CampaignPhotoLeast * s, height - CampaignCardChrome * s);
-            float cardWidth = Mathf.Clamp(photo * .9f + 12f * s, CampaignCardNarrowest * s, CampaignCardWidest * s);
+            float cardWidth = CampaignCardWidth * s;
             int perPage = Mathf.Max(1, Mathf.FloorToInt((width + gap) / (cardWidth + gap)));
             int pages = Mathf.Max(1, Mathf.CeilToInt(ids.Count / (float)perPage));
             int page = Mathf.Clamp(spec.Page, 0, pages - 1);

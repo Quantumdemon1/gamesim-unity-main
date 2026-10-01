@@ -57,7 +57,8 @@ namespace Gamesim.Episode
                 || (active && EpisodeEngine.OpenStoryBeats(state).Count > 0);
             var spec = new EpisodeHud.CampaignBoardSpec
             {
-                Headline = state.nominees.Contains(state.playerId) ? CampaignOnTheBlockHeadline : CampaignSwingHeadline,
+                // A player out of the game has no case to build and no vote to swing.
+                Headline = !active ? null : state.nominees.Contains(state.playerId) ? CampaignOnTheBlockHeadline : CampaignSwingHeadline,
                 Line = "The house votes when you close campaigning.",
                 Tip = CampaignTip,
                 Tab = campaignTab,
@@ -113,12 +114,14 @@ namespace Gamesim.Episode
         /// <summary>
         /// What this week's rules let the player do in a conversation on the campaign, in plain words
         /// with where each stands: the question and the look, both free and once a week each; a vote
-        /// promise; from the block, a plea to each voter; and a call in each of the player's pacts.
-        /// Never a conversation's caption: those are the conversation's to show.
+        /// promise; from the block, a plea to each voter; and a call in each of the player's pacts
+        /// that has somebody in it who votes. Never a conversation's caption: those are the
+        /// conversation's to show. None for a player who is out of the game, as the goals have none.
         /// </summary>
         private static List<string> CampaignTalkingPoints(EpisodeState state)
         {
             var points = new List<string>();
+            if (state.Find(state.playerId)?.status != ContestantStatus.Active) return points;
             var voters = EpisodeEngine.Voters(state).Where(voter => !voter.isPlayer && voter.status == ContestantStatus.Active).ToList();
             if (VoteRead.Available(state) && voters.Count > 0)
             {
@@ -133,7 +136,7 @@ namespace Gamesim.Episode
             if (voters.Any(voter => StrategyRules.CanBeAskedForTheirVote(state, voter.id)))
                 points.Add("From the block, ask each voter to keep you: one plea each, and each costs one of your conversations.");
             if (EpisodeEngine.LeverRulesOn(state) && VoteRead.Available(state))
-                foreach (var pact in state.alliances.Where(a => a.active && a.members.Contains(state.playerId)))
+                foreach (var pact in state.alliances.Where(a => CampaignBrief.CanCallIn(state, a)))
                     points.Add(state.ledger.calls.Any(k => k.week == state.week && k.allianceId == pact.id)
                         ? "You have called the vote in " + pact.name + " this week."
                         : "Through one of " + pact.name + "'s members, name who the bloc evicts: once a week.");

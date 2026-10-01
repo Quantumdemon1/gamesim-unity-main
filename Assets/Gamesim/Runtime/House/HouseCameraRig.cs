@@ -862,7 +862,20 @@ namespace Gamesim.House
 
         private Vector3 ConversationFocus()
         {
-            return ClampFocus((conversationPlayer.position + conversationNpc.position) * 0.5f + Vector3.up);
+            return ClampFocus((ConversationPoint(conversationPlayer) + ConversationPoint(conversationNpc)) * 0.5f);
+        }
+
+        /// <summary>
+        /// Where one of a conversation's pair is framed: a metre above their feet, or, sitting, the
+        /// face the follow frames (<see cref="SubjectFocus"/>). A seated body is on its seat while its
+        /// root waits on the approach - for a couch, in the middle of the living room's U - and the
+        /// two-shot framed the roots (PACK8-PASS-PLAN C3).
+        /// </summary>
+        private static Vector3 ConversationPoint(Transform subject)
+        {
+            var seat = subject.GetComponent<HouseSeatPresentation>();
+            if (seat != null && seat.Active) return seat.VisualFocus - Vector3.up * .15f;
+            return subject.position + Vector3.up;
         }
 
         /// <summary>

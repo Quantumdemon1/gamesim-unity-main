@@ -266,6 +266,9 @@ namespace Gamesim.Episode
             var state = projected;
             var unavailable = new HashSet<string>(state.npcSocial.pending.SelectMany(row => new[] { row.firstId, row.secondId }));
             foreach (var approach in npcApproaches) { unavailable.Add(approach.lease.FirstId); unavailable.Add(approach.lease.SecondId); }
+            // Whoever the player has asked over to talk is on their way to the player, not free to
+            // be paired: a pairing tried on them would only take their partner off their furniture.
+            if (talkSpot != null) unavailable.Add(talkSpot.NpcId);
             foreach (var cooldown in state.npcSocial.cooldowns.Where(row => row.untilTick > state.npcSocial.clockTick)) unavailable.Add(cooldown.npcId);
             var idle = state.Active.Where(actor => !actor.isPlayer && !unavailable.Contains(actor.id)).ToArray();
             for (int first = 0; first < idle.Length; first++)
@@ -464,6 +467,8 @@ namespace Gamesim.Episode
                 var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                 if (visual == null) continue;
                 if(npcMeetings.TryGetActivity(npc.Id,out var activity) && npcMeetings.ActivityValid(activity))continue;
+                // The houseguest walking to a talk spot with the player is the talk's to seat and turn.
+                if(talkSpot!=null && talkSpot.NpcId==npc.Id)continue;
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
                 var seatPose=npc.GetComponent<HouseSeatPresentation>();
@@ -512,6 +517,8 @@ namespace Gamesim.Episode
         }
         private void DisposeNpcSocialWorld()
         {
+            // The talk spot is the world's: it goes with it, the player's seat with it.
+            EndTalkSpot();
             EndDiaryVisit(true);
             DisposeHouseActivities();
             EndCompetitionArena();

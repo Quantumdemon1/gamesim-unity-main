@@ -435,7 +435,7 @@ namespace Gamesim.Tests.PlayMode
                                     && box.yMin >= glass.yMin + clearance - .01f && box.yMax <= glass.yMax - clearance + .01f, Is.True,
                                     at + ": " + entry.name + "'s badge " + box + " stands inside the chip's border " + glass + ".");
                                 foreach (var part in PinnedParts(entry))
-                                    Assert.That(Inset(box).Overlaps(LocalBounds(entry, part)), Is.False,
+                                    Assert.That(InsetByAHair(box).Overlaps(LocalBounds(entry, part)), Is.False,
                                         at + ": " + entry.name + "'s badge " + box + " lies on its '" + part.name + "' " + LocalBounds(entry, part) + ".");
                                 if (entry.rect.width > 120f) wide++; else narrow++;
                             }
@@ -741,6 +741,6 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>A rect a hundredth of a unit smaller all round, so two parts that only touch do not count as one lying on the other.</summary>
-        private static Rect Inset(Rect rect) => Rect.MinMaxRect(rect.xMin + .01f, rect.yMin + .01f, rect.xMax - .01f, rect.yMax - .01f);
+        private static Rect InsetByAHair(Rect rect) => Rect.MinMaxRect(rect.xMin + .01f, rect.yMin + .01f, rect.xMax - .01f, rect.yMax - .01f);
     }
 }

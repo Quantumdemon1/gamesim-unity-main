@@ -50,7 +50,12 @@ namespace Gamesim.Presentation
         /// for the whole first hour of a season that had no ceremony in it. E, Escape, the prompt and
         /// every click on the house went nowhere, with nothing on screen to say why.
         /// </summary>
-        public static bool Holds(int now, int stamped) => stamped <= now && now - stamped <= 1;
+        public static bool Holds(int now, int stamped)
+        {
+            // In 64 bits, so that no seed can overflow the subtraction into a negative age.
+            long age = (long)now - stamped;
+            return age >= 0 && age <= 1;
+        }
 
         /// <summary>
         /// Nothing is on screen: what a fresh domain would say. Run as play begins, because a play

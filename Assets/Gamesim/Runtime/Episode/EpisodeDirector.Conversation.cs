@@ -79,6 +79,9 @@ namespace Gamesim.Episode
             headingToStation = false;
             arrivingIn = null;
             sceneBeatPending = null;
+            // A walk to a talk spot goes with the errand; a conversation already open at one is the
+            // panel's to end (EpisodeDirector.TalkSpots).
+            if (talkSpot != null && !talkSpotOpen) EndTalkSpot();
         }
 
         /// <summary>
@@ -133,11 +136,17 @@ namespace Gamesim.Episode
         /// <para>No command is submitted by any of this. Opening a conversation is a view change;
         /// the season is not touched until a social action inside it is pressed, so a click costs
         /// the seeded run nothing.</para>
+        ///
+        /// <para>Where the house can, the two go to a talk spot first and the conversation opens
+        /// there (EpisodeDirector.TalkSpots); pressed again on the houseguest already being walked
+        /// to one, or wherever no spot will do, it opens as described here.</para>
         /// </summary>
         private void SelectHouseguest(HouseNpc npc)
         {
             if (npc == null || !IsReady || blockedRecovery || challengeActive || IsPanelOpen
                 || !playerIsActive) return;
+            if (talkSpot != null && !talkSpotOpen && talkSpot.NpcId == npc.Id) EndTalkSpot();
+            else if (TryWalkToTalkSpot(npc)) return;
             if (CanTalk(npc) && TryOpenNpc(npc.Id)) { CancelTravel(); player.StopHere(); return; }
 
             // The existing errand is not dropped until the new one is known to work: a click that
@@ -171,8 +180,10 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickWalkToHouseguest()
         {
+            TickTalkSpot();
             if (string.IsNullOrEmpty(headingToNpcId)) return;
             if (IsPanelOpen || challengeActive || !playerIsActive) { CancelTravel(); return; }
+            if (talkSpot != null && !talkSpotOpen) { TickWalkToTalkSpot(); return; }
 
             var npc = housemates.FirstOrDefault(actor => actor != null && actor.Id == headingToNpcId
                 && actor.gameObject.activeInHierarchy);
@@ -227,7 +238,12 @@ namespace Gamesim.Episode
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
             ClosePanels(); focusedNpc = npc; player.SetInputEnabled(false); cameraRig.SetConversationFocus(player.transform, npc.transform);
-            npc.GetComponent<CharacterPresentation>()?.SetTalking(true); Render(); return true;
+            // The houseguest has the floor, said here rather than inherited: the house's own chats
+            // hand the floor back and forth every tick, and left it with whoever last had it - for
+            // anybody not in a chat, nobody - so the player talked to somebody listening.
+            var talker = npc.GetComponent<CharacterPresentation>();
+            if (talker != null) { talker.SetSpeaking(true); talker.SetTalking(true); }
+            Render(); return true;
         }
 
         /// <summary>

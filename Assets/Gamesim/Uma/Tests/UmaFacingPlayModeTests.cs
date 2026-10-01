@@ -47,6 +47,8 @@ namespace Gamesim.Uma.Tests
             ("WalkStop", 0f, false, false, false, false, false, true, null, false, 0),
             ("SitIdle", 0f, false, true, false, false, false, false, null, false, 0),
             ("SitTalk", 0f, false, true, true, false, false, false, null, false, 0),
+            // The talk take captured sitting, which the seated talk ring plays second (PACK8-PASS-PLAN A2).
+            ("SitTalkB", 0f, false, true, true, false, false, false, null, false, 0),
             ("SitClap", 0f, false, true, false, false, false, true, null, false, 0),
             ("SitVictory", 0f, false, true, false, false, false, true, null, false, 0),
             ("Talk", 0f, false, false, true, false, false, false, null, false, 0),

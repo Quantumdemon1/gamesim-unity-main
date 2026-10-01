@@ -349,8 +349,9 @@ namespace Gamesim.Episode
             if (!phaseOpen || challengeActive || !IsCurrentDiaryRevision(state) || state.competitionResolved
                 || !EpisodeEngine.IsCompetition(state.phase)
                 || !EpisodeEngine.CompetitionPlayers(state).Any(c => c.isPlayer)) return;
-            // The competition takes the yard they would cross: anybody still walking out goes now.
-            FinishWalkOut();
+            // The competition takes the yard they would cross: anybody still walking out goes now,
+            // at once - a staged exit's hold on the shut door and its dip are not for this.
+            FinishWalkOut(immediate: true);
             challengeOrigin = state; challengeActive = true; challengeHits = 0; challengeTotal = 0;
             challengeStarted = Time.unscaledTime; challengePractice = practice; challengeResultShown = false; challengeFinishHold = 0f;
             challengeCommandId = Guid.NewGuid().ToString("N");

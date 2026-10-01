@@ -31,6 +31,21 @@ namespace Gamesim.House
         /// <summary>How a swimmer uses the pool: strokes along it at this pace, turns at the ends, and treads water for a while between lengths.</summary>
         private const float LapPace = .75f, LapTurnSeconds = .9f, LapRest = 3.5f, LapMargin = 1f;
 
+        /// <summary>
+        /// How long a body takes to step from its root onto a seat, standing, before it sits. The
+        /// sit was cued on the first frame while the body took three quarters of a second to reach
+        /// the seat, so every sit-down played on the open floor at the approach - half a metre
+        /// short of a couch, in the middle of the living room's U - and slid onto the cushion
+        /// after (PACK8-PASS-PLAN A2). Now the body is on the seat when it sits.
+        /// </summary>
+        public const float StepSeconds = .38f;
+
+        /// <summary>
+        /// From the sit being cued: when the hips are fitted to the cushion (the controller's
+        /// cross-fade into the seat is 0.35 s), how long the fit eases in, and when the body is settled.
+        /// </summary>
+        private const float FitDelay = .45f, FitSeconds = .3f, SettleSeconds = .85f;
+
         /// <summary>How the body is placed: seated, lying or in the water.</summary>
         public HouseAnchorPose Mode => Active ? mode : HouseAnchorPose.Stand;
         private bool exiting;
@@ -38,9 +53,26 @@ namespace Gamesim.House
         private Vector3 exitOffset;
         public bool IsExiting => Active && exiting;
         public bool Active { get; private set; }
-        public bool Settled => Active && !exiting && body!=null && (character.ReducedMotion || Time.unscaledTime-began>=.85f);
+        public bool Settled => Active && !exiting && body!=null && (character.ReducedMotion || Time.unscaledTime-PoseBegan>=SettleSeconds);
+
+        /// <summary>
+        /// Whether the body is still stepping onto its seat, on its feet. Only a seat has a step: a
+        /// bed and the pool lay the body down as it arrives, as they always did. Reduced motion
+        /// sits at once.
+        /// </summary>
+        public bool IsStepping => Active && !exiting && mode==HouseAnchorPose.Seat && character!=null && !character.ReducedMotion
+            && Time.unscaledTime-began<StepSeconds;
+
+        /// <summary>When the pose itself is cued: after the step for a seat, at once for anything else.</summary>
+        private float PoseBegan => began+(mode==HouseAnchorPose.Seat && character!=null && !character.ReducedMotion ? StepSeconds : 0f);
         public Vector3 VisualFocus => head!=null ? head.position : (body!=null ? body.position : transform.position)+Vector3.up*1.35f;
         public Vector3 VisualFeet => body!=null ? new Vector3(body.position.x,transform.position.y,body.position.z) : transform.position;
+
+        /// <summary>
+        /// The way the seat faces while the body sits on it, or NaN when it is not sitting there:
+        /// for the two-shot, which frames a pair sitting side by side from the side they face.
+        /// </summary>
+        public float SeatFacing => Active && !exiting && mode==HouseAnchorPose.Seat ? anchorFacing : float.NaN;
 
         /// <summary>Only a current, settled, owned body can supply a seated observation endpoint.</summary>
         public bool TryGetWitnessPoint(out Vector3 point)
@@ -95,7 +127,8 @@ namespace Gamesim.House
             if(mode==HouseAnchorPose.Float && character.CanAct(CharacterPresentation.BodyActivity.Swimming))
             {character.SetSeated(false);character.SetActivity(CharacterPresentation.BodyActivity.Swimming,Stroking);return;}
             character.SetActivity(CharacterPresentation.BodyActivity.None);
-            character.SetSeated(true);
+            // On its feet until it is on the seat: the sit is played where it is sat.
+            character.SetSeated(!IsStepping);
         }
 
         /// <summary>Whether a swimmer is doing a length right now, rather than treading water or turning.</summary>
@@ -128,12 +161,19 @@ namespace Gamesim.House
         private void LateUpdate()
         {
             if(!Active)return;
+            // Nothing left to get up from, or to get up with: the seat gone, moved or turned, the
+            // body gone, or the root pushed off its approach. The body goes back to its root now.
             if(character==null || !character.isActiveAndEnabled || anchor==null || !anchor.isActiveAndEnabled
                 || (anchor.Position-anchorPosition).sqrMagnitude>.0025f || (anchor.SeatContact-anchorContact).sqrMagnitude>.0025f
                 || Mathf.Abs(Mathf.DeltaAngle(anchor.Facing,anchorFacing))>1f
-                || (transform.position-origin).sqrMagnitude>.16f || ownsSeat==null || !ownsSeat())
+                || (transform.position-origin).sqrMagnitude>.16f)
             {End();return;}
+            // Getting up goes on after whoever held the seat has let go of it. Letting go is what
+            // asks a body to stand, and the owner was asked first: a chat that ended, an activity
+            // taken away and every ceremony's release all cut the stand-up off on its first frame,
+            // and the body snapped from the chair to the approach still sitting (PACK8-PASS-PLAN A2).
             if(exiting){TickExit();return;}
+            if(ownsSeat==null || !ownsSeat()){End();return;}
             Cue();
             TickLap();
             if(character.VisualRoot!=body)
@@ -164,8 +204,10 @@ namespace Gamesim.House
                     foreach(var bone in body.GetComponentsInChildren<Transform>())
                         if(bone.name=="Head" || bone.name=="Head pivot"){head=bone;break;}
             }
-            float blend=character.ReducedMotion ? 1f : Mathf.SmoothStep(0,1,(Time.unscaledTime-began)/.75f);
-            if(mode!=HouseAnchorPose.Seat){PoseAlong(blend);return;}
+            if(mode!=HouseAnchorPose.Seat){PoseAlong(character.ReducedMotion ? 1f : Mathf.SmoothStep(0,1,(Time.unscaledTime-began)/.75f));return;}
+            // The step: from the root onto the seat and round into it, standing. The sit is cued
+            // when it ends (Cue), and the hips are fitted once the sit has played in.
+            float blend=character.ReducedMotion ? 1f : Mathf.SmoothStep(0,1,(Time.unscaledTime-began)/StepSeconds);
             // Every body sits the way the anchor says. A half-turn used to be added for bodies with no
             // humanoid avatar, whose Blender-authored seated clips were exported facing the other
             // way; those bodies are gone (the cast is UMA's alone, 2026-09-27), and the half-turn was
@@ -179,13 +221,14 @@ namespace Gamesim.House
             body.rotation=Quaternion.Slerp(startRotation,
                 Quaternion.Euler(0,anchor.Facing,0)*baseLocalRotation,blend);
             Vector3 offset=anchor.Position-transform.position;
-            if(hips!=null && Time.unscaledTime-began>.45f)
+            float sat=Time.unscaledTime-PoseBegan;
+            if(hips!=null && sat>FitDelay)
             {
                 float leg=leftFoot!=null ? Vector3.Distance(hips.position,leftFoot.position) : .7f;
                 // The hip joint is above the cushion contact. Scale that clearance to this body.
                 var contact=anchor.SeatContact+Vector3.up*Mathf.Clamp(leg*.14f,.06f,.16f);
                 var fitted=contact-hips.position;
-                float fit=character.ReducedMotion ? 1f : Mathf.Clamp01((Time.unscaledTime-began-.45f)/.3f);
+                float fit=character.ReducedMotion ? 1f : Mathf.Clamp01((sat-FitDelay)/FitSeconds);
                 offset=Vector3.Lerp(offset,fitted,fit);
                 if(leftFoot!=null && rightFoot!=null)
                 {

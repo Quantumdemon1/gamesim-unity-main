@@ -20,6 +20,22 @@ namespace Gamesim.Episode
         private static bool CeremonyScreenBeat(EpisodeState s) => s != null && s.pendingDiary == null
             && (s.phase == EpisodePhase.Nomination || s.phase == EpisodePhase.VetoSelection || s.phase == EpisodePhase.VetoMeeting);
 
+        /// <summary>
+        /// The week's four strategy screens, which take the strategy stage (PACK8-PASS-PLAN A3): the
+        /// ceremonies' three and the campaign. The Head of Household's own picker is one of the
+        /// nomination's steps there (B1, EpisodeDirector.NominationScreen.cs); only the diary's
+        /// nomination keeps a column of its own. Never under a challenge, whose sheet is a layout of
+        /// its own.
+        /// </summary>
+        private bool StrategyScreenBeat(EpisodeState s) => s != null && !challengeActive
+            && (CeremonyScreenBeat(s) || (s.phase == EpisodePhase.Campaign && s.pendingDiary == null));
+
+        /// <summary>The Pack 8 shell a strategy screen is framed in: the veto meeting has none of its own and wears the draw's.</summary>
+        private static string StrategyShell(EpisodeState s) =>
+            s.phase == EpisodePhase.Nomination ? PackArt.Pack8NominationShell
+            : s.phase == EpisodePhase.Campaign ? PackArt.Pack8CampaignShell
+            : PackArt.Pack8VetoShell;
+
         private void CeremonyScreen(EpisodeState s)
         {
             if (!CeremonyScreenBeat(s) || s.Find(s.hohId) == null) return;
@@ -47,42 +63,13 @@ namespace Gamesim.Episode
                     hud.CeremonyFaces("On the block, and who put them there", named, 150f);
                     break;
                 case EpisodePhase.VetoSelection:
-                {
-                    int seats = EpisodeEngine.VetoPlayerCount(s.Active.Count());
-                    var byRight = new List<EpisodeHud.CeremonyFace> { crown };
-                    byRight.AddRange(block);
-                    var pool = s.Active.Where(c => c.id != hoh.id && !s.nominees.Contains(c.id)).ToList();
-                    int toDraw = System.Math.Max(0, System.Math.Min(pool.Count, seats - byRight.Count));
-                    hud.CeremonyTitle(week, "Power of Veto Player Selection",
-                        seats + " play for the Golden Power of Veto: the Head of Household and both nominees by right, and "
-                        + toDraw + " drawn from the house.", UiTheme.Gold);
-                    hud.CeremonyFaces("Playing by right", byRight, 128f);
-                    hud.ChipBag(toDraw, toDraw == 1 ? "One chip to draw from the bag." : toDraw + " chips to draw from the bag.");
-                    hud.CeremonyFaces("In the bag", pool.Select(c => Face(c.id, null, UiTheme.Muted)).ToList(), 110f);
+                    // One row across the frame, and no draw at six or fewer (EpisodeDirector.VetoDraw.cs).
+                    VetoDrawScreen(s);
                     break;
-                }
                 case EpisodePhase.VetoMeeting:
-                {
-                    var holder = s.Find(s.vetoHolderId);
-                    if (holder == null) return;
-                    var veto = Face(holder.id, "VETO", UiTheme.Gold);
-                    if (!s.vetoResolved)
-                    {
-                        hud.CeremonyTitle(week, "Power of Veto Meeting",
-                            holder.name + " holds the Golden Power of Veto and must decide whether to use it.", UiTheme.Gold);
-                        var meeting = new List<EpisodeHud.CeremonyFace> { veto };
-                        meeting.AddRange(block);
-                        hud.CeremonyFaces("Holding the veto, and on the block", meeting, 150f);
-                    }
-                    else
-                    {
-                        var decision = s.events.LastOrDefault(e => e.kind == "veto" && e.week == s.week);
-                        hud.CeremonyTitle(week, "The Veto Meeting Is Over", decision?.text, UiTheme.Gold);
-                        var after = new List<EpisodeHud.CeremonyFace>(block) { veto };
-                        hud.CeremonyFaces("The final nominees, and the veto", after, 150f);
-                    }
+                    // The meeting's own screens, before and after it (EpisodeDirector.VetoMeeting).
+                    VetoMeetingScreen(s);
                     break;
-                }
             }
         }
     }

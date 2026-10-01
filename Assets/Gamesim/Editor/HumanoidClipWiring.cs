@@ -150,9 +150,14 @@ namespace Gamesim.Editor
             ("WalkStop", "WalkStop", -60, 120),
             ("SitIdle", "SitIdle_loop", 520, 0),
             ("SitTalk", "SitTalk_loop", 760, 0),
+            // Talk_loop was captured sitting (its hips average 63.6 cm, the standing takes' 101),
+            // and played as the standing talk it sat every standing conversation on the air. It
+            // talks from a seat now, as the seated ring's second take.
+            ("SitTalkB", "Talk_loop", 1000, 0),
             ("SitClap", "SitClap", 640, -120),
             ("SitVictory", "SitVictory", 880, -120),
-            ("Talk", "Talk_loop", 520, 180),
+            // The standing talk's way in plays the ring's first take: see TalkEntry.
+            ("Talk", "TalkB_loop", 520, 180),
             ("TalkB", "TalkB_loop", 760, 180),
             ("TalkC", "TalkC_loop", 1000, 180),
             ("Listen", "Listen_loop", 1240, 180),
@@ -191,8 +196,32 @@ namespace Gamesim.Editor
         public static IEnumerable<(string trigger, string state)> WiredReactions =>
             Reactions.Where(r => r.state != null);
 
-        /// <summary>The three standing talk takes, played in a ring so a long conversation varies.</summary>
-        public static readonly string[] TalkRing = { "Talk", "TalkB", "TalkC" };
+        /// <summary>The two standing talk takes, played in a ring so a long conversation varies.</summary>
+        public static readonly string[] TalkRing = { "TalkB", "TalkC" };
+
+        /// <summary>
+        /// The standing talk's way in: the state a standing body that starts talking goes to, from
+        /// idle, a listen or a row. It plays the ring's first take and hands the floor to the ring's
+        /// second, so a standing conversation alternates the two standing takes from its first turn.
+        /// It kept its name when its seated take left it, because every standing cue asks for it by
+        /// that name.
+        /// </summary>
+        public const string TalkEntry = "Talk";
+
+        /// <summary>
+        /// The two seated talk takes, played in a ring the same way: the seated talk, then the talk
+        /// take that was captured sitting (PACK8-PASS-PLAN A2).
+        /// </summary>
+        public static readonly string[] SeatedTalkRing = { "SitTalk", "SitTalkB" };
+
+        /// <summary>
+        /// What standing is, in the body's own terms: the height of its root (the body's centre,
+        /// in its own heights, RootT.y) and the stretch of its straighter lower leg. Measured in the
+        /// files: the standing takes carry their hips at 96 to 104 cm on average and the seated ones
+        /// at 57 to 64; the standing poses sit their root at 0.95 to 1.02 with a leg stretched past
+        /// 0.99, and the talk take captured sitting at 0.675 with its legs at 0.22 and 0.33.
+        /// </summary>
+        public const float StandingRootHeight = 0.85f, StraightLowerLeg = 0.7f;
 
         private const float SeatedFade = 0.35f;   // no sit-down take on this rig; the cross-fade carries it
         private const float RingExit = 0.92f;
@@ -285,7 +314,7 @@ namespace Gamesim.Editor
             Go(states["Idle"], states["Run"], 0.15f, Moving(true), Bool(RunningParameter, true));
             Go(states["Idle"], states["Walk"], 0.15f, Moving(true));
             Go(states["Idle"], states["Argue"], 0.15f, Bool(ArguingParameter, true), Moving(false));
-            Go(states["Idle"], states["Talk"], 0.15f, Bool(TalkingParameter, true), Moving(false));
+            Go(states["Idle"], states[TalkEntry], 0.15f, Bool(TalkingParameter, true), Moving(false));
 
             // Walking stops through the stop take, so a body plants rather than snapping to idle.
             // Running exits straight to idle: a run that has to decelerate through a three-second
@@ -309,14 +338,22 @@ namespace Gamesim.Editor
 
             // A seated gesture is asked for on a trigger and answered from the seat, ahead of talking:
             // a clap is over in seconds and the conversation picks up after it.
-            foreach (var seat in new[] { states["SitIdle"], states["SitTalk"] })
+            foreach (var seat in new[] { "SitIdle" }.Concat(SeatedTalkRing).Select(name => states[name]))
             {
                 Go(seat, states["Idle"], SeatedFade, Seated(false));
                 Go(seat, states["SitClap"], 0.2f, Bool(SeatedClapTrigger, true));
                 Go(seat, states["SitVictory"], 0.2f, Bool(SeatedVictoryTrigger, true));
             }
-            Go(states["SitIdle"], states["SitTalk"], 0.15f, Bool(TalkingParameter, true));
-            Go(states["SitTalk"], states["SitIdle"], 0.15f, Bool(TalkingParameter, false));
+            Go(states["SitIdle"], states[SeatedTalkRing[0]], 0.15f, Bool(TalkingParameter, true));
+            foreach (var talk in SeatedTalkRing) Go(states[talk], states["SitIdle"], 0.15f, Bool(TalkingParameter, false));
+            // The seated talk hands the floor on the way the standing one does, after the take has played.
+            for (int i = 0; i < SeatedTalkRing.Length; i++)
+            {
+                var ring = Go(states[SeatedTalkRing[i]], states[SeatedTalkRing[(i + 1) % SeatedTalkRing.Length]], 0.25f,
+                    Bool(TalkingParameter, true));
+                ring.hasExitTime = true;
+                ring.exitTime = RingExit;
+            }
             // The clap holds its hands up for five seconds and brings them down by 5.6 of its 6.5;
             // the fist pump is up and down by four of its 5.6 and sits still after.
             foreach (var (gesture, done) in new[] { ("SitClap", .9f), ("SitVictory", .72f) })
@@ -327,10 +364,14 @@ namespace Gamesim.Editor
                 settle.exitTime = done;
             }
 
-            for (int i = 0; i < TalkRing.Length; i++)
+            // The way in and the ring leave the same ways. The way in plays the ring's first take, so
+            // it hands the floor to the ring's second; the ring's own takes hand it round. Past the
+            // way in, speakers[i] is TalkRing[i - 1], so the take after it is TalkRing[i % length].
+            var speakers = new[] { TalkEntry }.Concat(TalkRing).ToArray();
+            for (int i = 0; i < speakers.Length; i++)
             {
-                var here = states[TalkRing[i]];
-                var next = states[TalkRing[(i + 1) % TalkRing.Length]];
+                var here = states[speakers[i]];
+                var next = states[TalkRing[(i == 0 ? 1 : i) % TalkRing.Length]];
                 Go(here, states["SitIdle"], SeatedFade, Seated(true));
                 Go(here, states["Walk"], 0.15f, Moving(true));
                 Go(here, states["Argue"], 0.15f, Bool(ArguingParameter, true));
@@ -345,12 +386,12 @@ namespace Gamesim.Editor
             Go(states["Listen"], states["SitIdle"], SeatedFade, Seated(true));
             Go(states["Listen"], states["Walk"], .15f, Moving(true));
             Go(states["Listen"], states["Argue"], .15f, Bool(ArguingParameter, true));
-            Go(states["Listen"], states["Talk"], .15f, Bool(TalkingParameter, true));
+            Go(states["Listen"], states[TalkEntry], .15f, Bool(TalkingParameter, true));
             Go(states["Listen"], states["Idle"], .18f, Bool(ListeningParameter, false));
 
             Go(states["Argue"], states["SitIdle"], SeatedFade, Seated(true));
             Go(states["Argue"], states["Walk"], 0.15f, Moving(true));
-            Go(states["Argue"], states["Talk"], 0.15f, Bool(ArguingParameter, false), Bool(TalkingParameter, true));
+            Go(states["Argue"], states[TalkEntry], 0.15f, Bool(ArguingParameter, false), Bool(TalkingParameter, true));
             Go(states["Argue"], states["Idle"], 0.15f, Bool(ArguingParameter, false), Bool(TalkingParameter, false));
 
             // Reactions: one-shots from Any State on their trigger, only while standing, back to Idle.

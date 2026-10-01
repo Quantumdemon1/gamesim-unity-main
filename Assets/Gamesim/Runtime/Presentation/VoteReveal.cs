@@ -287,6 +287,22 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// The first press's step: every vote on the board, the tie called and broken if there was
+        /// one, and the result read - the count's order given up, never the result. A press on the
+        /// result ends the card. Shared with a staged eviction, whose press on its summons starts the
+        /// card here, so one press is one step however the eviction is played. Nothing once the
+        /// result is up.
+        /// </summary>
+        public void SkipToResult()
+        {
+            if (!playing || ShowingResult) return;
+            elapsed = Mathf.Max(elapsed, ResultAt);
+            Tally(house.Count, false, false);
+            if (tieBreak.HasValue) { CallTie(); BreakTie(false); }
+            Result();
+        }
+
+        /// <summary>
         /// True once the card has been up long enough to have been read; after that a press moves it
         /// on. A press already in flight when the card appears - the Enter that cast the last ballot -
         /// must not skip a count nobody has seen.
@@ -310,10 +326,7 @@ namespace Gamesim.Presentation
             if (Dismissable && CeremonyTakeover.SkipPressed())
             {
                 if (ShowingResult) { Cancel(); return; }
-                elapsed = Mathf.Max(elapsed, ResultAt);
-                Tally(house.Count, false, false);
-                if (tieBreak.HasValue) { CallTie(); BreakTie(false); }
-                Result();
+                SkipToResult();
                 return;
             }
 

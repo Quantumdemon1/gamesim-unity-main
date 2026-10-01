@@ -66,6 +66,39 @@ namespace Gamesim.Editor
         public static readonly Rect Footprint = Rect.MinMaxRect(-12.8f, -8.2f, -3.3f, -1.3f);
 
         /// <summary>
+        /// The living room's exit door and its swing, at the south end of the west wall
+        /// (MOCKUP-PASS-PLAN M23; the door set's <c>DoorLayout.Living</c>): from the west wall's face
+        /// to a stride in front of the leaves, and from the south wall to the memory wall (x, z).
+        /// </summary>
+        public static readonly Rect Doorway = Rect.MinMaxRect(-13.9f, -9.9f, -11.0f, -7.3f);
+
+        /// <summary>The prototype's pieces that stood in the exit door's doorway: the raised bed and the sphere on it.</summary>
+        private static readonly string[] StruckFromTheDoorway = { "Planter", "Foliage" };
+
+        /// <summary>
+        /// Strikes the prototype's planter from the living room's exit door (MOCKUP-PASS-PLAN M23),
+        /// with its foliage. A raised bed 0.6 m tall at (-12, -8), it stood in the right leaf's
+        /// swing, and the bake took its top for floor: a route from the red chairs to the door
+        /// climbed over it, and a body would have floated in the vestibule. Runs before the planting
+        /// pass, which grows a bed of plants on every planter it finds and passes struck ones by;
+        /// switched off rather than deleted, as the gallery keeps the pieces it replaces, so the bake
+        /// sees no collider there. Idempotent. Returns how many pieces it struck.
+        /// </summary>
+        internal static int StrikeTheDoorway(Transform world)
+        {
+            int struck = 0;
+            foreach (var node in world.GetComponentsInChildren<Transform>(true))
+            {
+                if (node == null || !node.gameObject.activeSelf) continue;
+                if (!StruckFromTheDoorway.Contains(HouseSetPieces.Stem(node.name))) continue;
+                if (!Doorway.Contains(new Vector2(node.position.x, node.position.z))) continue;
+                node.gameObject.SetActive(false);
+                struck++;
+            }
+            return struck;
+        }
+
+        /// <summary>
         /// Where the three bodies the scene started where the U stands start instead: inside the U,
         /// on its open floor, 1.35 m and more from every seat's approach and clear of the table - the
         /// house at home round its couches. Not the east lane beside the arm: a body standing there

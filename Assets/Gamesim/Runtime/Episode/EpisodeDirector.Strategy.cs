@@ -108,8 +108,11 @@ namespace Gamesim.Episode
             string names = string.Join(" or ", deciders.Select(id => state.Find(id).name));
             string what = state.phase == EpisodePhase.Nomination ? "Nominations are " + names + "'s call."
                 : "The veto meeting is next.";
+            // Under the week's windows the count is the window's, and what is not spent here does not
+            // carry; the old weekly pool is the week's.
             return what + " Find " + names + " in the house for a word before it happens: you have "
-                + left + (left == 1 ? " conversation" : " conversations") + " left this week.";
+                + left + (left == 1 ? " conversation" : " conversations")
+                + (EpisodeEngine.WeekRulesOn(state) ? " left in this window." : " left this week.");
         }
 
         /// <summary>

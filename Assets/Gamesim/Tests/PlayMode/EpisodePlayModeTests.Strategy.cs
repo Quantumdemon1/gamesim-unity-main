@@ -22,14 +22,21 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>A default-cast season that plays the strategy windows, saved and loaded, shaped by <paramref name="shape"/>.</summary>
         private IEnumerator InstallStrategySeason(uint seed, System.Action<EpisodeState> shape)
         {
+            var state = StrategySeason(seed, shape);
+            Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);
+            new EpisodeSaveStore(director.SavePath).Save(state);
+            yield return ReloadEpisode();
+        }
+
+        /// <summary>The season <see cref="InstallStrategySeason"/> installs, built without installing it, so a search can play it on the engine alone first.</summary>
+        private static EpisodeState StrategySeason(uint seed, System.Action<EpisodeState> shape)
+        {
             var state = ContentCatalog.Create(seed);
             state.competitionRulesVersion = CompetitionRules.Current;
             state.haveNotRulesStartWeek = 1;
             state.strategyRulesStartWeek = 1;
             shape?.Invoke(state);
-            Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);
-            new EpisodeSaveStore(director.SavePath).Save(state);
-            yield return ReloadEpisode();
+            return state;
         }
 
         /// <summary>The veto meeting: the first houseguest is Head of Household, the next two nominated, the fourth - or the player - holding the veto.</summary>

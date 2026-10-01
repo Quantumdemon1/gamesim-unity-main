@@ -21,6 +21,10 @@ namespace Gamesim.House
         /// houseguest stood still - which is what the standalone verifier saw after a reload.
         /// </summary>
         public const int MaxCastIndex = 15;
+
+        /// <summary>The house's walk, metres a second: the pace every route is walked at unless its borrower slows it.</summary>
+        public const float DefaultSpeed = 2.2f;
+
         private HouseNpc npc;
         private HouseRoomQuery rooms;
         private CapsuleCollider capsule;
@@ -90,7 +94,7 @@ namespace Gamesim.House
                 agent.enabled = false;
                 agent.agentTypeID = navFilter.agentTypeID; agent.areaMask = navFilter.areaMask;
                 agent.radius = body.radius; agent.height = body.height;
-                agent.speed = 2.2f; agent.acceleration = 12f; agent.angularSpeed = 360f;
+                agent.speed = DefaultSpeed; agent.acceleration = 12f; agent.angularSpeed = 360f;
                 agent.stoppingDistance = .15f; agent.avoidancePriority = 60 + castIndex;
                 agent.autoTraverseOffMeshLink = false;
                 agent.updatePosition = true; agent.updateRotation = true;
@@ -278,10 +282,25 @@ namespace Gamesim.House
                 : leaseId == null ? HouseNpcMotionState.Idle : HouseNpcMotionState.Walking;
         }
 
+        /// <summary>How fast this body walks its route now, metres a second.</summary>
+        public float Speed => ownedAgent != null ? ownedAgent.speed : DefaultSpeed;
+
+        /// <summary>
+        /// Walks the route at another pace, metres a second, or at <see cref="DefaultSpeed"/> again
+        /// for zero or less: the evicted's slow walk out (PACK8-PASS-PLAN C2). Releasing the route
+        /// and failing both put the house's pace back, so no slow walk outlives the borrow that
+        /// asked for it.
+        /// </summary>
+        public void SetSpeed(float metresPerSecond)
+        {
+            if (ownedAgent != null) ownedAgent.speed = metresPerSecond > 0f ? metresPerSecond : DefaultSpeed;
+        }
+
         public bool Release(string reservationId)
         {
             if (reservationId == null || reservationId != leaseId) return false;
             leaseId = null; destinationRoom = null; arrivalFrames = 0;
+            if (ownedAgent != null) ownedAgent.speed = DefaultSpeed;
             if (ownedAgent != null && ownedAgent.enabled && ownedAgent.isOnNavMesh)
             {
                 // Clearing the native path can reset its stopped state. Establish
@@ -442,6 +461,7 @@ namespace Gamesim.House
         private void Fail(string reason)
         {
             FailureReason = reason;
+            if (ownedAgent != null) ownedAgent.speed = DefaultSpeed;
             RestoreStaticOwner();
             state = HouseNpcMotionState.Failed;
         }

@@ -85,5 +85,33 @@ namespace Gamesim.Presentation
 
         /// <summary>How long the winner holds the stage: the confetti's three seconds and time to read the count.</summary>
         public static float WinnerHold(CeremonyPace pace) => pace == CeremonyPace.Quick ? 3.2f : 5.2f;
+
+        // ------------------------------------------------------------ the veto meeting
+
+        /// <summary>The meeting's first page: the holder and the block, before the question.</summary>
+        public static float VetoIntro(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.5f : 3.0f;
+
+        /// <summary>
+        /// The question before the decision, while the house cuts to each nominee in turn and then
+        /// pushes in on the two of them: the meeting's beat before the last vote.
+        /// </summary>
+        public static float VetoQuestion(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.7f : 3.4f;
+
+        /// <summary>The decision on the screen and the face it is about.</summary>
+        public static float VetoDecision(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.6f : 3.2f;
+
+        /// <summary>The Head of Household naming the replacement, when the veto was used.</summary>
+        public static float VetoReplacement(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.6f : 3.2f;
+
+        /// <summary>The block that goes to the vote, before the card fades.</summary>
+        public static float VetoFinal(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.3f : 2.6f;
+
+        /// <summary>
+        /// The whole meeting at its own pace, fade to fade: about sixteen seconds when the veto is
+        /// used and thirteen when it is not, suspensefully, and half that quickly.
+        /// </summary>
+        public static float VetoMeeting(CeremonyPace pace, bool used) =>
+            FadeIn + VetoIntro(pace) + VetoQuestion(pace) + VetoDecision(pace) + (used ? VetoReplacement(pace) : 0f)
+            + VetoFinal(pace) + FadeOut;
     }
 }

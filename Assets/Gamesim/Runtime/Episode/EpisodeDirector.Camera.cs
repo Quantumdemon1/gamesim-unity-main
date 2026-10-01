@@ -96,6 +96,10 @@ namespace Gamesim.Episode
         {
             // The episode screen's card, or a story's card opened out in the house (plan §5.1).
             if (cameraRig == null || item == null || !(phaseOpen || sceneCardOpen)) return;
+            // Not under the strategy stage, which draws a beat or a plea inside itself and covers
+            // the house from the rail to the edge: the shot would move the camera and blur the set
+            // behind it for nobody to see (PACK8-PASS-PLAN decision 7).
+            if (hud != null && hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Strategy) return;
             if (framedEventId == item.id && cameraRig.HasShot) return;
             var bodies = item.involvedIds.Select(BodyFor).Where(body => body != null).ToArray();
             if (bodies.Length == 0) return;

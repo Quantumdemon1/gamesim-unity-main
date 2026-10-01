@@ -168,6 +168,8 @@ namespace Gamesim.Episode
             hud.RegisterOverlay(competitionCard.GetComponent<CanvasGroup>());
             keyCeremony = KeyCeremony.Attach(gameObject);
             keyCeremony.CueRequested += cue => { if (audioBed != null) audioBed.PlayCue(cue); };
+            // The staged ceremonies' skip, on screen while one runs (EpisodeDirector.CeremonyStage).
+            skipChip = CeremonySkipChip.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
             tutorial.RememberCompletion = SaveRootOverride == null;
             // The reference build's rising blip on every step of the tour.
@@ -344,6 +346,8 @@ namespace Gamesim.Episode
             // hold on the chrome reads whether it is still telling its story.
             TickCeremonyStage();
             TickCeremonies();
+            // After both have moved on: the chip says what a press does while a stage runs.
+            TickSkipChip();
             // The music follows what is on screen every frame, before anything can return early:
             // the opening's loading gate and its closing fade change in the middle of a beat, with
             // nothing rendering. A state the bed is already in costs a comparison.
@@ -519,7 +523,8 @@ namespace Gamesim.Episode
                     if (!TryOpenPhasePanel() && target != null) TryOpenNpc(target.Id);
                     break;
                 case InteractTarget.Talk:
-                    TryOpenNpc(target.Id);
+                    // E says what a click on them says, so it asks for a talk spot as a click does.
+                    TalkOnInteract(target);
                     break;
                 case InteractTarget.StepIn:
                     StepIntoWalkIn();
@@ -648,6 +653,8 @@ namespace Gamesim.Episode
             if (focusedNpc != null) conversationIntent = null;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
+            // The nomination's view goes with the panel, which opens again on the week's current step.
+            ForgetNominationView();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -739,8 +746,11 @@ namespace Gamesim.Episode
             string lineBefore = focusedNpc != null ? HouseDialogue.Response(engine.Snapshot, focusedNpc.Id) : null;
             var wasActive = new HashSet<string>(engine.Snapshot.contestants
                 .Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id));
-            // Who was on the block before this command: a veto ceremony is the difference.
-            var wasNominated = new HashSet<string>(engine.Snapshot.nominees ?? new List<string>());
+            // Who was on the block before this command: a veto ceremony is the difference. The same
+            // block in the order it was named seats a staged veto meeting's red chairs; the
+            // snapshot is the engine's copy already, so it is read once.
+            var blockBefore = engine.Snapshot.nominees ?? new List<string>();
+            var wasNominated = new HashSet<string>(blockBefore);
             // Player and NPC candidates share durable publication ordering. A phase
             // transition cancels invalid NPC activity inside this same saved candidate.
             var candidate = new EpisodeEngine(engine.Snapshot);
@@ -788,7 +798,7 @@ namespace Gamesim.Episode
                 var commitCue = CommitCue(result.state.events.Skip(knownEvents)
                     .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId))
                     .Select(entry => entry.kind));
-                bool revealed = false;
+                bool revealed = false, vetoStaged = false;
                 // The ceremony is not always the last thing a commit writes — an eviction is followed
                 // by the events that open the next week, which is why keying off the final line
                 // meant the eviction card never played at all. Search everything this command
@@ -823,10 +833,13 @@ namespace Gamesim.Episode
                 if (field != null && takeover != null)
                 {
                     EndCeremonyCards(includingResult: competition == null);
-                    // A house bigger than the field gets a line that says who plays and why; the
-                    // card's own says everyone does (VetoFieldLine is null when that is true).
-                    takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
-                        VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
+                    // The draw itself when there was one and this house plays it: the chips turning
+                    // into the faces they drew (EpisodeDirector.VetoDraw.cs). Otherwise the field's
+                    // card: a house bigger than the field gets a line that says who plays and why;
+                    // the card's own says everyone does (VetoFieldLine is null when that is true).
+                    if (!PlayVetoDrawReveal(result.state))
+                        takeover.Play(CeremonyTakeover.VetoSelectionKind, result.state.week,
+                            VetoField(result.state), reducedMotion, null, VetoFieldLine(result.state));
                 }
 
                 var ceremony = result.state.events.Skip(knownEvents)
@@ -866,7 +879,13 @@ namespace Gamesim.Episode
                         reveal = screen => keyCeremony.Play(committed.week, NameOf(committed, committed.hohId),
                             committed.hohId == committed.playerId,
                             SafeHouseguests(committed), NominatedHouseguests(committed), reducedMotion, ceremonyPace, screen);
-                    if (reveal != null && TryBeginCeremonyStage(kind, committed,
+                    // The veto meeting is staged in the living room and plays on its screen
+                    // (EpisodeDirector.CeremonyStageVeto.cs); unstaged it is the generic card below,
+                    // exactly as it was. Its commit still makes the veto's sound, the same for
+                    // either outcome: no card of its own makes one.
+                    if (kind == CeremonySting.VetoKind && TryStageVetoMeeting(committed, text, wasActive, wasNominated, blockBefore))
+                        revealed = vetoStaged = true;
+                    else if (reveal != null && TryBeginCeremonyStage(kind, committed,
                             screen => reveal(screen) || PlayGenericCeremonyCard(committed, kind, text, wasActive, wasNominated)))
                         revealed = true;
                     else if (reveal != null)
@@ -925,7 +944,7 @@ namespace Gamesim.Episode
                     else PlayFinalHoHCard(result.state, wasPhase, wasActive);
                 }
                 if (revealed) HoldHudForReveal();
-                else if (command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
+                if ((!revealed || vetoStaged) && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
                     audioBed.PlayCue(commitCue);
             }
             Render(); return result;
@@ -947,6 +966,10 @@ namespace Gamesim.Episode
             // The final Head of Household's choice is an endgame card: the chrome stands aside for it.
             if (takeover != null && kind == CeremonySting.FinalEvictionKind) HoldHudForReveal(redraw: false);
             if (sting != null) sting.Play(kind, text, reducedMotion);
+            // Under a stage - a reveal that declined the set's screen - the stage has the camera
+            // and the bodies, and the card only reports: framing the room as well put two hands on
+            // the camera (PACK8-PASS-PLAN C1).
+            if (IsCeremonyStaged) return true;
             ReactToCeremony(state, kind, wasActive, wasNominated);
             FrameCeremony(kind);
             return true;
@@ -966,6 +989,7 @@ namespace Gamesim.Episode
             if (voteReveal != null) voteReveal.Cancel();
             if (juryReveal != null) juryReveal.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
+            CancelVetoDrawReveal();
             if (includingResult && competitionCard != null) competitionCard.Cancel();
         }
 
@@ -1067,9 +1091,7 @@ namespace Gamesim.Episode
                 // Imported IDs are rebound by saved slot, never guessed from display names.
                 var model = npcStates[i];
                 npc.Configure(model.id, model.name);
-                npc.gameObject.SetActive(model.status == ContestantStatus.Active || model.status == ContestantStatus.Winner
-                    || model.status == ContestantStatus.RunnerUp || model.id == departingId || model.id == walkingOutId
-                    || OnJuryBench(state, model));
+                npc.gameObject.SetActive(KeepsBody(state, model));
                 // The phase's clothes - or, for the player's company in the hot tub, swimwear, kept
                 // through a render and changed back behind the body when they get out.
                 DressHousemate(model.id);
@@ -1082,6 +1104,36 @@ namespace Gamesim.Episode
             // After the house's world has let the jurors go: nobody it routes is ever placed.
             StandTheJury(state);
         }
+
+        /// <summary>
+        /// Whether a houseguest's body is in the house: everyone still playing, the winner and the
+        /// runner-up, the jury on finale night, and the evicted while a card narrates their eviction
+        /// and while they walk out. <see cref="Project"/> switches every other body off.
+        /// </summary>
+        public static bool KeepsBody(ContestantStatus status, bool departing, bool walkingOut, bool onJuryBench) =>
+            status == ContestantStatus.Active || status == ContestantStatus.Winner || status == ContestantStatus.RunnerUp
+            || departing || walkingOut || onJuryBench;
+
+        /// <summary>
+        /// Whether the house's world routes a houseguest: everyone still playing, whoever is walking
+        /// out, and whoever a staged ceremony holds a place for - the evicted in the hot seat - but
+        /// only ever a body <see cref="KeepsBody(ContestantStatus, bool, bool, bool)"/> keeps. Both
+        /// read the same terms, so a body switched off is never one the world still counts on. A
+        /// stage that held the evicted past the end of their walk out once did exactly that: the
+        /// walk out switched the body off, the coordinator failed the whole house with "An eligible
+        /// NPC root is inactive.", and every ceremony after the first staged eviction played on the
+        /// HUD. An unstaged eviction still lets the evicted go at the commit: the card narrates them
+        /// in the room, but nothing routes them until they walk out.
+        /// </summary>
+        public static bool RoutedByTheHouse(ContestantStatus status, bool departing, bool walkingOut, bool onJuryBench, bool stageHolds) =>
+            KeepsBody(status, departing, walkingOut, onJuryBench) && (status == ContestantStatus.Active || walkingOut || stageHolds);
+
+        private bool KeepsBody(EpisodeState state, ContestantState model) =>
+            KeepsBody(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model));
+
+        private bool RoutedByTheHouse(EpisodeState state, ContestantState model) =>
+            RoutedByTheHouse(model.status, model.id == departingId, model.id == walkingOutId, OnJuryBench(state, model),
+                CeremonyStageHolds(model.id));
 
 
         /// <summary>The season as it has been lived: weeks, mood, promises, oaths, memories.</summary>
@@ -1420,8 +1472,15 @@ namespace Gamesim.Episode
             // reflection prompt - stays a card sized to its few lines. A dedicated layout (the
             // briefing, the nominations, a house event) sizes itself instead.
             // Except the week's ceremonies, which are screens even with nothing to decide
-            // (EpisodeDirector.CeremonyScreen).
+            // (EpisodeDirector.CeremonyScreen). The week's four strategy screens take the taller
+            // strategy stage (PACK8-PASS-PLAN A3).
             if (QuietBeat(state) && !CeremonyScreenBeat(state)) hud.FitPanelToContent();
+            else if (StrategyScreenBeat(state))
+            {
+                hud.StrategyStage(StrategyShell(state));
+                // The veto's draw is laid out for the frame's whole width (EpisodeDirector.VetoDraw.cs).
+                if (VetoDrawBeat(state)) hud.StrategyWholeWidth();
+            }
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1496,6 +1555,10 @@ namespace Gamesim.Episode
                 }
                 return;
             }
+            // The nomination is a screen of steps on the strategy stage - its status cards, its
+            // tracker, one step's body and a footer - in place of everything below (PACK8-PASS-PLAN
+            // B1, EpisodeDirector.NominationScreen.cs).
+            if (NominationScreen(state)) return;
             // Who holds what this week, on one line, before whatever there is to decide: the stage
             // stands the strip and its badges down, so this is where the roles are read. The final
             // Head of Household's choice opens on its own gold head instead: the house is down to
@@ -1505,9 +1568,11 @@ namespace Gamesim.Episode
             // which stay in state until the window closes and can name a juror as a nominee.
             bool finalChoice = state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId;
             if (finalChoice) FinalTwoHead();
-            else
+            // The veto meeting says it in a strip across the stage's header (PACK8-PASS-PLAN B3).
+            else if (!VetoMeetingStatus(state))
             {
-                string houseStatus = ViewOverPreparation(state) ? null : HouseStatus(state);
+                // Not over the campaign, whose situation card says each of these on a row of its own.
+                string houseStatus = ViewOverPreparation(state) || state.phase == EpisodePhase.Campaign ? null : HouseStatus(state);
                 if (houseStatus != null) hud.Paragraph(houseStatus);
             }
             // A story beat waiting on the player comes before anything else they could do: it
@@ -1541,14 +1606,19 @@ namespace Gamesim.Episode
             AdvanceWarning(state);
             // Pinned under the scroll, where it is always seen - except under a house event, whose
             // choices keep the panel and the priority; the way on stays inline after them there.
-            if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage)
+            if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage
+                || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Strategy)
             {
-                hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
+                var wayOn = hud.PinnedAction(advance, () => Commit(state, EpisodeCommandKind.Advance));
+                // The veto's draw wears the draw it makes, beside the caption (EpisodeDirector.VetoDraw.cs).
+                if (VetoDrawBeat(state)) VetoDrawWayOn(state, wayOn);
                 // What free time's way on costs, under it: the actions that go unused.
                 string unused = UnusedActionsNote(state);
                 if (unused != null) hud.PinnedNote(unused);
             }
             else hud.Action(advance, () => Commit(state, EpisodeCommandKind.Advance));
+            // The veto meeting's row of cards, in the height the step leaves it, and its words on the way on.
+            VetoMeetingWayOn(state);
         }
 
         /// <summary>What a Have-Not player reads beside their interactions: what it costs, and until when.</summary>
@@ -1569,6 +1639,7 @@ namespace Gamesim.Episode
             if (juryReveal != null) juryReveal.Cancel();
             if (competitionCard != null) competitionCard.Cancel();
             if (keyCeremony != null) keyCeremony.Cancel();
+            CancelVetoDrawReveal();
             EndCeremonyStage();
             DisposeNpcSocialWorld();
         }
@@ -1606,6 +1677,9 @@ namespace Gamesim.Episode
             { competitionCard.VisibilityChanged -= SyncCompetitionResultInput; Destroy(competitionCard.gameObject); competitionCard = null; }
             if (competitionScreen != null) { Destroy(competitionScreen.gameObject); competitionScreen = null; }
             if (keyCeremony != null) { Destroy(keyCeremony.gameObject); keyCeremony = null; }
+            DestroyVetoDrawReveal();
+            // The skip chip is a scene root as well: left behind, the next director attached a second.
+            if (skipChip != null) { Destroy(skipChip.gameObject); skipChip = null; }
             if (tutorial != null) { Destroy(tutorial.gameObject); tutorial = null; }
             if (opening != null) { Destroy(opening.gameObject); opening = null; }
         }

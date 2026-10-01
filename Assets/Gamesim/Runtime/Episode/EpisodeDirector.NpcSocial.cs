@@ -29,6 +29,11 @@ namespace Gamesim.Episode
         private const float CaptionHeadHeight = 1.95f;
         private HouseMeetingLease npcShownLease;
         private readonly Dictionary<long, HouseMeetingLease> npcPendingWorld = new Dictionary<long, HouseMeetingLease>();
+        /// <summary>
+        /// The seated conversations whose pair has arrived and sat down at least once. Transient,
+        /// like the leases it names: nothing about it is saved, and a load starts it empty.
+        /// </summary>
+        private readonly HashSet<HouseMeetingLease> npcSatDown = new HashSet<HouseMeetingLease>();
         private readonly List<NpcApproach> npcApproaches = new List<NpcApproach>();
         private readonly Dictionary<long, double> npcObstructionSince = new Dictionary<long, double>();
         private double npcFrameFraction, npcWorldFraction, npcFreeSeconds;
@@ -101,15 +106,37 @@ namespace Gamesim.Episode
 
         private void EnsureNpcSocialWorld()
         {
-            if (npcMeetings != null || npcWorldFailed || npcDiagnosticsSuspended || projected == null
-                || !NpcSocialState.IsEligible(projected) || blockedRecovery) return;
+            if (npcMeetings != null || npcWorldFailed || npcDiagnosticsSuspended || projected == null || blockedRecovery) return;
+            if (!NpcSocialState.IsEligible(projected) && !WorldOutlastsFreeTime(projected)) return;
             CreateNpcSocialWorld();
         }
 
         /// <summary>
+        /// Whether a season loaded past its free time gets the house's world at once. A played
+        /// season has it there: it is built in the first social phase and kept through the week,
+        /// paused outside free time and the campaign (<see cref="TickNpcSocialRuntime"/>), where the
+        /// wander, the ceremonies' stages and the walk out borrow its people. A season loaded at
+        /// Head of Household, the nominations, the veto or eviction night had none until the next
+        /// social phase, so that week's ceremonies were never staged (PACK8-PASS-PLAN A1). The same
+        /// creation path, on <see cref="NpcSocialState.IsEligible"/>'s terms but two: the phase and
+        /// a pending diary, which pause the house's clock and not its people.
+        ///
+        /// <para>Not on finale night, where nothing borrows it. And a batch run builds it past free
+        /// time only when a test asks for the stages or the walk outs, the only things there that
+        /// use it: the fixtures installed past free time were written and measured against a house
+        /// with no world, and a world turns on the wander under them.</para>
+        /// </summary>
+        private bool WorldOutlastsFreeTime(EpisodeState state) =>
+            state.npcSocial != null && !NpcSocialState.IsEligiblePhase(state.phase) && !FinaleNight(state.phase)
+            && NpcSocialState.AutonomyHasBegun(state) && state.Find(state.playerId)?.status == ContestantStatus.Active
+            && state.Active.Count(actor => !actor.isPlayer) >= 2
+            && (!Application.isBatchMode || StagesInBatchRuns || WalkOutsInBatchRuns);
+
+        /// <summary>
         /// Editor-only: builds the house's world now, as a season's first social phase does and a
-        /// played season then keeps. A fixture installed past that phase has none, and the walk out
-        /// borrows its people from it.
+        /// played season then keeps. A fixture installed past that phase in a batch run that asks
+        /// for neither stages nor walk outs has none (<see cref="WorldOutlastsFreeTime"/>), and the
+        /// walk out borrows its people from it.
         /// </summary>
         public void BuildNpcWorldForDiagnostics()
         {
@@ -136,10 +163,11 @@ namespace Gamesim.Episode
             // (the commit makes them a non-contestant at once, and a body unbound at the commit could
             // not take its hot seat) and while they walk out; otherwise they go as they always did -
             // unbound at the commit, and let go by the walk-out if their body cannot take its
-            // navigation back.
+            // navigation back. Never a body Project has switched off: RoutedByTheHouse reads the
+            // same terms as its KeepsBody, so the stage lets go of the evicted the moment the walk
+            // out does, whoever ends it.
             if (!npcMeetings.Reconcile(NpcWorldGeneration, housemates, cast.Select(actor => actor.id).ToArray(),
-                cast.Where(actor => actor.status == ContestantStatus.Active || actor.id == walkingOutId || CeremonyStageHolds(actor.id))
-                    .Select(actor => actor.id), out var reason))
+                cast.Where(actor => RoutedByTheHouse(projected, actor)).Select(actor => actor.id), out var reason))
             { StopNpcWorld(reason); return; }
             foreach (long sequence in npcPendingWorld.Keys.ToArray())
                 if (!projected.npcSocial.pending.Any(row => row.sequence == sequence))
@@ -238,6 +266,9 @@ namespace Gamesim.Episode
             var state = projected;
             var unavailable = new HashSet<string>(state.npcSocial.pending.SelectMany(row => new[] { row.firstId, row.secondId }));
             foreach (var approach in npcApproaches) { unavailable.Add(approach.lease.FirstId); unavailable.Add(approach.lease.SecondId); }
+            // Whoever the player has asked over to talk is on their way to the player, not free to
+            // be paired: a pairing tried on them would only take their partner off their furniture.
+            if (talkSpot != null) unavailable.Add(talkSpot.NpcId);
             foreach (var cooldown in state.npcSocial.cooldowns.Where(row => row.untilTick > state.npcSocial.clockTick)) unavailable.Add(cooldown.npcId);
             var idle = state.Active.Where(actor => !actor.isPlayer && !unavailable.Contains(actor.id)).ToArray();
             for (int first = 0; first < idle.Length; first++)
@@ -383,11 +414,26 @@ namespace Gamesim.Episode
         {
             if (!NpcCanAdvance) { npcCaption?.Hide(); return; }
             var talking = new HashSet<string>(); var seated = new HashSet<string>(); var speaking = new HashSet<string>();
-            var arguing = new HashSet<string>();
+            var arguing = new HashSet<string>(); var held = new HashSet<string>();
             var facing = new Dictionary<string, float>(); bool witnessed = false;
             foreach (var pending in projected.npcSocial.pending)
             {
-                if (!npcPendingWorld.TryGetValue(pending.sequence, out var lease) || !npcMeetings.ValidateArrivedPair(lease, out _)) continue;
+                if (!npcPendingWorld.TryGetValue(pending.sequence, out var lease)) continue;
+                if (!npcMeetings.ValidateArrivedPair(lease, out _))
+                {
+                    // A pair that has sat down keeps its seats while its lease holds, whatever one
+                    // tick's proof says. The proof is strict - anybody passing within 0.7 m of a
+                    // parked root fails it, and so does every unpause, which makes both bodies
+                    // arrive again - and each failure stood the pair up and sat it down again
+                    // (PACK8-PASS-PLAN A2). Talking and the witnessed caption still follow the proof.
+                    if (lease.Seated && npcSatDown.Contains(lease)
+                        && npcMeetings.TryGetLease(lease.Token, out var current) && ReferenceEquals(current, lease))
+                    {
+                        held.Add(pending.firstId); held.Add(pending.secondId);
+                        facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
+                    }
+                    continue;
+                }
                 talking.Add(pending.firstId); talking.Add(pending.secondId);
                 // They take turns: the floor changes hands every four seconds of world time, offset
                 // by the conversation's sequence so two pairs in the house are not in step.
@@ -399,7 +445,7 @@ namespace Gamesim.Episode
                 // across the house tells a passer-by that something is going on, which is exactly
                 // what the caption already tells whoever is close enough to witness it.
                 if (IsTenseTopic(pending.topic)) { arguing.Add(pending.firstId); arguing.Add(pending.secondId); }
-                if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); }
+                if (lease.Seated) { seated.Add(pending.firstId); seated.Add(pending.secondId); npcSatDown.Add(lease); }
                 facing[pending.firstId] = lease.FirstFacing; facing[pending.secondId] = lease.SecondFacing;
                 if (!witnessed && npcMeetings.CanWitness(player, lease,out var visibleMidpoint))
                 {
@@ -413,6 +459,7 @@ namespace Gamesim.Episode
                 }
             }
             if (!witnessed) { npcCaption?.Hide(); npcShownLease = null; }
+            npcSatDown.RemoveWhere(lease => !npcMeetings.TryGetLease(lease.Token, out var current) || !ReferenceEquals(current, lease));
             // Arrived pairs talk; at a seated venue they sit; either way each settles on the lease's
             // heading. A pair still travelling, or released, has none of the three.
             foreach (var npc in housemates)
@@ -420,16 +467,23 @@ namespace Gamesim.Episode
                 var visual = npc != null ? npc.GetComponent<CharacterPresentation>() : null;
                 if (visual == null) continue;
                 if(npcMeetings.TryGetActivity(npc.Id,out var activity) && npcMeetings.ActivityValid(activity))continue;
+                // The houseguest walking to a talk spot with the player is the talk's to seat and turn.
+                if(talkSpot!=null && talkSpot.NpcId==npc.Id)continue;
                 visual.SetTalking(talking.Contains(npc.Id));
                 visual.SetSpeaking(speaking.Contains(npc.Id));
                 var seatPose=npc.GetComponent<HouseSeatPresentation>();
-                if(seated.Contains(npc.Id) && npcMeetings.TryGetSeat(npc.Id,out var seat))
+                // A held body stays in the seat it is in; one whose seat has ended meanwhile - its
+                // root pushed off the approach - waits for the pair's proof before it sits again.
+                bool sits=seated.Contains(npc.Id)
+                    || held.Contains(npc.Id) && seatPose!=null && seatPose.Active && !seatPose.IsExiting;
+                if(sits && npcMeetings.TryGetSeat(npc.Id,out var seat))
                 {
                     if(seatPose==null)seatPose=npc.gameObject.AddComponent<HouseSeatPresentation>();
                     string id=npc.Id;
                     seatPose.Begin(seat,()=>npcMeetings!=null && npcMeetings.TryGetSeat(id,out var current) && current==seat);
                 }
-                else seatPose?.End();
+                // Up at the seat, then back to the root: the seat's own stand-up.
+                else if(seatPose!=null)seatPose.RequestExit();
                 // Only a pose holding the body in its chair seats it (its Cue says so every frame).
                 // Saying "seated" for an arrived pair whose pose had not begun sat that one down in
                 // the air at the table's approach, and a pose begun over that flag later handed it back.
@@ -448,6 +502,10 @@ namespace Gamesim.Episode
 
         private void StopNpcWorld(string reason)
         {
+            // Said once, in the log, where a play session's report can find it: the status line
+            // below is overwritten by the next commit, and a stopped world refuses every staged
+            // ceremony and walk out until the season is loaded again.
+            if (!npcWorldFailed) Debug.LogWarning("House world stopped: " + (reason ?? "Housemate navigation is unavailable."));
             npcWorldFailed = true; npcWorldFailure = reason ?? "Housemate navigation is unavailable.";
             SetNpcWorldPaused(true); npcCaption?.Hide();
             message = "Housemate activity is paused: " + npcWorldFailure + " Your episode and saved history remain available.";
@@ -459,6 +517,8 @@ namespace Gamesim.Episode
         }
         private void DisposeNpcSocialWorld()
         {
+            // The talk spot is the world's: it goes with it, the player's seat with it.
+            EndTalkSpot();
             EndDiaryVisit(true);
             DisposeHouseActivities();
             EndCompetitionArena();
@@ -473,7 +533,7 @@ namespace Gamesim.Episode
                 }
             npcCaption?.Hide(); npcMeetings?.Dispose(); npcMeetings = null;
             npcShownLease = null;
-            npcPendingWorld.Clear(); npcApproaches.Clear(); npcObstructionSince.Clear();
+            npcPendingWorld.Clear(); npcSatDown.Clear(); npcApproaches.Clear(); npcObstructionSince.Clear();
             npcFrameFraction = npcWorldFraction = npcFreeSeconds = 0;
             npcNextBindingCheck = 0;
             npcWorldPaused = true;

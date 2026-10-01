@@ -7,8 +7,11 @@ namespace Gamesim.Episode
 {
     public sealed partial class EpisodeHud
     {
-        /// <summary>Activities own their layout; they share controls, focus and save semantics.</summary>
-        public enum ActivityLayout { Standard, Relationships, Conversation, ConversationNotice, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings, Stage }
+        /// <summary>
+        /// Activities own their layout; they share controls, focus and save semantics. Strategy is
+        /// the week's four strategy screens' taller stage (EpisodeHud.StrategyStage.cs).
+        /// </summary>
+        public enum ActivityLayout { Standard, Relationships, Conversation, ConversationNotice, Competition, Creation, Diary, Nominations, HouseEvent, Ballot, Settings, Stage, Strategy }
 
         private ActivityLayout activityLayout;
         private RectTransform relationshipRoot;
@@ -95,6 +98,7 @@ namespace Gamesim.Episode
             if (layout == ActivityLayout.Ballot) { BallotLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Settings) { SettingsLayout(canvasWidth, canvasHeight); return; }
             if (layout == ActivityLayout.Stage) { StageLayout(canvasWidth, canvasHeight); return; }
+            if (layout == ActivityLayout.Strategy) { StrategyLayout(canvasWidth, canvasHeight); return; }
             float left = LeftColumnX;
             float right = 24f;
             float availableWidth = canvasWidth - left - right;

@@ -280,6 +280,7 @@ namespace Gamesim.Episode
             challengeMeter = null; challengeCaption = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
             fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null;
+            ForgetStrategyStage();
             activityLayout = ActivityLayout.Standard; relationshipRoot = null;
             ResetColumns(); columnsRow = mainColumn = sideColumn = null; sideCard = null;
             bandTitle = bandLine = null; bandGlyph = bandStroke = null;
@@ -1694,6 +1695,43 @@ namespace Gamesim.Episode
             }
             return false;
         }
+
+        /// <summary>
+        /// The screen rects of the chrome on screen now, into <paramref name="into"/>, for a piece on
+        /// a canvas of its own to stand clear of (the staged ceremonies' skip chip, while the chrome
+        /// is back for a walk out). None while the HUD is off, held for a reveal or stepped aside for
+        /// a cinematic: nothing of it is drawn then. Containers the size of the frame are not
+        /// chrome, as <see cref="Covers"/> has it, and a rebuild's old copies are inactive.
+        /// </summary>
+        public void ChromeOnScreen(List<Rect> into)
+        {
+            into.Clear();
+            if (canvas == null || !canvas.gameObject.activeInHierarchy || revealHold) return;
+            var group = canvas.GetComponent<CanvasGroup>();
+            if (group != null && group.alpha <= .01f) return;
+            var frame = ((RectTransform)canvas.transform).rect;
+            float whole = Mathf.Max(1f, frame.width * frame.height);
+            var corners = chromeCorners;
+            foreach (Transform child in canvas.transform)
+            {
+                if (!child.gameObject.activeInHierarchy || !(child is RectTransform rect)) continue;
+                var size = rect.rect.size;
+                // A holder with no size draws nothing to stand clear of.
+                if (size.x <= 0f || size.y <= 0f || size.x * size.y > whole * .6f) continue;
+                // An overlay canvas's world corners are its screen pixels; all four, for a piece
+                // turned on its canvas.
+                rect.GetWorldCorners(corners);
+                float left = Mathf.Min(Mathf.Min(corners[0].x, corners[1].x), Mathf.Min(corners[2].x, corners[3].x));
+                float right = Mathf.Max(Mathf.Max(corners[0].x, corners[1].x), Mathf.Max(corners[2].x, corners[3].x));
+                float bottom = Mathf.Min(Mathf.Min(corners[0].y, corners[1].y), Mathf.Min(corners[2].y, corners[3].y));
+                float top = Mathf.Max(Mathf.Max(corners[0].y, corners[1].y), Mathf.Max(corners[2].y, corners[3].y));
+                into.Add(Rect.MinMaxRect(left, bottom, right, top));
+            }
+        }
+
+        /// <summary><see cref="ChromeOnScreen"/>'s corners, asked for on every frame a stage runs. Reused.</summary>
+        private readonly Vector3[] chromeCorners = new Vector3[4];
+
         private void OnDestroy() { if(canvas!=null) Destroy(canvas.gameObject); }
 
         // Full-screen screens that sit over the HUD: the weekly recap and the season report. While

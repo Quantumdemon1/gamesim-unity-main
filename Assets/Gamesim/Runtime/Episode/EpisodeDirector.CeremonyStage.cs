@@ -89,22 +89,52 @@ namespace Gamesim.Episode
         /// - reduced motion, a batch run not asking, the house busy, no set for it - and the caller
         /// plays the card at once, as it always has.
         /// </summary>
-        private bool TryBeginCeremonyStage(string kind, EpisodeState state, Func<ScreenSurface, bool> playCard)
+        private bool TryBeginCeremonyStage(string kind, EpisodeState state, Func<ScreenSurface, bool> playCard,
+            IReadOnlyList<string> blockBefore = null)
         {
+            // The policy first, and silently: the look sheet, reduced motion and a batch run not
+            // asking never stage, by design, and a line for each of their ceremonies would be noise
+            // in every audited walk (and a failure wherever a test asks for a log with nothing
+            // unexpected in it).
             if (!CeremonyStages || reducedMotion || (Application.isBatchMode && !StagesInBatchRuns) || state == null) return false;
-            if (npcMeetings == null || !npcMeetings.IsReady || npcWorldFailed || npcDiagnosticsSuspended || competitionArenaStaging) return false;
-            if (openingStage != null && openingStage.Active) return false;
-            if (walkingOutId != null || FinaleNight(state.phase)) return false;
-            if (player == null || player.Agent == null || !player.Agent.isOnNavMesh || cameraRig == null) return false;
+            // Past it, a house that cannot stage says why. Every guard below used to decline in
+            // silence, and a world stopped after the first staged eviction kept every later
+            // ceremony on the HUD with nothing in the log to say so.
+            string declined = StageDeclined(state);
+            if (declined != null) { Debug.Log("Ceremony stage declined (" + kind + "): " + declined); return false; }
             EndCeremonyStage();
-            var stage = CeremonyStage.TryCreate(this, kind, state, playCard, out var reason);
+            var stage = CeremonyStage.TryCreate(this, kind, state, playCard, blockBefore, out var reason);
             if (stage == null) { if (reason != null) Debug.Log("Ceremony stage: " + reason); return false; }
             ceremonyStage = stage;
             // The commit's projection unbound the evicted; now that the stage holds a place for
             // them the world takes them back, and the summons' retries send them once they are bound.
+            // A body that cannot take its navigation back ("The feet are not inside one bound
+            // floor's safe interior.") is let go on its own, as the walk out lets its candidate
+            // go, and the card stops waiting for them: it used to fail the whole house instead.
+            if (kind == CeremonySting.EvictionKind && departingId != null) npcMeetings.DepartureCandidate = departingId;
             ReconcileNpcSocialWorld();
             stage.Begin();
             return true;
+        }
+
+        /// <summary>
+        /// Why this house cannot stage a ceremony now, in words for the log, or null when it can.
+        /// Asked only past the policy checks, which decline in silence.
+        /// </summary>
+        private string StageDeclined(EpisodeState state)
+        {
+            if (npcMeetings == null) return "the house's world is not built";
+            if (npcWorldFailed) return "the house's world stopped: " + npcWorldFailure;
+            if (npcDiagnosticsSuspended) return "the house's world is suspended for diagnostics";
+            if (!npcMeetings.IsReady) return "the house's world is still binding its people";
+            if (competitionArenaStaging) return "the competition arena has the yard";
+            if (openingStage != null && openingStage.Active) return "the opening has the house";
+            if (walkingOutId != null) return walkingOutId + " is still walking out";
+            if (FinaleNight(state.phase)) return "it is finale night";
+            if (player == null || player.Agent == null) return "the player has no body";
+            if (!player.Agent.isOnNavMesh) return "the player is off the NavMesh";
+            if (cameraRig == null) return "there is no camera rig";
+            return null;
         }
 
         /// <summary>Each frame: the stage kept moving, and forgotten once it has let the house go.</summary>
@@ -115,6 +145,37 @@ namespace Gamesim.Episode
             if (!ceremonyStage.Active) ceremonyStage = null;
         }
 
+        private CeremonySkipChip skipChip;
+
+        /// <summary>Whether the skip chip is on screen. A read for tests.</summary>
+        public bool CeremonySkipShowing => skipChip != null && skipChip.IsShowing;
+
+        /// <summary>
+        /// Whether a staged ceremony is running for the chip to name its skip: gathering the house,
+        /// playing its card on the set's screen, or keeping its seats while the evicted walk out.
+        /// Never otherwise - a card on the HUD frame says what moves it on in its own lines - and so
+        /// never in a batch run not asking for stages, or under reduced motion, which stage nothing.
+        /// Exactly while the stage holds the house's input (<see cref="CeremonyStage.OwnsThePress"/>),
+        /// so the press the chip names is never also a press on the HUD.
+        /// </summary>
+        private bool SkipChipWanted => IsCeremonyStaged && ceremonyStage.OwnsThePress;
+
+        /// <summary>The HUD's chrome on screen this frame, for the chip to stand clear of. Reused, never shared.</summary>
+        private readonly List<Rect> chromeUnderSkipChip = new List<Rect>();
+
+        private void TickSkipChip()
+        {
+            if (skipChip == null) return;
+            bool wanted = SkipChipWanted;
+            skipChip.Show(wanted);
+            if (!wanted) return;
+            // The chrome is back while the evicted walk out, and the chip's corner is the cast
+            // strip's right-hand end: it stands clear of whatever the HUD has on screen there.
+            if (hud != null) hud.ChromeOnScreen(chromeUnderSkipChip);
+            else chromeUnderSkipChip.Clear();
+            skipChip.StandClearOf(chromeUnderSkipChip);
+        }
+
         /// <summary>
         /// Ends a stage now, with everyone let go: a new commit, the opening, the arena, a season
         /// replaced. Its card, if it never played, stays unplayed: whatever ended the stage has the
@@ -123,8 +184,14 @@ namespace Gamesim.Episode
         private void EndCeremonyStage()
         {
             if (ceremonyStage == null) return;
+            // The exit it was keeping its seats for goes with it, at once - no hold on the door and
+            // no dip: whatever ended the stage has the frame now. Not from a director being
+            // disabled, which an unloading scene does: nothing is projected there.
+            if (walkingOutId != null && walkOutStaged && isActiveAndEnabled) FinishWalkOut(immediate: true);
             ceremonyStage.End(false);
             ceremonyStage = null;
+            // At once, not on the next frame: a director disabled here has no next frame.
+            if (skipChip != null) skipChip.Show(false);
         }
 
         /// <summary>Skips the summons: the card plays now, whoever is still walking sits down as they arrive. Public for tests.</summary>
@@ -137,17 +204,48 @@ namespace Gamesim.Episode
             Summons,
             /// <summary>The card is playing on the set's screen, the camera cutting on its beats.</summary>
             Playing,
+            /// <summary>
+            /// An eviction's card is down and the evicted stand to say goodbye: they face the house,
+            /// the house looks at them and whoever sits claps, for about four seconds before the walk
+            /// out (MOCKUP-PASS-PLAN M19). Still the stage's story, so the chrome stays aside.
+            /// </summary>
+            Goodbye,
             /// <summary>The card is down; the house keeps its seats while the evicted walk out, then gets up.</summary>
             Release,
         }
 
-        /// <summary>The room a ceremony is staged in: the plan's sets, not the framing's rooms - the veto meeting sits at the nomination table.</summary>
+        /// <summary>How long the evicted's goodbye holds before they walk, unless a press moves it on.</summary>
+        public const float GoodbyeSeconds = 4f;
+
+        /// <summary>The warm spot over the hot seats from the vote's card to the end of the goodbye: a child of the director, found by this name.</summary>
+        public const string EvictionKeyLightName = "Eviction key light";
+
+        /// <summary>Whether the staged eviction's key light is on over the hot seats. A read for tests.</summary>
+        public bool EvictionKeyLightShowing => IsCeremonyStaged && ceremonyStage.KeyLightShowing;
+
+        /// <summary>
+        /// Whether a staged eviction is still sending somebody out: from its commit until the
+        /// door is shut behind them and their body is gone - the card, the goodbye and the walk out
+        /// - or, once a stage has handed them to the walk out, for as long as that walk runs. The
+        /// chrome stays aside for all of it (MOCKUP-PASS-PLAN M19's full-bleed exit), and it is
+        /// what the hold waits for, not the cards alone: the frame between the goodbye and the walk
+        /// out's first leg would otherwise hand the chrome back, and nothing takes it again.
+        /// </summary>
+        public bool StagedExitRunning =>
+            (IsCeremonyStaged && ceremonyStage.Kind == CeremonySting.EvictionKind && (departingId != null || walkingOutId != null))
+            || (walkingOutId != null && walkOutStaged);
+
+        /// <summary>
+        /// The room a ceremony is staged in: the nomination at its table, the veto meeting and the
+        /// eviction in the living room (PACK8-PASS-PLAN decision 5), where the red chairs face the U.
+        /// The framing's room for each (<see cref="CeremonyRoom"/>) is the same.
+        /// </summary>
         public static string CeremonyStageRoom(string kind)
         {
             switch (kind)
             {
                 case CeremonySting.NominationKind: return "Nomination";
-                case CeremonySting.VetoKind: return "Nomination";
+                case CeremonySting.VetoKind: return "Living";
                 case CeremonySting.EvictionKind: return "Living";
                 default: return null;
             }
@@ -159,7 +257,7 @@ namespace Gamesim.Episode
             switch (kind)
             {
                 case CeremonySting.NominationKind: return "The house gathers at the table for the nomination ceremony.";
-                case CeremonySting.VetoKind: return "The house gathers at the table for the veto meeting.";
+                case CeremonySting.VetoKind: return "The house takes its seats for the veto meeting.";
                 case CeremonySting.EvictionKind: return "The house takes its seats for the live eviction.";
                 default: return null;
             }
@@ -193,7 +291,7 @@ namespace Gamesim.Episode
         /// <summary>The most a stage may run, in real seconds, before the house is let go whatever the card says.</summary>
         public const float CeremonyStageSeconds = 150f;
 
-        private sealed class CeremonyStage
+        private sealed partial class CeremonyStage
         {
             /// <summary>The shots' shared lens, so a cut between them never eases the lens.</summary>
             private const float Lens = ScreenSurface.FieldOfView;
@@ -221,6 +319,19 @@ namespace Gamesim.Episode
             private HouseInteractionAnchor playerPlace;
             private HouseSeatPresentation playerSeat;
             private Transform lookMark;
+            /// <summary>Where each houseguest looks down at once - the evicted and the house that voted to keep them - a mark each.</summary>
+            private readonly Dictionary<string, Transform> downMarks = new Dictionary<string, Transform>();
+            /// <summary>The eviction's evicted and its survivor, once the result is read.</summary>
+            private string leavingId, survivorId;
+            private float goodbyeUntil;
+            /// <summary>The warm spot over the hot seats, from the vote's card to the end of the goodbye.</summary>
+            private Light keyLight;
+            /// <summary>
+            /// Whether the camera is still the stage's to hand back: from the summons until its
+            /// release, or, for a staged exit, until the walk out hands it back itself behind the
+            /// dip. End releases it only then.
+            /// </summary>
+            private bool holdsCamera;
             private float summonsUntil, summonsHardBy, summonsPatienceBy, endBy, pressGuardUntil, playerAlignedAt, releasedAt, retryAt;
             /// <summary>How often whoever was left out at the summons is asked again, while the house is still gathering.</summary>
             private const float RetrySeconds = 1.5f;
@@ -238,8 +349,18 @@ namespace Gamesim.Episode
             public string StandingId { get; private set; }
             public bool Active => begun && !ended;
             public bool Narrating => Active && Step != CeremonyStageStep.Release;
+            /// <summary>
+            /// Whether a press on the devices is the stage's: while it narrates, and while the
+            /// evicted walk out under it. The skip chip is up exactly then, naming that press, and
+            /// the house takes none of its own until it is down.
+            /// </summary>
+            public bool OwnsThePress => Narrating || (Active && Step == CeremonyStageStep.Release && director.walkingOutId != null);
             /// <summary>Whether the stage has a place for this houseguest and has not let the house go.</summary>
             public bool Holds(string id) => !ended && id != null && placeOf.ContainsKey(id);
+            /// <summary>Whether the key light is on over the hot seats.</summary>
+            public bool KeyLightShowing => keyLight != null && keyLight.enabled;
+            /// <summary>Who the eviction's result sent out, once it is read; null before.</summary>
+            public string LeavingId => leavingId;
             public int SeatedCount => seated.Values.Count(seat => seat != null && seat.Active) + (playerSeat != null && playerSeat.Active ? 1 : 0);
             public int PlaceCount => places.Count;
             /// <summary>How many places have been reached: the houseguests the coordinator says arrived, and the player by their own move.</summary>
@@ -269,7 +390,8 @@ namespace Gamesim.Episode
             /// The stage for this ceremony, or null with the reason: no set dressed for it, no screen
             /// in its room, or nobody in the house to gather.
             /// </summary>
-            public static CeremonyStage TryCreate(EpisodeDirector owner, string kind, EpisodeState state, Func<ScreenSurface, bool> playCard, out string reason)
+            public static CeremonyStage TryCreate(EpisodeDirector owner, string kind, EpisodeState state, Func<ScreenSurface, bool> playCard,
+                IReadOnlyList<string> blockBefore, out string reason)
             {
                 reason = null;
                 string room = CeremonyStageRoom(kind);
@@ -280,15 +402,18 @@ namespace Gamesim.Episode
                 CeremonySeating.Ensure(scene, state.Active.Count());
                 if (!ScreenSurface.TryFind(scene, room, out var screen)) { reason = "no screen in the " + room + " room"; return null; }
                 var stage = new CeremonyStage(owner, kind, room, state, screen, playCard, marker.transform.position);
+                // The veto meeting seats the block as it stood before its commit (VetoBlock).
+                if (blockBefore != null) stage.blockBefore.AddRange(blockBefore);
                 if (!stage.Assign(out reason)) return null;
                 return stage;
             }
 
             /// <summary>
             /// Who sits where, read from the committed state: the nomination's Head of Household at
-            /// the head with everyone else round the table; the veto's holder beside them; the
-            /// eviction's nominees in the hot seats, the Head of Household standing to one side,
-            /// the rest on the sofa and behind it. Cast order, the player first as in the cast.
+            /// the head with everyone else round the table; the veto meeting's block in the red
+            /// chairs with the house on the U (AssignVeto); the eviction's nominees in the hot seats
+            /// and the rest on the gallery, the sofa and behind it. Cast order, the player first as
+            /// in the cast.
             /// </summary>
             private bool Assign(out string reason)
             {
@@ -299,16 +424,16 @@ namespace Gamesim.Episode
                 var nominees = state.nominees ?? new List<string>();
                 switch (Kind)
                 {
-                    case CeremonySting.NominationKind:
                     case CeremonySting.VetoKind:
+                        if (!AssignVeto(active, out reason)) return false;
+                        break;
+                    case CeremonySting.NominationKind:
                     {
                         var heads = CeremonySeating.Anchors(scene, CeremonySeating.NominationHead);
                         var seats = CeremonySeating.Anchors(scene, CeremonySeating.NominationSeat);
                         if (seats.Count == 0) { reason = "no chairs at the table"; return false; }
                         var standing = new List<string>();
                         if (!string.IsNullOrEmpty(state.hohId) && active.Contains(state.hohId)) standing.Add(state.hohId);
-                        if (Kind == CeremonySting.VetoKind && !string.IsNullOrEmpty(state.vetoHolderId) && active.Contains(state.vetoHolderId)
-                            && !standing.Contains(state.vetoHolderId)) standing.Add(state.vetoHolderId);
                         for (int i = 0; i < standing.Count && i < heads.Count; i++) Place(standing[i], heads[i]);
                         StandingId = standing.Count > 0 ? standing[0] : null;
                         int seat = 0;
@@ -396,6 +521,7 @@ namespace Gamesim.Episode
                 pressGuardUntil = now + PressGuard;
                 director.cameraRig.ControlsEnabled = false;
                 director.cameraRig.MoveTo(Wide(1.2f));
+                holdsCamera = true;
                 if (director.sting != null) director.sting.Play(Kind, SummonsLine(Kind), director.reducedMotion);
 
                 var ids = new List<string>(); var anchors = new List<HouseInteractionAnchor>();
@@ -443,19 +569,27 @@ namespace Gamesim.Episode
                     director.voteReveal.BeatReached -= OnBeat;
                     if (on) director.voteReveal.BeatReached += OnBeat;
                 }
+                // The veto meeting's card is the takeover on the living room's screen.
+                if (director.takeover != null && Kind == CeremonySting.VetoKind)
+                {
+                    director.takeover.BeatReached -= OnTakeoverBeat;
+                    if (on) director.takeover.BeatReached += OnTakeoverBeat;
+                }
             }
 
             public void SkipSummons()
             {
-                if (Active && Step == CeremonyStageStep.Summons) summonsUntil = summonsHardBy = Time.unscaledTime;
+                // The ceremony's own people are not waited for either: the card plays now.
+                if (Active && Step == CeremonyStageStep.Summons) summonsUntil = summonsHardBy = summonsPatienceBy = Time.unscaledTime;
             }
 
             /// <summary>
             /// Whether everyone the stage placed has reached their place - the player by their own
-            /// move - leaving out only whoever the coordinator has refused twice over, who is not
-            /// coming. Not the leases' count against their arrivals: a body the summons could not
-            /// send (the evicted, still binding on that frame) holds no lease yet, and the card
-            /// would have started without them.
+            /// move - leaving out only whoever the coordinator has refused twice over, or let go
+            /// because their body could not take its navigation back, who are not coming. Not the
+            /// leases' count against their arrivals: a body the summons could not send (the
+            /// evicted, still binding on that frame) holds no lease yet, and the card would have
+            /// started without them.
             /// </summary>
             private bool EveryoneArrived
             {
@@ -473,20 +607,30 @@ namespace Gamesim.Episode
                         }
                         if (arrived.Contains(id) || meetings.CeremonyActorArrived(id)) continue;
                         if (refusalCounts.TryGetValue(id, out int refused) && refused >= 2) continue;
+                        if (LetGo(id)) continue;
                         return false;
                     }
                     return true;
                 }
             }
 
-            /// <summary>The people the card is about: an eviction's nominees, a nomination's or a veto's Head of Household.</summary>
+            /// <summary>
+            /// Whether the house let this houseguest go because their body could not take its
+            /// navigation back for their place - the evicted, re-bound for the hot seat. They are
+            /// not coming, and no card waits out its patience in front of their empty chair.
+            /// </summary>
+            private bool LetGo(string id) => director.npcMeetings != null && director.npcMeetings.CandidateDropped(id);
+
+            /// <summary>The people the card is about: an eviction's nominees, a veto meeting's block and holder, a nomination's Head of Household - whoever of them is coming.</summary>
             private IEnumerable<string> Principals
             {
                 get
                 {
                     if (Kind == CeremonySting.EvictionKind)
-                        foreach (var id in state.nominees ?? new List<string>()) { if (placeOf.ContainsKey(id)) yield return id; }
-                    else if (StandingId != null && placeOf.ContainsKey(StandingId)) yield return StandingId;
+                        foreach (var id in state.nominees ?? new List<string>()) { if (placeOf.ContainsKey(id) && !LetGo(id)) yield return id; }
+                    else if (Kind == CeremonySting.VetoKind)
+                        foreach (var id in VetoPrincipals) { if (placeOf.ContainsKey(id) && !LetGo(id)) yield return id; }
+                    else if (StandingId != null && placeOf.ContainsKey(StandingId) && !LetGo(StandingId)) yield return StandingId;
                 }
             }
 
@@ -516,9 +660,21 @@ namespace Gamesim.Episode
                 if (!Active) return;
                 float now = Time.unscaledTime;
                 if (now > endBy || director.npcMeetings == null || director.npcWorldFailed) { End(true); return; }
+                // While it narrates the stage is a card, from its summons on. The HUD is held from
+                // the summons and the phase panel is still open under it, so the press that starts
+                // the card reached the house as well: Submit on whatever control had the keyboard,
+                // Escape closing the panels, the house's shortcuts. The gate the cards stamp says
+                // the press is spoken for (the card, once up, stamps it itself). So is the walk
+                // out the stage keeps its seats for, while the skip chip names the press that ends
+                // it: the chrome is back by then, and the episode screen the eviction was committed
+                // from is still open with its way on focused, so the Enter that ended the walk
+                // pressed Continue under it too, and Escape closed the panel.
+                if (OwnsThePress) CeremonyOverlays.Showing();
                 director.cameraRig.ControlsEnabled = false;
                 director.npcMeetings.ResumeCeremonyActors();
-                if (Step != CeremonyStageStep.Release && now >= retryAt) { retryAt = now + RetrySeconds; SendTheLeftOut(); }
+                // Only while the house is gathering and the card plays: from the goodbye on, the
+                // evicted's place is theirs no longer, and a retry would send them back to it.
+                if ((Step == CeremonyStageStep.Summons || Step == CeremonyStageStep.Playing) && now >= retryAt) { retryAt = now + RetrySeconds; SendTheLeftOut(); }
                 SeatArrivals();
                 SeatThePlayer();
 
@@ -526,14 +682,29 @@ namespace Gamesim.Episode
                 {
                     case CeremonyStageStep.Summons:
                         bool pressed = now >= pressGuardUntil && CeremonyTakeover.SkipPressed();
+                        // A press is one step (PACK8-PASS-PLAN A1): the card starts at its block or
+                        // its result, as a press on the card would take it, and the next press
+                        // closes it. The card cannot read the same press again: it takes none
+                        // until it has been up long enough to be read.
+                        if (pressed) { StartCard(); SkipTheCardToItsResult(); break; }
                         // The card waits for the whole house as long as the longest route takes,
                         // and for the people it is about as long as the pace's patience allows;
                         // past that, whoever is still walking sits as they arrive.
-                        if (EveryoneArrived || pressed || (now >= summonsHardBy && (PrincipalsInPlace || now >= summonsPatienceBy))) StartCard();
+                        if (EveryoneArrived || (now >= summonsHardBy && (PrincipalsInPlace || now >= summonsPatienceBy))) StartCard();
                         break;
                     case CeremonyStageStep.Playing:
                         RunCues(now);
                         if (!CardPlaying) Release();
+                        break;
+                    case CeremonyStageStep.Goodbye:
+                        RunCues(now);
+                        // A commit that took the evicted from the house under the goodbye ends it:
+                        // there is nobody left to walk out.
+                        if (director.departingId != leavingId) { Release(); break; }
+                        // A press is one step: from the goodbye straight to the door shut behind
+                        // them, as a press on the walk is. The press that closed the card is not one.
+                        if (now >= pressGuardUntil && CeremonyTakeover.SkipPressed()) { director.SkipWalkOut(); break; }
+                        if (now >= goodbyeUntil) Release();
                         break;
                     case CeremonyStageStep.Release:
                         RunCues(now);
@@ -557,7 +728,7 @@ namespace Gamesim.Episode
                 foreach (var pair in places)
                 {
                     string id = pair.Key;
-                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id)) continue;
+                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
                     if (meetings.JoinCeremonyStage(id, pair.Value, out var why))
                     {
@@ -583,15 +754,65 @@ namespace Gamesim.Episode
                 || (director.voteReveal != null && director.voteReveal.IsPlaying)
                 || (director.takeover != null && director.takeover.IsPlaying);
 
+            /// <summary>The card just started, taken to its block or its result: the first press's step, which the cards share.</summary>
+            private void SkipTheCardToItsResult()
+            {
+                if (!Active || Step != CeremonyStageStep.Playing) return;
+                if (director.keyCeremony != null && director.keyCeremony.IsPlaying) director.keyCeremony.SkipToResult();
+                else if (director.voteReveal != null && director.voteReveal.IsPlaying) director.voteReveal.SkipToResult();
+                else if (director.takeover != null && director.takeover.PlayingMeeting) director.takeover.SkipToResult();
+            }
+
             /// <summary>The card, on the screen. A card that declines its shape ends the stage: the caller's generic card plays instead.</summary>
             private void StartCard()
             {
                 cardStarted = true;
                 Step = CeremonyStageStep.Playing;
                 bool up = playCard(Screen);
-                if (!up || !CardPlaying) { End(true); return; }
+                // A card that declined the screen played nothing: the stage ends as one that never
+                // played its card does, and the card plays on the HUD once nothing is staged - the
+                // generic card's framing and reactions are the house's again by then. The veto
+                // meeting's does this; the reveals' fall back to the generic card themselves.
+                if (!up) { cardStarted = false; End(true); return; }
+                if (!CardPlaying) { End(true); return; }
                 Debug.Log(Report("card start"));
                 Cut(Screen.Shot(CutSeconds));
+                if (Kind == CeremonySting.EvictionKind) LightTheHotSeats();
+            }
+
+            /// <summary>
+            /// A warm key light over the red chairs for the vote and the goodbye (MOCKUP-PASS-PLAN
+            /// M19): a soft spot from above the screen's side onto the hot seats' midpoint, on the
+            /// introduction's settings and warmer, from the card's start until the goodbye is over.
+            /// Only on the gallery, where there is a midpoint to light.
+            /// </summary>
+            private void LightTheHotSeats()
+            {
+                if (keyLight != null || !galleryFocus.HasValue) return;
+                var lamp = new GameObject(EvictionKeyLightName);
+                lamp.transform.SetParent(director.transform, false);
+                keyLight = lamp.AddComponent<Light>();
+                keyLight.type = LightType.Spot;
+                keyLight.color = new Color(1f, 0.86f, 0.66f);
+                keyLight.intensity = 6f;
+                keyLight.range = 9f;
+                keyLight.spotAngle = 34f;
+                keyLight.innerSpotAngle = 18f;
+                keyLight.shadows = LightShadows.None;
+                // 1.3 m toward the screen from the chairs' midpoint and 3.2 m up: above the screen's
+                // side, looking down onto the faces in red.
+                var target = new Vector3(galleryFocus.Value.x, 1.0f, galleryFocus.Value.z);
+                var toScreen = Screen.Centre - target; toScreen.y = 0f;
+                toScreen = toScreen.sqrMagnitude > 0.0001f ? toScreen.normalized : Vector3.back;
+                var from = new Vector3(target.x, 3.2f, target.z) + toScreen * 1.3f;
+                lamp.transform.SetPositionAndRotation(from, Quaternion.LookRotation(target - from));
+            }
+
+            private void PutOutTheKeyLight()
+            {
+                if (keyLight == null) return;
+                UnityEngine.Object.Destroy(keyLight.gameObject);
+                keyLight = null;
             }
 
             /// <summary>Everyone who has reached their place sits, or stands facing the way the place faces.</summary>
@@ -610,6 +831,8 @@ namespace Gamesim.Episode
                 {
                     string id = pair.Key;
                     if (id == state.playerId) continue;
+                    // Up out of the seat for good: the evicted, turned to the house for the goodbye.
+                    if (stoodUp.Contains(id)) continue;
                     if (!meetings.CeremonyActorArrived(id)) continue;
                     // BodyFor, not Housemates(): the latter is the active contestants, and the
                     // evicted in the hot seat is no longer one.
@@ -807,24 +1030,45 @@ namespace Gamesim.Episode
                         Cut(Screen.Shot(CutSeconds));
                         string leaving = beat.SubjectId;
                         string staying = nominees.FirstOrDefault(id => id != leaving);
-                        director.TurnHeads(state, leaving, null);
+                        leavingId = leaving; survivorId = staying;
+                        // The room takes the result as it is (MOCKUP-PASS-PLAN M19): whoever voted
+                        // to keep the evicted looks down, and everyone else turns to them. The
+                        // survivor stays seated with no fist pump in front of the one going, and
+                        // the evicted takes it in the chair, head down: they stand for the goodbye.
+                        var losers = Losers(staying);
+                        director.TurnHeads(state, leaving, losers);
                         float resultHold = card != null ? card.ResultHoldSeconds : 3.6f;
                         Schedule(Mathf.Min(1.5f, resultHold * 0.4f) / speed, () =>
                         {
                             if (nominees.Count == 2) Cut(PairShot(nominees[0], nominees[1]));
                             else if (leaving != null) Cut(SeatShot(leaving));
-                            if (staying != null) Reaction(staying, CharacterPresentation.Reaction.Won);
-                            if (leaving != null) StandUp(leaving);
+                            if (leaving != null) LookDownAt(leaving, 2f);
+                            foreach (var loser in losers) LookDownAt(loser, 2f);
                         });
-                        // Up and turned to the room by the time the card is down: the standing take
-                        // plays once the body is on its feet.
-                        Schedule(Mathf.Min(2.4f, resultHold * 0.65f) / speed, () => { if (leaving != null) Reaction(leaving, CharacterPresentation.Reaction.Evicted); });
                         break;
                     case CeremonyBeatKind.Closed:
                         ClearCues();
+                        string evicted = beat.SubjectId ?? (card != null ? card.EvictedId : null);
+                        // A skip can close the card before its result was read: the evicted are
+                        // the card's own all the same.
+                        if (evicted != null) leavingId = evicted;
+                        // The evicted houseguest stands to say goodbye before the walk out takes
+                        // them. Not the player - their eviction is the season's end, as it was -
+                        // and not somebody whose body the house had to let go. Not from a director
+                        // being disabled either: its OnDisable cancels the card, which closes it
+                        // here, and an unloading scene may already have destroyed the rig the
+                        // goodbye cuts with. That close takes the plain release, which checks the
+                        // rig, and OnDisable ends the stage straight after.
+                        if (evicted != null && evicted == director.departingId && evicted != state.playerId
+                            && placeOf.ContainsKey(evicted) && !LetGo(evicted) && director.BodyFor(evicted) != null
+                            && director.isActiveAndEnabled && director.cameraRig != null)
+                        {
+                            BeginGoodbye(evicted);
+                            break;
+                        }
                         // A skip can close the card before the result's cues ran: the evicted still
                         // get up, and their lease still goes, so the walk-out can take them.
-                        StandUp(beat.SubjectId ?? (card != null ? card.EvictedId : null));
+                        StandUp(evicted);
                         Release();
                         break;
                 }
@@ -925,6 +1169,7 @@ namespace Gamesim.Episode
                     string verdict = sitting ? "seated"
                         : !place.Posed && there ? "standing in place"
                         : there ? "arrived, not seated"
+                        : LetGo(id) ? "let go (their body could not take its navigation back)"
                         : !holds ? "never sent" + (refusals.TryGetValue(id, out var why) ? " (" + why + ")" : summonsRefusals != null ? " (at the summons)" : " (no reason recorded)")
                         : stalled ? "stuck " + away.ToString("F2") + " m short of the approach" + arrival + Nearest(id, npc.transform.position)
                         : "walking" + arrival + Nearest(id, npc.transform.position);
@@ -1009,6 +1254,143 @@ namespace Gamesim.Episode
             }
 
             private readonly HashSet<string> stoodUp = new HashSet<string>();
+
+            /// <summary>
+            /// The houseguests whose ballot named the survivor: they voted to keep the evicted, and
+            /// lost. The ballots are the card's own - it has just shown every one of them.
+            /// </summary>
+            private List<string> Losers(string staying) => staying == null || state.votes == null ? new List<string>()
+                : state.votes.Where(vote => vote.targetId == staying && !string.IsNullOrEmpty(vote.voterId))
+                    .Select(vote => vote.voterId).Distinct().ToList();
+
+            /// <summary>
+            /// <see cref="LookDown"/> with a mark of its own for each houseguest, so several can look
+            /// down at once: the one shared mark moves to the last of them, and the rest would look at
+            /// somebody else's floor.
+            /// </summary>
+            private void LookDownAt(string id, float seconds)
+            {
+                var visual = Visual(id);
+                if (visual == null || !placeOf.TryGetValue(id, out var place)) return;
+                if (!downMarks.TryGetValue(id, out var mark) || mark == null)
+                {
+                    mark = new GameObject("Ceremony look mark · " + id).transform;
+                    downMarks[id] = mark;
+                }
+                mark.position = place.Position + Quaternion.Euler(0f, place.Facing, 0f) * Vector3.forward * 0.6f + Vector3.up * 0.4f;
+                visual.LookAtPoint(mark, seconds);
+            }
+
+            // ------------------------------------------------------------ the goodbye
+
+            /// <summary>How far above the feet a standing face is: the face shot's focus on somebody on their feet.</summary>
+            private const float StandingFace = 1.55f;
+
+            /// <summary>
+            /// The evicted's goodbye (MOCKUP-PASS-PLAN M19), about four seconds between the card and
+            /// the walk out. They get up out of the red chair - which lets their ceremony lease go,
+            /// for the walk out to take them - and turn to the house; every head turns to them, and
+            /// whoever is seated claps them out. Somebody standing only looks: the standing cheer is
+            /// a celebration, and the player is the player's to move. The camera cuts in on their
+            /// face and pushes in, and their goodbye line plays on the strip, moved here from the
+            /// door. A press goes straight to the door shut behind them; the press that closed the
+            /// card does not.
+            /// </summary>
+            private void BeginGoodbye(string id)
+            {
+                leavingId = id;
+                Step = CeremonyStageStep.Goodbye;
+                float now = Time.unscaledTime;
+                goodbyeUntil = now + GoodbyeSeconds;
+                pressGuardUntil = now + PressGuard;
+                StandUp(id);
+                var body = director.BodyFor(id);
+                var visual = Visual(id);
+                // Turned to the middle of the house: everybody still in their places.
+                var middle = Vector3.zero;
+                int count = 0;
+                foreach (var pair in places)
+                {
+                    if (pair.Key == id || pair.Value == null || LetGo(pair.Key)) continue;
+                    middle += pair.Value.Position;
+                    count++;
+                }
+                float facing = body != null ? body.eulerAngles.y : 0f;
+                if (count > 0 && body != null)
+                {
+                    var toward = middle / count - body.position;
+                    toward.y = 0f;
+                    if (toward.sqrMagnitude > 0.01f) facing = Mathf.Atan2(toward.x, toward.z) * Mathf.Rad2Deg;
+                }
+                if (visual != null) visual.SetFacing(facing);
+                if (body != null)
+                    foreach (var pair in places)
+                    {
+                        if (pair.Key == id) continue;
+                        var other = Visual(pair.Key);
+                        if (other == null) continue;
+                        other.LookAt(body, 2f);
+                        if (pair.Key != state.playerId && other.IsSeated && other.SupportsSeated(CharacterPresentation.Reaction.Cheered))
+                            other.React(CharacterPresentation.Reaction.Cheered);
+                    }
+                if (body != null)
+                {
+                    var face = body.position + Vector3.up * StandingFace;
+                    var close = new HouseCameraRig.Shot
+                    {
+                        Focus = face, Distance = 3.1f, Pitch = 10f, Yaw = facing + 180f,
+                        FieldOfView = Lens, Seconds = CutSeconds, DepthOfFieldWeight = 0.5f,
+                    };
+                    Cut(close);
+                    var closer = close;
+                    closer.Distance = 2.4f;
+                    closer.Seconds = 2f;
+                    Schedule(0.05f, () => director.cameraRig.MoveTo(closer));
+                }
+                if (director.sting != null) director.sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(state, id), director.reducedMotion);
+                // The exit's door, chosen now: the living room's goes up closed at the end of the
+                // room for the walk to come (MOCKUP-PASS-PLAN M23), the yard's at the dip later.
+                director.OnStagedGoodbye(id);
+            }
+
+            /// <summary>The goodbye over, from the director's side: a press that went straight to the shut door.</summary>
+            public void EndTheGoodbye()
+            {
+                if (Active && Step == CeremonyStageStep.Goodbye) Release();
+            }
+
+            // ------------------------------------------------------------ the walk out, watched
+
+            /// <summary>
+            /// The house watching the evicted go (MOCKUP-PASS-PLAN M19): the camera on the house,
+            /// every head following the body. On the yard's walk - the long one, which leaves the
+            /// room - the wide for three seconds, the survivor for two, and the house again until the
+            /// walk out cuts to the door; on the living room's, <paramref name="exitWide"/> over the
+            /// seated heads, looking down the room at the door, until the door opens.
+            /// </summary>
+            public void WatchTheWalk(Transform body, HouseCameraRig.Shot? exitWide, float watchSeconds)
+            {
+                if (!Active || body == null) return;
+                ClearCues();
+                foreach (var pair in places)
+                {
+                    if (pair.Key == leavingId) continue;
+                    var other = Visual(pair.Key);
+                    if (other != null) other.LookAt(body, exitWide.HasValue ? watchSeconds * 3f : watchSeconds);
+                }
+                if (exitWide.HasValue) { Cut(exitWide.Value); return; }
+                Cut(Wide(CutSeconds));
+                string staying = survivorId;
+                if (staying == null || !placeOf.ContainsKey(staying)) return;
+                Schedule(watchSeconds, () => Cut(SeatShot(staying)));
+                Schedule(watchSeconds + 2f, () => Cut(Wide(CutSeconds)));
+            }
+
+            /// <summary>The walk out has the camera now: no cue of the watch cuts away from the door.</summary>
+            public void StopTheWatch() => ClearCues();
+
+            /// <summary>The walk out has handed the camera back itself, behind the dip: the stage's end leaves it alone.</summary>
+            public void HandBackCamera() => holdsCamera = false;
 
             // ------------------------------------------------------------ the shots
 
@@ -1136,10 +1518,19 @@ namespace Gamesim.Episode
                 releasedAt = Time.unscaledTime;
                 Debug.Log(Report("release"));
                 ClearCues();
+                // The goodbye's light goes with the goodbye; the house watches the walk in the room's own.
+                PutOutTheKeyLight();
+                // A staged exit keeps the camera: the walk out frames the house watching them go,
+                // the door and its close, and hands the camera back itself behind the dip.
+                bool exit = Kind == CeremonySting.EvictionKind && leavingId != null && director.departingId == leavingId;
                 // The rig may be gone too when the release comes from an unloading scene: End checks the same.
                 if (director.cameraRig != null)
                 {
-                    director.cameraRig.ReleaseShot(1.2f);
+                    if (!exit)
+                    {
+                        director.cameraRig.ReleaseShot(1.2f);
+                        holdsCamera = false;
+                    }
                     director.cameraRig.ControlsEnabled = !director.IsPanelOpen;
                 }
                 if (Kind != CeremonySting.EvictionKind) End(true);
@@ -1159,6 +1550,8 @@ namespace Gamesim.Episode
                 if (begun && !cardStarted) Debug.Log(Report("ended before the card"));
                 ended = true;
                 ClearCues();
+                // Nobody the veto meeting set talking is left mid-word by a stage ended under it.
+                Hush();
                 Subscribe(false);
                 foreach (var seat in seated.Values) if (seat != null && seat.Active) seat.RequestExit();
                 seated.Clear();
@@ -1170,9 +1563,18 @@ namespace Gamesim.Episode
                 if (director.npcMeetings != null) director.npcMeetings.EndCeremonyStage();
                 ReleaseThePlayer();
                 if (lookMark != null) { UnityEngine.Object.Destroy(lookMark.gameObject); lookMark = null; }
+                foreach (var mark in downMarks.Values) if (mark != null) UnityEngine.Object.Destroy(mark.gameObject);
+                downMarks.Clear();
+                PutOutTheKeyLight();
+                // A door the exit built and never walked through goes with the house getting up.
+                director.StrikeWalkOutDoorIfNobodyWalks();
+                // Whenever the stage still holds the camera: a release that kept it for the exit,
+                // and an exit that never took it, hand it back here. Not one the walk out already
+                // handed back - the next owner (the arena, say) may have it by now.
                 if (director.cameraRig != null && begun)
                 {
-                    if (Step != CeremonyStageStep.Release) director.cameraRig.ReleaseShot(1.2f);
+                    if (holdsCamera) director.cameraRig.ReleaseShot(1.2f);
+                    holdsCamera = false;
                     director.cameraRig.ControlsEnabled = !director.IsPanelOpen;
                 }
                 if (!cardStarted && playCardIfUnplayed && playCard != null)

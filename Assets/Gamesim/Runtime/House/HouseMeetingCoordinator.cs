@@ -15,7 +15,13 @@ namespace Gamesim.House
         public string Generation { get; }
         public string FirstId { get; }
         public string SecondId { get; }
+        /// <summary>The saved rendezvous: one of the six venues a save can name, whichever of its places the pair was sent to.</summary>
         public string VenueId { get; }
+        /// <summary>
+        /// The place itself: the venue's own pair, or one of its talk spots (HouseConversationSpots).
+        /// Runtime only, never saved: a load sends the pair to a free place of the same venue.
+        /// </summary>
+        public string SpotId { get; }
         public string RoomId { get; }
         public Vector3 FirstSlot { get; }
         public Vector3 SecondSlot { get; }
@@ -34,11 +40,11 @@ namespace Gamesim.House
         internal Vector3 FirstAnchorApproach { get; }
         internal Vector3 SecondAnchorApproach { get; }
         internal HouseMeetingLease(string token, string generation, string first, string second,
-            string venue, string room, Vector3 a, Vector3 b, bool seated, float firstFacing, float secondFacing,
+            string venue, string spot, string room, Vector3 a, Vector3 b, bool seated, float firstFacing, float secondFacing,
             Vector3 anchorA, Vector3 anchorB,Vector3 approachA,Vector3 approachB)
         {
             Token = token; Generation = generation; FirstId = first; SecondId = second;
-            VenueId = venue; RoomId = room; FirstSlot = a; SecondSlot = b;
+            VenueId = venue; SpotId = spot; RoomId = room; FirstSlot = a; SecondSlot = b;
             Seated = seated; FirstFacing = firstFacing; SecondFacing = secondFacing;
             FirstAnchorPosition=anchorA; SecondAnchorPosition=anchorB;
             FirstAnchorApproach=approachA;SecondAnchorApproach=approachB;
@@ -61,7 +67,8 @@ namespace Gamesim.House
         }
         private sealed class Venue
         {
-            public readonly string id, room;
+            /// <summary>The anchors' own venue id; <see cref="family"/> is the saved one, the same for a venue's own pair.</summary>
+            public readonly string id, room, family;
             public readonly bool seated;
             public readonly HouseInteractionAnchor a,b;
             public Vector3 first => a.Position;
@@ -70,8 +77,10 @@ namespace Gamesim.House
             public Vector3 secondApproach => b.Approach;
             public float firstYaw => a.Facing;
             public float secondYaw => b.Facing;
-            public Venue(HouseInteractionAnchor first,HouseInteractionAnchor second)
-            { a=first; b=second; id=a.VenueId; room=a.RoomId; seated=a.Seated; }
+            /// <summary>Whether this is the venue's own authored pair rather than one of its talk spots.</summary>
+            public bool Home => id == family;
+            public Venue(HouseInteractionAnchor first,HouseInteractionAnchor second,string familyId)
+            { a=first; b=second; id=a.VenueId; room=a.RoomId; seated=a.Seated; family=familyId; }
             public bool Valid(Scene scene) => a!=null && b!=null && a.isActiveAndEnabled && b.isActiveAndEnabled
                 && a.gameObject.scene==scene && b.gameObject.scene==scene && a.VenueId==id && b.VenueId==id
                 && a.RoomId==room && b.RoomId==room && a.Seated==seated && b.Seated==seated;
@@ -160,8 +169,13 @@ namespace Gamesim.House
                     if(definition.Seated)continue;
                     reason="Each standing venue requires two unique compatible scene-local interaction anchors."; return false;
                 }
-                candidate.venues.Add(new Venue(a,b));
+                candidate.venues.Add(new Venue(a,b,definition.Id));
             }
+            // The talk spots (PACK8-PASS-PLAN C3): more places for the same six venues, on the
+            // pieces the house has. A house without them has the six and nothing more.
+            HouseConversationSpots.Ensure(query.Scene);
+            foreach (var spot in HouseConversationSpots.InScene(query.Scene))
+                candidate.venues.Add(new Venue(spot.First,spot.Second,spot.Family));
             foreach (var root in query.Scene.GetRootGameObjects())
                 candidate.keepClear.AddRange(root.GetComponentsInChildren<HouseRoomMarker>(true));
             var roomNames = new HashSet<string>(StringComparer.Ordinal);
@@ -224,6 +238,7 @@ namespace Gamesim.House
             // Somebody walking out who is no longer the house's to route is let go before unbinding.
             if (departing != null && !eligible.Contains(departing.id)) EndDeparture();
             RetireInvalidActivities();
+            RetireInvalidTalk();
             // Release invalid pairs before changing any participant's collision owner.
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer)
@@ -262,9 +277,10 @@ namespace Gamesim.House
                     if (DropFailedCandidate(actor)) continue;
                     return Fail(out reason, actor.motion.FailureReason ?? "NPC binding failed; explicit recovery is required.");
                 }
-                // The opening's cast walks while the house is paused around it, and so does a ceremony's.
+                // The opening's cast walks while the house is paused around it, and so does a ceremony's,
+                // and so does somebody the player has asked over to talk.
                 actor.motion.SetPaused(paused && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id)
-                    && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id));
+                    && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id) && !TalkHoldsActor(actor.id));
             }
             LastFailure = null;
             return true;
@@ -311,14 +327,20 @@ namespace Gamesim.House
             var first = actors[firstId]; var second = actors[secondId];
             if (first.motion.LeaseId != null || second.motion.LeaseId != null)
                 return Fail(out reason, "An actor is already reserved or both pair slots are occupied.");
-            Venue best = null; float bestLength = float.PositiveInfinity;
+            Venue best = null; float bestScore = float.PositiveInfinity;
             Vector3 bestFirst = default, bestSecond = default;
             foreach (var venue in venues)
             {
-                if (!venue.Valid(rooms.Scene) || requiredVenue != null && venue.id != requiredVenue || VenueInUse(venue.id)) continue;
+                if (!venue.Valid(rooms.Scene) || requiredVenue != null && venue.family != requiredVenue || MeetingVenueTaken(venue)) continue;
                 if (!MeasureVenue(venue, first, second, out var a, out var b, out var length)) continue;
-                if (length >= bestLength - .0001f) continue; // Stable authored order on ties.
-                best = venue; bestFirst = a; bestSecond = b; bestLength = length;
+                // A saved conversation goes back to its venue's own pair first, as it always did -
+                // which of the venue's places it was held at is not saved - and to another of the
+                // venue's spots only while that pair is taken. A new one takes the shortest walk,
+                // a walk to two seats counted as three metres shorter: people sit to talk when they
+                // can (PACK8-PASS-PLAN C3).
+                float score = requiredVenue != null && venue.Home ? float.NegativeInfinity : SpotScore(length, venue.seated);
+                if (score >= bestScore - .0001f) continue; // Stable authored order on ties.
+                best = venue; bestFirst = a; bestSecond = b; bestScore = score;
             }
             if (best == null) return Fail(out reason, "No unoccupied protected-room venue has two complete safe paths.");
             // Revalidate both before reserving either. Motion then independently checks
@@ -333,7 +355,7 @@ namespace Gamesim.House
             // The final native path owners may sample a few millimetres differently
             // than the preliminary pair query. Expose their accepted endpoints.
             var firstAt = first.motion.ReservedDestination; var secondAt = second.motion.ReservedDestination;
-            lease = new HouseMeetingLease(token, Generation, firstId, secondId, best.id, best.room, firstAt, secondAt, best.seated,
+            lease = new HouseMeetingLease(token, Generation, firstId, secondId, best.family, best.id, best.room, firstAt, secondAt, best.seated,
                 best.seated ? best.firstYaw : YawToward(firstAt, secondAt), best.seated ? best.secondYaw : YawToward(secondAt, firstAt),
                 best.first,best.second,best.firstApproach,best.secondApproach);
             leases.Add(token, lease); LastFailure = null;
@@ -426,6 +448,7 @@ namespace Gamesim.House
         {
             if (disposed) return;
             RetireInvalidActivities();
+            RetireInvalidTalk();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values); leaseBuffer.Sort(leaseComparison);
             foreach (var lease in leaseBuffer)
             {
@@ -440,7 +463,7 @@ namespace Gamesim.House
         {
             if (disposed || paused == value) return;
             paused = value;
-            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id) && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id));
+            foreach (var actor in cast) if (actor.motion != null) actor.motion.SetPaused(value && !OpeningHoldsActor(actor.id) && !CeremonyHoldsActor(actor.id) && !DepartureHoldsActor(actor.id) && !WanderHoldsActor(actor.id) && !TalkHoldsActor(actor.id));
             foreach (var lease in leases.Values) lease.Status = value ? HouseMeetingStatus.Paused : HouseMeetingStatus.Travelling;
         }
         public bool Release(HouseMeetingLease lease) => Current(lease) && Retire(lease,HouseMeetingStatus.Released,null);
@@ -453,6 +476,7 @@ namespace Gamesim.House
             EndSceneStage();
             EndDeparture();
             EndWandering();
+            EndTalk();
             leaseBuffer.Clear(); leaseBuffer.AddRange(leases.Values);
             foreach (var lease in leaseBuffer) Retire(lease,HouseMeetingStatus.Released,null);
         }
@@ -486,6 +510,7 @@ namespace Gamesim.House
             if (SceneOwnsMotion(motion)) return true;
             if (DepartureOwnsMotion(motion)) return true;
             if (WanderOwnsMotion(motion)) return true;
+            if (TalkOwnsMotion(motion)) return true;
             if (motion.LeaseId == null || !leases.TryGetValue(motion.LeaseId, out var lease)) return false;
             return actors.TryGetValue(lease.FirstId, out var first) && first.motion == motion
                 || actors.TryGetValue(lease.SecondId, out var second) && second.motion == motion;
@@ -494,22 +519,111 @@ namespace Gamesim.House
         {
             if (!Current(lease)) return false;
             if (actors.TryGetValue(lease.FirstId,out var first) && first.motion != null)
-            {first.motion.GetComponent<HouseSeatPresentation>()?.End();first.motion.Release(lease.Token);}
+            {StandUp(first.motion);first.motion.Release(lease.Token);}
             if (actors.TryGetValue(lease.SecondId,out var second) && second.motion != null)
-            {second.motion.GetComponent<HouseSeatPresentation>()?.End();second.motion.Release(lease.Token);}
+            {StandUp(second.motion);second.motion.Release(lease.Token);}
             leases.Remove(lease.Token); lease.Status = status; lease.FailureReason = reason;
             return true;
         }
+
+        /// <summary>
+        /// A conversation that ends gets its pair up at their chairs before they go back to their
+        /// roots: the seat's own stand-up, which outlives the lease (PACK8-PASS-PLAN A2). Ending the
+        /// seat here snapped both bodies from the chairs to the approaches while they still sat.
+        /// </summary>
+        private static void StandUp(HouseNpcMotion motion)
+        {
+            var seat = motion.GetComponent<HouseSeatPresentation>();
+            if (seat != null) seat.RequestExit();
+        }
+        /// <summary>Whether anybody holds the place with these anchors: a conversation at it, an activity on it, or the player's talk.</summary>
         private bool VenueInUse(string venue)
         {
-            foreach(var lease in leases.Values)if(lease.VenueId==venue)return true;
+            foreach(var lease in leases.Values)if(lease.SpotId==venue)return true;
             foreach(var entry in activities)if(entry.lease.Anchor!=null && entry.lease.Anchor.VenueId==venue)return true;
+            return talk!=null && talk.venue.id==venue;
+        }
+
+        /// <summary>
+        /// Whether a new or reunited conversation may not be sent here. A venue holds one
+        /// conversation at a time whichever of its places it is at - the simulation refuses a second
+        /// at the same rendezvous - and a place is not free while anybody holds it or stands close
+        /// enough to share its floor (<see cref="PlaceTaken"/>).
+        /// </summary>
+        private bool MeetingVenueTaken(Venue venue)
+        {
+            foreach(var lease in leases.Values)if(lease.VenueId==venue.family)return true;
+            return PlaceTaken(venue);
+        }
+
+        /// <summary>
+        /// Whether a place is held, or crowded: two places whose seats are under a cushion apart, or
+        /// whose roots would wait closer than two bodies, are one patch of floor. The venues' own
+        /// pairs were laid apart and are judged by their anchors alone, as they always were; a talk
+        /// spot is measured against everything held near it.
+        /// </summary>
+        private bool PlaceTaken(Venue venue)
+        {
+            foreach(var lease in leases.Values)
+            {
+                if(lease.SpotId==venue.id)return true;
+                if(venue.Home && lease.SpotId==lease.VenueId)continue;
+                if(Crowds(venue,lease.FirstAnchorPosition,lease.FirstAnchorApproach)
+                    || Crowds(venue,lease.SecondAnchorPosition,lease.SecondAnchorApproach))return true;
+            }
+            foreach(var entry in activities)
+            {
+                var anchor=entry.lease.Anchor;
+                if(anchor==null)continue;
+                if(anchor.VenueId==venue.id)return true;
+                if(!venue.Home && Crowds(venue,anchor.Position,anchor.Approach))return true;
+            }
+            if(talk!=null)
+            {
+                if(talk.venue==venue)return true;
+                if((!venue.Home || !talk.venue.Home) && (Crowds(venue,talk.venue.first,talk.venue.firstApproach)
+                    || Crowds(venue,talk.venue.second,talk.venue.secondApproach)))return true;
+            }
             return false;
         }
+
+        /// <summary>Whether a place - a seat or a mark, and the root that waits for it - shares the floor with either of this venue's.</summary>
+        private static bool Crowds(Venue venue,Vector3 place,Vector3 approach)
+        {
+            float seats=HouseConversationSpots.SeatsApart*HouseConversationSpots.SeatsApart;
+            float roots=HouseConversationSpots.RootsApart*HouseConversationSpots.RootsApart;
+            return HorizontalSquared(venue.first,place)<seats || HorizontalSquared(venue.second,place)<seats
+                || HorizontalSquared(venue.firstApproach,approach)<roots || HorizontalSquared(venue.secondApproach,approach)<roots;
+        }
+
+        /// <summary>
+        /// Whether a held talk spot - a conversation at one, or the player's talk at one - shares
+        /// the floor with an activity's place. The venues' own pairs answer by their anchors
+        /// (<see cref="VenueInUse(string)"/>), as they always did.
+        /// </summary>
+        private bool SpotCrowds(HouseInteractionAnchor anchor)
+        {
+            if(anchor==null)return false;
+            foreach(var venue in venues)
+            {
+                if(venue.Home || !venue.Valid(rooms.Scene))continue;
+                bool held=talk!=null && talk.venue==venue;
+                if(!held)foreach(var lease in leases.Values)if(lease.SpotId==venue.id){held=true;break;}
+                if(held && Crowds(venue,anchor.Position,anchor.Approach))return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// A place's score for a pair: the walk, in metres along both routes, less
+        /// <see cref="HouseConversationSpots.SeatedBonus"/> when the place is two seats. Lower is better.
+        /// </summary>
+        public static float SpotScore(float walk,bool seated) => walk-(seated ? HouseConversationSpots.SeatedBonus : 0f);
+
         private bool VenueUnchanged(HouseMeetingLease lease)
         {
             foreach (var venue in venues)
-                if (venue.id==lease.VenueId)
+                if (venue.id==lease.SpotId)
                     return venue.Valid(rooms.Scene) && Vector3.Distance(venue.first,lease.FirstAnchorPosition)<.05f
                         && Vector3.Distance(venue.second,lease.SecondAnchorPosition)<.05f
                         && Vector3.Distance(venue.firstApproach,lease.FirstAnchorApproach)<.05f
@@ -523,7 +637,7 @@ namespace Gamesim.House
             foreach(var lease in leases.Values)
                 if(lease.Seated && (lease.FirstId==actorId || lease.SecondId==actorId))
                     foreach(var venue in venues)
-                        if(venue.id==lease.VenueId && venue.Valid(rooms.Scene))
+                        if(venue.id==lease.SpotId && venue.Valid(rooms.Scene))
                         {seat=lease.FirstId==actorId ? venue.a : venue.b;return true;}
             seat=null;return false;
         }

@@ -62,7 +62,11 @@ namespace Gamesim.Tests.PlayMode
             // One frame for the director to hand the chrome back and redraw it, one for the copy it
             // replaced to be destroyed.
             yield return Frames(2);
-            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the reveal is skipped.");
+            // A staged eviction keeps the chrome aside past its card, through the goodbye and the
+            // walk out to the door shut behind them (MOCKUP-PASS-PLAN M19); its own tests follow
+            // the exit, and the chrome comes back at its end.
+            if (!director.StagedExitRunning)
+                Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the reveal is skipped.");
         }
 
         /// <summary>

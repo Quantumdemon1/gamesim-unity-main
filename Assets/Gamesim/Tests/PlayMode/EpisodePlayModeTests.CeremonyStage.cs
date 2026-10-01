@@ -110,12 +110,21 @@ namespace Gamesim.Tests.PlayMode
             else yield return InstallStrategySeason(seed, shape);
             director.BuildNpcWorldForDiagnostics();
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+            AskForTheStages();
+            yield return null;
+        }
+
+        /// <summary>
+        /// The stages and the walk outs asked for in a batch run, and reduced motion - which never
+        /// stages - switched off on the director, the rig and the bodies the way the motion tests do.
+        /// </summary>
+        private void AskForTheStages(bool reduced = false)
+        {
             director.StagesInBatchRuns = true;
             director.WalkOutsInBatchRuns = true;
-            typeof(EpisodeDirector).GetField("reducedMotion", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(director, false);
-            cameraRig.SetReducedMotion(false);
-            foreach (var visual in SceneComponents<CharacterPresentation>()) visual.SetReducedMotion(false);
-            yield return null;
+            typeof(EpisodeDirector).GetField("reducedMotion", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(director, reduced);
+            cameraRig.SetReducedMotion(reduced);
+            foreach (var visual in SceneComponents<CharacterPresentation>()) visual.SetReducedMotion(reduced);
         }
 
         /// <summary>Submits the house's next legal decisions until a ceremony is staged, or the cards play unstaged.</summary>
@@ -439,17 +448,27 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(evicted, Is.Not.Null.And.Not.Empty);
             yield return SkipReveals();
             yield return Frames(3);
-            // The card down: the house keeps its seats while the evicted walk out through the front door.
+            // The card down: the evicted stand to say goodbye to the house in its seats
+            // (MOCKUP-PASS-PLAN M19), and only then walk out through the front door.
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The evicted say goodbye first,");
+            Assert.That(director.WalkingOutId, Is.Null, "before they walk.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The chrome stays aside through the goodbye,");
+            Assert.That(PlatesUp(), Is.Empty, "and the plates stay down.");
+            yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 1f, "the goodbye gives way to the walk out");
             Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "The evicted walk out.");
             Assert.That(director.IsCeremonyStaged, Is.True, "The house keeps its seats while they go.");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release));
-            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The chrome stays aside for the walk out too: the exit is full-bleed to the shut door.");
             // MOCKUP-PASS-PLAN M2: the walk out is the card's last beat, and its frame is as clean.
             Assert.That(PlatesUp(), Is.Empty, "The plates stay down while the evicted walk out.");
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
             yield return null;
             Assert.That(PlatesDown(), Is.Empty, "The plates come back once the house is let go.");
+            Assert.That(Hud.IsHeldForReveal, Is.False, "and so does the chrome, once the door is shut behind them.");
+            // The stage ends itself on a stopped world, so "the house gets up" held on a dead one
+            // (PACK8-PASS-PLAN A1): the walk out has to leave the house's world running.
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
         [UnityTest]
@@ -469,6 +488,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(keys.GetComponent<Canvas>().renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
                 // MOCKUP-PASS-PLAN M2: a plate showed through the card's scrim on the HUD frame.
                 Assert.That(PlatesUp(), Is.Empty, "No plate is up under the keys on the HUD frame.");
+                // PACK8-PASS-PLAN A1: the skip chip is a staged ceremony's; the card on the HUD
+                // frame says what moves it on in its own lines.
+                yield return null;
+                Assert.That(director.CeremonySkipShowing, Is.False, "No skip chip over the keys on the HUD frame.");
             }
             yield return SkipReveals();
         }
@@ -517,8 +540,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.IsPlaying, Is.True, "The result is still up to be photographed.");
             yield return CaptureTheScreen(screen, "ceremony-stage-vote-result");
             yield return SkipReveals();
-            yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
+            yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,
+                "the goodbye and the walk-out end");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
 
         /// <summary>A frame of a card on its screen: the rig on the screen's own shot for two frames, then the capture.</summary>
@@ -627,8 +652,10 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(line.Trim(), Does.EndWith(":: seated"), "Every place is sat in: " + line.Trim());
             yield return CaptureLivingRoom("ceremony-stage-full-house-living-later");
             yield return SkipReveals();
-            yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
+            yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,
+                "the goodbye and the walk-out end");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out at a full house too.");
         }
     }
 }

@@ -264,7 +264,9 @@ namespace Gamesim.Episode
         private void BeginFurniturePose(GameObject actor,HouseActivityLease lease,HouseFurnitureActivity kind,float seconds)
         {
             var owner=npcMeetings;
-            var pose=actor.GetComponent<HouseFurniturePose>() ?? actor.AddComponent<HouseFurniturePose>();
+            // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+            var pose=actor.GetComponent<HouseFurniturePose>();
+            if(pose==null)pose=actor.AddComponent<HouseFurniturePose>();
             pose.Begin(lease.Anchor,kind,seconds,()=>owner!=null && owner.ActivityValid(lease),
                 ()=>owner!=null && owner.ActivityArrived(lease),()=>
                 {

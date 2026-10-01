@@ -16,7 +16,10 @@ namespace Gamesim.Tests.PlayMode
         /// The veto's draw as a screen (playtest, 2026-09-27): it was a quiet card with "HoH: X ·
         /// Nominees: A and B" in it. It takes the stage now, as the web's ChipDraw does: the Head of
         /// Household and both nominees as faces playing by right, a chip in the bag for each seat
-        /// still to be drawn, the rest of the house in the bag - and "Continue episode" still draws.
+        /// still to be drawn - and "Continue episode" still draws. The default house is six, where
+        /// everyone plays and the engine draws nothing, so the bag is empty and nobody is in a pool
+        /// (PACK8-PASS-PLAN B2): it showed three chips for a draw that never happened. A house with a
+        /// draw is EpisodePlayModeTests.VetoDraw's.
         /// </summary>
         [UnityTest]
         public IEnumerator Ceremony_TheVetoDrawIsTheHouseAsFacesAndAChipBag()
@@ -50,13 +53,17 @@ namespace Gamesim.Tests.PlayMode
             foreach (var nominee in block) Assert.That(RoleOn(nominee), Is.EqualTo("NOM"), "and so do both nominees.");
 
             int seats = EpisodeEngine.VetoPlayerCount(state.Active.Count());
-            int toDraw = Mathf.Min(seats - 3, state.Active.Count() - 3);
+            Assert.That(seats, Is.EqualTo(state.Active.Count()), "The default house is six: everyone plays.");
+            int toDraw = state.Active.Count() > seats ? seats - 3 : 0;
             var bag = ActiveRect(EpisodeHud.ChipBagName);
             Assert.That(bag, Is.Not.Null, "The chips are in a bag.");
             Assert.That(bag.GetComponentsInChildren<RectTransform>().Count(rect => rect.name == "Chip"), Is.EqualTo(Mathf.Min(6, toDraw)),
-                "a chip for each seat still to be drawn.");
+                "a chip for each seat still to be drawn, and none when nobody is drawn.");
             foreach (var other in state.Active.Where(actor => actor.id != hoh && !block.Contains(actor.id)))
-                Assert.That(RoleOn(other.id), Is.EqualTo(""), other.name + " is in the bag, with no role.");
+                Assert.That(RoleOn(other.id), Is.EqualTo(""), other.name + " plays too, with no role.");
+            Assert.That(ActiveRect(EpisodeHud.VetoDrawLineName).GetComponent<TMP_Text>().text, Is.EqualTo(VetoDraw.EveryonePlaysLine),
+                "The screen says everyone plays,");
+            Assert.That(ActiveRect(EpisodeHud.DrawEligibleName), Is.Null, "and draws nobody from a pool.");
 
             var draw = ButtonWithCaption("Continue episode");
             Assert.That(draw.transform.parent, Is.SameAs(panel), "The way on is pinned.");
@@ -102,6 +109,8 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(ButtonWithCaptionOrNull("Listen in on a conversation"), Is.Null, "The rest waits behind More.");
             Assert.That(ButtonWithCaption("Close campaigning and open voting").transform.parent, Is.SameAs(panel), "The way on is pinned.");
+            // One screen now (PACK8-PASS-PLAN B4): the board fits the stage until More asks for the rest.
+            AssertCampaignFits("The campaign");
 
             ButtonWithCaption(EpisodeDirector.CampaignMoreCaption).onClick.Invoke();
             yield return null;

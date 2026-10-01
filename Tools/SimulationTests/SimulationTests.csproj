@@ -47,7 +47,9 @@
     <Compile Include="$(EditMode)CompetitionRulesV4Tests.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />
     <Compile Include="$(EditMode)StrategyRulesTests.cs" />
+    <Compile Include="$(EditMode)VetoDrawTests.cs" />
     <Compile Include="$(EditMode)VoteReadTests.cs" />
+    <Compile Include="$(EditMode)VetoMeetingReadTests.cs" />
     <Compile Include="$(EditMode)VoteLeverTests.cs" />
     <Compile Include="$(EditMode)VotePleaAndCallTests.cs" />
     <Compile Include="$(EditMode)SeasonLedgerWriterTests.cs" />
@@ -57,6 +59,7 @@
     <Compile Include="$(EditMode)TraitAffinityTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />
+    <Compile Include="$(EditMode)CampaignBriefTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />
     <Compile Include="$(EditMode)FinalBracketTests.cs" />
     <Compile Include="$(EditMode)JuryHouseReadTests.cs" />
@@ -95,6 +98,7 @@
     <Compile Include="$(EditMode)StoryPlayTests.cs" />
     <Compile Include="$(EditMode)StoryReachTests.cs" />
     <Compile Include="$(EditMode)StoryThreadTests.cs" />
+    <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
     <Compile Include="$(EditMode)WebIntroductionsTests.cs" />

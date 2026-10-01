@@ -653,8 +653,10 @@ namespace Gamesim.Episode
             if (focusedNpc != null) conversationIntent = null;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
-            // The nomination's view goes with the panel, which opens again on the week's current step.
+            // The nomination's view goes with the panel, which opens again on the week's current step,
+            // and so does free time's: its board opens again on its root and its first page.
             ForgetNominationView();
+            ForgetFreeTimeView();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -1455,6 +1457,9 @@ namespace Gamesim.Episode
                 // The veto's draw is laid out for the frame's whole width (EpisodeDirector.VetoDraw.cs).
                 if (VetoDrawBeat(state)) hud.StrategyWholeWidth();
             }
+            // Free time is a board on the strategy stage too (EpisodeDirector.FreeTimeBoard.cs), on
+            // the panel's own glass: Pack 8 has no free-time shell.
+            else if (FreeTimeBoardBeat(state)) hud.StrategyStage(null);
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1533,6 +1538,10 @@ namespace Gamesim.Episode
             // tracker, one step's body and a footer - in place of everything below (PACK8-PASS-PLAN
             // B1, EpisodeDirector.NominationScreen.cs).
             if (NominationScreen(state)) return;
+            // Free time is a board of its own - what is waiting on the player beside the budget, the
+            // story in a line, the house as cards and the other ways to spend the time - with its own
+            // footer, in place of everything below (EpisodeDirector.FreeTimeBoard.cs).
+            if (FreeTimeBoard(state)) return;
             // Who holds what this week, on one line, before whatever there is to decide: the stage
             // stands the strip and its badges down, so this is where the roles are read. The final
             // Head of Household's choice opens on its own gold head instead: the house is down to

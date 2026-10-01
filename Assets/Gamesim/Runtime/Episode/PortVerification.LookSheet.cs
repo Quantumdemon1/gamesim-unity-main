@@ -454,6 +454,11 @@ namespace Gamesim.Episode
             // A reply card is drawn before the week's situation: answer it, so the shot is the event.
             for (var card = ReplyCards.Pending(seasonDirector.Snapshot); card != null; card = ReplyCards.Pending(seasonDirector.Snapshot))
                 yield return ClickSeasonButton(EpisodeHud.ReplyCaption(ReplyCards.Replies(card.kind)[1].Label));
+            // Free time's board shows a story beat as a banner (EpisodeDirector.FreeTimeBoard.cs); its
+            // choices are the step Answer opens, as the season walk presses it. Opening it is view state.
+            var waiting = HouseEvents.Pending(seasonDirector.Snapshot);
+            if (waiting != null && waiting.IsStory && HasSeasonButton(EpisodeDirector.AnswerBeatCaption))
+                yield return ClickSeasonButton(EpisodeDirector.AnswerBeatCaption);
             shot.reason = "The event shows its involved houseguests and counts of known events. "
                 + "Those counts describe activity, commitments and game stakes, not private NPC feelings.";
         }

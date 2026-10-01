@@ -240,13 +240,42 @@ namespace Gamesim.Episode
                 words = 54f;
             }
 
-            var title = FixedText(objective, ObjectiveTitle(state), 14, UiTheme.Heading,
+            // Somebody waiting on the player takes the title's line, over the next stop (V2).
+            string waiting = WaitingLine(state);
+            var title = FixedText(objective, waiting ?? ObjectiveTitle(state), 14, UiTheme.Heading,
                 new Vector2(words, -7f), new Vector2(ObjectiveChipWidth - words - 12f, 19f));
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) title.font = semibold;
+            if (waiting != null) WaitingStyle(title);
             var next = FixedText(objective, NextStop(state), 14, Paper,
                 new Vector2(words, -27f), new Vector2(ObjectiveChipWidth - words - 12f, 20f));
             AutoSize(next, 11);
+        }
+
+        /// <summary>The objective's line when somebody is waiting on the player, by the name a test finds it by.</summary>
+        public const string ObjectiveWaitingName = "Objective waiting";
+
+        /// <summary>
+        /// What the objective says in its title's place while something waits on the player
+        /// (ACTIONS-DEALS-ALLIANCES-PLAN V2): "Alex has an offer for you", "2 offers waiting", or how
+        /// many stories wait (<see cref="WaitingOnYou.ObjectiveLine(EpisodeState)"/>). Null when
+        /// nothing does, and at the endgame, whose titles are the season's own and keep their words.
+        /// Only what was put to the player: never anything between two houseguests.
+        /// </summary>
+        public static string WaitingLine(EpisodeState state) =>
+            state == null || IsEndgame(state) ? null : WaitingOnYou.ObjectiveLine(state);
+
+        /// <summary>
+        /// The waiting line on one line in the title's box: a name is longer than the words it
+        /// replaces, so it may shrink to the floor the next stop shrinks to rather than wrap out of
+        /// a box that holds one line, and at the larger text it is fitted to the same box.
+        /// </summary>
+        private static void WaitingStyle(TMP_Text line)
+        {
+            line.name = ObjectiveWaitingName;
+            line.textWrappingMode = TextWrappingModes.NoWrap;
+            line.overflowMode = TextOverflowModes.Ellipsis;
+            AutoSize(line, 11);
         }
 
         /// <summary>
@@ -259,7 +288,9 @@ namespace Gamesim.Episode
             var objective = Chrome("Objective", canvas.transform);
             Anchor(objective, new Vector2(0, 1), new Vector2(0, 1), new Vector2(LeftColumnX, -IconRail.Top),
                 new Vector2(ObjectiveWidth, 238f));
-            CardHeading(objective, ObjectiveTitle(state));
+            string waiting = WaitingLine(state);
+            var heading = CardHeading(objective, waiting ?? ObjectiveTitle(state));
+            if (waiting != null) WaitingStyle(heading);
             FixedText(objective, NextStop(state), 18, Paper, new Vector2(18f, -44f), new Vector2(294f, 48f));
             ActionChip(objective, state, -94f);
             FixedButton(objective,"Go to episode screen",new Vector2(18,-126),new Vector2(294,44),director.GoToStation);

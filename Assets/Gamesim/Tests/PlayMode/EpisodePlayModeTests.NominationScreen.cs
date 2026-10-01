@@ -165,6 +165,24 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The outcome's footer (ACTIONS-DEALS-ALLIANCES-PLAN V2). Continuing moves the week on to the
+        /// veto's window, and under the week's windows this one's seats do not carry: the fixture
+        /// spent none of them, so what that costs holds the strip, outranking what comes next. What
+        /// comes next keeps its words, the outcome's own.
+        /// </summary>
+        private void AssertOutcomeFooter(string upNext, string where)
+        {
+            var state = director.Snapshot;
+            Assert.That(EpisodeDirector.NominationUpNext(state, state.Find(state.hohId)), Is.EqualTo(upNext), where + ": what comes next.");
+            Assert.That(WaitingOnYou.AdvanceNote(state), Is.EqualTo(EpisodeEngine.AfterHoHSeats + " unused actions will be lost."),
+                where + ": continuing closes the window the fixture spent none of.");
+            var words = FooterWords();
+            Assert.That(words.name, Is.EqualTo(EpisodeDirector.MovingOnCostsName), where + ": what moving on costs outranks what comes next.");
+            Assert.That(words.text, Is.EqualTo(WaitingOnYou.AdvanceNote(state)), where);
+            Assert.That(words.color, Is.EqualTo(UiTheme.Warning), where + ": in the warning colour.");
+        }
+
+        /// <summary>
         /// The ceremony before the names, in a house of eight and of sixteen at both text sizes: the
         /// Head of Household's step done and the ceremony current in the tracker, the crown on the
         /// HOH card, the house's pointer in window wording, every houseguest a face with the crown
@@ -531,11 +549,11 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(faces.Find("Face · " + hoh.name), Is.Not.Null, where + ": and who put them there.");
                     if (block != NominationBlock.Player)
                     {
-                        Assert.That(FooterWords().text, Is.EqualTo("Up next: the Power of Veto player selection. The Head of Household and both nominees play by right."), where);
+                        AssertOutcomeFooter("Up next: the Power of Veto player selection. The Head of Household and both nominees play by right.", where);
                         return;
                     }
                     Assert.That(StatusValue("OBJECTIVE"), Is.EqualTo("Get off the block"), where);
-                    Assert.That(FooterWords().text, Is.EqualTo("Up next: the Power of Veto player selection. Nominees play by right."), where);
+                    AssertOutcomeFooter("Up next: the Power of Veto player selection. Nominees play by right.", where);
                     var own = faces.Find("Face · " + you.name).Cast<Transform>().Select(child => child.GetComponent<TMP_Text>()).First(text => text != null);
                     Assert.That(own.text, Is.EqualTo(HudPrimitives.WithYou(you.name, true)), where + ": the player's face says it is theirs, and keeps the name it is found by.");
                 });

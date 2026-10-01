@@ -47,7 +47,15 @@ namespace Gamesim.Episode
         private RectTransform strategyHeader, footerStrip, footerSecondary;
         private float strategyHeaderUsed;
         private TMP_Text footerWords;
-        private bool footerWarns;
+        private FooterRank footerRank;
+
+        /// <summary>
+        /// What the footer strip may say, lowest first: what comes next; what moving on costs (the
+        /// offers it lets lapse, the window's unused actions); and what moving on lets pass, the
+        /// storylines' warning. The strip says one line a render: a line never takes it from a
+        /// higher rank, and a later line of the same rank does.
+        /// </summary>
+        public enum FooterRank { UpNext, Notice, Warning }
 
         /// <summary>What a rebuild throws away with the panel.</summary>
         private void ForgetStrategyStage()
@@ -55,7 +63,7 @@ namespace Gamesim.Episode
             strategyHeader = footerStrip = footerSecondary = null;
             strategyHeaderUsed = 0f;
             footerWords = null;
-            footerWarns = false;
+            footerRank = FooterRank.UpNext;
         }
 
         /// <summary>
@@ -337,20 +345,28 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The footer's strip on the strategy stage (mockup 72's Up next): a line in the accent of
-        /// what comes next or, when <paramref name="warning"/>, what moving on costs in the warning
+        /// what comes next or, when <paramref name="warning"/>, what moving on lets pass in the warning
         /// colour - which outranks it, so an Up next line never covers a warning. The words are one
         /// label named <paramref name="name"/>, so the warning keeps the name a test finds it by. Off
         /// the strategy stage the line is a paragraph in the column, where such a line always was.
         /// </summary>
-        public void PinnedNote(string words, string name, bool warning)
+        public void PinnedNote(string words, string name, bool warning) =>
+            PinnedNote(words, name, warning ? FooterRank.Warning : FooterRank.UpNext, warning);
+
+        /// <summary>
+        /// A line for the footer's strip at its <paramref name="rank"/> (<see cref="FooterRank"/>):
+        /// it takes the strip unless a line of a higher rank already holds it this render, in the
+        /// warning colour when <paramref name="warningColour"/>, in the accent otherwise.
+        /// </summary>
+        public void PinnedNote(string words, string name, FooterRank rank, bool warningColour)
         {
             if (string.IsNullOrEmpty(words)) return;
             if (modal == null || activityLayout != ActivityLayout.Strategy)
             {
-                NamedParagraph(name ?? UpNextName, words, warning ? UiTheme.Warning : Accent);
+                NamedParagraph(name ?? UpNextName, words, warningColour ? UiTheme.Warning : Accent);
                 return;
             }
-            if (footerStrip != null && footerWarns && !warning) return;
+            if (footerStrip != null && rank < footerRank) return;
             float s = FontScale, height = PinnedHeight * s;
             if (footerStrip == null)
             {
@@ -366,9 +382,9 @@ namespace Gamesim.Episode
                 Stretch(footerWords.rectTransform, 14f * s + (glyph != null ? side + 12f * s : 0f), 6f * s, 14f * s, 6f * s);
             }
             footerWords.text = Localisation.Text(words);
-            footerWords.color = warning ? UiTheme.Warning : Accent;
+            footerWords.color = warningColour ? UiTheme.Warning : Accent;
             footerWords.name = name ?? UpNextName;
-            footerWarns = warning;
+            footerRank = rank;
             LayoutStrategyFooter();
             ApplyPinnedInset();
         }

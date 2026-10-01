@@ -391,10 +391,17 @@ namespace Gamesim.Tests.PlayMode
             }
 
             // How far west the mesh runs along the doorway's middle.
-            Assert.That(NavMesh.SamplePosition(new Vector3(-11.2f, 0f, -8.5f), out var inside, 0.5f, filter), Is.True, "The room's floor in front of the door is on the NavMesh.");
-            NavMesh.Raycast(inside.position, new Vector3(-14.2f, inside.position.y, -8.5f), out var westEdge, filter);
-            report.Add("  the mesh's west edge along z -8.5: x " + westEdge.position.x.ToString("F2"));
-            if (westEdge.position.x > -13.05f) failures.Add("the mesh stops at x " + westEdge.position.x.ToString("F2") + ", east of -13.05");
+            if (NavMesh.SamplePosition(new Vector3(-11.2f, 0f, -8.5f), out var inside, 0.5f, filter))
+            {
+                NavMesh.Raycast(inside.position, new Vector3(-14.2f, inside.position.y, -8.5f), out var westEdge, filter);
+                report.Add("  the mesh's west edge along z -8.5: x " + westEdge.position.x.ToString("F2"));
+                if (westEdge.position.x > -13.05f) failures.Add("the mesh stops at x " + westEdge.position.x.ToString("F2") + ", east of -13.05");
+            }
+            else
+            {
+                report.Add("  the mesh's west edge: not measured, (-11.20, -8.50) is off the NavMesh");
+                failures.Add("the floor in front of the door is off the NavMesh");
+            }
 
             // Both red chairs' routes to the vestibule.
             var vestibuleMark = new Vector3(-13.15f, 0f, -8.5f);

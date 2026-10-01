@@ -121,6 +121,7 @@
     <Compile Include="$(EditMode)WritingPassTests.cs" />
     <Compile Include="$(EditMode)YourWeekTests.cs" />
     <Compile Include="$(EditMode)KnownBallotsTests.cs" />
+    <Compile Include="$(EditMode)BallotPrivacyTests.cs" />
 
     <!--
       One file from outside the simulation, because it is as Unity-free as the simulation is: the

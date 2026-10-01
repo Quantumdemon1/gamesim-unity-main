@@ -6,39 +6,42 @@ using Gamesim.Simulation;
 namespace Gamesim.Presentation
 {
     /// <summary>
-    /// The season's eviction votes, as the player's character can know them: read back out of the
-    /// public record, one entry a week.
+    /// The season's eviction votes, as the player's character can know them: one record a week, the
+    /// count from the ledger and the ballots from <see cref="KnownBallots"/>.
     ///
     /// <para>The notebook's vote page read <see cref="EpisodeState.votes"/>, which is the current
     /// week's ballot box: the engine clears it when the week after an eviction begins. So from the
     /// second week's first competition the page said "Nobody has voted yet this season" over a
-    /// season whose first vote had evicted somebody. Every eviction ballot is published at the
-    /// reveal as a public "vote-reveal" event, after the public "eviction" line, and those events
-    /// survive the week - that is what this reads. Nothing here changes the simulation.</para>
+    /// season whose first vote had evicted somebody. It then read the reveal's public lines, which
+    /// named every ballot. The reveal now reads the count and nothing else (UI-UX-PASS-PLAN B0): the
+    /// count survives in the ledger's power row, and a ballot is on the record only as the player
+    /// knows it - their own, the Head of Household's tie-break, what the count proves, what they were
+    /// told, what a save from before kept in the open - each with its basis; the rest are unknown
+    /// slots that name nobody. Nothing here changes the simulation.</para>
     ///
-    /// <para>What is known, by the game's own rules: the player's own ballot from the moment it is
-    /// cast; after the reveal, every ballot with its public reason and the result; the final Head of
-    /// Household's choice. Other ballots in a vote not yet revealed are not known, and this never
-    /// reads <see cref="EpisodeState.votes"/> for anyone but the player. Jury ballots belong to the
-    /// finale and the season report, not here.</para>
-    ///
-    /// <para>The event log keeps the last 256 entries, so a long season's early weeks roll off it.
-    /// A week whose eviction line is gone is said to be missing rather than guessed at, and ballots
-    /// that survive without their eviction line carry no tally.</para>
+    /// <para>The event log keeps the last 256 entries; the ledger outlives it, so a week's count is
+    /// on the record long after its lines have rolled off. Only a save without a ledger row for a
+    /// week whose lines are gone is said to be missing.</para>
     /// </summary>
     public static class VoteRecords
     {
         /// <summary>The engine's reason on the player's own ballot, which says nothing to them.</summary>
-        public const string PlayerReason = "Player's decision";
-        private const string TieBreakPrefix = "HoH tie-break: ";
-        private const string Evicts = " voted to evict ";
+        public const string PlayerReason = KnownBallots.PlayerReason;
 
         public sealed class Ballot
         {
+            /// <summary>Null on an unknown slot, which names nobody.</summary>
             public string VoterId, VoterName, TargetId, TargetName;
-            /// <summary>The voter's public reason; null on the player's own ballot.</summary>
+            /// <summary>The voter's public reason, where a line read in the open carried one; null otherwise, and on the player's own.</summary>
             public string Reason;
             public bool ByPlayer, AgainstPlayer, TieBreak;
+            /// <summary>One of <see cref="KnownBallots.Basis"/>; <see cref="KnownBallots.Basis.Unknown"/> on a slot.</summary>
+            public string Basis = KnownBallots.Basis.Unknown;
+            /// <summary>What the voter said, where the ballot is known by a claim; null otherwise.</summary>
+            public string SaidName;
+            /// <summary>A claim the reveal caught out: they said one name and cast the other.</summary>
+            public bool Lied;
+            public bool Known => TargetId != null;
         }
 
         public sealed class Tally
@@ -50,24 +53,27 @@ namespace Gamesim.Presentation
         public sealed class Record
         {
             public int Week;
-            /// <summary>Null when the week's eviction line has rolled off the log.</summary>
+            /// <summary>Null when the week's eviction is neither in the log nor in the ledger.</summary>
             public string EvictedName;
             public bool EvictedIsPlayer;
             /// <summary>Decided by the final Head of Household rather than by a vote.</summary>
             public bool FinalDecision;
-            /// <summary>Whether the week's eviction line survives, so its ballots are all there.</summary>
+            /// <summary>Whether the week's result is on the record: its eviction line, or the ledger's row with the count.</summary>
             public bool Complete;
+            /// <summary>Every ballot cast: the known ones first, then an unknown slot for each the player cannot place.</summary>
             public readonly List<Ballot> Ballots = new List<Ballot>();
-            /// <summary>Votes per nominee, the tie-break excluded as the engine counts them; empty unless complete.</summary>
+            /// <summary>Votes per nominee from the ledger's count, the tie-break excluded as the engine counts them; empty unless complete.</summary>
             public readonly List<Tally> Counts = new List<Tally>();
-            public bool TieBroken => Ballots.Any(b => b.TieBreak);
+            public bool TieBroken;
+            public int Known => Ballots.Count(b => b.Known);
+            public int Unknown => Ballots.Count(b => !b.Known);
         }
 
         public sealed class Book
         {
             /// <summary>Newest first.</summary>
             public readonly List<Record> Records = new List<Record>();
-            /// <summary>Evictions the season has had whose record is no longer in the log.</summary>
+            /// <summary>Evictions the season has had whose record is neither in the log nor in the ledger.</summary>
             public int Missing;
             /// <summary>Whether an eviction vote is under way and not yet revealed.</summary>
             public bool VoteInProgress;
@@ -82,33 +88,46 @@ namespace Gamesim.Presentation
             var book = new Book();
             if (state == null) return book;
 
-            var weeks = state.events
-                .Where(e => e.kind == "eviction" || e.kind == "final-eviction" || e.kind == "vote-reveal")
+            var lines = state.events
+                .Where(e => e.kind == "eviction" || e.kind == "final-eviction")
                 .Where(e => e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId))
-                .GroupBy(e => e.week)
-                .OrderByDescending(g => g.Key);
-            foreach (var week in weeks)
+                .ToList();
+            var weeks = new SortedSet<int>(lines.Select(e => e.week));
+            foreach (int week in KnownBallots.Weeks(state)) weeks.Add(week);
+            foreach (var row in state.ledger?.power ?? new List<PowerRow>())
+                if (row != null && row.evicteeId != null) weeks.Add(row.week);
+
+            foreach (int week in weeks.Reverse())
             {
-                var lines = week.OrderBy(e => e.sequence).ToList();
-                var record = new Record { Week = week.Key };
-                var gone = lines.FirstOrDefault(e => e.kind == "eviction" || e.kind == "final-eviction");
+                var record = new Record { Week = week };
+                var sheet = KnownBallots.Read(state, week);
+                if (sheet.pending) continue;
+                var gone = lines.Where(e => e.week == week).OrderBy(e => e.sequence).FirstOrDefault();
+                var evictee = state.Find(sheet.evictedId);
                 if (gone != null)
                 {
                     record.Complete = true;
                     record.FinalDecision = gone.kind == "final-eviction";
                     // The engine names the player too ("You are evicted..." for the default "You").
                     record.EvictedName = record.FinalDecision ? FinalEvictee(state, gone.text) : WeeklyRecap.Subject(state, gone.text);
-                    record.EvictedIsPlayer = record.EvictedName != null && record.EvictedName == state.Find(state.playerId)?.name;
                 }
-                string hoh = WeeklyRecap.Build(state, week.Key).headOfHousehold;
-                foreach (var line in lines.Where(e => e.kind == "vote-reveal"))
+                else if (evictee != null || sheet.final)
                 {
-                    var ballot = ReadBallot(state, line.text, hoh);
-                    if (ballot != null) record.Ballots.Add(ballot);
+                    // The ledger outlives the log: the row says who went, and by what count.
+                    record.Complete = true;
+                    record.FinalDecision = sheet.final;
+                    record.EvictedName = evictee?.name ?? state.Find(state.ledger?.power?.LastOrDefault(p => p.week == week)?.evicteeId)?.name;
                 }
-                if (record.Complete)
-                    foreach (var group in record.Ballots.Where(b => !b.TieBreak).GroupBy(b => b.TargetName).OrderByDescending(g => g.Count()))
-                        record.Counts.Add(new Tally { Name = group.Key, Votes = group.Count() });
+                record.EvictedIsPlayer = record.EvictedName != null && record.EvictedName == state.Find(state.playerId)?.name;
+                if (!record.FinalDecision)
+                {
+                    foreach (var ballot in sheet.ballots) record.Ballots.Add(From(state, ballot));
+                    if (sheet.Revealed)
+                        for (int i = 0; i < sheet.nominees.Count; i++)
+                            record.Counts.Add(new Tally { Name = state.Find(sheet.nominees[i])?.name ?? sheet.nominees[i], Votes = sheet.tally[i] });
+                    record.Counts.Sort((a, b) => b.Votes.CompareTo(a.Votes));
+                    record.TieBroken = sheet.tieBroken;
+                }
                 if (record.Complete || record.Ballots.Count > 0) book.Records.Add(record);
             }
 
@@ -118,54 +137,36 @@ namespace Gamesim.Presentation
             if (state.phase == EpisodePhase.Eviction && !state.evictionResolved)
             {
                 book.VoteInProgress = true;
-                var own = state.votes?.FirstOrDefault(v => v.voterId == state.playerId);
-                if (own != null)
-                    book.OwnPendingBallot = new Ballot
-                    {
-                        VoterId = state.playerId, VoterName = state.Find(state.playerId)?.name,
-                        TargetId = own.targetId, TargetName = state.Find(own.targetId)?.name, ByPlayer = true,
-                    };
+                var pending = KnownBallots.Read(state, state.week).ballots.FirstOrDefault(b => b.voterId == state.playerId);
+                if (pending != null) book.OwnPendingBallot = From(state, pending);
             }
             return book;
         }
 
         /// <summary>
-        /// One ballot out of "Maya Hassan voted to evict Casey Wilson. Reason" - the voter and the
-        /// target by the cast's names (longest first, so "Jamie Roberts" is not "Jamie"), "you" for
-        /// the player as the engine writes it. Null when the line does not read.
+        /// One ballot out of "Maya Hassan voted to evict Casey Wilson. Reason", as a save from before
+        /// ballots went private holds them in the open (<see cref="KnownBallots.ReadRevealLine"/>).
+        /// Null when the line does not read.
         /// </summary>
         public static Ballot ReadBallot(EpisodeState state, string text, string headOfHousehold = null)
         {
-            if (state == null || string.IsNullOrEmpty(text)) return null;
-            string voter = WeeklyRecap.Subject(state, text);
-            if (voter == null || !text.Substring(voter.Length).StartsWith(Evicts, StringComparison.Ordinal)) return null;
-            string rest = text.Substring(voter.Length + Evicts.Length);
-            var player = state.Find(state.playerId);
-            string target;
-            bool againstPlayer = false;
-            if (rest.StartsWith("you.", StringComparison.Ordinal) || rest.StartsWith("yourself.", StringComparison.Ordinal))
-            {
-                target = player?.name; againstPlayer = true;
-                rest = rest.Substring(rest.IndexOf('.') + 1);
-            }
-            else
-            {
-                target = state.contestants.Where(c => !string.IsNullOrEmpty(c.name) && rest.StartsWith(c.name + ".", StringComparison.Ordinal))
-                    .OrderByDescending(c => c.name.Length).FirstOrDefault()?.name;
-                if (target == null) return null;
-                rest = rest.Substring(target.Length + 1);
-                againstPlayer = player != null && target == player.name;
-            }
-            string reason = rest.Trim();
-            bool tieBreak = reason.StartsWith(TieBreakPrefix, StringComparison.Ordinal) || (headOfHousehold != null && voter == headOfHousehold);
-            if (reason.StartsWith(TieBreakPrefix, StringComparison.Ordinal)) reason = reason.Substring(TieBreakPrefix.Length).Trim();
-            bool byPlayer = player != null && voter == player.name;
-            if (reason == PlayerReason || reason.Length == 0) reason = null;
+            if (state == null) return null;
+            string hohId = headOfHousehold == null ? null : state.contestants.FirstOrDefault(c => c.name == headOfHousehold)?.id;
+            var read = KnownBallots.ReadRevealLine(state, text, hohId);
+            return read == null ? null : From(state, read);
+        }
+
+        private static Ballot From(EpisodeState state, KnownBallots.Ballot ballot)
+        {
+            if (ballot == null) return null;
+            var voter = state.Find(ballot.voterId);
+            var target = state.Find(ballot.targetId);
             return new Ballot
             {
-                VoterId = state.contestants.FirstOrDefault(c => c.name == voter)?.id, VoterName = voter,
-                TargetId = state.contestants.FirstOrDefault(c => c.name == target)?.id, TargetName = target,
-                Reason = reason, ByPlayer = byPlayer, AgainstPlayer = againstPlayer, TieBreak = tieBreak,
+                VoterId = ballot.voterId, VoterName = voter?.name, TargetId = ballot.targetId, TargetName = target?.name,
+                Reason = ballot.reason, ByPlayer = ballot.voterId == state.playerId, AgainstPlayer = ballot.targetId == state.playerId,
+                TieBreak = ballot.basis == KnownBallots.Basis.TieBreak, Basis = ballot.basis,
+                SaidName = state.Find(ballot.saidId)?.name, Lied = ballot.Lied,
             };
         }
 

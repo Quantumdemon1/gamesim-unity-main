@@ -113,7 +113,9 @@ namespace Gamesim.Tests.EditMode
             var unnamed = read.Single(c => c.id == "d-unnamed");
             Assert.That((unnamed.brokenById, unnamed.status, unnamed.outcome), Is.EqualTo(((string)null, "broken", CommitmentsRead.Outcomes.Broken)),
                 "Deals do not record who broke them: where the record cannot say, nobody is blamed.");
-            Assert.That(read.Single(c => c.id == "d-block").status, Is.EqualTo("fell apart"), "A voting block is settled by both at once.");
+            var block = read.Single(c => c.id == "d-block");
+            Assert.That((block.status, block.outcome, block.brokenById), Is.EqualTo((KnownBallots.Unresolved, CommitmentsRead.Outcomes.Unresolved, (string)null)),
+                "A voting block is settled by both ballots at once, and the other's is not the player's to know (decision 4).");
         }
 
         [Test]

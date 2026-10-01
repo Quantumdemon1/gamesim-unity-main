@@ -81,7 +81,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Of(s, b.id).band, Is.EqualTo(JuryHouseRead.Wavering), "A plea refused.");
 
             s.ledger.ballots.Add(new BallotRow { week = 5, voterId = s.playerId, targetId = c.id });
-            Assert.That(Of(s, c.id).band, Is.EqualTo(JuryHouseRead.Wavering), "A vote to evict them, in the open.");
+            var row = new PowerRow { week = 5, hohId = Finalist(s, 0).id, nominees = new List<string> { c.id, Finalist(s, 1).id }, evicteeId = c.id, tally = new List<int> { 2, 1 } };
+            s.ledger.power.Add(row);
+            Assert.That(Of(s, c.id).band, Is.EqualTo(JuryHouseRead.Supportive), "A vote to evict them the count did not prove is nothing they can hold against you.");
+            row.tally = new List<int> { 3, 0 };
+            Assert.That(Of(s, c.id).band, Is.EqualTo(JuryHouseRead.Wavering), "A vote to evict them the count showed: unanimous, so yours among them.");
 
             var before = FinalThree();
             var d = Juror(before, 0);
@@ -189,7 +193,8 @@ namespace Gamesim.Tests.EditMode
             s.deals.Add(new DealState { id = "d", type = DealKind.FinalTwo, proposerId = juror.id, recipientId = s.playerId, status = DealStatus.Active, week = 3 });
             s.promises.Add(new PromiseState { id = "p", fromId = juror.id, toId = s.playerId, kind = PromiseKind.Safety, status = PromiseStatus.Fulfilled, week = 3 });
             s.ledger.ballots.Add(new BallotRow { week = 4, voterId = s.playerId, targetId = juror.id });
-            s.ledger.power.Add(new PowerRow { week = 4, hohId = hoh.id, nominees = new List<string> { juror.id, Juror(s, 1).id }, evicteeId = juror.id, tally = new List<int> { 3, 1 } });
+            // Unanimous, so the count showed them the player's ballot among the rest.
+            s.ledger.power.Add(new PowerRow { week = 4, hohId = hoh.id, nominees = new List<string> { juror.id, Juror(s, 1).id }, evicteeId = juror.id, tally = new List<int> { 4, 0 } });
             s.ledger.power.Add(new PowerRow { week = 6, hohId = s.playerId, nominees = new List<string> { Juror(s, 1).id, Juror(s, 2).id }, evicteeId = Juror(s, 2).id, tally = new List<int> { 1, 2 } });
             s.ledger.competitions.Add(new CompetitionRow { week = 7, kind = "Veto", placement = 1, entry = "played" });
             s.ledger.competitions.Add(new CompetitionRow { week = 3, kind = "HoH", placement = 1, entry = "played" });
@@ -200,7 +205,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(read.knows, Does.Contain("You shared The Pact, now ended."));
             Assert.That(read.knows, Does.Contain("Final Two Deal: agreed."));
             Assert.That(read.knows, Does.Contain("They promised you safety: kept."));
-            Assert.That(read.knows, Does.Contain("You voted to evict them once, in the open."));
+            Assert.That(read.knows, Does.Contain("You voted to evict them once, and the count showed it."));
             Assert.That(read.missing, Does.Contain("Week 6: you held the house."));
             Assert.That(read.missing, Does.Contain("Week 7: you won the veto."));
             Assert.That(read.missing.Any(line => line.StartsWith("Week 3")), Is.False, "Before they left, they saw it.");
@@ -341,9 +346,16 @@ namespace Gamesim.Tests.EditMode
             a.name = "Casey Lee"; b.name = "Robin Diaz"; c.name = "Casey Moore";
             Read(s, a.id, 3, 40);
             s.ledger.ballots.Add(new BallotRow { week = 5, voterId = s.playerId, targetId = b.id });
+            // The count showed them the ballot: unanimous.
+            s.ledger.power.Add(new PowerRow { week = 5, hohId = Finalist(s, 0).id, nominees = new List<string> { b.id, Finalist(s, 1).id }, evicteeId = b.id, tally = new List<int> { 2, 0 } });
             Assert.That(JuryHouseRead.ShortName(s, a.id), Is.EqualTo("Casey Lee"), "Two Caseys on the jury: full names.");
             Assert.That(JuryHouseRead.ShortName(s, b.id), Is.EqualTo("Robin"));
-            Assert.That(JuryHouseRead.Read(s).highlights, Is.EqualTo(new[] { "Week 5 · Robin · you voted to evict them", "Week 3 · Casey Lee · your read: warm on you" }));
+            Assert.That(JuryHouseRead.Read(s).highlights, Is.EqualTo(new[]
+            {
+                "Week 5 · Robin · left in " + FinalistRead.FirstName(Finalist(s, 0).name) + "'s week",
+                "Week 5 · Robin · you voted to evict them",
+                "Week 3 · Casey Lee · your read: warm on you",
+            }));
         }
 
         [Test]

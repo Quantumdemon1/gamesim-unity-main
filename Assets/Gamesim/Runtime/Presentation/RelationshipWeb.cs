@@ -951,7 +951,10 @@ namespace Gamesim.Presentation
                 foreach (var line in between.Take(ListLimit))
                     TextRow(column, "handshake", UiTheme.AccentDeep, line, scale, font);
 
-                var known = state.memories.Where(m => m.ownerId == state.playerId && m.subjectId == focus.id)
+                // A memory of a vote deal's or a vote promise's ending tells the ballot that ended
+                // it: left out while that ballot is not the player's to know (KnownBallots; decision 4).
+                var known = state.memories.Where(m => m.ownerId == state.playerId && m.subjectId == focus.id
+                        && !KnownBallots.TellsAnUnknownBallot(state, focus.id, m.text, m.week))
                     .OrderByDescending(m => m.week).ToList();
                 SectionHeading(column, KnownHeading, known.Count, scale, font);
                 if (known.Count == 0) Note(column, "Nothing recorded yet.", scale, font);
@@ -961,7 +964,8 @@ namespace Gamesim.Presentation
 
                 var record = state.relationships.FirstOrDefault(r => r.fromId == state.playerId && r.toId == focus.id);
                 var history = record != null
-                    ? record.events.Where(e => !string.IsNullOrEmpty(e.description)).OrderByDescending(e => e.sequence).ToList()
+                    ? record.events.Where(e => !string.IsNullOrEmpty(e.description)
+                        && !KnownBallots.TellsAnUnknownBallot(state, focus.id, e.description, e.week)).OrderByDescending(e => e.sequence).ToList()
                     : new List<RelationshipEventState>();
                 SectionHeading(column, HistoryHeading, history.Count, scale, font);
                 if (history.Count == 0) Note(column, "Nothing yet.", scale, font);

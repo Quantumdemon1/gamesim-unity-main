@@ -660,18 +660,21 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// How the evicted leave things with the player, as far as the player knows (MOCKUP-PASS-PLAN
-        /// decision 6A): a deal between them, the player's own vote or nomination against them, the
-        /// player's vote to keep them, or none of these. Never their hidden feeling toward the
-        /// player, which the line used to give away as they walked out to the jury.
+        /// How the evicted leave things with the player, as far as the evicted could know
+        /// (MOCKUP-PASS-PLAN decision 6A; UI-UX-PASS-PLAN B0): a deal between them, the player's
+        /// nomination of them, the player's ballot where the count proved it to the one going, or
+        /// none of these. Never their hidden feeling toward the player, which the line used to give
+        /// away as they walked out to the jury, and never a ballot the reveal kept private.
         /// </summary>
         public enum GoodbyeKind { Neutral, Warm, Cold, Dealt }
 
         /// <summary>
-        /// The goodbye's tone, from what the player knows: a deal between them that still binds;
-        /// otherwise cold for the player's ballot against them, or for a player Head of Household
-        /// with them on the block; warm for the player's ballot for the other nominee; neutral
-        /// otherwise. Pure: it reads the committed state and draws nothing.
+        /// The goodbye's tone, from what the evicted could know: a deal between them that still
+        /// binds; otherwise cold for a player Head of Household with them on the block, or for the
+        /// player's ballot against them where the count proved it from the evicted's own seat
+        /// (<see cref="KnownBallots.ProvenFor"/>: a unanimous vote, or the player's tie-break); warm
+        /// for the player's ballot for the other nominee, proven the same way; neutral otherwise.
+        /// Pure: it reads the committed state and draws nothing.
         /// </summary>
         public static GoodbyeKind GoodbyeTone(EpisodeState state, string id)
         {
@@ -680,10 +683,11 @@ namespace Gamesim.Episode
             bool dealt = state.deals != null && state.deals.Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
                 && ((d.proposerId == id && d.recipientId == you) || (d.proposerId == you && d.recipientId == id)));
             if (dealt) return GoodbyeKind.Dealt;
-            var ballot = state.votes != null ? state.votes.FirstOrDefault(vote => vote.voterId == you) : null;
             bool nominated = state.hohId == you && state.nominees != null && state.nominees.Contains(id);
-            if (nominated || (ballot != null && ballot.targetId == id)) return GoodbyeKind.Cold;
-            if (ballot != null && !string.IsNullOrEmpty(ballot.targetId)) return GoodbyeKind.Warm;
+            if (nominated) return GoodbyeKind.Cold;
+            KnownBallots.ProvenFor(state, state.week, id).TryGetValue(you, out var yours);
+            if (yours == id) return GoodbyeKind.Cold;
+            if (!string.IsNullOrEmpty(yours)) return GoodbyeKind.Warm;
             return GoodbyeKind.Neutral;
         }
 

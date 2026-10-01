@@ -504,7 +504,7 @@ namespace Gamesim.Episode
             if (votesTab == VotesTab.Read) RenderVoteRead(state);
             else if (votesTab == VotesTab.Results) RenderEvictionResults(book);
             else RenderKnownBallots(state, book);
-            hud.NotebookFooter("Every eviction ballot is made public when its vote is revealed. Until then the only ballot you know is your own.",
+            hud.NotebookFooter("A reveal reads only the count. The ballots you know are your own, the Head of Household's tie-break, what the count proves and what you were told; the rest remain private.",
                 "House activities", OpenHouseActivities);
         }
 
@@ -587,8 +587,8 @@ namespace Gamesim.Episode
                 hud.RecordCard(EpisodeHud.VotesInProgressName, "THIS WEEK \u00b7 VOTE IN PROGRESS",
                     own != null ? "Your ballot is recorded." : "The house is voting.", UiTheme.Paper,
                     new[] { own != null
-                        ? "You voted to evict " + own.TargetName + ". The others are private until the reveal."
-                        : "Every ballot is private until the reveal." });
+                        ? "You voted to evict " + own.TargetName + ". The others are theirs; the reveal reads only the count."
+                        : "Every ballot is private. The reveal reads only the count." });
             }
             foreach (var record in book.Records)
             {
@@ -599,7 +599,7 @@ namespace Gamesim.Episode
                 {
                     headline = "The result is no longer in your notebook";
                     ink = UiTheme.Muted;
-                    lines.Add("This week's ballots survive under Known ballots. Without the result, no tally is given.");
+                    lines.Add("The ballots you know survive under Known ballots. Without the result, no tally is given.");
                 }
                 else
                 {
@@ -610,7 +610,7 @@ namespace Gamesim.Episode
                         lines.Add("Votes to evict: " + string.Join(" \u00b7 ", record.Counts.Select(c => c.Name + " " + c.Votes)));
                     if (record.TieBroken) lines.Add("The vote was tied; the Head of Household broke the tie.");
                     if (!record.FinalDecision && record.Ballots.Count > 0)
-                        lines.Add(record.Ballots.Count + (record.Ballots.Count == 1 ? " ballot" : " ballots") + " made public at the reveal, under Known ballots.");
+                        lines.Add(record.Known + " of " + record.Ballots.Count + (record.Ballots.Count == 1 ? " ballot" : " ballots") + " known, under Known ballots.");
                 }
                 hud.RecordCard(EpisodeHud.VoteRecordPrefix + record.Week,
                     "WEEK " + record.Week + (record.FinalDecision ? " \u00b7 FINAL DECISION" : " \u00b7 EVICTION"), headline, ink, lines);
@@ -646,27 +646,39 @@ namespace Gamesim.Episode
                 string eyebrow = "WEEK " + record.Week;
                 if (record.Complete && record.EvictedName != null)
                     eyebrow += " \u00b7 " + (record.EvictedIsPlayer ? "YOU WERE EVICTED" : record.EvictedName.ToUpperInvariant() + " EVICTED");
+                // The ballots the player knows, each tagged by how (KnownBallots.Basis), then an
+                // unknown slot for every ballot they cannot place - a count, never a name.
                 hud.BallotCard(EpisodeHud.BallotsPrefix + record.Week, eyebrow, record.Ballots.Select(ballot => new EpisodeHud.BallotLine
                 {
                     Voter = ballot.VoterId != null ? state.Find(ballot.VoterId) : null,
                     Words = BallotWords(ballot),
                     Reason = ballot.Reason,
-                    Tag = ballot.TieBreak ? "Head of Household's tie-break" : null,
+                    Tag = BallotTag(ballot),
                 }).ToList());
                 any = true;
             }
             if (!any)
                 hud.EmptyState("No known ballots", PackArt.KitEmptyVotes,
                     book.NoEvictionYet ? "No ballots are known yet." : "No ballots are recorded.",
-                    "Ballots are made public when each eviction vote is revealed.");
-            hud.LockNote(EpisodeHud.VotesPrivacyName, "Unknown individual ballots remain private.");
+                    "A reveal reads only the count. A ballot is yours to learn: your own, the tie-break, what the count proves, what you are told.");
+            hud.LockNote(EpisodeHud.VotesPrivacyName, "The ballots you have not learned remain private.");
         }
 
-        /// <summary>"Maya Hassan voted to evict Casey Wilson", with "you" where it is the player.</summary>
+        /// <summary>"Maya Hassan voted to evict Casey Wilson", with "you" where it is the player; "A ballot you do not know" on a slot.</summary>
         private static string BallotWords(VoteRecords.Ballot ballot)
         {
+            if (!ballot.Known) return "A ballot you do not know";
             if (ballot.ByPlayer) return "You voted to evict " + (ballot.AgainstPlayer ? "yourself" : ballot.TargetName);
             return ballot.VoterName + " voted to evict " + (ballot.AgainstPlayer ? "you" : ballot.TargetName);
+        }
+
+        /// <summary>How the player knows a ballot: its basis word, and a lie caught where the voter said otherwise.</summary>
+        private static string BallotTag(VoteRecords.Ballot ballot)
+        {
+            if (!ballot.Known) return "unknown";
+            string tag = ballot.TieBreak ? "Head of Household's tie-break" : KnownBallots.Basis.Word(ballot.Basis);
+            if (ballot.Lied && ballot.SaidName != null) tag += " \u00b7 said " + ballot.SaidName + ", a lie";
+            return tag;
         }
 
         /// <summary>Opens the notebook on a section as every panel opens: everything else closed, the house paused.</summary>

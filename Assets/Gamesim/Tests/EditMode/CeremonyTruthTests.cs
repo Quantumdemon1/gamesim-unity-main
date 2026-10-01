@@ -145,13 +145,21 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
             }
 
-            // The player's own ballot is.
+            // The player's own ballot is - and the evicted can know it only where the count proves
+            // it from their seat (UI-UX-PASS-PLAN B0): the reveal reads the count, not the ballots.
+            Assert.That(named.Count, Is.GreaterThanOrEqualTo(4), "A fourth houseguest to vote beside the player.");
+            state.evictionResolved = true;
             var ballot = new VoteState { voterId = state.playerId, targetId = leaving.id };
+            var theirs = new VoteState { voterId = named[3].id, targetId = other.id };
             state.votes.Add(ballot);
-            Assert.That(Line(), Is.EqualTo(first + cold + after), "Your vote to evict them is a glare,");
+            state.votes.Add(theirs);
+            Assert.That(Line(), Is.EqualTo(first + neutral + after), "A split count says nothing of your ballot to the one going.");
+            Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
+            theirs.targetId = leaving.id;
+            Assert.That(Line(), Is.EqualTo(first + cold + after), "A unanimous vote against them proves yours, and it is a glare,");
             Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Cold));
-            ballot.targetId = other.id;
-            Assert.That(Line(), Is.EqualTo(first + warm + after), "and your vote to keep them a last look.");
+            ballot.targetId = other.id; theirs.targetId = other.id;
+            Assert.That(Line(), Is.EqualTo(first + warm + after), "and a unanimous vote the other way proves your vote to keep them: a last look.");
             Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Warm));
             state.votes.Clear();
             state.votes.Add(new VoteState { voterId = other.id, targetId = leaving.id });

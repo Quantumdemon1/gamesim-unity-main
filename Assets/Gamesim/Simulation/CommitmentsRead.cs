@@ -39,11 +39,15 @@ namespace Gamesim.Simulation
             public static readonly string[] All = { Promise, Deal, Oath, Call };
         }
 
-        /// <summary>How a commitment ended, or that it has not.</summary>
+        /// <summary>
+        /// How a commitment ended, or that it has not. <see cref="Unresolved"/> is a vote deal, a
+        /// vote promise or an oath the other party settled by a ballot the player does not know: the
+        /// engine has judged it, and the player is told once they know the ballot (decision 4).
+        /// </summary>
         public static class Outcomes
         {
-            public const string Open = "open", Kept = "kept", Broken = "broken", Lapsed = "lapsed";
-            public static readonly string[] All = { Open, Kept, Broken, Lapsed };
+            public const string Open = "open", Kept = "kept", Broken = "broken", Lapsed = "lapsed", Unresolved = "unresolved";
+            public static readonly string[] All = { Open, Kept, Broken, Lapsed, Unresolved };
         }
 
         /// <summary>One commitment the player is a party to, as the page says it.</summary>
@@ -137,19 +141,22 @@ namespace Gamesim.Simulation
                 bool yours = p.fromId == player;
                 string other = yours ? p.toId : p.fromId;
                 if (other == player || s.Find(other) == null) continue;
+                // Their vote promise, ended by their ballot: told once the player knows it (decision 4).
+                bool withheld = !KnownBallots.PromiseOutcomeKnown(s, p);
                 var c = new Commitment
                 {
                     kind = Kinds.Promise, id = p.id, withId = other, yours = yours,
                     aboutId = p.kind == PromiseKind.Vote && s.Find(p.targetId) != null ? p.targetId : null,
                     title = (yours ? "Your " : "Their ") + PromiseNoun(p.kind),
                     week = p.week, untilWeek = Math.Max(0, p.expiresWeek),
-                    outcome = PromiseOutcome(p.status),
+                    outcome = withheld ? Outcomes.Unresolved : PromiseOutcome(p.status),
                     // A promise is one-sided: only whoever gave it can break it, and the engine
                     // breaks it only on their act (a nomination, a ballot, the final choice).
-                    brokenById = p.status == PromiseStatus.Broken ? p.fromId : null,
+                    brokenById = !withheld && p.status == PromiseStatus.Broken ? p.fromId : null,
                 };
                 c.binds = PromiseBinds(s, p, yours);
-                c.status = p.status == PromiseStatus.Broken ? (yours ? "broken by you" : "broken by them")
+                c.status = withheld ? KnownBallots.Unresolved
+                    : p.status == PromiseStatus.Broken ? (yours ? "broken by you" : "broken by them")
                     : p.status == PromiseStatus.Expired ? "lapsed" : HouseguestNotes.PromiseStanding(p.status);
                 c.term = Term(s, c);
                 into.Add(c);
@@ -165,17 +172,19 @@ namespace Gamesim.Simulation
                 bool yours = d.proposerId == player;
                 string other = yours ? d.recipientId : d.proposerId;
                 if (other == player || s.Find(other) == null) continue;
+                // A vote deal the other party settled by their ballot: told once the player knows it (decision 4).
+                bool withheld = !KnownBallots.DealOutcomeKnown(s, d);
                 var c = new Commitment
                 {
                     kind = Kinds.Deal, id = d.id, withId = other, yours = yours,
                     aboutId = DealKind.NamesATarget(d.type) && s.Find(d.targetId) != null ? d.targetId : null,
                     title = Capitalise(DealNoun(d.type)) + (yours ? " you proposed" : " they offered"),
                     week = d.week, untilWeek = Math.Max(0, d.expiresWeek),
-                    outcome = DealOutcome(d.status),
+                    outcome = withheld ? Outcomes.Unresolved : DealOutcome(d.status),
                 };
-                if (d.status == DealStatus.Broken) c.brokenById = FinalistRead.DealBreaker(s, d);
+                if (d.status == DealStatus.Broken && !withheld) c.brokenById = FinalistRead.DealBreaker(s, d);
                 c.binds = DealBinds(s, d);
-                c.status = DealStatusWord(d, yours, c.brokenById, player);
+                c.status = withheld ? KnownBallots.Unresolved : DealStatusWord(d, yours, c.brokenById, player);
                 c.term = Term(s, c);
                 into.Add(c);
             }
@@ -224,10 +233,14 @@ namespace Gamesim.Simulation
                     bool theirs = entry.reason.EndsWith(" you in week " + entry.week, StringComparison.Ordinal);
                     bool vote = entry.reason.StartsWith(OathBreachReason + "voting", StringComparison.Ordinal);
                     broken.Add(arc.npcId);
-                    var c = Oath(arc.npcId, "oath-broken:" + arc.npcId + ":" + entry.week, 0, Outcomes.Broken,
-                        (theirs ? "broken by them" : "broken by you") + (vote ? " with a vote" : " with a nomination"),
+                    // Their breach by a vote is their ballot: told once the player knows it (decision
+                    // 4). The house is told of an oath's breach in the open, so it is known while that
+                    // line is on the record; it is withheld only once the log has rolled past it.
+                    bool withheld = theirs && vote && !KnownBallots.Knows(s, entry.week, arc.npcId);
+                    var c = Oath(arc.npcId, "oath-broken:" + arc.npcId + ":" + entry.week, 0, withheld ? Outcomes.Unresolved : Outcomes.Broken,
+                        withheld ? KnownBallots.Unresolved : (theirs ? "broken by them" : "broken by you") + (vote ? " with a vote" : " with a nomination"),
                         "held until week " + entry.week, entry.week);
-                    c.brokenById = theirs ? arc.npcId : player;
+                    c.brokenById = withheld ? null : theirs ? arc.npcId : player;
                     into.Add(c);
                 }
             }

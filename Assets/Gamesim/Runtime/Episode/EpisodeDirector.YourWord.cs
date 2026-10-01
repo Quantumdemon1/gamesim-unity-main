@@ -227,7 +227,8 @@ namespace Gamesim.Episode
             {
                 case CommitmentsRead.Outcomes.Kept: return UiTheme.Allied;
                 case CommitmentsRead.Outcomes.Broken: return UiTheme.Conflict;
-                case CommitmentsRead.Outcomes.Lapsed: return UiTheme.Muted;
+                case CommitmentsRead.Outcomes.Lapsed:
+                case CommitmentsRead.Outcomes.Unresolved: return UiTheme.Muted;
                 default: return UiTheme.Paper;
             }
         }

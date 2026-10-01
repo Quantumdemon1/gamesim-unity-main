@@ -70,15 +70,17 @@ namespace Gamesim.Presentation
                 : Subject(state, gone.text);
             recap.evictionLine = gone?.text;
 
+            // Only what the player saw: an alliance or a deal between two other houseguests is
+            // theirs, logged to them alone, and never the player's news.
+            bool Seen(EpisodeEvent e) => e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId);
+            // The reveal's lines as the player heard them: the count, read to the house, and the
+            // player's own ballot, logged to them alone. Every other ballot's line is its voter's.
             recap.ballots = events
-                .Where(e => e.kind == "vote-reveal")
+                .Where(e => (e.kind == "vote-tally" || e.kind == "vote-reveal") && Seen(e))
                 .Select(e => e.text)
                 .ToList();
 
             recap.relationships = Movements(state, week);
-            // Only what the player saw: an alliance or a deal between two other houseguests is
-            // theirs, logged to them alone, and never the player's news.
-            bool Seen(EpisodeEvent e) => e.audienceIds == null || e.audienceIds.Count == 0 || e.audienceIds.Contains(state.playerId);
             recap.alliances = events.Where(e => e.kind == "alliance" && Seen(e)).Select(e => e.text).Take(LineLimit).ToList();
             recap.deals = events.Where(e => (e.kind == "deal" || e.kind == "deal-outcome") && Seen(e))
                 .Select(e => e.text).Take(LineLimit).ToList();

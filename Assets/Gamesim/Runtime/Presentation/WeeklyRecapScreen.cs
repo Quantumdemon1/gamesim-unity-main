@@ -531,8 +531,10 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// THE VOTE: a line of the count, then the evictee's votes and the other nominee's side by
-        /// side, one face to a ballot; the Head of Household's tie-break on its own line, outside the
-        /// count, as the engine counts it; and who did not vote, by the house's rule.
+        /// side - the count on each heading, and under it only the faces the player knows, each
+        /// tagged by how they know it (KnownBallots), with a line for the ballots they do not; the
+        /// Head of Household's tie-break on its own line, outside the count, as the engine counts
+        /// it; and who did not vote, by the house's rule.
         /// </summary>
         private float VoteSplit(RectTransform column, WeeklyRecap.Week recap, float width)
         {
@@ -546,13 +548,15 @@ namespace Gamesim.Presentation
                 : against + others > 0 ? Name(recap.evictedId) + " was evicted by a vote of " + against + "–" + others + "."
                 : Name(recap.evictedId) + " was evicted.";
             float y = pad + EndScreenKit.Heading(column, "The vote", summary, "gavel", pad, pad, width - pad * 2f);
-            if (recap.votes.Count == 0) return y + pad;
+            if (recap.votes.Count == 0 && recap.unknownBallots == 0) return y + pad;
             float half = (width - pad * 2f - 12f) * .5f;
             string other = recap.block.FirstOrDefault(id => id != recap.evictedId);
+            var toEvict = recap.votes.Where(v => !v.tieBreak && v.targetId == recap.evictedId).ToList();
+            var toKeep = recap.votes.Where(v => !v.tieBreak && v.targetId != recap.evictedId).ToList();
             float leftY = Side(column, "TO EVICT " + FirstName(recap.evictedId) + " (" + against + ")", UiTheme.Danger,
-                recap.votes.Where(v => !v.tieBreak && v.targetId == recap.evictedId).ToList(), pad, y, half);
+                toEvict, Mathf.Max(0, against - toEvict.Count), pad, y, half);
             float rightY = Side(column, other != null ? "TO KEEP " + FirstName(recap.evictedId) + " (" + others + ")" : "OTHERWISE (" + others + ")", UiTheme.Allied,
-                recap.votes.Where(v => !v.tieBreak && v.targetId != recap.evictedId).ToList(), pad + half + 12f, y, half);
+                toKeep, Mathf.Max(0, others - toKeep.Count), pad + half + 12f, y, half);
             y = Mathf.Max(leftY, rightY) + 6f;
             var breaker = recap.votes.FirstOrDefault(v => v.tieBreak);
             if (breaker != null)
@@ -572,8 +576,14 @@ namespace Gamesim.Presentation
 
         private string FirstName(string id) => FinalistRead.FirstName(shown.Find(id)?.name ?? "").ToUpperInvariant();
 
-        /// <summary>One side of the vote: its heading in its colour, then a face and a name for each ballot.</summary>
-        private float Side(RectTransform column, string heading, Color tint, List<WeeklyRecap.Ballot> ballots, float x, float y, float width)
+        /// <summary>
+        /// One side of the vote: its heading in its colour with the count, then a face and a name
+        /// for each ballot the player knows, tagged by how they know it, and a line for the ones
+        /// they do not (<paramref name="unknown"/>). Only the count is the house's: a face appears
+        /// here because the player's own ballot, the tie-break, the count's proof or what they were
+        /// told put it here, never the reveal.
+        /// </summary>
+        private float Side(RectTransform column, string heading, Color tint, List<WeeklyRecap.Ballot> ballots, int unknown, float x, float y, float width)
         {
             var head = EndScreenKit.Text("Side", column, heading, 13f, tint, x, y, width, 20f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
             head.characterSpacing = 2f;
@@ -589,16 +599,32 @@ namespace Gamesim.Presentation
                 face.pivot = new Vector2(.5f, .5f);
                 face.anchoredPosition = new Vector2(22f, 0f);
                 var name = EndScreenKit.Text("Name", row, HudPrimitives.WithYou(voter?.name ?? ballot.voterId, ballot.voterId == shown.playerId), 14f,
-                    ballot.voterId == shown.playerId ? UiTheme.Accent : UiTheme.Paper, 44f, 9f, width - 52f, 20f);
+                    ballot.voterId == shown.playerId ? UiTheme.Accent : UiTheme.Paper, 44f, 3f, width - 52f, 18f);
                 name.enableAutoSizing = true; name.fontSizeMax = 14f; name.fontSizeMin = 10f;
+                var basis = EndScreenKit.Text("Basis", row, BasisWords(ballot), 11f, UiTheme.Muted, 44f, 21f, width - 52f, 15f);
+                basis.enableAutoSizing = true; basis.fontSizeMax = 11f; basis.fontSizeMin = 8f;
                 y += 44f;
             }
-            if (ballots.Count == 0)
+            if (unknown > 0)
+            {
+                EndScreenKit.Text("Unknown ballots", column, unknown == 1 ? "1 ballot you do not know." : unknown + " ballots you do not know.", 13f, UiTheme.Muted, x, y, width, 20f);
+                y += 22f;
+            }
+            else if (ballots.Count == 0)
             {
                 EndScreenKit.Text("None", column, "No votes.", 13f, UiTheme.Muted, x, y, width, 20f);
                 y += 22f;
             }
             return y;
+        }
+
+        /// <summary>How the player knows a ballot, for the tag under its name: the basis word, and a lie caught where the voter said otherwise.</summary>
+        private string BasisWords(WeeklyRecap.Ballot ballot)
+        {
+            string words = KnownBallots.Basis.Word(ballot.basis);
+            if (ballot.lied && ballot.saidId != null)
+                words += " · said " + FinalistRead.FirstName(shown.Find(ballot.saidId)?.name ?? "") + ", a lie";
+            return words;
         }
 
         /// <summary>KEY MOMENTS: the week's ceremonies on a line, each with the face it belongs to and its mark.</summary>
@@ -682,11 +708,22 @@ namespace Gamesim.Presentation
             return y + hy;
         }
 
-        /// <summary>The vote whole: every ballot as the reveal read it, with its reason. The player's own week has its own tab.</summary>
+        /// <summary>
+        /// The vote whole: the count as the house heard it and the player's own ballot's line, then
+        /// every ballot the player knows with how they know it, and how many they do not. Never a
+        /// ballot the reveal kept private. The player's own week has its own tab.
+        /// </summary>
         private float VoteTab(RectTransform body, WeeklyRecap.Week recap, float inner)
         {
             float y = 0f;
             y = Section(body, "How the house voted", recap.ballots, UiTheme.Accent, y, inner);
+            var known = recap.votes.Select(ballot =>
+                HudPrimitives.WithYou(shown.Find(ballot.voterId)?.name ?? ballot.voterId, ballot.voterId == shown.playerId)
+                + " voted to evict " + HudPrimitives.WithYou(shown.Find(ballot.targetId)?.name ?? ballot.targetId, ballot.targetId == shown.playerId)
+                + " · " + BasisWords(ballot) + (ballot.reason != null ? " · “" + ballot.reason + "”" : "")).ToList();
+            if (recap.unknownBallots > 0)
+                known.Add(recap.unknownBallots == 1 ? "1 ballot you do not know how it went." : recap.unknownBallots + " ballots you do not know how they went.");
+            y = Section(body, "Ballots you know", known, UiTheme.Accent, y, inner);
             return y > 0f ? y : Nothing(body, inner);
         }
 
@@ -719,9 +756,9 @@ namespace Gamesim.Presentation
             if (mine.Empty)
                 cards.Add((NothingJudgedName, "Your week, judged", "Nothing you held came due this week: no read, claim, deal, promise or call.", "task", null));
             if (mine.reads.Count > 0)
-                cards.Add((ReadsName, "Reads and claims", "Judged against the ballots the reveal read.", "eye", mine.reads));
+                cards.Add((ReadsName, "Reads and claims", "Judged against the ballots you know.", "eye", mine.reads));
             if (mine.word.Count > 0)
-                cards.Add((WordName, "Deals and promises", "As the house told you they ended.", "handshake", mine.word));
+                cards.Add((WordName, "Deals and promises", "As far as you can know how they ended.", "handshake", mine.word));
             if (mine.calls.Count > 0)
                 cards.Add((CallsName, "Your calls", "Who followed you, as they said at the call.", "people", mine.calls));
 

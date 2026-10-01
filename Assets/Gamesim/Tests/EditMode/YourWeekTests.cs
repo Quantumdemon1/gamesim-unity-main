@@ -207,13 +207,14 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// In the week still on screen the reveal has read every ballot aloud, and the ballot is the
-        /// verdict: a member who would not commit at the call and voted out who was called followed
-        /// it, and one who said they were in and voted the other way did not. A ballot the reveal has
-        /// not read yet is nobody's to judge by.
+        /// A member's ballot judges them where the player knows it (KnownBallots): a member who would
+        /// not commit at the call and voted out who was called followed it, and one who said they
+        /// were in and voted the other way did not. The live box is counted and never read, so a
+        /// member whose ballot the player cannot place stands as they said at the call - until a
+        /// claim judged at the reveal, or the count, places it.
         /// </summary>
         [Test]
-        public void ALiveWeeksCallIsJudgedByTheBallotsTheRevealRead()
+        public void ALiveWeeksCallIsJudgedByTheBallotsThePlayerKnows()
         {
             var s = Fresh();
             var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
@@ -222,8 +223,17 @@ namespace Gamesim.Tests.EditMode
             s.votes.Add(new VoteState { voterId = npcs[3].id, targetId = npcs[2].id, reason = "fixture" });
             s.votes.Add(new VoteState { voterId = npcs[4].id, targetId = npcs[1].id, reason = "fixture" });
 
+            // The box is the live week's record, but it is nobody's to read: as they said at the call.
+            var unread = YourWeek.Build(s, 1).calls.Where(l => l.kind == YourWeek.Kinds.Member).ToList();
+            Assert.That(unread.Select(l => l.basis), Is.All.EqualTo(YourWeek.Bases.Call), "A ballot the player cannot place is not the verdict.");
+            Assert.That(unread.Select(l => l.verdict), Is.EqualTo(new[] { YourWeek.Verdicts.Followed, YourWeek.Verdicts.Defected }), "As they said at the call.");
+
+            // What the player was told, judged at the reveal, places the first; a tied count then
+            // places the last ballot for the second.
+            s.ledger.claims.Add(new ClaimRow { week = 1, voterId = npcs[3].id, targetId = npcs[2].id, source = ClaimSource.Told, status = ClaimStatus.Kept });
+            s.ledger.power[0].tally = new List<int> { 1, 1 };
             var members = YourWeek.Build(s, 1).calls.Where(l => l.kind == YourWeek.Kinds.Member).ToList();
-            Assert.That(members.Select(l => l.basis), Is.All.EqualTo(YourWeek.Bases.Ballot), "The live week is judged by its ballots.");
+            Assert.That(members.Select(l => l.basis), Is.All.EqualTo(YourWeek.Bases.Ballot), "Both ballots are known, and judge.");
             Assert.That(members[0].aboutId, Is.EqualTo(npcs[3].id));
             Assert.That(members[0].verdict, Is.EqualTo(YourWeek.Verdicts.Defected), "In at the call, and voted the other way.");
             Assert.That(members[0].text, Is.EqualTo(npcs[3].name + " was with you at the call, then voted to evict " + npcs[2].name + "."));
@@ -233,6 +243,7 @@ namespace Gamesim.Tests.EditMode
 
             // Before the reveal the ballots are private, and the members stand as they said at the call.
             s.evictionResolved = false;
+            s.ledger.claims.Clear();
             s.ledger.power.Clear();
             Assert.That(YourWeek.Build(s, 1).calls.Where(l => l.kind == YourWeek.Kinds.Member).Select(l => l.basis), Is.All.EqualTo(YourWeek.Bases.Call));
 
@@ -278,8 +289,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(word[0].text, Is.EqualTo(npc.name + " broke the safety pact with you."));
             Assert.That(word[1].verdict, Is.EqualTo(YourWeek.Verdicts.Kept)); Assert.That(word[1].byId, Is.EqualTo(s.playerId));
             Assert.That(word[1].text, Is.EqualTo("You kept the veto commitment with " + npc.name + "."));
-            Assert.That(word[2].verdict, Is.EqualTo(YourWeek.Verdicts.Broken)); Assert.That(word[2].byId, Is.Null, "A pair fell out together.");
-            Assert.That(word[2].text, Is.EqualTo("You and " + npc.name + " fell out over your voting block."));
+            // A voting block that fell apart says how the other voted: unresolved until the player knows their ballot (decision 4).
+            Assert.That(word[2].verdict, Is.EqualTo(YourWeek.Verdicts.NotKnown)); Assert.That(word[2].byId, Is.Null);
+            Assert.That(word[2].text, Is.EqualTo("The voting block with " + npc.name + " is " + KnownBallots.Unresolved + "."));
             Assert.That(word[3].verdict, Is.EqualTo(YourWeek.Verdicts.Broken), "Words the reader does not know still carry how it ended.");
             Assert.That(word[3].text, Is.EqualTo("Words nobody wrote."));
             Assert.That(word.Select(l => l.aboutId), Is.All.EqualTo(npc.id));

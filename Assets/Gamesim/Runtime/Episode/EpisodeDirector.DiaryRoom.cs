@@ -271,7 +271,7 @@ namespace Gamesim.Episode
                 hud.SpeechBar(state.playerId, EpisodeHud.SelfTitle(state.Find(state.playerId)),
                     EpisodeEngine.NeedsPlayerTieBreak(state)
                         ? "The vote is tied, and yours decides it."
-                        : "One vote, cast in private. Nobody sees it until the reveal.", true);
+                        : "One vote, cast in private. Nobody sees it, unless you tell them.", true);
             if(!IsDiarySettled)
             {
                 hud.Aside("Your own memories, and the decisions that are yours to make.");
@@ -653,30 +653,30 @@ namespace Gamesim.Episode
         /// <para>So the reveal is built only from what the player already holds: their own trust in
         /// that houseguest, which the notebook prints, and the most recent thing the player
         /// themselves remembers about them. Nothing here is knowledge the player did not already
-        /// have — it is the same information, gathered to where the decision is being made.</para>
+        /// have — it is the same information, gathered to where the decision is being made. Nor does
+        /// it say who has voted: whose ballot is in the box is the box's (UI-UX-PASS-PLAN B0).</para>
         /// </summary>
         private void VoterRoster(EpisodeState state)
         {
             var voters = EpisodeEngine.Voters(state).ToArray();
             if (voters.Length == 0) return;
 
-            int cast = voters.Count(voter => state.votes.Any(vote => vote.voterId == voter.id));
-            hud.Heading("VOTERS  ·  " + cast + " OF " + voters.Length + " VOTED");
+            hud.Heading("VOTERS");
 
             foreach (var voter in voters)
             {
                 var actor = voter;
-                bool voted = state.votes.Any(vote => vote.voterId == actor.id);
-
                 if (actor.isPlayer)
-                { hud.Paragraph(HudPrimitives.WithYou(actor.name, true) + (voted ? "  ·  voted" : "")); continue; }
+                {
+                    bool voted = state.votes.Any(vote => vote.voterId == actor.id);
+                    hud.Paragraph(HudPrimitives.WithYou(actor.name, true) + (voted ? "  ·  voted" : ""));
+                    continue;
+                }
 
-                // The caption is fixed whatever the state, and the "voted" marker is a chip rather
-                // than part of it. A control whose name changes as you use it is a control neither
-                // a test nor a screen reader can refer to twice.
-                hud.Tag(hud.ActionFor(actor.id + ":thoughts", "Thoughts · " + actor.name,
-                        () => { thoughtsVoterId = thoughtsVoterId == actor.id ? null : actor.id; Render(); }),
-                    voted ? "voted" : null);
+                // The caption is fixed whatever the state. A control whose name changes as you use
+                // it is a control neither a test nor a screen reader can refer to twice.
+                hud.ActionFor(actor.id + ":thoughts", "Thoughts · " + actor.name,
+                    () => { thoughtsVoterId = thoughtsVoterId == actor.id ? null : actor.id; Render(); });
 
                 if (thoughtsVoterId == actor.id) hud.Paragraph(Thoughts(state, actor));
             }
@@ -693,8 +693,11 @@ namespace Gamesim.Episode
                 : trust <= -25 ? "There is bad blood between you and " + voter.name + "."
                 : "You and " + voter.name + " are on level terms.";
 
+            // A memory of a vote deal's or a vote promise's ending tells the ballot that ended it:
+            // left out while that ballot is not the player's to know (KnownBallots; decision 4).
             var remembered = state.memories
-                .Where(memory => memory.ownerId == state.playerId && memory.subjectId == voter.id)
+                .Where(memory => memory.ownerId == state.playerId && memory.subjectId == voter.id
+                    && !KnownBallots.TellsAnUnknownBallot(state, voter.id, memory.text, memory.week))
                 .OrderByDescending(memory => memory.week)
                 .FirstOrDefault();
 
@@ -705,7 +708,7 @@ namespace Gamesim.Episode
             bool allied = state.Allied(state.playerId, voter.id);
             return standing + " " + recalled
                 + (allied ? " You are in an alliance together." : string.Empty)
-                + "  (Your trust: " + trust.ToString("0") + ". How they vote is theirs until the reveal.)";
+                + "  (Your trust: " + trust.ToString("0") + ". How they vote is theirs, unless they tell you.)";
         }
 
         private bool RenderPlayerDecision(EpisodeState state, bool privateRoom)
@@ -793,7 +796,7 @@ namespace Gamesim.Episode
                     id => OfferBallot(state, privateRoom, tieBreak, id), warning: privateRoom ? null : BallotWarning(state, state.nominees));
                 // Under the cards, where mockup-08 keeps its line: ahead of the title it read as
                 // the page's heading.
-                hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");
+                hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot stays yours. Only the count is read.");
                 // At four there is exactly one eligible voter. That has always been true by
                 // arithmetic and has never been said, which makes a sole ballot look like a bug.
                 if (!tieBreak && EpisodeEngine.Voters(state).Count() == 1)

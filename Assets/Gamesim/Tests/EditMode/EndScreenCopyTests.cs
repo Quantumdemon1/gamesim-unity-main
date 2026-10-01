@@ -45,6 +45,11 @@ namespace Gamesim.Tests.EditMode
                 text = "Maya declines to use the veto. Nominations stand." };
             Assert.That(EpisodeDirector.StatusLine(state, veto), Is.EqualTo(veto.text));
             Assert.That(EpisodeDirector.StatusLine(state, null), Is.Null, "No event, no line: the caller says the decision committed.");
+            // The finale's commit is the toast (UI-UX-PASS-PLAN decision 13); the engine's line stays as logged.
+            var winner = new EpisodeEvent { week = 4, phase = EpisodePhase.Finished, kind = "winner", text = "Gamesim winner: Maya Hassan!" };
+            Assert.That(EpisodeDirector.StatusLine(state, winner), Is.EqualTo(EpisodeDirector.SeasonCompleteToast));
+            Assert.That(EpisodeDirector.SeasonCompleteToast, Is.EqualTo("Season complete! Thanks for playing."));
+            Assert.That(winner.text, Does.StartWith("Gamesim winner: "), "The logged text is left as it was.");
         }
 
         [Test]

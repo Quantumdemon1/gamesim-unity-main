@@ -48,25 +48,30 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(record.seasons[0].winnerName, Is.EqualTo(finale.Find(finale.winnerId).name));
             Assert.That(record.seasons[0].houseSize, Is.EqualTo(finale.contestants.Count));
             Assert.That(director.StatusMessage, Does.Contain("Added to your career record"));
+            // The finale's commit says the season is complete (UI-UX-PASS-PLAN decision 13), with both suffixes kept.
+            Assert.That(director.StatusMessage, Does.StartWith(EpisodeDirector.SeasonCompleteToast).And.Contain("Saved locally."));
 
             var ballots = SeasonReport.JuryBallots(finale);
             Assert.That(ballots.Count, Is.EqualTo(finale.contestants.Count(
                     c => c.status == ContestantStatus.Jury || c.status == ContestantStatus.Evicted)),
                 "Every juror's ballot carries a reason the finale can show.");
+            // The finale's commit reads the jury on its card with the chrome aside; the faces are
+            // pressed on the page under it once the card is done, as a player presses them.
+            yield return SkipReveals();
             Assert.That(director.TryOpenPhasePanel(), Is.True);
-            yield return null;
-            var shown = VisibleText();
-            Assert.That(shown, Does.Contain("HOW THE JURY VOTED"));
-            foreach (var ballot in ballots) Assert.That(shown, Does.Contain(ballot.Line));
+            yield return null; yield return null;
+            Assert.That(VisibleText(), Does.Contain("HOW THE JURY VOTED"));
+            // Each reason on the page, a press on its juror's face at a time (EpisodePlayModeTests.FinalePage.cs).
+            yield return AssertEachJurorsReasonOnAPress(ballots, "Before the reload");
             director.ClosePanels();
 
             yield return ReloadEpisode();
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.Finished));
             Assert.That(Ledger().Load().seasons.Count, Is.EqualTo(1), "A reload is not another finished season.");
             Assert.That(director.TryOpenPhasePanel(), Is.True);
-            yield return null;
-            var again = VisibleText();
-            foreach (var ballot in ballots) Assert.That(again, Does.Contain(ballot.Line), "The same lines after a reload.");
+            yield return null; yield return null;
+            Assert.That(VisibleText(), Does.Contain("HOW THE JURY VOTED"), "The same heading after a reload,");
+            yield return AssertEachJurorsReasonOnAPress(ballots, "After the reload");
             director.ClosePanels();
 
             director.ShowSeasonReport();

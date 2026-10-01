@@ -100,11 +100,18 @@ namespace Gamesim.Episode
             float room = FinaleRoom();
             float highlights = FinaleHighlightsHeight(), ways = FinaleWayHeight * s, thin = FinaleThinHeight * s;
             float rest = gap + highlights + gap + ways + FinaleRowGap * s + thin;
-            // The widths: the winner's card, the final two's, and the jury takes the rest.
-            float winnerWidth = Mathf.Floor((width - 2f * gap) * .32f), twoWidth = Mathf.Floor((width - 2f * gap) * .30f);
-            float juryWidth = width - 2f * gap - winnerWidth - twoWidth;
             int jurors = spec.Jurors != null ? spec.Jurors.Count : 0;
             var faces = jurors > 8 ? FinaleFacesLarge : FinaleFacesSmall;
+            // The widths: the jury's card takes its share of the row, or what two rows of the smallest
+            // faces need on a narrow frame (the 4:3 batch canvas with a jury of fourteen), as far as
+            // the other two cards can give at their least; the winner's card and the final two's
+            // divide the rest as the mockup does.
+            float remainder = width - 2f * gap, smallest = faces[faces.Length - 1];
+            float twoRows = 2f * FinalePad * s + Mathf.CeilToInt(jurors / 2f) * (smallest + 6f * s + 10f * s) - 10f * s;
+            float juryWidth = Mathf.Max(Mathf.Floor(remainder * .38f), Mathf.Ceil(twoRows));
+            juryWidth = Mathf.Min(juryWidth, Mathf.Max(0f, remainder - FinaleWinnerLeastWidth() - FinaleTwoLeastWidth()));
+            float others = remainder - juryWidth;
+            float winnerWidth = Mathf.Floor(others * (.32f / .62f)), twoWidth = others - winnerWidth;
             // The cards' row: what the winner's portrait and the jury's faces want at their largest,
             // held to the room the rest leaves, and never under the least portrait.
             float least = FinaleWinnerFixed() + FinalePortraitLeast;
@@ -167,6 +174,12 @@ namespace Gamesim.Episode
                 + 8f * s + BoardLine(11) + 4f * s + 22f * s + FinalePad * s;
         }
 
+        /// <summary>The narrowest the winner's card runs: its portrait at full width in its well, and the padding.</summary>
+        private float FinaleWinnerLeastWidth() => 150f + 2f * FinaleWell * FontScale + 2f * FinalePad * FontScale;
+
+        /// <summary>The narrowest the FINAL TWO card runs: two finalist cards of a 76-wide portrait each, their gap and the padding.</summary>
+        private float FinaleTwoLeastWidth() => 2f * FinalePad * FontScale + 2f * (2f * 8f * FontScale + 76f) + 12f * FontScale;
+
         /// <summary>The jury card without its faces: the heading, the gaps and the foot line's room.</summary>
         private float FinaleJuryFixed()
         {
@@ -184,7 +197,8 @@ namespace Gamesim.Episode
         private int FinaleFacesAcross(float cardWidth, float face)
         {
             float s = FontScale, inner = cardWidth - 2f * FinalePad * s, step = face + 6f * s + 10f * s;
-            return Mathf.Max(1, Mathf.FloorToInt((inner + 10f * s) / step));
+            // A whisker of tolerance: a card sized for exactly seven faces must take seven.
+            return Mathf.Max(1, Mathf.FloorToInt((inner + 10f * s) / step + .001f));
         }
 
         /// <summary>The height <paramref name="count"/> faces of <paramref name="face"/> take in rows across a card of <paramref name="cardWidth"/>.</summary>
@@ -241,9 +255,10 @@ namespace Gamesim.Episode
             var winner = state.Find(spec.WinnerId);
             if (winner == null) return;
             var card = EndScreenKit.Box(FinaleWinnerCardName, board, x, y, width, height);
-            EndScreenKit.Halo(card, PackArt.Pack9SeasonFinaleWinnerCardHalo, 28f * s, new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .6f));
+            // The pack's card, then its halo put in front of it in the hierarchy, which draws it behind.
             EndScreenKit.Skin(card, PackArt.Pack9SeasonFinaleWinnerCardFill, PackArt.Pack9SeasonFinaleWinnerCardEdge, 14f * s,
                 new Color(Surface.r, Surface.g, Surface.b, .96f), UiTheme.Gold, PackArt.SeasonWinnerHero, UiTheme.SurfaceRaised, UiTheme.Gold);
+            EndScreenKit.Halo(card, PackArt.Pack9SeasonFinaleWinnerCardHalo, 28f * s, new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .6f));
 
             // The portrait as tall as the card leaves it, up to 180, in a well lit gold from below.
             float well = FinaleWell * s;
@@ -343,8 +358,10 @@ namespace Gamesim.Episode
             at += BoardLine(14) + 8f * s;
 
             float cardWidth = (inner - gap) * .5f, cardPad = 8f * s;
+            // The faces as tall as the card leaves them, up to 180, and as wide as their card allows:
+            // never squashed, so a narrow card gets a shorter face.
             float portraitHeight = Mathf.Clamp(height - FinaleTwoFixed(), 48f, FinalePortrait);
-            float portraitWidth = Mathf.Min(cardWidth - 2f * cardPad, portraitHeight * (150f / 180f));
+            float portraitWidth = Mathf.Max(40f, Mathf.Min(cardWidth - 2f * cardPad, portraitHeight * (150f / 180f)));
             portraitHeight = Mathf.Min(portraitHeight, portraitWidth * (180f / 150f));
             float finalistHeight = cardPad + portraitHeight + 6f * s + BoardLine(15) + 4f * s + 28f * s + cardPad;
             FinaleFinalist(card, pad, at, cardWidth, finalistHeight, portraitWidth, portraitHeight, winner, FinaleWinnerRole, UiTheme.Gold,
@@ -374,7 +391,7 @@ namespace Gamesim.Episode
             float s = FontScale, pad = 8f * s, inner = width - 2f * pad;
             var card = EndScreenKit.Box(FinaleFinalistPrefix + who.name, parent, x, y, width, height);
             EndScreenKit.Skin(card, PackArt.Pack9SeasonFinaleFinalistCardFill, PackArt.Pack9SeasonFinaleFinalistCardEdge, 10f * s,
-                new Color(SurfaceRaised.r, SurfaceRaised.g, SurfaceRaised.b, .9f), tint, null, UiTheme.SurfaceRaised,
+                new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f), tint, null, UiTheme.SurfaceRaised,
                 new Color(tint.r, tint.g, tint.b, .8f), 10);
             var face = HudPrimitives.RectPortrait(card, "Finalist portrait", Portrait(who.id), who, new Vector2(portraitWidth, portraitHeight), 8);
             EndScreenKit.Place(face, (width - portraitWidth) * .5f, pad, portraitWidth, portraitHeight);
@@ -449,15 +466,16 @@ namespace Gamesim.Episode
             bool forWinner = juror.FinalistId == spec.WinnerId;
             var tint = forWinner ? UiTheme.Gold : EndScreenKit.Steel;
             bool pressed = spec.PressedJurorId != null && spec.PressedJurorId == juror.Id;
-            var seat = Panel(juror.Caption, grid, new Color(0f, 0f, 0f, 0f), 8);
+            // A faint seat behind the face, which the keyboard's and the pointer's tints multiply up:
+            // a tint on a clear panel shows nothing, and a face the keyboard is on must be seen.
+            var seat = Panel(juror.Caption, grid, new Color(1f, 1f, 1f, pressed ? .1f : .04f), 8);
             EndScreenKit.Place(seat, x, y, rim, height);
             string id = juror.Id;
             var button = Pressable(seat, () => spec.PressJuror?.Invoke(id));
             var colours = button.colors;
-            colours.normalColor = new Color(1f, 1f, 1f, pressed ? .1f : 0f);
-            colours.highlightedColor = new Color(1f, 1f, 1f, .14f);
+            colours.highlightedColor = new Color(3f, 3f, 3f);
             colours.selectedColor = colours.highlightedColor;
-            colours.pressedColor = new Color(1f, 1f, 1f, .22f);
+            colours.pressedColor = new Color(4f, 4f, 4f);
             button.colors = colours;
             // The pack's glow behind the ring, in the finalist's colour, brighter on the pressed face.
             var glow = EndScreenKit.Picture("Ring glow", seat, pressed ? PackArt.Pack9SharedFocusHalo : PackArt.Pack9SharedPortraitRingGlow, null, tint,
@@ -548,7 +566,7 @@ namespace Gamesim.Episode
                 var stat = stats[i];
                 var tile = EndScreenKit.Box(stat.Caption, strip, pad + i * (tileWidth + gap), at, tileWidth, tileHeight);
                 EndScreenKit.Skin(tile, PackArt.Pack9SeasonFinaleStatTileFill, PackArt.Pack9SeasonFinaleStatTileEdge, 10f * s,
-                    new Color(SurfaceRaised.r, SurfaceRaised.g, SurfaceRaised.b, .9f), new Color(stat.Tint.r, stat.Tint.g, stat.Tint.b, .45f),
+                    new Color(UiTheme.SurfaceRaised.r, UiTheme.SurfaceRaised.g, UiTheme.SurfaceRaised.b, .9f), new Color(stat.Tint.r, stat.Tint.g, stat.Tint.b, .45f),
                     PackArt.SeasonStatNeutral, UiTheme.SurfaceRaised, null, 10);
                 float glyph = Mathf.Min(26f * s, tileHeight - 16f * s), left = 10f * s;
                 var mark = FinalePicture("Icon", tile, stat.Icon, null, stat.Fallback, stat.Tint, new Vector2(left + glyph * .5f, -tileHeight * .5f), glyph);

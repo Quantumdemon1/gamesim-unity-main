@@ -260,6 +260,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EpisodeEngine.IsCompetition(director.Snapshot.phase), Is.True, "The next competition is up.");
             Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "They are still walking out as the week moves on,");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release), "and the house still keeps its seats.");
+            // The week's turn moves the player on (the new week's free time and the competition's
+            // call), so they are put back at the screen to start the competition from it.
+            WarpPlayer(director.StationPosition);
+            yield return null;
             Assert.That(director.TryOpenPhasePanel(), Is.True, "The player is at the episode screen.");
             ButtonWithCaption("Practice this competition").onClick.Invoke();
             yield return null;

@@ -621,6 +621,12 @@ namespace Gamesim.Episode
 
         public void GoToStation()
         {
+            // The last press put the player at the screen - a warp lands them there with "E to
+            // open" - so this press is the screen: the mouse's own way in, beside E and the prompt's
+            // button, so no player is left at the screen with a key they did not know to press. Only
+            // after a warp: a short trip on foot is a walk, chosen afresh, and the screen opens
+            // from the prompt when they get there.
+            bool pressedAgainAtTheScreen = headingToStation && LastTravel == TravelKind.Warp && CanUseStation();
             ClosePanels();
             // Whatever the player was walking to, this replaces it. Without this a click on a
             // houseguest outlived the button press and either overwrote the path to the screen or
@@ -628,10 +634,7 @@ namespace Gamesim.Episode
             CancelTravel();
             EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
-            // Already within reach of the screen - warped there by the last press, or standing at
-            // it - the button is the screen: the mouse's own way in, beside E and the prompt's
-            // button, so no player is left at the screen with a key they did not know to press.
-            if (CanUseStation() && TryOpenPhasePanel()) return;
+            if (pressedAgainAtTheScreen && TryOpenPhasePanel()) return;
             if (!TryTravel(StationPosition)) message = "The episode screen is not reachable from here.";
             else
             {

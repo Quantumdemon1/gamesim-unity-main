@@ -56,21 +56,25 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// Within reach of the screen, the rail's "Go to episode screen" is the screen: a press
-        /// opens it instead of walking a player who is already there and leaving them to find E.
-        /// The owner stood at the screen on the first night with the status line saying "E to
-        /// open", pressed E to no effect, and had no other way in.
+        /// Put at the screen by the rail's "Go to episode screen" - a warp lands the player there
+        /// with "E to open" - a second press of the button is the screen: it opens instead of
+        /// leaving them to find E. The owner stood there on the first night with the status line
+        /// saying "E to open", pressed E to no effect, and had no other way in. Only after a warp:
+        /// a short trip on foot stays a walk (Travel_AnErrandWalksNearRunsFurtherAndIsSimplyThereFromAfar).
         /// </summary>
         [UnityTest]
-        public IEnumerator Prompt_TheRailsButtonOpensTheScreenFromWithinReach()
+        public IEnumerator Prompt_TheRailsButtonPressedAgainAtTheScreenOpensIt()
         {
             director.ClosePanels();
-            WarpPlayer(director.StationPosition);
+            WarpPlayer(new Vector3(0f, 0f, 14f));
             yield return null;
-            Assert.That(director.IsPhasePanelOpen, Is.False, "Standing at the screen opens nothing by itself.");
+            director.GoToStation();
+            Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Warp), "From the yard the button warps the player to the screen.");
+            yield return null;
+            Assert.That(director.IsPhasePanelOpen, Is.False, "Arriving by the button opens nothing by itself.");
             director.GoToStation();
             yield return null;
-            Assert.That(director.IsPhasePanelOpen, Is.True, "At the screen, the rail's button opens it.");
+            Assert.That(director.IsPhasePanelOpen, Is.True, "Pressed again at the screen, the button opens it.");
             Assert.That(director.IsConversationOpen, Is.False, "And nothing else, whoever idles beside it.");
             director.ClosePanels();
             yield return null;

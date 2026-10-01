@@ -181,18 +181,10 @@ namespace Gamesim.Episode
 
             // ------------------------------------------------------------ the stage's view
 
-            public HouseCameraRig.Shot DoorShot => new HouseCameraRig.Shot
-            {
-                Focus = new Vector3(-2.0f, 1.85f, 13.8f), Distance = 4.1f, Pitch = 0f, Yaw = 270f,
-                FieldOfView = 40f, Seconds = 0.6f, DepthOfFieldWeight = 0.3f,
-            };
+            public HouseCameraRig.Shot DoorShot => YardDoorShot;
 
             /// <summary>The reference build's push-in as the door opens: a metre closer in half a second.</summary>
-            public HouseCameraRig.Shot PushInShot => new HouseCameraRig.Shot
-            {
-                Focus = new Vector3(-2.0f, 1.85f, 13.8f), Distance = 3.1f, Pitch = 0f, Yaw = 270f,
-                FieldOfView = 40f, Seconds = 0.5f, DepthOfFieldWeight = 0.3f,
-            };
+            public HouseCameraRig.Shot PushInShot => YardPushInShot;
 
             public float BodyReadiness
             {

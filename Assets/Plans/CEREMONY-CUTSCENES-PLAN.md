@@ -712,8 +712,15 @@ seated, the walk out becomes an exit sequence with the intro's beats in reverse.
    0.5 s), and once the leaves are 0.35 open they walk through to the deck mark as now. The
    vestibule's light plane at x −4.4 hides them the moment they pass it, so `Close` is called
    then, the set's own swing, the shot holds 1.2 s on the shut door, and only then does
-   `FinishWalkOut` switch the body off - behind a closed door, not in the open. The camera
-   releases to the viewer (`ReleaseShot`, 1.2 s), the stage ends and the house gets up.
+   `FinishWalkOut` switch the body off - behind a closed door, not in the open. *Amended
+   2026-09-30 (PACK8-PASS-PLAN C2), on A1's shape:* `FinishWalkOut` nulls `walkingOutId` and
+   `departingId` before it projects, and one set of terms decides both what is switched off and
+   what the house routes - `KeepsBody` for `Project`'s SetActive, `RoutedByTheHouse` (`KeepsBody`
+   and Active, walking out, or held by the stage) for the house's eligibility - so the stage,
+   still in `Release`, lets the evicted go through `KeepsBody` in the same projection that
+   switches the body off, and no eligible root is ever inactive. The strike is under a travel
+   dip, and the camera goes back to the viewer under the black (a 0.01 s `ReleaseShot`); the
+   stage ends on its next tick and the house gets up.
 6. **The gait.** There is no sad walk in the library (`Walk` is one clip blended by `Speed`). For
    the walk out the agent's speed drops to 1.5 m/s (`RouteDeparture` gains a speed) and the head
    goes down: `LookAtPoint` on a mark kept 1.5 m ahead of the body on the floor, the stage's
@@ -725,7 +732,13 @@ seated, the walk out becomes an exit sequence with the intro's beats in reverse.
    (finale night, the juror joins the jury); the player is never `departingId`
    (`EpisodeDirector.cs:738`), so their own eviction is the season's end as before. The
    eligibility rule stays the narrow one: `Holds` while the stage has a place for them,
-   `walkingOutId` for the walk, `departingId` nowhere else.
+   `walkingOutId` for the walk, `departingId` nowhere else. *Amended 2026-09-30 (PACK8-PASS-PLAN
+   C2):* and never wider than the bodies the house keeps. Eligibility is
+   `RoutedByTheHouse = KeepsBody && (Active || walking out || Holds)`, so `Holds` alone never
+   routes a body `Project` has switched off (commit 3af59ae's narrowing broke exactly that, and
+   every ceremony after the first staged eviction played on the HUD). A competition started
+   mid-walk, `ResetWalkOut` and a stage ended under its exit finish the walk at once, with no
+   hold and no dip.
 8. **Tests.** `WalkOut_TheEvictedWalksOutThroughTheFrontDoor` extended: the rig's shot is the door
    shot when the door opens, the body is still active when the door's openness reaches 0 again,
    and inactive after the hold; a test that the cold goodbye line walks through without the

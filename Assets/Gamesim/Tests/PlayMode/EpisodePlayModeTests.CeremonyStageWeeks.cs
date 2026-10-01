@@ -30,7 +30,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Commits eviction night until it is staged, plays its card on the living room's screen and
-        /// skips it: the evicted are walking out, and the house keeps its seats while they go.
+        /// skips it, and sits out the goodbye: the evicted are walking out, and the house keeps its
+        /// seats while they go.
         /// </summary>
         private IEnumerator PlayTheStagedEvictionToItsWalkOut()
         {
@@ -43,7 +44,8 @@ namespace Gamesim.Tests.PlayMode
             string evicted = SceneComponents<VoteReveal>().Single().EvictedId;
             Assert.That(evicted, Is.Not.Null.And.Not.EqualTo(director.Snapshot.playerId), "A houseguest is evicted.");
             yield return SkipReveals();
-            yield return Frames(3);
+            // PACK8-PASS-PLAN C2: the goodbye comes first.
+            yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 2f, "the goodbye gives way to the walk out");
             Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "The evicted walk out,");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release), "while the house keeps its seats.");
             stagedLeaving = evicted;
@@ -114,9 +116,12 @@ namespace Gamesim.Tests.PlayMode
                 if (evicted != null && evicted != before.playerId)
                 {
                     yield return Frames(3);
-                    Assert.That(director.WalkingOutId, Is.EqualTo(evicted), what + ": the evicted walk out.");
+                    // The goodbye, or the walk out after it: a press goes straight to the shut door from either.
+                    Assert.That(director.DepartingId == evicted || director.WalkingOutId == evicted, Is.True,
+                        what + ": the evicted say goodbye and walk out.");
                     director.SkipWalkOut();
                     yield return null;
+                    Assert.That(director.StagedExitRunning, Is.False, what + ": the skip reaches the shut door.");
                 }
                 yield return AssertTheHouseRunsOn(what);
                 if (ceremony.kind == CeremonySting.EvictionKind) yield return CloseTheWeeklyRecap();
@@ -266,6 +271,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsChallengeActive, Is.True, "The competition starts,");
             Assert.That(director.WalkingOutId, Is.Null, "the walk out gives way to it,");
             Assert.That(body.gameObject.activeInHierarchy, Is.False, "the evicted go as they always went,");
+            // PACK8-PASS-PLAN C2: at once - no hold on a shut door, no dip - with the door struck.
+            Assert.That(director.StagedExitRunning, Is.False, "the exit is over,");
+            Assert.That(DoorSetUp(), Is.False, "the door struck with it,");
             Assert.That(director.IsCeremonyStaged, Is.False, "the arena lets the stage go,");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "and the house's world is still running.");
         }

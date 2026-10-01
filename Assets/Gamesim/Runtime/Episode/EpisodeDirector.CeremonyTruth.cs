@@ -144,7 +144,11 @@ namespace Gamesim.Episode
             // committed result, and the house walking to its seats is the reveal's first beat.
             bool revealing = (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
                 || JuryRevealPlaying || CeremonyStageNarrating;
-            if (revealHeld && !revealing && !EndgameCardPlaying)
+            // A staged eviction keeps the chrome aside past its card, through the goodbye and the
+            // walk out to the door shut behind them (MOCKUP-PASS-PLAN M19). Not folded into
+            // `revealing`: the walk out starts once nothing narrates, and an exit that counted as
+            // narrating would wait for itself.
+            if (revealHeld && !revealing && !StagedExitRunning && !EndgameCardPlaying)
             {
                 revealHeld = false;
                 bool redraw = revealRedraws;
@@ -161,6 +165,8 @@ namespace Gamesim.Episode
                 // out to follow it, the house has no candidate left.
                 if (npcMeetings != null && npcMeetings.DepartureCandidate == departingId) npcMeetings.DepartureCandidate = null;
                 departingId = null;
+                // A door the goodbye put up for them comes down with them.
+                StrikeWalkOutDoor();
                 if (IsReady) Project();
             }
             TickWalkOut();
@@ -187,7 +193,7 @@ namespace Gamesim.Episode
         private void TickCeremonyPlates()
         {
             var step = CeremonyStagePhase;
-            ceremonyPlatesDown = step == CeremonyStageStep.Playing || step == CeremonyStageStep.Release
+            ceremonyPlatesDown = step == CeremonyStageStep.Playing || step == CeremonyStageStep.Goodbye || step == CeremonyStageStep.Release
                 || (keyCeremony != null && keyCeremony.IsPlaying) || (voteReveal != null && voteReveal.IsPlaying)
                 || walkingOutId != null;
             ApplyPlates();
@@ -220,8 +226,10 @@ namespace Gamesim.Episode
         private void ResetCeremonyTruth()
         {
             departingId = null;
-            EndCeremonyStage();
+            // The walk out first: the stage's end finishes a staged walk out it finds still going,
+            // and a season being replaced is no place to project one.
             ResetWalkOut();
+            EndCeremonyStage();
             if (revealHeld && hud != null) hud.HoldForReveal(false);
             revealHeld = false;
             revealRedraws = false;

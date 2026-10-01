@@ -23,6 +23,17 @@ namespace Gamesim.Episode
     /// unless asked, as the opening's stage is not. The final eviction has none: it opens finale
     /// night, and the new juror joins the jury in the living room.</para>
     ///
+    /// <para><b>The staged exit</b> (PACK8-PASS-PLAN C2, MOCKUP-PASS-PLAN M19). After a staged
+    /// eviction the walk out is the goodbye's second half, and the camera never follows the body
+    /// across the house: the stage's goodbye, then the house watching them go - three seconds of
+    /// the wide with every head on them, two on the survivor - at a slow walk with the head down,
+    /// then a dip to the door shot as they come within six metres of the door. A warm or dealt
+    /// goodbye stops at the door and turns back for the evicted take; then the door opens with no
+    /// flare, they go through, it closes behind them, and the shot holds on the shut door before
+    /// the body is switched off behind it, under a dip that hands the camera back. The chrome is
+    /// aside the whole way. A press goes straight to the shut door; nothing the commit decided
+    /// changes.</para>
+    ///
     /// <para><b>The jury.</b> From jury questioning to the end of the season, the jurors are back in
     /// the living room, standing along it, facing the middle: the jury the finalists face and the
     /// winner is read out to. Placed while they have no navigation - the house moves only the people
@@ -40,10 +51,58 @@ namespace Gamesim.Episode
         /// <summary>How far the door must have swung before they walk through it: the opening's own threshold.</summary>
         private const float WalkOutDoorClear = 0.35f;
 
+        /// <summary>The staged walk's pace while it is in frame, metres a second: there is no sad walk in the library, so a slow one with the head down.</summary>
+        public const float StagedWalkSpeed = 1.5f;
+
+        /// <summary>How long the shot holds on the door shut behind them before their body goes.</summary>
+        public const float DoorHoldSeconds = 1.2f;
+
+        /// <summary>How long a warm or dealt goodbye stops at the door, turned back to the house: the opening's own pose length.</summary>
+        public const float LastLookSeconds = 1.6f;
+
+        /// <summary>How long the house watches them go before the cut to the survivor.</summary>
+        private const float WatchSeconds = 3f;
+
+        /// <summary>How near the door they come before the dip to the door shot, and how long a walk may take before it cuts there regardless.</summary>
+        private const float DoorCutReach = 6f, DoorCutAfter = 20f;
+
+        /// <summary>How far ahead of the body, on the floor, the walker's eyes go.</summary>
+        private const float LookAheadMetres = 1.5f;
+
+        /// <summary>A move this short reads as a cut, as the stage's own are.</summary>
+        private const float ExitCutSeconds = 0.01f;
+
         private string walkingOutId;
         private int walkOutLeg;
         private float walkOutUntil, walkOutPressGuard;
         private OpeningDoorSet walkOutDoor;
+
+        /// <summary>Whether the walk out under way is a staged eviction's: watched, slow, through a door that shuts behind it.</summary>
+        private bool walkOutStaged;
+        private StagedLeg stagedLeg;
+        private float stagedWalkFrom, stagedLookUntil, stagedShutUntil;
+        private bool stagedBrisk, stagedDoorCut;
+        /// <summary>How the evicted leave things with the player, read once as the walk begins.</summary>
+        private GoodbyeKind walkOutTone;
+        /// <summary>The point on the floor ahead of the walker that their eyes are kept on: a scene transform of its own.</summary>
+        private Transform walkOutLookMark;
+
+        /// <summary>Where a staged walk out is.</summary>
+        private enum StagedLeg { Binding, Walking, LastLook, Opening, Through, Closing, Holding }
+
+        /// <summary>The opening's door shot, which the staged walk out cuts to as well: the doorway from the yard, square on.</summary>
+        private static HouseCameraRig.Shot YardDoorShot => new HouseCameraRig.Shot
+        {
+            Focus = new Vector3(-2.0f, 1.85f, 13.8f), Distance = 4.1f, Pitch = 0f, Yaw = 270f,
+            FieldOfView = 40f, Seconds = 0.6f, DepthOfFieldWeight = 0.3f,
+        };
+
+        /// <summary>The reference build's push-in as the door opens: a metre closer in half a second.</summary>
+        private static HouseCameraRig.Shot YardPushInShot => new HouseCameraRig.Shot
+        {
+            Focus = new Vector3(-2.0f, 1.85f, 13.8f), Distance = 3.1f, Pitch = 0f, Yaw = 270f,
+            FieldOfView = 40f, Seconds = 0.5f, DepthOfFieldWeight = 0.3f,
+        };
 
         /// <summary>For tests: walk the evicted out even in a batch run, where it is otherwise skipped as the opening's stage is.</summary>
         public bool WalkOutsInBatchRuns { get; set; }
@@ -52,7 +111,10 @@ namespace Gamesim.Episode
         public string WalkingOutId => walkingOutId;
 
         /// <summary>Whether the walk out is at the door or past it: the door is open for them.</summary>
-        public bool WalkOutAtTheDoor => walkingOutId != null && walkOutLeg >= 2;
+        public bool WalkOutAtTheDoor => walkingOutId != null && (walkOutStaged ? stagedLeg >= StagedLeg.Opening : walkOutLeg >= 2);
+
+        /// <summary>Whether the walk out under way is a staged eviction's. A read for tests.</summary>
+        public bool WalkOutIsStaged => walkingOutId != null && walkOutStaged;
 
         /// <summary>
         /// Starts the walk out for the houseguest the cards were about, when this house can play it.
@@ -73,6 +135,12 @@ namespace Gamesim.Episode
             walkOutUntil = Time.unscaledTime + WalkOutSeconds;
             // A press already in flight - the one that closed the last card - does not skip the walk.
             walkOutPressGuard = Time.unscaledTime + 0.35f;
+            // Under a staged eviction it is the goodbye's second half: the stage keeps the house in
+            // its seats to watch, and the camera, until the door is shut behind them.
+            walkOutStaged = IsCeremonyStaged && CeremonyStageKind == CeremonySting.EvictionKind;
+            stagedLeg = StagedLeg.Binding;
+            stagedBrisk = stagedDoorCut = false;
+            walkOutTone = GoodbyeTone(projected, id);
             // Back into the house's world for the walk: it moves only the people it routes. If their
             // body cannot take its navigation back, the house lets them go instead of stopping.
             npcMeetings.DepartureCandidate = id;
@@ -85,7 +153,8 @@ namespace Gamesim.Episode
         {
             if (walkingOutId == null) return;
             if (Time.unscaledTime > walkOutUntil || npcMeetings == null || npcWorldFailed) { FinishWalkOut(); return; }
-            if (Time.unscaledTime >= walkOutPressGuard && CeremonyTakeover.SkipPressed()) { FinishWalkOut(); return; }
+            if (Time.unscaledTime >= walkOutPressGuard && CeremonyTakeover.SkipPressed()) { SkipWalkOut(); return; }
+            if (walkOutStaged) { TickStagedWalkOut(); return; }
             switch (walkOutLeg)
             {
                 case 0:
@@ -116,57 +185,318 @@ namespace Gamesim.Episode
             }
         }
 
-        private bool TryWalkOutTo(Vector3 mark)
+        private bool TryWalkOutTo(Vector3 mark, float speed = 0f)
         {
             if (player == null || player.Agent == null) return false;
             var filter = new NavMeshQueryFilter { agentTypeID = player.Agent.agentTypeID, areaMask = player.Agent.areaMask };
             if (!NavMesh.SamplePosition(mark, out var hit, 0.75f, filter)) return false;
-            return npcMeetings.RouteDeparture(hit.position, out _);
+            return npcMeetings.RouteDeparture(hit.position, out _, speed);
         }
 
-        /// <summary>The walk out over: the house lets them go, the door comes down, and the body goes with them.</summary>
-        private void FinishWalkOut()
+        // ---------------------------------------------------------------- the staged exit
+
+        /// <summary>Where a staged exit's walk stops for the last look: the inside mark, where the opening's guests posed.</summary>
+        private Vector3 ExitLastLook => WalkOutInside;
+
+        /// <summary>Where a staged exit's walk goes through the door to: the deck behind the facade.</summary>
+        private Vector3 ExitThrough => WalkOutDeck;
+
+        /// <summary>
+        /// The line the walker's root passes behind the door before it closes: the vestibule's
+        /// light plane, which hides whatever is past it from the yard.
+        /// </summary>
+        private float ExitCloseLineX => OpeningDoorSet.VestibuleFarX;
+
+        /// <summary>
+        /// Each frame of a staged walk out: watched by the house in its seats, cut to the door as
+        /// they come near it, the last look, the door opened without its flare, walked through and
+        /// shut, and the shot held on the shut door before the body goes behind it.
+        /// </summary>
+        private void TickStagedWalkOut()
+        {
+            float now = Time.unscaledTime;
+            var body = BodyFor(walkingOutId);
+            switch (stagedLeg)
+            {
+                case StagedLeg.Binding:
+                    // Waiting for the body to take its navigation back - or for the house to have let
+                    // them go because it could not.
+                    if (npcMeetings.CandidateDropped(walkingOutId)) { FinishWalkOut(); return; }
+                    if (!npcMeetings.CanWalk(walkingOutId)) return;
+                    if (body == null || !npcMeetings.BeginDeparture(walkingOutId, out _) || !TryWalkOutTo(ExitLastLook, StagedWalkSpeed))
+                    { FinishWalkOut(); return; }
+                    stagedLeg = StagedLeg.Walking;
+                    stagedWalkFrom = now;
+                    if (ceremonyStage != null) ceremonyStage.WatchTheWalk(body, null, WatchSeconds);
+                    return;
+                case StagedLeg.Walking:
+                    LookAhead(body);
+                    // Slow while the house watches them in frame, the house's own pace once they are
+                    // out of it, and slow again from the cut to the door.
+                    if (!stagedDoorCut && !stagedBrisk && now >= stagedWalkFrom + WatchSeconds)
+                    {
+                        npcMeetings.SetDepartureSpeed(0f);
+                        stagedBrisk = true;
+                    }
+                    if (!stagedDoorCut && body != null
+                        && (FloorDistance(body.position, ExitLastLook) <= DoorCutReach || now >= stagedWalkFrom + DoorCutAfter)) CutToTheDoor();
+                    if (!npcMeetings.DepartureArrived()) return;
+                    if (!stagedDoorCut) CutToTheDoor();
+                    TakeTheLastLook(body);
+                    stagedLeg = StagedLeg.LastLook;
+                    return;
+                case StagedLeg.LastLook:
+                    if (now < stagedLookUntil) return;
+                    OpenTheExitDoor(body);
+                    stagedLeg = StagedLeg.Opening;
+                    return;
+                case StagedLeg.Opening:
+                    if (walkOutDoor != null && walkOutDoor.Openness < WalkOutDoorClear) return;
+                    if (!TryWalkOutTo(ExitThrough, StagedWalkSpeed)) { FinishWalkOut(); return; }
+                    stagedLeg = StagedLeg.Through;
+                    return;
+                case StagedLeg.Through:
+                    LookAhead(body);
+                    // The door closes once they are past the line that hides them - or wherever they
+                    // stopped, if the route ends short of it.
+                    if (body != null && body.position.x > ExitCloseLineX && !npcMeetings.DepartureArrived()) return;
+                    if (walkOutDoor != null) walkOutDoor.Close(reducedMotion);
+                    stagedLeg = StagedLeg.Closing;
+                    return;
+                case StagedLeg.Closing:
+                    if (walkOutDoor != null && walkOutDoor.Openness > 0.01f) return;
+                    stagedShutUntil = now + DoorHoldSeconds;
+                    stagedLeg = StagedLeg.Holding;
+                    return;
+                default:
+                    // The shot holds on the shut door; then the body goes behind it, under the dip.
+                    if (now >= stagedShutUntil) FinishWalkOut();
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// The dip to the door: black for a blink, the door built closed in it, so it is never seen
+        /// standing in the yard mid-walk, the stage's watch stopped, the camera on the door shot,
+        /// and the walk slow again for the frame.
+        /// </summary>
+        private void CutToTheDoor()
+        {
+            stagedDoorCut = true;
+            BeginTravelDip();
+            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene);
+            if (ceremonyStage != null) ceremonyStage.StopTheWatch();
+            if (cameraRig != null)
+            {
+                var door = YardDoorShot;
+                door.Seconds = ExitCutSeconds;
+                cameraRig.MoveTo(door);
+            }
+            npcMeetings.SetDepartureSpeed(StagedWalkSpeed);
+        }
+
+        /// <summary>
+        /// At the door, by how they leave things with the player (CEREMONY-CUTSCENES-PLAN §7.6, 5A):
+        /// a warm or dealt goodbye stops and turns back - to the lens, where the player's own eye is
+        /// - for the evicted take; a cold or an unmoved one walks straight on.
+        /// </summary>
+        private void TakeTheLastLook(Transform body)
+        {
+            stagedLookUntil = Time.unscaledTime;
+            var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+            if (visual == null) return;
+            visual.LookAt(null, 0f);
+            if (walkOutTone != GoodbyeKind.Dealt && walkOutTone != GoodbyeKind.Warm) return;
+            if (cameraRig != null) visual.SetFacing(cameraRig.Yaw + 180f);
+            visual.React(CharacterPresentation.Reaction.Evicted);
+            stagedLookUntil = Time.unscaledTime + LastLookSeconds;
+        }
+
+        /// <summary>The door opens for them - the swing, and the light beyond at its settled spill with no flare - and the camera pushes in.</summary>
+        private void OpenTheExitDoor(Transform body)
+        {
+            var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+            if (visual != null) visual.SetFacing(float.NaN);
+            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene);
+            walkOutDoor.Open(reducedMotion, false);
+            if (cameraRig != null) cameraRig.MoveTo(YardPushInShot);
+        }
+
+        /// <summary>
+        /// The walker's head down, on a point kept on the floor ahead of them: a slow walk with the
+        /// head down reads as heavy. A scene transform of its own: nothing may be added to the
+        /// body's root, which its motion owner refuses to share.
+        /// </summary>
+        private void LookAhead(Transform body)
+        {
+            if (body == null) return;
+            var visual = body.GetComponent<CharacterPresentation>();
+            if (visual == null) return;
+            if (walkOutLookMark == null) walkOutLookMark = new GameObject("Walk out look mark").transform;
+            var ahead = body.forward;
+            ahead.y = 0f;
+            if (ahead.sqrMagnitude < 0.0001f) ahead = Vector3.forward;
+            walkOutLookMark.position = body.position + ahead.normalized * LookAheadMetres;
+            visual.LookAtPoint(walkOutLookMark, 0.5f);
+        }
+
+        /// <summary>
+        /// The walk out over: the house lets them go, the door comes down, and the body goes with
+        /// them. A staged exit does it behind a dip - the door is already shut on them, and the
+        /// camera goes back to the viewer under the black - unless <paramref name="immediate"/>:
+        /// a competition taking the yard, or the stage ended under it, has the frame now.
+        /// </summary>
+        private void FinishWalkOut(bool immediate = false)
         {
             if (walkingOutId == null) return;
             string leaving = walkingOutId;
+            bool staged = walkOutStaged;
+            if (staged)
+            {
+                var body = BodyFor(leaving);
+                var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+                if (visual != null) { visual.SetFacing(float.NaN); visual.LookAt(null, 0f); }
+            }
             walkingOutId = null;
+            walkOutStaged = false;
             if (npcMeetings != null) { npcMeetings.EndDeparture(); npcMeetings.DepartureCandidate = null; }
-            if (walkOutDoor != null) { Destroy(walkOutDoor.gameObject); walkOutDoor = null; }
+            if (staged && !immediate) BeginTravelDip();
+            StrikeWalkOutDoor();
             if (departingId == leaving) departingId = null;
             if (IsReady) Project();
-            if (cameraRig != null && player != null) cameraRig.FocusSubject(player.transform, false);
+            if (staged)
+            {
+                if (cameraRig != null) cameraRig.ReleaseShot(ExitCutSeconds);
+                if (ceremonyStage != null) ceremonyStage.HandBackCamera();
+            }
+            else if (cameraRig != null && player != null) cameraRig.FocusSubject(player.transform, false);
         }
 
-        /// <summary>Ends a walk out now, as a press does. Public for the tests and the season walks.</summary>
-        public void SkipWalkOut() => FinishWalkOut();
+        /// <summary>
+        /// Ends a walk out now, as a press does. Public for the tests and the season walks. An
+        /// unstaged one lets them go at once, as it always did. A staged exit - its goodbye or its
+        /// walk - goes straight to the door shut behind them: the leaves closed, the door shot,
+        /// and the body switched off under the dip. One press is one step, and nothing the commit
+        /// decided changes.
+        /// </summary>
+        public void SkipWalkOut()
+        {
+            if (walkingOutId != null)
+            {
+                if (!walkOutStaged) { FinishWalkOut(); return; }
+                if (walkOutDoor != null)
+                {
+                    walkOutDoor.Close(true);
+                    if (cameraRig != null)
+                    {
+                        var shut = YardDoorShot;
+                        shut.Seconds = ExitCutSeconds;
+                        cameraRig.MoveTo(shut);
+                    }
+                }
+                FinishWalkOut();
+                return;
+            }
+            if (IsCeremonyStaged && ceremonyStage.Step == CeremonyStageStep.Goodbye) SkipTheGoodbye();
+        }
+
+        /// <summary>
+        /// A press on the goodbye: as a press on the walk, straight to the door shut behind them.
+        /// They never walk; their body goes under the dip, the camera with it, and the house gets
+        /// up as it would after the walk.
+        /// </summary>
+        private void SkipTheGoodbye()
+        {
+            string leaving = departingId;
+            if (leaving == null) return;
+            if (walkOutDoor != null) walkOutDoor.Close(true);
+            BeginTravelDip();
+            var body = BodyFor(leaving);
+            var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
+            if (visual != null) { visual.SetFacing(float.NaN); visual.LookAt(null, 0f); }
+            if (cameraRig != null) cameraRig.ReleaseShot(ExitCutSeconds);
+            if (ceremonyStage != null) ceremonyStage.HandBackCamera();
+            if (npcMeetings != null && npcMeetings.DepartureCandidate == leaving) npcMeetings.DepartureCandidate = null;
+            departingId = null;
+            StrikeWalkOutDoor();
+            if (ceremonyStage != null) ceremonyStage.EndTheGoodbye();
+            if (IsReady) Project();
+        }
+
+        /// <summary>How far apart two points stand on the floor, heights aside.</summary>
+        private static float FloorDistance(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
+
+        /// <summary>The door and the walker's look mark come down: the walk out is over, or never started.</summary>
+        private void StrikeWalkOutDoor()
+        {
+            if (walkOutDoor != null) { Destroy(walkOutDoor.gameObject); walkOutDoor = null; }
+            if (walkOutLookMark != null) { Destroy(walkOutLookMark.gameObject); walkOutLookMark = null; }
+        }
+
+        /// <summary>A staged eviction's end strikes whatever its exit put up for a walk that is not under way.</summary>
+        private void StrikeWalkOutDoorIfNobodyWalks()
+        {
+            if (walkingOutId == null) StrikeWalkOutDoor();
+        }
 
         /// <summary>Forgets a walk out and the jury's places when the season is replaced under them.</summary>
         private void ResetWalkOut()
         {
             if (npcMeetings != null && walkingOutId != null) { npcMeetings.EndDeparture(); npcMeetings.DepartureCandidate = null; }
             walkingOutId = null;
-            if (walkOutDoor != null) { Destroy(walkOutDoor.gameObject); walkOutDoor = null; }
+            walkOutStaged = false;
+            StrikeWalkOutDoor();
             juryBench.Clear();
             juryBenchSeason = null;
         }
 
         /// <summary>
+        /// How the evicted leave things with the player, as far as the player knows (MOCKUP-PASS-PLAN
+        /// decision 6A): a deal between them, the player's own vote or nomination against them, the
+        /// player's vote to keep them, or none of these. Never their hidden feeling toward the
+        /// player, which the line used to give away as they walked out to the jury.
+        /// </summary>
+        public enum GoodbyeKind { Neutral, Warm, Cold, Dealt }
+
+        /// <summary>
+        /// The goodbye's tone, from what the player knows: a deal between them that still binds;
+        /// otherwise cold for the player's ballot against them, or for a player Head of Household
+        /// with them on the block; warm for the player's ballot for the other nominee; neutral
+        /// otherwise. Pure: it reads the committed state and draws nothing.
+        /// </summary>
+        public static GoodbyeKind GoodbyeTone(EpisodeState state, string id)
+        {
+            if (state == null || id == null || state.Find(id) == null) return GoodbyeKind.Neutral;
+            string you = state.playerId;
+            bool dealt = state.deals != null && state.deals.Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
+                && ((d.proposerId == id && d.recipientId == you) || (d.proposerId == you && d.recipientId == id)));
+            if (dealt) return GoodbyeKind.Dealt;
+            var ballot = state.votes != null ? state.votes.FirstOrDefault(vote => vote.voterId == you) : null;
+            bool nominated = state.hohId == you && state.nominees != null && state.nominees.Contains(id);
+            if (nominated || (ballot != null && ballot.targetId == id)) return GoodbyeKind.Cold;
+            if (ballot != null && !string.IsNullOrEmpty(ballot.targetId)) return GoodbyeKind.Warm;
+            return GoodbyeKind.Neutral;
+        }
+
+        /// <summary>
         /// What the evicted does at the door: the reference's goodbye lines, by how they leave things
-        /// with the player - a deal between them, warmth, or a grudge - and where they are going.
+        /// with the player as far as the player knows (<see cref="GoodbyeTone"/>), and where they are
+        /// going - the jury house for a juror, and nowhere named for somebody out before the jury.
         /// </summary>
         public static string GoodbyeLine(EpisodeState state, string id)
         {
             var who = state?.Find(id);
             if (who == null) return string.Empty;
             string name = who.name.Split(' ')[0];
-            double warmth = state.Score(id, state.playerId);
-            bool dealt = state.deals.Any(d => DealStatus.Binds(d.status) && d.status != DealStatus.Proposed
-                && ((d.proposerId == id && d.recipientId == state.playerId) || (d.proposerId == state.playerId && d.recipientId == id)));
-            string opener = dealt ? name + " pauses at the door and turns to you…"
-                : warmth >= 20 ? name + " gives you one last look before walking out the door."
-                : warmth <= -20 ? name + " glares at you from the doorway."
-                : name + " walks to the door without looking back.";
-            return opener + " They'll be waiting in the jury house.";
+            string opener;
+            switch (GoodbyeTone(state, id))
+            {
+                case GoodbyeKind.Dealt: opener = name + " pauses at the door and turns to you…"; break;
+                case GoodbyeKind.Warm: opener = name + " gives you one last look before walking out the door."; break;
+                case GoodbyeKind.Cold: opener = name + " glares at you from the doorway."; break;
+                default: opener = name + " walks to the door without looking back."; break;
+            }
+            return who.status == ContestantStatus.Jury ? opener + " They'll be waiting in the jury house." : opener;
         }
 
         // ---------------------------------------------------------------- the jury on finale night

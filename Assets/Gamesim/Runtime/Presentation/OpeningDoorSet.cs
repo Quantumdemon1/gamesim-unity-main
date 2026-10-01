@@ -113,6 +113,11 @@ namespace Gamesim.Presentation
         private Color burstTint, emblemDeep, emblemBright;
 
         private bool open, lit, reduced, jittering;
+        /// <summary>
+        /// Whether the light comes up to its settled spill with no flare, and no sparkle falls: the
+        /// way the evicted leave (MOCKUP-PASS-PLAN M19). The burst and the sparkles are the welcome.
+        /// </summary>
+        private bool calm;
         private float openness, sinceOpen, clock;
         private float burstClock, burstLevel, lightLevel, rampFromLevel, rampFromLight;
 
@@ -148,9 +153,17 @@ namespace Gamesim.Presentation
         /// <paramref name="reducedMotion"/> they are simply open and the light stands at its settled
         /// level.</para>
         /// </summary>
-        public void Open(bool reducedMotion)
+        public void Open(bool reducedMotion) => Open(reducedMotion, true);
+
+        /// <summary>
+        /// Opens the doors as <see cref="Open(bool)"/> does, or, without <paramref name="flash"/>,
+        /// as somebody leaves through them: the same rattle and swing, and the light beyond rising
+        /// straight to its settled spill, with no flare over the threshold and no sparkle falling.
+        /// </summary>
+        public void Open(bool reducedMotion, bool flash)
         {
             reduced = reducedMotion;
+            calm = !flash;
             if (!open)
             {
                 open = true;
@@ -233,8 +246,8 @@ namespace Gamesim.Presentation
                 else if (burstClock < BurstRamp)
                 {
                     float t = burstClock / BurstRamp;
-                    burstLevel = Mathf.Lerp(rampFromLevel, 1f, t);
-                    lightLevel = Mathf.Lerp(rampFromLight, LightPeak, t);
+                    burstLevel = Mathf.Lerp(rampFromLevel, calm ? BurstSettled : 1f, t);
+                    lightLevel = Mathf.Lerp(rampFromLight, calm ? LightSettled : LightPeak, t);
                 }
                 else
                 {
@@ -257,7 +270,7 @@ namespace Gamesim.Presentation
         /// </summary>
         private void TickSparkles(float dt)
         {
-            if (!open || reduced) { HideSparkles(); return; }
+            if (!open || reduced || calm) { HideSparkles(); return; }
             for (int i = 0; i < sparkles.Length; i++)
             {
                 ref var s = ref sparkles[i];

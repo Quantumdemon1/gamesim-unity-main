@@ -448,17 +448,24 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(evicted, Is.Not.Null.And.Not.Empty);
             yield return SkipReveals();
             yield return Frames(3);
-            // The card down: the house keeps its seats while the evicted walk out through the front door.
+            // The card down: the evicted stand to say goodbye to the house in its seats
+            // (MOCKUP-PASS-PLAN M19), and only then walk out through the front door.
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The evicted say goodbye first,");
+            Assert.That(director.WalkingOutId, Is.Null, "before they walk.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The chrome stays aside through the goodbye,");
+            Assert.That(PlatesUp(), Is.Empty, "and the plates stay down.");
+            yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 1f, "the goodbye gives way to the walk out");
             Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "The evicted walk out.");
             Assert.That(director.IsCeremonyStaged, Is.True, "The house keeps its seats while they go.");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release));
-            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the card is down.");
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The chrome stays aside for the walk out too: the exit is full-bleed to the shut door.");
             // MOCKUP-PASS-PLAN M2: the walk out is the card's last beat, and its frame is as clean.
             Assert.That(PlatesUp(), Is.Empty, "The plates stay down while the evicted walk out.");
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
             yield return null;
             Assert.That(PlatesDown(), Is.Empty, "The plates come back once the house is let go.");
+            Assert.That(Hud.IsHeldForReveal, Is.False, "and so does the chrome, once the door is shut behind them.");
             // The stage ends itself on a stopped world, so "the house gets up" held on a dead one
             // (PACK8-PASS-PLAN A1): the walk out has to leave the house's world running.
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
@@ -533,7 +540,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.IsPlaying, Is.True, "The result is still up to be photographed.");
             yield return CaptureTheScreen(screen, "ceremony-stage-vote-result");
             yield return SkipReveals();
-            yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
+            yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,
+                "the goodbye and the walk-out end");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out.");
         }
@@ -644,7 +652,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(line.Trim(), Does.EndWith(":: seated"), "Every place is sat in: " + line.Trim());
             yield return CaptureLivingRoom("ceremony-stage-full-house-living-later");
             yield return SkipReveals();
-            yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "the walk-out ends");
+            yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 2f,
+                "the goodbye and the walk-out end");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "and the house gets up");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the walk out at a full house too.");
         }

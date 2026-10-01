@@ -108,15 +108,19 @@ namespace Gamesim.Tests.PlayMode
             yield return PressKey(Key.Enter);
             Assert.That(vote.IsPlaying, Is.False, "The next press closes it,");
             yield return Frames(2);
-            Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "the evicted walk out,");
-            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release), "the house keeps its seats,");
-            Assert.That(director.CeremonySkipShowing, Is.True, "and the chip stays for the walk.");
+            // PACK8-PASS-PLAN C2: the evicted stand to say goodbye before they walk out.
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "the evicted stand to say goodbye,");
+            Assert.That(director.DepartingId, Is.EqualTo(evicted));
+            Assert.That(director.WalkingOutId, Is.Null, "before anybody walks,");
+            Assert.That(director.CeremonySkipShowing, Is.True, "and the chip stays for the goodbye.");
 
-            // Past the guard that keeps the press that closed the card from ending the walk too.
+            // Past the guard that keeps the press that closed the card from ending the goodbye too.
             yield return RealSeconds(0.5f);
-            Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "The press that closed the card did not end the walk as well.");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye),
+                "The press that closed the card did not end the goodbye as well.");
             yield return ClickTheSkipChip();
-            Assert.That(director.WalkingOutId, Is.Null, "A click on the chip ends the walk out,");
+            Assert.That(director.DepartingId, Is.Null, "A click on the chip goes straight to the door shut behind them:");
+            Assert.That(director.WalkingOutId, Is.Null, "nobody walks out,");
             Assert.That(body.gameObject.activeInHierarchy, Is.False, "and the evicted go.");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "The house gets up,");
             yield return null;
@@ -208,8 +212,8 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// Commits eviction night until it is staged, skips the summons and the vote as a player
-        /// who has seen enough does, and leaves the evicted walking out under the stage, the chrome
-        /// back and the chip up.
+        /// who has seen enough does, sits out the goodbye, and leaves the evicted walking out under
+        /// the stage, the chrome aside and the chip up.
         /// </summary>
         private IEnumerator SkipToTheStagedWalkOut()
         {
@@ -221,19 +225,21 @@ namespace Gamesim.Tests.PlayMode
             director.SkipCeremonySummons();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
             yield return SkipReveals();
-            yield return Frames(3);
+            yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 2f, "the goodbye gives way to the walk out");
             Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "The evicted walk out,");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release), "the house keeps its seats,");
             Assert.That(director.CeremonySkipShowing, Is.True, "and the chip names the press that ends the walk.");
-            Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back for the walk.");
+            // PACK8-PASS-PLAN C2 (MOCKUP-PASS-PLAN M19): the exit is full-bleed to the shut door.
+            Assert.That(Hud.IsHeldForReveal, Is.True, "The chrome stays aside for the walk.");
         }
 
         /// <summary>
         /// The press the chip names during a staged walk out ends the walk and nothing else. The
         /// eviction is committed from the episode screen, as in play, and the screen is still open
-        /// under the walk with the chrome back and its way on focused: the stage held the house's
-        /// input only while it narrated, so Enter ended the walk and pressed the way on as well,
-        /// committing the next beat under the goodbye, and Escape closed the panel.
+        /// under the walk - under the held chrome now (PACK8-PASS-PLAN C2) - with its way on
+        /// focused: the stage held the house's input only while it narrated, so Enter ended the
+        /// walk and pressed the way on as well, committing the next beat under the goodbye, and
+        /// Escape closed the panel.
         /// </summary>
         [UnityTest]
         public IEnumerator CeremonyStage_TheWalkOutsPressEndsTheWalkAndNothingElse()
@@ -271,11 +277,11 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The chip clear of the chrome while it is back for a staged walk out, at both text sizes.
-        /// Its corner is the cast strip's right-hand end - the quote, the jury's card at the endgame,
-        /// the last faces of a large house - and it stood on it there, its shield taking the faces'
-        /// clicks for the length of the walk. The controls pill stands over the strip in that
-        /// corner, so the chip stands above both, still in the frame's lower half.
+        /// The chip through a staged walk out, at both text sizes. It used to stand clear of the
+        /// chrome, which came back for the walk: its corner is the cast strip's right-hand end, and
+        /// it stood on the faces there. The exit is full-bleed now (PACK8-PASS-PLAN C2, MOCKUP-PASS-
+        /// PLAN M19): the chrome stays aside to the shut door, the HUD reports nothing on screen,
+        /// and the chip keeps its own corner, still in the frame's lower half.
         /// </summary>
         [UnityTest]
         public IEnumerator CeremonyStage_TheSkipChipStandsClearOfTheChromeThroughTheWalkOut()
@@ -291,21 +297,11 @@ namespace Gamesim.Tests.PlayMode
                 string where = "The skip chip through the walk out at " + (large ? "the larger" : "the resting") + " text size";
                 Assert.That(director.WalkingOutId, Is.EqualTo(evicted), where + ": they are still walking,");
                 Assert.That(director.CeremonySkipShowing, Is.True, where + ": the chip is up,");
-                Assert.That(Hud.IsHeldForReveal, Is.False, where + ": the chrome is back.");
+                Assert.That(Hud.IsHeldForReveal, Is.True, where + ": the chrome is aside for the walk.");
                 Canvas.ForceUpdateCanvases();
                 var chip = SkipChip();
-                var at = ScreenRect(chip);
-                // The live copies: a rebuild's old ones are inactive until they are destroyed.
-                var strip = director.GetComponentsInChildren<RectTransform>().LastOrDefault(rect => rect.name == CastRail.StripName);
-                Assert.That(strip, Is.Not.Null, where + ": the cast strip is on screen.");
-                Assert.That(at.Overlaps(ScreenRect(strip)), Is.False, where + ": clear of the cast strip, " + at + " against " + ScreenRect(strip) + ".");
-                var pill = director.GetComponentsInChildren<RectTransform>().LastOrDefault(rect => rect.name == "Exploration controls");
-                if (pill != null)
-                    Assert.That(at.Overlaps(ScreenRect(pill)), Is.False, where + ": clear of the controls pill, " + at + " against " + ScreenRect(pill) + ".");
                 Hud.ChromeOnScreen(chrome);
-                Assert.That(chrome, Is.Not.Empty, where + ": the HUD reports its chrome.");
-                foreach (var piece in chrome)
-                    Assert.That(at.Overlaps(piece), Is.False, where + ": clear of every piece of the chrome, " + at + " against " + piece + ".");
+                Assert.That(chrome, Is.Empty, where + ": the HUD reports no chrome on screen while it is aside.");
                 foreach (var label in chip.GetComponentsInChildren<TMP_Text>())
                     Assert.That(label.rectTransform.rect.height, Is.GreaterThanOrEqualTo(label.fontSize * 1.3f - 0.01f),
                         where + ": '" + label.text + "' has a box " + label.rectTransform.rect.height.ToString("0.0") + " high.");
@@ -318,7 +314,8 @@ namespace Gamesim.Tests.PlayMode
                 var bounds = space.rect;
                 Assert.That(high.x, Is.LessThanOrEqualTo(bounds.xMax + 0.5f), where + ": on the canvas at the right,");
                 Assert.That(low.y, Is.GreaterThanOrEqualTo(bounds.yMin - 0.5f), where + ": and at the bottom,");
-                Assert.That(high.y - bounds.yMin, Is.LessThan(bounds.height * 0.5f), where + ": in its lower half.");
+                Assert.That(high.y - bounds.yMin, Is.LessThan(bounds.height * 0.5f), where + ": in its lower half,");
+                Assert.That(low.y - bounds.yMin, Is.LessThan(40f), where + ": in its own corner, with no chrome to stand above.");
             }
             director.SetLargeText(false);
             yield return null;

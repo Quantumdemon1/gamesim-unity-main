@@ -15,8 +15,12 @@ namespace Gamesim.Episode
     ///
     /// <para>Every warning is a dry run (<see cref="CommitmentsRead.WouldBreak"/>): the engine on a
     /// copy of the season, so nothing is committed, the season's revision does not move and its
-    /// random stream is not drawn from. A render repeats its dry runs, and each is an engine run, so
-    /// they are kept for the state they were run on and thrown away when a commit replaces it.</para>
+    /// random stream is not drawn from. Nothing is run at all when the player has nothing standing
+    /// that the decision settles, which is most of the time. A sweep of every replacement a screen
+    /// offers is judged by the rules on one copy (<see cref="CommitmentsRead.ByTheRules(EpisodeState, IEnumerable{CommitmentsRead.Decision})"/>),
+    /// which the EditMode tests hold to the engine, rather than one engine run a name; the engine
+    /// runs only for the few choices a screen commits as they stand. A render repeats its dry runs,
+    /// so they are kept for the state they were run on and thrown away when a commit replaces it.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -36,42 +40,80 @@ namespace Gamesim.Episode
         /// What a decision would break, from the dry run on this very state: run once, and kept while
         /// the HUD keeps drawing from it. A commit makes a new state and empties the store.
         /// </summary>
-        private List<CommitmentsRead.Breach> DryRun(EpisodeState state, CommitmentsRead.Decision decision)
+        private List<CommitmentsRead.Breach> DryRun(EpisodeState state, CommitmentsRead.Decision decision) =>
+            decision == null ? new List<CommitmentsRead.Breach>() : Kept(state, DecisionKey(decision), () => CommitmentsRead.WouldBreak(state, decision));
+
+        /// <summary>What any of several decisions would break, by the rules on one copy of this very state: a sweep, run once and kept like a dry run.</summary>
+        private List<CommitmentsRead.Breach> RulesRun(EpisodeState state, IEnumerable<CommitmentsRead.Decision> decisions)
         {
-            if (state == null || decision == null) return new List<CommitmentsRead.Breach>();
+            var list = (decisions ?? Enumerable.Empty<CommitmentsRead.Decision>()).Where(d => d != null).ToList();
+            if (list.Count == 0) return new List<CommitmentsRead.Breach>();
+            return Kept(state, "rules|" + string.Join(";", list.Select(DecisionKey)), () => CommitmentsRead.ByTheRules(state, list));
+        }
+
+        private List<CommitmentsRead.Breach> Kept(EpisodeState state, string key, Func<List<CommitmentsRead.Breach>> run)
+        {
+            if (state == null) return new List<CommitmentsRead.Breach>();
             if (!ReferenceEquals(breachState, state)) { breachRuns.Clear(); breachState = state; }
-            string key = decision.kind + "|" + decision.firstId + "|" + decision.secondId + "|" + decision.useVeto;
-            if (!breachRuns.TryGetValue(key, out var breaches)) breachRuns[key] = breaches = CommitmentsRead.WouldBreak(state, decision);
+            if (!breachRuns.TryGetValue(key, out var breaches)) breachRuns[key] = breaches = run();
             return breaches;
         }
 
-        /// <summary>The Head of Household's picks, as the picker's footer warns of them: null until two different names are picked, and when they break nothing.</summary>
-        public string NominationWarning(EpisodeState state, string first, string second)
+        private static string DecisionKey(CommitmentsRead.Decision decision) =>
+            decision.kind + "|" + decision.firstId + "|" + decision.secondId + "|" + decision.useVeto;
+
+        /// <summary>The Head of Household's picks, as a review warns of them: null until two different names are picked, and when they break nothing.</summary>
+        public string NominationWarning(EpisodeState state, string first, string second) =>
+            NominationBreach(state, first, second, out _);
+
+        /// <summary>
+        /// The picker's footer warning for two picks - the dry run's words - and the short form the
+        /// strip falls back to when those and what committing lets pass cannot share it: how many of
+        /// the player's commitments the picks break, and how many storylines committing lets pass.
+        /// Nulls until two different names are picked, and when they break nothing.
+        /// </summary>
+        private string NominationBreach(EpisodeState state, string first, string second, out string brief)
         {
+            brief = null;
             if (state == null || string.IsNullOrEmpty(first) || string.IsNullOrEmpty(second) || first == second) return null;
-            return CommitmentsRead.Warning(state, DryRun(state, CommitmentsRead.Decision.Nominate(first, second)));
+            var breaches = DryRun(state, CommitmentsRead.Decision.Nominate(first, second));
+            string words = CommitmentsRead.Warning(state, breaches);
+            if (words == null) return null;
+            int lapsing = NominationSteps.LapsingOnNominate(state).Count;
+            brief = "Committing these breaks " + CommitmentsRead.CountOf(breaches) + " of your commitments (see " + YourWordCaption + ")"
+                + (lapsing > 0 ? " and lets " + (lapsing == 1 ? "1 storyline" : lapsing + " storylines") + " pass" : "") + ".";
+            return words;
+        }
+
+        /// <summary>The picker's picks, warned of in the footer's strip in place: its words, or its short form where they cannot share the strip.</summary>
+        private void WarnOfThePicks(EpisodeState state, string first, string second)
+        {
+            string words = NominationBreach(state, first, second, out string brief);
+            hud.FooterBreachWarning(words, brief);
         }
 
         /// <summary>
         /// The veto meeting's warning, over every choice the screen offers: the holder's saves and
         /// keeping the block; a Head of Household who holds it, each replacement under the nominee
         /// picked to save; a Head of Household naming the replacement for a houseguest's save, each
-        /// name. Null when no choice breaks anything.
+        /// name. Null when no choice breaks anything - at once, with no run at all, when the player
+        /// has nothing standing that a veto settles.
         /// </summary>
         public string VetoWarning(EpisodeState state, string savePick)
         {
             if (state == null || state.phase != EpisodePhase.VetoMeeting || state.vetoResolved) return null;
+            if (!CommitmentsRead.AtStake(state, CommitmentsRead.DecisionKinds.Veto)) return null;
             var breaches = new List<CommitmentsRead.Breach>();
             bool holds = state.vetoHolderId == state.playerId, heads = state.hohId == state.playerId;
             var candidates = EpisodeEngine.ReplacementCandidates(state).Select(c => c.id).ToList();
             bool usable = !EpisodeEngine.VetoIsLockedAtFinalFour(state) && candidates.Count > 0;
             if (holds)
             {
+                // Every replacement under the nominee picked to save, by the rules on one copy.
                 if (usable && heads)
                 {
                     if (state.nominees.Contains(savePick ?? ""))
-                        foreach (string replacement in candidates)
-                            breaches.AddRange(DryRun(state, CommitmentsRead.Decision.Veto(true, savePick, replacement)));
+                        breaches.AddRange(RulesRun(state, candidates.Select(replacement => CommitmentsRead.Decision.Veto(true, savePick, replacement))));
                 }
                 else if (usable)
                     foreach (string nominee in state.nominees)
@@ -80,10 +122,10 @@ namespace Gamesim.Episode
             }
             else if (heads)
             {
+                // Every name the Head of Household can put up for a houseguest's save, likewise.
                 string saved = EpisodeEngine.NpcVetoSave(state);
                 if (saved != null)
-                    foreach (string replacement in candidates)
-                        breaches.AddRange(DryRun(state, CommitmentsRead.Decision.Veto(true, saved, replacement)));
+                    breaches.AddRange(RulesRun(state, candidates.Select(replacement => CommitmentsRead.Decision.Veto(true, saved, replacement))));
             }
             return CommitmentsRead.Warning(state, breaches);
         }
@@ -134,14 +176,11 @@ namespace Gamesim.Episode
         /// <summary>
         /// The Your word page: every commitment the player is a party to, the open ones first and
         /// then the settled ones with how each ended, a card a houseguest in each. A door back to the
-        /// notes, and the notebook's own foot.
+        /// notes in the page's head, and the notebook's own foot.
         /// </summary>
         private void RenderNotebookWord(EpisodeState state)
         {
-            hud.FilterRow("Your word filters", new List<(string, bool, Action)>
-            {
-                (BackToYourNotesCaption, false, () => ShowNotebookSection(NotebookSection.Notes)),
-            });
+            hud.PageDoor(BackToYourNotesCaption, () => ShowNotebookSection(NotebookSection.Notes));
             // The mark exists in every state: it is what the notebook scrolls to.
             hud.Mark(NotebookSection.Word);
             var all = CommitmentsRead.Of(state);

@@ -78,9 +78,9 @@ namespace Gamesim.Episode
             else if (state.nominees.Count == 0) NominationCeremony(state, hoh);
             else NominationOutcome(state, hoh);
             NominationFooter(state, hoh, current, picking);
-            // The picks a render restored, warned of over the footer it just built (EpisodeDirector.YourWord).
+            // The picks a render restored, warned of in the footer it just built (EpisodeDirector.YourWord).
             if (picking && current.kind == NominationSteps.Kind.Picker && !nominationBackdoorView)
-                hud.FooterBreachWarning(NominationWarning(state, nominationFirst, nominationSecond));
+                WarnOfThePicks(state, nominationFirst, nominationSecond);
             return true;
         }
 
@@ -242,7 +242,7 @@ namespace Gamesim.Episode
                     nominationFirst = first; nominationSecond = second;
                     // Once two are picked, what committing them would break - in the footer's strip,
                     // in place, as the picks are lit in place: nothing is rebuilt or committed.
-                    hud.FooterBreachWarning(NominationWarning(state, first, second));
+                    WarnOfThePicks(state, first, second);
                 },
                 (first, second) => OfferPlayerDecision(state, false, EpisodeCommandKind.Nominate,
                     "Nominate " + state.Find(first)?.name + " and " + state.Find(second)?.name

@@ -290,13 +290,13 @@ namespace Gamesim.Episode
                     // until Confirm. Confirm stands straight under the cards, where mockup-08 puts
                     // its button; the explanation follows it rather than pushing it past the fold.
                     bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
+                    // What the ballot chosen would break of the player's word, over the cards and
+                    // Confirm - the controls it is about - so Confirm still follows the cards
+                    // (EpisodeDirector.YourWord).
                     hud.BallotCards(state, state.nominees, reviewed.target, id => id == reviewed.target ? "Your choice: " + state.Find(id).name : "Choose " + state.Find(id).name + " instead",
-                        id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); });
+                        id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); }, warning: DraftWarning(reviewed));
                     hud.Action(EpisodeHud.DiaryConfirmCaption, () => ConfirmDiaryDecision(reviewed));
                     hud.Action(EpisodeHud.DiaryCancelCaption, () => CancelDiaryDecision(reviewed));
-                    // What the ballot chosen would break of the player's word (EpisodeDirector.YourWord).
-                    string breach = DraftWarning(reviewed);
-                    if (breach != null) hud.NamedParagraph(EpisodeHud.BreachWarningName, breach, UiTheme.Warning);
                     hud.Paragraph(reviewed.summary);
                     hud.Aside("Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
                     return;
@@ -785,19 +785,15 @@ namespace Gamesim.Episode
             if (BallotIsLive(state))
             {
                 bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
+                // Out of the diary a card is the vote itself, cast as it is pressed: what each one
+                // would break of the player's word is said over the cards, before either is
+                // pressed (EpisodeDirector.YourWord). In the diary the card stages the choice, and
+                // its review says it then.
                 hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
-                    id => OfferBallot(state, privateRoom, tieBreak, id));
+                    id => OfferBallot(state, privateRoom, tieBreak, id), warning: privateRoom ? null : BallotWarning(state, state.nominees));
                 // Under the cards, where mockup-08 keeps its line: ahead of the title it read as
                 // the page's heading.
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");
-                // Out of the diary a card is the vote itself, cast as it is pressed: what each one
-                // would break of the player's word is said before either is (EpisodeDirector.YourWord).
-                // In the diary the card stages the choice, and its review says it then.
-                if (!privateRoom)
-                {
-                    string breach = BallotWarning(state, state.nominees);
-                    if (breach != null) hud.NamedParagraph(EpisodeHud.BreachWarningName, breach, UiTheme.Warning);
-                }
                 // At four there is exactly one eligible voter. That has always been true by
                 // arithmetic and has never been said, which makes a sole ballot look like a bug.
                 if (!tieBreak && EpisodeEngine.Voters(state).Count() == 1)

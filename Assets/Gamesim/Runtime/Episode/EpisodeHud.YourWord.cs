@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -14,9 +15,10 @@ namespace Gamesim.Episode
     ///
     /// <para>A warning is a label, never a control. It stands in the strategy footer's strip, in a
     /// strip of its own in a step's column, as a line over a finalist's control or as a paragraph
-    /// under a ballot, and its words are always one label named <see cref="BreachWarningName"/>, so
-    /// a test finds it wherever a screen puts it. Nothing here moves, renames or covers a control a
-    /// walk presses, and nothing here commits anything.</para>
+    /// over a ballot's cards, and its words are one label named <see cref="BreachWarningName"/>, so a
+    /// test finds it wherever a screen puts it - except in a footer strip that already warns, where
+    /// the breach leads the one warning line and the line keeps the name it had. Nothing here
+    /// moves, renames or covers a control a walk presses, and nothing here commits anything.</para>
     /// </summary>
     public sealed partial class EpisodeHud
     {
@@ -31,58 +33,93 @@ namespace Gamesim.Episode
 
         /// <summary>The strip a breach warning holds this render, and what the strip said before it took it.</summary>
         private RectTransform breachStrip;
+        /// <summary>The strip a breach built because the footer had none: nothing rests in it, and it goes when the breach does.</summary>
+        private RectTransform breachMadeStrip;
         private string breachRestText, breachRestName;
         private Color breachRestColour;
-        private bool breachRestWarns, breachMadeStrip;
+        private bool breachRestWarns;
 
         /// <summary>
         /// Puts a breach warning in the strategy stage's footer strip, or takes it down, in place and
         /// without a render: the nomination picker lights its picks without rebuilding anything, so the
-        /// strip changes with them the same way. The strip carries one warning at a time; a breach
-        /// outranks what comes next and what moving on lets pass, because it is about the choice
-        /// about to be committed, and taking it down gives the strip back exactly what it said - its
-        /// words, colour and name. Null or empty words take it down. Off the strategy stage, nothing.
+        /// strip changes with them the same way. Null or empty words take it down.
+        ///
+        /// <para>The strip carries one warning line. A breach outranks what comes next, which it
+        /// takes the place of. A warning already resting there - what committing lets pass - is
+        /// never taken away: the line says the breach and then that warning, under the resting
+        /// warning's own name, so it is found where it always was. When the two cannot share the
+        /// strip even at its smallest text, the line says <paramref name="brief"/> instead, the
+        /// short form that counts them. Taking the breach down gives the strip back exactly what it
+        /// said - its words, colour and name - or, for a strip the breach built, hides it again.
+        /// Off the strategy stage, nothing.</para>
         /// </summary>
-        public void FooterBreachWarning(string words)
+        public void FooterBreachWarning(string words, string brief = null)
         {
             if (modal == null || activityLayout != ActivityLayout.Strategy) return;
             // A rebuilt footer is a new strip: what this held belonged to the render before.
-            bool holding = breachStrip != null && breachStrip == footerStrip;
+            if (breachStrip != null && breachStrip != footerStrip) breachStrip = null;
+            if (breachMadeStrip != null && breachMadeStrip != footerStrip) breachMadeStrip = null;
             if (string.IsNullOrEmpty(words))
             {
-                if (holding && footerWords != null)
-                {
-                    if (breachMadeStrip) footerStrip.gameObject.SetActive(false);
-                    else
-                    {
-                        footerWords.text = breachRestText;
-                        footerWords.color = breachRestColour;
-                        footerWords.name = breachRestName;
-                        footerWarns = breachRestWarns;
-                    }
-                }
-                breachStrip = null;
+                TakeDownBreach();
                 return;
             }
-            if (!holding)
+            if (breachStrip == null)
             {
-                breachMadeStrip = footerStrip == null;
-                if (breachMadeStrip) PinnedNote(words, BreachWarningName, true);
-                else if (footerWords != null)
+                if (footerStrip == null)
                 {
-                    breachRestText = footerWords.text;
-                    breachRestColour = footerWords.color;
-                    breachRestName = footerWords.name;
-                    breachRestWarns = footerWarns;
+                    PinnedNote(words, BreachWarningName, true);
+                    breachMadeStrip = footerStrip;
                 }
+                if (footerStrip == null || footerWords == null) return;
+                // A strip the breach built holds nothing of its own, whatever a breach before left in it.
+                bool own = footerStrip == breachMadeStrip;
+                breachRestText = own ? null : footerWords.text;
+                breachRestName = own ? null : footerWords.name;
+                breachRestColour = footerWords.color;
+                breachRestWarns = !own && footerWarns;
                 breachStrip = footerStrip;
             }
-            if (footerStrip == null || footerWords == null) return;
+            if (footerWords == null) return;
             footerStrip.gameObject.SetActive(true);
-            footerWords.text = Localisation.Text(words);
+            bool both = breachRestWarns && !string.IsNullOrEmpty(breachRestText);
+            footerWords.text = both ? Localisation.Text(words) + " " + breachRestText : Localisation.Text(words);
             footerWords.color = UiTheme.Warning;
-            footerWords.name = BreachWarningName;
+            footerWords.name = both ? breachRestName : BreachWarningName;
             footerWarns = true;
+            if (!string.IsNullOrEmpty(brief) && Overflows(footerWords)) footerWords.text = Localisation.Text(brief);
+        }
+
+        /// <summary>The breach comes down: the strip says what it said before, or a strip the breach built is hidden again.</summary>
+        private void TakeDownBreach()
+        {
+            if (breachStrip != null && breachStrip == footerStrip && footerWords != null)
+            {
+                if (footerStrip == breachMadeStrip)
+                {
+                    footerStrip.gameObject.SetActive(false);
+                    footerWarns = false;
+                }
+                else
+                {
+                    footerWords.text = breachRestText;
+                    footerWords.color = breachRestColour;
+                    footerWords.name = breachRestName;
+                    footerWarns = breachRestWarns;
+                }
+            }
+            breachStrip = null;
+        }
+
+        /// <summary>
+        /// Whether a label's words run past its box even at the smallest size its auto-size allows,
+        /// measured now rather than at the canvas's next pass. The box must be where it will stand.
+        /// </summary>
+        private static bool Overflows(TMP_Text label)
+        {
+            if (label == null) return false;
+            label.ForceMeshUpdate(true);
+            return label.isTextOverflowing;
         }
 
         // ------------------------------------------------------------ the column
@@ -131,7 +168,59 @@ namespace Gamesim.Episode
             line.alignment = TextAlignmentOptions.Center;
         }
 
+        /// <summary>
+        /// A breach warning over a ballot's cards, under the ballot's line (<see cref="BallotCards"/>):
+        /// the warning colour, centred, as tall as its words need at the column's width. Returns
+        /// the height it takes in the column, its gap included, so the cards can give it the room
+        /// and Confirm still stands in view under them; 0 for no warning.
+        /// </summary>
+        private float BallotWarningLine(string words)
+        {
+            if (content == null || string.IsNullOrEmpty(words)) return 0f;
+            var line = FlowText(words, 15, UiTheme.Warning);
+            line.name = BreachWarningName;
+            line.alignment = TextAlignmentOptions.Center;
+            var column = content.GetComponent<VerticalLayoutGroup>();
+            float gap = column != null ? column.spacing : 12f;
+            return Mathf.Max(Mathf.Ceil(line.GetPreferredValues(line.text, ContentWidth(), 0f).y), 15f * FontScale + 8f) + gap;
+        }
+
         // ------------------------------------------------------------ the page
+
+        /// <summary>
+        /// A door to another notebook page in this page's head, at its right end on the title's
+        /// line - the notes page's "Your word", and the way back from it - as wide as its caption.
+        /// A control named and captioned by <paramref name="caption"/> like any other, outside the
+        /// page's column, so it is never a filter among the filters and never the control the page
+        /// opens on. Nothing, and null, on a page without the notebook's head.
+        /// </summary>
+        public Button PageDoor(string caption, Action open)
+        {
+            if (modal == null || string.IsNullOrEmpty(caption) || open == null) return null;
+            // The head this render built: the panel is new each render, so its child is the live one.
+            RectTransform head = null;
+            foreach (Transform child in modal)
+                if (child.name == NotebookHeaderName) head = (RectTransform)child;
+            if (head == null) return null;
+            float s = FontScale, height = 34f * s;
+            var rect = Chrome(caption, head, UiTheme.Emphasis.Interactive);
+            HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+            var button = FinishButton(rect, caption, open, 14f, 14f);
+            var label = button.GetComponentInChildren<TMP_Text>();
+            float width = 120f * s;
+            if (label != null)
+            {
+                label.fontSize = Mathf.RoundToInt(15 * s);
+                label.alignment = TextAlignmentOptions.Center;
+                label.textWrappingMode = TextWrappingModes.NoWrap;
+                AutoSize(label, 12);
+                width = Mathf.Max(width, Mathf.Ceil(label.GetPreferredValues(label.text).x) + 28f + 8f * s);
+            }
+            // On the title's line at the head's right end - short of Close, which the head stops
+            // short of - and over the page's subtitle.
+            Anchor(rect, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-6f, -36f * s), new Vector2(width, height));
+            return button;
+        }
 
         /// <summary>One line of a Your word card: the words and the colour of how it ended.</summary>
         public struct WordLine

@@ -632,7 +632,7 @@ bake, then the room finish, then the lighting and its bake.
   - **The walk.** The exit wide goes over the seated heads looking west, with heads following the body. The last look comes 1.4 m short of the door. `Open` plays without the flash, then the push-in, then M19's close and hold. The yard door is kept as a fallback behind a switch.
 - **Effort / risk:** L / medium.
 - **Tests and pins:** the walk-out tests extended; three captures; the audited walk's eviction frames.
-- **Kind:** cut-scene with a renderer-only runtime set: no colliders, no rebake.
+- **Kind:** cut-scene with a renderer-only runtime set and no colliders. It does need a rebake: the prototype planter in the doorway was baked as walkable floor, so it is struck and the house rebaked (PACK8-PASS-PLAN C2, 2026-10-01).
 
 ### M24. Nomination ceremony beats on today's set
 

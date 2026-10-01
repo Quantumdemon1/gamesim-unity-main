@@ -506,3 +506,136 @@ copy, and the audited pipeline runs alone before the PR. The floors are raised i
 that add tests. Tell the story session about C3's spots and C1's use of the living room.
 
 ## Build log
+
+**2026-09-30, wave A** (merges 7f56b74, 737ee83, d21910c; Unity-written assets 0459cd4)
+
+Each slice was built in its own worktree, reviewed adversarially and fixed.
+
+- **A1.** One predicate, `KeepsBody`, decides both which bodies are switched on and which the house's
+  world routes (`RoutedByTheHouse`), so the world never counts a body that is off. That was the
+  regression: the first staged eviction's walk-out failed the world, so no stage ran again.
+  - The eviction stage sets the departure candidate, so a body that cannot re-bind is let go, not the
+    house.
+  - `StopNpcWorld` warns, and a declined stage names its guard past the policy checks.
+  - The summons and a staged walk-out hold the HUD's input.
+  - After a load, the world is built past free time. In batch runs this happens only when stages or
+    walk-outs are asked for, so the audited walk is unchanged.
+  - A 'Skip ahead' chip (`CeremonySkipChip`, its own overlay) steps the summons, the card and the
+    walk-out one press at a time. The cards' first press is now `SkipToResult()`.
+- **A2.**
+  - Talk plays TalkB_loop. The seated Talk_loop is SitTalkB in the seated ring. Listen_loop and the
+    nominated, saved and evicted reactions are rebuilt standing from PoseAtEase_loop (hips 0.978,
+    were 0.675) by `HumanoidReactionAuthoring.BuildFromCommandLine`, run on D:.
+  - A seat is stepped onto before the sit. A requested exit finishes after its owner lets go.
+  - Normal departures go through `RequestExit`, and a chatting pair stays seated once it has arrived.
+  - An EditMode walk of the controller now holds every non-Sit state standing.
+- **A3.**
+  - Pack 8 is imported whole as `Pack8_CampaignVetoNomination`. Its metas are Unity's, from a D: import.
+  - `ActivityLayout.Strategy` is the full-height stage beside the rail for the four weekly screens,
+    with a pinned footer, a secondary slot and an Up next strip.
+  - Shared primitives: `StatusCard`, `StepTracker`, `FaceGrid`, and `CeremonyFaces`' opt-in
+    `fitHeight`.
+  - The status line moves under the rail, and story beats and pleas are drawn inside the stage.
+
+Suites on the UMA-free copy:
+- EditMode: 1984/1984.
+- PlayMode: 666/670.
+  - CeremonyStage_ACompetitionStartedMidWalkLetsTheStagedEvictedGo opened the screen from too far
+    away. Fixed in bfb4c85.
+  - Three failures were order-dependent and passed alone and in the next full run.
+
+**2026-10-01, waves B and C** (merges 6b53686 to 103c444; the doorway rebake and the fixes below)
+
+The workflow hit the usage limit after B1 to B4 were built. It was resumed by run id, and the cached
+builds went straight to review.
+
+- **B1.** The nomination is a screen of steps (`EpisodeDirector.NominationScreen.cs`).
+  - Four status cards and a tracker come from the pure `NominationSteps` (Simulation, 12 EditMode
+    tests in the dotnet subset), over one step body sized to the room left.
+  - The step is a story beat beside its tiles, the player HoH's picker (now on the stage, with
+    'Commit nominations' pinned), the ceremony, or the outcome.
+  - Faces switch to rows in a 16-house at 1.2.
+  - Fixes: the duplicate 'Not now', the window wording of WindowLine, the silent lapse on commit (now
+    warned), and the outcome's third person.
+  - Re-pins: EpisodeDecisionContextPlayModeTests:151 (Strategy) and PhasePanel:199 (the HOH card's
+    value).
+- **B2.** The veto draw is one row: by right, the bag, the pool (`VetoDraw` reader, 6 EditMode tests).
+  - At six or fewer nobody is drawn.
+  - 'Continue episode' wears 'REVEAL THE DRAW'.
+  - In play, `VetoDrawReveal` turns the chips into the drawn faces, 0.9 s per chip. It writes
+    nothing, and batch runs keep the field card.
+- **B3.** Every veto meeting variant is one screen.
+  - The HouseStatus text sits word for word in a header strip, and the holder appears once.
+  - The saves keep their Choice row under a gold 'USE THE VETO' eyebrow. 'Do not use the veto' gets
+    a 'Keep nominations the same' line.
+  - A player who is both HoH and holder picks whom to save, then sees one candidate list.
+  - After the meeting, one row is read from `ledger.power`.
+  - `EpisodeEngine.Target` gives an NPC self-save herself, himself or themselves.
+- **B4.** The campaign is one board (`EpisodeHud.CampaignBoard.cs`).
+  - The plea strip; the block as heroes with the player's own reading; the title and a headline; the
+    actions chip; a public situation card.
+  - Five tabs. Goals, intel and the tip come from the player's own rows (`CampaignBrief`, Simulation),
+    and they fold into a tab when something is waiting.
+  - `ReplyCards.Message` picks the plea and confrontation lines from the player's own reading
+    (decision 8).
+- **C1.** The veto meeting is staged in the living room.
+  - The block before the meeting sits in the red chairs. The holder and the HoH take the U's two
+    middle seats, each on the side they come from (fixed 2026-10-01, below).
+  - `CeremonyTakeover.PlayVetoMeeting` pages Intro, Question, Decision, Replacement and Final on the
+    living screen, with the new VetoDecided and ReplacementNamed beats. Its lines come from
+    `VetoMeetingRead` (Simulation).
+  - The crossing tail and bodies rising were left out, because neither could be proven deadlock-free.
+- **C2.** A staged eviction ends with a four-second Goodbye.
+  - The evicted stand and face the house, seated bodies clap, the camera pushes in, and the goodbye
+    line plays. Its tone follows what the player knows.
+  - A warm key light covers the red chairs.
+  - The walk is slow and watched. The door opens without its flare and shuts behind them, and the
+    body goes off behind it.
+  - The chrome stays aside for the whole exit, and one press goes to the shut door.
+  - M23: `OpeningDoorSet` takes a `DoorLayout`, and the living room's west-wall door stands behind
+    `WalkOutDoor`. Its doorway's prototype planter is struck before planting (`Greenery` skips
+    inactive nodes), and the speaker and plantSmall2 moved.
+  - CEREMONY-CUTSCENES §7.4 and MOCKUP-PASS M19 are amended to the `KeepsBody` shape.
+- **C3.** `HouseConversationSpots` are runtime seat pairs (`talk:<family>:<name>`) on the gallery's
+  couches and the long table. Each belongs to one of the six saved venues, so nothing new is saved.
+  - Pairs score by walk length, with seats counted 3 m shorter. A reunion goes home first.
+  - Asked to talk, the player and the houseguest walk to the nearest free place and sit or face each
+    other, then the panel opens. Closing it stands both up there.
+  - Any failure, reduced motion or a batch run opens the conversation in place, as before.
+  - The two-shot frames a seated face.
+  - Lounger spots were skipped, because the competition audience reads every seated lounger anchor.
+
+**The living room's door, 2026-10-01.** `HouseLivingGallery.BuildFromCommandLine` was run on the
+UMA-free copy:
+- It struck the two prototype doorway pieces and rebaked: 28/28 room pairs, 29 approaches.
+- The scene, NavMesh, lighting data, lightmaps and reflection probes were copied back. The
+  room-finish materials stay in their test form (see the drift note).
+- The probe measured the doorway marks flat at y 0.033 with clearance, the mesh's west edge at
+  x -13.33, and nothing in either leaf's swing.
+- `DefaultWalkOutDoor` is now Living (owner decision 2A). The yard's door is the fallback.
+
+**Fixes from the full suites on the merge (EditMode 2033/2033, PlayMode 715/717):**
+- The veto meeting's holder, coming from the east, stood 0.4 m behind the HoH parked on the east
+  middle seat. The two middle seats now go by the side each comes from (`FromTheFarSide`).
+- StagedExit_TheEvictedPlayerHasNoGoodbyeAndNoWalk found no seed that evicts the player. Its fixture
+  now holds the night past its speeches, with every regular ballot against the player.
+- With the living room's door as the default, StagedExit_TheDoorShutsBehindThemBeforeTheyGo asks for
+  the yard's door, whose sequence it asserts.
+- The veto line says "you are" in the middle of its sentence.
+- The exit and veto tests ran again on the living room's door: 16/16. Captures looked at:
+  - the goodbye, the door and the shut door;
+  - the veto used and not used on the living screen;
+  - the four strategy screens.
+
+  On the living screen, a red chair's occupant shows in the foot of the screen shot. Kept as an
+  over-the-shoulder frame; it does not cover the card's words.
+
+**Open, for the owner:**
+- The draw reveal's tempo (fixed at 0.9 s per chip).
+- The campaign's 'Answer later' toggle for beats.
+- Big-house no-scroll on the HoH-and-holder veto screen (it scrolls past about 13 houseguests at
+  1.0).
+- The veto meeting's crossing tail.
+- Lounger talk spots.
+- M23's optional dressing (glow strips, sign, sconces).
+

@@ -11,11 +11,19 @@ namespace Gamesim.Episode
     /// the block, and "Emma Brown saves Emma Brown" after it; the holder's own decision had no title
     /// at all, and a player who was Head of Household and holder read every replacement twice.
     ///
-    /// <para>Each screen now fits the strategy stage without a scroll: who holds what in a strip
-    /// across the header; the title; the holder and the block as one row of cards, the holder once,
-    /// with both pills; and under them whatever the player has to do. The captions are the ones the
-    /// walks press - "Save {name} (HoH chooses replacement)", "Do not use the veto", a candidate's
-    /// name, "Continue episode" - and the mockup's words are headlines and lines beside them.</para>
+    /// <para>Each screen fits the strategy stage without a scroll in the default house: who holds
+    /// what in a strip across the header; the title; the holder and the block as one row of cards,
+    /// the holder once, with both pills; and under them whatever the player has to do. The captions
+    /// are the ones the walks press - "Save {name} (HoH chooses replacement)", "Do not use the
+    /// veto", a candidate's name, "Continue episode" - and the mockup's words are headlines and
+    /// lines beside them.</para>
+    ///
+    /// <para>The row of cards gives way first: it takes only the height the rest of the step leaves
+    /// it, and none when there is none. What can still run past the stage is the list of who can go
+    /// up in a large house - thirteen names at sixteen, a row of faces and readings for every three
+    /// - and a nominee's offer still waiting at the larger text. So that list is always the last
+    /// thing on the screen, under the decision and the rule it follows from, and when the step is
+    /// taller than the stage it is the end of the list that scrolls, never a way to decide.</para>
     ///
     /// <para>What the player sees is what the house knows: nobody is told what a houseguest holding
     /// the veto will do before they do it, unless the player is the Head of Household who has to
@@ -110,10 +118,11 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The house's status line on the veto meeting, as the strip across the stage's header;
-        /// false anywhere else, and the caller writes the paragraph it always wrote.
+        /// false anywhere else, and the caller writes the paragraph it always wrote. Nothing over a
+        /// preparation view, where the paragraph says nothing either.
         /// </summary>
-        private bool VetoMeetingStatus(EpisodeState s, string status) =>
-            s != null && s.phase == EpisodePhase.VetoMeeting && hud.HouseStatusStrip(status);
+        private bool VetoMeetingStatus(EpisodeState s) =>
+            s != null && s.phase == EpisodePhase.VetoMeeting && !ViewOverPreparation(s) && hud.HouseStatusStrip(HouseStatus(s));
 
         /// <summary>
         /// The ceremony's screen for the meeting when the player has nothing to decide: before it,
@@ -200,11 +209,13 @@ namespace Gamesim.Episode
             else
             {
                 hud.MeetingEyebrow(UseTheVetoEyebrow, UiTheme.Gold, PackArt.Pack8IconVeto, "veto-token");
+                // Whom the Head of Household and holder is saving: null for a holder who is not.
+                string saving = null;
                 if (alsoHoh)
                 {
                     // Whom to save, then one list of who goes up in their place: every candidate's
                     // name once. The pick is the screen's; the first nominee until another is pressed.
-                    string saved = vetoSavePickWeek == state.week && state.nominees.Contains(vetoSavePick) ? vetoSavePick : state.nominees.FirstOrDefault();
+                    saving = vetoSavePickWeek == state.week && state.nominees.Contains(vetoSavePick) ? vetoSavePick : state.nominees.FirstOrDefault();
                     var pick = hud.MeetingGrid(EpisodeHud.MeetingChoiceWidth, 2);
                     foreach (var nominee in state.nominees)
                     {
@@ -214,10 +225,8 @@ namespace Gamesim.Episode
                             vetoSavePick = id; vetoSavePickWeek = state.week;
                             Render();
                         });
-                        hud.MeetingPicked(choice, id == saved);
+                        hud.MeetingPicked(choice, id == saving);
                     }
-                    hud.MeetingEyebrow(NameTheReplacementEyebrow, UiTheme.Danger, PackArt.Pack8IconTarget, "target");
-                    VetoReplacementGrid(state, saved);
                 }
                 else
                 {
@@ -233,6 +242,14 @@ namespace Gamesim.Episode
                 }
                 KeepTheBlock(state);
                 hud.MeetingInfoStrip(VetoInfoLine, PackArt.Pack8InfoStrip, PackArt.Pack8IconInfo, "bulb", UiTheme.Accent);
+                // Who goes up comes last, under the way to keep the block and the rule that says a
+                // replacement follows: in a large house the list is taller than the stage has left,
+                // and it is the end of the list that scrolls then, never the way to decline.
+                if (state.Find(saving) != null)
+                {
+                    hud.MeetingEyebrow(NameTheReplacementEyebrow, UiTheme.Danger, PackArt.Pack8IconTarget, "target");
+                    VetoReplacementGrid(state, saving);
+                }
             }
             hud.MeetingCards(cards, -1, null, hud.MeetingRoomLeft(), at);
             return true;

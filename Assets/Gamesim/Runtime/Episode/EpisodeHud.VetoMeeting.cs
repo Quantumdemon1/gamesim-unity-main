@@ -22,10 +22,14 @@ namespace Gamesim.Episode
     /// </summary>
     public sealed partial class EpisodeHud
     {
-        /// <summary>The meeting's parts, by the names a test finds them by.</summary>
+        /// <summary>
+        /// The meeting's parts, by the names a test finds them by. The way on's headline is named as
+        /// any pinned way on's headline is, "Way on headline", under a constant of the meeting's own,
+        /// so another screen that dresses its way on can declare the name for itself.
+        /// </summary>
         public const string HouseStatusStripName = "House status strip", MeetingCardsName = "Meeting cards",
             ReplacementMarkName = "Replacement marker", BlockPillName = "Block pill", MeetingEyebrowName = "Meeting eyebrow",
-            MeetingInfoStripName = "Meeting info strip", KeepSubtitleName = "Keep subtitle", WayOnHeadlineName = "Way on headline";
+            MeetingInfoStripName = "Meeting info strip", KeepSubtitleName = "Keep subtitle", MeetingHeadlineName = "Way on headline";
 
         /// <summary>The narrowest an upright card goes before the row turns to short cards, at the resting text size: a pill still reads on it.</summary>
         private const float MeetingUprightFloor = 96f;
@@ -462,7 +466,7 @@ namespace Gamesim.Episode
             if (!string.IsNullOrEmpty(frame) && UiTheme.Pack(frame) != null)
                 EndScreenKit.Frame(pinnedAction, frame, 12f * s, new Color(Surface.r, Surface.g, Surface.b, .92f));
             var head = NewText(pinnedAction, words, 12, tint);
-            head.name = WayOnHeadlineName;
+            head.name = MeetingHeadlineName;
             head.characterSpacing = 4f;
             head.alignment = TextAlignmentOptions.MidlineLeft;
             head.textWrappingMode = TextWrappingModes.NoWrap;

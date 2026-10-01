@@ -1539,11 +1539,11 @@ namespace Gamesim.Episode
             // which stay in state until the window closes and can name a juror as a nominee.
             bool finalChoice = state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId;
             if (finalChoice) FinalTwoHead();
-            else
+            // The veto meeting says it in a strip across the stage's header (PACK8-PASS-PLAN B3).
+            else if (!VetoMeetingStatus(state))
             {
                 string houseStatus = ViewOverPreparation(state) ? null : HouseStatus(state);
-                // The veto meeting says it in a strip across the stage's header (PACK8-PASS-PLAN B3).
-                if (houseStatus != null && !VetoMeetingStatus(state, houseStatus)) hud.Paragraph(houseStatus);
+                if (houseStatus != null) hud.Paragraph(houseStatus);
             }
             // A story beat waiting on the player comes before anything else they could do: it
             // closes with the week's next beat, and a card buried under the ordinary controls is a

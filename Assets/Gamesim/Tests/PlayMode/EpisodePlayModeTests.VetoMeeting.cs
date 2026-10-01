@@ -13,10 +13,11 @@ namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
     /// The veto meeting's screens (PACK8-PASS-PLAN B3, the owner's mockups 81 and 82): every one of
-    /// them on the strategy stage without a scroll at both text sizes, who holds what in a strip
-    /// across the header, the holder once however many things they are, and the captions the walks
-    /// press where they always were. Screenshots 74 and 75 were the holder twice, a scroll, and
-    /// "Emma Brown saves Emma Brown".
+    /// them on the strategy stage without a scroll at both text sizes in the default house, and in
+    /// the largest the decision in view over a list that scrolls; who holds what in a strip across
+    /// the header, the holder once however many things they are, and the captions the walks press
+    /// where they always were. Screenshots 74 and 75 were the holder twice, a scroll, and "Emma
+    /// Brown saves Emma Brown".
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
@@ -56,8 +57,12 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>The headline the pinned way on wears over its caption, or null.</summary>
-        private string MeetingHeadlineOn(string caption) =>
-            FindButton(caption).GetComponentsInChildren<TMP_Text>().FirstOrDefault(label => label.name == EpisodeHud.WayOnHeadlineName)?.text;
+        private string MeetingHeadlineOn(string caption)
+        {
+            // An explicit null test, not ?.: a label is a UnityEngine.Object.
+            var headline = FindButton(caption).GetComponentsInChildren<TMP_Text>().FirstOrDefault(label => label.name == EpisodeHud.MeetingHeadlineName);
+            return headline == null ? null : headline.text;
+        }
 
         /// <summary>
         /// A houseguest holds the veto from the block, and the player has nothing to decide: the
@@ -222,6 +227,61 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.nominees, Is.EquivalentTo(new[] { first, candidates[0].id }), "on the nominee picked, and puts the name up.");
             director.ClosePanels();
             yield return null;
+        }
+
+        /// <summary>
+        /// The largest house, with the player Head of Household and holder: thirteen houseguests can
+        /// go up, more rows of faces and readings than the stage has left under the decision at
+        /// either text size, so this step is taller than the stage. What runs past it is the end of
+        /// that list, never a way to decide: with the column at its top, the title, both picks, "Do
+        /// not use the veto" and the rule stand in the scroll's window, every name is listed under
+        /// the rule that says a replacement follows, and each is offered once and draws.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator VetoMeeting_InTheLargestHouseTheHeadOfHouseholdHoldingItKeepsTheDecisionInView()
+        {
+            HoldTheHouseForTheFixture();
+            var state = FullHouse(53, EpisodeValidation.MaximumCast);
+            AtVetoMeeting(state, true);
+            state.hohId = state.playerId;
+            Assert.That(EpisodeValidation.TryValidate(state, out var invalid), Is.True, invalid);
+            new EpisodeSaveStore(director.SavePath).Save(state);
+            yield return ReloadEpisode();
+            var before = director.Snapshot;
+            var candidates = EpisodeEngine.ReplacementCandidates(before).ToList();
+            Assert.That(candidates, Has.Count.EqualTo(EpisodeValidation.MaximumCast - 3), "Everybody but the player and the block can go up.");
+            yield return AtBothTextSizes(larger =>
+            {
+                string where = "The Head of Household's veto decision in a house of " + EpisodeValidation.MaximumCast + (larger ? " at the larger text" : "");
+                Canvas.ForceUpdateCanvases();
+                Assert.That(director.GetComponentInChildren<EpisodeHud>().CurrentActivityLayout, Is.EqualTo(EpisodeHud.ActivityLayout.Strategy),
+                    where + " takes the strategy stage.");
+                // Read from the column's top, where the stage opens it: a selection may have moved it.
+                var content = ActiveRect("Episode content");
+                content.GetComponentInParent<ScrollRect>().verticalNormalizedPosition = 1f;
+                Canvas.ForceUpdateCanvases();
+                var window = ScreenRect((RectTransform)content.parent);
+                AssertInside(window, ActiveRect(EpisodeHud.CeremonyTitleName), where + "'s title");
+                foreach (var nominee in before.nominees)
+                    AssertInside(window, (RectTransform)FindButton(EpisodeDirector.VetoSavePickCaption(before.Find(nominee).name)).transform,
+                        where + "'s pick of " + before.Find(nominee).name);
+                AssertInside(window, (RectTransform)FindButton("Do not use the veto").transform, where + "'s 'Do not use the veto'");
+                var rule = ActiveRect(EpisodeHud.MeetingInfoStripName);
+                Assert.That(rule, Is.Not.Null, where + " says what using the veto does.");
+                AssertInside(window, rule, where + "'s rule");
+                foreach (var candidate in candidates)
+                {
+                    var offered = director.GetComponentsInChildren<Button>(true).Where(button => button.IsActive()
+                        && button.GetComponentsInChildren<TMP_Text>(true).Any(label => label.text == candidate.name)).ToArray();
+                    Assert.That(offered, Has.Length.EqualTo(1), where + " offers " + candidate.name + " once.");
+                    Assert.That(ScreenRect((RectTransform)offered[0].transform).yMax, Is.LessThanOrEqualTo(ScreenRect(rule).yMin + .5f),
+                        where + " lists " + candidate.name + " under the rule.");
+                }
+                var panel = ActiveRect("Episode panel");
+                AssertEveryLabelDraws(panel, where);
+                AssertNoMeetingLabelOverflows(panel, where);
+            });
+            Assert.That(director.Snapshot.vetoResolved, Is.False, "Opening the decision decides nothing.");
         }
 
         /// <summary>

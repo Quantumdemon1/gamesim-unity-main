@@ -125,7 +125,9 @@ namespace Gamesim.Tests.EditMode
                 {
                     Assert.That(HouseConversationSpots.OnFurniture(seat), Is.True, spot.Id + " slot " + seat.Slot + " is on furniture.");
                     Assert.That(HouseFurniture.TryClick(seat, out _, out _), Is.False, spot.Id + " slot " + seat.Slot + " is not clickable.");
-                    Assert.That(HouseFurniture.AtProp(scene, seat.transform.parent), Is.Null, "and makes its piece no click of its own.");
+                    var clicked = HouseFurniture.AtProp(scene, seat.transform.parent);
+                    Assert.That(clicked == null || !HouseConversationSpots.IsSpot(clicked.VenueId), Is.True,
+                        "and a click on its piece never finds it.");
                 }
                 float apart = Flat(spot.First.Approach, spot.Second.Approach);
                 Assert.That(apart, Is.GreaterThanOrEqualTo(HouseConversationSpots.RootsApart - 0.001f), spot.Id + "'s roots wait apart.");

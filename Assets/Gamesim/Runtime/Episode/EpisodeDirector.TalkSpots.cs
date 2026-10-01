@@ -11,8 +11,8 @@ namespace Gamesim.Episode
     /// Talking somewhere (PACK8-PASS-PLAN C3). Asked to talk to a houseguest - a click on them, the
     /// cast strip's Talk, a voter's or a house card's - the player and they go to the nearest free
     /// talk spot in their room, then in the player's: two seats on the couches or at the long table,
-    /// or a venue's two marks. Both arrive, the panel opens, and then they sit, or turn to each
-    /// other. Closing the panel gets both up at their seats and lets the place go.
+    /// or a venue's two marks. Both arrive, they sit - or turn to each other - and the panel opens.
+    /// Closing the panel gets both up at their seats and lets the place go.
     ///
     /// <para>Presentation only: it commits nothing, saves nothing and draws on no generator, and
     /// the conversation it opens is the one <see cref="TryOpenNpc"/> always opened. Anything that
@@ -29,9 +29,16 @@ namespace Gamesim.Episode
         private bool talkSpotOpen;
         private int talkSpotResends;
         private HouseSeatPresentation talkSpotPlayerSeat;
+        /// <summary>When both reached their places and began to sit, or NaN while they are still on their way.</summary>
+        private float talkSpotSeatedAt = float.NaN;
 
         /// <summary>How long the walk to a spot may take before the conversation opens where they are.</summary>
         private const float TalkSpotTimeout = 20f;
+        /// <summary>
+        /// The longest the panel waits for the two to sit: the step onto the seat and the sit's own
+        /// settling (HouseSeatPresentation), with a little to spare.
+        /// </summary>
+        private const float TalkSpotSitSeconds = 1.6f;
         /// <summary>How near the player's root must be to its place to have arrived: a little over the agent's stopping slack.</summary>
         private const float TalkSpotArrival = .4f;
         /// <summary>How often a walk that stopped short of its place is sent on before the conversation opens where they are.</summary>
@@ -75,11 +82,11 @@ namespace Gamesim.Episode
             // a floor click, the screen, the diary or a panel call it off as they always did.
             if (!player.TryTravelTo(spot.PlayerStands)) { npcMeetings.ReleaseTalk(spot); return false; }
             CancelTravel();
-            talkSpot = spot; talkSpotOpen = false; talkSpotResends = 0;
+            talkSpot = spot; talkSpotOpen = false; talkSpotResends = 0; talkSpotSeatedAt = float.NaN;
             headingToNpcId = npc.Id;
             headingToNpcAt = npc.transform.position;
             headingToNpcDeadline = Time.unscaledTime + TalkSpotTimeout;
-            cameraRig?.FocusSubject(player.transform, false);
+            if (cameraRig != null) cameraRig.FocusSubject(player.transform, false);
             message = "Heading over to " + npc.DisplayName;
             Render();
             return true;
@@ -101,13 +108,23 @@ namespace Gamesim.Episode
             if (headingToNpcId != talkSpot.NpcId) EndTalkSpot();
         }
 
-        /// <summary>The walk to a spot: both on their places, the conversation opens; anything else, it opens where they are.</summary>
+        /// <summary>
+        /// The walk to a spot: both on their places, they sit or turn to each other, and once they
+        /// have, the conversation opens. Anything else opens it where they are.
+        /// </summary>
         private void TickWalkToTalkSpot()
         {
             var spot = talkSpot;
             var npc = housemates.FirstOrDefault(actor => actor != null && actor.Id == spot.NpcId && actor.gameObject.activeInHierarchy);
-            if (npc == null || npcMeetings == null || !npcMeetings.TalkValid(spot) || Time.unscaledTime > headingToNpcDeadline)
+            bool sitting = !float.IsNaN(talkSpotSeatedAt);
+            // Once they are sitting down the walk is over, and its clock with it.
+            if (npc == null || npcMeetings == null || !npcMeetings.TalkValid(spot) || !sitting && Time.unscaledTime > headingToNpcDeadline)
             { FallBackFromTalkSpot(npc); return; }
+            if (sitting)
+            {
+                if (Time.unscaledTime - talkSpotSeatedAt >= TalkSpotSitSeconds || Sat(npc.transform) && Sat(player.transform)) OpenAtTalkSpot(npc);
+                return;
+            }
             bool playerThere = Across(player.transform.position, spot.PlayerStands) <= TalkSpotArrival;
             if (player.HasArrived && !playerThere)
             {
@@ -115,43 +132,58 @@ namespace Gamesim.Episode
                 if (++talkSpotResends > TalkSpotResends || !player.TryTravelTo(spot.PlayerStands)) FallBackFromTalkSpot(npc);
                 return;
             }
-            if (playerThere && player.HasArrived && npcMeetings.TalkArrived(spot)) OpenAtTalkSpot(npc);
+            if (playerThere && player.HasArrived && npcMeetings.TalkArrived(spot)) TakeTheirPlaces(npc);
+        }
+
+        /// <summary>Whether a body has sat down on its seat and settled there.</summary>
+        private static bool Sat(Transform body)
+        {
+            var seat = body.GetComponent<HouseSeatPresentation>();
+            return seat != null && seat.Settled;
         }
 
         /// <summary>
-        /// Both are there: the conversation opens, and then each takes their place - into the seats,
-        /// the player's root waiting on its approach as a houseguest's does, or turned to each other.
-        /// A conversation that cannot open opens where they are instead.
+        /// Both are there: each takes their place - into the seats, the player's root waiting on its
+        /// approach as a houseguest's does, or turned to each other where they stand. A standing
+        /// pair's conversation opens at once; a seated pair's once both have sat down.
         /// </summary>
-        private void OpenAtTalkSpot(HouseNpc npc)
+        private void TakeTheirPlaces(HouseNpc npc)
         {
             var spot = talkSpot;
             player.StopHere();
+            var visual = npc.GetComponent<CharacterPresentation>();
+            var mine = player.GetComponent<CharacterPresentation>();
+            if (!spot.Seated)
+            {
+                if (visual != null) visual.SetFacing(FacingToward(npc.transform.position, player.transform.position));
+                if (mine != null) mine.SetFacing(FacingToward(player.transform.position, npc.transform.position));
+                OpenAtTalkSpot(npc);
+                return;
+            }
+            var meetings = npcMeetings;
+            // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
+            var seat = npc.GetComponent<HouseSeatPresentation>();
+            if (seat == null) seat = npc.gameObject.AddComponent<HouseSeatPresentation>();
+            seat.Begin(spot.NpcPlace, () => meetings != null && meetings.TalkHolds(spot));
+            var mySeat = player.GetComponent<HouseSeatPresentation>();
+            if (mySeat == null) mySeat = player.gameObject.AddComponent<HouseSeatPresentation>();
+            mySeat.Begin(spot.PlayerPlace, () => ReferenceEquals(talkSpot, spot));
+            if (mySeat.Active) talkSpotPlayerSeat = mySeat;
+            if (visual != null) visual.SetFacing(spot.NpcPlace.Facing);
+            if (mine != null) mine.SetFacing(spot.PlayerPlace.Facing);
+            talkSpotSeatedAt = Time.unscaledTime;
+        }
+
+        /// <summary>
+        /// The conversation, at the place. One that cannot open opens where they are instead, the
+        /// two stood up first.
+        /// </summary>
+        private void OpenAtTalkSpot(HouseNpc npc)
+        {
             // Open first, so the CancelTravel the walk ends with leaves the spot to the panel.
             talkSpotOpen = true;
             if (!TryOpenNpc(npc.Id)) { talkSpotOpen = false; FallBackFromTalkSpot(npc); return; }
             CancelTravel();
-            var visual = npc.GetComponent<CharacterPresentation>();
-            var mine = player.GetComponent<CharacterPresentation>();
-            if (spot.Seated)
-            {
-                var meetings = npcMeetings;
-                // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.
-                var seat = npc.GetComponent<HouseSeatPresentation>();
-                if (seat == null) seat = npc.gameObject.AddComponent<HouseSeatPresentation>();
-                seat.Begin(spot.NpcPlace, () => meetings != null && meetings.TalkHolds(spot));
-                var mySeat = player.GetComponent<HouseSeatPresentation>();
-                if (mySeat == null) mySeat = player.gameObject.AddComponent<HouseSeatPresentation>();
-                mySeat.Begin(spot.PlayerPlace, () => ReferenceEquals(talkSpot, spot) && talkSpotOpen);
-                if (mySeat.Active) talkSpotPlayerSeat = mySeat;
-                if (visual != null) visual.SetFacing(spot.NpcPlace.Facing);
-                if (mine != null) mine.SetFacing(spot.PlayerPlace.Facing);
-            }
-            else
-            {
-                if (visual != null) visual.SetFacing(FacingToward(npc.transform.position, player.transform.position));
-                if (mine != null) mine.SetFacing(FacingToward(player.transform.position, npc.transform.position));
-            }
         }
 
         /// <summary>
@@ -177,7 +209,7 @@ namespace Gamesim.Episode
         {
             var spot = talkSpot;
             if (spot == null) return;
-            talkSpot = null; talkSpotOpen = false; talkSpotResends = 0;
+            talkSpot = null; talkSpotOpen = false; talkSpotResends = 0; talkSpotSeatedAt = float.NaN;
             if (talkSpotPlayerSeat != null && talkSpotPlayerSeat.Active) talkSpotPlayerSeat.RequestExit();
             talkSpotPlayerSeat = null;
             var mine = player != null ? player.GetComponent<CharacterPresentation>() : null;

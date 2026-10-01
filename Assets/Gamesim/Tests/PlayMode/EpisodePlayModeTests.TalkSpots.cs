@@ -16,9 +16,9 @@ namespace Gamesim.Tests.PlayMode
 {
     /// <summary>
     /// Talk on real seats (PACK8-PASS-PLAN C3). Asked to talk, the player and the houseguest go to
-    /// a talk spot in the houseguest's room or the player's, the conversation opens once both are
-    /// there, they sit on the seats or face each other, and closing it gets both up at their seats
-    /// and lets the place go. Reduced motion, a batch run that does not ask, and a second press
+    /// a talk spot in the houseguest's room or the player's; once both are there they sit on the
+    /// seats or face each other and the conversation opens, and closing it gets both up at their
+    /// seats and lets the place go. Reduced motion, a batch run that does not ask, and a second press
     /// open the conversation as it always opened. A saved living-room chat whose own pair is taken
     /// sits on the couches, and the save never names the place.
     ///
@@ -97,9 +97,12 @@ namespace Gamesim.Tests.PlayMode
                 + " m from their place. " + director.StatusMessage);
             Assert.That(director.CurrentTalkSpot, Is.SameAs(spot), "It opened at the place, and the conversation keeps it.");
             Assert.That(cameraRig.IsConversationFocused, Is.True);
-
             var npcSeat = npc.GetComponent<HouseSeatPresentation>();
             var mySeat = player.GetComponent<HouseSeatPresentation>();
+            if (spot.Seated)
+                Assert.That(npcSeat != null && npcSeat.Active && mySeat != null && mySeat.Active, Is.True,
+                    "At two seats both sit down before the panel opens.");
+
             float settle = Time.realtimeSinceStartup + 3f;
             while (spot.Seated && Time.realtimeSinceStartup < settle)
             {

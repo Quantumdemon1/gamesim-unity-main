@@ -120,14 +120,14 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// The door staged exits ask for. The yard's until the living room's has been measured on
-        /// the D: copy and captured: its doorway needs the prototype planter struck and the NavMesh
-        /// rebaked (HouseLivingGallery.BuildFromCommandLine), then the probe
-        /// (StagedExit_TheLivingRoomsDoorwayIsClearAndFlat) and the exit's captures. To flip it,
-        /// set this to <see cref="WalkOutDoor.Living"/>; the living room's door still falls back to
-        /// the yard's whenever its probe refuses at the goodbye.
+        /// The door staged exits ask for: the living room's (the owner's decision 2A). Its doorway
+        /// was cleared of the prototype planter and the NavMesh rebaked on 2026-10-01
+        /// (HouseLivingGallery.BuildFromCommandLine), and the probe
+        /// (StagedExit_TheLivingRoomsDoorwayIsClearAndFlat) measured flat floor, clearance at every
+        /// mark and nothing in the leaves' swing. It still falls back to the yard's whenever its
+        /// probe refuses at the goodbye, and unstaged walk outs always use the yard's.
         /// </summary>
-        public const WalkOutDoor DefaultWalkOutDoor = WalkOutDoor.Yard;
+        public const WalkOutDoor DefaultWalkOutDoor = WalkOutDoor.Living;
 
         /// <summary>The door staged exits ask for: <see cref="DefaultWalkOutDoor"/>, or what a test sets.</summary>
         public WalkOutDoor WalkOutThrough { get; set; } = DefaultWalkOutDoor;

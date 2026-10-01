@@ -30,7 +30,7 @@ namespace Gamesim.House
         public bool ActivityAnchorAvailable(HouseInteractionAnchor anchor)
             => !disposed && !HasCompetitionStage && anchor!=null && anchor.isActiveAndEnabled && anchor.gameObject.scene==rooms.Scene
                 && (HouseFurniture.SeatsCompany(anchor.VenueId) ? !MeetingHolds(anchor.VenueId) : !VenueInUse(anchor.VenueId))
-                && !activities.Any(entry=>entry.lease.Anchor==anchor);
+                && !SpotCrowds(anchor) && !activities.Any(entry=>entry.lease.Anchor==anchor);
 
         /// <summary>
         /// Whether a conversation holds the venue. A venue for company is shared between activities
@@ -38,7 +38,7 @@ namespace Gamesim.House
         /// </summary>
         private bool MeetingHolds(string venue)
         {
-            foreach(var lease in leases.Values)if(lease.VenueId==venue)return true;
+            foreach(var lease in leases.Values)if(lease.SpotId==venue)return true;
             return false;
         }
 

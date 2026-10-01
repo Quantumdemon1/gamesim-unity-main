@@ -294,8 +294,9 @@ namespace Gamesim.House
 
         /// <summary>
         /// The two-shot: across the pair, so both faces read, on the side that turns the camera
-        /// least - unless somebody else is standing where the camera would be, in which case the
-        /// other side. A third houseguest a metre in front of the lens is a back, not a scene.
+        /// least - or, for a pair sitting side by side, the side they face - unless somebody else is
+        /// standing where the camera would be, in which case the other side. A third houseguest a
+        /// metre in front of the lens is a back, not a scene.
         /// </summary>
         private Shot TwoShot(Transform player, Transform npc)
         {
@@ -303,7 +304,8 @@ namespace Gamesim.House
             across.y = 0f;
             float pairYaw = across.sqrMagnitude > 0.0001f ? Mathf.Atan2(across.x, across.z) * Mathf.Rad2Deg : yaw;
             float left = pairYaw - 90f, right = pairYaw + 90f;
-            float nearer = Mathf.Abs(Mathf.DeltaAngle(yaw, left)) <= Mathf.Abs(Mathf.DeltaAngle(yaw, right)) ? left : right;
+            float toward = TrySeatedFront(player, npc, out float front) ? front : yaw;
+            float nearer = Mathf.Abs(Mathf.DeltaAngle(toward, left)) <= Mathf.Abs(Mathf.DeltaAngle(toward, right)) ? left : right;
             float farther = nearer == left ? right : left;
             var pivot = ConversationFocus() + Vector3.up * TwoShotLift;
             float side = TwoShotSideIsClear(pivot, nearer, player, npc) || !TwoShotSideIsClear(pivot, farther, player, npc) ? nearer : farther;
@@ -313,6 +315,31 @@ namespace Gamesim.House
                 Focus = pivot, Distance = TwoShotDistance, Pitch = TwoShotPitch, Yaw = side,
                 FieldOfView = TwoShotFieldOfView, Seconds = TwoShotSeconds, DepthOfFieldWeight = 1f,
             };
+        }
+
+        /// <summary>
+        /// The camera's yaw that looks into a seated pair's faces, when both sit facing much the
+        /// same way: two chairs on one side of the long table, the couches' base, a corner of the
+        /// U (PACK8-PASS-PLAN C3). The line between their roots says nothing about which way they
+        /// face, so the side that turned the camera least framed their backs as often as their
+        /// faces. False for a pair that stands, or sits facing each other, where either side of
+        /// the line shows both.
+        /// </summary>
+        private static bool TrySeatedFront(Transform player, Transform npc, out float front)
+        {
+            front = 0f;
+            var mine = player.GetComponent<HouseSeatPresentation>();
+            var theirs = npc.GetComponent<HouseSeatPresentation>();
+            float a = mine != null ? mine.SeatFacing : float.NaN;
+            float b = theirs != null ? theirs.SeatFacing : float.NaN;
+            if (float.IsNaN(a) || float.IsNaN(b)) return false;
+            var facing = Quaternion.Euler(0f, a, 0f) * Vector3.forward + Quaternion.Euler(0f, b, 0f) * Vector3.forward;
+            // Two facings within 120 degrees of each other add up to more than either alone; further
+            // apart they face across the pair, and their sum points nowhere in particular.
+            if (facing.sqrMagnitude < 1f) return false;
+            // The camera looks along its yaw, so it faces the pair from the side they face.
+            front = Mathf.Atan2(facing.x, facing.z) * Mathf.Rad2Deg + 180f;
+            return true;
         }
 
         /// <summary>
@@ -862,7 +889,20 @@ namespace Gamesim.House
 
         private Vector3 ConversationFocus()
         {
-            return ClampFocus((conversationPlayer.position + conversationNpc.position) * 0.5f + Vector3.up);
+            return ClampFocus((ConversationPoint(conversationPlayer) + ConversationPoint(conversationNpc)) * 0.5f);
+        }
+
+        /// <summary>
+        /// Where one of a conversation's pair is framed: a metre above their feet, or, sitting, the
+        /// face the follow frames (<see cref="SubjectFocus"/>). A seated body is on its seat while its
+        /// root waits on the approach - for a couch, in the middle of the living room's U - and the
+        /// two-shot framed the roots (PACK8-PASS-PLAN C3).
+        /// </summary>
+        private static Vector3 ConversationPoint(Transform subject)
+        {
+            var seat = subject.GetComponent<HouseSeatPresentation>();
+            if (seat != null && seat.Active) return seat.VisualFocus - Vector3.up * .15f;
+            return subject.position + Vector3.up;
         }
 
         /// <summary>

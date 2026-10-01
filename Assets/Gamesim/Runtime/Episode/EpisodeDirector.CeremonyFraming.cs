@@ -9,19 +9,23 @@ namespace Gamesim.Episode
     /// <summary>
     /// Ceremony framing presets (camera Phase 4, MASTER-PLAN §3.E): when a ceremony's card plays,
     /// the camera goes to the room where that ceremony happens - the nomination room's table, the
-    /// game room for the veto, the living room for an eviction and the winner, the yard for a
-    /// competition - on the clock, and comes back to where it was once the card and the reveal
-    /// are done. Reduced motion cuts there and back instead of moving.
+    /// living room for the veto meeting, an eviction and the winner, the game room for the veto
+    /// draw, the yard for a competition - on the clock, and comes back to where it was once the card
+    /// and the reveal are done. Reduced motion cuts there and back instead of moving.
     /// </summary>
     public sealed partial class EpisodeDirector
     {
-        /// <summary>The room a ceremony is framed in, or null for a kind with no set.</summary>
+        /// <summary>
+        /// The room a ceremony is framed in, or null for a kind with no set. The veto meeting is the
+        /// living room's (PACK8-PASS-PLAN decision 5), where it is staged, so the card on the HUD
+        /// frame and the live feed name the room the staged meeting plays in.
+        /// </summary>
         public static string CeremonyRoom(string kind)
         {
             switch (kind)
             {
                 case CeremonySting.NominationKind: return "Nomination";
-                case CeremonySting.VetoKind: return "Games";
+                case CeremonySting.VetoKind: return "Living";
                 case CeremonyTakeover.VetoSelectionKind: return "Games";
                 case CeremonySting.EvictionKind: return "Living";
                 case CeremonySting.WinnerKind: return "Living";

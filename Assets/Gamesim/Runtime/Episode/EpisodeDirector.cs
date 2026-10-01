@@ -743,8 +743,11 @@ namespace Gamesim.Episode
             string lineBefore = focusedNpc != null ? HouseDialogue.Response(engine.Snapshot, focusedNpc.Id) : null;
             var wasActive = new HashSet<string>(engine.Snapshot.contestants
                 .Where(actor => actor.status == ContestantStatus.Active).Select(actor => actor.id));
-            // Who was on the block before this command: a veto ceremony is the difference.
-            var wasNominated = new HashSet<string>(engine.Snapshot.nominees ?? new List<string>());
+            // Who was on the block before this command: a veto ceremony is the difference. The same
+            // block in the order it was named seats a staged veto meeting's red chairs; the
+            // snapshot is the engine's copy already, so it is read once.
+            var blockBefore = engine.Snapshot.nominees ?? new List<string>();
+            var wasNominated = new HashSet<string>(blockBefore);
             // Player and NPC candidates share durable publication ordering. A phase
             // transition cancels invalid NPC activity inside this same saved candidate.
             var candidate = new EpisodeEngine(engine.Snapshot);
@@ -792,7 +795,7 @@ namespace Gamesim.Episode
                 var commitCue = CommitCue(result.state.events.Skip(knownEvents)
                     .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId))
                     .Select(entry => entry.kind));
-                bool revealed = false;
+                bool revealed = false, vetoStaged = false;
                 // The ceremony is not always the last thing a commit writes — an eviction is followed
                 // by the events that open the next week, which is why keying off the final line
                 // meant the eviction card never played at all. Search everything this command
@@ -870,7 +873,13 @@ namespace Gamesim.Episode
                         reveal = screen => keyCeremony.Play(committed.week, NameOf(committed, committed.hohId),
                             committed.hohId == committed.playerId,
                             SafeHouseguests(committed), NominatedHouseguests(committed), reducedMotion, ceremonyPace, screen);
-                    if (reveal != null && TryBeginCeremonyStage(kind, committed,
+                    // The veto meeting is staged in the living room and plays on its screen
+                    // (EpisodeDirector.CeremonyStageVeto.cs); unstaged it is the generic card below,
+                    // exactly as it was. Its commit still makes the veto's sound, the same for
+                    // either outcome: no card of its own makes one.
+                    if (kind == CeremonySting.VetoKind && TryStageVetoMeeting(committed, text, wasActive, wasNominated, blockBefore))
+                        revealed = vetoStaged = true;
+                    else if (reveal != null && TryBeginCeremonyStage(kind, committed,
                             screen => reveal(screen) || PlayGenericCeremonyCard(committed, kind, text, wasActive, wasNominated)))
                         revealed = true;
                     else if (reveal != null)
@@ -929,7 +938,7 @@ namespace Gamesim.Episode
                     else PlayFinalHoHCard(result.state, wasPhase, wasActive);
                 }
                 if (revealed) HoldHudForReveal();
-                else if (command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
+                if ((!revealed || vetoStaged) && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
                     audioBed.PlayCue(commitCue);
             }
             Render(); return result;
@@ -951,6 +960,10 @@ namespace Gamesim.Episode
             // The final Head of Household's choice is an endgame card: the chrome stands aside for it.
             if (takeover != null && kind == CeremonySting.FinalEvictionKind) HoldHudForReveal(redraw: false);
             if (sting != null) sting.Play(kind, text, reducedMotion);
+            // Under a stage - a reveal that declined the set's screen - the stage has the camera
+            // and the bodies, and the card only reports: framing the room as well put two hands on
+            // the camera (PACK8-PASS-PLAN C1).
+            if (IsCeremonyStaged) return true;
             ReactToCeremony(state, kind, wasActive, wasNominated);
             FrameCeremony(kind);
             return true;

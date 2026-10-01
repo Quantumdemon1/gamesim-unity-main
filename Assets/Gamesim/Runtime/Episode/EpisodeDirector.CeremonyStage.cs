@@ -89,7 +89,8 @@ namespace Gamesim.Episode
         /// - reduced motion, a batch run not asking, the house busy, no set for it - and the caller
         /// plays the card at once, as it always has.
         /// </summary>
-        private bool TryBeginCeremonyStage(string kind, EpisodeState state, Func<ScreenSurface, bool> playCard)
+        private bool TryBeginCeremonyStage(string kind, EpisodeState state, Func<ScreenSurface, bool> playCard,
+            IReadOnlyList<string> blockBefore = null)
         {
             // The policy first, and silently: the look sheet, reduced motion and a batch run not
             // asking never stage, by design, and a line for each of their ceremonies would be noise
@@ -102,7 +103,7 @@ namespace Gamesim.Episode
             string declined = StageDeclined(state);
             if (declined != null) { Debug.Log("Ceremony stage declined (" + kind + "): " + declined); return false; }
             EndCeremonyStage();
-            var stage = CeremonyStage.TryCreate(this, kind, state, playCard, out var reason);
+            var stage = CeremonyStage.TryCreate(this, kind, state, playCard, blockBefore, out var reason);
             if (stage == null) { if (reason != null) Debug.Log("Ceremony stage: " + reason); return false; }
             ceremonyStage = stage;
             // The commit's projection unbound the evicted; now that the stage holds a place for
@@ -203,13 +204,17 @@ namespace Gamesim.Episode
             Release,
         }
 
-        /// <summary>The room a ceremony is staged in: the plan's sets, not the framing's rooms - the veto meeting sits at the nomination table.</summary>
+        /// <summary>
+        /// The room a ceremony is staged in: the nomination at its table, the veto meeting and the
+        /// eviction in the living room (PACK8-PASS-PLAN decision 5), where the red chairs face the U.
+        /// The framing's room for each (<see cref="CeremonyRoom"/>) is the same.
+        /// </summary>
         public static string CeremonyStageRoom(string kind)
         {
             switch (kind)
             {
                 case CeremonySting.NominationKind: return "Nomination";
-                case CeremonySting.VetoKind: return "Nomination";
+                case CeremonySting.VetoKind: return "Living";
                 case CeremonySting.EvictionKind: return "Living";
                 default: return null;
             }
@@ -221,7 +226,7 @@ namespace Gamesim.Episode
             switch (kind)
             {
                 case CeremonySting.NominationKind: return "The house gathers at the table for the nomination ceremony.";
-                case CeremonySting.VetoKind: return "The house gathers at the table for the veto meeting.";
+                case CeremonySting.VetoKind: return "The house takes its seats for the veto meeting.";
                 case CeremonySting.EvictionKind: return "The house takes its seats for the live eviction.";
                 default: return null;
             }
@@ -255,7 +260,7 @@ namespace Gamesim.Episode
         /// <summary>The most a stage may run, in real seconds, before the house is let go whatever the card says.</summary>
         public const float CeremonyStageSeconds = 150f;
 
-        private sealed class CeremonyStage
+        private sealed partial class CeremonyStage
         {
             /// <summary>The shots' shared lens, so a cut between them never eases the lens.</summary>
             private const float Lens = ScreenSurface.FieldOfView;
@@ -337,7 +342,8 @@ namespace Gamesim.Episode
             /// The stage for this ceremony, or null with the reason: no set dressed for it, no screen
             /// in its room, or nobody in the house to gather.
             /// </summary>
-            public static CeremonyStage TryCreate(EpisodeDirector owner, string kind, EpisodeState state, Func<ScreenSurface, bool> playCard, out string reason)
+            public static CeremonyStage TryCreate(EpisodeDirector owner, string kind, EpisodeState state, Func<ScreenSurface, bool> playCard,
+                IReadOnlyList<string> blockBefore, out string reason)
             {
                 reason = null;
                 string room = CeremonyStageRoom(kind);
@@ -348,15 +354,18 @@ namespace Gamesim.Episode
                 CeremonySeating.Ensure(scene, state.Active.Count());
                 if (!ScreenSurface.TryFind(scene, room, out var screen)) { reason = "no screen in the " + room + " room"; return null; }
                 var stage = new CeremonyStage(owner, kind, room, state, screen, playCard, marker.transform.position);
+                // The veto meeting seats the block as it stood before its commit (VetoBlock).
+                if (blockBefore != null) stage.blockBefore.AddRange(blockBefore);
                 if (!stage.Assign(out reason)) return null;
                 return stage;
             }
 
             /// <summary>
             /// Who sits where, read from the committed state: the nomination's Head of Household at
-            /// the head with everyone else round the table; the veto's holder beside them; the
-            /// eviction's nominees in the hot seats, the Head of Household standing to one side,
-            /// the rest on the sofa and behind it. Cast order, the player first as in the cast.
+            /// the head with everyone else round the table; the veto meeting's block in the red
+            /// chairs with the house on the U (AssignVeto); the eviction's nominees in the hot seats
+            /// and the rest on the gallery, the sofa and behind it. Cast order, the player first as
+            /// in the cast.
             /// </summary>
             private bool Assign(out string reason)
             {
@@ -367,16 +376,16 @@ namespace Gamesim.Episode
                 var nominees = state.nominees ?? new List<string>();
                 switch (Kind)
                 {
-                    case CeremonySting.NominationKind:
                     case CeremonySting.VetoKind:
+                        if (!AssignVeto(active, out reason)) return false;
+                        break;
+                    case CeremonySting.NominationKind:
                     {
                         var heads = CeremonySeating.Anchors(scene, CeremonySeating.NominationHead);
                         var seats = CeremonySeating.Anchors(scene, CeremonySeating.NominationSeat);
                         if (seats.Count == 0) { reason = "no chairs at the table"; return false; }
                         var standing = new List<string>();
                         if (!string.IsNullOrEmpty(state.hohId) && active.Contains(state.hohId)) standing.Add(state.hohId);
-                        if (Kind == CeremonySting.VetoKind && !string.IsNullOrEmpty(state.vetoHolderId) && active.Contains(state.vetoHolderId)
-                            && !standing.Contains(state.vetoHolderId)) standing.Add(state.vetoHolderId);
                         for (int i = 0; i < standing.Count && i < heads.Count; i++) Place(standing[i], heads[i]);
                         StandingId = standing.Count > 0 ? standing[0] : null;
                         int seat = 0;
@@ -511,6 +520,12 @@ namespace Gamesim.Episode
                     director.voteReveal.BeatReached -= OnBeat;
                     if (on) director.voteReveal.BeatReached += OnBeat;
                 }
+                // The veto meeting's card is the takeover on the living room's screen.
+                if (director.takeover != null && Kind == CeremonySting.VetoKind)
+                {
+                    director.takeover.BeatReached -= OnTakeoverBeat;
+                    if (on) director.takeover.BeatReached += OnTakeoverBeat;
+                }
             }
 
             public void SkipSummons()
@@ -557,13 +572,15 @@ namespace Gamesim.Episode
             /// </summary>
             private bool LetGo(string id) => director.npcMeetings != null && director.npcMeetings.CandidateDropped(id);
 
-            /// <summary>The people the card is about: an eviction's nominees, a nomination's or a veto's Head of Household - whoever of them is coming.</summary>
+            /// <summary>The people the card is about: an eviction's nominees, a veto meeting's block and holder, a nomination's Head of Household - whoever of them is coming.</summary>
             private IEnumerable<string> Principals
             {
                 get
                 {
                     if (Kind == CeremonySting.EvictionKind)
                         foreach (var id in state.nominees ?? new List<string>()) { if (placeOf.ContainsKey(id) && !LetGo(id)) yield return id; }
+                    else if (Kind == CeremonySting.VetoKind)
+                        foreach (var id in VetoPrincipals) { if (placeOf.ContainsKey(id) && !LetGo(id)) yield return id; }
                     else if (StandingId != null && placeOf.ContainsKey(StandingId) && !LetGo(StandingId)) yield return StandingId;
                 }
             }
@@ -682,6 +699,7 @@ namespace Gamesim.Episode
                 if (!Active || Step != CeremonyStageStep.Playing) return;
                 if (director.keyCeremony != null && director.keyCeremony.IsPlaying) director.keyCeremony.SkipToResult();
                 else if (director.voteReveal != null && director.voteReveal.IsPlaying) director.voteReveal.SkipToResult();
+                else if (director.takeover != null && director.takeover.PlayingMeeting) director.takeover.SkipToResult();
             }
 
             /// <summary>The card, on the screen. A card that declines its shape ends the stage: the caller's generic card plays instead.</summary>
@@ -690,7 +708,12 @@ namespace Gamesim.Episode
                 cardStarted = true;
                 Step = CeremonyStageStep.Playing;
                 bool up = playCard(Screen);
-                if (!up || !CardPlaying) { End(true); return; }
+                // A card that declined the screen played nothing: the stage ends as one that never
+                // played its card does, and the card plays on the HUD once nothing is staged - the
+                // generic card's framing and reactions are the house's again by then. The veto
+                // meeting's does this; the reveals' fall back to the generic card themselves.
+                if (!up) { cardStarted = false; End(true); return; }
+                if (!CardPlaying) { End(true); return; }
                 Debug.Log(Report("card start"));
                 Cut(Screen.Shot(CutSeconds));
             }
@@ -1261,6 +1284,8 @@ namespace Gamesim.Episode
                 if (begun && !cardStarted) Debug.Log(Report("ended before the card"));
                 ended = true;
                 ClearCues();
+                // Nobody the veto meeting set talking is left mid-word by a stage ended under it.
+                Hush();
                 Subscribe(false);
                 foreach (var seat in seated.Values) if (seat != null && seat.Active) seat.RequestExit();
                 seated.Clear();

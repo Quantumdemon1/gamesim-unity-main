@@ -28,6 +28,12 @@ namespace Gamesim.Presentation
     /// <para>Subjects are supplied by the caller, already audience-filtered. The card shows faces,
     /// which makes it a more attractive side channel than the sting's text ever was — so it learns
     /// nothing about the cast on its own.</para>
+    ///
+    /// <para>The veto meeting also plays on the living room's screen when the house stages it
+    /// (<see cref="PlayVetoMeeting"/>, PACK8-PASS-PLAN C1): the same canvas hung on the screen's
+    /// face, turning pages the stage in the house cuts with - the holder, the question, the
+    /// decision, the replacement, the block that goes to the vote. Only a staged meeting does; the
+    /// HUD's card, a batch run's and reduced motion's play exactly as they always did.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class CeremonyTakeover : MonoBehaviour
@@ -116,7 +122,10 @@ namespace Gamesim.Presentation
             return null;
         }
 
-        /// <summary>The card up and the card down, so a stage in the house can cut with it as it does with the reveals.</summary>
+        /// <summary>
+        /// The card up and the card down, so a stage in the house can cut with it as it does with
+        /// the reveals; and on the veto meeting's screen, its decision and its replacement between them.
+        /// </summary>
         public event System.Action<CeremonyBeat> BeatReached;
 
         private RectTransform rule, glassGround;
@@ -214,9 +223,9 @@ namespace Gamesim.Presentation
                 case CeremonySting.WinnerKind:
                     return "The jury has spoken.";
                 case VetoSelectionKind:
-                    // No chips to draw: the engine seats everyone still in the house, and inventing a
-                    // draw animation for a selection that does not happen would be theatre for a
-                    // decision nobody made.
+                    // True only when the field takes the whole house, at six or fewer; a bigger
+                    // house's card is given the director's VetoFieldLine instead, which says who
+                    // plays by right and how many the draw added.
                     return "Everyone still in the house plays. The winner can take a nominee off the block.";
                 case FinalThreeKind:
                     // The reference's line for the final Head of Household's card.
@@ -279,6 +288,8 @@ namespace Gamesim.Presentation
         public void Play(string kind, int week, IList<Subject> subjects, bool reducedMotion, string titleText, string line)
         {
             if (string.IsNullOrEmpty(TitleFor(kind))) return;
+            // A card after a meeting on the set's screen plays where every card did: on the HUD frame.
+            LeaveTheScreen();
             string name = string.IsNullOrEmpty(titleText) ? TitleFor(kind) : titleText;
             playingKind = kind;
 
@@ -316,6 +327,16 @@ namespace Gamesim.Presentation
             if (group != null) group.alpha = 0f;
             if (column != null) column.gameObject.SetActive(false);
             if (scrim != null) scrim.gameObject.SetActive(false);
+            if (meeting != null)
+            {
+                // Off the set's screen and its idle graphic back: the screen is the room's again.
+                // The meeting is kept until the next card, so whoever cuts with its beats still
+                // knows which screen this last one was on (MeetingScreen).
+                if (meetingRoot != null) meetingRoot.gameObject.SetActive(false);
+                if (mounted) { ScreenSurface.Unmount(GetComponent<Canvas>()); mounted = false; }
+                if (was) BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Closed, -1, null, elapsed < MeetingEnd));
+                return;
+            }
             if (was) BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Closed, -1, null, elapsed < FadeIn + Hold));
         }
 
@@ -331,6 +352,8 @@ namespace Gamesim.Presentation
             if (!playing) return;
             CeremonyOverlays.Showing();
             elapsed += Time.unscaledDeltaTime;
+            // The meeting on the set's screen keeps its own pages; the HUD's card below is as it was.
+            if (meeting != null) { TickMeeting(); return; }
 
             // Read the devices directly rather than through the event system. The card carries no
             // GraphicRaycaster and every graphic on it is non-raycasting — an acceptance criterion,
@@ -595,6 +618,404 @@ namespace Gamesim.Presentation
                 badge.rectTransform.offsetMax = Vector2.zero;
             }
             Layout();
+        }
+
+        // ------------------------------------------------------------ the veto meeting on the set's screen
+
+        /// <summary>The meeting's pages, in the order the card turns them.</summary>
+        public enum MeetingPage { Intro, Question, Decision, Replacement, Final }
+
+        /// <summary>
+        /// How long past its fade the meeting must have been up, in real seconds, before a press moves
+        /// it on: the reveals' delay, and on the same clock as theirs, so a skip that jumps the card's
+        /// own clock to its last page does not also make the press that jumped it a second one.
+        /// </summary>
+        private const float MeetingReadDelay = 0.35f;
+
+        /// <summary>The badges the meeting's faces wear.</summary>
+        public const string VetoBadge = "VETO", OnTheBlockBadge = "ON THE BLOCK", SavedBadge = "SAVED", ReplacementBadge = "REPLACEMENT";
+
+        /// <summary>The meeting's title on the screen.</summary>
+        public const string MeetingTitle = "POWER OF VETO MEETING";
+
+        private VetoMeetingScript meeting;
+        private ScreenSurface surface;
+        private bool mounted;
+        private MeetingPage page;
+        private CeremonyPace meetingPace = CeremonyPace.Suspenseful;
+        private float upFor;
+        private RectTransform meetingRoot, meetingFaces;
+        private TMP_Text meetingWeek, meetingHeadline, meetingLine;
+
+        /// <summary>Whether the veto meeting is playing on a set's screen.</summary>
+        public bool PlayingMeeting => playing && meeting != null;
+
+        /// <summary>The screen the card is playing on, or null while it plays on the HUD or not at all.</summary>
+        public ScreenSurface Surface => playing ? surface : null;
+
+        /// <summary>
+        /// The screen the last veto meeting played on, kept until the next card: a stage cutting with
+        /// the meeting's beats reads it to tell the meeting's from another card's, the closing beat
+        /// included. Null once any other card has played.
+        /// </summary>
+        public ScreenSurface MeetingScreen => meeting != null ? surface : null;
+
+        /// <summary>The meeting's page on the screen, or null when no meeting is playing.</summary>
+        public MeetingPage? Page => PlayingMeeting ? page : (MeetingPage?)null;
+
+        /// <summary>The pace the meeting was played at.</summary>
+        public CeremonyPace MeetingPace => meetingPace;
+
+        /// <summary>How long the meeting takes at its own pace, start to finish, when nobody skips it.</summary>
+        public float MeetingDuration => meeting != null ? MeetingEnd + CeremonyPacing.FadeOut : 0f;
+
+        private bool MeetingHasReplacement => meeting != null && meeting.Meeting.HasReplacement;
+        private float QuestionAt => CeremonyPacing.FadeIn + CeremonyPacing.VetoIntro(meetingPace);
+        private float DecisionAt => QuestionAt + CeremonyPacing.VetoQuestion(meetingPace);
+        private float ReplacementAt => DecisionAt + CeremonyPacing.VetoDecision(meetingPace);
+        private float FinalAt => ReplacementAt + (MeetingHasReplacement ? CeremonyPacing.VetoReplacement(meetingPace) : 0f);
+        private float MeetingEnd => FinalAt + CeremonyPacing.VetoFinal(meetingPace);
+
+        /// <summary>
+        /// Plays the veto meeting on a set's screen, page by page: the holder and the block, the
+        /// question, the decision, the replacement when there is one, and the block that goes to the
+        /// vote. Every line is the script's, read from committed state and the block before the
+        /// commit, never from the event's sentence. Declines - and the caller plays the generic card
+        /// on the HUD - without a screen, or a meeting it cannot tell; the HUD, a batch run and
+        /// reduced motion never come here.
+        /// </summary>
+        public bool PlayVetoMeeting(VetoMeetingScript script, bool reducedMotion, CeremonyPace pace, ScreenSurface screen)
+        {
+            if (screen == null || script == null || !script.Playable) return false;
+            playingKind = CeremonySting.VetoKind;
+            // The HUD's pieces are built for the group they share, and kept down while the meeting plays.
+            Build();
+            column.gameObject.SetActive(false);
+            scrim.gameObject.SetActive(false);
+            meeting = script;
+            surface = screen;
+            meetingPace = pace;
+            BuildMeeting();
+            // Off any screen it was still on first, so that screen's idle graphic comes back.
+            var canvas = GetComponent<Canvas>();
+            if (mounted) ScreenSurface.Unmount(canvas);
+            screen.Mount(canvas);
+            mounted = true;
+            reduced = reducedMotion;
+            elapsed = 0f;
+            upFor = 0f;
+            page = MeetingPage.Intro;
+            playing = true;
+            meetingWeek.text = "WEEK " + Mathf.Max(1, script.Meeting.week);
+            ShowPage(MeetingPage.Intro);
+            meetingRoot.gameObject.SetActive(true);
+            group.alpha = reduced ? 1f : 0f;
+            BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.Opened));
+            return true;
+        }
+
+        /// <summary>
+        /// The first press's step on the meeting: straight to the block that goes to the vote, the
+        /// decision and the replacement reported on the way as skipped - the order given up, never
+        /// the outcome. A press on that last page ends the card. Shared with a staged meeting, whose
+        /// press on its summons starts the card here, so one press is one step however the meeting
+        /// is played. Nothing once the last page is up, or on the HUD's card.
+        /// </summary>
+        public void SkipToResult()
+        {
+            if (!playing || meeting == null || page == MeetingPage.Final) return;
+            elapsed = Mathf.Max(elapsed, FinalAt);
+            Turn(MeetingPage.Final, true);
+        }
+
+        private void TickMeeting()
+        {
+            upFor += Time.unscaledDeltaTime;
+            // The card says nothing of its controls on the screen: the skip chip names the press.
+            if (upFor >= CeremonyPacing.FadeIn + MeetingReadDelay && SkipPressed())
+            {
+                if (page == MeetingPage.Final) { Cancel(); return; }
+                SkipToResult();
+                return;
+            }
+            float end = MeetingEnd;
+            if (reduced)
+            {
+                // Reading time, not movement: the same time on screen with no fade.
+                group.alpha = 1f;
+                if (elapsed >= end + CeremonyPacing.FadeOut) { Cancel(); return; }
+            }
+            else if (elapsed < CeremonyPacing.FadeIn) group.alpha = Eased(elapsed / CeremonyPacing.FadeIn);
+            else if (elapsed < end) group.alpha = 1f;
+            else
+            {
+                float exit = (elapsed - end) / CeremonyPacing.FadeOut;
+                if (exit >= 1f) { Cancel(); return; }
+                group.alpha = 1f - Eased(exit);
+            }
+            var due = PageAt(elapsed);
+            if (due > page) Turn(due, false);
+        }
+
+        private static float Eased(float t) => 1f - (1f - t) * (1f - t);
+
+        /// <summary>The page the card's clock has reached.</summary>
+        private MeetingPage PageAt(float t)
+        {
+            if (t >= FinalAt) return MeetingPage.Final;
+            if (MeetingHasReplacement && t >= ReplacementAt) return MeetingPage.Replacement;
+            if (t >= DecisionAt) return MeetingPage.Decision;
+            if (t >= QuestionAt) return MeetingPage.Question;
+            return MeetingPage.Intro;
+        }
+
+        /// <summary>
+        /// Turns to <paramref name="to"/>, reporting every beat on the way - the decision, the
+        /// replacement - marked <paramref name="skipped"/> when a press took the card past them.
+        /// </summary>
+        private void Turn(MeetingPage to, bool skipped)
+        {
+            var read = meeting.Meeting;
+            while (page < to)
+            {
+                page++;
+                if (page == MeetingPage.Replacement && !read.HasReplacement) continue;
+                if (page == MeetingPage.Decision)
+                    BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.VetoDecided, -1, read.used ? read.savedId : null, skipped));
+                else if (page == MeetingPage.Replacement)
+                    BeatReached?.Invoke(new CeremonyBeat(CeremonyBeatKind.ReplacementNamed, -1, read.replacementId, skipped));
+                // A handler that took the card down has the screen now.
+                if (!playing || meeting == null) return;
+            }
+            ShowPage(page);
+        }
+
+        /// <summary>A face on a page, with what it is doing there: a badge, and a second for a holder on the block.</summary>
+        private readonly struct MeetingFace
+        {
+            public readonly string Id, Badge, Second;
+            public readonly Color Tint, SecondTint;
+
+            public MeetingFace(string id, string badge, Color tint, string second = null, Color secondTint = default)
+            {
+                Id = id; Badge = badge; Tint = tint; Second = second; SecondTint = secondTint;
+            }
+        }
+
+        /// <summary>Draws a page: its headline, its line and its faces, every one read from the script.</summary>
+        private void ShowPage(MeetingPage shown)
+        {
+            var read = meeting.Meeting;
+            string headline = null, line = null;
+            var headlineColour = UiTheme.Paper;
+            var row = new List<MeetingFace>();
+            bool arrow = false;
+            switch (shown)
+            {
+                case MeetingPage.Intro:
+                case MeetingPage.Question:
+                    headline = shown == MeetingPage.Intro ? read.introLine : read.questionLine;
+                    // The holder, then the block; a holder on the block is one card with both badges.
+                    if (read.holderId != null && !read.holderOnTheBlock) row.Add(new MeetingFace(read.holderId, VetoBadge, UiTheme.Gold));
+                    foreach (var id in read.blockBefore)
+                        row.Add(id == read.holderId
+                            ? new MeetingFace(id, VetoBadge, UiTheme.Gold, OnTheBlockBadge, UiTheme.Danger)
+                            : new MeetingFace(id, OnTheBlockBadge, UiTheme.Danger));
+                    break;
+                case MeetingPage.Decision:
+                    headline = read.decisionHeadline;
+                    headlineColour = read.used ? UiTheme.Gold : UiTheme.Accent;
+                    line = read.decisionLine;
+                    foreach (var id in read.blockBefore)
+                        row.Add(read.used && id == read.savedId ? new MeetingFace(id, SavedBadge, UiTheme.Gold) : new MeetingFace(id, OnTheBlockBadge, UiTheme.Danger));
+                    break;
+                case MeetingPage.Replacement:
+                    headline = VetoMeetingRead.ReplacementHeadline;
+                    headlineColour = UiTheme.Danger;
+                    line = read.replacementLine;
+                    row.Add(new MeetingFace(read.savedId, SavedBadge, UiTheme.Gold));
+                    row.Add(new MeetingFace(read.replacementId, ReplacementBadge, UiTheme.Danger));
+                    arrow = true;
+                    break;
+                case MeetingPage.Final:
+                    headline = VetoMeetingRead.FinalHeadline;
+                    headlineColour = UiTheme.Gold;
+                    line = read.outcomeLine;
+                    foreach (var id in read.finalBlock) row.Add(new MeetingFace(id, OnTheBlockBadge, UiTheme.Danger));
+                    break;
+            }
+            meetingHeadline.text = headline ?? string.Empty;
+            meetingHeadline.color = headlineColour;
+            meetingLine.text = line ?? string.Empty;
+            MeetingFaces(row, arrow);
+        }
+
+        /// <summary>The screen's frame, in its own canvas units: the face's whole 1200 × 800, type at about 2.2 times the HUD card's.</summary>
+        private const float FaceWidth = 300f, FaceHeight = 380f, FaceStep = 360f, ArrowSide = 92f;
+
+        private void BuildMeeting()
+        {
+            if (meetingRoot != null) return;
+            var root = (RectTransform)transform;
+            meetingRoot = new GameObject("Veto meeting", typeof(RectTransform)).GetComponent<RectTransform>();
+            meetingRoot.SetParent(root, false);
+            meetingRoot.anchorMin = Vector2.zero; meetingRoot.anchorMax = Vector2.one;
+            meetingRoot.offsetMin = Vector2.zero; meetingRoot.offsetMax = Vector2.zero;
+
+            // The screen's ground: the mockups' night glass, edged in the veto's gold.
+            var ground = NewPanel("Meeting glass", meetingRoot, UiTheme.GlassFill, UiTheme.GlassRadius);
+            ground.anchorMin = Vector2.zero; ground.anchorMax = Vector2.one;
+            ground.offsetMin = Vector2.zero; ground.offsetMax = Vector2.zero;
+            UiTheme.AddBorder(ground, UiTheme.GlassRadius, UiTheme.Gold);
+
+            // Every label box at least 1.3 of its font: Inter's line is 1.21 of its size, and a box
+            // short of it draws nothing.
+            meetingWeek = NewText("Meeting week", meetingRoot, 24f, UiTheme.Muted);
+            meetingWeek.alignment = TextAlignmentOptions.Center;
+            meetingWeek.characterSpacing = 10f;
+            PlaceTop(meetingWeek.rectTransform, 1100f, 36f, -26f);
+
+            var title = NewText("Meeting title", meetingRoot, 44f, UiTheme.Gold);
+            title.alignment = TextAlignmentOptions.Center;
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) title.font = bold;
+            title.characterSpacing = 3f;
+            title.text = MeetingTitle;
+            PlaceTop(title.rectTransform, 1100f, 64f, -64f);
+            // Pack 8's veto mark before the title, when the pack is in.
+            var mark = UiTheme.Pack(PackArt.Pack8IconVeto);
+            if (mark != null)
+            {
+                var icon = new GameObject("Meeting mark", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+                icon.SetParent(meetingRoot, false);
+                float titleWidth = Mathf.Min(1100f, title.GetPreferredValues(MeetingTitle).x);
+                PlaceTop(icon, 56f, 56f, -68f, -(titleWidth * .5f) - 40f);
+                var image = icon.GetComponent<Image>();
+                image.sprite = mark; image.preserveAspect = true; image.raycastTarget = false;
+            }
+            var rule = NewPanel("Meeting rule", meetingRoot, new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .55f), 1);
+            PlaceTop(rule, 240f, 2f, -136f);
+
+            meetingHeadline = NewText("Meeting headline", meetingRoot, 40f, UiTheme.Paper);
+            meetingHeadline.alignment = TextAlignmentOptions.Center;
+            if (bold != null) meetingHeadline.font = bold;
+            meetingHeadline.textWrappingMode = TextWrappingModes.NoWrap;
+            meetingHeadline.enableAutoSizing = true; meetingHeadline.fontSizeMax = 40f; meetingHeadline.fontSizeMin = 26f;
+            PlaceTop(meetingHeadline.rectTransform, 1120f, 60f, -150f);
+
+            meetingLine = NewText("Meeting line", meetingRoot, 28f, UiTheme.Paper);
+            meetingLine.alignment = TextAlignmentOptions.Top;
+            meetingLine.enableAutoSizing = true; meetingLine.fontSizeMax = 28f; meetingLine.fontSizeMin = 20f;
+            PlaceTop(meetingLine.rectTransform, 1100f, 80f, -216f);
+
+            meetingFaces = new GameObject("Meeting faces", typeof(RectTransform)).GetComponent<RectTransform>();
+            meetingFaces.SetParent(meetingRoot, false);
+            PlaceTop(meetingFaces, 1160f, FaceHeight, -318f);
+            meetingRoot.gameObject.SetActive(false);
+        }
+
+        /// <summary>The page's faces in a centred row, rebuilt per page; the replacement's page puts Pack 8's arrow between its two.</summary>
+        private void MeetingFaces(List<MeetingFace> row, bool arrow)
+        {
+            for (int i = meetingFaces.childCount - 1; i >= 0; i--) Destroy(meetingFaces.GetChild(i).gameObject);
+            var shown = new List<MeetingFace>();
+            foreach (var spec in row) if (spec.Id != null && meeting.TryFace(spec.Id, out _)) shown.Add(spec);
+            if (shown.Count == 0) return;
+            // Centre to centre: a face's width and a gap, or with the arrow between them its width and a gap each side.
+            float step = arrow && shown.Count == 2 ? FaceWidth + ArrowSide + 60f : FaceStep;
+            float start = -(shown.Count - 1) * step * .5f;
+            for (int i = 0; i < shown.Count; i++) MeetingFaceSlot(shown[i], start + i * step);
+            if (!arrow || shown.Count != 2) return;
+            var sprite = UiTheme.Pack(PackArt.Pack8ArrowRight);
+            if (sprite == null) return;
+            var mark = new GameObject("Meeting arrow", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            mark.SetParent(meetingFaces, false);
+            PlaceTop(mark, ArrowSide, ArrowSide, -(FaceHeight - ArrowSide) * .5f);
+            var image = mark.GetComponent<Image>();
+            image.sprite = sprite; image.preserveAspect = true; image.raycastTarget = false;
+        }
+
+        /// <summary>One face on the screen: Pack 8's veto card frame, the photo, a name plate on its foot and its badges at its head.</summary>
+        private void MeetingFaceSlot(MeetingFace spec, float x)
+        {
+            meeting.TryFace(spec.Id, out var face);
+            var slot = new GameObject("Meeting face", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            slot.SetParent(meetingFaces, false);
+            PlaceTop(slot, FaceWidth, FaceHeight, 0f, x);
+            var frame = slot.GetComponent<Image>();
+            frame.raycastTarget = false;
+            bool gold = spec.Tint == UiTheme.Gold;
+            if (!UiTheme.PackSliced(frame, gold ? PackArt.Pack8VetoAutoHoh : PackArt.Pack8VetoAutoNominee, 16f))
+            {
+                UiTheme.Style(frame, UiTheme.SurfaceRaised, 10);
+                UiTheme.AddBorder(slot, 10, spec.Tint);
+            }
+
+            var photo = HudPrimitives.RectPortrait(slot, "Photo", face.Portrait, face.Character,
+                new Vector2(FaceWidth - 16f, FaceHeight - 16f), 8);
+            photo.anchorMin = photo.anchorMax = new Vector2(.5f, .5f);
+            photo.pivot = new Vector2(.5f, .5f);
+            photo.anchoredPosition = Vector2.zero;
+
+            var plate = HudPrimitives.Fill("Name plate", photo, new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .86f), 0);
+            plate.anchorMin = new Vector2(0f, 0f); plate.anchorMax = new Vector2(1f, 0f);
+            plate.pivot = new Vector2(.5f, 0f);
+            plate.offsetMin = Vector2.zero; plate.offsetMax = new Vector2(0f, 52f);
+            plate.GetComponent<Image>().raycastTarget = false;
+            var name = NewText("Name", plate, 28f, UiTheme.Paper);
+            name.alignment = TextAlignmentOptions.Center;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) name.font = semibold;
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.enableAutoSizing = true; name.fontSizeMax = 28f; name.fontSizeMin = 18f;
+            name.text = face.Name ?? string.Empty;
+            name.rectTransform.anchorMin = Vector2.zero; name.rectTransform.anchorMax = Vector2.one;
+            name.rectTransform.offsetMin = new Vector2(10f, 0f); name.rectTransform.offsetMax = new Vector2(-10f, 0f);
+
+            MeetingBadge(photo, spec.Badge, spec.Tint, 0);
+            if (!string.IsNullOrEmpty(spec.Second)) MeetingBadge(photo, spec.Second, spec.SecondTint, 1);
+        }
+
+        /// <summary>A badge just inside the photo's top edge, the second under the first.</summary>
+        private static void MeetingBadge(RectTransform photo, string text, Color tint, int index)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            const float height = 40f, width = 230f, gap = 8f;
+            var chip = NewPanel("Badge", photo, tint, 6);
+            chip.anchorMin = chip.anchorMax = new Vector2(.5f, 1f);
+            chip.pivot = new Vector2(.5f, 1f);
+            chip.anchoredPosition = new Vector2(0f, -10f - index * (height + gap));
+            chip.sizeDelta = new Vector2(width, height);
+            var label = NewText("Badge text", chip, 22f, UiTheme.Ink);
+            label.alignment = TextAlignmentOptions.Center;
+            var bold = UiTheme.Font(UiTheme.Weight.Bold);
+            if (bold != null) label.font = bold;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.text = text;
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = Vector2.zero; label.rectTransform.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>A rect hung from its parent's top centre, <paramref name="y"/> down and <paramref name="x"/> across.</summary>
+        private static void PlaceTop(RectTransform rect, float width, float height, float y, float x = 0f)
+        {
+            rect.anchorMin = new Vector2(.5f, 1f);
+            rect.anchorMax = new Vector2(.5f, 1f);
+            rect.pivot = new Vector2(.5f, 1f);
+            rect.anchoredPosition = new Vector2(x, y);
+            rect.sizeDelta = new Vector2(width, height);
+        }
+
+        /// <summary>
+        /// Back to the HUD frame before a card plays there: off the set's screen, the meeting's page
+        /// down and forgotten. Nothing changes for a takeover that never played a meeting.
+        /// </summary>
+        private void LeaveTheScreen()
+        {
+            meeting = null;
+            surface = null;
+            if (meetingRoot != null) meetingRoot.gameObject.SetActive(false);
+            if (mounted) { ScreenSurface.Unmount(GetComponent<Canvas>()); mounted = false; }
         }
 
         private static RectTransform Disc(string name, Transform parent, Color colour)

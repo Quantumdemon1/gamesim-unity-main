@@ -141,7 +141,9 @@ namespace Gamesim.Editor
             // ---------------------------------------------------------------- Living room
             new Prop("Living room floor", "lampSquareFloor",   -0.43f,  0.38f,   0f, 1.55f),
             new Prop("Living room floor", "lampRoundFloor",     0.41f, -0.38f,   0f, 1.50f),
-            new Prop("Living room floor", "speaker",           -0.43f, -0.26f,  90f, 0.95f),
+            // North of the memory wall's frames (z -2.69) on the west wall, out of the exit door's
+            // vestibule at the wall's south end (MOCKUP-PASS-PLAN M23), where it stood at z -7.6.
+            new Prop("Living room floor", "speaker",           -0.43f,  0.28f,  90f, 0.95f),
             new Prop("Living room floor", "speaker",            0.43f,  0.26f, 270f, 0.95f),
             new Prop("Living room floor", "pottedPlant",        0.43f,  0.38f,   0f, 0.85f),
             // The eviction's gallery (MOCKUP-PASS-PLAN M21; HouseLivingGallery says why each stands
@@ -178,7 +180,9 @@ namespace Gamesim.Editor
             // turns its face into the room; authored, it looks at -z.
             new Prop("Nomination floor", "bb_set_ceremonyscreen", 0f, -0.39f, 180f, 0f),
             new Prop("Living room floor", "trashcan",          -0.20f,  0.42f,   0f, 0.55f),
-            new Prop("Living room floor", "plantSmall2",       -0.36f, -0.42f,   0f, 0.50f),
+            // Along the south wall's east end, clear of the story's ring round the room's marker:
+            // at x -12 it stood in the exit door's left leaf's swing and on the walk to it (M23).
+            new Prop("Living room floor", "plantSmall2",        0.31f, -0.42f,   0f, 0.50f),
 
             // ---------------------------------------------------------------- Bedroom
             // The shared bedroom is the one room this format fills wall to wall with beds.
@@ -359,6 +363,11 @@ namespace Gamesim.Editor
 
             int tiles = CheckerKitchen(world.transform, root);
             int entrance = Entrance(world.transform, root);
+            // Before the planting, which would otherwise grow a bed of plants on the planter it
+            // strikes from the living room's exit door (MOCKUP-PASS-PLAN M23); the gallery's own
+            // dressing runs after the planting, too late for that.
+            int doorway = HouseLivingGallery.StrikeTheDoorway(world.transform);
+            if (doorway > 0) Debug.Log("[Gamesim] set pieces · the living room's exit door: " + doorway + " prototype pieces struck from its doorway");
             int greenery = Greenery(world.transform, root);
             int podiums = Podiums(world.transform, root);
             int rings = Rings(world.transform, root);
@@ -641,6 +650,9 @@ namespace Gamesim.Editor
             foreach (var node in world.GetComponentsInChildren<Transform>(true))
             {
                 if (node.IsChildOf(root)) continue;
+                // A struck piece is not planted: the living room's doorway planter, switched off
+                // for the exit door, grew three plants floating where its bed had been.
+                if (!node.gameObject.activeInHierarchy) continue;
                 var renderer = node.GetComponent<Renderer>();
                 if (renderer == null) continue;
                 string stem = Stem(node.name);
@@ -900,7 +912,7 @@ namespace Gamesim.Editor
         /// A name with any trailing copy number removed, so "Foliage (3)" and "Competition podium 2"
         /// both stem to the name the plan uses.
         /// </summary>
-        private static string Stem(string name)
+        internal static string Stem(string name)
         {
             string trimmed = name.Trim();
             int cut = trimmed.Length;

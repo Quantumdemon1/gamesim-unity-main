@@ -41,6 +41,12 @@ namespace Gamesim.Presentation
     /// <para>Motion is decoration here too. Under reduced motion the leaves land at once, nothing
     /// rattles, no sparkle falls and the light stands at its settled level: the door is still visibly
     /// open and lit, which is the information.</para>
+    ///
+    /// <para><b>Where it stands.</b> The geometry below is the yard's, laid out from the world origin
+    /// (<see cref="DoorLayout.Yard"/>). The same set goes up on the living room's west wall for the
+    /// evicted (<see cref="DoorLayout.Living"/>, MOCKUP-PASS-PLAN M23): that wall faces +x as the
+    /// yard facade does, so the set is moved there whole, with a facade of its own reach and height
+    /// and the crown over the lintel in place of the eye.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class OpeningDoorSet : MonoBehaviour
@@ -48,8 +54,9 @@ namespace Gamesim.Presentation
         /// <summary>The scene root's name, which the stage and its tests find the set by.</summary>
         public const string RootName = "Opening door set runtime";
 
-        // The geometry the stage and its sight-line test measure against, in world metres. The set's
-        // root stands at the origin, so every local position below is a world position too.
+        // The geometry the stage and its sight-line test measure against, in world metres. The yard
+        // set's root stands at the origin, so every local position below is a world position too;
+        // another layout moves the root, and DoorLayout gives its world geometry.
 
         /// <summary>The facade slab's centre plane; it is 0.2 m thick.</summary>
         public const float FacadeX = -3.3f;
@@ -70,7 +77,8 @@ namespace Gamesim.Presentation
         /// <summary>The middle of the doorway, on the floor, at the facade's front face.</summary>
         public static readonly Vector3 DoorCentre = new Vector3(FacadeFrontX, 0f, 13.8f);
 
-        private const float LeafWidth = 1.1f;
+        /// <summary>How far a leaf reaches across the doorway from its hinge, and so how far in front of the facade it swings.</summary>
+        public const float LeafWidth = 1.1f;
         private const float LeafHeight = 2.6f;
         private const float LeafThickness = 0.08f;
         private const float SignCapHeight = 0.18f;
@@ -121,6 +129,11 @@ namespace Gamesim.Presentation
         private float openness, sinceOpen, clock;
         private float burstClock, burstLevel, lightLevel, rampFromLevel, rampFromLight;
 
+        private DoorLayout layout = DoorLayout.Yard;
+
+        /// <summary>Where this set stands, with its world geometry: the yard's front door, or the living room's.</summary>
+        public DoorLayout Layout => layout;
+
         /// <summary>Whether the doors have been told to open and not since told to close.</summary>
         public bool IsOpen => open;
 
@@ -135,12 +148,20 @@ namespace Gamesim.Presentation
         /// floor's furniture ever meets a door. A scene that is not loaded cannot take it, and the set
         /// then stays in the active scene, which is where a new object lands anyway.</para>
         /// </summary>
-        public static OpeningDoorSet Build(Scene scene)
+        public static OpeningDoorSet Build(Scene scene) => Build(scene, DoorLayout.Yard);
+
+        /// <summary>
+        /// Builds the set where <paramref name="where"/> puts it, closed and dark: its root at the
+        /// layout's origin, every piece where the yard's would be relative to it.
+        /// </summary>
+        public static OpeningDoorSet Build(Scene scene, DoorLayout where)
         {
             var root = new GameObject(RootName);
             if (scene.IsValid() && scene.isLoaded && root.scene != scene)
                 SceneManager.MoveGameObjectToScene(root, scene);
+            root.transform.position = where.Origin;
             var set = root.AddComponent<OpeningDoorSet>();
+            set.layout = where;
             set.Assemble();
             return set;
         }
@@ -375,12 +396,17 @@ namespace Gamesim.Presentation
         {
             var group = Group("Facade", transform);
             const float depth = 0.2f, jambLeft = 12.65f, jambRight = 14.95f, head = 2.8f;
-            Box("Left panel", group, new Vector3(FacadeX, FacadeHeight / 2f, (FacadeMinZ + jambLeft) / 2f),
-                new Vector3(depth, FacadeHeight, jambLeft - FacadeMinZ), facade, true);
-            Box("Right panel", group, new Vector3(FacadeX, FacadeHeight / 2f, (jambRight + FacadeMaxZ) / 2f),
-                new Vector3(depth, FacadeHeight, FacadeMaxZ - jambRight), facade, true);
-            Box("Top panel", group, new Vector3(FacadeX, (head + FacadeHeight) / 2f, DoorCentre.z),
-                new Vector3(depth, FacadeHeight - head, jambRight - jambLeft), facade, true);
+            // The facade's reach and height are the layout's: the living room's stops short of the
+            // south wall and the memory wall's frames, and stands lower.
+            float fromZ = layout.LocalFacadeMinZ, toZ = layout.LocalFacadeMaxZ, height = layout.FacadeHeight;
+            if (jambLeft - fromZ > 0.005f)
+                Box("Left panel", group, new Vector3(FacadeX, height / 2f, (fromZ + jambLeft) / 2f),
+                    new Vector3(depth, height, jambLeft - fromZ), facade, true);
+            if (toZ - jambRight > 0.005f)
+                Box("Right panel", group, new Vector3(FacadeX, height / 2f, (jambRight + toZ) / 2f),
+                    new Vector3(depth, height, toZ - jambRight), facade, true);
+            Box("Top panel", group, new Vector3(FacadeX, (head + height) / 2f, DoorCentre.z),
+                new Vector3(depth, height - head, jambRight - jambLeft), facade, true);
             // The crown sits at 2.7-2.8 and the leaves stop at 2.6; without this the closed door had a
             // 10 cm slot over it.
             Box("Lintel", group, new Vector3(FacadeX, ApertureHeight + 0.05f, DoorCentre.z),
@@ -478,9 +504,11 @@ namespace Gamesim.Presentation
         /// </summary>
         private void BuildEmblem()
         {
-            emblemDeep = UiTheme.Hex("3B82F6");
-            emblemBright = UiTheme.Hex("6CC0FF");
-            var icon = UiTheme.Icon("eye");
+            // The welcome's eye breathes in the show's blues; the goodbye's crown in the frame's gold.
+            bool crown = layout.Emblem == DoorLayout.CrownEmblem;
+            emblemDeep = UiTheme.Hex(crown ? "F59E0B" : "3B82F6");
+            emblemBright = UiTheme.Hex(crown ? "FFD37A" : "6CC0FF");
+            var icon = UiTheme.Icon(layout.Emblem);
             Texture texture = icon != null ? icon.texture : null;
             float aspect = 1f;
             if (texture == null) texture = Own(EyeTexture());
@@ -798,5 +826,64 @@ namespace Gamesim.Presentation
             texture.Apply(false, true);
             return texture;
         }
+    }
+
+    /// <summary>
+    /// Where a door set stands, and its world geometry (MOCKUP-PASS-PLAN M23). Every door faces +x,
+    /// as the yard facade and the living room's west wall both do, so a layout is the yard's
+    /// geometry moved to an origin, with a facade of its own reach along z and its own height, and
+    /// the icon over its lintel.
+    /// </summary>
+    public readonly struct DoorLayout
+    {
+        /// <summary>The welcome's emblem over the lintel, and the goodbye's.</summary>
+        public const string EyeEmblem = "eye", CrownEmblem = "crown";
+
+        public readonly string Name;
+        /// <summary>Where the set's root stands: the yard's geometry is laid out from the world origin.</summary>
+        public readonly Vector3 Origin;
+        /// <summary>The facade's reach along z in the set's own space, and its height.</summary>
+        public readonly float LocalFacadeMinZ, LocalFacadeMaxZ, FacadeHeight;
+        /// <summary>The HUD icon over the lintel.</summary>
+        public readonly string Emblem;
+
+        private DoorLayout(string name, Vector3 origin, float facadeMinZ, float facadeMaxZ, float facadeHeight, string emblem)
+        {
+            Name = name;
+            Origin = origin;
+            LocalFacadeMinZ = facadeMinZ - origin.z;
+            LocalFacadeMaxZ = facadeMaxZ - origin.z;
+            FacadeHeight = facadeHeight;
+            Emblem = emblem;
+        }
+
+        /// <summary>The front door in the west yard, where the opening stands it: the set's own constants.</summary>
+        public static DoorLayout Yard => new DoorLayout("Yard", Vector3.zero,
+            OpeningDoorSet.FacadeMinZ, OpeningDoorSet.FacadeMaxZ, OpeningDoorSet.FacadeHeight, EyeEmblem);
+
+        /// <summary>
+        /// The evicted's door on the living room's west wall at its south end (CEREMONY-CUTSCENES-
+        /// PLAN 8.2.2, owner decision 2A): the yard's set moved by (-9.4, 0, -22.3), which puts the
+        /// doorway's middle at (-12.6, -8.5), the aperture at z -9.6 to -7.4 and the vestibule's back
+        /// at x -13.8, inside the wall's face at -13.875. Its facade, 3.6 m tall, runs from z -9.85
+        /// to -7.33: clear of the south wall's face at -9.875 and of the memory wall's frames from
+        /// -7.31. The crown over the lintel: this door goes to the jury.
+        /// </summary>
+        public static DoorLayout Living => new DoorLayout("Living", new Vector3(-9.4f, 0f, -22.3f), -9.85f, -7.33f, 3.6f, CrownEmblem);
+
+        /// <summary>The middle of the doorway, on the floor, at the facade's front face.</summary>
+        public Vector3 DoorCentre => OpeningDoorSet.DoorCentre + Origin;
+        /// <summary>The facade's face toward the room or the yard, where the hinges are.</summary>
+        public float FacadeFrontX => OpeningDoorSet.FacadeFrontX + Origin.x;
+        /// <summary>Where the vestibule's light plane closes the doorway from behind.</summary>
+        public float VestibuleFarX => OpeningDoorSet.VestibuleFarX + Origin.x;
+        /// <summary>The doorway the leaves close, along z.</summary>
+        public float ApertureMinZ => OpeningDoorSet.ApertureMinZ + Origin.z;
+        public float ApertureMaxZ => OpeningDoorSet.ApertureMaxZ + Origin.z;
+        /// <summary>The facade's reach along z.</summary>
+        public float FacadeMinZ => LocalFacadeMinZ + Origin.z;
+        public float FacadeMaxZ => LocalFacadeMaxZ + Origin.z;
+        /// <summary>How far in front of the facade the open leaves reach.</summary>
+        public float SweepFrontX => FacadeFrontX + OpeningDoorSet.LeafWidth;
     }
 }

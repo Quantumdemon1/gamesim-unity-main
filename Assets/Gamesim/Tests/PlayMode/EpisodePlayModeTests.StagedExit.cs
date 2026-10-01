@@ -8,7 +8,9 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.PlayMode
@@ -321,6 +323,260 @@ namespace Gamesim.Tests.PlayMode
             yield return CaptureFraming("walk-out-shut", settle: false);
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.WalkOutSeconds, "the exit ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
+        }
+
+        // ---------------------------------------------------------------- the living room's door (M23)
+
+        /// <summary>
+        /// The prototype's planter, if it still stands in the living room's exit doorway: the scene
+        /// edit (HouseLivingGallery.StrikeTheDoorway) and the rebake have not run on this copy.
+        /// </summary>
+        private static Transform PlanterInTheLivingDoorway() => SceneComponents<Transform>().FirstOrDefault(node =>
+            node.gameObject.activeInHierarchy && (node.name == "Planter" || node.name == "Foliage")
+            && Mathf.Abs(node.position.x + 12f) < 0.6f && Mathf.Abs(node.position.z + 8f) < 0.6f);
+
+        /// <summary>
+        /// The probe of the living room's exit doorway (PACK8-PASS-PLAN C2, M23), run on the D:
+        /// copy before the door is switched on. It measures the floor as the walk out would use it
+        /// and logs every measure: at each mark, the NavMesh's height, the room, the capsule's
+        /// clearance, what a body there would overlap and the nearest edge; how far west the mesh
+        /// runs; both red chairs' routes to the vestibule, sampled every 0.1 m for a rise, the
+        /// planter's bed or a collider; and what stands in the leaves' swing. It asserts the marks
+        /// on the living room's floor, the mesh to x -13.05, both routes complete and the vestibule
+        /// flat - once the prototype planter is struck and the house rebaked; until then it says so.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StagedExit_TheLivingRoomsDoorwayIsClearAndFlat()
+        {
+            yield return InstallStagedSeason(52, AtEviction);
+            var scene = director.gameObject.scene;
+            Assert.That(HouseRoomQuery.TryCreate(scene, out var rooms, out var why), Is.True, why);
+            var filter = new NavMeshQueryFilter { agentTypeID = player.Agent.agentTypeID, areaMask = player.Agent.areaMask };
+            int solid = (1 << 0) | (1 << HouseLayers.Furniture);
+            var physics = scene.GetPhysicsScene();
+            var overlaps = new Collider[8];
+            Physics.SyncTransforms();
+            var report = new List<string> { "Living room exit door probe:" };
+            var failures = new List<string>();
+            string Touching(Vector3 feet)
+            {
+                int count = physics.OverlapCapsule(feet + Vector3.up * 0.35f, feet + Vector3.up * (1.9f - 0.35f), 0.35f, overlaps, solid, QueryTriggerInteraction.Ignore);
+                return count == 0 ? "nothing" : string.Join(", ", overlaps.Take(count).Select(hit => hit.name + " (layer " + hit.gameObject.layer + ")"));
+            }
+
+            var marks = new[]
+            {
+                new Vector3(-13.15f, 0f, -8.5f), new Vector3(-13.15f, 0f, -9.0f), new Vector3(-11.2f, 0f, -9.0f),
+                new Vector3(-11.2f, 0f, -8.5f), new Vector3(-12.6f, 0f, -8.5f),
+            };
+            foreach (var mark in marks)
+            {
+                string line = "  " + mark.ToString("F2") + ":";
+                if (NavMesh.SamplePosition(mark, out var onMesh, 0.25f, filter)) line += " NavMesh y " + onMesh.position.y.ToString("F3");
+                else { line += " no NavMesh within 0.25 m"; failures.Add(mark.ToString("F2") + " has no NavMesh within 0.25 m"); }
+                if (rooms.TrySampleFloor(mark, 0.35f, filter, 0.25f, out var floor, out var room))
+                {
+                    bool clear = rooms.HasCapsuleClearance(floor, 0.35f, 1.9f, player.transform);
+                    line += ", floor " + floor.ToString("F3") + " in the " + room + " room, clearance " + clear
+                        + (clear ? "" : " (" + rooms.LastFailure + ")") + ", overlapping " + Touching(floor);
+                    if (NavMesh.FindClosestEdge(floor, out var edge, filter)) line += ", nearest edge " + edge.distance.ToString("F2") + " m away";
+                    if (room != "Living") failures.Add(mark.ToString("F2") + " is in the " + room + " room");
+                }
+                else
+                {
+                    line += " no floor (" + rooms.LastFailure + ")";
+                    failures.Add(mark.ToString("F2") + " has no floor to stand on");
+                }
+                report.Add(line);
+            }
+
+            // How far west the mesh runs along the doorway's middle.
+            Assert.That(NavMesh.SamplePosition(new Vector3(-11.2f, 0f, -8.5f), out var inside, 0.5f, filter), Is.True, "The room's floor in front of the door is on the NavMesh.");
+            NavMesh.Raycast(inside.position, new Vector3(-14.2f, inside.position.y, -8.5f), out var westEdge, filter);
+            report.Add("  the mesh's west edge along z -8.5: x " + westEdge.position.x.ToString("F2"));
+            if (westEdge.position.x > -13.05f) failures.Add("the mesh stops at x " + westEdge.position.x.ToString("F2") + ", east of -13.05");
+
+            // Both red chairs' routes to the vestibule.
+            var vestibuleMark = new Vector3(-13.15f, 0f, -8.5f);
+            bool vestibuleOnMesh = NavMesh.SamplePosition(vestibuleMark, out var vestibule, 0.25f, filter);
+            if (vestibuleOnMesh && vestibule.position.y >= 0.06f)
+                failures.Add("the vestibule's floor stands " + vestibule.position.y.ToString("F3") + " m up: a body there would float");
+            var planterBed = new Bounds(new Vector3(-12f, 0.3f, -8f), new Vector3(1f, 0.6f, 1f));
+            foreach (var seat in CeremonySeating.Anchors(scene, CeremonySeating.HotSeat))
+            {
+                string from = "  from " + seat.VenueId + " " + seat.Slot + "'s approach";
+                if (!vestibuleOnMesh || !NavMesh.SamplePosition(seat.Approach, out var start, 0.5f, filter))
+                { report.Add(from + ": no route measured"); failures.Add(from.Trim() + " has no route measured"); continue; }
+                var path = new NavMeshPath();
+                NavMesh.CalculatePath(start.position, vestibule.position, filter, path);
+                var corners = path.corners;
+                float length = 0f;
+                var flags = new List<string>();
+                for (int i = 1; i < corners.Length; i++)
+                {
+                    float leg = Vector3.Distance(corners[i - 1], corners[i]);
+                    length += leg;
+                    for (float along = 0f; along <= leg; along += 0.1f)
+                    {
+                        var at = Vector3.Lerp(corners[i - 1], corners[i], leg > 0f ? along / leg : 0f);
+                        if (NavMesh.SamplePosition(at, out var under, 0.3f, filter) && under.position.y > 0.06f) flags.Add("rises to y " + under.position.y.ToString("F2") + " at " + at.ToString("F2"));
+                        if (planterBed.Contains(new Vector3(at.x, 0.3f, at.z))) flags.Add("crosses the planter's bed at " + at.ToString("F2"));
+                        string touching = Touching(at);
+                        if (touching != "nothing") flags.Add("touches " + touching + " at " + at.ToString("F2"));
+                    }
+                }
+                report.Add(from + " " + start.position.ToString("F2") + ": " + path.status + ", " + length.ToString("F2") + " m, corners "
+                    + string.Join(" ", corners.Select(corner => corner.ToString("F2"))));
+                foreach (var flag in flags.Distinct().Take(12)) report.Add("    " + flag);
+                if (path.status != NavMeshPathStatus.PathComplete) failures.Add(from.Trim() + " to the vestibule is " + path.status);
+            }
+
+            // What stands in the leaves' swing, a quarter-disc in front of each hinge.
+            var living = DoorLayout.Living;
+            float sweepX = (living.FacadeFrontX + living.SweepFrontX) * 0.5f, sweepDepth = living.SweepFrontX - living.FacadeFrontX;
+            foreach (var (fromZ, toZ) in new[] { (living.ApertureMinZ, living.DoorCentre.z), (living.DoorCentre.z, living.ApertureMaxZ) })
+            {
+                var swing = new Bounds(new Vector3(sweepX, 1.3f, (fromZ + toZ) * 0.5f), new Vector3(sweepDepth, 2.6f, toZ - fromZ));
+                var props = SceneComponents<Renderer>().Where(prop => prop.enabled && prop.gameObject.activeInHierarchy
+                    && prop.bounds.size.x <= 3f && prop.bounds.size.z <= 3f && swing.Intersects(prop.bounds)).Select(prop => prop.name).Distinct().ToList();
+                report.Add("  in the leaves' swing from z " + fromZ.ToString("F2") + " to " + toZ.ToString("F2") + ": "
+                    + (props.Count == 0 ? "nothing drawn" : string.Join(", ", props)));
+            }
+            string measured = string.Join("\n", report);
+            Debug.Log(measured);
+
+            var planter = PlanterInTheLivingDoorway();
+            if (planter != null)
+                Assert.Ignore("The living room's doorway still has the prototype's " + planter.name + " in it: HouseLivingGallery.BuildFromCommandLine strikes it"
+                    + " and rebakes (PACK8-PASS-PLAN C2), and the door waits for that.\n" + measured
+                    + (failures.Count > 0 ? "\nIt would fail on: " + string.Join("; ", failures) : ""));
+            Assert.That(failures, Is.Empty, measured);
+        }
+
+        /// <summary>
+        /// The living room's door, switched on (MOCKUP-PASS-PLAN M23): it goes up closed at the
+        /// living room's origin for the goodbye, with the props in its doorway hidden; the evicted
+        /// walk to it, through it into the vestibule, and it shuts behind them while their body is
+        /// still in the house; their body goes behind it, and the props come back with the strike.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StagedExit_TheLivingRoomsDoorLetsThemOut()
+        {
+            yield return InstallStagedSeason(52, AtEviction);
+            director.WalkOutThrough = EpisodeDirector.WalkOutDoor.Living;
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
+            string evicted = director.DepartingId;
+            Assert.That(evicted, Is.Not.Null, "A houseguest is evicted.");
+            director.SkipCeremonySummons();
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
+            yield return SkipReveals();
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            if (director.WalkOutDoorInUse != EpisodeDirector.WalkOutDoor.Living)
+            {
+                var planter = PlanterInTheLivingDoorway();
+                if (planter != null)
+                    Assert.Ignore("The living room's door waits for its doorway to be cleared and rebaked: the prototype's " + planter.name
+                        + " stands in it (StagedExit_TheLivingRoomsDoorwayIsClearAndFlat measures it).");
+                Assert.Fail("The living room's door was refused although its doorway is clear; the log names why.");
+            }
+            var root = SceneRoot(OpeningDoorSet.RootName);
+            Assert.That(root, Is.Not.Null, "The living room's door is up for the goodbye,");
+            Assert.That(Vector3.Distance(root.transform.position, DoorLayout.Living.Origin), Is.LessThan(0.001f), "at the living room's origin,");
+            var door = root.GetComponent<OpeningDoorSet>();
+            Assert.That(door.Layout.Name, Is.EqualTo(DoorLayout.Living.Name));
+            Assert.That(door.IsOpen || door.Openness > 0f, Is.False, "closed.");
+            var hidden = director.WalkOutDoorHides.ToList();
+            foreach (var prop in hidden) Assert.That(prop.enabled, Is.False, prop.name + " is hidden while the door stands in its place.");
+
+            yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 2f, "the goodbye gives way to the walk out");
+            var body = HouseguestBody(evicted);
+            float deepest = float.MaxValue, widest = 0f;
+            bool shut = false, inTheHouseWhenShut = false;
+            float by = Time.realtimeSinceStartup + EpisodeDirector.WalkOutSeconds + 2f;
+            while (director.WalkingOutId != null && Time.realtimeSinceStartup < by)
+            {
+                deepest = Mathf.Min(deepest, body.transform.position.x);
+                if (door != null)
+                {
+                    widest = Mathf.Max(widest, door.Openness);
+                    if (!shut && widest >= 0.35f && !door.IsOpen && door.Openness <= 0.01f)
+                    {
+                        shut = true;
+                        inTheHouseWhenShut = body.gameObject.activeInHierarchy;
+                    }
+                }
+                yield return null;
+            }
+            Assert.That(director.WalkingOutId, Is.Null, "The walk out ends");
+            Assert.That(widest, Is.GreaterThanOrEqualTo(0.35f), "The door opened for them,");
+            Assert.That(deepest, Is.LessThanOrEqualTo(-12.85f), "they walked through it into the vestibule,");
+            Assert.That(shut, Is.True, "and it shut behind them");
+            Assert.That(inTheHouseWhenShut, Is.True, "before their body went.");
+            Assert.That(body.gameObject.activeInHierarchy, Is.False, "They are gone.");
+            yield return null;
+            Assert.That(DoorSetUp(), Is.False, "The door is struck,");
+            foreach (var prop in hidden) Assert.That(prop != null && prop.enabled, Is.True, "and what it hid is back.");
+            Assert.That(director.WalkOutDoorHides, Is.Empty);
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+        }
+
+        /// <summary>
+        /// The living room's door asked for with its doorway taken: the probe at the goodbye refuses
+        /// it, nothing goes up in the living room, and the walk goes by the yard's front door.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StagedExit_TheLivingRoomsDoorFallsBackToTheYards()
+        {
+            yield return InstallStagedSeason(52, AtEviction);
+            director.WalkOutThrough = EpisodeDirector.WalkOutDoor.Living;
+            // Somebody's worth of furniture standing in the vestibule.
+            var blocker = new GameObject("Something in the doorway");
+            SceneManager.MoveGameObjectToScene(blocker, director.gameObject.scene);
+            blocker.layer = HouseLayers.Furniture;
+            blocker.transform.position = new Vector3(-13.15f, 0f, -8.5f);
+            var capsule = blocker.AddComponent<CapsuleCollider>();
+            capsule.radius = 0.35f; capsule.height = 1.9f; capsule.center = Vector3.up * 0.95f;
+            Physics.SyncTransforms();
+            yield return PlayUntilTheCeremony();
+            Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
+            director.SkipCeremonySummons();
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
+            yield return SkipReveals();
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            Assert.That(director.WalkOutDoorInUse, Is.EqualTo(EpisodeDirector.WalkOutDoor.Yard), "The living room's door is refused with its doorway taken,");
+            Assert.That(DoorSetUp(), Is.False, "and nothing goes up in the living room.");
+            Object.Destroy(blocker);
+
+            yield return WaitFor(() => director.WalkingOutId != null, EpisodeDirector.GoodbyeSeconds + 2f, "the goodbye gives way to the walk out");
+            Assert.That(director.WalkOutIsStaged, Is.True, "The walk is the stage's,");
+            yield return WaitFor(DoorSetUp, EpisodeDirector.WalkOutSeconds, "the yard's door goes up at the dip");
+            Assert.That(SceneRoot(OpeningDoorSet.RootName).transform.position, Is.EqualTo(DoorLayout.Yard.Origin), "at the yard's front door.");
+            Assert.That(director.WalkOutDoorInUse, Is.EqualTo(EpisodeDirector.WalkOutDoor.Yard));
+            director.SkipWalkOut();
+            yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
+            Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+        }
+
+        /// <summary>An unstaged walk out goes by the yard's front door whatever the switch says: the living room's is the staged exit's alone.</summary>
+        [UnityTest]
+        public IEnumerator StagedExit_AnUnstagedWalkOutGoesByTheYardWhateverTheSwitch()
+        {
+            director.WalkOutsInBatchRuns = true;
+            director.WalkOutThrough = EpisodeDirector.WalkOutDoor.Living;
+            yield return PlayUntilAHouseguestLeaves();
+            string leaving = director.DepartingId;
+            SceneComponents<VoteReveal>().Single().Cancel();
+            yield return Frames(3);
+            Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "The evicted walk out,");
+            Assert.That(director.WalkOutIsStaged, Is.False, "unstaged,");
+            Assert.That(director.WalkOutDoorInUse, Is.EqualTo(EpisodeDirector.WalkOutDoor.Yard), "by the yard's door,");
+            yield return WaitFor(DoorSetUp, 5f, "which goes up for them");
+            Assert.That(SceneRoot(OpeningDoorSet.RootName).transform.position, Is.EqualTo(DoorLayout.Yard.Origin), "in the yard.");
+            director.SkipWalkOut();
+            yield return null;
+            Assert.That(DoorSetUp(), Is.False);
         }
     }
 }

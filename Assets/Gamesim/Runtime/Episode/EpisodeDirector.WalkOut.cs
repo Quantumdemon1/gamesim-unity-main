@@ -81,7 +81,7 @@ namespace Gamesim.Episode
         private bool walkOutStaged;
         private StagedLeg stagedLeg;
         private float stagedWalkFrom, stagedLookUntil, stagedShutUntil;
-        private bool stagedBrisk, stagedDoorCut;
+        private bool stagedBrisk, stagedDoorCut, stagedPushPending;
         /// <summary>How the evicted leave things with the player, read once as the walk begins.</summary>
         private GoodbyeKind walkOutTone;
         /// <summary>The point on the floor ahead of the walker that their eyes are kept on: a scene transform of its own.</summary>
@@ -103,6 +103,83 @@ namespace Gamesim.Episode
             Focus = new Vector3(-2.0f, 1.85f, 13.8f), Distance = 3.1f, Pitch = 0f, Yaw = 270f,
             FieldOfView = 40f, Seconds = 0.5f, DepthOfFieldWeight = 0.3f,
         };
+
+        // ---------------------------------------------------------------- the living room's door (M23)
+
+        /// <summary>Which door a staged eviction's evicted leave by (MOCKUP-PASS-PLAN M23).</summary>
+        public enum WalkOutDoor
+        {
+            /// <summary>The opening's set on the living room's west wall, at its south end, in view of the couches: the owner's decision 2A.</summary>
+            Living,
+            /// <summary>The opening's front door in the west yard: the fallback, and every unstaged walk out's.</summary>
+            Yard,
+        }
+
+        /// <summary>
+        /// The door staged exits ask for. The yard's until the living room's has been measured on
+        /// the D: copy and captured: its doorway needs the prototype planter struck and the NavMesh
+        /// rebaked (HouseLivingGallery.BuildFromCommandLine), then the probe
+        /// (StagedExit_TheLivingRoomsDoorwayIsClearAndFlat) and the exit's captures. To flip it,
+        /// set this to <see cref="WalkOutDoor.Living"/>; the living room's door still falls back to
+        /// the yard's whenever its probe refuses at the goodbye.
+        /// </summary>
+        public const WalkOutDoor DefaultWalkOutDoor = WalkOutDoor.Yard;
+
+        /// <summary>The door staged exits ask for: <see cref="DefaultWalkOutDoor"/>, or what a test sets.</summary>
+        public WalkOutDoor WalkOutThrough { get; set; } = DefaultWalkOutDoor;
+
+        /// <summary>The door the exit under way uses: the living room's only when it was asked for and passed its probe at the goodbye.</summary>
+        private WalkOutDoor walkOutDoorUsed = WalkOutDoor.Yard;
+
+        /// <summary>The door the exit under way uses. A read for tests.</summary>
+        public WalkOutDoor WalkOutDoorInUse => walkOutDoorUsed;
+
+        // The living room's exit marks: the last look 1.4 m short of the doorway, south of the
+        // left leaf's swing, and the vestibule's floor behind the leaves.
+        private static readonly Vector3 LivingLastLook = new Vector3(-11.2f, 0f, -9.0f);
+        private static readonly Vector3 LivingVestibule = new Vector3(-13.15f, 0f, -8.5f);
+
+        /// <summary>A body's capsule, as the house's bodies are built: the probe's and the close line's measure.</summary>
+        private const float BodyRadius = 0.35f, BodyHeight = 1.9f;
+
+        /// <summary>How far off the living room's flat floor a mark may stand: the bake once raised the doorway onto the planter's top.</summary>
+        private const float LivingFloorTolerance = 0.06f;
+
+        /// <summary>
+        /// The line the walker's root passes before the living room's door closes: a body's radius
+        /// behind the closed leaves. Its light plane is the room's wall, which nobody passes.
+        /// </summary>
+        private static float LivingCloseLineX => DoorLayout.Living.FacadeFrontX - 0.08f - BodyRadius;
+
+        /// <summary>The exit wide: over the seated heads, looking west down the room with the door at its centre. To be set by capture.</summary>
+        private static HouseCameraRig.Shot LivingExitWide => new HouseCameraRig.Shot
+        {
+            Focus = new Vector3(-11.8f, 1.2f, -8.3f), Distance = 6.5f, Pitch = 12f, Yaw = 250f,
+            FieldOfView = 40f, Seconds = ExitCutSeconds, DepthOfFieldWeight = 0.3f,
+        };
+
+        /// <summary>The living room's door shot, as the yard's is: the doorway square on. To be set by capture.</summary>
+        private static HouseCameraRig.Shot LivingDoorShot => new HouseCameraRig.Shot
+        {
+            Focus = new Vector3(-12.2f, 1.5f, -8.5f), Distance = 3.6f, Pitch = 4f, Yaw = 262f,
+            FieldOfView = 40f, Seconds = ExitCutSeconds, DepthOfFieldWeight = 0.3f,
+        };
+
+        /// <summary>Its push-in as the door opens: a metre closer over a second.</summary>
+        private static HouseCameraRig.Shot LivingPushInShot => new HouseCameraRig.Shot
+        {
+            Focus = new Vector3(-12.2f, 1.5f, -8.5f), Distance = 2.6f, Pitch = 4f, Yaw = 262f,
+            FieldOfView = 40f, Seconds = 1f, DepthOfFieldWeight = 0.3f,
+        };
+
+        /// <summary>The scene's set dressing, under which a prop standing in the living room's doorway is hidden while its door stands (HouseSetPieces' root).</summary>
+        private const string SetPiecesRoot = "Set Pieces";
+
+        /// <summary>The props the living room's door hid while it stood, to be shown again when it is struck.</summary>
+        private readonly List<Renderer> walkOutHidden = new List<Renderer>();
+
+        /// <summary>The props the living room's door has hidden while it stands. A read for tests.</summary>
+        public IReadOnlyList<Renderer> WalkOutDoorHides => walkOutHidden;
 
         /// <summary>For tests: walk the evicted out even in a batch run, where it is otherwise skipped as the opening's stage is.</summary>
         public bool WalkOutsInBatchRuns { get; set; }
@@ -139,7 +216,10 @@ namespace Gamesim.Episode
             // its seats to watch, and the camera, until the door is shut behind them.
             walkOutStaged = IsCeremonyStaged && CeremonyStageKind == CeremonySting.EvictionKind;
             stagedLeg = StagedLeg.Binding;
-            stagedBrisk = stagedDoorCut = false;
+            stagedBrisk = stagedDoorCut = stagedPushPending = false;
+            // The living room's door is the goodbye's to put up; without it standing, this walk
+            // goes by the yard's, as every unstaged one does.
+            if (!walkOutStaged || walkOutDoor == null) walkOutDoorUsed = WalkOutDoor.Yard;
             walkOutTone = GoodbyeTone(projected, id);
             // Back into the house's world for the walk: it moves only the people it routes. If their
             // body cannot take its navigation back, the house lets them go instead of stopping.
@@ -195,17 +275,38 @@ namespace Gamesim.Episode
 
         // ---------------------------------------------------------------- the staged exit
 
-        /// <summary>Where a staged exit's walk stops for the last look: the inside mark, where the opening's guests posed.</summary>
-        private Vector3 ExitLastLook => WalkOutInside;
+        /// <summary>Whether the exit under way goes by the living room's door.</summary>
+        private bool ExitIsTheLivingRoom => walkOutDoorUsed == WalkOutDoor.Living;
 
-        /// <summary>Where a staged exit's walk goes through the door to: the deck behind the facade.</summary>
-        private Vector3 ExitThrough => WalkOutDeck;
+        /// <summary>Where the exit's door stands.</summary>
+        private DoorLayout ExitLayout => ExitIsTheLivingRoom ? DoorLayout.Living : DoorLayout.Yard;
 
         /// <summary>
-        /// The line the walker's root passes behind the door before it closes: the vestibule's
-        /// light plane, which hides whatever is past it from the yard.
+        /// Where a staged exit's walk stops for the last look: the yard's inside mark, where the
+        /// opening's guests posed, or 1.4 m short of the living room's doorway.
         /// </summary>
-        private float ExitCloseLineX => OpeningDoorSet.VestibuleFarX;
+        private Vector3 ExitLastLook => ExitIsTheLivingRoom ? LivingLastLook : WalkOutInside;
+
+        /// <summary>Where a staged exit's walk goes through the door to: the deck behind the facade, or the vestibule.</summary>
+        private Vector3 ExitThrough => ExitIsTheLivingRoom ? LivingVestibule : WalkOutDeck;
+
+        /// <summary>
+        /// The line the walker's root passes behind the door before it closes: the yard
+        /// vestibule's light plane, which hides whatever is past it, or a body's radius behind the
+        /// living room's closed leaves.
+        /// </summary>
+        private float ExitCloseLineX => ExitIsTheLivingRoom ? LivingCloseLineX : OpeningDoorSet.VestibuleFarX;
+
+        /// <summary>The exit's door shot, cut to as the leaves are shut on a press.</summary>
+        private HouseCameraRig.Shot ExitDoorShot
+        {
+            get
+            {
+                var door = ExitIsTheLivingRoom ? LivingDoorShot : YardDoorShot;
+                door.Seconds = ExitCutSeconds;
+                return door;
+            }
+        }
 
         /// <summary>
         /// Each frame of a staged walk out: watched by the house in its seats, cut to the door as
@@ -227,21 +328,26 @@ namespace Gamesim.Episode
                     { FinishWalkOut(); return; }
                     stagedLeg = StagedLeg.Walking;
                     stagedWalkFrom = now;
-                    if (ceremonyStage != null) ceremonyStage.WatchTheWalk(body, null, WatchSeconds);
+                    // The yard's walk leaves the room, and the house watches it go; the living
+                    // room's stays in it, and the exit wide holds the door in frame the whole way.
+                    if (ceremonyStage != null) ceremonyStage.WatchTheWalk(body, ExitIsTheLivingRoom ? LivingExitWide : (HouseCameraRig.Shot?)null, WatchSeconds);
                     return;
                 case StagedLeg.Walking:
                     LookAhead(body);
-                    // Slow while the house watches them in frame, the house's own pace once they are
-                    // out of it, and slow again from the cut to the door.
-                    if (!stagedDoorCut && !stagedBrisk && now >= stagedWalkFrom + WatchSeconds)
+                    if (!ExitIsTheLivingRoom)
                     {
-                        npcMeetings.SetDepartureSpeed(0f);
-                        stagedBrisk = true;
+                        // Slow while the house watches them in frame, the house's own pace once
+                        // they are out of it, and slow again from the cut to the door.
+                        if (!stagedDoorCut && !stagedBrisk && now >= stagedWalkFrom + WatchSeconds)
+                        {
+                            npcMeetings.SetDepartureSpeed(0f);
+                            stagedBrisk = true;
+                        }
+                        if (!stagedDoorCut && body != null
+                            && (FloorDistance(body.position, ExitLastLook) <= DoorCutReach || now >= stagedWalkFrom + DoorCutAfter)) CutToTheDoor();
                     }
-                    if (!stagedDoorCut && body != null
-                        && (FloorDistance(body.position, ExitLastLook) <= DoorCutReach || now >= stagedWalkFrom + DoorCutAfter)) CutToTheDoor();
                     if (!npcMeetings.DepartureArrived()) return;
-                    if (!stagedDoorCut) CutToTheDoor();
+                    if (!stagedDoorCut && !ExitIsTheLivingRoom) CutToTheDoor();
                     TakeTheLastLook(body);
                     stagedLeg = StagedLeg.LastLook;
                     return;
@@ -251,6 +357,12 @@ namespace Gamesim.Episode
                     stagedLeg = StagedLeg.Opening;
                     return;
                 case StagedLeg.Opening:
+                    // The living room's push-in starts the frame after its cut, so the cut lands first.
+                    if (stagedPushPending)
+                    {
+                        stagedPushPending = false;
+                        if (cameraRig != null) cameraRig.MoveTo(LivingPushInShot);
+                    }
                     if (walkOutDoor != null && walkOutDoor.Openness < WalkOutDoorClear) return;
                     if (!TryWalkOutTo(ExitThrough, StagedWalkSpeed)) { FinishWalkOut(); return; }
                     stagedLeg = StagedLeg.Through;
@@ -284,7 +396,7 @@ namespace Gamesim.Episode
         {
             stagedDoorCut = true;
             BeginTravelDip();
-            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene);
+            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout);
             if (ceremonyStage != null) ceremonyStage.StopTheWatch();
             if (cameraRig != null)
             {
@@ -312,14 +424,21 @@ namespace Gamesim.Episode
             stagedLookUntil = Time.unscaledTime + LastLookSeconds;
         }
 
-        /// <summary>The door opens for them - the swing, and the light beyond at its settled spill with no flare - and the camera pushes in.</summary>
+        /// <summary>
+        /// The door opens for them - the swing, and the light beyond at its settled spill with no
+        /// flare - and the camera pushes in: from the yard's door shot, where the dip already put
+        /// it, or cut from the living room's exit wide to its door shot first.
+        /// </summary>
         private void OpenTheExitDoor(Transform body)
         {
             var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
             if (visual != null) visual.SetFacing(float.NaN);
-            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene);
+            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout);
             walkOutDoor.Open(reducedMotion, false);
-            if (cameraRig != null) cameraRig.MoveTo(YardPushInShot);
+            if (cameraRig == null) return;
+            if (!ExitIsTheLivingRoom) { cameraRig.MoveTo(YardPushInShot); return; }
+            cameraRig.MoveTo(LivingDoorShot);
+            stagedPushPending = true;
         }
 
         /// <summary>
@@ -387,12 +506,7 @@ namespace Gamesim.Episode
                 if (walkOutDoor != null)
                 {
                     walkOutDoor.Close(true);
-                    if (cameraRig != null)
-                    {
-                        var shut = YardDoorShot;
-                        shut.Seconds = ExitCutSeconds;
-                        cameraRig.MoveTo(shut);
-                    }
+                    if (cameraRig != null) cameraRig.MoveTo(ExitDoorShot);
                 }
                 FinishWalkOut();
                 return;
@@ -426,11 +540,92 @@ namespace Gamesim.Episode
         /// <summary>How far apart two points stand on the floor, heights aside.</summary>
         private static float FloorDistance(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
 
-        /// <summary>The door and the walker's look mark come down: the walk out is over, or never started.</summary>
+        /// <summary>
+        /// The door and the walker's look mark come down, and whatever the door hid is back: the
+        /// walk out is over, or never started. The next exit chooses its door again.
+        /// </summary>
         private void StrikeWalkOutDoor()
         {
             if (walkOutDoor != null) { Destroy(walkOutDoor.gameObject); walkOutDoor = null; }
             if (walkOutLookMark != null) { Destroy(walkOutLookMark.gameObject); walkOutLookMark = null; }
+            foreach (var prop in walkOutHidden) if (prop != null) prop.enabled = true;
+            walkOutHidden.Clear();
+            walkOutDoorUsed = WalkOutDoor.Yard;
+        }
+
+        /// <summary>
+        /// The goodbye has begun (the stage calls it): the exit's door is chosen. The living room's
+        /// when it is asked for and its probe passes - built now, closed and dark, at the end of the
+        /// room the house is looking down, with any small prop standing in its doorway hidden while
+        /// it stands - and the yard's otherwise, which goes up at the dip on the way there.
+        /// </summary>
+        private void OnStagedGoodbye(string id)
+        {
+            StrikeWalkOutDoor();
+            if (WalkOutThrough != WalkOutDoor.Living) return;
+            if (!LivingExitClear(BodyFor(id), out var why))
+            {
+                Debug.Log("Walk out (" + id + "): the living room's door is refused - " + why + " - and the yard's front door is used instead.");
+                return;
+            }
+            walkOutDoorUsed = WalkOutDoor.Living;
+            walkOutDoor = OpeningDoorSet.Build(gameObject.scene, DoorLayout.Living);
+            HidePropsInTheDoorway(DoorLayout.Living);
+        }
+
+        /// <summary>
+        /// The living room's doorway, measured before the door goes up in it: both marks on the
+        /// living room's own flat floor - the bake once raised the doorway onto a planter's top -
+        /// with room to stand, the furniture asked as well as the walls, and a complete route from
+        /// where the evicted stand to the vestibule. Any refusal, and the walk goes by the yard.
+        /// </summary>
+        private bool LivingExitClear(Transform body, out string why)
+        {
+            why = null;
+            if (body == null) { why = "their body is not in the house"; return false; }
+            if (player == null || player.Agent == null) { why = "there is no agent to measure the floor with"; return false; }
+            if (!HouseRoomQuery.TryCreate(gameObject.scene, out var rooms, out why)) return false;
+            var filter = new NavMeshQueryFilter { agentTypeID = player.Agent.agentTypeID, areaMask = player.Agent.areaMask };
+            var vestibule = Vector3.zero;
+            foreach (var mark in new[] { LivingLastLook, LivingVestibule })
+            {
+                if (!rooms.TrySampleFloor(mark, BodyRadius, filter, 0.25f, out var sampled, out var room) || room != "Living")
+                { why = "no living-room floor at " + mark.ToString("F2") + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
+                if (Mathf.Abs(sampled.y - mark.y) > LivingFloorTolerance)
+                { why = "the floor at " + mark.ToString("F2") + " stands " + sampled.y.ToString("F2") + " m up"; return false; }
+                if (!rooms.HasCapsuleClearance(sampled, BodyRadius, BodyHeight, body) || InFurniture(sampled))
+                { why = "no room to stand at " + sampled.ToString("F2") + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
+                vestibule = sampled;
+            }
+            if (!NavMesh.SamplePosition(body.position, out var from, 0.5f, filter))
+            { why = "no floor under them at " + body.position.ToString("F2"); return false; }
+            var path = new NavMeshPath();
+            if (!NavMesh.CalculatePath(from.position, vestibule, filter, path) || path.status != NavMeshPathStatus.PathComplete)
+            { why = "no complete route from " + from.position.ToString("F2") + " to the vestibule (" + path.status + ")"; return false; }
+            return true;
+        }
+
+        /// <summary>
+        /// Hides the small props whose middle stands in the door's footprint - from the vestibule's
+        /// back to the leaves' swing, along the facade - while the door stands, as the screen hides
+        /// the television: a speaker and a plant stood there before the doorway was cleared. Only
+        /// the set dressing's, and only small ones: never a wall, a floor or a couch.
+        /// </summary>
+        private void HidePropsInTheDoorway(DoorLayout where)
+        {
+            var footprint = Rect.MinMaxRect(where.VestibuleFarX - 0.1f, where.FacadeMinZ, where.SweepFrontX + 0.1f, where.FacadeMaxZ);
+            var pieces = gameObject.scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                .FirstOrDefault(node => node.name == SetPiecesRoot);
+            if (pieces == null) return;
+            foreach (var prop in pieces.GetComponentsInChildren<Renderer>())
+            {
+                if (!prop.enabled) continue;
+                var bounds = prop.bounds;
+                if (bounds.size.x > 1.5f || bounds.size.z > 1.5f) continue;
+                if (!footprint.Contains(new Vector2(bounds.center.x, bounds.center.z))) continue;
+                prop.enabled = false;
+                walkOutHidden.Add(prop);
+            }
         }
 
         /// <summary>A staged eviction's end strikes whatever its exit put up for a walk that is not under way.</summary>

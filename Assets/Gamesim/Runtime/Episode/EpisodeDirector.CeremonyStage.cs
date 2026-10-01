@@ -1320,6 +1320,9 @@ namespace Gamesim.Episode
                     Schedule(0.05f, () => director.cameraRig.MoveTo(closer));
                 }
                 if (director.sting != null) director.sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(state, id), director.reducedMotion);
+                // The exit's door, chosen now: the living room's goes up closed at the end of the
+                // room for the walk to come (MOCKUP-PASS-PLAN M23), the yard's at the dip later.
+                director.OnStagedGoodbye(id);
             }
 
             /// <summary>The goodbye over, from the director's side: a press that went straight to the shut door.</summary>

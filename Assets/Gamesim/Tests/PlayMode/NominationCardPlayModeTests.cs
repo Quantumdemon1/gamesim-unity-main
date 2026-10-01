@@ -252,6 +252,28 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Rect(keys, "Roster").GetComponentsInChildren<RectTransform>(true).Count(rect => rect.name == "Role mark"), Is.EqualTo(3),
                 "The Head of Household's crown, and a target on each nominee only at the block.");
             AssertEveryLabelDraws(keys, "The roster at the block");
+            AssertNoRosterWordIsCut(keys, "The roster at the block");
+        }
+
+        /// <summary>
+        /// Every word on the roster and the stage's faces is drawn whole: the names and the chips'
+        /// words are drawn smaller to fit their boxes, never cut - the HUD's labels truncate, and
+        /// NOMINATED at the chip's full size is wider than a chip.
+        /// </summary>
+        private static void AssertNoRosterWordIsCut(KeyCeremony keys, string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var words = keys.GetComponentsInChildren<TMP_Text>()
+                .Where(label => label.gameObject.activeInHierarchy && !string.IsNullOrWhiteSpace(label.text))
+                .Where(label => label.name == "Roster name" || label.name == "Roster badge text" || label.name == "Name"
+                    || label.name == "Nominee" || label.name == "Badge text").ToArray();
+            Assert.That(words, Is.Not.Empty, where + ": no roster word is up.");
+            foreach (var word in words)
+            {
+                word.ForceMeshUpdate(true);
+                Assert.That(word.isTextTruncated, Is.False, where + ": '" + word.text + "' (" + word.name + ", " + word.fontSize.ToString("0.#")
+                    + " in a box " + word.rectTransform.rect.width.ToString("0") + " wide) loses its tail.");
+            }
         }
 
         /// <summary>
@@ -296,6 +318,7 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(Rects(keys, "Nominee face"), Has.Length.EqualTo(2), where + ": and the block's two faces at the block.");
                 AssertLabelsStandInsideTheCard(keys, where + ", the block");
+                AssertNoRosterWordIsCut(keys, where + ", the block");
                 keys.Cancel();
             }
         }

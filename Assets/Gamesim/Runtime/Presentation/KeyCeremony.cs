@@ -508,13 +508,17 @@ namespace Gamesim.Presentation
             public const float BandTop = -188f, BandHeight = 408f;
             /// <summary>The stage's column in the band's middle, which the roster leaves clear.</summary>
             public const float Column = 300f;
-            /// <summary>Faces to twelve: a disc on a step, three a side, with a name and a chip under each.</summary>
-            public const float Face = 104f, Step = 140f, NamePt = 36f, NameH = 47f, ChipW = 110f, ChipH = 28f, ChipPt = 20f;
+            /// <summary>
+            /// Faces to twelve: a disc on a step, three a side, with a name and a chip under each. The
+            /// chip is as wide as the step allows and its word is drawn smaller to fit it: NOMINATED
+            /// at 16 points is about a hundred units, and a chip a step wide holds it.
+            /// </summary>
+            public const float Face = 104f, Step = 140f, NamePt = 36f, NameH = 47f, ChipW = 130f, ChipH = 28f, ChipPt = 16f;
             /// <summary>Faces from thirteen: four a side.</summary>
-            public const float SmallFace = 78f, SmallStep = 105f, SmallNamePt = 28f, SmallNameH = 37f, SmallChipW = 92f,
-                SmallChipH = 26f, SmallChipPt = 18f;
+            public const float SmallFace = 78f, SmallStep = 105f, SmallNamePt = 28f, SmallNameH = 37f, SmallChipW = 100f,
+                SmallChipH = 26f, SmallChipPt = 14f;
             public const int Side = 3, SmallSide = 4, OneRow = 6, Larger = 12;
-            public const float Ring = 4f, Gap = 4f, RowGap = 10f, NameMinPt = 14f;
+            public const float Ring = 4f, Gap = 4f, RowGap = 10f, NameMinPt = 12f, ChipMinPt = 10f;
             /// <summary>The pack ring's hole as a share of its size (measured: 88 of 128), so a ring is drawn to fit the face it rings.</summary>
             public const float RingHole = 0.6875f;
 
@@ -1025,7 +1029,7 @@ namespace Gamesim.Presentation
                         var crown = HudPrimitives.AddRoleMark(entry.Rim, HudPrimitives.RoleMark.HeadOfHousehold, face);
                         SwapRoleGlyph(crown, CrownArt());
                     }
-                    NameUnder(rosterRow, "Roster name", person.Name, namePt, step - 10f, nameH,
+                    NameUnder(rosterRow, "Roster name", person.Name, namePt, step - 4f, nameH,
                         rowTop - rimSize - ScreenRoster.Gap, x, UiTheme.Weight.Medium);
 
                     float chipTop = rowTop - rimSize - ScreenRoster.Gap - nameH - ScreenRoster.Gap * .5f;
@@ -1037,7 +1041,12 @@ namespace Gamesim.Presentation
                     entry.ChipText = HudPrimitives.Label("Roster badge text", entry.Chip, chipPt, UiTheme.Ink, TextAlignmentOptions.Center);
                     var medium = UiTheme.Font(UiTheme.Weight.Medium);
                     if (medium != null) entry.ChipText.font = medium;
-                    entry.ChipText.characterSpacing = 2f;
+                    entry.ChipText.characterSpacing = 1f;
+                    // One word on one line, drawn smaller rather than cut: the HUD's labels truncate.
+                    entry.ChipText.textWrappingMode = TextWrappingModes.NoWrap;
+                    entry.ChipText.enableAutoSizing = true;
+                    entry.ChipText.fontSizeMax = chipPt;
+                    entry.ChipText.fontSizeMin = ScreenRoster.ChipMinPt;
                     entry.ChipText.text = string.Empty;
                     entry.ChipText.rectTransform.anchorMin = Vector2.zero;
                     entry.ChipText.rectTransform.anchorMax = Vector2.one;

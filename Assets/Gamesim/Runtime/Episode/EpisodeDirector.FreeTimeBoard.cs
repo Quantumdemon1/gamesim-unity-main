@@ -75,8 +75,8 @@ namespace Gamesim.Episode
             // At three this window is Endgame Preparation, which moves onto the board later (decision 17).
             if (EpisodeHud.IsFinalThree(state)) return false;
             // A player out of the game has nothing here to spend; they keep the screen they watch from.
-            var player = state.Find(state.playerId);
-            if (player == null || player.status != ContestantStatus.Active) return false;
+            var you = state.Find(state.playerId);
+            if (you == null || you.status != ContestantStatus.Active) return false;
             // A houseguest's screen keeps its own layout until it is laid out for the stage.
             var chosen = moveScreenId != null ? state.Find(moveScreenId) : null;
             if (chosen != null && !chosen.isPlayer && chosen.status == ContestantStatus.Active) return false;

@@ -59,6 +59,7 @@
     <Compile Include="$(EditMode)TraitAffinityTests.cs" />
     <Compile Include="$(EditMode)NpcAgencyHarnessTests.cs" />
     <Compile Include="$(EditMode)HouseguestNotesTests.cs" />
+    <Compile Include="$(EditMode)CommitmentsReadTests.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />
     <Compile Include="$(EditMode)FinalBracketTests.cs" />

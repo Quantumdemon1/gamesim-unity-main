@@ -73,6 +73,7 @@ namespace Gamesim.Episode
                     DecisionText(card, candidate.Record, 17, Paper);
                     DecisionText(card, candidate.Relationship, 17, Paper);
                     DecisionText(card, candidate.Promises, 16, UiTheme.Muted);
+                    if (!string.IsNullOrEmpty(candidate.Deals)) DecisionText(card, candidate.Deals, 16, UiTheme.Muted);
                 }
             };
             refresh();

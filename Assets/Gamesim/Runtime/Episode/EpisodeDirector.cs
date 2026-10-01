@@ -1032,6 +1032,8 @@ namespace Gamesim.Episode
             public const string Story = "Section · story";
             /// <summary>The notebook's own page: what you have on each houseguest (EpisodeDirector.Notes.cs). Not a rail row; "Notebook [J]" opens it.</summary>
             public const string Notes = "Section · notes";
+            /// <summary>Your word: every commitment you are a party to (EpisodeDirector.YourWord.cs). Not a rail row; the notes page opens it.</summary>
+            public const string Word = "Section · word";
         }
 
         /// <summary>
@@ -1237,7 +1239,8 @@ namespace Gamesim.Episode
                 // house activities in their foot; the others keep the notebook's title and the
                 // command at their top, where the web's layout and the activities tests expect it.
                 bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
-                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes;
+                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes
+                    || journalSection == NotebookSection.Word;
                 if (kitPage)
                 {
                     var head = NotebookPageHead(journalSection);
@@ -1276,6 +1279,10 @@ namespace Gamesim.Episode
                 else if (journalSection == NotebookSection.Notes)
                 {
                     RenderNotebookNotes(state);
+                }
+                else if (journalSection == NotebookSection.Word)
+                {
+                    RenderNotebookWord(state);
                 }
                 else
                 {

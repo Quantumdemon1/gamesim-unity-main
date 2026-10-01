@@ -130,6 +130,8 @@ namespace Gamesim.Episode
                     Caption = "Evict " + cut.name,
                     Warning = FinalChoiceWarning,
                     Consequence = FinalChoiceConsequence(take, cut),
+                    // What this choice alone would break of the player's word (EpisodeDirector.YourWord).
+                    Breach = FinalChoiceBreach(state, take, cut),
                     Choose = () => Commit(state, EpisodeCommandKind.FinalEvict, cutId),
                 });
             }

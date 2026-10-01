@@ -294,6 +294,9 @@ namespace Gamesim.Episode
                         id => { if (id != reviewed.target) OfferBallot(state, true, tieBreak, id); });
                     hud.Action(EpisodeHud.DiaryConfirmCaption, () => ConfirmDiaryDecision(reviewed));
                     hud.Action(EpisodeHud.DiaryCancelCaption, () => CancelDiaryDecision(reviewed));
+                    // What the ballot chosen would break of the player's word (EpisodeDirector.YourWord).
+                    string breach = DraftWarning(reviewed);
+                    if (breach != null) hud.NamedParagraph(EpisodeHud.BreachWarningName, breach, UiTheme.Warning);
                     hud.Paragraph(reviewed.summary);
                     hud.Aside("Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
                     return;
@@ -512,6 +515,9 @@ namespace Gamesim.Episode
                 PackArt.KitIconNote, headline, reflection, null, "NOT YET SAVED");
             if (effects.Length > 0)
                 hud.ReviewCard(EpisodeHud.DiaryReviewEffectsName, "WHAT CONFIRMATION RECORDS", null, null, false, effects);
+            // A nomination or a veto under review, and what it would break of the player's word.
+            string breach = DraftWarning(reviewed);
+            if (breach != null) hud.NamedParagraph(EpisodeHud.BreachWarningName, breach, UiTheme.Warning);
             hud.InfoNote("Review note", "Nothing has been committed yet. Confirm once to save this decision, or go back to discard it.");
             hud.Action(study ? EpisodeHud.StudyConfirmCaption : reflection ? EpisodeHud.DiaryConfirmReflectionCaption : EpisodeHud.DiaryConfirmCaption,
                 () => ConfirmDiaryDecision(reviewed));
@@ -784,6 +790,14 @@ namespace Gamesim.Episode
                 // Under the cards, where mockup-08 keeps its line: ahead of the title it read as
                 // the page's heading.
                 hud.Paragraph(tieBreak ? "The vote is tied. As HoH, you cast the deciding vote." : "Your ballot is private until the eviction reveal.");
+                // Out of the diary a card is the vote itself, cast as it is pressed: what each one
+                // would break of the player's word is said before either is (EpisodeDirector.YourWord).
+                // In the diary the card stages the choice, and its review says it then.
+                if (!privateRoom)
+                {
+                    string breach = BallotWarning(state, state.nominees);
+                    if (breach != null) hud.NamedParagraph(EpisodeHud.BreachWarningName, breach, UiTheme.Warning);
+                }
                 // At four there is exactly one eligible voter. That has always been true by
                 // arithmetic and has never been said, which makes a sole ballot look like a bug.
                 if (!tieBreak && EpisodeEngine.Voters(state).Count() == 1)

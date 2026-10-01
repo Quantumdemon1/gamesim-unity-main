@@ -150,6 +150,22 @@ namespace Gamesim.Tests.EditMode
             Assert.That(YourWeek.Build(s, 1).reads.Single().text, Does.EndWith("Their vote never came."), "Revealed, and still open: they never voted.");
         }
 
+        /// <summary>A claim that the player is the one going says so plainly, and a wrong one says who they voted out instead.</summary>
+        [Test]
+        public void AClaimThatNamesThePlayerSaysSoPlainly()
+        {
+            var s = Fresh();
+            s.week = 2;
+            var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
+            s.ledger.power.Add(new PowerRow { week = 1, hohId = npcs[0].id, evicteeId = npcs[1].id, nominees = new List<string> { npcs[1].id, s.playerId }, tally = new List<int> { 3, 1 } });
+            s.ledger.claims.Add(new ClaimRow { week = 1, voterId = npcs[2].id, targetId = s.playerId, source = ClaimSource.Told, status = ClaimStatus.Lied });
+            s.ledger.claims.Add(new ClaimRow { week = 1, voterId = npcs[3].id, targetId = s.playerId, source = ClaimSource.Overheard, status = ClaimStatus.Kept });
+            var reads = YourWeek.Build(s, 1).reads;
+            Assert.That(reads.Select(l => l.verdict), Is.EqualTo(new[] { YourWeek.Verdicts.Wrong, YourWeek.Verdicts.Right }));
+            Assert.That(reads[0].text, Is.EqualTo(npcs[2].name + " told you they would vote you out, and voted to evict " + npcs[1].name + "."));
+            Assert.That(reads[1].text, Is.EqualTo("Overheard: " + npcs[3].name + " is voting you out, and voted that way."));
+        }
+
         [Test]
         public void ACallWithADefectorSaysWhoFollowedAndWhoDidNot()
         {
@@ -304,6 +320,30 @@ namespace Gamesim.Tests.EditMode
             Assert.That(second.taken, Is.EqualTo(1));
             Assert.That(second.strategy, Is.EqualTo(50 + 6 - 1), "So far is through the week: the third week's play is not in it yet.");
             Assert.That(second.rows.Single().rowId, Is.EqualTo("deal-2"), "The week's own rows only.");
+        }
+
+        /// <summary>
+        /// A play still running has been neither taken up nor let pass: the verdict, which reads a
+        /// season that is over, would count it as let pass; so far waits until it closes.
+        /// </summary>
+        [Test]
+        public void APlayStillRunningIsNotYetLetPass()
+        {
+            var s = Fresh();
+            s.week = 2;
+            s.storylines.Add(new StorylineState { id = "cycle-running", templateId = "the-secret-alliance", status = StorylineStatus.Active, week = 2 });
+            s.ledger.opportunities.Add(new OpportunityRow { id = "cycle-running", kind = OpportunityKinds.Play, week = 2, source = "the-secret-alliance",
+                response = OpportunityResponse.Ignored, outcome = OpportunityOutcome.NotApplicable });
+            Assert.That(GameSense.Evaluate(s).notes.Any(n => n.rowId == "cycle-running" && n.text.Contains("let pass")), Is.True,
+                "The verdict reads it as let pass.");
+            var running = YourWeek.Build(s, 2).sense;
+            Assert.That(running.rows, Is.Empty, "Still running: neither taken nor let pass.");
+            Assert.That(running.strategy, Is.EqualTo(50));
+            Assert.That(running.offered, Is.EqualTo(1), "It was offered all the same.");
+            s.storylines[0].status = StorylineStatus.Abandoned;
+            var closed = YourWeek.Build(s, 2).sense;
+            Assert.That(closed.rows.Single().rowId, Is.EqualTo("cycle-running"), "Closed unanswered, it was let pass.");
+            Assert.That(closed.strategy, Is.EqualTo(50 - 2));
         }
 
         // ---------------------------------------------------------------- reading changes nothing

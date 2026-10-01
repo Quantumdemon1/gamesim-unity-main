@@ -133,10 +133,13 @@ namespace Gamesim.Simulation
 
             foreach (var claim in s.ledger.claims.Where(c => c.week == week))
             {
-                string target = claim.targetId == s.playerId ? "you" : Whom(s, claim.targetId);
-                string said = claim.source == ClaimSource.Told ? Who(s, claim.voterId) + " told you: evict " + target
-                    : claim.source == ClaimSource.Overheard ? "Overheard: " + Who(s, claim.voterId) + " is voting out " + target
-                    : "An ally heard " + Who(s, claim.voterId) + " is voting out " + target;
+                // What they said, as the notes say it; a claim naming the player says so plainly.
+                bool you = claim.targetId == s.playerId;
+                string voting = you ? " is voting you out" : " is voting out " + Whom(s, claim.targetId);
+                string said = claim.source == ClaimSource.Told
+                        ? Who(s, claim.voterId) + (you ? " told you they would vote you out" : " told you: evict " + Whom(s, claim.targetId))
+                    : claim.source == ClaimSource.Overheard ? "Overheard: " + Who(s, claim.voterId) + voting
+                    : "An ally heard " + Who(s, claim.voterId) + voting;
                 var line = new Line { kind = Kinds.Claim, aboutId = claim.voterId };
                 if (claim.status == ClaimStatus.Kept) { line.verdict = Verdicts.Right; line.text = said + ", and voted that way."; }
                 else if (claim.status == ClaimStatus.Lied)
@@ -319,7 +322,12 @@ namespace Gamesim.Simulation
         private static Sense SenseSoFar(EpisodeState s, int week)
         {
             var sense = new Sense();
-            var known = GameSense.Evaluate(s).notes.Where(n => n.known && n.week <= week).ToList();
+            // A play still running has been neither taken up nor let pass yet: the verdict, which reads
+            // a season that is over, counts an unanswered one as let pass, which it is not until it closes.
+            var running = new HashSet<string>((s.storylines ?? new List<StorylineState>())
+                .Where(cycle => StorylineStatus.Running(cycle.status)).Select(cycle => cycle.id), StringComparer.Ordinal);
+            var known = GameSense.Evaluate(s).notes
+                .Where(n => n.known && n.week <= week && !(n.rowKind == "opportunity" && n.rowId != null && running.Contains(n.rowId))).ToList();
             sense.strategy = GameSense.Face(known, GameSense.Strategy);
             var chances = s.ledger.opportunities.Where(o => o.week <= week).ToList();
             sense.offered = chances.Count;

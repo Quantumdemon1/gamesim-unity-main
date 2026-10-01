@@ -621,6 +621,12 @@ namespace Gamesim.Episode
 
         public void GoToStation()
         {
+            // The last press put the player at the screen - a warp lands them there with "E to
+            // open" - so this press is the screen: the mouse's own way in, beside E and the prompt's
+            // button, so no player is left at the screen with a key they did not know to press. Only
+            // after a warp: a short trip on foot is a walk, chosen afresh, and the screen opens
+            // from the prompt when they get there.
+            bool pressedAgainAtTheScreen = headingToStation && LastTravel == TravelKind.Warp && CanUseStation();
             ClosePanels();
             // Whatever the player was walking to, this replaces it. Without this a click on a
             // houseguest outlived the button press and either overwrote the path to the screen or
@@ -628,6 +634,7 @@ namespace Gamesim.Episode
             CancelTravel();
             EndDiaryVisit(true);CloseHouseActivities(true);
             if (projected.Find(projected.playerId).status != ContestantStatus.Active) { TryOpenPhasePanel(); return; }
+            if (pressedAgainAtTheScreen && TryOpenPhasePanel()) return;
             if (!TryTravel(StationPosition)) message = "The episode screen is not reachable from here.";
             else
             {
@@ -653,8 +660,10 @@ namespace Gamesim.Episode
             if (focusedNpc != null) conversationIntent = null;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
-            // The nomination's view goes with the panel, which opens again on the week's current step.
+            // The nomination's view goes with the panel, which opens again on the week's current step,
+            // and so does free time's: its board opens again on its root and its first page.
             ForgetNominationView();
+            ForgetFreeTimeView();
             focusedNpc = null; lastSocialDelta = 0d; phaseOpen = false; settingsOpen = false; journalOpen = false; challengeActive = false;
             // A chip's card goes with everything else Escape closes; the campaign opens folded.
             castMenuFor = null; emoteMenuOpen = false; campaignMore = false;
@@ -781,6 +790,9 @@ namespace Gamesim.Episode
                     lastSocialAction = command.kind;
                     lastSocialDelta = result.state.Score(result.state.playerId, focusedNpc.Id) - trustBefore;
                     standingLineBefore = lineBefore;
+                    // The conversation answers at its head, whatever was said: an open person picker
+                    // shuts, as it does when one of its people is chosen (EpisodeDirector.ConversationGroups.cs).
+                    conversationPick = null;
                 }
                 // The evicted houseguest stays in the room while the card narrates their eviction: the
                 // house reacts to them, and they go when the card does (TickCeremonies).
@@ -1032,6 +1044,10 @@ namespace Gamesim.Episode
             public const string Story = "Section · story";
             /// <summary>The notebook's own page: what you have on each houseguest (EpisodeDirector.Notes.cs). Not a rail row; "Notebook [J]" opens it.</summary>
             public const string Notes = "Section · notes";
+            /// <summary>Your pacts and the ones you know of (EpisodeDirector.Alliances.cs). Not a rail row; the relationship web's door opens it.</summary>
+            public const string Alliances = "Section · alliances";
+            /// <summary>Your word: every commitment you are a party to (EpisodeDirector.YourWord.cs). Not a rail row; the notes page opens it.</summary>
+            public const string Word = "Section · word";
         }
 
         /// <summary>
@@ -1168,10 +1184,11 @@ namespace Gamesim.Episode
             }
             foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId))) hud.Paragraph(alliance.name + (alliance.active ? " · active" : " · ended"));
             hud.Heading("YOUR LOYALTY DECLARATIONS");
+            // Said as the conversation says it (X12): no promise from them, and binding both ways.
             foreach (var oath in state.loyaltyOaths.Where(oath => oath.playerId == state.playerId || oath.targetId == state.playerId))
                 hud.Paragraph("Week " + oath.week + ": " + (oath.playerId == state.playerId
                     ? "You declared loyalty to " + state.Find(oath.targetId).name
-                    : state.Find(oath.playerId).name + " declared loyalty to you") + ". A declaration is not a mutual guarantee.");
+                    : state.Find(oath.playerId).name + " declared loyalty to you") + ". " + OathNotebookNote);
             RenderDiaryRecord(state);
             foreach (var memory in state.memories.Where(m => m.ownerId == state.playerId)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
             RenderStorySoFar(state);
@@ -1237,7 +1254,9 @@ namespace Gamesim.Episode
                 // house activities in their foot; the others keep the notebook's title and the
                 // command at their top, where the web's layout and the activities tests expect it.
                 bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
-                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes;
+                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes
+                    || journalSection == NotebookSection.Alliances
+                    || journalSection == NotebookSection.Word;
                 if (kitPage)
                 {
                     var head = NotebookPageHead(journalSection);
@@ -1276,6 +1295,14 @@ namespace Gamesim.Episode
                 else if (journalSection == NotebookSection.Notes)
                 {
                     RenderNotebookNotes(state);
+                }
+                else if (journalSection == NotebookSection.Alliances)
+                {
+                    RenderNotebookAlliances(state);
+                }
+                else if (journalSection == NotebookSection.Word)
+                {
+                    RenderNotebookWord(state);
                 }
                 else
                 {
@@ -1366,17 +1393,21 @@ namespace Gamesim.Episode
                 {
                     hud.Heading("WHAT YOU CAME TO PUT TO THEM");
                     DealRows(state, npc, allied: state.Allied(state.playerId, npc.id));
-                    DealPanel(state, npc);
+                    FoldedDealPanel(state, npc);
                 }
+                // The declaration binds the two of them, whoever made it (X12): the copy says what the
+                // engine does (EpisodeDirector.ConversationGroups.cs, OathOfferLine).
                 if (state.oathOpportunities.Contains(npc.id))
                 {
                     hud.Heading("A PERSONAL LOYALTY DECLARATION");
-                    hud.Paragraph("This is your commitment, not " + npc.name + "'s consent or promise. Nominating or voting against them can break your oath.");
-                    hud.Action(EpisodeHud.OathDeclareCaption, () => Commit(state, EpisodeCommandKind.SwearLoyalty, npc.id));
-                    hud.Action(EpisodeHud.OathDeclineCaption, () => Commit(state, EpisodeCommandKind.DeclineLoyalty, npc.id));
+                    hud.Paragraph(OathOfferLine(npc.name));
+                    hud.Tag(hud.Action(EpisodeHud.OathDeclareCaption, () => Commit(state, EpisodeCommandKind.SwearLoyalty, npc.id)),
+                        Category(EpisodeCommandKind.SwearLoyalty));
+                    hud.Tag(hud.Action(EpisodeHud.OathDeclineCaption, () => Commit(state, EpisodeCommandKind.DeclineLoyalty, npc.id)),
+                        Category(EpisodeCommandKind.DeclineLoyalty));
                 }
                 else if (state.loyaltyOaths.Any(oath => oath.playerId == state.playerId && oath.targetId == npc.id))
-                    hud.Paragraph("Your loyalty declaration is recorded. It does not bind " + npc.name + " to protect you.");
+                    hud.Paragraph(OathRecordedLine(npc.name));
                 if (window || StrategyRules.CanBeAskedForTheirVote(state, npc.id)) LobbyPanel(state, npc);
                 // The category is a chip pinned to the button, never part of its caption. Baking it
                 // into the label broke every test that finds a control by the words on it — and the
@@ -1389,9 +1420,8 @@ namespace Gamesim.Episode
                 // a control by; the mockup's single words survive as the glyph and the tint.
                 //
                 // The petals are the six openings a conversation actually has here. Everything else
-                // - the promises, the alliance, the rumours, the deals - is a row beneath the dial,
-                // in the order it always had, and the seventh petal moves the keyboard to the first
-                // of them.
+                // - the promises, the alliance, the rumours, the deals - is beneath the dial in the
+                // group it belongs to, and the seventh petal moves the keyboard to the first row.
                 hud.ConversationRadial(npc.id, 7);
                 hud.Tag(hud.Petal(EpisodeHud.SmallTalkCaption, "chat", UiTheme.Accent,
                         () => Commit(state, EpisodeCommandKind.SmallTalk, npc.id)),
@@ -1412,57 +1442,10 @@ namespace Gamesim.Episode
                 hud.Tag(hud.Petal("Spend time together", "star", UiTheme.Joke,
                         () => Commit(state, EpisodeCommandKind.Talk, npc.id)),
                     Category(EpisodeCommandKind.Talk), EpisodeHud.TagSeat.CardFoot);
-                hud.Tag(hud.Action(EpisodeHud.DiscussGameCaption, () => Commit(state, EpisodeCommandKind.DiscussGame, npc.id)),
-                    Category(EpisodeCommandKind.DiscussGame));
-                // What this room offers that no other does (decision D-E): pillow talk in a bedroom,
-                // an invitation in the suite, cooking in the kitchen.
-                RoomActs(state, npc);
-                if (!cameToDeal) DealRows(state, npc, allied);
-                hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
-                    Category(EpisodeCommandKind.ShareInformation));
-                if (!cameToAsk) AskRows(state, npc, window);
-                // Calling the vote (STRATEGY-LOOP-PLAN.md section 3): through an ally, once per
-                // alliance a week, naming who the bloc evicts.
-                if (EpisodeEngine.LeverRulesOn(state) && state.phase == EpisodePhase.Campaign && VoteRead.Available(state))
-                    foreach (var pact in state.alliances.Where(a => a.active && a.members.Contains(state.playerId) && a.members.Contains(npc.id)
-                                 && !state.ledger.calls.Any(k => k.week == state.week && k.allianceId == a.id)))
-                        foreach (string nomineeId in state.nominees.Where(id => id != state.playerId))
-                        {
-                            string about = nomineeId, allianceId = pact.id;
-                            hud.Tag(hud.ActionFor(about, EpisodeHud.CallTheVoteCaption(pact.name, state.Find(about).name),
-                                    () => Commit(state, EpisodeCommandKind.CallTheVote, npc.id, about, text: allianceId)),
-                                Category(EpisodeCommandKind.CallTheVote), EpisodeHud.TagSeat.PastReading);
-                        }
-                // Both of these need a third person, so they are offered per subject rather than as
-                // one control that would then have to ask "about whom?" after being clicked.
-                foreach (var subject in state.Active.Where(c => !c.isPlayer && c.id != npc.id))
-                {
-                    string about = subject.id;
-                    hud.Tag(hud.ActionFor(about, "Vent about " + subject.name,
-                        () => Commit(state, EpisodeCommandKind.VentAbout, npc.id, about)),
-                        Category(EpisodeCommandKind.VentAbout));
-                    hud.Tag(hud.ActionFor(about, "Tell them something untrue about " + subject.name,
-                        () => Commit(state, EpisodeCommandKind.SpreadLie, npc.id, about)),
-                        Category(EpisodeCommandKind.SpreadLie));
-                }
-                // A rumour is about somebody but told to the house rather than to one person, so it
-                // is offered per subject and not per listener. It waits for free time, as scheming does.
-                foreach (var subject in state.Active.Where(c => !window && !c.isPlayer && c.id != npc.id))
-                {
-                    string about = subject.id;
-                    hud.Tag(hud.ActionFor(about, EpisodeHud.WhisperCaption(subject.name),
-                        () => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.WhisperCampaign)),
-                        Category(EpisodeCommandKind.SpreadRumor));
-                    hud.Tag(hud.ActionFor(about, EpisodeHud.CalloutCaption(subject.name),
-                        () => Commit(state, EpisodeCommandKind.SpreadRumor, about, text: EpisodeEngine.PublicCallout)),
-                        Category(EpisodeCommandKind.SpreadRumor));
-                }
-                if (!window)
-                    hud.Tag(hud.Action("Work against them quietly", () => Commit(state, EpisodeCommandKind.SchemeAgainst, npc.id)),
-                        Category(EpisodeCommandKind.SchemeAgainst));
-                if (!cameToDeal) DealPanel(state, npc);
-                if (state.phase == EpisodePhase.Campaign)
-                    foreach (var nominee in state.nominees) { string id = nominee; hud.Tag(hud.ActionFor(id, "Promise to evict " + state.Find(id).name, () => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, id)), Category(EpisodeCommandKind.PromiseVote)); }
+                // Everything else, under the dial in four groups by what it is for - bond, learn,
+                // scheme, bargain - with each verb aimed at a third houseguest one row that opens its
+                // people (EpisodeDirector.ConversationGroups.cs).
+                ConversationGroups(state, npc, window, allied, cameToAsk, cameToDeal);
                 return;
             }
             if (sceneCardOpen) { SceneCard(state); return; }
@@ -1481,6 +1464,9 @@ namespace Gamesim.Episode
                 // The veto's draw is laid out for the frame's whole width (EpisodeDirector.VetoDraw.cs).
                 if (VetoDrawBeat(state)) hud.StrategyWholeWidth();
             }
+            // Free time is a board on the strategy stage too (EpisodeDirector.FreeTimeBoard.cs), on
+            // the panel's own glass: Pack 8 has no free-time shell.
+            else if (FreeTimeBoardBeat(state)) hud.StrategyStage(null);
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1559,6 +1545,10 @@ namespace Gamesim.Episode
             // tracker, one step's body and a footer - in place of everything below (PACK8-PASS-PLAN
             // B1, EpisodeDirector.NominationScreen.cs).
             if (NominationScreen(state)) return;
+            // Free time is a board of its own - what is waiting on the player beside the budget, the
+            // story in a line, the house as cards and the other ways to spend the time - with its own
+            // footer, in place of everything below (EpisodeDirector.FreeTimeBoard.cs).
+            if (FreeTimeBoard(state)) return;
             // Who holds what this week, on one line, before whatever there is to decide: the stage
             // stands the strip and its badges down, so this is where the roles are read. The final
             // Head of Household's choice opens on its own gold head instead: the house is down to
@@ -1604,6 +1594,7 @@ namespace Gamesim.Episode
             string advance = state.phase == EpisodePhase.Social ? "Begin the next competition"
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode";
             AdvanceWarning(state);
+            MovingOnCosts(state);
             // Pinned under the scroll, where it is always seen - except under a house event, whose
             // choices keep the panel and the priority; the way on stays inline after them there.
             if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage

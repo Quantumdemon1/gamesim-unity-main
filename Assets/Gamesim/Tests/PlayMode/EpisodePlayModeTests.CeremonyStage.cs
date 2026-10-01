@@ -629,6 +629,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
             var screen = vote.Surface;
             yield return WaitFor(() => vote.VotesShown >= 2, 20f, "two votes are on the board");
+            // The living room's real screen names nobody (UI-UX-PASS-PLAN B0): no voter's child, and
+            // the Head of Household only on the deciding row.
+            var staged = director.Snapshot;
+            AssertBoardNamesNobody(vote, staged.hohId != null && staged.hohId != staged.playerId ? staged.Find(staged.hohId)?.name : null);
             yield return CaptureTheScreen(screen, "ceremony-stage-vote-screen");
             yield return WaitFor(() => vote.ShowingResult, 60f, "the result is read");
             // The board hands over to the result block over the result's first moment.

@@ -26,11 +26,12 @@ namespace Gamesim.Tests.PlayMode
         private static RectTransform[] SlotsUp(Component card) =>
             card.GetComponentsInChildren<RectTransform>(true).Where(rect => rect.name == "Ballot" && rect.gameObject.activeSelf).ToArray();
 
-        /// <summary>No child the old roster named a voter by, and no label naming the Head of Household but the deciding row's and the host's.</summary>
+        /// <summary>No child the old roster named a voter by, and no label naming the Head of Household but the deciding row's and the host's (<paramref name="hohName"/> null where the Head of Household is the player, whom the row addresses rather than names).</summary>
         private static void AssertBoardNamesNobody(Component card, string hohName)
         {
             foreach (var name in new[] { "Ballot voter", "Ballot face", "Ballot target", "Roster" })
                 Assert.That(card.GetComponentsInChildren<RectTransform>(true).Any(rect => rect.name == name), Is.False, "The board has no '" + name + "'.");
+            if (hohName == null) return;
             var labels = card.GetComponentsInChildren<TMP_Text>(true).Where(label => label.name != "Deciding voter" && label.name != "Host");
             Assert.That(labels.Select(label => label.text), Has.None.Contains(hohName), "Only the deciding row names the Head of Household.");
         }
@@ -57,10 +58,15 @@ namespace Gamesim.Tests.PlayMode
             const string hoh = "Maya Hassan";
             var card = VoteReveal.Attach(director.gameObject);
 
-            // Five votes, three read: the mockup's frame.
+            // Five votes, three read: the mockup's frame. The card runs on the unscaled clock, which
+            // no captureDeltaTime pins, so it is held at the moment while the frame is taken: the
+            // fourth vote cannot land between the wait and the capture.
             Assert.That(card.Play(1, block, new[] { Ballot("a"), Ballot("b"), Ballot("a"), Ballot("a"), Ballot("b") }, "a", true,
                 CeremonyPace.Suspenseful, hoh, screen: screen), Is.True);
             yield return WaitFor(() => card.VotesShown >= 3, 20f, "three votes on the board");
+            card.Held = true;
+            yield return Frames(2);
+            Assert.That(card.VotesShown, Is.EqualTo(3), "Held, the count stands.");
             Assert.That(SlotsUp(card), Has.Length.EqualTo(3), "One anonymous slot a vote read.");
             Assert.That(Words(card, "Progress"), Is.EqualTo("Revealing vote 3 of 5"));
             Assert.That(Words(card, "Tally heading"), Is.EqualTo("CURRENT TALLY"));
@@ -68,24 +74,34 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Words(card, "Anonymous badge text"), Is.EqualTo("The identity of each voter remains a secret."));
             AssertBoardNamesNobody(card, hoh);
             yield return CaptureBoard(screen, "vote-board-anonymous");
+            Assert.That(Words(card, "Progress"), Is.EqualTo("Revealing vote 3 of 5"), "The frame taken is the third vote's.");
             card.Cancel();
             yield return null;
 
-            // Two all, and the Head of Household's deciding vote: the gold row, the one with a name on it.
+            // Two all, and the Head of Household's deciding vote: the gold row, the one with a name on
+            // it - held before the result takes the board over.
             Assert.That(card.Play(1, block, new[] { Ballot("a"), Ballot("b"), Ballot("b"), Ballot("a"), Ballot("a", true) }, "a", true,
                 CeremonyPace.Quick, hoh, screen: screen), Is.True);
             yield return WaitFor(() => card.VotesShown >= 5, 30f, "the deciding vote");
+            card.Held = true;
+            yield return Frames(2);
             var deciding = card.GetComponentsInChildren<RectTransform>(true).FirstOrDefault(rect => rect.name == "Deciding vote");
             Assert.That(deciding != null && deciding.gameObject.activeInHierarchy, Is.True, "The deciding row is up once the tie is broken.");
             Assert.That(Words(deciding, "Deciding voter"), Is.EqualTo(hoh));
             AssertBoardNamesNobody(card, hoh);
             yield return CaptureBoard(screen, "vote-board-tiebreak");
+            Assert.That(card.ShowingResult, Is.False, "The frame taken is the board's, before the result.");
+            card.Held = false;
             yield return WaitFor(() => card.ShowingResult, 30f, "the result");
-            // The board hands over to the result block over the result's first moment.
+            // The board hands over to the result block over the result's first moment; held there
+            // before the quick pace's fade-out.
             yield return new WaitForSecondsRealtime(0.6f);
+            card.Held = true;
+            yield return Frames(2);
             Assert.That(card.IsPlaying, Is.True, "The result is still up to be photographed.");
             Assert.That(Words(card, "Result lead"), Is.EqualTo("BY THE HEAD OF HOUSEHOLD'S VOTE"));
             yield return CaptureBoard(screen, "vote-board-result");
+            Assert.That(card.IsPlaying && card.ShowingResult, Is.True, "The frame taken is the result's.");
             card.Cancel();
             yield return null;
 

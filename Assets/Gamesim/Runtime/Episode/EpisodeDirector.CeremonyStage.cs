@@ -1221,7 +1221,7 @@ namespace Gamesim.Episode
                 if (visual != null) visual.React(kind);
             }
 
-            /// <summary>A glance at the floor in front of the chair: the flinch of a vote against you, or a voter looking at their hands.</summary>
+            /// <summary>A glance at the floor in front of the chair: the flinch of a vote against you, and the one going as the result is read.</summary>
             private void LookDown(string id, float seconds)
             {
                 var visual = Visual(id);

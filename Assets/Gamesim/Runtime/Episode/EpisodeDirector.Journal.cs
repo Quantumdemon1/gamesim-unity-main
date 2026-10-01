@@ -475,8 +475,9 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The vote page (Kit 6's preview 04): the season's eviction results in one tab and the
-        /// ballots made public at each reveal in the other, read from the public record by
-        /// <see cref="VoteRecords"/>.
+        /// ballots the player knows of each reveal in the other - their own, the tie-break, what the
+        /// count proves, what they were told - read by <see cref="VoteRecords"/> from
+        /// <see cref="KnownBallots"/>; the rest are a count, never a name.
         ///
         /// <para>It read the ballot box, which the engine empties when the next week begins - so
         /// from week two's first competition it told a season that had evicted someone that
@@ -646,15 +647,17 @@ namespace Gamesim.Episode
                 string eyebrow = "WEEK " + record.Week;
                 if (record.Complete && record.EvictedName != null)
                     eyebrow += " \u00b7 " + (record.EvictedIsPlayer ? "YOU WERE EVICTED" : record.EvictedName.ToUpperInvariant() + " EVICTED");
-                // The ballots the player knows, each tagged by how (KnownBallots.Basis), then an
-                // unknown slot for every ballot they cannot place - a count, never a name.
-                hud.BallotCard(EpisodeHud.BallotsPrefix + record.Week, eyebrow, record.Ballots.Select(ballot => new EpisodeHud.BallotLine
+                // The ballots the player knows, each tagged by how (KnownBallots.Basis), then one line
+                // counting the ballots they cannot place - a count, never a name, in the recap's words.
+                var lines = record.Ballots.Where(ballot => ballot.Known).Select(ballot => new EpisodeHud.BallotLine
                 {
                     Voter = ballot.VoterId != null ? state.Find(ballot.VoterId) : null,
                     Words = BallotWords(ballot),
                     Reason = ballot.Reason,
                     Tag = BallotTag(ballot),
-                }).ToList());
+                }).ToList();
+                if (record.Unknown > 0) lines.Add(new EpisodeHud.BallotLine { Words = VoteRecords.UnknownBallotsLine(record.Unknown) });
+                hud.BallotCard(EpisodeHud.BallotsPrefix + record.Week, eyebrow, lines);
                 any = true;
             }
             if (!any)
@@ -664,18 +667,18 @@ namespace Gamesim.Episode
             hud.LockNote(EpisodeHud.VotesPrivacyName, "The ballots you have not learned remain private.");
         }
 
-        /// <summary>"Maya Hassan voted to evict Casey Wilson", with "you" where it is the player; "A ballot you do not know" on a slot.</summary>
+        /// <summary>"Maya Hassan voted to evict Casey Wilson", with "you" where it is the player, for a ballot the player knows; the ones they do not are counted in one line (<see cref="VoteRecords.UnknownBallotsLine"/>).</summary>
         private static string BallotWords(VoteRecords.Ballot ballot)
         {
-            if (!ballot.Known) return "A ballot you do not know";
+            if (!ballot.Known) return VoteRecords.UnknownBallotsLine(1);
             if (ballot.ByPlayer) return "You voted to evict " + (ballot.AgainstPlayer ? "yourself" : ballot.TargetName);
             return ballot.VoterName + " voted to evict " + (ballot.AgainstPlayer ? "you" : ballot.TargetName);
         }
 
-        /// <summary>How the player knows a ballot: its basis word, and a lie caught where the voter said otherwise.</summary>
+        /// <summary>How the player knows a ballot: its basis word, and a lie caught where the voter said otherwise; nothing on a ballot they do not know.</summary>
         private static string BallotTag(VoteRecords.Ballot ballot)
         {
-            if (!ballot.Known) return "unknown";
+            if (!ballot.Known) return null;
             string tag = ballot.TieBreak ? "Head of Household's tie-break" : KnownBallots.Basis.Word(ballot.Basis);
             if (ballot.Lied && ballot.SaidName != null) tag += " \u00b7 said " + ballot.SaidName + ", a lie";
             return tag;

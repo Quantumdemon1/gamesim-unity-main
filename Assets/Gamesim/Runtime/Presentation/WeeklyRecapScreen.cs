@@ -598,8 +598,9 @@ namespace Gamesim.Presentation
                 face.anchorMin = face.anchorMax = new Vector2(0f, .5f);
                 face.pivot = new Vector2(.5f, .5f);
                 face.anchoredPosition = new Vector2(22f, 0f);
+                // Every box at least 1.3 times its type: Inter draws nothing in a box under 1.21.
                 var name = EndScreenKit.Text("Name", row, HudPrimitives.WithYou(voter?.name ?? ballot.voterId, ballot.voterId == shown.playerId), 14f,
-                    ballot.voterId == shown.playerId ? UiTheme.Accent : UiTheme.Paper, 44f, 3f, width - 52f, 18f);
+                    ballot.voterId == shown.playerId ? UiTheme.Accent : UiTheme.Paper, 44f, 2f, width - 52f, 19f);
                 name.enableAutoSizing = true; name.fontSizeMax = 14f; name.fontSizeMin = 10f;
                 var basis = EndScreenKit.Text("Basis", row, BasisWords(ballot), 11f, UiTheme.Muted, 44f, 21f, width - 52f, 15f);
                 basis.enableAutoSizing = true; basis.fontSizeMax = 11f; basis.fontSizeMin = 8f;
@@ -721,8 +722,7 @@ namespace Gamesim.Presentation
                 HudPrimitives.WithYou(shown.Find(ballot.voterId)?.name ?? ballot.voterId, ballot.voterId == shown.playerId)
                 + " voted to evict " + HudPrimitives.WithYou(shown.Find(ballot.targetId)?.name ?? ballot.targetId, ballot.targetId == shown.playerId)
                 + " · " + BasisWords(ballot) + (ballot.reason != null ? " · “" + ballot.reason + "”" : "")).ToList();
-            if (recap.unknownBallots > 0)
-                known.Add(recap.unknownBallots == 1 ? "1 ballot you do not know how it went." : recap.unknownBallots + " ballots you do not know how they went.");
+            if (recap.unknownBallots > 0) known.Add(VoteRecords.UnknownBallotsLine(recap.unknownBallots));
             y = Section(body, "Ballots you know", known, UiTheme.Accent, y, inner);
             return y > 0f ? y : Nothing(body, inner);
         }

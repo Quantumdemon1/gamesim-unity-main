@@ -255,6 +255,7 @@ namespace Gamesim.Presentation
             tieBroken = false;
             // Every reveal starts at its own pace; speeding one up is for that one.
             SetSpeed(1f);
+            Held = false;
             playing = true;
 
             eyebrow.text = "WEEK " + Mathf.Max(1, week);
@@ -302,12 +303,21 @@ namespace Gamesim.Presentation
         /// </summary>
         private bool Dismissable => upFor >= CeremonyPacing.FadeIn + ReadDelay;
 
+        /// <summary>
+        /// Holds the card where it is: its clock stops, so nothing advances, fades or hands over, while
+        /// the click guard stays up. For a frame taken of one moment of the count, which the card's
+        /// unscaled clock would otherwise walk past between the moment and the capture. Cleared by
+        /// the next play.
+        /// </summary>
+        public bool Held { get; set; }
+
         private void Update()
         {
             if (!playing) return;
             // The house's click guard, which the key ceremony and the takeover already kept. This card
             // never stamped it, so a click on the tally was a click on the floor behind it as well.
             CeremonyOverlays.Showing();
+            if (Held) return;
             upFor += Time.unscaledDeltaTime;
             FollowDevice();
 
@@ -703,8 +713,8 @@ namespace Gamesim.Presentation
             /// <summary>'THE VOTE', under the title.</summary>
             public const float VoteY = -134f, VoteH = 34f, VotePt = 24f, VoteWidth = 420f;
 
-            /// <summary>The band the board stands in, and the result block after it.</summary>
-            public const float BandTop = -176f, BandBottom = -584f;
+            /// <summary>The band the board stands in, and the result block after it: from under the VS disc to the top of the frame's dot row at -582.</summary>
+            public const float BandTop = -176f, BandBottom = -582f;
 
             /// <summary>
             /// The tally card: its top (under the VS disc the frame keeps at -174), its width, its

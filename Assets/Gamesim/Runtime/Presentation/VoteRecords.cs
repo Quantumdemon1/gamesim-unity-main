@@ -50,6 +50,10 @@ namespace Gamesim.Presentation
             public int Votes;
         }
 
+        /// <summary>One line for the ballots the player cannot place: a count, never a name - the same words on the notebook's vote page and the recap's vote tab.</summary>
+        public static string UnknownBallotsLine(int count) =>
+            count == 1 ? "1 ballot you do not know how it went." : count + " ballots you do not know how they went.";
+
         public sealed class Record
         {
             public int Week;

@@ -244,7 +244,8 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(lines, Has.Some.EqualTo(words), "a known ballot" + size + ": " + words);
                     Assert.That(lines, Has.Some.StartsWith(KnownBallots.Basis.Word(ballot.basis)), "tagged by its basis: " + ballot.basis);
                 }
-                Assert.That(lines.Count(line => line == "A ballot you do not know"), Is.EqualTo(sheet.Unknown), "and an unknown slot for each the player cannot place.");
+                Assert.That(lines, Has.Some.EqualTo(VoteRecords.UnknownBallotsLine(sheet.Unknown)), "and one line counting the ballots the player cannot place,");
+                Assert.That(lines, Has.None.EqualTo("A ballot you do not know"), "never a line a slot.");
                 Assert.That(lines, Has.Some.Contains("remain private"));
                 Assert.That(lines, Has.None.Contains("made public"));
                 AssertDecisionCopyFits(ActiveRect(EpisodeHud.NotebookHeaderName).parent as RectTransform);

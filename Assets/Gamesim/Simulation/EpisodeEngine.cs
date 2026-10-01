@@ -854,7 +854,7 @@ namespace Gamesim.Simulation
                 Change(s, replacement, s.hohId, -20, Name(s, s.hohId) + " named " + Target(s, replacement, s.hohId) + " as replacement nominee");
                 if (s.hohId != s.vetoHolderId) Change(s, replacement, s.vetoHolderId, -15, Name(s, s.vetoHolderId) + " used POV forcing " + Target(s, replacement, s.vetoHolderId) + " on the block");
                 Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " saves ", " save ")
-                    + Target(s, saved, s.vetoHolderId) + "; " + TargetStart(s, replacement, s.vetoHolderId)
+                    + Target(s, saved, s.vetoHolderId) + "; " + Target(s, replacement, s.vetoHolderId)
                     + Verb(s, replacement, " is", " are") + " the replacement nominee.");
             }
             else Log(s, "veto", Name(s, s.vetoHolderId) + Verb(s, s.vetoHolderId, " declines ", " decline ")

@@ -155,7 +155,8 @@ namespace Gamesim.Tests.EditMode
                 string replacement = you ? "you" : after.Find(replacementId).name;
 
                 var veto = after.events.Last(e => e.kind == "veto");
-                Assert.That(veto.text, Is.EqualTo(holder + " saves " + reflexive + "; " + (you ? "You are" : replacement + " is") + " the replacement nominee."),
+                // Mid-sentence after the semicolon, the player is "you", not "You".
+                Assert.That(veto.text, Is.EqualTo(holder + " saves " + reflexive + "; " + (you ? "you are" : replacement + " is") + " the replacement nominee."),
                     pronouns + ": the log says the holder's own reflexive.");
                 var notes = after.relationships.SelectMany(r => r.notes).Concat(after.memories.Select(m => m.text)).ToList();
                 Assert.That(notes.Where(note => note.Contains("save " + holder)), Is.Empty, pronouns + ": nothing says the holder saved themselves by name.");

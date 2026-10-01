@@ -196,7 +196,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EventSystem.current.currentSelectedGameObject, Is.SameAs(carryOn.gameObject),
                 "A beat with nothing to decide opens on the way on, not on Close.");
             var quietWords = PanelWords(panel);
-            Assert.That(quietWords, Does.Contain(EpisodeDirector.HouseStatus(quiet)), "The house's status is one line.");
+            // The house's status is the nomination's status cards now (PACK8-PASS-PLAN B1): the Head
+            // of Household is on the first of them.
+            var hohCard = panel.GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Status card · HOH");
+            Assert.That(hohCard.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Value").text,
+                Is.EqualTo(quiet.Find(quiet.hohId).name), "The Head of Household is on the house's first status card.");
             Assert.That(quietWords.Where(w => w.StartsWith("Nominees: ") || w.StartsWith("Veto holder: ")), Is.Empty,
                 "and no fact of it stands on a line of its own.");
             // The nomination is a ceremony's screen, not a quiet card (playtest, 2026-09-27): it

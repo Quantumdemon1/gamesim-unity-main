@@ -29,6 +29,14 @@ namespace Gamesim.Tests.PlayMode
         private string stagedKind;
 
         /// <summary>
+        /// Whether the walk photographs the first nomination card after week one on the set's
+        /// screen and reads its title's mark (UI-UX-PASS-PLAN N0): the mark was placed from a
+        /// label measured before its Awake on every play after the first, at a frame no capture
+        /// reached, since every other capture is the first play of a fresh card.
+        /// </summary>
+        private bool readTheSecondWeeksCard, secondWeeksCardRead;
+
+        /// <summary>
         /// Commits eviction night until it is staged, plays its card on the living room's screen and
         /// skips it, and sits out the goodbye: the evicted are walking out, and the house keeps its
         /// seats while they go.
@@ -112,6 +120,15 @@ namespace Gamesim.Tests.PlayMode
                     var keys = SceneComponents<KeyCeremony>().Single();
                     Assert.That(keys.IsPlaying && keys.Surface != null, Is.True, what + ": the keys play on the set's screen.");
                     Assert.That(keys.Surface.Room, Is.EqualTo("Nomination"), what + ": at the nomination table.");
+                    if (readTheSecondWeeksCard && !secondWeeksCardRead && before.week >= 2)
+                    {
+                        // The live card's second play, the frame the owner's screenshot was: the mark
+                        // read on the card as drawn, and the frame kept for the look sheet.
+                        secondWeeksCardRead = true;
+                        yield return null;
+                        AssertTheTitleMarkClearsTheTitle(keys, what + " (week " + before.week + ", the card's play after week one)");
+                        if (Application.isBatchMode) yield return CaptureTheScreen(keys.Surface, "nomination-card-week2");
+                    }
                 }
                 else
                 {
@@ -339,6 +356,8 @@ namespace Gamesim.Tests.PlayMode
         {
             uint seed = SeasonThePlayerSurvives(52, AtEviction, 3);
             yield return InstallStagedSeason(seed, AtEviction);
+            readTheSecondWeeksCard = true;
+            secondWeeksCardRead = false;
             yield return PlayTheStagedEvictionToItsWalkOut();
             yield return WaitFor(() => director.WalkingOutId == null, EpisodeDirector.WalkOutSeconds + 2f, "week 1's walk-out ends");
             yield return AssertTheHouseRunsOn("Week 1's eviction");

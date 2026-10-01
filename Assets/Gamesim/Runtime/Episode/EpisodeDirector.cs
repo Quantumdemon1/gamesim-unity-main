@@ -890,7 +890,8 @@ namespace Gamesim.Episode
                     else if (kind == CeremonySting.NominationKind && keyCeremony != null)
                         reveal = screen => keyCeremony.Play(committed.week, NameOf(committed, committed.hohId),
                             committed.hohId == committed.playerId,
-                            SafeHouseguests(committed), NominatedHouseguests(committed), reducedMotion, ceremonyPace, screen);
+                            SafeHouseguests(committed), NominatedHouseguests(committed), reducedMotion, ceremonyPace, screen,
+                            RosterHouseguests(committed));
                     // The veto meeting is staged in the living room and plays on its screen
                     // (EpisodeDirector.CeremonyStageVeto.cs); unstaged it is the generic card below,
                     // exactly as it was. Its commit still makes the veto's sound, the same for

@@ -193,6 +193,8 @@ How deals pull on decisions:
 
 The slices take the recommended option unless the owner rules otherwise.
 
+*Answered on 2026-10-01: the owner took every recommended option ("Yes, go with your recommendations and start wave 0 and A").*
+
 1. **Schema 22.**
    - (A, recommended) Claim it now for `commitmentRulesStartWeek` and tell the story session when it is next live, as schema 21 was.
    - (B) Wait until the story session agrees.
@@ -508,6 +510,24 @@ Effort: S is hours, M one to two days, L three to five days. 'Kind' says whether
 3. **Wave B,** in the order C4, C2, C3, C1, C6, C5, C7, C8, C9.
 4. **Wave C.**
 5. **Wave D**, as the owner chooses.
+
+**Wave 0 and wave A as built (2026-10-01).** Seven slices, grouped so that no two edit the same code:
+- **W1, free time:** F1, the move-in wording from X-a, and V2's free-time half (costed tiles locked, the unused-actions note in the budget card).
+  - Owns EpisodeDirector.FreeTimeScreen.cs, EpisodeHud.FreeTime.cs, the new free-time board files, and the free-time hook in Render.
+- **W2, the conversation:** V5, plus X-a's promise rows and oath copy, plus V6's verb tags.
+  - Owns the conversation section of EpisodeDirector.cs and the conversation HUD. It may move the call to DealPanel but not change its insides.
+- **W3, honest odds and offers:** V6's odds, plus X-a's deal-ceiling reason and the paired veto asks.
+  - Owns the shown odds in DealPanel (EpisodeDirector.Conversation.cs), the plea panel and VetoOffers (EpisodeDirector.Strategy.cs), and a new Simulation reader of what the player knows.
+- **W4, your word:** V1.
+  - Owns a new notebook page, the breach warnings on the decision screens, DecisionContext's deals and the notes' deal lines.
+- **W5, the alliances page:** V3.
+  - Owns a new notebook page and the relationship web's suspected pacts.
+- **W6, offers announce themselves:** V2 outside free time.
+  - Owns the cast-strip badges, the objective line, and the strategy screens' footer notes (never free time's).
+- **W7, your week:** V4.
+  - Owns the weekly recap.
+
+W4 and W5 both add a notebook page, which is an expected adjacent-line merge.
 
 **Landing.** Each wave lands as before:
 - each slice in its own worktree, reviewed adversarially and fixed;

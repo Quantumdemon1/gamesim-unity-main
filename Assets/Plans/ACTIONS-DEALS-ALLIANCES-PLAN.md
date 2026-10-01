@@ -549,3 +549,30 @@ W4 and W5 both add a notebook page, which is an expected adjacent-line merge.
 - that X14's fact list keeps alliance facts.
 
 ## Build log
+
+**Wave 0 and wave A, built 2026-10-01** on `claude/nearby-render-gap` from a293afd. Seven slices, each built in its own worktree, reviewed adversarially, fixed, and merged with `--no-ff`. All of it is presentation: no saved field, no command kind, no outcome changes.
+
+| Slice | Merge | What landed |
+|---|---|---|
+| W3, honest odds | 8e73734 | `KnownOdds` computes the deal, plea and alliance chance words from the roll's own formula with each hidden term replaced by what the player knows. A note says each chance is the player's read, and 'Many unknowns' appears when they know little. The roll is unchanged. A table emptied by the deal ceiling says why (X10). Once the player has given one nominee their word on the veto, the other's accept is locked, and they can turn it down or let it lapse (X13). |
+| W7, your week | 64ceef8 | The weekly recap's 'Your week' tab: the whip count and each claim judged against the ballots read aloud, the player's deals and promises by the outcome lines they were told, their alliance calls by who followed, and Game Sense so far from the notes the player could know. |
+| W5, the alliances page | a47ab57 | A notebook page opened from the relationship web's 'Your alliances' door: the player's own pacts in full, other pacts only where the player has evidence, an ended pact's reason only from what the player was told. |
+| W6, offers announce themselves | e417215 | A badge on the cast strip and an objective line for every offer, veto ask and reply card waiting on the player's answer, shown only while it can still be answered. The strategy footer's second line, under Up next, says what moving on costs. |
+| W4, your word | eabafa1 | A notebook page of every promise, deal, oath and alliance call the player is a party to, opened from a door in the notes page's head. Each decision screen runs the choice through the engine on a copy, only when something that decision settles is standing, and warns before a choice breaks a commitment; on the footer the breach is a warning-rank line. |
+| W2, the conversation by intent | 550cab0 | Bond, Learn, Scheme and Bargain, each verb tagged with what it is for; a verb aimed at someone opens a person picker. 'Promise to evict X' is hidden from X and from a player who cannot vote (X2); the oath's copy matches the engine (X12). |
+| W1, free time | 0a0d20b | The free time board on the strategy stage, the move-in wording from X-a, and V2's free-time half. |
+
+**Integration fixes:** 42242e5 (two slices' test helpers shared a name); 5ed99c3 (the offers' reader counts move-in night's lost actions as the board does); 950da51 (the Your word page's mark stood before anything was in its column; the alliances fixture asked for week two with four houseguests active, which a six-house cannot give, since the week turns as free time ends); 67d18c3 (the conversation's four-picker fit test says it needs ten minutes).
+
+**Found while landing, not of this plan:** fcb3400 and 07a8e15 fix the first night the owner could not leave. The editor starts play without a domain reload, so `CeremonyOverlays`' frame stamp outlived the session that wrote it and read as a card on screen for the first hour of the next season, swallowing E, Escape, the prompt's button and every click on the house. The stamp holds only this frame and the last, never a frame still to come, and play's start forgets it; pressed again at the screen after its own warp, 'Go to episode screen' opens it.
+
+**Where the build departs from the plan:**
+- **V2.** 'Offers expire tonight' was not built: offers lapse as the next week's campaign opens, the engine's rule, not at the week's end; the footer's second line says when each lapses.
+- **X13.** Leaving the second nominee's ask to lapse costs Game Sense, so the locked row's line states both outcomes.
+- **V5.** The pleas stay above the dial, not in Bargain. The person picker's buttons carry their rows' full sentences, as the captions contract requires, with the player's own trust reading and an ALLY mark. The pill words go beyond warmth, learn, risk and Free: 'binds you', 'undermines them', 'costs warmth', 'steers the vote', 'practice', each true of its verb.
+- **F1.** The houseguest's screen is unchanged and the story strip shows one play. A beat opened from the board is drawn at the board's full width. The rule line and the unused-actions count say what moving on actually loses: on move-in night only the night's own actions, since bought time carries into the week. For 0.45 s after a step closes the free-time panel takes no pointer press, so a double-click's second click cannot buy an action, make a move or end free time; keyboard and programmatic presses are unaffected. 'More waiting' is a control.
+- **V1.** The ballot's warning sits over its cards, inside `BallotCards`, so Confirm stays in view. Your word opens from a header door, not a filter pill.
+
+**Found on the way, for wave B and C:** X10's ceiling counts NPC-to-NPC deals; the Keep plea's `Allied` has no `a != b` guard; overheard standings are one-way; `PlayerDeals.Reasoning` answers from the hidden view (C4); the story's Spread grants knowledge of every pact containing the pair (C8, B4); the engine still accepts 'Promise to evict X' made to X, which R0 should refuse behind the boundary; move-in night's spending is cleared as its window closes, so the week's extras come back whole in week 1 even when spent that night (decision 2's two seats); the houseguest screen's own 'Back to free time' and the Pull's scene card are outside the press guard; the conversation's fit test takes over two minutes and should be split.
+
+**Floors:** the Unity-free subset 1161 to 1254; EditMode 2033 to the count in Tools/baseline.txt at the floors commit; PlayMode 744 to 772.

@@ -88,6 +88,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(Term(2, 3, CommitmentsRead.Outcomes.Kept), Is.EqualTo("until week 3"));
             Assert.That(Term(4, 4), Is.EqualTo("until week 4, still binding"),
                 "A deal binds until the house next settles its deals, which can be after its week: the term must not claim it has ended.");
+            Assert.That(CommitmentsRead.Term(s, new CommitmentsRead.Commitment { kind = CommitmentsRead.Kinds.Deal, week = 4, untilWeek = 4,
+                outcome = CommitmentsRead.Outcomes.Open, status = "waiting on you" }), Is.EqualTo("until week 4, still open"),
+                "An offer nobody has answered binds nobody: it is open, not binding.");
         }
 
         [Test]

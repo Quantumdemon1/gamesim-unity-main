@@ -113,9 +113,13 @@ namespace Gamesim.Simulation
             int now = s != null ? s.week : c.untilWeek;
             if (c.untilWeek == now) return "this week";
             if (c.untilWeek > now) return "until week " + c.untilWeek;
-            if (c.IsOpen) return "until week " + c.untilWeek + ", still binding";
+            // An offer nobody has answered binds nobody yet; it is still there to be answered.
+            if (c.IsOpen) return "until week " + c.untilWeek + (Waiting(c) ? ", still open" : ", still binding");
             return c.week == c.untilWeek ? "week " + c.untilWeek + " only" : "until week " + c.untilWeek;
         }
+
+        private static bool Waiting(Commitment c) =>
+            c.kind == Kinds.Deal && (c.status == "waiting on you" || c.status == "waiting on them");
 
         private static void AddPromises(EpisodeState s, List<Commitment> into)
         {

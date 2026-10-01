@@ -167,7 +167,7 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(LastActive(EpisodeDirector.NotebookSection.Alliances), Is.Not.Null, "The page's mark: " + where);
                     Assert.That(CopyUnder(LastActive(EpisodeHud.NotebookHeaderName)), Does.Contain("Alliances"), "The page names itself: " + where);
                     foreach (var pact in page.yours)
-                        Assert.That(LastActive(EpisodeHud.AllianceCardPrefix + pact.name), Is.Not.Null, pact.name + "'s card: " + where);
+                        Assert.That(LastActive(EpisodeHud.AllianceCardName(pact.name, pact.id)), Is.Not.Null, pact.name + "'s card: " + where);
                     Assert.That(CardsNamed(EpisodeHud.AllianceCardPrefix), Is.EqualTo(page.yours.Count), "A card a pact of the player's: " + where);
                     Assert.That(CardsNamed(EpisodeHud.SuspectedCardPrefix), Is.EqualTo(page.suspected.Count), "A card a pact they know of: " + where);
                     Assert.That(LastActive(EpisodeHud.NoAlliancesName) != null, Is.EqualTo(page.yours.Count == 0), where);
@@ -179,7 +179,7 @@ namespace Gamesim.Tests.PlayMode
                     if (pacts >= 1)
                     {
                         var core = page.yours.Single(p => p.active);
-                        string card = CopyUnder(LastActive(EpisodeHud.AllianceCardPrefix + core.name));
+                        string card = CopyUnder(LastActive(EpisodeHud.AllianceCardName(core.name, core.id)));
                         string followed = FinalistRead.FirstName(state.Find(core.calls.Single().followed.Single()).name);
                         string ignored = FinalistRead.FirstName(state.Find(core.calls.Single().defected.Single()).name);
                         Assert.That(card, Does.Contain("You called it: evict " + state.Find(core.calls.Single().targetId).name + ". "
@@ -190,7 +190,7 @@ namespace Gamesim.Tests.PlayMode
                     if (pacts >= 3)
                     {
                         var ended = page.yours.Single(p => !p.active);
-                        Assert.That(CopyUnder(LastActive(EpisodeHud.AllianceCardPrefix + ended.name)), Does.Contain(ended.ended).And.Contain("left the house"),
+                        Assert.That(CopyUnder(LastActive(EpisodeHud.AllianceCardName(ended.name, ended.id))), Does.Contain(ended.ended).And.Contain("left the house"),
                             "When and why it ended: " + where);
                         var known = page.suspected.Single();
                         string knownCard = EpisodeHud.SuspectedCardPrefix + string.Join(" & ", known.memberIds.Select(id => state.Find(id).name));
@@ -264,6 +264,139 @@ namespace Gamesim.Tests.PlayMode
             RelationshipWeb.ClearSelection();
             director.ClosePanels();
             yield return null;
+        }
+
+        /// <summary>
+        /// The page in the smallest house and the largest the roster seats, at both text sizes:
+        /// three, where both others are in the player's pact and in the one they know of; and the
+        /// largest, with a pact of six faces that wraps, one the player left, a pact of four out in
+        /// the open, a suspected pair and an unheard pair. Every card has a face a member, every
+        /// label fits and draws, and the web marks exactly the pairs the page shows.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Alliances_ThePageHoldsInTheSmallestAndLargestHouseAtBothTextSizes()
+        {
+            RelationshipWeb.ClearSelection();
+            // The largest house a season can be built with is the roster's size (twelve); the save
+            // format's sixteen is reachable only through an import.
+            int largest = SeasonBuilder.LargestHouse(CastTemplates.Roster.Regular);
+            Assert.That(largest, Is.GreaterThanOrEqualTo(12), "The fixture's largest house needs eleven others.");
+            foreach (int size in new[] { SeasonBuilder.MinimumHouse, largest })
+            {
+                var fixture = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = size }, 7);
+                Assert.That(fixture.contestants, Has.Count.EqualTo(size));
+                var unheard = WriteHousePacts(fixture);
+                Assert.That(EpisodeValidation.TryValidate(fixture, out var reason), Is.True, reason);
+                director.SuspendNpcAutonomyForDiagnostics();
+                new EpisodeSaveStore(director.SavePath).Save(fixture);
+                yield return ReloadEpisode();
+                director.SuspendNpcAutonomyForDiagnostics();
+                AssertEquivalent(fixture, director.Snapshot);
+                yield return SettleCast();
+
+                var state = director.Snapshot;
+                var page = AllianceRead.Read(state);
+                Assert.That(page.yours.Count, Is.EqualTo(size == largest ? 2 : 1));
+                Assert.That(page.suspected.Count, Is.EqualTo(size == largest ? 2 : 1));
+                foreach (bool larger in new[] { false, true })
+                {
+                    yield return ApplyTextSize(larger);
+                    string where = "a house of " + size + " at " + (larger ? "larger" : "standard") + " text";
+                    director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
+                    yield return null; yield return null;
+                    Canvas.ForceUpdateCanvases();
+
+                    foreach (var pact in page.yours)
+                    {
+                        var card = LastActive(EpisodeHud.AllianceCardName(pact.name, pact.id));
+                        Assert.That(card, Is.Not.Null, pact.name + ": " + where);
+                        Assert.That(card.GetComponentsInChildren<RectTransform>().Count(rect => rect.name.StartsWith(EpisodeHud.PactFacePrefix, System.StringComparison.Ordinal)),
+                            Is.EqualTo(pact.members.Count), "A face a member: " + where);
+                    }
+                    Assert.That(CardsNamed(EpisodeHud.SuspectedCardPrefix), Is.EqualTo(page.suspected.Count), where);
+                    if (unheard != null)
+                        Assert.That(LastActive(EpisodeHud.SuspectedCardPrefix + string.Join(" & ",
+                            state.contestants.Where(c => unheard.members.Contains(c.id)).Select(c => c.name))), Is.Null, "The unheard pair: " + where);
+
+                    var panel = LastActive("Episode panel");
+                    var clipped = panel.GetComponentsInChildren<TMP_Text>()
+                        .Where(label => label.gameObject.activeInHierarchy && !string.IsNullOrEmpty(label.text))
+                        .Where(label => { label.ForceMeshUpdate(); return label.isTextOverflowing; })
+                        .Select(label => "'" + Excerpt(label.text) + "'")
+                        .ToArray();
+                    Assert.That(clipped, Is.Empty, "Copy cut off on the alliances page in " + where + ": " + string.Join(" | ", clipped));
+                    AssertEveryLabelDraws(panel, "The alliances page in " + where);
+                    if (Application.isBatchMode && size == largest && !larger) yield return CaptureFraming("alliances-page-largest");
+
+                    if (!larger)
+                    {
+                        director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network);
+                        yield return null; yield return null;
+                        Canvas.ForceUpdateCanvases();
+                        var graph = LastActive(RelationshipWeb.GraphName);
+                        Assert.That(graph.GetComponentsInChildren<RectTransform>(true).Count(rect => rect.name == RelationshipWeb.SuspectedMarkerName),
+                            Is.EqualTo(AllianceRead.SuspectedPairs(state).Count), "A line a pair the page shows: " + where);
+                        if (unheard != null)
+                            Assert.That(AllianceRead.SuspectedPairs(state).Any(pair => unheard.members.Contains(pair.first) && unheard.members.Contains(pair.second)),
+                                Is.False, where);
+                    }
+                    director.ClosePanels();
+                    yield return null;
+                }
+                yield return ApplyTextSize(false);
+            }
+        }
+
+        /// <summary>
+        /// The pacts for <see cref="Alliances_ThePageHoldsInTheSmallestAndLargestHouseAtBothTextSizes"/>,
+        /// in week one. Returns the unheard pact, or null in a house too small to have one.
+        /// </summary>
+        private static AllianceState WriteHousePacts(EpisodeState s)
+        {
+            var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
+            string Named(ContestantState c) => FinalistRead.FirstName(c.name);
+            void Leaked(AllianceState pact)
+            {
+                Knowledge.AllianceFormed(s, pact);
+                var fact = Knowledge.Of(s, FactKinds.Alliance, pact.id);
+                Knowledge.AddKnower(s, fact, s.playerId);
+                Knowledge.MakeKnown(s, fact, FactVisibility.Whispered);
+                PactLine(s, 1, StoryLog.Receipt, AllianceRead.LearnedLine(s, pact), s.playerId);
+            }
+            if (npcs.Count < 4)
+            {
+                var ours = PactRecord(s, "alliance-", "The " + Named(npcs[0]) + " Pact", true, s.playerId, npcs[0].id, npcs[1].id);
+                Knowledge.AllianceFormed(s, ours);
+                s.ledger.alliances.Add(new AllianceRow { id = ours.id, why = "player", startedWeek = 1 });
+                Leaked(PactRecord(s, "alliance-npc-", "Their Pact", true, npcs[0].id, npcs[1].id));
+                return null;
+            }
+
+            // Eleven others: a pact of six with the player and a call in it, one the player left, a
+            // pact of three out in the open, a leaked pair, and a pair nobody told the player about.
+            var big = PactRecord(s, "alliance-", "The " + Named(npcs[0]) + " Pact", true,
+                new[] { s.playerId }.Concat(npcs.Take(6).Select(c => c.id)).ToArray());
+            Knowledge.AllianceFormed(s, big);
+            s.ledger.alliances.Add(new AllianceRow { id = big.id, why = "player", startedWeek = 1 });
+            s.ledger.calls.Add(new BlocCallRow
+            {
+                week = 1, allianceId = big.id, callerId = s.playerId, targetId = npcs[10].id,
+                followed = npcs.Take(4).Select(c => c.id).ToList(), defected = npcs.Skip(4).Take(2).Select(c => c.id).ToList(),
+            });
+
+            var left = PactRecord(s, "alliance-", "The " + Named(npcs[6]) + " Pact", false, s.playerId, npcs[6].id);
+            Knowledge.AllianceFormed(s, left);
+            s.ledger.alliances.Add(new AllianceRow { id = left.id, why = "player/ended", startedWeek = 1, endedWeek = 1 });
+            PactLine(s, 1, "alliance", "You left the alliance with " + npcs[6].name + ".", s.playerId, npcs[6].id);
+
+            var open = PactRecord(s, "alliance-npc-", "The Open Pact", true, npcs[7].id, npcs[8].id, npcs[9].id);
+            Knowledge.AllianceFormed(s, open);
+            Knowledge.MakeKnown(s, Knowledge.Of(s, FactKinds.Alliance, open.id), FactVisibility.Public);
+            Leaked(PactRecord(s, "alliance-npc-", "The Whispered Pact", true, npcs[10].id, npcs[0].id));
+
+            var unheard = PactRecord(s, "alliance-npc-", UnheardPactName, true, npcs[1].id, npcs[10].id);
+            Knowledge.AllianceFormed(s, unheard);
+            return unheard;
         }
     }
 }

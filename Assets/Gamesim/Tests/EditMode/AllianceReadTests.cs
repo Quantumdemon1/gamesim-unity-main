@@ -12,11 +12,15 @@ namespace Gamesim.Tests.EditMode
     /// ACTIONS-DEALS-ALLIANCES-PLAN V3's gate: the alliances page shows the player's own pacts in
     /// full, and another houseguest's only on evidence the player holds - a fact they know, a play's
     /// receipt, the whisper that told them - never on the pact merely existing. Strength shows only
-    /// through the player's own reading and the calls on the record. Unity-free, so the dotnet subset
-    /// runs it (Tools/SimulationTests).
+    /// through the player's own reading and the calls on the record, and an ending reads the same
+    /// whatever a partner privately thinks. The engine's own lines the page reads are pinned here,
+    /// word for word, by calling the engine. Unity-free, so the dotnet subset runs it
+    /// (Tools/SimulationTests).
     /// </summary>
     public sealed class AllianceReadTests
     {
+        private const BindingFlags Private = BindingFlags.NonPublic | BindingFlags.Static;
+
         /// <summary>A house of eight in week six: the player and seven others, nobody allied.</summary>
         private static EpisodeState House(uint seed = 41)
         {
@@ -60,6 +64,47 @@ namespace Gamesim.Tests.EditMode
 
         private static IEnumerable<string> Dated(AllianceRead.SuspectedPact card) => card.evidence.Select(e => e.week + ": " + e.text);
 
+        // ------------------------------------------------------------ the engine, called as it calls itself
+
+        private static MethodInfo EngineMethod(string name, params Type[] parameters)
+        {
+            var method = typeof(EpisodeEngine).GetMethod(name, Private, null, parameters, null);
+            Assert.That(method, Is.Not.Null, "The engine's " + name + "(" + string.Join(", ", parameters.Select(t => t.Name)) + "), which the page reads the words of.");
+            return method;
+        }
+
+        /// <summary>One story effect, applied the way a beat applies it (EpisodeEngine.ApplyStoryEffect).</summary>
+        private static void ApplyStoryEffect(EpisodeState s, StoryEffectState effect) =>
+            EngineMethod("ApplyStoryEffect", typeof(EpisodeState), typeof(StoryEffectState), typeof(StorylineState),
+                    typeof(string), typeof(string), typeof(int), typeof(bool))
+                .Invoke(null, new object[] { s, effect, null, null, "alliances-test", 0, false });
+
+        /// <summary>What the engine tells the player when pacts of theirs have ended (EpisodeEngine.TellThePlayerWhichAlliancesEnded).</summary>
+        private static void TellThePlayer(EpisodeState s, params AllianceState[] ended) =>
+            EngineMethod("TellThePlayerWhichAlliancesEnded", typeof(EpisodeState), typeof(List<AllianceState>))
+                .Invoke(null, new object[] { s, ended.ToList() });
+
+        /// <summary>A season driven to its first campaign with two on the block, the player's actions unspent.</summary>
+        private static EpisodeState Campaign()
+        {
+            var engine = new EpisodeEngine(ContentCatalog.Create(31));
+            for (int i = 0; i < 900 && !(engine.Snapshot.phase == EpisodePhase.Campaign && engine.Snapshot.nominees.Count == 2); i++)
+                Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
+            var s = engine.Snapshot;
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.Campaign), "The season reached a campaign.");
+            s.socialActions = 0; s.outOfPhaseSocialActions = 0;
+            return s;
+        }
+
+        private static EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind, string targetId) =>
+            new EpisodeCommand
+            {
+                id = "alliances-" + kind + "-" + s.revision + "-" + Guid.NewGuid().ToString("N"), actorId = s.playerId, kind = kind,
+                targetId = targetId, expectedRevision = s.revision, expectedPhase = s.phase,
+            };
+
+        // ------------------------------------------------------------ pacts between others
+
         [Test]
         public void APactWithNoPlayerEvidenceNeverAppears()
         {
@@ -89,26 +134,42 @@ namespace Gamesim.Tests.EditMode
             Assert.That(JsonConvert.SerializeObject(page), Does.Not.Contain(secret.name).And.Not.Contain(legacy.name));
         }
 
+        /// <summary>
+        /// The house's rumour mill, run as the engine runs it at an anchor (StorySystemsAt, then
+        /// Knowledge.Spread): it passes one whispered fact to one new knower, and its whisper names
+        /// that pact's first two members. A bigger pact the same two open is a different fact the
+        /// mill has not passed on, so the page never shows it.
+        /// </summary>
         [Test]
-        public void EvidenceAboutOnePactNeverRevealsAnother()
+        public void TheRumourMillsWhisperAboutOnePactNeverRevealsAnother()
         {
             var s = House();
+            EpisodeEngine.EnableStory(s, s.week);
             var n = Others(s);
             var pair = Pact(s, "pair", true, n[0].id, n[1].id);
             var pairFact = PrivateFact(s, pair);
+            Knowledge.MakeKnown(s, pairFact, FactVisibility.Whispered);
             var bigger = Pact(s, "bigger", true, n[0].id, n[1].id, n[2].id);
             var biggerFact = PrivateFact(s, bigger);
-            // The house's rumour reaches the player about the pair: a knower now, and the whisper names its first two.
-            Knowledge.AddKnower(s, pairFact, s.playerId);
-            Knowledge.MakeKnown(s, pairFact, FactVisibility.Whispered);
-            Line(s, 4, StoryLog.Whisper, AllianceRead.WhisperLine(s, pairFact));
-            Assert.That(AllianceRead.WhisperLine(s, biggerFact), Is.EqualTo(AllianceRead.WhisperLine(s, pairFact)),
-                "The same two names open both pacts' whispers.");
+            // The player is the one either of the pair would tell, and close to whom it is about.
+            SetScore(s, n[0].id, s.playerId, 90);
+            SetScore(s, n[1].id, s.playerId, 90);
+            SetScore(s, s.playerId, n[1].id, 60);
+            var mill = EngineMethod("StorySystemsAt", typeof(EpisodeState), typeof(string));
+            for (int week = s.week; week < s.week + 60 && !Knowledge.Knows(pairFact, s.playerId); week++)
+            {
+                s.week = week;
+                mill.Invoke(null, new object[] { s, StoryAnchors.HohCrowned });
+            }
+            Assert.That(Knowledge.Knows(pairFact, s.playerId), Is.True, "The rumour reached the player within sixty weeks of anchors.");
+            Assert.That(Knowledge.Knows(biggerFact, s.playerId), Is.False, "The mill passes the fact it spreads, and no other.");
+            var whisper = s.events.Single(e => e.kind == StoryLog.Whisper);
+            Assert.That(whisper.text, Is.EqualTo(AllianceRead.WhisperLine(s, biggerFact)), "The same two names open both pacts' whispers.");
 
             var card = AllianceRead.Suspected(s).Single();
             Assert.That(card.memberIds, Is.EqualTo(new[] { n[0].id, n[1].id }),
                 "The pact the player heard of, and not the bigger one the same two names open.");
-            Assert.That(Dated(card), Is.EqualTo(new[] { "4: " + AllianceRead.WhisperLine(s, pairFact) }));
+            Assert.That(Dated(card), Is.EqualTo(new[] { whisper.week + ": " + whisper.text }), "The engine's whisper, word for word, and its week.");
             Assert.That(AllianceRead.SuspectedPairs(s), Is.EqualTo(new[] { (n[0].id, n[1].id) }));
 
             // Two pacts of the same people are one card, and it says nothing of there being two.
@@ -116,6 +177,38 @@ namespace Gamesim.Tests.EditMode
             var again = Pact(s, "again", false, n[1].id, n[0].id);
             Knowledge.AddKnower(s, PrivateFact(s, again), s.playerId);
             Assert.That(JsonConvert.SerializeObject(AllianceRead.Suspected(s)), Is.EqualTo(before));
+        }
+
+        /// <summary>
+        /// A story's leak (LeakAlliance), applied as a beat applies it. Today the engine makes the
+        /// player a knower of every pact holding the two people it names, while the receipt names
+        /// one; the page follows the engine's knowledge, so the bigger pact shows too, undated.
+        /// This pins that behaviour as it is: narrowing the spread to the pact the receipt names is
+        /// the engine's change to make (wave B, C8/B4), and this test changes with it.
+        /// </summary>
+        [Test]
+        public void AStoryLeakTodayLetsThePlayerKnowEveryPactOfThePairItNames()
+        {
+            var s = House();
+            EpisodeEngine.EnableStory(s, s.week);
+            var n = Others(s);
+            var pair = Pact(s, "pair", true, n[0].id, n[1].id);
+            var pairFact = PrivateFact(s, pair);
+            var bigger = Pact(s, "bigger", true, n[0].id, n[1].id, n[2].id);
+            var biggerFact = PrivateFact(s, bigger);
+            var leak = new StoryEffectState { kind = StoryEffects.Spread, fromId = n[0].id, toId = n[1].id, thirdId = s.playerId,
+                type = FactKinds.Alliance, text = FactVisibility.Whispered };
+            ApplyStoryEffect(s, leak);
+            string receipt = PlayReceipts.For(s, new[] { leak }).Single();
+            Line(s, s.week, StoryLog.Receipt, receipt);
+            Assert.That(receipt, Is.EqualTo(AllianceRead.LearnedLine(s, pair)), "The receipt names the first pact holding the two.");
+            Assert.That(Knowledge.Knows(pairFact, s.playerId) && Knowledge.Knows(biggerFact, s.playerId), Is.True,
+                "Today the spread reaches every pact holding both; this flips when the engine narrows it.");
+
+            var cards = AllianceRead.Suspected(s);
+            Assert.That(cards.Select(c => c.memberIds.Count), Is.EqualTo(new[] { 2, 3 }), "The leaked pact, dated, then the bigger one.");
+            Assert.That(Dated(cards[0]), Is.EqualTo(new[] { s.week + ": " + receipt }));
+            Assert.That(Dated(cards[1]), Is.EqualTo(new[] { "0: " + AllianceRead.HeardOfIt }), "Known to the engine, with no line that told the player.");
         }
 
         [Test]
@@ -153,21 +246,19 @@ namespace Gamesim.Tests.EditMode
             var heard = Pact(s, "heard", true, n[2].id, n[3].id);
             var heardFact = PrivateFact(s, heard);
             Knowledge.AddKnower(s, heardFact, s.playerId);
-            var engineWhisper = typeof(EpisodeEngine).GetMethod("Whisper", BindingFlags.NonPublic | BindingFlags.Static, null,
-                new[] { typeof(EpisodeState), typeof(HouseFactState) }, null);
-            Assert.That(engineWhisper, Is.Not.Null, "The engine's whisper, which the page matches.");
-            string whisper = (string)engineWhisper.Invoke(null, new object[] { s, heardFact });
+            string whisper = (string)EngineMethod("Whisper", typeof(EpisodeState), typeof(HouseFactState)).Invoke(null, new object[] { s, heardFact });
             Assert.That(whisper, Is.EqualTo(AllianceRead.WhisperLine(s, heardFact)), "The page matches the engine's whisper, word for word.");
             Line(s, 5, StoryLog.Whisper, whisper);
             var second = AllianceRead.Suspected(s).Single(c => c.memberIds.Contains(n[2].id));
             Assert.That(Dated(second), Is.EqualTo(new[] { "5: " + whisper }));
             Assert.That(second.certainty, Is.EqualTo(FinalistRead.Suspected));
 
-            // Out in the open: confirmed, and said.
+            // Out in the open: confirmed, and said without a tense - the house knowing is not the pact standing.
             Knowledge.MakeKnown(s, heardFact, FactVisibility.Public);
             second = AllianceRead.Suspected(s).Single(c => c.memberIds.Contains(n[2].id));
             Assert.That(second.certainty, Is.EqualTo(FinalistRead.Confirmed));
             Assert.That(Dated(second), Is.EqualTo(new[] { "5: " + whisper, "0: " + AllianceRead.OutInTheOpen }));
+            Assert.That(AllianceRead.OutInTheOpen, Does.Not.Contain("are working"), "Tenseless.");
 
             // A pact the player knows of whose line the log has let go still shows, undated.
             var older = Pact(s, "older", true, n[4].id, n[5].id);
@@ -177,6 +268,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(AllianceRead.Suspected(s).Select(c => c.memberIds[0]), Is.EqualTo(new[] { n[0].id, n[2].id, n[4].id }),
                 "The earliest news first, the undated last.");
         }
+
+        // ------------------------------------------------------------ the player's own pacts
 
         [Test]
         public void YourPactListsItsCallsAndWhoFollowedFromASeededLedger()
@@ -239,7 +332,7 @@ namespace Gamesim.Tests.EditMode
         }
 
         [Test]
-        public void AnEndedPactShowsWhenAndWhy()
+        public void AnEndedPactShowsWhenAndWhyAndNeverAPartnersPrivateView()
         {
             var s = House();
             var n = Others(s);
@@ -251,49 +344,174 @@ namespace Gamesim.Tests.EditMode
             Assert.That(read.active, Is.False);
             Assert.That(read.formedWeek, Is.EqualTo(2));
             Assert.That(read.endedWeek, Is.EqualTo(4), "When it ended,");
-            Assert.That(read.ended, Is.EqualTo(AllianceRead.FellApart),
-                "and why, in the words the player was told: 'turned' is read from their partner's private view.");
-            row.why = "player/soured";
-            Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(AllianceRead.FellApart));
-            row.why = "player/ended";
-            Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(AllianceRead.JustEnded));
+            // The ledger's turned, soured and ended are all read from views the player never sees.
+            foreach (var why in new[] { "player/turned", "player/soured", "player/ended", "player/" })
+            {
+                row.why = why;
+                Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(AllianceRead.JustEnded), why + " reads like the others.");
+            }
+
+            // A departure is public, but only who was gone by the week it ended is said.
             n[0].status = ContestantStatus.Jury;
             row.why = "player/left-house";
-            Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(First(n[0]) + " left the house."), "A departure is public.");
+            Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(AllianceRead.JustEnded), "No record of when they left: nothing is said.");
+            s.ledger.power.Add(new PowerRow { week = 3, evicteeId = n[0].id, hohId = n[3].id });
+            Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(First(n[0]) + " left the house."));
+            s.ledger.power.Last().week = 5;
+            Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(AllianceRead.JustEnded), "Gone only after it ended: not why it ended.");
 
-            // The line the engine told the player wins, word for word (TellThePlayerWhichAlliancesEnded).
-            var tell = typeof(EpisodeEngine).GetMethod("TellThePlayerWhichAlliancesEnded", BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.That(tell, Is.Not.Null, "The engine's own word to the player when a pact of theirs ends.");
-            n[0].status = ContestantStatus.Active;
-            row.why = "player/ended";
-            s.week = 4;
-            tell.Invoke(null, new object[] { s, new List<AllianceState> { pact } });
-            s.week = 6;
+            // A partner gone weeks before does not make a later ending a departure: the ledger's
+            // left-house outranks every other reason, so with one partner still in the house it says nothing.
+            var three = Pact(s, "three", false, s.playerId, n[1].id, n[2].id);
+            s.ledger.alliances.Add(new AllianceRow { id = three.id, why = "player/left-house", startedWeek = 1, endedWeek = 5 });
+            n[1].status = ContestantStatus.Jury;
+            s.ledger.power.Add(new PowerRow { week = 2, evicteeId = n[1].id, hohId = n[3].id });
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == three.id).ended, Is.EqualTo(AllianceRead.JustEnded));
+            n[2].status = ContestantStatus.Evicted;
+            s.ledger.power.Add(new PowerRow { week = 4, evicteeId = n[2].id, hohId = n[3].id });
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == three.id).ended, Is.EqualTo(First(n[1]) + " and " + First(n[2]) + " left the house."));
+        }
+
+        /// <summary>
+        /// The leak the review found: with the engine's own ending line gone from the log, the
+        /// ledger's reason once told "It fell apart." from "It ended." - which is a partner's private
+        /// view. Formed and left through the engine twice, with the partner privately warm and then
+        /// cold: the ledger tells the two apart, and the page must not.
+        /// </summary>
+        [Test]
+        public void APartnersPrivateViewNeverChangesHowALeftPactReads()
+        {
+            var s = Campaign();
+            var friend = s.Active.First(c => !c.isPlayer && !s.Allied(s.playerId, c.id));
+            SetScore(s, friend.id, s.playerId, 30);
+            SetScore(s, s.playerId, friend.id, 20);
+            var engine = new EpisodeEngine(s);
+            Assert.That(engine.Apply(Command(s, EpisodeCommandKind.FormAlliance, friend.id)).accepted, Is.True);
+            var formed = engine.Snapshot;
+            string pactId = formed.alliances.Last(a => a.active && a.members.Contains(friend.id)).id;
+
+            var reasons = new List<string>();
+            var withLine = new List<string>();
+            string Leave(double partnersView)
+            {
+                var start = formed.Clone();
+                SetScore(start, friend.id, start.playerId, partnersView);
+                var leaving = new EpisodeEngine(start);
+                var left = leaving.Apply(Command(start, EpisodeCommandKind.LeaveAlliance, friend.id));
+                Assert.That(left.accepted, Is.True, left.reason);
+                var after = leaving.Snapshot;
+                reasons.Add(after.ledger.alliances.Single(r => r.id == pactId).why);
+                withLine.Add(AllianceRead.Yours(after).Single(p => p.id == pactId).ended);
+                after.events.RemoveAll(e => e.kind == "alliance");
+                return JsonConvert.SerializeObject(AllianceRead.Yours(after));
+            }
+            string warm = Leave(5), cold = Leave(-25);
+            Assert.That(reasons, Is.EqualTo(new[] { "player/ended", "player/turned" }), "The ledger reads the partner's private view.");
+            Assert.That(withLine, Is.EqualTo(new[] { AllianceRead.YouLeft, AllianceRead.YouLeft }), "While the line is on the log it says why.");
+            Assert.That(cold, Is.EqualTo(warm), "With the line gone the page reads the same, whatever the partner thinks.");
+            Assert.That(warm, Does.Contain(AllianceRead.JustEnded));
+        }
+
+        [Test]
+        public void AnEndingLineThatCouldMeanAnotherPactIsNotRead()
+        {
+            var s = House();
+            var n = Others(s);
+            var pair = Pact(s, "pair", false, s.playerId, n[0].id);
+            var trio = Pact(s, "trio", false, s.playerId, n[0].id, n[1].id);
+            s.ledger.alliances.Add(new AllianceRow { id = pair.id, why = "player/ended", startedWeek = 2, endedWeek = 4 });
+            var trioRow = new AllianceRow { id = trio.id, why = "player/ended", startedWeek = 2, endedWeek = 4 };
+            s.ledger.alliances.Add(trioRow);
+            Line(s, 4, "alliance", "You left the alliance with " + n[0].name + ".", s.playerId, n[0].id);
+            Assert.That(AllianceRead.Yours(s).Select(p => p.ended), Is.EqualTo(new[] { AllianceRead.JustEnded, AllianceRead.JustEnded }),
+                "Both pacts held them and both ended that week: the walk-out names neither.");
+            trioRow.endedWeek = 3;
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == pair.id).ended, Is.EqualTo(AllianceRead.YouLeft), "Alone that week, it is this pact's.");
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == trio.id).ended, Is.EqualTo(AllianceRead.JustEnded), "and not a line from another week.");
+
+            // A line naming the pact outranks one naming a member.
+            Line(s, 4, "alliance", pair.name + " is finished.", s.playerId, n[0].id);
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == pair.id).ended, Is.EqualTo(AllianceRead.CalledOff));
+
+            // Two pacts of the player's by one name, ended the same week: a line naming that name names neither.
+            foreach (var (id, members) in new[]
+                     {
+                         ("same-1", new List<string> { s.playerId, n[3].id }),
+                         ("same-2", new List<string> { s.playerId, n[3].id, n[4].id }),
+                     })
+            {
+                s.alliances.Add(new AllianceState { id = id, name = "The Same Pact", active = false, members = members });
+                s.ledger.alliances.Add(new AllianceRow { id = id, why = "player/ended", startedWeek = 2, endedWeek = 5 });
+            }
+            Line(s, 5, "alliance", "The Same Pact is finished.", s.playerId, n[3].id);
+            Assert.That(AllianceRead.Yours(s).Where(p => p.name == "The Same Pact").Select(p => p.ended),
+                Is.EqualTo(new[] { AllianceRead.JustEnded, AllianceRead.JustEnded }), "Either could be meant, so neither is read.");
+
+            // With no ledger row the week is unknown: only a line naming the pact itself is read.
+            var old = Pact(s, "old", false, s.playerId, n[2].id);
+            Line(s, 2, "alliance", "You left the alliance with " + n[2].name + ".", s.playerId, n[2].id);
+            Line(s, 3, "alliance", "Your alliance with " + n[2].name + " has fallen apart.", s.playerId, n[2].id);
+            var undated = AllianceRead.Yours(s).Single(p => p.id == old.id);
+            Assert.That(undated.endedWeek, Is.Zero);
+            Assert.That(undated.ended, Is.EqualTo(AllianceRead.JustEnded), "Lines from any week, naming only a member, prove nothing.");
+            Line(s, 3, "alliance", old.name + " is finished.", s.playerId, n[2].id);
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == old.id).ended, Is.EqualTo(AllianceRead.CalledOff));
+        }
+
+        /// <summary>Every engine line the page reads for an ending, written by the engine itself.</summary>
+        [Test]
+        public void TheEnginesOwnEndingLinesReadAsThePageSaysThem()
+        {
+            var s = House();
+            EpisodeEngine.EnableStory(s, s.week);
+            var n = Others(s);
+
+            // Fallen apart (EpisodeEngine.TellThePlayerWhichAlliancesEnded), and only while the line is there.
+            var soured = Pact(s, "alliance-11", true, s.playerId, n[0].id);
+            EpisodeEngine.ReconcileAllianceRows(s);
+            soured.active = false;
+            EpisodeEngine.ReconcileAllianceRows(s);
+            TellThePlayer(s, soured);
             Assert.That(s.events.Last().text, Is.EqualTo("Your alliance with " + n[0].name + " has fallen apart."));
-            Assert.That(AllianceRead.Yours(s).Single().ended, Is.EqualTo(AllianceRead.FellApart), "The line the player read that week.");
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == soured.id).ended, Is.EqualTo(AllianceRead.FellApart));
+            s.events.RemoveAt(s.events.Count - 1);
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == soured.id).ended, Is.EqualTo(AllianceRead.JustEnded));
 
-            var left = Pact(s, "left", false, s.playerId, n[1].id);
-            s.ledger.alliances.Add(new AllianceRow { id = left.id, why = "player/left-house", startedWeek = 3, endedWeek = 5 });
-            n[1].status = ContestantStatus.Evicted;
-            s.week = 5;
-            tell.Invoke(null, new object[] { s, new List<AllianceState> { left } });
-            s.week = 6;
-            Assert.That(AllianceRead.Yours(s).Single(p => p.id == left.id).ended, Is.EqualTo(First(n[1]) + " left the house."));
-            Assert.That(AllianceRead.Yours(s).Single(p => p.id == left.id).endedWeek, Is.EqualTo(5));
+            // Everybody else in it has left the house, said in the plural for two.
+            var trio = Pact(s, "alliance-12", true, s.playerId, n[1].id, n[2].id);
+            EpisodeEngine.ReconcileAllianceRows(s);
+            n[1].status = ContestantStatus.Jury; n[2].status = ContestantStatus.Jury;
+            trio.active = false;
+            EpisodeEngine.ReconcileAllianceRows(s);
+            TellThePlayer(s, trio);
+            Assert.That(s.events.Last().text, Is.EqualTo(n[1].name + " and " + n[2].name + " have left the house, and your alliance has ended."));
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == trio.id).ended, Is.EqualTo(First(n[1]) + " and " + First(n[2]) + " left the house."));
+
+            // A story ends it (StoryEffects.AllianceEnd): "{name} is finished."
+            var cut = Pact(s, "alliance-13", true, s.playerId, n[3].id);
+            EpisodeEngine.ReconcileAllianceRows(s);
+            ApplyStoryEffect(s, new StoryEffectState { kind = StoryEffects.AllianceEnd, fromId = s.playerId, toId = n[3].id });
+            EpisodeEngine.ReconcileAllianceRows(s);
+            Assert.That(s.events.Last().text, Is.EqualTo(cut.name + " is finished."));
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == cut.id).ended, Is.EqualTo(AllianceRead.CalledOff));
+
+            // A story takes a member out of a pair (StoryEffects.AllianceLeave): "{name} is out of {pact}."
+            var pair = Pact(s, "alliance-14", true, s.playerId, n[4].id);
+            EpisodeEngine.ReconcileAllianceRows(s);
+            ApplyStoryEffect(s, new StoryEffectState { kind = StoryEffects.AllianceLeave, fromId = n[4].id, toId = s.playerId });
+            EpisodeEngine.ReconcileAllianceRows(s);
+            Assert.That(s.events.Last().text, Is.EqualTo(n[4].name + " is out of " + pair.name + "."));
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == pair.id).ended, Is.EqualTo(First(n[4]) + " is out of it."));
+            Assert.That(AllianceRead.Yours(s).Where(p => !p.active).Select(p => p.endedWeek).Distinct(), Is.EqualTo(new[] { s.week }));
         }
 
         [Test]
         public void LeavingAPactThroughTheEngineIsOnThePageWhenAndWhy()
         {
-            var engine = new EpisodeEngine(ContentCatalog.Create(31));
-            for (int i = 0; i < 900 && !(engine.Snapshot.phase == EpisodePhase.Campaign && engine.Snapshot.nominees.Count == 2); i++)
-                Assert.That(engine.Apply(EpisodeEngineTests.NextCommand(engine.Snapshot)).accepted, Is.True);
-            var s = engine.Snapshot;
-            Assert.That(s.phase, Is.EqualTo(EpisodePhase.Campaign), "The season reached a campaign.");
-            s.socialActions = 0; s.outOfPhaseSocialActions = 0;
+            var s = Campaign();
             var friend = s.Active.First(c => !c.isPlayer && !s.Allied(s.playerId, c.id));
             SetScore(s, friend.id, s.playerId, 30);
-            engine = new EpisodeEngine(s);
+            var engine = new EpisodeEngine(s);
             var formed = engine.Apply(Command(s, EpisodeCommandKind.FormAlliance, friend.id));
             Assert.That(formed.accepted, Is.True, formed.reason);
             var after = engine.Snapshot;
@@ -314,15 +532,24 @@ namespace Gamesim.Tests.EditMode
         {
             var s = House();
             var n = Others(s);
-            var theirs = Pact(s, "npc-made", true, n[0].id, n[1].id);
+            // The engine's invitation (EpisodeEngine.AllyThroughInvitation) brings the player into an
+            // NPC pact made in week 2, and says so in its own words in week 6.
+            var theirs = new AllianceState { id = "alliance-npc-77", name = "The " + First(n[0]) + " and " + First(n[1]) + " Pact",
+                members = new List<string> { n[0].id, n[1].id }, active = true };
+            s.alliances.Add(theirs);
             s.ledger.alliances.Add(new AllianceRow { id = theirs.id, why = "npc", startedWeek = 2 });
-            theirs.members.Add(s.playerId);
-            Line(s, 4, "alliance", n[0].name + " brought you into " + theirs.name + ".");
+            // Nobody in it below the hostility line with the player, nor the player sour on them: it will have them.
+            SetScore(s, n[1].id, s.playerId, 20);
+            SetScore(s, s.playerId, n[1].id, 20);
+            EngineMethod("AllyThroughInvitation", typeof(EpisodeState), typeof(string)).Invoke(null, new object[] { s, n[0].id });
+            Assert.That(theirs.members.Last(), Is.EqualTo(s.playerId), "Brought in at the end.");
+            Assert.That(s.events.Last().text, Is.EqualTo(n[0].name + " brought you into " + theirs.name + "."));
 
             var read = AllianceRead.Yours(s).Single();
-            Assert.That(read.formedWeek, Is.EqualTo(4), "The week the player came in, not the week its members made it.");
+            Assert.That(read.formedWeek, Is.EqualTo(6), "The week the player came in, not the week its members made it.");
             Assert.That(read.formed, Is.EqualTo(First(n[0]) + " brought you in."));
             Assert.That(read.members.Select(m => m.id), Is.EqualTo(new[] { n[0].id, n[1].id }));
+            Assert.That(FinalistRead.RelationshipLine(s, n[1].id), Is.EqualTo("Allied since week 6"), "The finalist cards date it the same way.");
 
             s.events.Clear();
             read = AllianceRead.Yours(s).Single();
@@ -341,6 +568,44 @@ namespace Gamesim.Tests.EditMode
             s.deals.Single().proposerId = s.playerId;
             s.deals.Single().recipientId = n[2].id;
             Assert.That(AllianceRead.Yours(s).Single(p => p.id == invited.id).formed, Is.EqualTo("You invited " + First(n[2]) + "."));
+        }
+
+        /// <summary>
+        /// A story's pact is said the way the story said it: "Riley and Jo let you in" is not a pact
+        /// the player formed. It is dated from its beginning - the player was in it from the start -
+        /// and the finalist cards date it the same way; a story's pact the player was let into later
+        /// (the player last, as an invitation adds them) is not theirs since then.
+        /// </summary>
+        [Test]
+        public void AStorysPactReadsAsTheStoryToldItAndIsDatedAsTheCardsDateIt()
+        {
+            var s = House();
+            var n = Others(s);
+            var pact = Pact(s, "alliance-story-9", true, s.playerId, n[0].id, n[1].id);
+            s.ledger.alliances.Add(new AllianceRow { id = pact.id, why = "story", startedWeek = 3 });
+            var cast = new List<StoryRoleState>
+            {
+                new StoryRoleState { role = "A", contestantId = n[0].id }, new StoryRoleState { role = "B", contestantId = n[1].id },
+            };
+            Assert.That(AllianceRead.Yours(s).Single().formed, Is.EqualTo("It came together in a story, with " + First(n[0]) + " and " + First(n[1]) + "."),
+                "Without the beat on the record, nobody is said to have formed it.");
+            s.storylines.Add(new StorylineState
+            {
+                id = "cycle-9", templateId = "behind-closed-doors", week = 3, cast = cast,
+                path = new List<StoryStepState> { new StoryStepState { beatId = "you-know", optionId = "join", result = StoryResults.Success, week = 3 } },
+            });
+            var option = StoryCatalog.Find("behind-closed-doors").Beat("you-know").Option("join");
+            string told = StoryText.Fill(s, option.outcome, cast);
+            Assert.That(told, Does.Contain("let you in"), "The catalog's own words for the beat.");
+            var read = AllianceRead.Yours(s).Single();
+            Assert.That(read.formed, Is.EqualTo(told));
+            Assert.That(read.formedWeek, Is.EqualTo(3));
+            Assert.That(FinalistRead.RelationshipLine(s, n[0].id), Is.EqualTo("Allied since week 3"), "The finalist cards date it the same way.");
+
+            var later = Pact(s, "alliance-story-10", true, n[2].id, n[3].id, s.playerId);
+            s.ledger.alliances.Add(new AllianceRow { id = later.id, why = "story", startedWeek = 2 });
+            Assert.That(AllianceRead.Yours(s).Single(p => p.id == later.id).formedWeek, Is.Zero);
+            Assert.That(FinalistRead.RelationshipLine(s, n[2].id), Is.Null, "Not theirs since week 2, on the page or the card.");
         }
 
         [Test]
@@ -363,12 +628,5 @@ namespace Gamesim.Tests.EditMode
             Assert.That(FinalistRead.StandingWord(s, other.id), Is.EqualTo("Allied"));
             Assert.That(AllianceRead.ReadingWord(s, other.id), Is.EqualTo(AllianceRead.Hostile), "Inside a pact the reading still reads.");
         }
-
-        private static EpisodeCommand Command(EpisodeState s, EpisodeCommandKind kind, string targetId) =>
-            new EpisodeCommand
-            {
-                id = "alliances-" + kind + "-" + s.revision + "-" + Guid.NewGuid().ToString("N"), actorId = s.playerId, kind = kind,
-                targetId = targetId, expectedRevision = s.revision, expectedPhase = s.phase,
-            };
     }
 }

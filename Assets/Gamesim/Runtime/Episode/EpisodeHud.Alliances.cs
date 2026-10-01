@@ -18,6 +18,14 @@ namespace Gamesim.Episode
     {
         /// <summary>The page's cards, a pact of the player's and one they know of, named by what they show.</summary>
         public const string AllianceCardPrefix = "Alliance · ", SuspectedCardPrefix = "Suspected alliance · ";
+
+        /// <summary>
+        /// A card of one of the player's pacts: its name and its id, so two pacts that share a name
+        /// ("The Riley Pact", ended, and another since) are two cards a test can tell apart. The
+        /// card itself shows the name alone.
+        /// </summary>
+        public static string AllianceCardName(string name, string id) => AllianceCardPrefix + name + " · " + id;
+
         /// <summary>One face on a pact's card, named for the houseguest.</summary>
         public const string PactFacePrefix = "Pact face · ";
         /// <summary>The page's two empty states, by name.</summary>

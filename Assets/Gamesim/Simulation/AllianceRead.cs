@@ -15,10 +15,12 @@ namespace Gamesim.Simulation
     /// the call named to the player as it was made), the deals the player struck with its members,
     /// and the player's own reading of each member. How strong a pact is shows only through those:
     /// the player's own scores and the calls on the record. A member's view of the player, or of the
-    /// pact, is never read. Nor is the ledger's reason for an ending taken at its word: "turned" and
-    /// "soured" are worked out from scores the player never sees, so either one says only that the
-    /// pact fell apart, which is what the engine told the player at the time. A pact the player was
-    /// brought into is dated by the invitation, as <see cref="FinalistRead.PlayerAlliedSince"/>
+    /// pact, is never read. Why one ended is the line the engine told the player that week, while
+    /// the log holds it and nothing else of theirs could have been meant by it. Past that, the
+    /// ledger's reason is not taken at its word: "turned", "soured" and "ended" are all worked out
+    /// from views the player never sees, so all three read one neutral line, <see cref="JustEnded"/>.
+    /// Only a departure, which is public, is named, and only who was gone by then. A pact the player
+    /// was brought into is dated by the invitation, as <see cref="FinalistRead.PlayerAlliedSince"/>
     /// dates it: the week its members made it is a week the player was never told.</para>
     ///
     /// <para><b>Another houseguest's pact</b> shows only on evidence the player holds: its own fact
@@ -40,15 +42,18 @@ namespace Gamesim.Simulation
     {
         // ------------------------------------------------------------ the words
 
-        /// <summary>Why one of the player's pacts ended, in the words they were told.</summary>
+        /// <summary>
+        /// Why one of the player's pacts ended, in the words they were told; <see cref="JustEnded"/>
+        /// where the line has left the log, whatever the ledger's private reason.
+        /// </summary>
         public const string FellApart = "It fell apart.", YouLeft = "You left it.", CalledOff = "It was called off.",
             JustEnded = "It ended.";
         /// <summary>How the player came into a pact whose invitation the record no longer holds.</summary>
         public const string BroughtIn = "You were brought into it.";
         /// <summary>A suspected pact's evidence when the line that told the player has left the record.</summary>
         public const string HeardOfIt = "You have heard they are working together.";
-        /// <summary>A pact whose fact is out in the open: the whole house knows.</summary>
-        public const string OutInTheOpen = "The whole house knows they are working together.";
+        /// <summary>A pact whose fact is out in the open. Tenseless: it says the house knows, not that the pact still stands.</summary>
+        public const string OutInTheOpen = "The whole house knows about it.";
         /// <summary>The player's own reading of somebody, in the words the web uses (less "Allied", which every member is).</summary>
         public const string Friendly = "Friendly", Neutral = "Neutral", Wary = "Wary", Hostile = "Hostile";
 
@@ -196,28 +201,38 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// When the player came into it, and how. A pact the player made - by proposing it, by an
-        /// invitation either way, or in a story - began with them: they are its first member, and
-        /// its ledger row's week is theirs. One they were brought into (the engine's invitation,
-        /// which adds the player at the end of an alliance of the inviter's) was made by others
-        /// first, in a week the player was never told; it is dated by the player's own "brought you
-        /// into" line while the log still holds it, and by nothing once it does not.
+        /// When the player came into it, and how, by the rules the finalist cards date it by
+        /// (<see cref="FinalistRead.PlayerAlliedSince"/>). A pact the player made began with them,
+        /// so its ledger row's week is theirs: by an invitation either way that week, by a story's
+        /// beat - said in the story's own words - or by proposing it. One they were brought into was
+        /// made by others first, in a week the player was never told; it is dated by the player's own
+        /// "brought you into" line while the log still holds it, and by nothing once it does not.
         /// </summary>
         private static void Formed(EpisodeState s, AllianceState alliance, AllianceRow row, Pact pact)
         {
-            bool founder = alliance.members.Count > 0 && alliance.members[0] == s.playerId;
+            var firsts = pact.members.Select(m => FinalistRead.FirstName(m.name)).ToList();
+            pact.formedWeek = FinalistRead.PlayerAlliedSince(s, alliance);
+            // With no ledger row (an old save) the order is all there is: the player's pacts open with them.
+            bool founder = row != null ? FinalistRead.FoundedByPlayer(s, alliance, row)
+                : alliance.members.Count > 0 && alliance.members[0] == s.playerId;
             if (!founder)
             {
-                var invitation = Invitation(s, alliance, row);
-                pact.formedWeek = invitation?.week ?? 0;
+                var invitation = FinalistRead.BroughtInLine(s, alliance, row);
+                string joined = " brought you into " + alliance.name + ".";
                 pact.formed = invitation != null
-                    ? FinalistRead.FirstName(invitation.text.Substring(0, invitation.text.Length - JoinedLine(alliance).Length)) + " brought you in."
+                    ? FinalistRead.FirstName(invitation.text.Substring(0, invitation.text.Length - joined.Length)) + " brought you in."
                     : BroughtIn;
                 return;
             }
-            string with = "You formed it with " + Join(pact.members.Select(m => FinalistRead.FirstName(m.name)).ToList()) + ".";
+            string with = "You formed it with " + Join(firsts) + ".";
             if (row == null || row.startedWeek <= 0) { pact.formed = with; return; }
-            pact.formedWeek = row.startedWeek;
+            if (row.why != null && row.why.StartsWith("story", StringComparison.Ordinal))
+            {
+                // A story's pact is said the way the story said it: "Riley and Jo let you in" is not
+                // a pact the player formed, and "you proposed a three-way alliance" is.
+                pact.formed = StoryOutcome(s, alliance, row.startedWeek) ?? "It came together in a story, with " + Join(firsts) + ".";
+                return;
+            }
             // An invitation the player put or accepted, agreed the week it began: that is how.
             var invite = s.deals.LastOrDefault(d => d != null && d.type == DealKind.AllianceInvite && d.week == row.startedWeek
                 && (d.status == DealStatus.Active || d.status == DealStatus.Accepted || d.status == DealStatus.Fulfilled || d.status == DealStatus.Broken)
@@ -232,59 +247,126 @@ namespace Gamesim.Simulation
             pact.formed = with;
         }
 
-        private static string JoinedLine(AllianceState alliance) => " brought you into " + alliance.name + ".";
-
-        /// <summary>The player's own line saying who brought them into a pact of theirs, or null once the log has let it go.</summary>
-        private static EpisodeEvent Invitation(EpisodeState s, AllianceState alliance, AllianceRow row)
-        {
-            string joined = JoinedLine(alliance);
-            return Seen(s).LastOrDefault(e => e.kind == "alliance" && (row == null || e.week >= row.startedWeek)
-                && e.text != null && e.text.Length > joined.Length && e.text.EndsWith(joined, StringComparison.Ordinal));
-        }
-
         /// <summary>
-        /// When it ended and why, in the words the player was told. The engine tells the player of
-        /// every pact of theirs that ends, the week it ends: the line they read that week says why.
-        /// Where the log has let it go, the ledger's reason, said as the engine would have said it:
-        /// a departure is public, and any souring is only "it fell apart".
+        /// The line a story showed the player when its beat made the pact: the step that week whose
+        /// option formed an alliance of exactly these people, in the story's own words ("Riley and
+        /// Jo let you in. The three of you are a bloc now."). Null when no step on the record did.
         /// </summary>
-        private static void Ended(EpisodeState s, AllianceState alliance, AllianceRow row, Pact pact)
+        private static string StoryOutcome(EpisodeState s, AllianceState alliance, int week)
         {
-            pact.endedWeek = row != null && row.endedWeek > 0 ? row.endedWeek : 0;
-            pact.ended = Told(s, alliance, pact);
-            if (pact.ended != null) return;
-            string why = row?.why != null && row.why.Contains("/") ? row.why.Substring(row.why.IndexOf('/') + 1) : null;
-            if (why == "left-house") pact.ended = LeftTheHouse(s, alliance) ?? JustEnded;
-            else if (why == "turned" || why == "soured") pact.ended = FellApart;
-            else pact.ended = JustEnded;
-        }
-
-        /// <summary>The line the player read when the pact ended, as the page says it; null when the record has none.</summary>
-        private static string Told(EpisodeState s, AllianceState alliance, Pact pact)
-        {
-            var others = alliance.members.Where(id => id != s.playerId).Select(id => s.Find(id)).Where(a => a != null).ToList();
-            string names = string.Join(" and ", others.Select(a => a.name));
-            var lines = Seen(s).Where(e => e.kind == "alliance" && e.text != null && (pact.endedWeek == 0 || e.week == pact.endedWeek)).Reverse();
-            foreach (var e in lines)
+            foreach (var cycle in s.storylines ?? new List<StorylineState>())
             {
-                if (others.Any(a => e.text == "You left the alliance with " + a.name + ".")) return YouLeft;
-                if (e.text == alliance.name + " is finished.") return CalledOff;
-                if (others.Count > 0 && e.text == "Your alliance with " + names + " has fallen apart.") return FellApart;
-                if (others.Count > 0 && e.text == names + (others.Count == 1 ? " has" : " have") + " left the house, and your alliance has ended.")
-                    return Join(others.Select(a => FinalistRead.FirstName(a.name)).ToList()) + " left the house.";
-                var leaver = others.FirstOrDefault(a => e.text == a.name + " is out of " + alliance.name + ".");
-                if (leaver != null) return FinalistRead.FirstName(leaver.name) + " is out of it.";
+                if (cycle?.path == null) continue;
+                var arc = StoryCatalog.Find(cycle.templateId);
+                if (arc == null) continue;
+                foreach (var step in cycle.path.Where(p => p != null && p.week == week && p.result != StoryResults.Backfire))
+                {
+                    var option = arc.Beat(step.beatId)?.Option(step.optionId);
+                    if (option?.effects == null || string.IsNullOrEmpty(option.outcome)) continue;
+                    foreach (var fx in option.effects.Where(f => f != null && f.kind == StoryEffects.Alliance))
+                    {
+                        var ids = new[] { fx.from, fx.to, fx.third }.Where(role => !string.IsNullOrEmpty(role))
+                            .Select(role => Cast(s, cycle, role)).ToList();
+                        if (ids.Any(id => id == null) || ids.Distinct().Count() != alliance.members.Count || !ids.All(alliance.members.Contains)) continue;
+                        return StoryText.Fill(s, option.outcome, cycle.cast);
+                    }
+                }
             }
             return null;
         }
 
-        /// <summary>Who left the house, for a pact the ledger says ended with a departure: public, so said.</summary>
-        private static string LeftTheHouse(EpisodeState s, AllianceState alliance)
+        /// <summary>Who a story's role names in a cycle: the player, a named houseguest, or whoever the cycle cast in it.</summary>
+        private static string Cast(EpisodeState s, StorylineState cycle, string role)
         {
-            var gone = alliance.members.Where(id => id != s.playerId && s.Find(id) != null && s.Find(id).status != ContestantStatus.Active)
-                .Select(id => FinalistRead.FirstName(s.Find(id).name)).ToList();
-            if (gone.Count > 0) return Join(gone) + " left the house.";
-            return s.Find(s.playerId)?.status != ContestantStatus.Active ? "You left the house." : null;
+            if (role == Fx.Player) return s.playerId;
+            if (role.StartsWith("@", StringComparison.Ordinal)) return role.Substring(1);
+            return cycle.cast?.FirstOrDefault(r => r != null && r.role == role)?.contestantId;
+        }
+
+        /// <summary>
+        /// When it ended and why. The engine tells the player of every pact of theirs that ends, the
+        /// week it ends, and that line - while the log holds it - says why. Past that, the ledger's
+        /// reason speaks only where it is public: a departure. "Turned", "soured" and "ended" are all
+        /// worked out from views the player never sees, so all three read <see cref="JustEnded"/>;
+        /// telling them apart would tell the player what a partner privately thinks.
+        /// </summary>
+        private static void Ended(EpisodeState s, AllianceState alliance, AllianceRow row, Pact pact)
+        {
+            pact.endedWeek = row != null && row.endedWeek > 0 ? row.endedWeek : 0;
+            pact.ended = Told(s, alliance, pact.endedWeek);
+            if (pact.ended != null) return;
+            string why = row?.why != null && row.why.Contains("/") ? row.why.Substring(row.why.IndexOf('/') + 1) : null;
+            pact.ended = (why == "left-house" ? LeftTheHouse(s, alliance, pact.endedWeek) : null) ?? JustEnded;
+        }
+
+        /// <summary>
+        /// The line the player read the week the pact ended, as the page says it, or null when the
+        /// record holds none that can only have meant this pact. A line naming the pact itself comes
+        /// first, then one naming everyone in it, then the player's own walk-out - which names a
+        /// single member, so it is this pact's only when no other pact of the player's with that
+        /// member ended the same week. Without a ledger row the week is unknown, and only a line
+        /// naming the pact itself, by a name no other ended pact of theirs shares, is read.
+        /// </summary>
+        private static string Told(EpisodeState s, AllianceState alliance, int endedWeek)
+        {
+            var partners = alliance.members.Where(id => id != s.playerId).Select(id => s.Find(id)).Where(a => a != null).ToList();
+            if (partners.Count == 0) return null;
+            // The player's other pacts that ended that week - or, where a ledger never dated them, might have.
+            var rivals = s.alliances.Where(a => a != null && a != alliance && !a.active && a.members != null && a.members.Contains(s.playerId)
+                && (endedWeek == 0 || EndedWeek(s, a) == endedWeek || EndedWeek(s, a) == 0)).ToList();
+            var lines = new HashSet<string>(Seen(s).Where(e => e.kind == "alliance" && e.text != null && (endedWeek == 0 || e.week == endedWeek))
+                .Select(e => e.text), StringComparer.Ordinal);
+
+            if (!rivals.Any(a => a.name == alliance.name))
+            {
+                if (lines.Contains(alliance.name + " is finished.")) return CalledOff;
+                var leaver = endedWeek == 0 ? null : partners.FirstOrDefault(a => lines.Contains(a.name + " is out of " + alliance.name + "."));
+                if (leaver != null) return FinalistRead.FirstName(leaver.name) + " is out of it.";
+            }
+            if (endedWeek == 0) return null;
+            string names = string.Join(" and ", partners.Select(a => a.name));
+            if (!rivals.Any(a => SamePartners(s, a, alliance)))
+            {
+                if (lines.Contains("Your alliance with " + names + " has fallen apart.")) return FellApart;
+                if (lines.Contains(names + (partners.Count == 1 ? " has" : " have") + " left the house, and your alliance has ended."))
+                    return Join(partners.Select(a => FinalistRead.FirstName(a.name)).ToList()) + " left the house.";
+            }
+            if (partners.Any(a => lines.Contains("You left the alliance with " + a.name + ".") && !rivals.Any(r => r.members.Contains(a.id))))
+                return YouLeft;
+            return null;
+        }
+
+        private static int EndedWeek(EpisodeState s, AllianceState alliance) =>
+            s.ledger?.alliances?.FirstOrDefault(r => r != null && r.id == alliance.id)?.endedWeek ?? 0;
+
+        private static bool SamePartners(EpisodeState s, AllianceState a, AllianceState b) =>
+            new HashSet<string>(a.members.Where(id => id != s.playerId)).SetEquals(b.members.Where(id => id != s.playerId));
+
+        /// <summary>
+        /// Who had left the house by the week a pact ended, for one the ledger says ended with a
+        /// departure: every partner, when all of them were gone by then (the engine ends a pact of
+        /// the player's when nobody else in it is left in the house), or else the player. Null -
+        /// and the neutral line - where the record cannot say who was gone by then: the ledger's
+        /// "left-house" outranks every other reason, so a partner gone weeks earlier does not make
+        /// a later souring a departure.
+        /// </summary>
+        private static string LeftTheHouse(EpisodeState s, AllianceState alliance, int endedWeek)
+        {
+            if (endedWeek <= 0) return null;
+            var partners = alliance.members.Where(id => id != s.playerId).ToList();
+            if (partners.Count > 0 && partners.All(id => GoneBy(s, id, endedWeek)))
+                return Join(partners.Select(id => First(s, id)).ToList()) + " left the house.";
+            return GoneBy(s, s.playerId, endedWeek) ? "You left the house." : null;
+        }
+
+        /// <summary>Whether somebody had left the house by a week, on the public record: evicted (that week's power row) or removed by production.</summary>
+        private static bool GoneBy(EpisodeState s, string id, int week)
+        {
+            var who = s.Find(id);
+            if (who == null || who.status == ContestantStatus.Active) return false;
+            int? left = s.ledger?.power?.LastOrDefault(p => p != null && p.evicteeId == id)?.week
+                ?? s.story?.removals?.FirstOrDefault(r => r != null && r.contestantId == id)?.week;
+            return left.HasValue && left.Value <= week;
         }
 
         /// <summary>The deals the player agreed with the pact's members: agreed, kept or broken. Offers and what lapsed are the notes' business.</summary>

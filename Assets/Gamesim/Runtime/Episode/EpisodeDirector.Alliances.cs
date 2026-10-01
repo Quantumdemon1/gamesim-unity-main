@@ -45,7 +45,7 @@ namespace Gamesim.Episode
                 hud.EmptyState(EpisodeHud.NoSuspectedName, null, NoSuspectedCopy,
                     "Pacts between other houseguests are private. One shows here only once word of it reaches you.");
             else
-                hud.LockNote(SuspectedNoteName, "Only the pacts word has reached you about, and how you heard. On the relationship web a dashed purple line joins their members.");
+                hud.LockNote(SuspectedNoteName, "Only the pacts word has reached you about, and how you heard. On the relationship web a dashed purple line joins those of their members still in the house.");
             foreach (var card in page.suspected) SuspectedPactCard(state, card);
 
             hud.NotebookFooter("How strong a pact is shows only in your own reading of each member and in who followed your calls. What anyone in it feels is theirs.",
@@ -74,11 +74,19 @@ namespace Gamesim.Episode
             if (!string.IsNullOrEmpty(pact.formed)) lines.Add(Dated(pact.formedWeek, pact.formed));
             if (!pact.active) lines.Add(Dated(pact.endedWeek, pact.ended));
             foreach (var call in pact.calls) lines.Add(Dated(call.week, CallLine(state, call)));
-            if (pact.active && pact.calls.Count == 0) lines.Add("You have not called a vote in it yet.");
+            // Said only where a call could be made: a standing pact, the levers on, and the player still in the house.
+            if (pact.active && pact.calls.Count == 0 && EpisodeEngine.LeverRulesOn(state)
+                && state.Find(state.playerId)?.status == ContestantStatus.Active)
+                lines.Add(NoCallsYetCopy);
             foreach (var deal in pact.deals) lines.Add(Dated(deal.week, deal.text));
-            hud.PactCard(EpisodeHud.AllianceCardPrefix + pact.name, eyebrow, pact.active ? UiTheme.Allied : UiTheme.Muted,
+            // Named for the pact's id as well as its name: two pacts can share a name, and a card's
+            // name is how a test or a reader finds it. The card shows the name alone.
+            hud.PactCard(EpisodeHud.AllianceCardName(pact.name, pact.id), eyebrow, pact.active ? UiTheme.Allied : UiTheme.Muted,
                 pact.name, faces, lines);
         }
+
+        /// <summary>A standing pact of the player's with no call in it yet, where calls can be made.</summary>
+        public const string NoCallsYetCopy = "You have not called a vote in it yet.";
 
         /// <summary>A pact between others the player has evidence of: who, how sure, and what they saw or heard.</summary>
         private void SuspectedPactCard(EpisodeState state, AllianceRead.SuspectedPact pact)

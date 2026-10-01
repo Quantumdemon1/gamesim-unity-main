@@ -480,23 +480,44 @@ namespace Gamesim.Simulation
         /// The week the player has been in <paramref name="alliance"/> since, as the player knows
         /// it, or 0 when the record cannot say.
         ///
-        /// <para>An alliance the player founded began with them, so its ledger row's week is theirs.
-        /// One they were brought into (the engine's invitation, which adds the player to an
-        /// alliance of the inviter's) was formed by others first: its row's week is when they made
-        /// it, before the player was in it, and for a pact of NPCs a week the player was never told.
-        /// That one is dated by the invitation the player accepted, from their own "brought you
-        /// into" event while the log still holds it.</para>
+        /// <para>An alliance the player founded began with them, so its ledger row's week is theirs
+        /// (<see cref="FoundedByPlayer"/>). One they were brought into (the engine's invitation,
+        /// which adds the player to an alliance of the inviter's) was formed by others first: its
+        /// row's week is when they made it, before the player was in it, and for a pact of NPCs a
+        /// week the player was never told. That one is dated by the invitation the player accepted,
+        /// from their own "brought you into" event while the log still holds it
+        /// (<see cref="BroughtInLine"/>). The alliances page dates a pact by the same two rules.</para>
         /// </summary>
         internal static int PlayerAlliedSince(EpisodeState s, AllianceState alliance)
         {
             var row = s.ledger?.alliances?.FirstOrDefault(r => r.id == alliance.id);
             if (row == null || row.startedWeek <= 0) return 0;
-            if (row.why != null && row.why.StartsWith("player", System.StringComparison.Ordinal)) return row.startedWeek;
+            if (FoundedByPlayer(s, alliance, row)) return row.startedWeek;
+            return BroughtInLine(s, alliance, row)?.week ?? 0;
+        }
+
+        /// <summary>
+        /// Whether the player was in <paramref name="alliance"/> from its start: one the player made,
+        /// by proposing it or by an invitation that made a new pair (the ledger's "player"), or a
+        /// story's pact that formed around them. A story opens such a pact with the player; an
+        /// invitation into somebody else's pact adds the player at its end, so a story's pact that
+        /// does not begin with the player is one they were let into later.
+        /// </summary>
+        internal static bool FoundedByPlayer(EpisodeState s, AllianceState alliance, AllianceRow row) =>
+            row?.why != null && (row.why.StartsWith("player", System.StringComparison.Ordinal)
+                || (row.why.StartsWith("story", System.StringComparison.Ordinal) && alliance.members.Count > 0 && alliance.members[0] == s.playerId));
+
+        /// <summary>
+        /// The player's own line saying who brought them into <paramref name="alliance"/>, the
+        /// engine's words in its invitation ("Riley brought you into The Riley Pact."), while the
+        /// log still holds it; null otherwise.
+        /// </summary>
+        internal static EpisodeEvent BroughtInLine(EpisodeState s, AllianceState alliance, AllianceRow row)
+        {
             string joined = " brought you into " + alliance.name + ".";
-            var invitation = s.events.LastOrDefault(e => e.kind == "alliance" && e.week >= row.startedWeek
+            return s.events.LastOrDefault(e => e.kind == "alliance" && (row == null || e.week >= row.startedWeek)
                 && e.audienceIds != null && e.audienceIds.Contains(s.playerId)
-                && e.text != null && e.text.EndsWith(joined, System.StringComparison.Ordinal));
-            return invitation?.week ?? 0;
+                && e.text != null && e.text.Length > joined.Length && e.text.EndsWith(joined, System.StringComparison.Ordinal));
         }
 
         /// <summary>

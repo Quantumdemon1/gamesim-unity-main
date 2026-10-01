@@ -40,6 +40,8 @@ namespace Gamesim.Presentation
         /// player's own reading of somebody, and this is the one line the web draws between two others.
         /// </summary>
         public const string SuspectedMarkerName = "Suspected pact";
+        /// <summary>The key's word for that line.</summary>
+        public const string SuspectedLegendCopy = "Suspected pact";
         /// <summary>The column's door to the notebook's alliances page, under the player's counts.</summary>
         public const string AlliancesDoorCaption = "Your alliances";
 
@@ -744,7 +746,9 @@ namespace Gamesim.Presentation
 
             var heading = Text(legend, "Relationship legend", 14, UiTheme.Paper, UiTheme.Weight.SemiBold, scale, font);
             Place(heading.rectTransform, 12f * scale, -10f * scale, (LegendWidth - 24f) * scale, 20f * scale);
-            float cell = 128f * scale, rowHeight = 20f * scale, top = 38f * scale;
+            // Six lines, three marks and the caveat in the card's 278 units: a row is 19 units so the
+            // suspected pact's line fits without the card growing over the ring.
+            float cell = 128f * scale, rowHeight = 19f * scale, top = 38f * scale;
             var lines = new[]
             {
                 ("Friendship", Kind.Friendship),
@@ -776,6 +780,19 @@ namespace Gamesim.Presentation
                 var text = Text(legend, caption, 12, UiTheme.Muted, UiTheme.Weight.Regular, scale, font);
                 Place(text.rectTransform, x + 28f * scale, y - 1f * scale, cell - 30f * scale, 18f * scale);
             }
+            {
+                // The one line between two others: a pact the player has heard of (SuspectedMarker),
+                // short purple dashes, thinner than distrust's red.
+                float x = 12f * scale, y = -top - lines.Length * rowHeight;
+                var tint = new Color(UiTheme.Strategic.r, UiTheme.Strategic.g, UiTheme.Strategic.b, .85f);
+                for (float at = 0f; at < 22f; at += 6.5f)
+                {
+                    var dash = HudPrimitives.Fill("Sample", legend, tint, 1);
+                    Place(dash, x + at * scale, y - 9f * scale, 3f * scale, 2f * scale);
+                }
+                var text = Text(legend, SuspectedLegendCopy, 12, UiTheme.Muted, UiTheme.Weight.Regular, scale, font);
+                Place(text.rectTransform, x + 28f * scale, y - 1f * scale, (LegendWidth - 40f) * scale, 18f * scale);
+            }
 
             // The marks a face can carry. Drawn from the same sprites the cast rail pins on.
             var marks = new[]
@@ -784,7 +801,7 @@ namespace Gamesim.Presentation
                 ("veto-token", "Veto", UiTheme.Gold),
                 ("target", "Nominee", UiTheme.Danger),
             };
-            float markRow = -top - (side ? 5.4f : 2f) * rowHeight;
+            float markRow = -top - (side ? 6.3f : 2f) * rowHeight;
             for (int i = 0; i < marks.Length; i++)
             {
                 float x = 12f * scale + (side ? 0 : i) * cell;
@@ -814,7 +831,7 @@ namespace Gamesim.Presentation
             note.textWrappingMode = TextWrappingModes.Normal;
             note.rectTransform.anchorMin = new Vector2(0f, 1f); note.rectTransform.anchorMax = new Vector2(1f, 1f);
             note.rectTransform.pivot = new Vector2(.5f, 1f);
-            note.rectTransform.anchoredPosition = new Vector2(0f, -top - (side ? 8.6f : 3f) * rowHeight - 2f * scale);
+            note.rectTransform.anchoredPosition = new Vector2(0f, -top - (side ? 9.4f : 3f) * rowHeight - 2f * scale);
             note.rectTransform.offsetMin = new Vector2(12f * scale, note.rectTransform.offsetMin.y);
             note.rectTransform.offsetMax = new Vector2(-12f * scale, note.rectTransform.offsetMax.y);
             note.rectTransform.sizeDelta = new Vector2(note.rectTransform.sizeDelta.x, (side ? 54f : 36f) * scale);

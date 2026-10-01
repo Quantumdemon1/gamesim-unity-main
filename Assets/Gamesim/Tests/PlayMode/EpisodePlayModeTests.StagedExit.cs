@@ -140,12 +140,15 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// The door opens on the door shot, shuts behind them while their body is still in the
         /// house, and the shot holds on the shut door for its whole hold; only then does their body
-        /// go, behind a dip, and the door with it. The chrome is aside until then.
+        /// go, behind a dip, and the door with it. The chrome is aside until then. The yard's door,
+        /// the fallback: it is built only at the cut to it, where the living room's stands closed
+        /// from the goodbye (StagedExit_TheLivingRoomsDoorLetsThemOut).
         /// </summary>
         [UnityTest]
         public IEnumerator StagedExit_TheDoorShutsBehindThemBeforeTheyGo()
         {
             yield return InstallStagedSeason(52, AtEviction);
+            director.WalkOutThrough = EpisodeDirector.WalkOutDoor.Yard;
             yield return PlayTheStagedEvictionToItsWalkOut();
             string leaving = stagedLeaving;
             var body = HouseguestBody(leaving);
@@ -235,6 +238,20 @@ namespace Gamesim.Tests.PlayMode
             AtEviction(state);
             var npcs = state.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList();
             state.nominees = new List<string> { state.playerId, npcs[1] };
+            // The night already past its speeches, with every regular voter's ballot against the
+            // player, so the vote the engine counts evicts them. A seed search over the fixture as it
+            // was found no season from 52 that did, even with the house's scores turned against the
+            // player (measured 2026-10-01): the ballot is not the scores alone. The test is about the
+            // exit, not the vote.
+            foreach (var speaker in state.nominees)
+                state.evictionSpeeches.Add(new EvictionSpeechState
+                {
+                    speakerId = speaker, week = state.week, isPlayerAuthored = speaker == state.playerId,
+                    text = "I'd like to stay.",
+                });
+            state.evictionStage = EvictionStage.Voting;
+            foreach (var voter in EpisodeEngine.Voters(state))
+                state.votes.Add(new VoteState { voterId = voter.id, targetId = state.playerId, reason = "The fixture's ballot." });
         }
 
         /// <summary>

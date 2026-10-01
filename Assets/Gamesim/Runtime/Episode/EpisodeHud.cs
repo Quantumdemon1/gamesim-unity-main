@@ -1769,6 +1769,9 @@ namespace Gamesim.Episode
 
         private void LateUpdate()
         {
+            // A panel redrawn under the pointer takes its presses back once the hold's time is up
+            // (EpisodeHud.FreeTimeBoard.cs), whether or not anything renders again.
+            if (pointerHeldUntil > 0f) ApplyPointerHold();
             var events = EventSystem.current;
             if (canvas == null || !canvas.gameObject.activeInHierarchy || events == null) return;
             var overlay = ActiveOverlay();

@@ -5,6 +5,7 @@ using Gamesim.Presentation;
 using Gamesim.Simulation;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Gamesim.Episode
@@ -102,6 +103,12 @@ namespace Gamesim.Episode
             public Action<string> Talk, Pick;
             /// <summary>The other ways to spend the time.</summary>
             public IList<BoardTile> Moves;
+            /// <summary>
+            /// Whether the keyboard opens on a control that commits nothing - the banner's Answer, else
+            /// the first card's way to talk - rather than the column's first: the board has just
+            /// replaced a step, and the Enter that closed it may be the first of two.
+            /// </summary>
+            public bool FocusSafely;
         }
 
         // Heights and widths at the resting text size; each is multiplied by the text scale.
@@ -205,7 +212,8 @@ namespace Gamesim.Episode
             y += strip + gap;
             float talkY = y;
             y += head + headGap;
-            BoardCards(board, y, width, cardsHeight, cards.Skip(page * perPage).Take(perPage).ToList(), cardWidth, cardGap, spec, state);
+            var shown = cards.Skip(page * perPage).Take(perPage).ToList();
+            BoardCards(board, y, width, cardsHeight, shown, cardWidth, cardGap, spec, state);
             float reserve = BoardPager(board, talkY, width, page, pages, spec);
             BoardHead(board, TalkHeadName, "people", "TALK TO A HOUSEGUEST", "Choose someone to approach, or select an action below.",
                 talkY, width, head, lines, reserve);
@@ -218,6 +226,12 @@ namespace Gamesim.Episode
             BoardBudget(board, leftWidth + heroGap, budgetWidth, hero, spec);
             var size = board.GetComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = y;
+            if (!spec.FocusSafely) return;
+            // The way into the next beat, which only opens it; else the walk over to the first card's
+            // houseguest. Never a reply's answer, a move, a way to buy time or the way on.
+            var first = shown.Count > 0 ? state.Find(shown[0].Id) : null;
+            if (spec.Hero == FreeTimeHero.Beat) FocusWhenWired(EpisodeDirector.AnswerBeatCaption);
+            else if (first != null) FocusWhenWired(CastTalkCaption((first.name ?? "").Split(' ')[0]));
         }
 
         // ------------------------------------------------------------ measuring
@@ -1067,8 +1081,99 @@ namespace Gamesim.Episode
         public void FocusWhenWired(string name)
         {
             if (string.IsNullOrEmpty(name)) return;
+            // What the selection was as this render began, read as Begin reads it, to know later
+            // whether the focus asked for here has landed or the player has moved on.
+            var events = EventSystem.current;
+            var selected = events != null ? events.currentSelectedGameObject : null;
+            focusFrom = selected != null && canvas != null && selected.transform.IsChildOf(canvas.transform) ? selected.name : null;
+            focusWanted = name;
             preferredSelection = name;
             restoreSelection = true;
+        }
+
+        /// <summary>The control <see cref="FocusWhenWired"/> last asked for until it lands, and the selection's name when it was asked.</summary>
+        private string focusWanted, focusFrom;
+
+        /// <summary>
+        /// Asks again for a focus the last render asked for, when this render came before the frame
+        /// wired it: a houseguest's body finishing its assembly renders the HUD at any moment, and its
+        /// Begin reads the press's own control as the selection - a control the new screen has not
+        /// got - so the focus would fall to the column's first control, the very option or move the
+        /// asking kept it off. Begin reading back the control asked for means it has landed; reading
+        /// anything else, that the player has moved the keyboard. Called by every free-time render
+        /// before it asks for a focus of its own.
+        /// </summary>
+        public void KeepFocusAsked()
+        {
+            if (focusWanted == null) return;
+            if (preferredSelection == focusWanted || preferredSelection != focusFrom) { focusWanted = null; return; }
+            preferredSelection = focusWanted;
+            restoreSelection = true;
+        }
+
+        /// <summary>Drops a focus asked for and not yet landed: the screen it was asked on has closed.</summary>
+        public void DropFocusAsked() => focusWanted = null;
+
+        // ------------------------------------------------------------ the pointer hold
+
+        /// <summary>
+        /// How long, in real time, a panel redrawn under the pointer takes no pointer press: longer
+        /// than the gap inside a double click, shorter than a second press anybody means.
+        /// </summary>
+        public const float PointerHoldSeconds = .45f;
+
+        /// <summary>When the hold on pointer presses ends, in unscaled real time; zero when none is running.</summary>
+        private float pointerHeldUntil;
+
+        /// <summary>Whether the panel is taking no pointer presses now. A read for tests.</summary>
+        public bool PointerHeld => modal != null && pointerHeldUntil > 0f && Time.realtimeSinceStartup < pointerHeldUntil;
+
+        /// <summary>
+        /// Holds pointer presses off the whole panel, footer included, for <paramref name="seconds"/>
+        /// of real time: free time's board has just replaced a step under the pointer, or a step's
+        /// next press has replaced its options, and the second press of a double click would land
+        /// on whatever stands there now - a way to buy time, a move or the way on. Only raycasts are
+        /// held: the controls stay interactable and look as they did, so the keyboard and a press
+        /// made in code are untouched.
+        /// </summary>
+        public void HoldPointerOffPanel(float seconds)
+        {
+            pointerHeldUntil = Mathf.Max(pointerHeldUntil, Time.realtimeSinceStartup + seconds);
+            ApplyPointerHold();
+        }
+
+        /// <summary>Puts a hold still running on the panel as this render built it: a redraw builds a new panel.</summary>
+        public void KeepPointerHold() => ApplyPointerHold();
+
+        /// <summary>Ends a hold now: the panel closed, and the next one opens to a pointer that has moved on.</summary>
+        public void EndPointerHold()
+        {
+            if (pointerHeldUntil <= 0f) return;
+            pointerHeldUntil = 0f;
+            ApplyPointerHold();
+        }
+
+        /// <summary>
+        /// The panel's raycasts while a hold runs, and given back once its time is up: on the panel's
+        /// own canvas group, the one a reveal fades - alpha is the reveal's, blocking is the hold's.
+        /// Called from LateUpdate too, so a hold lifts on time without a render.
+        /// </summary>
+        private void ApplyPointerHold()
+        {
+            bool held = pointerHeldUntil > 0f && Time.realtimeSinceStartup < pointerHeldUntil;
+            if (modal == null)
+            {
+                if (!held) pointerHeldUntil = 0f;
+                return;
+            }
+            var group = modal.GetComponent<CanvasGroup>();
+            if (group == null)
+            {
+                if (!held) { pointerHeldUntil = 0f; return; }
+                group = modal.gameObject.AddComponent<CanvasGroup>();
+            }
+            group.blocksRaycasts = !held;
+            if (!held) pointerHeldUntil = 0f;
         }
     }
 }

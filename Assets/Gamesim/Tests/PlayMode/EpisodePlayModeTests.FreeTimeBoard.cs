@@ -22,8 +22,10 @@ namespace Gamesim.Tests.PlayMode
     /// houses of four, eight and sixteen - with nothing waiting, a beat waiting, somebody come to the
     /// player, and as a Have-Not - while a house of three's free time is still the Final 3's; that the
     /// cards page to everybody; that a beat opens as the step and goes back, and that a second press
-    /// or a second Enter on what opened it answers nothing; that beats past the strip's room are one
-    /// control away; that the moves cost what they say and lock when nothing is left; that the
+    /// or a second Enter on what opened it answers nothing; that the board replacing a step takes no
+    /// pointer press for a moment, so a double click's second press buys, moves or ends nothing; that
+    /// beats past the strip's room are one control away; that the overview counts what moving on loses
+    /// as the board does; that the moves cost what they say and lock when nothing is left; that the
     /// keyboard walks the board; and that the way on is one control.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
@@ -97,6 +99,30 @@ namespace Gamesim.Tests.PlayMode
             return clicked;
         }
 
+        /// <summary>What the pointer is over at a screen point: the topmost graphic a raycast finds there, or null.</summary>
+        private static GameObject TopHit(Vector2 point)
+        {
+            var hits = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = point }, hits);
+            return hits.Select(hit => hit.gameObject).FirstOrDefault(go => go != null);
+        }
+
+        /// <summary>
+        /// Waits out the moment a panel that replaced a step under the pointer takes no pointer press
+        /// (EpisodeHud.HoldPointerOffPanel), as a player's next press does - and as ButtonWithCaption's
+        /// raycast needs, since a held panel takes none.
+        /// </summary>
+        private IEnumerator WaitOutThePointerHold()
+        {
+            yield return new WaitForSecondsRealtime(EpisodeHud.PointerHoldSeconds + .1f);
+            yield return null;
+        }
+
+        /// <summary>The player's goodwill with the house, and the house's with the player, as one line to compare.</summary>
+        private static string Goodwill(EpisodeState state) => string.Join(", ", state.relationships
+            .Where(edge => edge.fromId == state.playerId || edge.toId == state.playerId)
+            .Select(edge => edge.fromId + ">" + edge.toId + " " + edge.score.ToString("R", System.Globalization.CultureInfo.InvariantCulture)));
+
         /// <summary>
         /// A rect in the HUD canvas's own space: steady across a re-render, which builds every panel
         /// anew, and true however the canvas is drawn - CaptureFraming draws it through the camera.
@@ -168,14 +194,16 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// A house of <paramref name="houseguests"/> on move-in night under the week's windows, the
         /// strategy rules and the story, as every season the director starts plays, with what is
-        /// waiting on the player. The house's own clock is held, so nothing commits under the test.
+        /// waiting on the player and <paramref name="bought"/> actions already bought. The house's
+        /// own clock is held, so nothing commits under the test.
         /// </summary>
-        private IEnumerator InstallFreeTime(int houseguests, FreeTimeWaiting waiting, int beats = 1)
+        private IEnumerator InstallFreeTime(int houseguests, FreeTimeWaiting waiting, int beats = 1, int bought = 0)
         {
             HoldTheHouseForTheFixture();
             var state = FullHouse(4501, houseguests);
             state.strategyRulesStartWeek = 1;
             state.haveNotRulesStartWeek = 1;
+            state.boughtActionPoints = bought;
             EpisodeEngine.EnableWeek(state, state.week);
             EpisodeEngine.EnableStory(state, state.week);
             state.houseEvents.RemoveAll(item => !item.resolved);
@@ -486,6 +514,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "Going back commits nothing.");
             yield return null;
             Assert.That(director.FreeTimeBeatOpen, Is.Null);
+            // The board replaced the step under the pointer, which it holds off for a moment.
+            yield return WaitOutThePointerHold();
             AssertFreeTimeBoard("Back on the board");
             Assert.That(ActiveRect(EpisodeHud.StoryBannerName), Is.Not.Null, "The banner is back, its beat still waiting.");
 
@@ -503,6 +533,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(after.houseEvents.Single(item => item.id == beats[0].id).resolved, Is.False, "and nothing else.");
             if (!director.IsPhasePanelOpen) yield return OpenStation();
             yield return null;
+            yield return WaitOutThePointerHold();
             AssertFreeTimeBoard("After the answer");
             Assert.That(director.FreeTimeBeatOpen, Is.Null, "The answered beat is no longer the step.");
             Assert.That(Words(ActiveRect(EpisodeHud.StoryBannerName)), Does.Contain(beats[0].title), "The one left is the banner.");
@@ -563,8 +594,9 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beat.id), where + ": and the step is still open.");
                     ButtonWithCaption(EpisodeDirector.BackToFreeTimeCaption).onClick.Invoke();
                     Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": back on the board.");
-                    // A graphic takes a raycast once its canvas has drawn it: the next press waits for that.
-                    yield return null; yield return null;
+                    // The board replaced the step under the pointer and holds it off a moment; the next
+                    // deliberate press waits that out, as a player's does.
+                    yield return WaitOutThePointerHold();
                 }
                 Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(2), where + ": both beats still wait.");
 
@@ -630,6 +662,163 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The coordinator's reverse double click. An option pressed on a beat's step answers it, and
+        /// the board comes back under the pointer, where a way to buy time, a move or the way on may
+        /// stand: for a moment the whole panel takes no pointer press, so the double click's second
+        /// press lands on nothing - no command, no goodwill spent, no action bought or used - and once
+        /// the moment has passed a deliberate press works. A double click on "Back to free time" does
+        /// not close the panel. After an answer, the keyboard is on a control that commits nothing:
+        /// the next beat's Answer, so Enter twice opens it and goes back, or with none left the first
+        /// card's way to talk. At both text sizes.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FreeTimeBoard_ABoardThatReplacesAStepTakesNoPressForAMoment()
+        {
+            foreach (bool larger in new[] { false, true })
+            {
+                yield return InstallFreeTime(8, FreeTimeWaiting.Beat, 3);
+                if (larger) yield return ApplyTextSize(true);
+                var beats = EpisodeEngine.OpenStoryBeats(director.Snapshot);
+                Assert.That(beats, Has.Count.EqualTo(3), "The fixture has three beats waiting.");
+                yield return OpenStation();
+                yield return null; yield return null;
+                var hud = director.GetComponentInChildren<EpisodeHud>();
+                string where = "Free time" + (larger ? " at the larger text" : "");
+
+                // A double click on "Back to free time": the board comes back and takes no second press.
+                ButtonWithCaption(EpisodeDirector.AnswerBeatCaption).onClick.Invoke();
+                yield return null; yield return null;
+                var back = ButtonWithCaption(EpisodeDirector.BackToFreeTimeCaption);
+                var backPoint = ScreenCentre(back);
+                Assert.That(PressAt(backPoint), Is.SameAs(back.gameObject), where + ": the press lands on 'Back to free time'.");
+                Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": back on the board,");
+                Assert.That(hud.PointerHeld, Is.True, "which holds the pointer off as it replaces the step.");
+                // The board's graphics take a raycast once their canvas has drawn them: a frame or two,
+                // well inside the hold.
+                yield return null; yield return null;
+                Assert.That(hud.PointerHeld, Is.True, where + ": the hold outlasts a frame or two.");
+                var panel = ActiveRect(ModalRoot);
+                Assert.That(ScreenRect(panel).Contains(backPoint), Is.True, where + ": the second press is on the panel,");
+                int revision = director.Snapshot.revision;
+                var stray = PressAt(backPoint);
+                Assert.That(stray == null || !stray.transform.IsChildOf(panel), Is.True,
+                    where + ": the second press of a double click on 'Back to free time' lands on " + (stray != null ? stray.name : "nothing") + ".");
+                Assert.That(director.IsPanelOpen && director.IsFreeTimeBoard, Is.True, where + ": and does not close the panel.");
+                Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": it commits nothing.");
+
+                // Once the moment has passed, a deliberate press on the board works.
+                yield return WaitOutThePointerHold();
+                Assert.That(hud.PointerHeld, Is.False, where + ": the hold has lifted.");
+                var hit = TopHit(backPoint);
+                Assert.That(hit != null && hit.transform.IsChildOf(ActiveRect(ModalRoot)), Is.True,
+                    where + ": the panel takes the pointer again where it would not: " + (hit != null ? hit.name : "nothing") + ".");
+                // What on the board commits, measured on the board, to choose an option over one of them.
+                var committing = director.GetComponentsInChildren<Button>()
+                    .Where(button => button.IsActive() && button.IsInteractable() && (button.name == EpisodeDirector.BeginNextCompetitionCaption
+                        || button.transform.parent != null && (button.transform.parent.name == EpisodeHud.BuyActionsName || button.transform.parent.name == EpisodeHud.HouseMovesName)))
+                    .Select(button => (button.name, ScreenRect((RectTransform)button.transform))).ToList();
+                Assert.That(committing, Is.Not.Empty, where + ": the board has controls that commit.");
+                var answer = ButtonWithCaption(EpisodeDirector.AnswerBeatCaption);
+                Assert.That(PressAt(ScreenCentre(answer)), Is.SameAs(answer.gameObject), where + ": a deliberate press lands on Answer,");
+                Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[0].id), "and opens the beat as the step.");
+                yield return null; yield return null;
+
+                // An option answered by a press at its point, preferring one over something on the board
+                // that commits; the board comes back under that point.
+                var tiles = beats[0].choices.Where(choice => !choice.lapse)
+                    .Select(choice => ButtonWithCaption(EpisodeHud.EventChoiceCaption(choice.label))).ToList();
+                var tile = tiles.FirstOrDefault(each => committing.Any(control => control.Item2.Contains(ScreenCentre(each))));
+                if (tile == null) tile = tiles[0];
+                var point = ScreenCentre(tile);
+                string under = committing.Where(control => control.Item2.Contains(point)).Select(control => control.Item1).FirstOrDefault() ?? "nothing that commits";
+                revision = director.Snapshot.revision;
+                Assert.That(PressAt(point), Is.SameAs(tile.gameObject), where + ": the press lands on '" + tile.name + "'.");
+                var answered = director.Snapshot;
+                Assert.That(answered.revision, Is.EqualTo(revision + 1), where + ": the option is answered, once.");
+                Assert.That(answered.houseEvents.Single(item => item.id == beats[0].id).resolved, Is.True);
+                Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": the board is back,");
+                Assert.That(hud.PointerHeld, Is.True, "holding the pointer off.");
+                yield return null; yield return null;
+                var focus = EventSystem.current.currentSelectedGameObject;
+                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeDirector.AnswerBeatCaption),
+                    where + ": after an answer the keyboard is on the next beat's Answer, which commits nothing.");
+                Assert.That(hud.PointerHeld, Is.True, where + ": the hold outlasts a frame or two.");
+                stray = PressAt(point);
+                var after = director.Snapshot;
+                Assert.That(stray == null || !stray.transform.IsChildOf(ActiveRect(ModalRoot)), Is.True,
+                    where + ": the second press of a double click on an option, over " + under + " on the board, lands on " + (stray != null ? stray.name : "nothing") + ".");
+                Assert.That(after.revision, Is.EqualTo(answered.revision), where + ": it commits nothing,");
+                Assert.That(Goodwill(after), Is.EqualTo(Goodwill(answered)), "spends no goodwill,");
+                Assert.That(after.boughtActionPoints, Is.EqualTo(answered.boughtActionPoints), "buys no action,");
+                Assert.That(EpisodeEngine.SocialActionsSpent(after), Is.EqualTo(EpisodeEngine.SocialActionsSpent(answered)), "and uses none.");
+                yield return WaitOutThePointerHold();
+                hit = TopHit(point);
+                Assert.That(hit != null && hit.transform.IsChildOf(ActiveRect(ModalRoot)), Is.True,
+                    where + ": the board takes the pointer there once the moment has passed: " + (hit != null ? hit.name : "nothing") + ".");
+
+                // Answered by the keyboard, then Enter twice: the next beat opens and goes back.
+                yield return KeyboardSubmit(EpisodeDirector.AnswerBeatCaption);
+                Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[1].id), where + ": Enter on Answer opens the next beat,");
+                yield return KeyboardSubmit(EpisodeHud.EventChoiceCaption(beats[1].choices[0].label));
+                answered = director.Snapshot;
+                Assert.That(answered.houseEvents.Single(item => item.id == beats[1].id).resolved, Is.True, where + ": and Enter on an option answers it.");
+                focus = EventSystem.current.currentSelectedGameObject;
+                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeDirector.AnswerBeatCaption),
+                    where + ": the keyboard is on the last beat's Answer.");
+                yield return PressKey(Key.Enter);
+                Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[2].id), where + ": a first Enter after the answer opens the last beat,");
+                yield return PressKey(Key.Enter);
+                yield return null;
+                after = director.Snapshot;
+                Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": a second goes back,");
+                Assert.That(after.revision, Is.EqualTo(answered.revision), "and neither commits anything:");
+                Assert.That(after.houseEvents.Single(item => item.id == beats[2].id).resolved, Is.False, "the last beat still waits,");
+                Assert.That(Goodwill(after), Is.EqualTo(Goodwill(answered)), "no goodwill is spent,");
+                Assert.That(after.boughtActionPoints, Is.EqualTo(answered.boughtActionPoints), "and no action bought.");
+
+                // With no beat left, the keyboard is on the first card's way to talk.
+                FindButton(EpisodeDirector.AnswerBeatCaption).onClick.Invoke();
+                FindButton(EpisodeHud.EventChoiceCaption(beats[2].choices[0].label)).onClick.Invoke();
+                Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Is.Empty, where + ": every beat is answered.");
+                yield return null; yield return null;
+                focus = EventSystem.current.currentSelectedGameObject;
+                var firstCard = ActiveRect(EpisodeHud.HouseCardsName).Cast<Transform>().First(card => card.name.StartsWith("Houseguest · "));
+                Assert.That(focus != null && focus.name.StartsWith("Talk to ") && focus.transform.IsChildOf(firstCard), Is.True,
+                    where + ": with no beat left the keyboard is on the first card's way to talk, not '" + (focus != null ? focus.name : "nothing") + "'.");
+                director.ClosePanels();
+                yield return null;
+            }
+            yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// The overview's way to the episode screen says what moving on loses as free time's board
+        /// does: on move-in night with an action bought, the night's own action and not the bought
+        /// one, which carries into the week.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FreeTimeBoard_TheOverviewCountsWhatMovingOnLosesAsTheBoardDoes()
+        {
+            yield return InstallFreeTime(8, FreeTimeWaiting.Nothing, bought: 1);
+            var state = director.Snapshot;
+            Assert.That(EpisodeEngine.IsFirstNight(state), Is.True, "The fixture is move-in night,");
+            Assert.That(EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state), Is.EqualTo(2),
+                "with its one action and one bought.");
+            string lost = EpisodeDirector.UnusedActionsNote(state);
+            Assert.That(lost, Is.EqualTo("1 unused action will be lost."), "Moving on loses the night's own action, not the bought one.");
+            var station = director.Dashboard(state).Recommended.Single(tile => tile.Caption == EpisodeDirector.OverviewStationCaption);
+            Assert.That(station.Foot, Is.EqualTo(lost), "The overview's way to the episode screen says so,");
+            yield return OpenStation();
+            yield return null;
+            Assert.That(BudgetLabel(EpisodeHud.UnusedActionsNoteName).text, Is.EqualTo(lost), "and so does the board's budget card,");
+            Assert.That(BudgetLabel(EpisodeHud.ActionsLeftCountName).text, Is.EqualTo("2"), "beside its count,");
+            Assert.That(BudgetLabel(EpisodeHud.BudgetRuleName).text, Is.EqualTo("2 actions tonight; 1 does not carry into the week, the extra 1 does."),
+                "and a rule that counts what the count does.");
+            director.ClosePanels();
+            yield return null;
+        }
+
+        /// <summary>
         /// Move-in night, as every new season reaches it: the first night's one real conversation is
         /// the banner, said to be free, and the rule says the night has one action; answering it on
         /// the step - who with, then the confirm of the pick - spends nothing.
@@ -677,7 +866,9 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             if (option.pickPerson)
             {
-                // Who with, on the step's own grid of faces.
+                // Who with, on the step's own grid of faces - which replaced the options under the
+                // pointer, so it takes a pointer press only once a moment has passed.
+                yield return WaitOutThePointerHold();
                 var person = director.Snapshot.Find(option.eligibleIds.First());
                 ButtonWithCaption(person.name).onClick.Invoke();
                 yield return null;

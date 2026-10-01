@@ -17,9 +17,13 @@ namespace Gamesim.Episode
     /// <para>A story beat waiting is a banner whose "Answer" opens it as the step, as the nomination
     /// opens one from its tracker, with "Back to free time" in the footer while it is open and the
     /// keyboard on it as it opens. Answer and the strip's chips stand over the step's words column,
-    /// so neither a second click nor a second Enter on what opened a beat answers it. Which beat is
-    /// open and which page of cards is shown are view state, like the houseguest's screen: nothing
-    /// here is saved, and every control commits through the command it always did.</para>
+    /// so neither a second click nor a second Enter on what opened a beat answers it. The other way
+    /// round, a step that goes - answered, or left by "Back to free time" - or whose options give
+    /// way to its next press leaves whatever is drawn now under the pointer: the panel takes no
+    /// pointer press for a moment of real time (EpisodeHud.HoldPointerOffPanel), and the keyboard
+    /// lands where a second Enter commits nothing. Which beat is open and which page of cards is
+    /// shown are view state, like the houseguest's screen: nothing here is saved, and every control
+    /// commits through the command it always did.</para>
     ///
     /// <para>Not over everything free time can be: a diary reflection waiting keeps its card, a
     /// legacy house event keeps its band and its camera, the Final 3's window keeps Endgame
@@ -67,6 +71,12 @@ namespace Gamesim.Episode
         private bool freeTimeBeatFocusBack;
         /// <summary>The page of the house's cards shown, and the free time it belongs to. View state.</summary>
         private int freeTimePage, freeTimeViewKey = -1;
+        /// <summary>
+        /// What the board's panel showed at its last render - the board, or a beat's step at its first
+        /// or second press - so a render that replaces a step under the pointer is known. View state.
+        /// </summary>
+        private string freeTimeView;
+        private const string FreeTimeBoardView = "board", FreeTimeStepView = "step:";
 
         /// <summary>Whether free time is on the board now, rather than its old column. A read for tests.</summary>
         public bool IsFreeTimeBoard => hud != null && phaseOpen && FreeTimeBoardBeat(projected)
@@ -81,6 +91,12 @@ namespace Gamesim.Episode
             freeTimeOpenedBeat = null;
             freeTimeBeatFocusBack = false;
             freeTimePage = 0;
+            freeTimeView = null;
+            // A panel opened again opens to a pointer and a keyboard that have moved on: nothing to
+            // hold off, and no focus left to land.
+            if (hud == null) return;
+            hud.EndPointerHold();
+            hud.DropFocusAsked();
         }
 
         /// <summary>
@@ -110,7 +126,11 @@ namespace Gamesim.Episode
         /// </summary>
         private bool FreeTimeBoard(EpisodeState state)
         {
-            if (hud == null || !FreeTimeBoardBeat(state) || hud.CurrentActivityLayout != EpisodeHud.ActivityLayout.Strategy) return false;
+            if (hud == null || !FreeTimeBoardBeat(state) || hud.CurrentActivityLayout != EpisodeHud.ActivityLayout.Strategy)
+            {
+                freeTimeView = null;
+                return false;
+            }
             // A new free time opens on the first page; week one has two, move-in night and the one after its eviction.
             int key = state.week * 2 + (EpisodeEngine.IsFirstNight(state) ? 0 : 1);
             if (freeTimeViewKey != key) { ForgetFreeTimeView(); freeTimeViewKey = key; }
@@ -118,6 +138,20 @@ namespace Gamesim.Episode
             if (freeTimeOpenedBeat != null && !open.Any(beat => beat.id == freeTimeOpenedBeat)) freeTimeOpenedBeat = null;
             if (storyStepEvent != null && !open.Any(beat => beat.id == storyStepEvent)) ClearStoryStep();
             var opened = freeTimeOpenedBeat != null ? open.FirstOrDefault(beat => beat.id == freeTimeOpenedBeat) : null;
+
+            // What the panel shows now - the board, or a beat's step at its first press or its second -
+            // and whether it replaces a step: answered, left by "Back to free time", or redrawn by an
+            // answer for its next press. Whatever is drawn now stands under the pointer that pressed,
+            // and the second press of a double click would land on it: a way to buy time, a move, the
+            // way on, or the person a pick commits to. Pointer presses are held off the panel a moment.
+            bool second = opened != null && storyStepEvent == opened.id && opened.choices.Any(choice => choice.optionId == storyStepOption);
+            string view = opened == null ? FreeTimeBoardView
+                : FreeTimeStepView + opened.id + (second ? "/" + storyStepOption + "/" + storyStepPick : "");
+            bool replaced = freeTimeView != null && freeTimeView.StartsWith(FreeTimeStepView, StringComparison.Ordinal) && freeTimeView != view;
+            freeTimeView = view;
+            // A focus the last render asked for, which a render in between would otherwise drop.
+            hud.KeepFocusAsked();
+
             if (opened != null)
             {
                 // The beat as the step, as the nomination draws one: its words beside its options,
@@ -127,16 +161,24 @@ namespace Gamesim.Episode
                 hud.StrategyWholeWidth();
                 NominationStory(state, opened);
                 FreeTimeFooter(state, true);
-                // Opened, the keyboard goes to the way back rather than the first option: a second
-                // Enter on Answer must not answer.
+                // The keyboard goes where a second Enter commits nothing: opened from the board, to the
+                // way back; at its second press, to the step's own Back rather than the first person or
+                // the confirm; and back at its options, to the way back again.
                 if (freeTimeBeatFocusBack) hud.FocusWhenWired(BackToFreeTimeCaption);
+                else if (replaced) hud.FocusWhenWired(second ? EpisodeHud.StoryBackCaption : BackToFreeTimeCaption);
                 freeTimeBeatFocusBack = false;
-                return true;
             }
-            freeTimeBeatFocusBack = false;
-            hud.StrategyWholeWidth();
-            hud.FreeTimeBoard(FreeTimeSpec(state, open));
-            FreeTimeFooter(state, false);
+            else
+            {
+                freeTimeBeatFocusBack = false;
+                hud.StrategyWholeWidth();
+                var spec = FreeTimeSpec(state, open);
+                spec.FocusSafely = replaced;
+                hud.FreeTimeBoard(spec);
+                FreeTimeFooter(state, false);
+            }
+            if (replaced) hud.HoldPointerOffPanel(EpisodeHud.PointerHoldSeconds);
+            else hud.KeepPointerHold();
             return true;
         }
 

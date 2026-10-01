@@ -107,6 +107,7 @@
     <Compile Include="$(EditMode)WebIntroductionsTests.cs" />
     <Compile Include="$(EditMode)WebJurySentimentParityTests.cs" />
     <Compile Include="$(EditMode)WebLoyaltyOathParityTests.cs" />
+    <Compile Include="$(EditMode)OathBreachTests.cs" />
     <Compile Include="$(EditMode)WebNpcActivityParityTests.cs" />
     <Compile Include="$(EditMode)WebNpcConversationParityTests.cs" />
     <Compile Include="$(EditMode)WebNpcMotiveParityTests.cs" />

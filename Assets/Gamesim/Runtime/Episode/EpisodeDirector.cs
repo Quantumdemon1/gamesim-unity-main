@@ -781,6 +781,9 @@ namespace Gamesim.Episode
                     lastSocialAction = command.kind;
                     lastSocialDelta = result.state.Score(result.state.playerId, focusedNpc.Id) - trustBefore;
                     standingLineBefore = lineBefore;
+                    // The conversation answers at its head, whatever was said: an open person picker
+                    // shuts, as it does when one of its people is chosen (EpisodeDirector.ConversationGroups.cs).
+                    conversationPick = null;
                 }
                 // The evicted houseguest stays in the room while the card narrates their eviction: the
                 // house reacts to them, and they go when the card does (TickCeremonies).
@@ -1170,10 +1173,11 @@ namespace Gamesim.Episode
             }
             foreach (var alliance in state.alliances.Where(a => a.members.Contains(state.playerId))) hud.Paragraph(alliance.name + (alliance.active ? " · active" : " · ended"));
             hud.Heading("YOUR LOYALTY DECLARATIONS");
+            // Said as the conversation says it (X12): no promise from them, and binding both ways.
             foreach (var oath in state.loyaltyOaths.Where(oath => oath.playerId == state.playerId || oath.targetId == state.playerId))
                 hud.Paragraph("Week " + oath.week + ": " + (oath.playerId == state.playerId
                     ? "You declared loyalty to " + state.Find(oath.targetId).name
-                    : state.Find(oath.playerId).name + " declared loyalty to you") + ". A declaration is not a mutual guarantee.");
+                    : state.Find(oath.playerId).name + " declared loyalty to you") + ". " + OathNotebookNote);
             RenderDiaryRecord(state);
             foreach (var memory in state.memories.Where(m => m.ownerId == state.playerId)) hud.Paragraph("Week " + memory.week + ": " + memory.text);
             RenderStorySoFar(state);

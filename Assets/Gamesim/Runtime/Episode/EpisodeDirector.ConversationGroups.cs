@@ -70,20 +70,28 @@ namespace Gamesim.Episode
             + "if either of you nominates or votes to evict the other, the whole house hears the oath was broken, "
             + "and most of them think less of whoever broke it.";
 
+        /// <summary>
+        /// What the notebook says under each declaration (X12), in the same terms: no promise from
+        /// them, and broken in front of the house by a nomination or an evicting vote either way.
+        /// </summary>
+        public const string OathNotebookNote =
+            "It is not a promise from them, but it holds both ways: a nomination or a vote to evict between you, by either of you, breaks it in front of the house.";
+
         /// <summary>How every target agreement's caption begins: the deal table's own words, which the picker folds.</summary>
         private static readonly string TargetDealStem =
             EpisodeHud.DealProposeCaption(DealKind.Title(DealKind.TargetAgreement).ToLowerInvariant() + " against ");
 
-        private const string BondLine = "Time with them: the topics on the dial, and these. Each costs an action.";
-        private const string LearnLine = "What they know and what they think. Reading them, and asking about the vote in the campaign, are free once a week.";
-        private const string SchemeLine = "Turn the house against someone. Each costs an action, and most can backfire on you.";
-        private const string BargainLine = "Deals, promises and alliances. Proposing one costs an action; answering an offer is free.";
+        /// <summary>The line under each group's head: what the group is for and what it costs.</summary>
+        public const string BondLine = "Time with them: the topics on the dial, and these. Each costs an action.",
+            LearnLine = "What they know and what they think. Reading them, and asking about the vote in the campaign, are free once a week.",
+            // In a decision window the look and the vote question are not on offer (AskRows): the
+            // read waits for free time and the campaign, and the vote question for the campaign.
+            LearnWindowLine = "What they know and what they think. Reading them waits for free time and the campaign.",
+            SchemeLine = "Turn the house against someone. Each costs an action, and most can backfire on you.",
+            BargainLine = "Deals, promises and alliances. Proposing one costs an action; answering an offer is free.";
 
         /// <summary>Whose conversation the open picker belongs to, and which verb it is, by its row's caption. View state.</summary>
         private string conversationPick, conversationPickFor;
-
-        /// <summary>True for the one render that opens a picker, which scrolls its row to the top of the column.</summary>
-        private bool conversationPickOpened;
 
         /// <summary>The verb whose people the open conversation is showing, by its row's caption; null when every picker is shut. A read for tests.</summary>
         public string ConversationPicker => focusedNpc != null && conversationPickFor == focusedNpc.Id ? conversationPick : null;
@@ -122,7 +130,7 @@ namespace Gamesim.Episode
             RoomActs(state, npc);
 
             // LEARN: the questions, unless they were asked first, and what you share.
-            hud.ConversationGroup(LearnGroupTitle, "eye", LearnLine);
+            hud.ConversationGroup(LearnGroupTitle, "eye", window ? LearnWindowLine : LearnLine);
             if (!cameToAsk) AskRows(state, npc, window);
             hud.Tag(hud.Action("Share something I know", () => Commit(state, EpisodeCommandKind.ShareInformation, npc.id)),
                 Category(EpisodeCommandKind.ShareInformation));
@@ -148,18 +156,16 @@ namespace Gamesim.Episode
                 }
             }
 
-            // BARGAIN: the deal table - an offer waiting first, then what could be put to them - the
-            // promises and the pact, a promise about the vote, and calling it through an ally.
+            // BARGAIN: what carries no chance first - the promises and the pact, a promise about the
+            // vote, and calling it through an ally - then the deal table, whose heading and note on
+            // the odds speak only for the rows under them: an offer waiting, then what could be put.
+            // The came-to-deal path draws the promises before the table for the same reason.
             var promised = PromiseToEvictTargets(state, npc.id);
             var calls = Calls(state, npc);
             if (!cameToDeal || promised.Count > 0 || calls.Count > 0)
             {
                 hud.ConversationGroup(BargainGroupTitle, "handshake", BargainLine);
-                if (!cameToDeal)
-                {
-                    FoldedDealPanel(state, npc);
-                    DealRows(state, npc, allied);
-                }
+                if (!cameToDeal) DealRows(state, npc, allied);
                 PersonPicker(npc, PromiseToEvictPickerCaption, Category(EpisodeCommandKind.PromiseVote),
                     promised.Select(state.Find).ToList(), nominee => PromiseToEvictCaption(nominee.name),
                     nominee => Commit(state, EpisodeCommandKind.PromiseVote, npc.id, nominee));
@@ -173,16 +179,16 @@ namespace Gamesim.Episode
                             () => Commit(state, EpisodeCommandKind.CallTheVote, npc.id, about, text: allianceId)),
                         Category(EpisodeCommandKind.CallTheVote), EpisodeHud.TagSeat.PastReading);
                 }
+                if (!cameToDeal) FoldedDealPanel(state, npc);
             }
 
-            // A picker that has just opened brings its row to the top of the column, with as many of
-            // its people under it as the column holds: every render starts the column at its top,
-            // and the keyboard staying on the row would otherwise leave the people below the fold.
-            if (conversationPickOpened && PickerOpen(npc.id, conversationPick))
-            {
-                hud.RequestScrollTo(conversationPick);
-                hud.ApplyPendingScroll();
-            }
+            // An open picker keeps its row at the top of the column, with as many of its people under
+            // it as the column holds: every render starts the column at its top - the one that opens
+            // the picker, and any the house orders while it is open - and the keyboard staying on the
+            // row would otherwise leave the people below the fold. The HUD does it once the rows have
+            // their final heights, not now. Anything the player says shuts the picker (Submit), so
+            // the render that answers starts at the head of the conversation, as it always did.
+            if (PickerOpen(npc.id, conversationPick)) hud.RevealAtTop(conversationPick);
         }
 
         /// <summary>Every alliance the player shares with this houseguest that has not called this week's vote, and each nominee it could name.</summary>
@@ -242,9 +248,7 @@ namespace Gamesim.Episode
             if (focusedNpc == null || focusedNpc.Id != npcId) return;
             conversationPick = PickerOpen(npcId, verb) ? null : verb;
             conversationPickFor = npcId;
-            conversationPickOpened = conversationPick != null;
-            try { Render(); }
-            finally { conversationPickOpened = false; }
+            Render();
         }
 
         /// <summary>A person was chosen: the picker shuts, and the conversation answers at its head.</summary>

@@ -75,6 +75,8 @@ namespace Gamesim.Tests.EditMode
             // What the rows would have done: the engine refuses it, so a row could only be refused.
             var result = Say(new EpisodeEngine(state), EpisodeCommandKind.PromiseVote, listener, state.nominees.First(id => id != state.playerId));
             Assert.That(result.accepted, Is.False, "The engine refuses a promise from somebody who does not vote.");
+            Assert.That(result.reason, Is.EqualTo("Choose a valid eviction target for your voting promise."),
+                "refused for having no vote, not for anything else about the fixture.");
         }
 
         [Test]
@@ -171,6 +173,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeDirector.OathOfferLine("Maya Chen"), Does.Contain("if either of you nominates or votes to evict the other"));
             Assert.That(EpisodeDirector.OathRecordedLine("Maya Chen"), Does.Contain("holds both ways"));
             Assert.That(EpisodeDirector.OathRecordedLine("Maya Chen"), Does.Not.Contain("does not bind"));
+            // The notebook says it in the same terms; it said a declaration "is not a mutual guarantee".
+            Assert.That(EpisodeDirector.OathNotebookNote, Does.Contain("not a promise from them").And.Contain("holds both ways")
+                .And.Contain("by either of you").And.Contain("in front of the house"));
 
             // What it says: a houseguest who votes out or nominates the player breaks the player's own
             // declaration, in words the house is told (the engine logs the plan with no audience), and

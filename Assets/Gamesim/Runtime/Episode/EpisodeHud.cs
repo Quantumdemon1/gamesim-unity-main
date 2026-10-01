@@ -288,6 +288,8 @@ namespace Gamesim.Episode
             // next screen's petals on a destroyed rectangle.
             dialRoot = null; dialSeat = null; conversationColumn = null; topicSeats = topicTaken = 0;
             tagUnder.Clear(); readingRows.Clear();
+            // So do a person picker and a row it asked to bring to the top (EpisodeHud.ConversationGroups.cs).
+            picker = null; revealAtTop = null;
             // Brand and Objective used to be placed at hard-coded offsets, so Objective's -143
             // silently assumed Brand's exact height; growing either one overlapped them. Stacking
             // them in a column makes that impossible to get wrong.
@@ -1803,6 +1805,8 @@ namespace Gamesim.Episode
                     Canvas.ForceUpdateCanvases();
                     // With the rows at their final heights, the panel can take its own.
                     FitStandardPanel();
+                    // And a picker just opened can take the top of its column (EpisodeHud.ConversationGroups.cs).
+                    ApplyRevealAtTop();
                 }
                 // Scrollbars stay out of the ring: the panel scrolls to whatever is selected, and a
                 // scrollbar the ScrollRect auto-hides after layout would sit in the ring inactive,

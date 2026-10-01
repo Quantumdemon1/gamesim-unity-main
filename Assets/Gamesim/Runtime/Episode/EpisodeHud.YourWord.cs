@@ -22,8 +22,8 @@ namespace Gamesim.Episode
     {
         /// <summary>The name a breach warning's words carry, on every screen that shows one.</summary>
         public const string BreachWarningName = "Breach warning";
-        /// <summary>The strip a step's column carries a breach warning in, and a finalist's warning line.</summary>
-        public const string BreachStripName = "Breach strip", BreachLineName = "Breach line";
+        /// <summary>The strip a step's column carries a breach warning in.</summary>
+        public const string BreachStripName = "Breach strip";
         /// <summary>A Your word card's name: its section's prefix and the houseguest's full name.</summary>
         public const string WordOpenCardPrefix = "Your word · open · ", WordSettledCardPrefix = "Your word · settled · ";
 

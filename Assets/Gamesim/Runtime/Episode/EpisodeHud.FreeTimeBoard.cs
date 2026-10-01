@@ -38,7 +38,13 @@ namespace Gamesim.Episode
             BudgetRuleName = "Budget rule", BudgetCopyName = "Budget copy", UnusedActionsNoteName = "Unused actions",
             BuyActionsName = "Buy actions", BoughtOutName = "Bought out", WaitingBeatsName = "Waiting beats",
             PreparationName = "Preparation", FreeTimeTipName = "Free time tip", SecondaryHeadlineName = "Secondary headline",
-            BoardPageName = "Page";
+            BoardPageName = "Page", MoreWaitingCountName = "More waiting count";
+
+        /// <summary>
+        /// The story strip's control for the beats waiting past its room: it opens the first of them
+        /// as the step. Its count stands beside it as a label of its own, so the caption never changes.
+        /// </summary>
+        public const string MoreWaitingCaption = "More waiting";
 
         /// <summary>What the hero row leads with: whoever came to the player, a story beat waiting, or the play in motion.</summary>
         public enum FreeTimeHero { Play, Beat, Reply }
@@ -114,7 +120,13 @@ namespace Gamesim.Episode
         private const float BoardHeroLeast = 104f, BoardHeroShare = .55f;
         /// <summary>The budget card's share of the hero row, and the narrowest and widest it runs.</summary>
         private const float BoardBudgetShare = .45f, BoardBudgetLeast = 400f, BoardBudgetMost = 640f;
-        private const float BoardReplyTiles = 60f, BoardBannerFoot = 34f, BoardBuyHeight = 38f, BoardCountBox = 44f;
+        private const float BoardReplyTiles = 60f, BoardBannerFoot = 34f, BoardCountBox = 44f;
+        /// <summary>
+        /// A way to buy an action: its height with the caption on one line over the price, its inset,
+        /// and the least size the caption may take on one line. A caption that would have to go under
+        /// that goes on two lines at its own size instead, and both buttons grow to hold it.
+        /// </summary>
+        private const float BoardBuyHeight = 38f, BoardBuyPad = 8f, BoardBuyLeast = 11f;
 
         /// <summary>
         /// Draws free time's board into the stage's column, at the stage's whole width, fitted to the
@@ -179,16 +191,17 @@ namespace Gamesim.Episode
             // player, the story's waiting beats, the cards, the pager, the moves, and the budget's ways
             // to buy time last - the budget card a child of the board, beside the hero rather than in
             // it, since the ring follows the hierarchy - so the panel never opens on spending goodwill.
-            float y = 0f;
+            // What opens a beat stands over the step's words column, never over its options.
+            float y = 0f, words = BoardStepWords(width);
             var heroRow = EndScreenKit.Box(FreeTimeHeroName, board, 0f, y, leftWidth, hero);
             switch (spec.Hero)
             {
                 case FreeTimeHero.Reply: BoardReply(heroRow, leftWidth, hero, spec); break;
-                case FreeTimeHero.Beat: BoardBanner(heroRow, leftWidth, hero, spec); break;
+                case FreeTimeHero.Beat: BoardBanner(heroRow, leftWidth, hero, words, spec); break;
                 default: BoardPlay(heroRow, leftWidth, hero, spec); break;
             }
             y += hero + gap;
-            BoardStrip(board, y, width, spec);
+            BoardStrip(board, y, width, words, spec);
             y += strip + gap;
             float talkY = y;
             y += head + headGap;
@@ -216,16 +229,65 @@ namespace Gamesim.Episode
         private float BoardLine(int size) => BoardSized(size) * 1.32f;
 
         /// <summary>The height <paramref name="words"/> wrap to at <paramref name="width"/>, at a size, a weight and a style, measured on <paramref name="probe"/>.</summary>
-        private float BoardMeasure(TMP_Text probe, string words, int size, float width, TMP_FontAsset weight = null, FontStyles style = FontStyles.Normal)
+        private float BoardMeasure(TMP_Text probe, string words, int size, float width, TMP_FontAsset weight = null, FontStyles style = FontStyles.Normal) =>
+            BoardMeasureAt(probe, words, BoardSized(size), width, weight, style);
+
+        /// <summary>The height <paramref name="words"/> wrap to at <paramref name="width"/> at a size already scaled, measured on <paramref name="probe"/>.</summary>
+        private float BoardMeasureAt(TMP_Text probe, string words, float fontSize, float width, TMP_FontAsset weight = null, FontStyles style = FontStyles.Normal)
         {
             if (probe == null || string.IsNullOrEmpty(words) || width <= 1f) return 0f;
             probe.font = weight != null ? weight : font;
             probe.fontStyle = style;
             probe.enableAutoSizing = false;
-            probe.fontSize = BoardSized(size);
+            probe.fontSize = fontSize;
             probe.textWrappingMode = TextWrappingModes.Normal;
             return Mathf.Ceil(probe.GetPreferredValues(Localisation.Text(words), width, 0f).y) + 2f;
         }
+
+        /// <summary>The width <paramref name="words"/> take on one line at a size and a weight, measured on <paramref name="probe"/>.</summary>
+        private float BoardWidthOf(TMP_Text probe, string words, int size, TMP_FontAsset weight = null)
+        {
+            if (probe == null || string.IsNullOrEmpty(words)) return 0f;
+            probe.font = weight != null ? weight : font;
+            probe.fontStyle = FontStyles.Normal;
+            probe.enableAutoSizing = false;
+            probe.fontSize = BoardSized(size);
+            probe.textWrappingMode = TextWrappingModes.NoWrap;
+            return Mathf.Ceil(probe.GetPreferredValues(Localisation.Text(words)).x);
+        }
+
+        /// <summary>
+        /// How wide the words column is that a story beat's step draws down the left of this same
+        /// column (NominationStoryStep): its eyebrow, its name and the moment, and no control. The
+        /// board puts whatever opens a beat over it - Answer, the waiting chips, More waiting - so the
+        /// second press of a double click lands on the step's words, never on an option nobody read.
+        /// </summary>
+        private float BoardStepWords(float width) => Mathf.Floor(width * .38f - 9f * FontScale);
+
+        /// <summary>
+        /// The buy buttons' row at <paramref name="inner"/>: its height, and whether the captions go
+        /// on two lines - when either would have to drop under <see cref="BoardBuyLeast"/> to stay on
+        /// one. Both buttons wrap together, so they keep one height and one look.
+        /// </summary>
+        private float BoardBuyRow(TMP_Text probe, IList<BuyButton> buys, float inner, out bool wraps)
+        {
+            float s = FontScale;
+            wraps = false;
+            if (buys == null || buys.Count == 0) return BoardBuyHeight * s;
+            float each = (inner - (buys.Count - 1) * 8f * s) / buys.Count, box = each - 2f * BoardBuyPad * s;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            foreach (var buy in buys)
+            {
+                // The size one line would need, a whisker short of the box for rounding and kerning.
+                float wide = BoardWidthOf(probe, buy.Caption, 12, semibold);
+                if (wide > 0f && wide * BoardBuyLeast / BoardSized(12) > box - 2f * s) wraps = true;
+            }
+            return wraps ? BoardBuyCaptionTop * s + BoardBuyCaptionBox(true) + BoardBuyPriceBox * s + 4f * s : BoardBuyHeight * s;
+        }
+
+        /// <summary>A buy button's caption: from this far down, in a box 1.3 times its size for each of its lines.</summary>
+        private const float BoardBuyCaptionTop = 4f, BoardBuyPriceBox = 15f;
+        private float BoardBuyCaptionBox(bool twoLines) => (twoLines ? 2f : 1f) * BoardSized(12) * 1.3f;
 
         /// <summary>The height the hero's left-hand card needs for its words at <paramref name="width"/>.</summary>
         private float BoardHeroNeed(TMP_Text probe, FreeTimeBoardSpec spec, float width)
@@ -242,10 +304,13 @@ namespace Gamesim.Episode
                 default:
                     float play = pad + 18f * s + 28f * s;
                     if (spec.PlayBar) play += 32f * s;
-                    else if (!string.IsNullOrEmpty(spec.PlayStatus)) play += 19f * s;
+                    else if (!string.IsNullOrEmpty(spec.PlayStatus)) play += BoardPlayStatusBox() + 2f * s;
                     return play + Mathf.Min(BoardMeasure(probe, spec.PlayGoal, 13, inner), 2f * BoardLine(13)) + pad;
             }
         }
+
+        /// <summary>The play's offer line, in a box 1.3 times its size at the player's text scale.</summary>
+        private float BoardPlayStatusBox() => BoardSized(13) * 1.3f;
 
         /// <summary>The budget card's left-hand column: the count and what moving on loses.</summary>
         private float BoardBudgetLeft(float inner) => Mathf.Clamp(inner * .34f, 118f * FontScale, 190f * FontScale);
@@ -258,7 +323,7 @@ namespace Gamesim.Episode
             float leftNeed = 18f * s + (BoardCountBox + 2f) * s
                 + (string.IsNullOrEmpty(spec.Unused) ? 0f : Mathf.Min(BoardMeasure(probe, spec.Unused, 12, left), 2f * BoardLine(12)));
             float rightNeed = BoardMeasure(probe, spec.Rule, 12, right) + 4f * s + BoardMeasure(probe, spec.Copy, 12, right);
-            return pad + Mathf.Max(leftNeed, rightNeed) + 8f * s + BoardBuyHeight * s + pad;
+            return pad + Mathf.Max(leftNeed, rightNeed) + 8f * s + BoardBuyRow(probe, spec.Buys, inner, out _) + pad;
         }
 
         // ------------------------------------------------------------ the hero row
@@ -313,10 +378,10 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The first story beat waiting, as a banner (decision 4): the arc's eyebrow, the beat's name,
-        /// the moment in words, what answering costs and when it closes, and "Answer", which opens the
-        /// beat as the step. Nothing is answered here.
+        /// the moment in words, "Answer", which opens the beat as the step, and beside it what
+        /// answering costs and when it closes. Nothing is answered here.
         /// </summary>
-        private void BoardBanner(RectTransform row, float width, float height, FreeTimeBoardSpec spec)
+        private void BoardBanner(RectTransform row, float width, float height, float stepWords, FreeTimeBoardSpec spec)
         {
             float s = FontScale, pad = BoardPad * s, inner = width - 2f * pad, y = pad;
             var card = EndScreenKit.Box(StoryBannerName, row, 0f, 0f, width, height);
@@ -352,10 +417,12 @@ namespace Gamesim.Episode
             Anchor(story.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad, -y),
                 new Vector2(inner, Mathf.Max(BoardLine(14), height - y - 8f * s - footRow - pad)));
 
-            // The way in, at the foot's right-hand end, and what answering costs beside it.
-            float answerWidth = Mathf.Min(inner * .4f, 150f * s);
+            // The way in, at the foot's left-hand end, and what answering costs beside it. Pressing
+            // it redraws the stage as the step, whose options stand right of its words column; at the
+            // left, over that column, a double click's second press lands on the beat's words.
+            float answerWidth = Mathf.Min(inner * .4f, 150f * s, Mathf.Max(60f * s, stepWords - pad - 8f * s));
             var rect = Panel(EpisodeDirector.AnswerBeatCaption, card, Surface);
-            Anchor(rect, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad + inner - answerWidth, -(height - pad - footRow)), new Vector2(answerWidth, footRow));
+            Anchor(rect, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad, -(height - pad - footRow)), new Vector2(answerWidth, footRow));
             EndScreenKit.Frame(rect, PackArt.Pack8ButtonPrimary, 10f * s, UiTheme.ActionBlue, UiTheme.Glow);
             var answer = FinishButton(rect, EpisodeDirector.AnswerBeatCaption, spec.Answer ?? (() => { }));
             var words = answer.GetComponentInChildren<TMP_Text>();
@@ -368,7 +435,7 @@ namespace Gamesim.Episode
                 AutoSize(words, 11);
             }
             var note = FixedText(card, spec.BeatNote ?? "", 12, spec.BeatFree ? UiTheme.Allied : UiTheme.Muted,
-                new Vector2(pad, -(height - pad - footRow)), new Vector2(Mathf.Max(40f * s, inner - answerWidth - 12f * s), footRow));
+                new Vector2(pad + answerWidth + 12f * s, -(height - pad - footRow)), new Vector2(Mathf.Max(40f * s, inner - answerWidth - 12f * s), footRow));
             note.name = "Banner note";
             note.alignment = TextAlignmentOptions.MidlineLeft;
             AutoSize(note, 9);
@@ -416,10 +483,11 @@ namespace Gamesim.Episode
             }
             else if (!string.IsNullOrEmpty(spec.PlayStatus))
             {
-                var offer = FixedText(card, spec.PlayStatus, 13, UiTheme.Gold, new Vector2(pad, -y), new Vector2(inner, 17f * s));
+                float box = BoardPlayStatusBox();
+                var offer = FixedText(card, spec.PlayStatus, 13, UiTheme.Gold, new Vector2(pad, -y), new Vector2(inner, box));
                 offer.name = "Play status";
                 AutoSize(offer, 10);
-                y += 19f * s;
+                y += box + 2f * s;
             }
             if (string.IsNullOrEmpty(spec.PlayGoal)) return;
             var goal = NewText(card, spec.PlayGoal, 13, UiTheme.Muted);
@@ -434,7 +502,7 @@ namespace Gamesim.Episode
         /// The budget card, under the name the free-time head has always had: FREE TIME, the actions
         /// left large, what moving on loses, the week's rule and what costs and what is free, and the
         /// two ways to buy another action with their price in goodwill. When the height is short the
-        /// rule and the copy step down a size or two rather than the card growing.
+        /// rule and the copy step down a whole size or two together rather than the card growing.
         /// </summary>
         private void BoardBudget(RectTransform row, float x, float width, float height, FreeTimeBoardSpec spec)
         {
@@ -444,7 +512,10 @@ namespace Gamesim.Episode
                 new Color(UiTheme.Gold.r, UiTheme.Gold.g, UiTheme.Gold.b, .5f));
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             float left = BoardBudgetLeft(inner), y = pad;
-            float buttons = BoardBuyHeight * s, area = Mathf.Max(BoardLine(12), height - pad - buttons - 8f * s - pad);
+            var probe = NewText(card, "", 12, Paper);
+            var buys = spec.Buys ?? new List<BuyButton>();
+            float buttons = BoardBuyRow(probe, buys, inner, out bool wraps);
+            float area = Mathf.Max(BoardLine(12), height - pad - buttons - 8f * s - pad);
 
             var eyebrow = FixedText(card, "FREE TIME", 12, Accent, new Vector2(pad, -y), new Vector2(left, 16f * s));
             eyebrow.name = "Budget eyebrow";
@@ -478,42 +549,46 @@ namespace Gamesim.Episode
                 Anchor(unused.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad, -y), new Vector2(left, room));
             }
 
-            // The week's rule and what costs and what is free, on the right. Each keeps its share of
-            // the room its words want; where they want more than there is, both step down together.
+            // The week's rule and what costs and what is free, on the right, at one size: the largest
+            // whole size at which both hold in the room together, down to the least the board's copy
+            // takes. Stepping both down together keeps the rule whole - a share of the room by height
+            // left the two-line rule under its second line, and it drew nothing.
             float rx = pad + left + 12f * s, rw = Mathf.Max(60f * s, inner - left - 12f * s);
-            var probe = NewText(card, "", 12, Paper);
-            float ruleNeed = BoardMeasure(probe, spec.Rule, 12, rw), copyNeed = BoardMeasure(probe, spec.Copy, 12, rw);
+            bool both = !string.IsNullOrEmpty(spec.Rule) && !string.IsNullOrEmpty(spec.Copy);
+            float spacing = both ? 4f * s : 0f, size = BoardSized(12), ruleBox = 0f, copyNeed = 0f;
+            for (; ; size -= 1f)
+            {
+                ruleBox = BoardMeasureAt(probe, spec.Rule, size, rw);
+                copyNeed = BoardMeasureAt(probe, spec.Copy, size, rw);
+                if (ruleBox + spacing + copyNeed <= area || size <= BoardCopyLeast) break;
+            }
             probe.gameObject.SetActive(false);
             Destroy(probe.gameObject);
-            float spacing = ruleNeed > 0f && copyNeed > 0f ? 4f * s : 0f;
-            float ruleBox = ruleNeed, copyBox = copyNeed;
-            if (ruleNeed + spacing + copyNeed > area && ruleNeed + copyNeed > 0f)
-            {
-                float k = Mathf.Max(0f, area - spacing) / (ruleNeed + copyNeed);
-                ruleBox = ruleNeed > 0f ? Mathf.Max(12f * 1.32f, ruleNeed * k) : 0f;
-                copyBox = copyNeed > 0f ? Mathf.Max(12f * 1.32f, area - spacing - ruleBox) : 0f;
-            }
             if (ruleBox > 0f)
             {
                 var rule = NewText(card, spec.Rule, 12, UiTheme.Muted);
                 rule.name = BudgetRuleName;
+                rule.fontSize = size;
                 rule.overflowMode = TextOverflowModes.Ellipsis;
-                AutoSize(rule, 9);
+                AutoSize(rule, BoardCopyLeast);
                 Anchor(rule.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(rx, -pad), new Vector2(rw, ruleBox));
             }
-            if (copyBox > 0f)
+            if (copyNeed > 0f)
             {
+                // The room under the rule; at the least size, should the words still want more, the
+                // auto-size and the ellipsis are the last word rather than the buttons under it.
                 var copy = NewText(card, spec.Copy, 12, Paper);
                 copy.name = BudgetCopyName;
+                copy.fontSize = size;
                 copy.overflowMode = TextOverflowModes.Ellipsis;
-                AutoSize(copy, 9);
-                Anchor(copy.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(rx, -(pad + ruleBox + spacing)), new Vector2(rw, copyBox));
+                AutoSize(copy, BoardCopyLeast);
+                Anchor(copy.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(rx, -(pad + ruleBox + spacing)),
+                    new Vector2(rw, Mathf.Max(BoardCopyLeast * 1.32f, area - spacing - ruleBox)));
             }
 
             // The two ways to buy an action, along the foot; once the house has given all it will,
             // the line that says so in their place.
             float by = height - pad - buttons;
-            var buys = spec.Buys ?? new List<BuyButton>();
             if (buys.Count == 0)
             {
                 if (string.IsNullOrEmpty(spec.BoughtOut)) return;
@@ -525,13 +600,20 @@ namespace Gamesim.Episode
             }
             var strip = EndScreenKit.Box(BuyActionsName, card, pad, by, inner, buttons);
             float gap = 8f * s, each = (inner - (buys.Count - 1) * gap) / buys.Count;
-            for (int i = 0; i < buys.Count; i++) BoardBuy(strip, i * (each + gap), each, buttons, buys[i]);
+            for (int i = 0; i < buys.Count; i++) BoardBuy(strip, i * (each + gap), each, buttons, wraps, buys[i]);
         }
 
-        /// <summary>One way to buy an action: the caption it has always had over its price in goodwill.</summary>
-        private void BoardBuy(RectTransform strip, float x, float width, float height, BuyButton buy)
+        /// <summary>The least whole size the budget card's rule and copy step down to together.</summary>
+        private const float BoardCopyLeast = 9f;
+
+        /// <summary>
+        /// One way to buy an action: the caption it has always had, word for word, over its price in
+        /// goodwill - on one line at no less than <see cref="BoardBuyLeast"/>, or on two at its own
+        /// size when <paramref name="wraps"/>.
+        /// </summary>
+        private void BoardBuy(RectTransform strip, float x, float width, float height, bool wraps, BuyButton buy)
         {
-            float s = FontScale, pad = 8f * s;
+            float s = FontScale, pad = BoardBuyPad * s, top = BoardBuyCaptionTop * s, captionBox = BoardBuyCaptionBox(wraps);
             var rect = Chrome(buy.Caption, strip, UiTheme.Emphasis.Interactive);
             HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             EndScreenKit.Place(rect, x, 0f, width, height);
@@ -543,25 +625,29 @@ namespace Gamesim.Episode
             var caption = NewText(rect, buy.Caption, 12, Paper);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) caption.font = semibold;
-            caption.textWrappingMode = TextWrappingModes.NoWrap;
-            AutoSize(caption, 9);
-            Anchor(caption.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad, -4f * s), new Vector2(width - 2f * pad, 16f * s));
+            caption.textWrappingMode = wraps ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+            AutoSize(caption, BoardBuyLeast);
+            Anchor(caption.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad, -top), new Vector2(width - 2f * pad, captionBox));
             if (string.IsNullOrEmpty(buy.Price)) return;
             var price = NewText(rect, buy.Price, 11, UiTheme.Gold);
             price.name = "Buy price";
             price.textWrappingMode = TextWrappingModes.NoWrap;
             AutoSize(price, 9);
-            Anchor(price.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad, -20f * s), new Vector2(width - 2f * pad, 15f * s));
+            Anchor(price.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(pad, -(top + captionBox)),
+                new Vector2(width - 2f * pad, BoardBuyPriceBox * s));
         }
 
         // ------------------------------------------------------------ the story strip
 
         /// <summary>
-        /// The week's story in one line: the play when the hero is not showing it, the threads and the
-        /// storylines playing out, every other beat waiting as a chip that opens it, and the
-        /// preparation banked at the right-hand end; the Have-Not line, word for word, under it.
+        /// The week's story in one line: every other beat waiting as a chip that opens it, with More
+        /// waiting for those past the chips' room; the play when the hero is not showing it; the
+        /// threads and the storylines playing out; and the preparation banked at the right-hand end.
+        /// The chips come first, over the step's words column (<paramref name="stepWords"/>), as Answer
+        /// stands: what opens a beat redraws the stage as the step, and a double click's second press
+        /// lands on the beat's words rather than on its options. The Have-Not line, word for word, under it.
         /// </summary>
-        private void BoardStrip(RectTransform board, float y, float width, FreeTimeBoardSpec spec)
+        private void BoardStrip(RectTransform board, float y, float width, float stepWords, FreeTimeBoardSpec spec)
         {
             float s = FontScale, height = BoardStripHeight * s, pad = 10f * s, gap = 16f * s;
             var strip = EndScreenKit.Box(StoryStripName, board, 0f, y, width, height);
@@ -577,52 +663,11 @@ namespace Gamesim.Episode
                 banked.alignment = TextAlignmentOptions.Right;
                 right -= w + gap;
             }
+            var waiting = spec.Waiting ?? new List<(string Caption, Action Open)>();
+            if (waiting.Count > 0)
+                x += BoardWaiting(strip, x, Mathf.Min(right, stepWords - 8f * s) - x, height, waiting) + gap;
             if (!string.IsNullOrEmpty(spec.StripPlay))
                 x += BoardSegment(strip, CurrentPlayCardName, "PLAY", spec.StripPlay, x, Mathf.Min((right - x) * .4f, 340f * s), height) + gap;
-
-            // The other beats waiting, as chips that open each as the step; those that do not fit
-            // say how many more there are.
-            var waiting = spec.Waiting ?? new List<(string Caption, Action Open)>();
-            float chips = 0f;
-            RectTransform chipRow = null;
-            if (waiting.Count > 0)
-            {
-                chipRow = EndScreenKit.Box(WaitingBeatsName, strip, 0f, 0f, 0f, height);
-                var label = FixedText(chipRow, "WAITING", 11, UiTheme.Joke, Vector2.zero, new Vector2(80f * s, 15f * s));
-                label.name = "Segment label";
-                label.characterSpacing = 2f;
-                label.textWrappingMode = TextWrappingModes.NoWrap;
-                float labelWidth = Mathf.Ceil(label.GetPreferredValues(label.text).x) + 4f * s;
-                Anchor(label.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -(height - 15f * s) * .5f), new Vector2(labelWidth, 15f * s));
-                float cx = labelWidth + 6f * s, most = Mathf.Max(0f, (right - x) * .55f);
-                int shown = 0;
-                foreach (var beat in waiting)
-                {
-                    var chip = BoardChip(chipRow, beat.Caption, beat.Open, 22f * s);
-                    float w = chip.sizeDelta.x;
-                    bool last = shown == waiting.Count - 1;
-                    // Room for this chip, and for the count of the rest when it is not the last.
-                    if (cx + w + (last ? 0f : 70f * s) > most && shown > 0)
-                    {
-                        chip.gameObject.SetActive(false);
-                        Destroy(chip.gameObject);
-                        break;
-                    }
-                    Anchor(chip, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx, -(height - 22f * s) * .5f), chip.sizeDelta);
-                    cx += w + 6f * s;
-                    shown++;
-                }
-                if (shown < waiting.Count)
-                {
-                    var more = FixedText(chipRow, "+" + (waiting.Count - shown) + " more", 12, UiTheme.Muted,
-                        new Vector2(cx, -(height - 17f * s) * .5f), new Vector2(64f * s, 17f * s));
-                    more.name = "More waiting";
-                    cx += 64f * s;
-                }
-                chips = cx;
-                EndScreenKit.Place(chipRow, right - chips, 0f, chips, height);
-                right -= chips + gap;
-            }
             BoardSegment(strip, ThreadsCardName, "THREADS", spec.Threads, x, Mathf.Max(60f * s, right - x), height);
             if (string.IsNullOrEmpty(spec.HaveNot)) return;
             // What being a Have-Not costs, word for word, across the board under the strip.
@@ -659,8 +704,58 @@ namespace Gamesim.Episode
             return Mathf.Min(most, taken);
         }
 
-        /// <summary>A waiting beat as a chip: a small pressable pill, named and captioned by the beat's title.</summary>
-        private RectTransform BoardChip(RectTransform parent, string caption, Action open, float height)
+        /// <summary>The waiting row's pills: their height, the gap between them, the inset of More waiting's words, and the narrowest a first chip is squeezed to.</summary>
+        private const float BoardChipHeight = 22f, BoardChipGap = 6f, BoardMoreSide = 10f, BoardMoreBetween = 5f, BoardChipLeast = 80f;
+
+        /// <summary>
+        /// The beats waiting past the hero's, from <paramref name="x"/> and no wider than
+        /// <paramref name="most"/>: the WAITING label; a chip for each, in order, while the row holds
+        /// it and still has room for More waiting after it; and More waiting, with the count of the
+        /// rest beside it, which opens the first of them. Returns the width it took.
+        /// </summary>
+        private float BoardWaiting(RectTransform strip, float x, float most, float height, IList<(string Caption, Action Open)> waiting)
+        {
+            float s = FontScale, chip = BoardChipHeight * s, spacing = BoardChipGap * s;
+            var row = EndScreenKit.Box(WaitingBeatsName, strip, x, 0f, Mathf.Max(0f, most), height);
+            var label = FixedText(row, "WAITING", 11, UiTheme.Joke, Vector2.zero, new Vector2(80f * s, 15f * s));
+            label.name = "Segment label";
+            label.characterSpacing = 2f;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            float labelWidth = Mathf.Ceil(label.GetPreferredValues(label.text).x) + 4f * s;
+            Anchor(label.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -(height - 15f * s) * .5f), new Vector2(labelWidth, 15f * s));
+            var probe = NewText(row, "", 12, Paper);
+            float more = BoardMoreWidth(probe, waiting.Count);
+            probe.gameObject.SetActive(false);
+            Destroy(probe.gameObject);
+
+            float cx = labelWidth + spacing;
+            int shown = 0;
+            for (; shown < waiting.Count; shown++)
+            {
+                // Room for this chip, and for More waiting after it unless it is the last.
+                bool last = shown == waiting.Count - 1;
+                var pill = BoardChip(row, waiting[shown].Caption, waiting[shown].Open, chip, most - cx - (last ? 0f : spacing + more), shown == 0);
+                if (pill == null) break;
+                Anchor(pill, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx, -(height - chip) * .5f), pill.sizeDelta);
+                cx += pill.sizeDelta.x + spacing;
+            }
+            if (shown < waiting.Count)
+            {
+                var rest = BoardMore(row, waiting.Count - shown, waiting[shown].Open, chip);
+                Anchor(rest, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx, -(height - chip) * .5f), rest.sizeDelta);
+                cx += rest.sizeDelta.x + spacing;
+            }
+            float used = Mathf.Max(labelWidth, cx - spacing);
+            row.sizeDelta = new Vector2(used, height);
+            return used;
+        }
+
+        /// <summary>
+        /// A waiting beat as a chip: a small pressable pill, named and captioned by the beat's title,
+        /// no wider than <paramref name="room"/>. Null, with nothing left behind, when it does not fit -
+        /// unless it is the row's <paramref name="first"/> and the room still reads, when it is squeezed.
+        /// </summary>
+        private RectTransform BoardChip(RectTransform parent, string caption, Action open, float height, float room, bool first)
         {
             float s = FontScale;
             var rect = Panel(caption, parent, new Color(UiTheme.Joke.r, UiTheme.Joke.g, UiTheme.Joke.b, .16f), Mathf.RoundToInt(height * .5f) - 1);
@@ -671,9 +766,57 @@ namespace Gamesim.Episode
             var medium = UiTheme.Font(UiTheme.Weight.Medium);
             if (medium != null) label.font = medium;
             float width = Mathf.Min(260f * s, Mathf.Ceil(label.GetPreferredValues(label.text).x) + 24f * s);
+            if (width > room)
+            {
+                if (!first || room < BoardChipLeast * s)
+                {
+                    rect.gameObject.SetActive(false);
+                    Destroy(rect.gameObject);
+                    return null;
+                }
+                width = room;
+            }
             rect.sizeDelta = new Vector2(width, height);
             Stretch(label.rectTransform, 10f, 2f, 10f, 2f);
             AutoSize(label, 9);
+            Pressable(rect, open ?? (() => { }));
+            return rect;
+        }
+
+        /// <summary>The width More waiting takes with <paramref name="count"/> beside it, measured on <paramref name="probe"/>.</summary>
+        private float BoardMoreWidth(TMP_Text probe, int count)
+        {
+            float s = FontScale;
+            return 2f * BoardMoreSide * s + BoardWidthOf(probe, "+" + count, 12, UiTheme.Font(UiTheme.Weight.SemiBold)) + 2f * s
+                + BoardMoreBetween * s + BoardWidthOf(probe, MoreWaitingCaption, 12, UiTheme.Font(UiTheme.Weight.Medium)) + 2f * s;
+        }
+
+        /// <summary>
+        /// More waiting: a pill like the chips, with how many beats are past the row's room as a label
+        /// of its own beside the caption, so the caption is the same whatever the count, and the
+        /// caption the control's first label, as every control's is. Opens the first of them.
+        /// </summary>
+        private RectTransform BoardMore(RectTransform parent, int count, Action open, float height)
+        {
+            float s = FontScale, side = BoardMoreSide * s, box = height - 4f;
+            var rect = Panel(MoreWaitingCaption, parent, new Color(Accent.r, Accent.g, Accent.b, .14f), Mathf.RoundToInt(height * .5f) - 1);
+            UiTheme.AddBorder(rect, Mathf.RoundToInt(height * .5f) - 1, new Color(Accent.r, Accent.g, Accent.b, .6f));
+            var caption = NewText(rect, MoreWaitingCaption, 12, Paper);
+            var medium = UiTheme.Font(UiTheme.Weight.Medium);
+            if (medium != null) caption.font = medium;
+            caption.textWrappingMode = TextWrappingModes.NoWrap;
+            caption.alignment = TextAlignmentOptions.MidlineLeft;
+            var tally = NewText(rect, "+" + count, 12, UiTheme.Joke);
+            tally.name = MoreWaitingCountName;
+            var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
+            if (semibold != null) tally.font = semibold;
+            tally.textWrappingMode = TextWrappingModes.NoWrap;
+            tally.alignment = TextAlignmentOptions.MidlineLeft;
+            float tallyWidth = Mathf.Ceil(tally.GetPreferredValues(tally.text).x) + 2f * s;
+            float captionWidth = Mathf.Ceil(caption.GetPreferredValues(caption.text).x) + 2f * s;
+            Anchor(tally.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(side, -2f), new Vector2(tallyWidth, box));
+            Anchor(caption.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(side + tallyWidth + BoardMoreBetween * s, -2f), new Vector2(captionWidth, box));
+            rect.sizeDelta = new Vector2(2f * side + tallyWidth + BoardMoreBetween * s + captionWidth, height);
             Pressable(rect, open ?? (() => { }));
             return rect;
         }
@@ -853,7 +996,7 @@ namespace Gamesim.Episode
             // Two lines at the caption's size, in a box 1.3 times each: the longest caption, "Call a
             // house meeting and rally the room", is two lines on the narrowest tile.
             Anchor(caption.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(text, -(pad - 1f * s)),
-                new Vector2(Mathf.Max(40f * s, width - text - pad), 2f * 14f * 1.3f * s));
+                new Vector2(Mathf.Max(40f * s, width - text - pad), 2f * BoardSized(14) * 1.3f));
             float footBox = 16f * s, footY = height - pad - footBox, corner = 0f;
             if (!tile.Locked && !string.IsNullOrEmpty(tile.Corner))
             {
@@ -890,7 +1033,8 @@ namespace Gamesim.Episode
             EndScreenKit.Frame(footerSecondary, PackArt.Pack8ButtonPrimary, 12f * s, UiTheme.ActionBlue, UiTheme.Glow);
             var caption = button.GetComponentInChildren<TMP_Text>();
             if (string.IsNullOrEmpty(headline) || caption == null) return;
-            float headlineBox = 13f * 1.3f * s, captionBox = 14f * 1.3f * s;
+            // Each in a box 1.3 times the size it is drawn at, which is the rounded size at the larger text.
+            float headlineBox = BoardSized(13) * 1.3f, captionBox = BoardSized(14) * 1.3f;
             var words = NewText(footerSecondary, headline, 13, Color.white);
             words.name = SecondaryHeadlineName;
             words.characterSpacing = 2f;
@@ -912,6 +1056,19 @@ namespace Gamesim.Episode
             line.offsetMin = new Vector2(12f, 7f * s);
             line.offsetMax = new Vector2(-12f, 7f * s + captionBox);
             LayoutStrategyFooter();
+        }
+
+        /// <summary>
+        /// Puts the keyboard on the control named <paramref name="name"/> once this render's controls
+        /// are wired, rather than on the column's first: a screen opened by a press whose next press
+        /// must not answer anything - a story beat opened from free time's board opens on "Back to
+        /// free time", so a second Enter goes back rather than choosing the beat's first option.
+        /// </summary>
+        public void FocusWhenWired(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            preferredSelection = name;
+            restoreSelection = true;
         }
     }
 }

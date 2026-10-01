@@ -108,7 +108,7 @@ namespace Gamesim.Tests.PlayMode
             string words = string.Join("\n", PanelWords(panel));
             Assert.That(listen.GetComponentsInChildren<TMP_Text>().Select(text => text.text), Does.Contain("Works 7 in 10"), "Listening in still says its odds.");
             Assert.That(words, Does.Contain(EpisodeDirector.BudgetRule(state)), "and the week still says its budget,");
-            Assert.That(words, Does.Contain(EpisodeDirector.FreeTimeCostCopy), "and what costs an action and what is free.");
+            Assert.That(words, Does.Contain(EpisodeDirector.FreeTimeCostLine(state)), "and what costs an action and what is free.");
             Assert.That(words, Does.Not.Contain("Out of interactions?"), "The paragraphs are gone;");
             Assert.That(words, Does.Contain("goodwill"), "the price of more time is beside the count.");
 

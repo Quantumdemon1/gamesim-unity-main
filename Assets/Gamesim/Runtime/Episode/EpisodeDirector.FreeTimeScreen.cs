@@ -145,16 +145,33 @@ namespace Gamesim.Episode
         public static string ActionsLeftHeadline(int left) =>
             left <= 0 ? "NO ACTIONS LEFT" : left + (left == 1 ? " ACTION LEFT" : " ACTIONS LEFT");
 
-        /// <summary>What moving on costs, under the way on: the unused actions. Null when none are.</summary>
+        /// <summary>What moving on costs, under the way on: the unused actions it loses. Null when none are.</summary>
         public static string UnusedActionsNote(EpisodeState state)
         {
             if (state == null || state.phase != EpisodePhase.Social) return null;
-            int left = ActionsLeftCount(state);
-            return left <= 0 ? null : left + (left == 1 ? " unused action" : " unused actions") + " will be lost.";
+            int lost = ActionsLostByMovingOn(state);
+            return lost <= 0 ? null : lost + (lost == 1 ? " unused action" : " unused actions") + " will be lost.";
         }
 
         private static int ActionsLeftCount(EpisodeState state) =>
             Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
+
+        /// <summary>
+        /// How many of the actions left beginning the next competition loses, as the engine counts
+        /// it: all of them when the week turns. Move-in night does not turn it, and the window's
+        /// spending is cleared as it closes, so what the week's extras give - bought time, a
+        /// storyline's bonus - is there again, whole, in the week's first window; only the night's
+        /// own unspent actions go.
+        /// </summary>
+        private static int ActionsLostByMovingOn(EpisodeState state)
+        {
+            int left = ActionsLeftCount(state);
+            if (left <= 0 || state.evictionResolved) return left;
+            int own = EpisodeEngine.WeekRulesOn(state)
+                ? EpisodeEngine.WindowSeats(state, EpisodeEngine.Window(state))
+                : EpisodeEngine.EarnedSocialActionBudget(state);
+            return Mathf.Clamp(own - EpisodeEngine.SocialActionsSpent(state), 0, left);
+        }
 
         /// <summary>
         /// What the week gives, in a line under the meter: under the windows, which window this is
@@ -163,7 +180,9 @@ namespace Gamesim.Episode
         ///
         /// <para>Move-in night is the week's free-time window too, but nobody has been evicted yet,
         /// so it says what the night has - its seats, which are gone once the first competition
-        /// begins - rather than calling itself 'After the eviction'.</para>
+        /// begins - rather than calling itself 'After the eviction'. What the week's extras add -
+        /// bought time, a storyline's bonus - is counted in the night's total, as ACTIONS LEFT counts
+        /// it, and said to carry into the week, which it does.</para>
         /// </summary>
         public static string BudgetRule(EpisodeState state)
         {
@@ -174,6 +193,10 @@ namespace Gamesim.Episode
             if (EpisodeEngine.IsFirstNight(state))
             {
                 int tonight = EpisodeEngine.WindowSeats(state, window);
+                int extra = EpisodeEngine.SocialActionBudget(state) - tonight;
+                if (extra > 0)
+                    return (tonight + extra) + " actions tonight; " + tonight + (tonight == 1 ? " does" : " do") + " not carry into the week, the extra "
+                        + extra + (extra == 1 ? " does." : " do.");
                 return tonight + (tonight == 1 ? " action tonight; it does not" : " actions tonight; they do not") + " carry into the week.";
             }
             return Windows.Names[window] + ". What you do not spend here does not carry to the next window.";

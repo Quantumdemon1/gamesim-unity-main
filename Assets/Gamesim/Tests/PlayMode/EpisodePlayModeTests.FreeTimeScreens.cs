@@ -59,7 +59,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(labels.Single(text => text.name == EpisodeHud.ActionsLeftCountName).text, Is.EqualTo(left.ToString()), "how many actions are left, large,");
             Assert.That(labels.Single(text => text.name == EpisodeHud.ActionsLeftWordName).text, Is.EqualTo(left == 1 ? "ACTION LEFT" : "ACTIONS LEFT"));
             Assert.That(labels.Single(text => text.name == EpisodeHud.BudgetRuleName).text, Is.EqualTo(EpisodeDirector.BudgetRule(state)), "the week's rule,");
-            Assert.That(labels.Single(text => text.name == EpisodeHud.BudgetCopyName).text, Is.EqualTo(EpisodeDirector.FreeTimeCostCopy), "and what costs an action.");
+            Assert.That(labels.Single(text => text.name == EpisodeHud.BudgetCopyName).text, Is.EqualTo(EpisodeDirector.FreeTimeCostLine(state)),
+                "and what costs an action, and what moving on loses.");
             // The board's rows: the hero, the story strip, the cards and the moves.
             var board = ActiveRect(EpisodeHud.FreeTimeBoardName);
             Assert.That(board, Is.Not.Null, "Free time is one board.");
@@ -89,12 +90,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(begin.transform.parent, Is.SameAs(panel), "The way on is pinned.");
             Assert.That(panel.Find(EpisodeHud.PinnedNoteName), Is.Null, "Nothing is wedged under the way on.");
             var note = labels.SingleOrDefault(text => text.name == EpisodeHud.UnusedActionsNoteName);
-            if (left > 0)
+            string lost = EpisodeDirector.UnusedActionsNote(state);
+            if (lost != null)
             {
+                Assert.That(left, Is.GreaterThan(0), "Only actions left can be lost.");
                 Assert.That(note, Is.Not.Null, "The unused actions are said in the budget card.");
-                Assert.That(note.text, Is.EqualTo(EpisodeDirector.UnusedActionsNote(state)));
+                Assert.That(note.text, Is.EqualTo(lost));
             }
-            else Assert.That(note, Is.Null, "Nothing is lost when nothing is left.");
+            else Assert.That(note, Is.Null, "Nothing is said lost when moving on loses nothing.");
             // Where the player is, in the footer's strip, unless a storyline moving on lets pass outranks it.
             var strip = ActiveRect(EpisodeHud.StrategyStripName);
             Assert.That(strip, Is.Not.Null, "The footer has its strip.");

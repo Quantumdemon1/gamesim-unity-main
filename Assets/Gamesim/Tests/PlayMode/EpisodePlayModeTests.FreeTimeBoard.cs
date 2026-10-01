@@ -8,6 +8,7 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -20,14 +21,20 @@ namespace Gamesim.Tests.PlayMode
     /// of the scroll. These hold that the board fits the stage without a scroll at both text sizes in
     /// houses of four, eight and sixteen - with nothing waiting, a beat waiting, somebody come to the
     /// player, and as a Have-Not - while a house of three's free time is still the Final 3's; that the
-    /// cards page to everybody; that a beat opens as the step and goes back; that the moves cost what
-    /// they say and lock when nothing is left; that the keyboard walks the board; and that the way on
-    /// is one control.
+    /// cards page to everybody; that a beat opens as the step and goes back, and that a second press
+    /// or a second Enter on what opened it answers nothing; that beats past the strip's room are one
+    /// control away; that the moves cost what they say and lock when nothing is left; that the
+    /// keyboard walks the board; and that the way on is one control.
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
         /// <summary>What is waiting on the player in a free-time fixture.</summary>
         private enum FreeTimeWaiting { Nothing, Beat, Reply, HaveNot }
+
+        /// <summary>The fixture's beats: each title, the words before its options' labels, and its lapse, all different, since a caption is unique among live controls.</summary>
+        private static readonly string[] FreeTimeBeatTitles = { "A Word After Dinner", "A Second Word", "A Third Word", "A Fourth Word", "A Fifth Word" };
+        private static readonly string[] FreeTimeBeatPrefixes = { "", "Again: ", "Third: ", "Fourth: ", "Fifth: " };
+        private static readonly string[] FreeTimeBeatLapses = { "Let it go", "Let that go too", "Let it pass", "Leave it be", "Not tonight" };
 
         /// <summary>
         /// A story beat waiting in free time with three options and its lapse: a beat the engine
@@ -39,7 +46,7 @@ namespace Gamesim.Tests.PlayMode
             var beat = new HouseEventState
             {
                 id = "free-time-beat-" + index, kind = HouseEventKind.Story, contentId = "free-time-board-test:beat-" + index,
-                cycleId = "free-time-cycle-" + index, title = index == 0 ? "A Word After Dinner" : "A Second Word",
+                cycleId = "free-time-cycle-" + index, title = FreeTimeBeatTitles[index],
                 narrative = "Somebody catches you on your way out of the kitchen. They want to talk about the week, and they want to "
                     + "do it now, before the house settles down for the night.",
                 week = state.week, closesAnchor = StoryAnchors.SocialClose, surface = StorySurfaces.Conversation, lapseOptionId = "let-it-go",
@@ -49,11 +56,113 @@ namespace Gamesim.Tests.PlayMode
             for (int i = 0; i < labels.Length; i++)
                 beat.choices.Add(new HouseEventChoice
                 {
-                    label = (index == 0 ? "" : "Again: ") + labels[i], optionId = "option-" + i, risk = risks[i],
+                    label = FreeTimeBeatPrefixes[index] + labels[i], optionId = "option-" + i, risk = risks[i],
                     description = "Say it plainly and see where it lands.",
                 });
-            beat.choices.Add(new HouseEventChoice { label = index == 0 ? "Let it go" : "Let that go too", optionId = "let-it-go", description = "Let the moment pass.", lapse = true });
+            beat.choices.Add(new HouseEventChoice { label = FreeTimeBeatLapses[index], optionId = "let-it-go", description = "Let the moment pass.", lapse = true });
             return beat;
+        }
+
+        /// <summary>The middle of a control on the screen, where a player would press it.</summary>
+        private static Vector2 ScreenCentre(Component control)
+        {
+            var rect = (RectTransform)control.transform;
+            return RectTransformUtility.WorldToScreenPoint(null, rect.TransformPoint(rect.rect.center));
+        }
+
+        /// <summary>
+        /// A left-button press at a screen point, resolved as the input module resolves one: the
+        /// topmost graphic the raycast finds takes the press - and the keyboard's selection, as a
+        /// press on anything else clears it - and the first handler up its hierarchy the click.
+        /// Returns the control that took the click, or null when nothing at the point takes one.
+        /// </summary>
+        private static GameObject PressAt(Vector2 point)
+        {
+            var events = EventSystem.current;
+            var pointer = new PointerEventData(events) { position = point, button = PointerEventData.InputButton.Left };
+            var hits = new List<RaycastResult>();
+            events.RaycastAll(pointer, hits);
+            var top = hits.FirstOrDefault(hit => hit.gameObject != null);
+            var over = top.gameObject;
+            if (over == null) return null;
+            pointer.pointerCurrentRaycast = top;
+            pointer.pointerPressRaycast = top;
+            pointer.rawPointerPress = over;
+            if (ExecuteEvents.GetEventHandler<ISelectHandler>(over) != events.currentSelectedGameObject) events.SetSelectedGameObject(null, pointer);
+            var pressed = ExecuteEvents.ExecuteHierarchy(over, pointer, ExecuteEvents.pointerDownHandler);
+            var clicked = ExecuteEvents.GetEventHandler<IPointerClickHandler>(over);
+            pointer.pointerPress = pressed != null ? pressed : clicked;
+            if (pointer.pointerPress != null) ExecuteEvents.Execute(pointer.pointerPress, pointer, ExecuteEvents.pointerUpHandler);
+            if (clicked != null && clicked == pointer.pointerPress) ExecuteEvents.Execute(clicked, pointer, ExecuteEvents.pointerClickHandler);
+            return clicked;
+        }
+
+        /// <summary>
+        /// A rect in the HUD canvas's own space: steady across a re-render, which builds every panel
+        /// anew, and true however the canvas is drawn - CaptureFraming draws it through the camera.
+        /// </summary>
+        private static Rect CanvasRect(RectTransform rect)
+        {
+            var canvas = rect.GetComponentInParent<Canvas>().rootCanvas.transform;
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            Vector3 a = canvas.InverseTransformPoint(corners[0]), b = canvas.InverseTransformPoint(corners[2]);
+            return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
+        }
+
+        /// <summary>
+        /// The board as CaptureFraming draws it, re-laid for its 1600x900 frame: on that frame, holding
+        /// without a scroll, its four rows inside it and in order, the budget card beside the hero;
+        /// and what opens a beat - Answer, each waiting chip and More waiting - clear of every option
+        /// of the step it opens, measured on that step. Only view state moves: each step is opened and
+        /// closed again by its own controls.
+        /// </summary>
+        private void AssertTheBoardOnTheWideFrame(string where)
+        {
+            Canvas.ForceUpdateCanvases();
+            var board = ActiveRect(EpisodeHud.FreeTimeBoardName);
+            Assert.That(board, Is.Not.Null, where + " is the board.");
+            var frame = (RectTransform)board.GetComponentInParent<Canvas>().rootCanvas.transform;
+            Assert.That(frame.rect.width / frame.rect.height, Is.EqualTo(16f / 9f).Within(.02f),
+                where + " is laid out on the 16:9 frame, not the batch canvas's " + frame.rect.size + ".");
+            var content = ActiveRect("Episode content");
+            var viewport = (RectTransform)content.parent;
+            Assert.That(content.rect.height, Is.LessThanOrEqualTo(viewport.rect.height + .5f),
+                where + " holds without a scroll: " + content.rect.height.ToString("0") + " in " + viewport.rect.height.ToString("0") + ".");
+            Rect view = CanvasRect(viewport), whole = CanvasRect(board);
+            Assert.That(whole.yMin >= view.yMin - .5f && whole.yMax <= view.yMax + .5f, Is.True, where + "'s board is inside the stage's view.");
+            var rows = new[] { EpisodeHud.FreeTimeHeroName, EpisodeHud.StoryStripName, EpisodeHud.HouseCardsName, EpisodeHud.HouseMovesName }
+                .Select(name => ActiveRect(name)).ToArray();
+            for (int i = 0; i < rows.Length; i++)
+            {
+                Assert.That(rows[i], Is.Not.Null, where + " has all four of its rows.");
+                var row = CanvasRect(rows[i]);
+                Assert.That(row.xMin >= whole.xMin - .5f && row.xMax <= whole.xMax + .5f && row.yMin >= whole.yMin - .5f && row.yMax <= whole.yMax + .5f,
+                    Is.True, where + ": '" + rows[i].name + "' is inside the board.");
+                if (i > 0) Assert.That(row.yMax, Is.LessThanOrEqualTo(CanvasRect(rows[i - 1]).yMin + .5f),
+                    where + ": '" + rows[i].name + "' stands under '" + rows[i - 1].name + "'.");
+            }
+            Rect head = CanvasRect(ActiveRect(EpisodeHud.ScreenHeadName)), hero = CanvasRect(rows[0]);
+            Assert.That(Mathf.Abs(head.yMax - hero.yMax) < 1f && head.xMin >= hero.xMax - .5f, Is.True,
+                where + ": the budget card stands beside the hero, on its right.");
+
+            var openers = new List<string> { EpisodeDirector.AnswerBeatCaption };
+            var waiting = ActiveRect(EpisodeHud.WaitingBeatsName);
+            if (waiting != null) openers.AddRange(waiting.GetComponentsInChildren<Button>().Select(button => button.name));
+            foreach (var caption in openers)
+            {
+                var opener = FindButton(caption);
+                var pressed = CanvasRect((RectTransform)opener.transform);
+                opener.onClick.Invoke();
+                Canvas.ForceUpdateCanvases();
+                var choices = ActiveRect(EpisodeHud.StoryChoicesName);
+                Assert.That(choices, Is.Not.Null, where + ": '" + caption + "' opens its beat as the step.");
+                foreach (Transform tile in choices)
+                    Assert.That(CanvasRect((RectTransform)tile).Overlaps(pressed), Is.False,
+                        where + ": the option '" + tile.name + "' stands where '" + caption + "' was pressed.");
+                FindButton(EpisodeDirector.BackToFreeTimeCaption).onClick.Invoke();
+                Canvas.ForceUpdateCanvases();
+            }
         }
 
         /// <summary>
@@ -197,7 +306,9 @@ namespace Gamesim.Tests.PlayMode
         /// A story beat waiting, in a house of eight and of sixteen at both text sizes: a banner in the
         /// hero's place with its eyebrow and name and the way in, its options behind it; a second beat
         /// a chip on the story strip; what moving on lets pass in the footer's strip; and the board
-        /// fits. The batch run photographs it in a house of eight, and of sixteen at the larger text.
+        /// fits. The batch run photographs it in a house of eight, and of sixteen at the larger text,
+        /// on the 16:9 frame, and holds it there too: no scroll, its rows in order, and what opens a
+        /// beat clear of the step's options.
         /// </summary>
         [UnityTest]
         public IEnumerator FreeTimeBoard_ABeatWaitingIsABannerAndFitsInHousesOfEightAndSixteen()
@@ -226,14 +337,15 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(2), "Opening the screen answers nothing.");
             }
             if (!Application.isBatchMode) yield break;
-            yield return InstallFreeTime(8, FreeTimeWaiting.Beat);
+            yield return InstallFreeTime(8, FreeTimeWaiting.Beat, 2);
             yield return OpenStation();
-            yield return CaptureFraming("free-time-board-8");
+            yield return CaptureFraming("free-time-board-8", inspect: frame => AssertTheBoardOnTheWideFrame("Free time in a house of eight at 16:9"));
             director.ClosePanels();
-            yield return InstallFreeTime(16, FreeTimeWaiting.Beat);
+            yield return InstallFreeTime(16, FreeTimeWaiting.Beat, 2);
             yield return ApplyTextSize(true);
             yield return OpenStation();
-            yield return CaptureFraming("free-time-board-16");
+            yield return CaptureFraming("free-time-board-16",
+                inspect: frame => AssertTheBoardOnTheWideFrame("Free time in a house of sixteen at 16:9 at the larger text"));
             director.ClosePanels();
             yield return ApplyTextSize(false);
         }
@@ -396,6 +508,125 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Words(ActiveRect(EpisodeHud.StoryBannerName)), Does.Contain(beats[0].title), "The one left is the banner.");
             director.ClosePanels();
             yield return null;
+        }
+
+        /// <summary>
+        /// The coordinator's double click: a press on Answer redraws the stage as the step, and a
+        /// second press at the same point lands where the step draws its words, never on an option -
+        /// and the same for a waiting beat's chip. The keyboard's way is the same: the step opens on
+        /// "Back to free time", so Enter after Answer, pressed or clicked, goes back. Nothing is
+        /// answered, at either text size. No time between the presses is needed or measured.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FreeTimeBoard_ASecondPressOnWhatOpenedABeatAnswersNothing()
+        {
+            yield return InstallFreeTime(8, FreeTimeWaiting.Beat, 2);
+            var beats = EpisodeEngine.OpenStoryBeats(director.Snapshot);
+            Assert.That(beats, Has.Count.EqualTo(2), "The fixture has two beats waiting.");
+            foreach (bool larger in new[] { false, true })
+            {
+                if (larger)
+                {
+                    director.ClosePanels();
+                    yield return ApplyTextSize(true);
+                }
+                yield return OpenStation();
+                yield return null; yield return null;
+                string where = "Free time" + (larger ? " at the larger text" : "");
+
+                // Answer, then the chip: each pressed where it stands, then pressed again there.
+                foreach (var (caption, beat) in new[] { (EpisodeDirector.AnswerBeatCaption, beats[0]), (beats[1].title, beats[1]) })
+                {
+                    var opener = ButtonWithCaption(caption);
+                    var point = ScreenCentre(opener);
+                    // Each press is measured across itself: opening a panel flushes the house's ticks.
+                    int revision = director.Snapshot.revision;
+                    Assert.That(PressAt(point), Is.SameAs(opener.gameObject), where + ": the press lands on '" + caption + "'.");
+                    Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": opening the beat commits nothing.");
+                    Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beat.id), where + ": '" + caption + "' opens its beat as the step.");
+                    yield return null; yield return null;
+                    var choices = ActiveRect(EpisodeHud.StoryChoicesName);
+                    Assert.That(choices, Is.Not.Null, where + ": the step's options are up.");
+                    // Every option can be pressed where it stands, so a second press that finds none of
+                    // them is not a press on a screen that takes none.
+                    foreach (var choice in beat.choices)
+                    {
+                        var tile = ButtonWithCaption(EpisodeHud.EventChoiceCaption(choice.label));
+                        Assert.That(ScreenRect((RectTransform)tile.transform).Contains(point), Is.False,
+                            where + ": the option '" + choice.label + "' stands where '" + caption + "' was pressed.");
+                    }
+                    revision = director.Snapshot.revision;
+                    var second = PressAt(point);
+                    Assert.That(second == null || !second.transform.IsChildOf(choices), Is.True,
+                        where + ": the second press after '" + caption + "' lands on an option: " + (second != null ? second.name : "nothing") + ".");
+                    Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": the second press after '" + caption + "' commits nothing.");
+                    Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beat.id), where + ": and the step is still open.");
+                    ButtonWithCaption(EpisodeDirector.BackToFreeTimeCaption).onClick.Invoke();
+                    Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": back on the board.");
+                    // A graphic takes a raycast once its canvas has drawn it: the next press waits for that.
+                    yield return null; yield return null;
+                }
+                Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(2), where + ": both beats still wait.");
+
+                // Answer pressed, then Enter: the step opened on the way back, so Enter goes back.
+                PressAt(ScreenCentre(ButtonWithCaption(EpisodeDirector.AnswerBeatCaption)));
+                yield return null; yield return null;
+                Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[0].id), where + ": Answer opens the step,");
+                var focus = EventSystem.current.currentSelectedGameObject;
+                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeDirector.BackToFreeTimeCaption),
+                    where + ": with the keyboard on the way back, not on the first option.");
+                yield return PressKey(Key.Enter);
+                yield return null;
+                Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": Enter after Answer goes back to the board,");
+                Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(2), "answering nothing.");
+
+                // And by the keyboard alone: Enter on Answer, then Enter again.
+                yield return KeyboardSubmit(EpisodeDirector.AnswerBeatCaption);
+                Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(beats[0].id), where + ": Enter on Answer opens the step,");
+                focus = EventSystem.current.currentSelectedGameObject;
+                Assert.That(focus != null ? focus.name : "nothing", Is.EqualTo(EpisodeDirector.BackToFreeTimeCaption), "on the way back.");
+                yield return PressKey(Key.Enter);
+                yield return null;
+                Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": and a second Enter goes back,");
+                Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(2), "answering nothing.");
+            }
+            director.ClosePanels();
+            yield return ApplyTextSize(false);
+        }
+
+        /// <summary>
+        /// Beats past the strip's room are one control away: the chips that fit, the first beats in
+        /// order, and "More waiting" with how many more beside it, which opens the first beat the strip
+        /// had no room for as the step and commits nothing, at either text size.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FreeTimeBoard_BeatsPastTheStripsRoomAreOneControlAway()
+        {
+            yield return InstallFreeTime(8, FreeTimeWaiting.Beat, 5);
+            var beats = EpisodeEngine.OpenStoryBeats(director.Snapshot);
+            Assert.That(beats, Has.Count.EqualTo(5), "The fixture has five beats waiting.");
+            yield return AtBothTextSizes(larger =>
+            {
+                string where = "Free time with five beats waiting" + (larger ? " at the larger text" : "");
+                AssertFreeTimeBoard(where);
+                var rest = beats.Skip(1).ToList();
+                var chipped = rest.TakeWhile(beat => ButtonWithCaptionOrNull(beat.title) != null).ToList();
+                var past = rest.Skip(chipped.Count).ToList();
+                Assert.That(past.All(beat => ButtonWithCaptionOrNull(beat.title) == null), Is.True, where + ": the chips are the first beats, in order.");
+                Assert.That(past, Is.Not.Empty, where + ": four beats besides the banner's run past the strip's room.");
+                var more = ButtonWithCaption(EpisodeHud.MoreWaitingCaption);
+                Assert.That(more.transform.IsChildOf(ActiveRect(EpisodeHud.StoryStripName)), Is.True, where + ": More waiting is on the story strip,");
+                Assert.That(more.GetComponentsInChildren<TMP_Text>().Single(text => text.name == EpisodeHud.MoreWaitingCountName).text,
+                    Is.EqualTo("+" + past.Count), "with how many more beside it.");
+                Assert.That(LiveButtonsCarrying(EpisodeHud.MoreWaitingCaption), Is.EqualTo(1), "It is one control.");
+                int revision = director.Snapshot.revision;
+                more.onClick.Invoke();
+                Assert.That(director.Snapshot.revision, Is.EqualTo(revision), where + ": opening it commits nothing.");
+                Assert.That(director.FreeTimeBeatOpen, Is.EqualTo(past[0].id), where + ": it opens the first beat the strip had no room for.");
+                FindButton(EpisodeDirector.BackToFreeTimeCaption).onClick.Invoke();
+                Assert.That(director.FreeTimeBeatOpen, Is.Null, where + ": and goes back as any beat does.");
+            });
+            Assert.That(EpisodeEngine.OpenStoryBeats(director.Snapshot), Has.Count.EqualTo(5), "Nothing was answered.");
         }
 
         /// <summary>

@@ -75,5 +75,64 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeDirector.BudgetRule(pool),
                 Is.EqualTo("The house gives you half its number in actions each week, so the budget tightens as people leave."));
         }
+
+        /// <summary>
+        /// Move-in night with an action bought (the coordinator's review): the line counts what ACTIONS
+        /// LEFT counts, says the night's own seat does not carry into the week and the extra does -
+        /// which it does, the week not turning tonight - and what moving on loses is the seat alone.
+        /// </summary>
+        [Test]
+        public void MoveInNightWithAnActionBoughtSaysWhatTheCountSays()
+        {
+            var night = MoveIn(8);
+            night.boughtActionPoints = 1;
+            Assert.That(EpisodeEngine.SocialActionBudget(night) - EpisodeEngine.SocialActionsSpent(night), Is.EqualTo(2),
+                "The night's one seat and the action bought: two left.");
+            Assert.That(EpisodeDirector.BudgetRule(night), Is.EqualTo("2 actions tonight; 1 does not carry into the week, the extra 1 does."));
+            Assert.That(EpisodeDirector.UnusedActionsNote(night), Is.EqualTo("1 unused action will be lost."), "Moving on loses the seat, not what was bought.");
+            // The seat spent, what is left is the bought action, which the week's first window has whole again.
+            night.windowActions[Windows.AfterEviction] = 1;
+            Assert.That(EpisodeEngine.SocialActionBudget(night) - EpisodeEngine.SocialActionsSpent(night), Is.EqualTo(1));
+            Assert.That(EpisodeDirector.UnusedActionsNote(night), Is.Null, "Moving on loses nothing it does not give back.");
+
+            var big = MoveIn(16);
+            big.boughtActionPoints = 2;
+            Assert.That(EpisodeDirector.BudgetRule(big), Is.EqualTo("7 actions tonight; 5 do not carry into the week, the extra 2 do."));
+            Assert.That(EpisodeDirector.UnusedActionsNote(big), Is.EqualTo("5 unused actions will be lost."));
+        }
+
+        /// <summary>
+        /// The budget card's copy says what beginning the next competition loses as the engine counts
+        /// it: on move-in night, which does not turn the week, what was bought carries into it; in a
+        /// week that turns, under the levers, everything left goes, as the unused note counts it; and
+        /// without the levers bought time is never reset, so it comes back every week.
+        /// </summary>
+        [Test]
+        public void TheCostCopySaysWhatBeginningTheNextCompetitionLoses()
+        {
+            var night = MoveIn(8);
+            EpisodeEngine.EnableLevers(night);
+            Assert.That(EpisodeDirector.FreeTimeCostLine(night), Is.EqualTo(EpisodeDirector.FreeTimeCostCopy
+                + " Unspent actions are lost when you begin the next competition, but actions you buy carry into the week."));
+
+            var week = MoveIn(8);
+            EpisodeEngine.EnableLevers(week);
+            week.hohId = week.Active.First(actor => !actor.isPlayer).id;
+            week.evictionResolved = true;
+            Assert.That(EpisodeEngine.LeverRulesOn(week), Is.True);
+            Assert.That(EpisodeDirector.FreeTimeCostLine(week),
+                Is.EqualTo(EpisodeDirector.FreeTimeCostCopy + " Unspent actions are lost when you begin the next competition."));
+            week.boughtActionPoints = 1;
+            int left = EpisodeEngine.SocialActionBudget(week) - EpisodeEngine.SocialActionsSpent(week);
+            Assert.That(left, Is.EqualTo(2), "The window's seat and the action bought.");
+            Assert.That(EpisodeDirector.UnusedActionsNote(week), Is.EqualTo("2 unused actions will be lost."), "The week turning takes both.");
+
+            var unreset = MoveIn(8);
+            unreset.hohId = unreset.Active.First(actor => !actor.isPlayer).id;
+            unreset.evictionResolved = true;
+            Assert.That(EpisodeEngine.LeverRulesOn(unreset), Is.False);
+            Assert.That(EpisodeDirector.FreeTimeCostLine(unreset),
+                Is.EqualTo(EpisodeDirector.FreeTimeCostCopy + " Unspent actions are lost when you begin the next competition; actions you buy come back every week."));
+        }
     }
 }

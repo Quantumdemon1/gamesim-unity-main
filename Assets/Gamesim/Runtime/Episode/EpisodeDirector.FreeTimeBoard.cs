@@ -15,9 +15,11 @@ namespace Gamesim.Episode
     /// and the way on.
     ///
     /// <para>A story beat waiting is a banner whose "Answer" opens it as the step, as the nomination
-    /// opens one from its tracker, with "Back to free time" in the footer while it is open. Which
-    /// beat is open and which page of cards is shown are view state, like the houseguest's screen:
-    /// nothing here is saved, and every control commits through the command it always did.</para>
+    /// opens one from its tracker, with "Back to free time" in the footer while it is open and the
+    /// keyboard on it as it opens. Answer and the strip's chips stand over the step's words column,
+    /// so neither a second click nor a second Enter on what opened a beat answers it. Which beat is
+    /// open and which page of cards is shown are view state, like the houseguest's screen: nothing
+    /// here is saved, and every control commits through the command it always did.</para>
     ///
     /// <para>Not over everything free time can be: a diary reflection waiting keeps its card, a
     /// legacy house event keeps its band and its camera, the Final 3's window keeps Endgame
@@ -38,13 +40,31 @@ namespace Gamesim.Episode
 
         /// <summary>What costs an action in free time and what does not, as the engine counts it (the plan's truthful copy).</summary>
         public const string FreeTimeCostCopy = "Talking, listening in and house meetings each spend one action. Walking the house, "
-            + "house activities and answering anyone who comes to you are free. Unspent actions are lost when you begin the next competition.";
+            + "house activities and answering anyone who comes to you are free.";
+
+        /// <summary>
+        /// The budget card's copy: what costs and what is free, then what beginning the next
+        /// competition loses, as the engine counts it. Everything left goes when the week turns; on a
+        /// night that does not turn it - move-in night - what was bought carries into the week's
+        /// windows; and without the levers bought time is never reset, so it comes back every week.
+        /// </summary>
+        public static string FreeTimeCostLine(EpisodeState state)
+        {
+            const string lost = "Unspent actions are lost when you begin the next competition";
+            if (state != null && !state.evictionResolved) return FreeTimeCostCopy + " " + lost + ", but actions you buy carry into the week.";
+            return FreeTimeCostCopy + " " + lost + (EpisodeEngine.LeverRulesOn(state) ? "." : "; actions you buy come back every week.");
+        }
 
         /// <summary>The words at a tile's foot: what it costs, that it is free, or why it is locked.</summary>
         public const string TileCostsAction = "Cost: 1 action", TileFree = "Free", TileNoActionsLeft = "No actions left";
 
         /// <summary>The beat opened from the board's banner or its strip, while it is open. View state.</summary>
         private string freeTimeOpenedBeat;
+        /// <summary>
+        /// Whether the next render of an opened beat puts the keyboard on "Back to free time": once,
+        /// as it opens, so a second Enter on whatever opened it goes back rather than answering.
+        /// </summary>
+        private bool freeTimeBeatFocusBack;
         /// <summary>The page of the house's cards shown, and the free time it belongs to. View state.</summary>
         private int freeTimePage, freeTimeViewKey = -1;
 
@@ -59,6 +79,7 @@ namespace Gamesim.Episode
         private void ForgetFreeTimeView()
         {
             freeTimeOpenedBeat = null;
+            freeTimeBeatFocusBack = false;
             freeTimePage = 0;
         }
 
@@ -100,21 +121,30 @@ namespace Gamesim.Episode
             if (opened != null)
             {
                 // The beat as the step, as the nomination draws one: its words beside its options,
-                // and the second press - who, or the confirm - in its place.
+                // and the second press - who, or the confirm - in its place. Laid at the board's whole
+                // width, so its words column is under what opened it (EpisodeHud.BoardStepWords) and
+                // the footer does not move.
+                hud.StrategyWholeWidth();
                 NominationStory(state, opened);
                 FreeTimeFooter(state, true);
+                // Opened, the keyboard goes to the way back rather than the first option: a second
+                // Enter on Answer must not answer.
+                if (freeTimeBeatFocusBack) hud.FocusWhenWired(BackToFreeTimeCaption);
+                freeTimeBeatFocusBack = false;
                 return true;
             }
+            freeTimeBeatFocusBack = false;
             hud.StrategyWholeWidth();
             hud.FreeTimeBoard(FreeTimeSpec(state, open));
             FreeTimeFooter(state, false);
             return true;
         }
 
-        /// <summary>A waiting beat pressed on the board: it becomes the step. Nothing is committed.</summary>
+        /// <summary>A waiting beat pressed on the board: it becomes the step, with the keyboard on the way back. Nothing is committed.</summary>
         private void OpenFreeTimeBeat(string eventId)
         {
             freeTimeOpenedBeat = eventId;
+            freeTimeBeatFocusBack = true;
             ClearStoryStep();
             Render();
         }
@@ -123,6 +153,7 @@ namespace Gamesim.Episode
         private void CloseFreeTimeBeat()
         {
             freeTimeOpenedBeat = null;
+            freeTimeBeatFocusBack = false;
             ClearStoryStep();
             Render();
         }
@@ -199,7 +230,7 @@ namespace Gamesim.Episode
             int left = ActionsLeftCount(state);
             spec.ActionsLeft = left;
             spec.Rule = BudgetRule(state);
-            spec.Copy = FreeTimeCostCopy;
+            spec.Copy = FreeTimeCostLine(state);
             spec.Unused = UnusedActionsNote(state);
             spec.Buys = new List<EpisodeHud.BuyButton>();
             if (WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints > 0)

@@ -171,6 +171,11 @@ namespace Gamesim.Tests.EditMode
             var resolved = reload.Snapshot;
             Assert.That(resolved.evictionResolved, Is.True);
             Assert.That(resolved.events.Count(e => e.kind == "vote-reveal"), Is.EqualTo(resolved.votes.Count));
+            // The reveal reads the count, not the ballots: each ballot's line goes to its voter alone,
+            // and one public line carries the tally.
+            foreach (var line in resolved.events.Where(e => e.kind == "vote-reveal"))
+                Assert.That(resolved.votes.Any(v => line.audienceIds.SequenceEqual(new[] { v.voterId })), Is.True, line.text);
+            Assert.That(resolved.events.Count(e => e.kind == "vote-tally" && e.audienceIds.Count == 0), Is.EqualTo(1));
             string resolvedJson = Json(resolved);
             Assert.That(reload.Apply(reveal).duplicate, Is.True);
             Assert.That(Json(reload.Snapshot), Is.EqualTo(resolvedJson), "Duplicate reveal must not settle anything twice.");

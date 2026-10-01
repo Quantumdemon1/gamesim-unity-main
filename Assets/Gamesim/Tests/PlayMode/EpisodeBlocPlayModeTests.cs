@@ -113,10 +113,16 @@ namespace Gamesim.Tests.PlayMode
             var publicReason = WebEvictionVoting.ExplainNative(pending, expectedMaya);
             Assert.That(mayaBallot.reason, Is.EqualTo(publicReason));
             Assert.That(mayaBallot.reason, Is.Not.EqualTo(WebEvictionVoting.ExplainNative(pending, expectedMaya, true)));
-            string publicMayaReveal = "Maya Hassan voted to evict Casey Wilson. " + publicReason;
-            Assert.That(revealed.events.Single(entry => entry.kind == "vote-reveal"
-                && entry.text.StartsWith("Maya Hassan voted to evict", StringComparison.Ordinal)).text,
-                Is.EqualTo(publicMayaReveal));
+            // Maya's ballot is logged in its public words to Maya alone: the reveal reads the count
+            // to the house (UI-UX-PASS-PLAN B0), and the player learns a ballot only as KnownBallots says.
+            string mayaReveal = "Maya Hassan voted to evict Casey Wilson. " + publicReason;
+            var mayaLine = revealed.events.Single(entry => entry.kind == "vote-reveal"
+                && entry.text.StartsWith("Maya Hassan voted to evict", StringComparison.Ordinal));
+            Assert.That(mayaLine.text, Is.EqualTo(mayaReveal));
+            Assert.That(mayaLine.audienceIds, Is.EqualTo(new[] { ContentCatalog.MayaId }));
+            string tallyLine = revealed.events.Single(entry => entry.kind == "vote-tally").text;
+            Assert.That(tallyLine, Does.StartWith("By a vote of ").Or.StartWith("By a single vote, "));
+            bool mayaKnown = KnownBallots.Knows(revealed, revealed.week, ContentCatalog.MayaId);
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             var bytesAfterReveal = File.ReadAllBytes(director.SavePath);
             reveal.Invoke(); confirm.Invoke();
@@ -128,12 +134,13 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
-            // The reveal is an event, and events are the story page.
+            // The count is an event, and events are the story page; Maya's ballot is not the house's.
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
-            Assert.That(ActiveDiaryText(), Does.Contain(publicMayaReveal));
-            // And the vote page holds the result and every ballot the reveal made public, with the
-            // reason each voter gave in public.
+            Assert.That(ActiveDiaryText(), Does.Contain(tallyLine));
+            Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
+            // And the vote page holds the result, the player's own ballot, and Maya's only where the
+            // count proves it - never her public reason, which is hers alone.
             var gone = revealed.contestants.Single(c => pending.Find(c.id).status == ContestantStatus.Active
                 && c.status != ContestantStatus.Active);
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Votes);
@@ -141,8 +148,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(ActiveDiaryText(), Does.Contain(gone.id == revealed.playerId ? "You were evicted" : gone.name + " was evicted"));
             ButtonWithCaption("Known ballots").onClick.Invoke();
             yield return null; yield return null;
-            Assert.That(ActiveDiaryText(), Does.Contain("Maya Hassan voted to evict Casey Wilson"));
-            Assert.That(ActiveDiaryText(), Does.Contain(publicReason));
+            Assert.That(ActiveDiaryText(), Does.Contain("You voted to evict Taylor Kim"));
+            if (mayaKnown) Assert.That(ActiveDiaryText(), Does.Contain("Maya Hassan voted to evict Casey Wilson"));
+            else Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
+            Assert.That(ActiveDiaryText(), Does.Not.Contain(publicReason));
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             AssertEquivalent(revealed, director.Snapshot);
             yield return ReloadBlocThroughActualSettings(revealed);
@@ -159,10 +168,11 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             ButtonWithCaption("Notebook [J]").onClick.Invoke();
             yield return null; yield return null;
-            // The reveal is an event, and events are the story page.
+            // The count is an event, and events are the story page.
             director.ShowNotebookSection(EpisodeDirector.NotebookSection.Story);
             yield return null; yield return null;
-            Assert.That(ActiveDiaryText(), Does.Contain(publicMayaReveal));
+            Assert.That(ActiveDiaryText(), Does.Contain(tallyLine));
+            Assert.That(ActiveDiaryText(), Does.Not.Contain("Maya Hassan voted to evict"));
             AssertBlocPrivateEvidenceAbsent(revealed, witness);
             AssertBlocPlanNotSerialized(revealed);
             Assert.That(new EpisodeSaveStore(director.SavePath).TryLoad(out var persisted, out var message), Is.True, message);

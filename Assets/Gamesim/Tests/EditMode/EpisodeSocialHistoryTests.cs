@@ -285,6 +285,9 @@ namespace Gamesim.Tests.EditMode
             Assert.That(result.state.relationshipArcs.Single(arc => arc.npcId == victim).weeklyHistory.Last().delta, Is.EqualTo(-20));
             Assert.That(result.state.events.Count(item => item.kind == "loyalty_oath_broken"), Is.EqualTo(1));
             Assert.That(result.state.events.Count(item => item.kind == "vote-reveal"), Is.EqualTo(result.state.votes.Count));
+            Assert.That(result.state.events.Where(item => item.kind == "vote-reveal").All(item => item.audienceIds.Count == 1), Is.True,
+                "Each ballot's line is its voter's own; only the count is read to the house.");
+            Assert.That(result.state.events.Count(item => item.kind == "vote-tally" && item.audienceIds.Count == 0), Is.EqualTo(1));
             Assert.That(result.state.randomState, Is.EqualTo(state.randomState), "Vote oath witnesses use independent source-hashed samples, not season RNG.");
             engine = Reload(result.state);
             string committed = Json(engine.Snapshot);

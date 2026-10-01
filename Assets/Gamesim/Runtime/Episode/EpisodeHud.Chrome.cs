@@ -1306,7 +1306,7 @@ namespace Gamesim.Episode
         {
             switch (kind)
             {
-                case "nomination": case "final-eviction": case "eviction": case "vote-reveal": case "private-vote":
+                case "nomination": case "final-eviction": case "eviction": case "vote-tally": case "vote-reveal": case "private-vote":
                     return UiTheme.Conflict;
                 case "alliance": return UiTheme.Allied;
                 case "conversation": case "eviction-speech": case "final-speech": return UiTheme.Glow;
@@ -1324,7 +1324,7 @@ namespace Gamesim.Episode
             switch (kind)
             {
                 case "nomination": case "final-eviction": return "target";
-                case "eviction": case "vote-reveal": case "private-vote": return "gavel";
+                case "eviction": case "vote-tally": case "vote-reveal": case "private-vote": return "gavel";
                 case "veto": case "veto-selection": return "veto-token";
                 case "competition": return "trophy";
                 case "winner": case "jury-vote": case "jury-tie": return "crown";

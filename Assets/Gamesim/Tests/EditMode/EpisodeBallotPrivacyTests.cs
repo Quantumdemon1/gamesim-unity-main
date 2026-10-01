@@ -75,8 +75,17 @@ namespace Gamesim.Tests.EditMode
             Assert.That(after.memories.Count, Is.GreaterThan(pending.memories.Count));
             var revealEvents = after.events.Where(entry => entry.sequence >= pending.nextSequence).ToArray();
             Assert.That(revealEvents.Count(entry => entry.kind == "promise-outcome"), Is.EqualTo(1));
+            // A vote promise's outcome is the promiser's ballot: the line goes to the promiser alone.
+            Assert.That(revealEvents.Single(entry => entry.kind == "promise-outcome").audienceIds, Is.EqualTo(new[] { pending.playerId }));
             Assert.That(revealEvents.Count(entry => entry.kind == "eviction"), Is.EqualTo(1));
             Assert.That(revealEvents.Count(entry => entry.kind == "vote-reveal"), Is.EqualTo(3));
+            // The reveal reads the count to the house and each ballot to its voter alone.
+            Assert.That(revealEvents.Count(entry => entry.kind == "vote-tally" && entry.audienceIds.Count == 0), Is.EqualTo(1));
+            Assert.That(revealEvents.Single(entry => entry.kind == "vote-tally").text, Does.StartWith("By a vote of 2 to 1, ").Or.StartWith("By a vote of 3 to 0, "));
+            foreach (var line in revealEvents.Where(entry => entry.kind == "vote-reveal"))
+                Assert.That(after.votes.Any(vote => line.audienceIds.SequenceEqual(new[] { vote.voterId })), Is.True, line.text);
+            Assert.That(revealEvents.Single(entry => entry.kind == "vote-reveal" && entry.audienceIds.Contains(pending.playerId)).text,
+                Does.StartWith(after.Find(after.playerId).name + " voted to evict "), "The player's own line, in its own words, to them.");
             Assert.That(engine.Apply(reveal).duplicate, Is.True);
             AssertJsonEqual(after,engine.Snapshot);
             Apply(engine,EpisodeCommandKind.Advance); // The reveal-to-social transition cannot replay effects.

@@ -37,9 +37,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(claims.Select(l => l.verdict), Is.EquivalentTo(new[] { YourWeek.Verdicts.Right, YourWeek.Verdicts.Wrong }), "One held, one did not.");
             Assert.That(claims.Select(l => l.aboutId), Is.All.EqualTo(voter.id), "Each line carries the voter's face.");
 
-            // The ballot the reveal read for this voter, to the whole house.
+            // The ballot's line is the voter's own, logged to them alone; the verdict rests on the
+            // claim the reveal judged (KnownBallots: told, with its verdict), never on the house's record.
             var read = after.events.Single(e => e.week == week && e.kind == "vote-reveal" && e.text.StartsWith(voter.name + " voted to evict ", StringComparison.Ordinal));
-            Assert.That(read.audienceIds, Is.Empty, "Every ballot is read aloud: the verdict rests on nothing private.");
+            Assert.That(read.audienceIds, Is.EqualTo(new[] { voter.id }), "The ballot's line is the voter's own.");
+            Assert.That(after.events.Count(e => e.week == week && e.kind == "vote-tally" && e.audienceIds.Count == 0), Is.EqualTo(1), "The house hears the count.");
             string votedOut = after.nominees.Single(id => read.text.StartsWith(voter.name + " voted to evict " + after.Find(id).name + ".", StringComparison.Ordinal));
             string spared = after.nominees.Single(id => id != votedOut);
             var told = claims.Single(l => l.text.StartsWith(voter.name + " told you", StringComparison.Ordinal));
@@ -55,10 +57,13 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// A vote deal the voter kept and a vote promise the player broke, both ended by the engine's
-        /// own reveal: each is on the list once, as the player was told it, with who kept or broke it.
+        /// own reveal: each is on the list once. The player's own promise is theirs to know; the
+        /// voter's deal is known only once the player knows the voter's ballot (decision 4) - its
+        /// line went to the voter alone, and until the count proves the ballot the deal reads
+        /// unresolved.
         /// </summary>
         [Test]
-        public void AKeptDealAndABrokenPromiseAreJudgedAsThePlayerWasToldThem()
+        public void AKeptDealAndABrokenPromiseAreJudgedAsThePlayerCanKnowThem()
         {
             for (uint seed = 31; seed < 71; seed++)
             {
@@ -88,12 +93,22 @@ namespace Gamesim.Tests.EditMode
                 string you = after.Find(after.playerId).name;
                 var word = YourWeek.Build(after, week).word;
                 var deal = word.Single(l => l.kind == YourWeek.Kinds.Deal);
-                Assert.That(deal.verdict, Is.EqualTo(YourWeek.Verdicts.Kept));
-                Assert.That(deal.byId, Is.EqualTo(voter.id), "They voted on it first, and kept it.");
                 Assert.That(deal.aboutId, Is.EqualTo(voter.id));
-                Assert.That(deal.text, Is.EqualTo(voter.name + " kept the vote-to-evict deal with you."));
-                Assert.That(after.events.Any(e => e.week == week && e.kind == "deal-outcome" && e.audienceIds.Contains(after.playerId)
-                    && e.text == voter.name + " honoured a vote to evict with " + you + "."), Is.True, "It is the line the player was told.");
+                var outcome = after.events.Single(e => e.week == week && e.kind == "deal-outcome" && e.text == voter.name + " honoured a vote to evict with " + you + ".");
+                Assert.That(outcome.audienceIds, Is.EqualTo(new[] { voter.id }), "The line went to the voter alone: it is their ballot.");
+                if (KnownBallots.Knows(after, week, voter.id))
+                {
+                    Assert.That(deal.verdict, Is.EqualTo(YourWeek.Verdicts.Kept), "The count proved the voter's ballot, and the deal with it.");
+                    Assert.That(deal.byId, Is.EqualTo(voter.id), "They voted on it first, and kept it.");
+                    Assert.That(deal.text, Is.EqualTo(voter.name + " kept the vote-to-evict deal with you."));
+                }
+                else
+                {
+                    Assert.That(deal.verdict, Is.EqualTo(YourWeek.Verdicts.NotKnown), "A ballot the player cannot place leaves the deal unresolved.");
+                    Assert.That(deal.byId, Is.Null);
+                    Assert.That(deal.text, Does.Contain(KnownBallots.Unresolved));
+                    Assert.That(deal.text, Does.Not.Contain("kept").And.Not.Contain("honoured"));
+                }
 
                 var promise = word.Single(l => l.kind == YourWeek.Kinds.Promise);
                 Assert.That(promise.verdict, Is.EqualTo(YourWeek.Verdicts.Broken));

@@ -74,7 +74,7 @@ namespace Gamesim.Episode
             var addedEvents = after.events.Where(item => item.sequence >= before.nextSequence).ToArray();
             if (!after.evictionResolved)
             {
-                RequireSeason(!addedEvents.Any(item => item.kind == "vote-reveal" || item.kind == "eviction"),
+                RequireSeason(!addedEvents.Any(item => item.kind == "vote-reveal" || item.kind == "vote-tally" || item.kind == "eviction"),
                     "Pending ballots must remain unrevealed by public events.");
                 RequireSeason(before.randomState == after.randomState,
                     "Pending private ballots/coordination must not consume persisted episode RNG.");
@@ -82,12 +82,19 @@ namespace Gamesim.Episode
             }
             else
             {
+                // The reveal reads the count, not the ballots (UI-UX-PASS-PLAN B0): one public tally
+                // line, and each ballot's line in its existing words to its voter alone, once.
+                RequireSeason(addedEvents.Count(item => item.kind == "vote-tally" && item.audienceIds.Count == 0) == 1,
+                    "The reveal must publish exactly one public tally line.");
+                RequireSeason(!addedEvents.Any(item => item.kind == "vote-reveal" && item.audienceIds.Count == 0),
+                    "No ballot may be published to the house at the reveal.");
                 foreach (var ballot in after.votes)
                 {
                     string expectedText = before.Find(ballot.voterId).name + " voted to evict "
-                        + before.Find(ballot.targetId).name + ". " + ballot.reason;
-                    RequireSeason(addedEvents.Count(item => item.kind == "vote-reveal" && item.text == expectedText) == 1,
-                        "Each revealed ballot must publish exactly its existing public reason, once.");
+                        + (ballot.targetId == before.playerId ? "you" : before.Find(ballot.targetId).name) + ". " + ballot.reason;
+                    RequireSeason(addedEvents.Count(item => item.kind == "vote-reveal" && item.text == expectedText
+                            && item.audienceIds.Count == 1 && item.audienceIds[0] == ballot.voterId) == 1,
+                        "Each revealed ballot must be logged with exactly its existing public reason, once, to its voter alone.");
                 }
                 blocReport.revealPrivacyChecks++;
             }

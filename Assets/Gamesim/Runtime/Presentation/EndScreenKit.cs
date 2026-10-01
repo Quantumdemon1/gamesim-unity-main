@@ -243,6 +243,109 @@ namespace Gamesim.Presentation
             return track;
         }
 
+        /// <summary>The runner-up's steel, as every end screen wears it beside the winner's gold.</summary>
+        public static readonly Color Steel = new Color(.68f, .77f, .86f);
+
+        /// <summary>
+        /// A Pack 9 skin on <paramref name="host"/>: the pack's white fill tinted <paramref name="fillTint"/>
+        /// and its edge over it in <paramref name="edgeTint"/>, both sliced at <paramref name="border"/>
+        /// canvas units, on a child named "Art" behind everything else. Where the fill is not
+        /// installed, <see cref="Frame"/> with <paramref name="fallbackFrame"/> - one of Pack 7's frames,
+        /// or null for the drawn card - so a page reads the same with and without the pack.
+        /// </summary>
+        public static Image Skin(RectTransform host, string fill, string edge, float border, Color fillTint, Color edgeTint,
+            string fallbackFrame, Color fallbackFill, Color? fallbackEdge = null, int radius = 12)
+        {
+            if (UiTheme.Pack(fill) == null) return Frame(host, fallbackFrame, border, fallbackFill, fallbackEdge, radius);
+            var art = new GameObject("Art", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            var rect = art.rectTransform;
+            rect.SetParent(host, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero;
+            art.raycastTarget = false;
+            UiTheme.PackSliced(art, fill, border, fillTint);
+            if (UiTheme.Pack(edge) != null)
+            {
+                var line = new GameObject("Art edge", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                line.rectTransform.SetParent(rect, false);
+                line.rectTransform.anchorMin = Vector2.zero; line.rectTransform.anchorMax = Vector2.one;
+                line.rectTransform.offsetMin = Vector2.zero; line.rectTransform.offsetMax = Vector2.zero;
+                line.raycastTarget = false;
+                UiTheme.PackSliced(line, edge, border, edgeTint);
+            }
+            return art;
+        }
+
+        /// <summary>
+        /// A whole glow sprite drawn behind <paramref name="host"/> and out past it by <paramref name="reach"/>
+        /// on every side, in <paramref name="tint"/>: the pack's halo under a card. Null without the sprite.
+        /// </summary>
+        public static Image Halo(RectTransform host, string path, float reach, Color tint)
+        {
+            var sprite = UiTheme.Pack(path);
+            if (sprite == null) return null;
+            var image = new GameObject("Halo", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            var rect = image.rectTransform;
+            rect.SetParent(host, false);
+            rect.SetAsFirstSibling();
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(-reach, -reach); rect.offsetMax = new Vector2(reach, reach);
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = false;
+            image.color = tint;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// The count as a bar between the two finalists' numbers, each in a tile of its colour, and
+        /// their names under the ends when given. A tie draws equal halves. Returns the tally's height.
+        /// </summary>
+        public static float Tally(RectTransform parent, string name, string first, string second, int forFirst, int forSecond,
+            Color tintA, Color tintB, float x, float y, float width)
+        {
+            var tally = Box(name, parent, x, y, width, 10f);
+            const float tile = 48f, tileHeight = 40f, barHeight = 28f, gap = 10f;
+            NumberTile(tally, "Winner tally", forFirst, tintA, 0f, 0f, tile, tileHeight);
+            NumberTile(tally, "Runner-up tally", forSecond, tintB, width - tile, 0f, tile, tileHeight);
+            SplitBar(tally, tile + gap, (tileHeight - barHeight) * .5f, Mathf.Max(20f, width - (tile + gap) * 2f), barHeight,
+                forFirst, forSecond, tintA, tintB);
+            float height = tileHeight;
+            if (first != null || second != null)
+            {
+                float half = width * .5f - 6f;
+                if (first != null)
+                {
+                    var a = Text("Winner name", tally, first, 13f, tintA, 0f, tileHeight + 6f, half, 18f, TextAlignmentOptions.Left, UiTheme.Weight.Medium);
+                    a.enableAutoSizing = true; a.fontSizeMax = 13f; a.fontSizeMin = 10f;
+                }
+                if (second != null)
+                {
+                    var b = Text("Runner-up name", tally, second, 13f, tintB, width - half, tileHeight + 6f, half, 18f, TextAlignmentOptions.Right, UiTheme.Weight.Medium);
+                    b.enableAutoSizing = true; b.fontSizeMax = 13f; b.fontSizeMin = 10f;
+                }
+                height = tileHeight + 6f + 18f;
+            }
+            tally.sizeDelta = new Vector2(width, height);
+            return height;
+        }
+
+        /// <summary>One end of a tally: the count at <paramref name="size"/> points, in a tile of the finalist's colour.</summary>
+        public static RectTransform NumberTile(RectTransform parent, string name, int count, Color tint, float x, float y, float width, float height,
+            float size = 26f)
+        {
+            var tile = HudPrimitives.Fill(name, parent, new Color(tint.r, tint.g, tint.b, .18f), 8);
+            Place(tile, x, y, width, height);
+            UiTheme.AddBorder(tile, 8, new Color(tint.r, tint.g, tint.b, .8f));
+            // In a box 1.32 times its size: Inter draws nothing in one under 1.21 of it.
+            float box = Mathf.Ceil(size * 1.32f);
+            Text("Number", tile, count.ToString(), size, tint, 0f, (height - box) * .5f, width, box,
+                TextAlignmentOptions.Center, UiTheme.Weight.SemiBold);
+            return tile;
+        }
+
         /// <summary>The ramp <see cref="Ramp"/> draws: made once, white, opaque at its foot and clear at its top.</summary>
         private static Texture2D ramp;
 

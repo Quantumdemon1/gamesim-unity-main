@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
@@ -117,6 +118,101 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption(WeeklyRecapScreen.ContinueCaption).onClick.Invoke();
             yield return null;
             Assert.That(screen.IsOpen, Is.False);
+        }
+
+        /// <summary>
+        /// YOUR WEEK (ACTIONS-DEALS-ALLIANCES-PLAN V4) on the recap. A week closed by the engine, with
+        /// what the player held pinned as fixtures in the rows the engine writes: a claim the reveal
+        /// bore out and one it did not, a deal the other side kept, a promise the player broke, and a
+        /// call one ally followed and one would not. The Your week tab shows every line the reader
+        /// judged behind its verdict chip, and Game Sense so far; every line fits its card at both
+        /// text sizes, the seam carries the same lines, and reading it commits nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WeeklyRecap_YourWeekShowsWhatTheWeekMadeOfWhatYouHeld()
+        {
+            var screen = director.GetComponentInChildren<WeeklyRecapScreen>(true);
+            var state = FirstWeekClosed();
+            int week = state.week;
+            var you = state.Find(state.playerId);
+            var ballot = state.votes.First(vote => vote.voterId != state.playerId && vote.voterId != state.hohId);
+            string spared = state.nominees.First(id => id != ballot.targetId);
+            state.ledger.claims.Add(new ClaimRow { week = week, voterId = ballot.voterId, targetId = ballot.targetId, source = ClaimSource.Told, status = ClaimStatus.Kept });
+            state.ledger.claims.Add(new ClaimRow { week = week, voterId = ballot.voterId, targetId = spared, source = ClaimSource.Overheard, status = ClaimStatus.Lied });
+            var others = state.contestants.Where(c => !c.isPlayer && c.id != ballot.voterId && !state.nominees.Contains(c.id)).ToList();
+            var partner = state.Find(ballot.voterId);
+            RelationshipLedger.Record(state, state.playerId, partner.id, YourWeek.DealKept, 18, partner.name + " honoured a vote to evict with " + you.name + ".");
+            var promised = others.FirstOrDefault() ?? state.Find(spared);
+            state.memories.Add(new MemoryState { ownerId = state.playerId, subjectId = promised.id, text = you.name + " broke a Vote promise.", week = week, isPrivate = true });
+            var allies = state.contestants.Where(c => !c.isPlayer && c.status == ContestantStatus.Active).Take(2).ToList();
+            state.alliances.Add(new AllianceState { id = "alliance-your-week", name = "The Recap Pact", members = new List<string> { state.playerId, allies[0].id, allies[1].id }, active = true });
+            string evicted = state.ledger.power.Single(p => p.week == week).evicteeId;
+            string called = evicted != state.playerId ? evicted : state.nominees.First(id => id != state.playerId);
+            state.ledger.calls.Add(new BlocCallRow
+            {
+                week = week, allianceId = "alliance-your-week", callerId = state.playerId, targetId = called,
+                followed = new List<string> { allies[0].id }, defected = new List<string> { allies[1].id },
+            });
+
+            var mine = YourWeek.Build(state, week);
+            var verdicts = mine.Lines.Select(line => line.verdict).ToList();
+            foreach (var verdict in new[] { YourWeek.Verdicts.Right, YourWeek.Verdicts.Wrong, YourWeek.Verdicts.Kept, YourWeek.Verdicts.Broken,
+                         YourWeek.Verdicts.Followed, YourWeek.Verdicts.Defected })
+                Assert.That(verdicts, Does.Contain(verdict), "The fixture holds a line the week judged " + verdict + ".");
+            string before = JsonUtility.ToJson(state);
+
+            foreach (bool larger in new[] { false, true })
+            {
+                screen.FontScale = larger ? 1.2f : 1f;
+                yield return null;
+                screen.Show(state, () => { });
+                yield return null;
+                ButtonWithCaption(WeeklyRecapScreen.YourWeekCaption).onClick.Invoke();
+                yield return null; yield return null;
+                Canvas.ForceUpdateCanvases();
+                string where = (larger ? "Larger text" : "Resting text") + ": ";
+                Assert.That(screen.OpenTab, Is.EqualTo(System.Array.IndexOf(WeeklyRecapScreen.TabCaptions, WeeklyRecapScreen.YourWeekCaption)), where + "the tab opened.");
+                Assert.That(ButtonWithCaption(WeeklyRecapScreen.ContinueCaption), Is.Not.Null, where + "Continue is still the one way on.");
+
+                var body = LastActive(WeeklyRecapScreen.TabBodyName);
+                Assert.That(body, Is.Not.Null);
+                foreach (var part in new[] { WeeklyRecapScreen.ReadsName, WeeklyRecapScreen.WordName, WeeklyRecapScreen.CallsName, WeeklyRecapScreen.SenseName })
+                {
+                    var card = LastActive(part);
+                    Assert.That(card, Is.Not.Null, where + part);
+                    Assert.That(card.IsChildOf(body), Is.True, where + part + " is the tab's.");
+                }
+                var words = LabelsUnder(body);
+                foreach (var line in mine.Lines)
+                {
+                    Assert.That(words, Does.Contain(line.text), where + "every judged line is on the tab.");
+                    if (line.verdict != null) Assert.That(words, Does.Contain(WeeklyRecapScreen.VerdictWord(line.verdict)), where + line.text);
+                }
+                Assert.That(words, Does.Contain("STRATEGY").And.Contain(mine.sense.strategy.ToString()), where + "Game Sense so far, in the part the player can see.");
+                Assert.That(words, Does.Not.Contain("SOCIAL").And.Not.Contain("GAME SENSE"), where + "neither the number nor the faces that rest on what the house keeps to itself.");
+                // Each judged line's verdict is the chip on its own row.
+                foreach (var row in body.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == WeeklyRecapScreen.VerdictRowName))
+                {
+                    var text = row.GetComponentsInChildren<TMPro.TMP_Text>().Select(label => label.text).ToList();
+                    var line = mine.Lines.FirstOrDefault(item => text.Contains(item.text));
+                    Assert.That(line, Is.Not.Null, where + "a row carries a judged line: " + string.Join(" | ", text));
+                    if (line.verdict != null) Assert.That(text, Does.Contain(WeeklyRecapScreen.VerdictWord(line.verdict)), where + line.text);
+                }
+                AssertDecisionCopyFits(body);
+                foreach (var line in mine.Lines) Assert.That(screen.Lines, Does.Contain(line.ToString()), where + "the seam carries it too.");
+                Assert.That(screen.Lines, Does.Contain(WeeklyRecapScreen.SenseLine(mine.sense)));
+                if (Application.isBatchMode)
+                {
+                    // The tab is the foot of the card's scroll: bring it into view, as a player reading it would.
+                    var scroll = screen.GetComponentsInChildren<ScrollRect>().LastOrDefault(item => item.isActiveAndEnabled);
+                    if (scroll != null) { scroll.verticalNormalizedPosition = 0f; Canvas.ForceUpdateCanvases(); }
+                    yield return CaptureFraming(larger ? "weekly-recap-your-week-large" : "weekly-recap-your-week");
+                }
+                screen.Hide();
+                yield return null;
+            }
+            screen.FontScale = 1f;
+            Assert.That(JsonUtility.ToJson(state), Is.EqualTo(before), "Reading the week changes nothing.");
         }
 
         private bool DirectorHasButton(string caption) =>

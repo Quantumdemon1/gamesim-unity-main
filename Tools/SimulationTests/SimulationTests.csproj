@@ -113,6 +113,7 @@
     <Compile Include="$(EditMode)WebVotingBlocParityTests.cs" />
     <Compile Include="$(EditMode)WeeklyRuleParityTests.cs" />
     <Compile Include="$(EditMode)WritingPassTests.cs" />
+    <Compile Include="$(EditMode)YourWeekTests.cs" />
 
     <!--
       One file from outside the simulation, because it is as Unity-free as the simulation is: the

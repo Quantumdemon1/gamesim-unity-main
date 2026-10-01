@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Gamesim.Simulation;
 using TMPro;
@@ -19,11 +20,12 @@ namespace Gamesim.Presentation
     ///
     /// <para><b>A week's episode, understood at a glance</b> (the owner's Week Recap mockup, in Season
     /// Complete Pack 7's frames): who left, in what place, and their own words from the block; the
-    /// week's five headline facts; then five tabs - the week's overview (the vote split into the
+    /// week's five headline facts; then six tabs - the week's overview (the vote split into the
     /// evictee's votes and the other nominee's, the key moments, the evictee's record and the house's
-    /// temperature), the vote with every reason given, the week's events and stories, the houseguests'
-    /// reactions, and what comes next. Continue is one control at the foot, whichever tab is open,
-    /// and the previous week is "Review earlier weeks", as it always was.</para>
+    /// temperature), the player's own week judged (<see cref="YourWeek"/>), the vote with every reason
+    /// given, the week's events and stories, the houseguests' reactions, and what comes next.
+    /// Continue is one control at the foot, whichever tab is open, and the previous week is "Review
+    /// earlier weeks", as it always was.</para>
     ///
     /// <para>It is a screen, not a ceremony card, so it parents to the director and its controls are
     /// meant to be found: a card that is watched rather than used goes on its own scene root, and
@@ -39,11 +41,18 @@ namespace Gamesim.Presentation
         public const string ReviewCaption = "Review earlier weeks";
         public const string BackCaption = "Back to this week";
 
+        /// <summary>The player's own week, judged (ACTIONS-DEALS-ALLIANCES-PLAN V4): a tab like the others.</summary>
+        public const string YourWeekCaption = "Your week";
+
         /// <summary>The tabs. None of them is a way on: each shows a part of the week, and commits nothing.</summary>
-        public static readonly string[] TabCaptions = { "Week overview", "Vote breakdown", "Events & highlights", "Houseguest reactions", "What's next" };
+        public static readonly string[] TabCaptions = { "Week overview", YourWeekCaption, "Vote breakdown", "Events & highlights", "Houseguest reactions", "What's next" };
 
         /// <summary>The parts a test finds by name.</summary>
         public const string HeroName = "Week hero", CardsName = "Week headlines", TabBodyName = "Week tab";
+
+        /// <summary>The Your week tab's parts, by name: the week in a line, its cards (the empty week's included), and a judged line's row.</summary>
+        public const string YourWeekLineName = "Your week line", ReadsName = "Reads and claims", WordName = "Deals and promises",
+            CallsName = "Your calls", SenseName = "Game Sense so far", NothingJudgedName = "Nothing judged", VerdictRowName = "Judged line";
 
         private float Width = 1080f;
         private RectTransform content, viewport;
@@ -196,6 +205,7 @@ namespace Gamesim.Presentation
             foreach (Transform child in transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             lines.Clear();
             var recap = WeeklyRecap.Build(shown, openWeek);
+            var mine = YourWeek.Build(shown, openWeek);
             var room = Room();
             float cardWidth = Mathf.Clamp(room.x - 72f, 860f, 1560f);
             Width = cardWidth - 40f;
@@ -257,16 +267,17 @@ namespace Gamesim.Presentation
             float used;
             switch (tab)
             {
-                case 1: used = VoteTab(body, recap, inner); break;
-                case 2: used = EventsTab(body, recap, inner); break;
-                case 3: used = ReactionsTab(body, recap, inner); break;
-                case 4: used = NextTab(body, recap, inner); break;
+                case 1: used = YourWeekTab(body, recap, mine, inner); break;
+                case 2: used = VoteTab(body, recap, inner); break;
+                case 3: used = EventsTab(body, recap, inner); break;
+                case 4: used = ReactionsTab(body, recap, inner); break;
+                case 5: used = NextTab(body, recap, inner); break;
                 default: used = OverviewTab(body, recap, inner); break;
             }
             body.sizeDelta = new Vector2(inner, used);
             cursor += used + Pad;
             content.sizeDelta = new Vector2(0f, cursor);
-            CollectLines(recap);
+            CollectLines(recap, mine);
 
             // The card as tall as the week it holds, up to the screen: a short week drew its
             // Continue half-way down a card whose lower half was empty glass.
@@ -274,8 +285,8 @@ namespace Gamesim.Presentation
             card.sizeDelta = new Vector2(cardWidth, height);
         }
 
-        /// <summary>The seam's lines: every fact of the week the tabs hold, whichever is open, in the old order.</summary>
-        private void CollectLines(WeeklyRecap.Week recap)
+        /// <summary>The seam's lines: every fact of the week the tabs hold, whichever is open, in the old order, then the player's week judged.</summary>
+        private void CollectLines(WeeklyRecap.Week recap, YourWeek.Week mine)
         {
             lines.Add("Head of Household: " + (recap.headOfHousehold ?? "—"));
             lines.Add("Nominees: " + (recap.nominees.Count > 0 ? string.Join(", ", recap.nominees) : "—"));
@@ -294,7 +305,14 @@ namespace Gamesim.Presentation
             lines.AddRange(recap.happenings);
             lines.AddRange(recap.moments);
             lines.AddRange(recap.nextTime);
+            // Your week: each judged line with its verdict, and Game Sense so far in the parts the player can see.
+            foreach (var line in mine.Lines) lines.Add(line.ToString());
+            lines.Add(SenseLine(mine.sense));
         }
+
+        /// <summary>Game Sense so far in a line, for the seam: the strategy face and the chances taken.</summary>
+        public static string SenseLine(YourWeek.Sense sense) =>
+            "Game Sense so far: strategy " + sense.strategy + ", chances taken " + sense.taken + " of " + sense.offered + ".";
 
         // ---------------------------------------------------------------- the head of the week
 
@@ -663,13 +681,184 @@ namespace Gamesim.Presentation
             return y + hy;
         }
 
-        /// <summary>The vote whole: every ballot as the reveal read it, with its reason, and the player's own week.</summary>
+        /// <summary>The vote whole: every ballot as the reveal read it, with its reason. The player's own week has its own tab.</summary>
         private float VoteTab(RectTransform body, WeeklyRecap.Week recap, float inner)
         {
             float y = 0f;
             y = Section(body, "How the house voted", recap.ballots, UiTheme.Accent, y, inner);
-            if (!string.IsNullOrEmpty(recap.yourWeek)) y = Section(body, "Your week", new List<string> { recap.yourWeek }, UiTheme.Heading, y, inner);
             return y > 0f ? y : Nothing(body, inner);
+        }
+
+        // ---------------------------------------------------------------- your week
+
+        /// <summary>
+        /// YOUR WEEK (ACTIONS-DEALS-ALLIANCES-PLAN V4): the player's week in a line, then what the
+        /// week made of everything they held - their whip count and every claim against the ballots
+        /// the reveal read, the deals and promises that ended as they were told it, the calls they
+        /// made and who followed - each with its verdict on a chip, and Game Sense so far in the parts
+        /// they can already see. Every judged line is <see cref="YourWeek"/>'s, read from committed
+        /// state. The cards fall into two columns on a wide card, each into the shorter, and one under
+        /// another on a narrow one.
+        /// </summary>
+        private float YourWeekTab(RectTransform body, WeeklyRecap.Week recap, YourWeek.Week mine, float inner)
+        {
+            float top = 0f;
+            if (!string.IsNullOrEmpty(recap.yourWeek))
+            {
+                var said = EndScreenKit.Text(YourWeekLineName, body, recap.yourWeek, 17f, UiTheme.Paper, 0f, 0f, inner, 24f);
+                top = EndScreenKit.Wrapped(said, inner) + 14f;
+            }
+            bool two = inner >= 1100f;
+            const float gap = 16f;
+            float leftWidth = two ? (inner - gap) * .56f : inner;
+            float rightWidth = two ? inner - leftWidth - gap : inner;
+            float left = top, right = top;
+
+            var cards = new List<(string name, string title, string subtitle, string icon, List<YourWeek.Line> lines)>();
+            if (mine.Empty)
+                cards.Add((NothingJudgedName, "Your week, judged", "Nothing you held came due this week: no read, claim, deal, promise or call.", "task", null));
+            if (mine.reads.Count > 0)
+                cards.Add((ReadsName, "Reads and claims", "Judged against the ballots the reveal read.", "eye", mine.reads));
+            if (mine.word.Count > 0)
+                cards.Add((WordName, "Deals and promises", "As the house told you they ended.", "handshake", mine.word));
+            if (mine.calls.Count > 0)
+                cards.Add((CallsName, "Your calls", "Who followed you, as they said at the call.", "people", mine.calls));
+
+            foreach (var card in cards)
+            {
+                bool intoLeft = !two || left <= right;
+                float x = intoLeft ? 0f : leftWidth + gap, width = intoLeft ? leftWidth : rightWidth;
+                float y = !two ? left : intoLeft ? left : right;
+                float used = Judged(body, card.name, card.title, card.subtitle, card.icon, card.lines, x, y, width);
+                if (!two || intoLeft) left = y + used + gap; else right = y + used + gap;
+            }
+            {
+                bool intoLeft = !two || left <= right;
+                float x = intoLeft ? 0f : leftWidth + gap, width = intoLeft ? leftWidth : rightWidth;
+                float y = !two ? left : intoLeft ? left : right;
+                float used = SenseCard(body, mine.sense, x, y, width);
+                if (!two || intoLeft) left = y + used + gap; else right = y + used + gap;
+            }
+            return Mathf.Max(left, right) - gap;
+        }
+
+        /// <summary>One card of judged lines: its heading, then each line behind its verdict chip and the face it is about.</summary>
+        private float Judged(RectTransform body, string name, string title, string subtitle, string icon, List<YourWeek.Line> judged,
+            float x, float y, float width)
+        {
+            const float pad = 16f;
+            var card = EndScreenKit.Box(name, body, x, y, width, 10f);
+            float h = pad + EndScreenKit.Heading(card, title, subtitle, icon, pad, pad, width - pad * 2f);
+            foreach (var line in judged ?? new List<YourWeek.Line>())
+                h += VerdictRow(card, line, pad, h, width - pad * 2f);
+            h += pad - 6f;
+            card.sizeDelta = new Vector2(width, h);
+            EndScreenKit.Frame(card, PackArt.SeasonSection, 16f, UiTheme.Surface);
+            return h;
+        }
+
+        /// <summary>
+        /// A judged line: its verdict on a chip (a call's own line has none, and a dot instead), the
+        /// face of whoever it is about, and the line as tall as its words. Returns the height it took.
+        /// </summary>
+        private float VerdictRow(RectTransform card, YourWeek.Line line, float x, float y, float width)
+        {
+            const float chip = 104f, chipHeight = 22f, face = 24f;
+            var row = EndScreenKit.Box(VerdictRowName, card, x, y, width, 28f);
+            float textX = 0f;
+            if (line.verdict != null)
+            {
+                EndScreenKit.Pill(row, VerdictWord(line.verdict), VerdictTint(line.verdict), 0f, 3f, chip, chipHeight);
+                textX = chip + 10f;
+            }
+            else
+            {
+                var dot = HudPrimitives.Disc("Dot", row, UiTheme.Heading);
+                dot.anchorMin = dot.anchorMax = new Vector2(0f, 1f); dot.pivot = new Vector2(.5f, .5f);
+                dot.sizeDelta = new Vector2(7f, 7f); dot.anchoredPosition = new Vector2(6f, -14f);
+                textX = 18f;
+            }
+            var who = line.aboutId != null ? shown.Find(line.aboutId) : null;
+            if (who != null)
+            {
+                var portrait = HudPrimitives.Portrait(row, CharacterPortraits.Get(who), VerdictTint(line.verdict), face - 4f, 2f, false, who);
+                portrait.anchorMin = portrait.anchorMax = new Vector2(0f, 1f);
+                portrait.pivot = new Vector2(.5f, .5f);
+                portrait.anchoredPosition = new Vector2(textX + face * .5f, -14f);
+                textX += face + 8f;
+            }
+            var words = EndScreenKit.Text("Line", row, line.text, 14f, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .92f),
+                textX, 4f, width - textX, 20f);
+            float height = Mathf.Max(28f, EndScreenKit.Wrapped(words, width - textX) + 8f);
+            row.sizeDelta = new Vector2(width, height);
+            return height + 4f;
+        }
+
+        /// <summary>
+        /// GAME SENSE SO FAR: the season report's verdict in the parts the player can already see -
+        /// the strategy face, made of public and player-owned rows, and the chances taken - then the
+        /// week's own rows with their points. The number itself, and the competitions and social
+        /// faces, rest on odds and on how the house sees the player, and wait for the season's end.
+        /// </summary>
+        private float SenseCard(RectTransform body, YourWeek.Sense sense, float x, float y, float width)
+        {
+            const float pad = 16f;
+            var card = EndScreenKit.Box(SenseName, body, x, y, width, 10f);
+            float h = pad + EndScreenKit.Heading(card, "Game Sense so far", "From your own record. Competitions and social are scored when the season ends.",
+                "bulb", pad, pad, width - pad * 2f);
+            float half = (width - pad * 2f - 12f) * .5f;
+            Stat(card, "STRATEGY", sense.strategy.ToString(CultureInfo.InvariantCulture), UiTheme.Positive, pad, h, half);
+            Stat(card, "CHANCES TAKEN", sense.taken + " of " + sense.offered, sense.offered == 0 || sense.taken * 2 >= sense.offered ? UiTheme.Positive : UiTheme.Danger,
+                pad + half + 12f, h, half);
+            h += 66f;
+            if (sense.rows.Count == 0)
+            {
+                var none = EndScreenKit.Text("None", card, "No rows of your own this week.", 14f, UiTheme.Muted, pad, h, width - pad * 2f, 20f);
+                h += EndScreenKit.Wrapped(none, width - pad * 2f) + 6f;
+            }
+            foreach (var note in sense.rows)
+            {
+                var row = EndScreenKit.Box("Sense row", card, pad, h, width - pad * 2f, 28f);
+                var tint = note.points > 0 ? UiTheme.Positive : note.points < 0 ? UiTheme.Danger : UiTheme.Muted;
+                EndScreenKit.Pill(row, note.points.ToString("+0;-0;0", CultureInfo.InvariantCulture), tint, 0f, 3f, 56f, 22f);
+                var words = EndScreenKit.Text("Line", row, YourWeek.RowText(note), 14f, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .92f),
+                    66f, 4f, width - pad * 2f - 66f, 20f);
+                float rowHeight = Mathf.Max(28f, EndScreenKit.Wrapped(words, width - pad * 2f - 66f) + 8f);
+                row.sizeDelta = new Vector2(width - pad * 2f, rowHeight);
+                h += rowHeight + 4f;
+            }
+            h += pad - 6f;
+            card.sizeDelta = new Vector2(width, h);
+            EndScreenKit.Frame(card, PackArt.SeasonSection, 16f, UiTheme.Surface);
+            return h;
+        }
+
+        /// <summary>A stat in the Game Sense card: its caption over its number, in its colour.</summary>
+        private static void Stat(RectTransform card, string caption, string value, Color tint, float x, float y, float width)
+        {
+            var label = EndScreenKit.Text("Stat caption", card, caption, 12f, UiTheme.Muted, x, y, width, 18f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
+            label.characterSpacing = 2f;
+            label.enableAutoSizing = true; label.fontSizeMax = 12f; label.fontSizeMin = 9f;
+            var number = EndScreenKit.Text("Stat value", card, value, 30f, tint, x, y + 18f, width, 40f, TextAlignmentOptions.Left, UiTheme.Weight.SemiBold);
+            number.enableAutoSizing = true; number.fontSizeMax = 30f; number.fontSizeMin = 16f;
+        }
+
+        /// <summary>A verdict as its chip says it.</summary>
+        public static string VerdictWord(string verdict) => (verdict ?? "").ToUpperInvariant();
+
+        /// <summary>A verdict's colour: green for what held, red for what did not, quiet for what nobody can know yet.</summary>
+        private static Color VerdictTint(string verdict)
+        {
+            switch (verdict)
+            {
+                case YourWeek.Verdicts.Right:
+                case YourWeek.Verdicts.Kept:
+                case YourWeek.Verdicts.Followed: return UiTheme.Positive;
+                case YourWeek.Verdicts.Wrong:
+                case YourWeek.Verdicts.Broken:
+                case YourWeek.Verdicts.Defected: return UiTheme.Danger;
+                default: return UiTheme.Muted;
+            }
         }
 
         /// <summary>The week's events: the stories coming in, the four acts, the house's happenings, alliances, deals and turning points.</summary>

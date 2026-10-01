@@ -455,7 +455,9 @@ namespace Gamesim.Tests.PlayMode
         /// at 16:9 and on a 4:3 frame, as 'conversation-grouped', and with each picker open as
         /// 'conversation-grouped-picker' and 'conversation-grouped-deals'.
         /// </summary>
-        [UnityTest]
+        // Four pickers laid out and photographed at two sizes on two frames in two houses: over two
+        // minutes on its own, and past the runner's three-minute default in a full suite.
+        [UnityTest, Timeout(600000)]
         public IEnumerator ConversationGroups_TheGroupsAndAPickerFitAtBothTextSizes()
         {
             foreach (int houseguests in new[] { 3, 16 })

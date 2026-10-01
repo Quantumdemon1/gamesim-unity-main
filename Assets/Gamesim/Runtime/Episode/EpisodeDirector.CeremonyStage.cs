@@ -1031,9 +1031,14 @@ namespace Gamesim.Episode
                         if (evicted != null) leavingId = evicted;
                         // The evicted houseguest stands to say goodbye before the walk out takes
                         // them. Not the player - their eviction is the season's end, as it was -
-                        // and not somebody whose body the house had to let go.
+                        // and not somebody whose body the house had to let go. Not from a director
+                        // being disabled either: its OnDisable cancels the card, which closes it
+                        // here, and an unloading scene may already have destroyed the rig the
+                        // goodbye cuts with. That close takes the plain release, which checks the
+                        // rig, and OnDisable ends the stage straight after.
                         if (evicted != null && evicted == director.departingId && evicted != state.playerId
-                            && placeOf.ContainsKey(evicted) && !LetGo(evicted) && director.BodyFor(evicted) != null)
+                            && placeOf.ContainsKey(evicted) && !LetGo(evicted) && director.BodyFor(evicted) != null
+                            && director.isActiveAndEnabled && director.cameraRig != null)
                         {
                             BeginGoodbye(evicted);
                             break;

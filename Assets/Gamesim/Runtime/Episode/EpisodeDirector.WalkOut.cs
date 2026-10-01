@@ -86,6 +86,10 @@ namespace Gamesim.Episode
         private GoodbyeKind walkOutTone;
         /// <summary>The point on the floor ahead of the walker that their eyes are kept on: a scene transform of its own.</summary>
         private Transform walkOutLookMark;
+        /// <summary>Who the stage's goodbye last played the goodbye line for, until a walk out reads it.</summary>
+        private string goodbyeSaidBy;
+        /// <summary>Whether the staged walk under way had its line played by the goodbye before it.</summary>
+        private bool walkOutLineSaid;
 
         /// <summary>Where a staged walk out is.</summary>
         private enum StagedLeg { Binding, Walking, LastLook, Opening, Through, Closing, Holding }
@@ -215,6 +219,11 @@ namespace Gamesim.Episode
             // Under a staged eviction it is the goodbye's second half: the stage keeps the house in
             // its seats to watch, and the camera, until the door is shut behind them.
             walkOutStaged = IsCeremonyStaged && CeremonyStageKind == CeremonySting.EvictionKind;
+            // The goodbye played their line. A staged walk with no goodbye before it - the house
+            // let their body go at the card, and it came back for the walk - plays it as the walk
+            // starts, as every walk out did before the goodbye took the line.
+            walkOutLineSaid = walkOutStaged && goodbyeSaidBy == id;
+            goodbyeSaidBy = null;
             stagedLeg = StagedLeg.Binding;
             stagedBrisk = stagedDoorCut = stagedPushPending = false;
             // The living room's door is the goodbye's to put up; without it standing, this walk
@@ -328,6 +337,8 @@ namespace Gamesim.Episode
                     { FinishWalkOut(); return; }
                     stagedLeg = StagedLeg.Walking;
                     stagedWalkFrom = now;
+                    if (!walkOutLineSaid && sting != null && projected != null)
+                        sting.Play(CeremonySting.WalkOutKind, GoodbyeLine(projected, walkingOutId), reducedMotion);
                     // The yard's walk leaves the room, and the house watches it go; the living
                     // room's stays in it, and the exit wide holds the door in frame the whole way.
                     if (ceremonyStage != null) ceremonyStage.WatchTheWalk(body, ExitIsTheLivingRoom ? LivingExitWide : (HouseCameraRig.Shot?)null, WatchSeconds);
@@ -561,6 +572,8 @@ namespace Gamesim.Episode
         /// </summary>
         private void OnStagedGoodbye(string id)
         {
+            // The goodbye has just played their line: the walk out that follows does not again.
+            goodbyeSaidBy = id;
             StrikeWalkOutDoor();
             if (WalkOutThrough != WalkOutDoor.Living) return;
             if (!LivingExitClear(BodyFor(id), out var why))
@@ -640,6 +653,7 @@ namespace Gamesim.Episode
             if (npcMeetings != null && walkingOutId != null) { npcMeetings.EndDeparture(); npcMeetings.DepartureCandidate = null; }
             walkingOutId = null;
             walkOutStaged = false;
+            goodbyeSaidBy = null;
             StrikeWalkOutDoor();
             juryBench.Clear();
             juryBenchSeason = null;

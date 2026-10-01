@@ -546,6 +546,11 @@ namespace Gamesim.Tests.PlayMode
             var capsule = blocker.AddComponent<CapsuleCollider>();
             capsule.radius = 0.35f; capsule.height = 1.9f; capsule.center = Vector3.up * 0.95f;
             Physics.SyncTransforms();
+            // Once the doorway is cleared and rebaked, the refusal is the blocker's. Until then the
+            // vestibule's raised floor refuses the door before the blocker is asked, and the probe
+            // (StagedExit_TheLivingRoomsDoorwayIsClearAndFlat) is the test that reports it.
+            if (PlanterInTheLivingDoorway() == null)
+                LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex("the living room's door is refused - no room to stand at "));
             yield return PlayUntilTheCeremony();
             Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
             director.SkipCeremonySummons();

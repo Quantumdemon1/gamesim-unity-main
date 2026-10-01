@@ -650,9 +650,6 @@ namespace Gamesim.Editor
             foreach (var node in world.GetComponentsInChildren<Transform>(true))
             {
                 if (node.IsChildOf(root)) continue;
-                // A struck piece is not planted: the living room's doorway planter, switched off
-                // for the exit door, grew three plants floating where its bed had been.
-                if (!node.gameObject.activeInHierarchy) continue;
                 var renderer = node.GetComponent<Renderer>();
                 if (renderer == null) continue;
                 string stem = Stem(node.name);
@@ -660,9 +657,15 @@ namespace Gamesim.Editor
                 else if (stem == "Pot" || stem == "Planter") pots.Add(renderer);
             }
 
-            int swapped = 0;
+            int swapped = 0, order = 0;
             foreach (var leaf in leaves)
             {
+                // Each bed's plants are picked by its place in this order, and a struck leaf keeps
+                // its place: given up, every bed after it would grow different plants on the next
+                // run. A struck piece is not planted, though - the living room's doorway planter,
+                // switched off for the exit door, grew three plants floating where its bed had been.
+                int place = order++;
+                if (!leaf.gameObject.activeInHierarchy) continue;
                 var slot = leaf.bounds;
                 var pot = pots
                     .Where(p => Mathf.Abs(p.bounds.center.x - slot.center.x) < 0.6f
@@ -673,7 +676,7 @@ namespace Gamesim.Editor
 
                 // A wide planter reads as a bed of small plants; a narrow pot reads as one plant.
                 bool bed = slot.size.x > 1.2f;
-                string model = bed ? "plantSmall" + (swapped % 3 + 1) : "pottedPlant";
+                string model = bed ? "plantSmall" + (place % 3 + 1) : "pottedPlant";
                 int copies = bed ? 3 : 1;
 
                 for (int i = 0; i < copies; i++)

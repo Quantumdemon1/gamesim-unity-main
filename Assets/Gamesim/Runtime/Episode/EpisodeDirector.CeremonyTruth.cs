@@ -165,8 +165,9 @@ namespace Gamesim.Episode
                 // out to follow it, the house has no candidate left.
                 if (npcMeetings != null && npcMeetings.DepartureCandidate == departingId) npcMeetings.DepartureCandidate = null;
                 departingId = null;
-                // A door the goodbye put up for them comes down with them.
-                StrikeWalkOutDoor();
+                // A door the goodbye put up for them comes down with them. Not one another walk
+                // out is still using: a walk under way refuses this one too, and keeps its door.
+                StrikeWalkOutDoorIfNobodyWalks();
                 if (IsReady) Project();
             }
             TickWalkOut();

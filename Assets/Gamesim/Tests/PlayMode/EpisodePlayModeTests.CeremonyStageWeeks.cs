@@ -266,9 +266,12 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.WalkingOutId, Is.EqualTo(leaving), "They are still walking out as the week moves on,");
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Release), "and the house still keeps its seats.");
             Assert.That(director.TryOpenPhasePanel(), Is.True, "The player is at the episode screen.");
-            // The chrome is aside for the whole staged exit (PACK8-PASS-PLAN C2), so no player can
-            // press it now: the competition is started the way the season walks start it, which
-            // is what reaches Challenge's FinishWalkOut under a staged walk.
+            // The chrome is aside for the whole staged exit (PACK8-PASS-PLAN C2): it is drawn at
+            // alpha 0 and takes no clicks, and the stage owns the press, so no player can press
+            // this button now and ButtonWithCaption's pressability check would rightly refuse it.
+            // The test calls the button's own handler with FindButton instead, because what it
+            // proves is the guard behind it - StartChallenge's FinishWalkOut(immediate) under a
+            // staged walk - which a competition started any other way would reach as well.
             FindButton("Practice this competition").onClick.Invoke();
             yield return null;
             Assert.That(director.IsChallengeActive, Is.True, "The competition starts,");

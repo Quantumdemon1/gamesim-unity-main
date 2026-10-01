@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Presentation;
@@ -94,16 +95,29 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(MeetingFacesUp(takeover).Count, Is.EqualTo(3), "three faces: the holder and the two on the block.");
 
             // Seated, at the hips: a seat moves the visual body onto the chair and leaves the root at the approach.
-            yield return WaitFor(() => director.CeremonyStageSeated >= director.CeremonyStagePlaces, 8f, "everyone sits down:\n" + StageReport());
+            // One wait for the whole house and the block's settling, well inside the meeting's own
+            // clock: an unused veto closes about 13 seconds after the card starts, and the close lets
+            // every seat go, so checks that ran on past it would read an empty room. The stage is
+            // part of the wait because its counts read zero of zero once it has ended.
             var hot = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.HotSeat);
-            foreach (var id in block)
+            var redChairs = block.Select(id => SceneComponents<HouseNpc>().First(each => each.Id == id && each.gameObject.activeInHierarchy)).ToList();
+            bool SettledInTheRedChairs() => director.IsCeremonyStaged && director.CeremonyStageSeated >= director.CeremonyStagePlaces
+                && redChairs.All(npc =>
+                {
+                    var seat = npc.GetComponent<HouseSeatPresentation>();
+                    return seat != null && seat.Settled;
+                });
+            float seatsBy = Time.realtimeSinceStartup + 8f;
+            while (!SettledInTheRedChairs() && Time.realtimeSinceStartup < seatsBy) yield return null;
+            // On a miss, the report as it stood when the wait gave up: who never sat, and why.
+            if (!SettledInTheRedChairs())
+                Assert.Fail("Everyone sits down, the block settled in the red chairs, while the meeting is on:\n" + StageReport("when the wait gave up"));
+            foreach (var npc in redChairs)
             {
-                var npc = SceneComponents<HouseNpc>().First(each => each.Id == id);
                 var seat = npc.GetComponent<HouseSeatPresentation>();
-                yield return WaitFor(() => seat.Settled, 3f, id + " settles");
                 var hips = HipsOf(npc);
                 var at = hips != null ? hips.position : seat.VisualFeet;
-                Assert.That(hot.Min(chair => FlatDistance(at, chair.Position)), Is.LessThan(0.5f), id + " sits in a red chair.");
+                Assert.That(hot.Min(chair => FlatDistance(at, chair.Position)), Is.LessThan(0.5f), npc.Id + " sits in a red chair.");
             }
 
             // The card down: the house is let go, the screen is the room's again, nothing was written.
@@ -116,6 +130,68 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(committed.revision), "The stage commits nothing,");
             Assert.That(director.Snapshot.nominees, Is.EqualTo(committed.nominees), "and the block is the committed one.");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the meeting.");
+        }
+
+        /// <summary>
+        /// A holder on the block keeps their red chair (PACK8-PASS-PLAN C1): the red chairs are the
+        /// block's as it stood before the meeting, the holder's included, and the Head of Household
+        /// takes the U's middle base seat the holder had no need of. The replacement sits wherever
+        /// cast order puts them, so the room gives nothing away. The card shows the holder once, and
+        /// an NPC holder on the block saves themselves, so the decision is about the holder.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_AHolderOnTheBlockKeepsTheirRedChairAndTheHeadOfHouseholdTakesTheFirstSeat()
+        {
+            yield return InstallStagedSeason(76, state =>
+            {
+                AtVetoMeeting(state, playerHolds: false);
+                // The first nominee won the veto they are up against.
+                string former = state.vetoHolderId;
+                state.vetoHolderId = state.nominees[0];
+                if (!state.vetoPlayers.Contains(state.vetoHolderId)) state.vetoPlayers[state.vetoPlayers.IndexOf(former)] = state.vetoHolderId;
+            });
+            var before = director.Snapshot;
+            var block = before.nominees.ToList();
+            string holder = before.vetoHolderId, hoh = before.hohId;
+            Assert.That(block, Does.Contain(holder), "The holder is on the block.");
+            Assert.That(holder, Is.Not.EqualTo(before.playerId), "The holder is a houseguest the house decides for.");
+            Assert.That(EpisodeEngine.NpcVetoSave(before), Is.EqualTo(holder), "A holder on the block saves themselves.");
+            var takeover = SceneComponents<CeremonyTakeover>().Single();
+            var beats = new List<CeremonyBeat>();
+            void Record(CeremonyBeat beat) => beats.Add(beat);
+            takeover.BeatReached += Record;
+            try
+            {
+                yield return PlayUntilTheVetoMeeting();
+                var committed = director.Snapshot;
+                Assert.That(director.IsCeremonyStaged, Is.True, "The veto meeting is staged in the house.");
+                Assert.That(director.CeremonyStageKind, Is.EqualTo(CeremonySting.VetoKind));
+                Assert.That(committed.nominees, Does.Not.Contain(holder), "The holder came off the block.");
+                string replacement = committed.nominees.Except(block).Single();
+
+                string report = StageReport();
+                foreach (var id in block)
+                    Assert.That(report, Does.Contain("  " + id + " -> " + CeremonySeating.HotSeat + " "), id + " has a red chair, the holder too:\n" + report);
+                Assert.That(report, Does.Contain("  " + hoh + " -> " + CeremonySeating.GallerySeat + " 0 "),
+                    "The Head of Household takes the U's middle base seat, facing the red chairs:\n" + report);
+                Assert.That(report, Does.Not.Contain("  " + replacement + " -> " + CeremonySeating.HotSeat + " "),
+                    "The replacement is not seated by the outcome:\n" + report);
+
+                director.SkipCeremonySummons();
+                yield return WaitFor(() => takeover.PlayingMeeting, 3f, "the meeting plays once the summons is skipped");
+                Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Intro), "It opens on the holder and the block,");
+                Assert.That(MeetingFacesUp(takeover).Count, Is.EqualTo(2), "two faces: the holder is one of the two on the block.");
+                float decisionBy = CeremonyPacing.FadeIn + CeremonyPacing.VetoIntro(takeover.MeetingPace) + CeremonyPacing.VetoQuestion(takeover.MeetingPace);
+                yield return WaitFor(() => beats.Any(beat => beat.Kind == CeremonyBeatKind.VetoDecided), decisionBy + 3f, "the decision is on the screen");
+                Assert.That(beats.Single(beat => beat.Kind == CeremonyBeatKind.VetoDecided).SubjectId, Is.EqualTo(holder),
+                    "The decision is about the holder, who saved themselves.");
+
+                takeover.Cancel();
+                yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage ends with the card");
+                Assert.That(director.Snapshot.revision, Is.EqualTo(committed.revision), "The meeting commits nothing.");
+                Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the meeting.");
+            }
+            finally { takeover.BeatReached -= Record; }
         }
 
         /// <summary>
@@ -347,6 +423,100 @@ namespace Gamesim.Tests.PlayMode
                 "in the living room,");
             Assert.That(cameraRig.HasArrived(), Is.True, "cut to: a 1.2 second move would still be under way two frames in.");
             Assert.That(director.CeremonySkipShowing, Is.False, "No skip chip over a card that is not staged.");
+            takeover.Cancel();
+            yield return Frames(2);
+        }
+
+        /// <summary>
+        /// Stages the installed veto meeting through the director's own entry, with a card of the
+        /// test's, before anything is committed: the stage a commit would begin, with nothing else
+        /// holding the camera or a card. False when the house declined it.
+        /// </summary>
+        private bool BeginTheVetoStage(System.Func<ScreenSurface, bool> playCard)
+        {
+            var state = director.Snapshot;
+            var begin = typeof(EpisodeDirector).GetMethod("TryBeginCeremonyStage", BindingFlags.Instance | BindingFlags.NonPublic);
+            return (bool)begin.Invoke(director, new object[] { CeremonySting.VetoKind, state, playCard, state.nominees.ToList() });
+        }
+
+        /// <summary>The veto meeting's generic card as the director plays it for a block that stands: the card on the HUD frame, the strip, and the framing and reactions when nothing is staged.</summary>
+        private bool PlayTheGenericVetoCard(EpisodeState state)
+        {
+            var play = typeof(EpisodeDirector).GetMethod("PlayGenericCeremonyCard", BindingFlags.Instance | BindingFlags.NonPublic);
+            var active = new HashSet<string>(state.Active.Select(actor => actor.id));
+            var block = new HashSet<string>(state.nominees);
+            return (bool)play.Invoke(director, new object[] { state, CeremonySting.VetoKind, EpisodeDirector.VetoNotUsedLine, active, block });
+        }
+
+        /// <summary>
+        /// The generic card is the meeting's fallback, and it waits for the house to be let go before
+        /// it frames the room (PACK8-PASS-PLAN C1). Played under a stage it only reports: the stage
+        /// has the camera and the bodies, so the card neither frames the meeting's room nor sets the
+        /// house reacting. A meeting card that declines the living room's screen ends the stage
+        /// before anything plays on it, and the generic card plays on the HUD instead, exactly once,
+        /// with the framing its own by then. Nothing is committed.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheGenericVetoCardFramesTheRoomOnlyOnceTheStageHasLetTheHouseGo()
+        {
+            yield return InstallStagedSeason(77, state => AtVetoMeeting(state, playerHolds: false));
+            yield return WaitFor(() => director.NpcAutonomyReady, 5f, "the house's world has bound its people");
+            var installed = director.Snapshot;
+            var takeover = SceneComponents<CeremonyTakeover>().Single();
+            int offeredTheScreen = 0, playedOnTheHud = 0;
+            bool stagedWhenItPlayed = true;
+            Assert.That(BeginTheVetoStage(screen =>
+            {
+                // The meeting's card declining the set's screen, as a meeting it cannot tell does.
+                if (screen != null) { offeredTheScreen++; return false; }
+                playedOnTheHud++;
+                stagedWhenItPlayed = director.IsCeremonyStaged;
+                return PlayTheGenericVetoCard(installed);
+            }), Is.True, "The veto meeting is staged.");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Summons), "The house is summoned.");
+            Assert.That(director.IsFramingCeremony, Is.False, "Nothing has framed the meeting's room.");
+
+            // Under the stage, the generic card only reports.
+            var focus = cameraRig.DesiredFocus;
+            float distance = cameraRig.DesiredDistance;
+            Assert.That(PlayTheGenericVetoCard(installed), Is.True, "The generic card plays under a stage: the beat is never silent,");
+            Assert.That(takeover.IsPlaying && takeover.PlayingKind == CeremonySting.VetoKind && takeover.Surface == null, Is.True, "on the HUD frame,");
+            Assert.That(director.IsFramingCeremony, Is.False, "but it does not frame the meeting's room: the stage has the camera,");
+            Assert.That(Vector3.Distance(cameraRig.DesiredFocus, focus), Is.LessThan(0.01f), "which stays where the stage put it.");
+            Assert.That(cameraRig.DesiredDistance, Is.EqualTo(distance).Within(0.01f));
+            Assert.That(director.IsCeremonyStaged, Is.True, "The stage still holds the house.");
+            takeover.Cancel();
+
+            // A meeting card that declines the screen: the stage ends, and the generic card plays on the HUD once.
+            var beats = new List<CeremonyBeat>();
+            void Record(CeremonyBeat beat) => beats.Add(beat);
+            takeover.BeatReached += Record;
+            try
+            {
+                director.SkipCeremonySummons();
+                yield return WaitFor(() => offeredTheScreen > 0, 3f, "the card is offered the living room's screen once the summons is skipped");
+                Assert.That(offeredTheScreen, Is.EqualTo(1), "It declines the screen,");
+                Assert.That(director.IsCeremonyStaged, Is.False, "the stage ends,");
+                Assert.That(playedOnTheHud, Is.EqualTo(1), "and the card plays on the HUD instead, the beat never silent,");
+                Assert.That(stagedWhenItPlayed, Is.False, "once the house has been let go.");
+                Assert.That(takeover.IsPlaying && takeover.PlayingKind == CeremonySting.VetoKind, Is.True, "The meeting's generic card is up,");
+                Assert.That(takeover.PlayingMeeting, Is.False);
+                Assert.That(takeover.Surface, Is.Null, "on the HUD frame,");
+                Assert.That(director.IsFramingCeremony, Is.True, "and it frames the meeting's room, nothing else holding the camera now,");
+                var living = SceneComponents<HouseRoomMarker>().First(room => room.RoomName == "Living");
+                var framed = cameraRig.DesiredFocus;
+                Assert.That(new Vector2(framed.x - living.transform.position.x, framed.z - living.transform.position.z).magnitude, Is.LessThan(0.5f),
+                    "the living room.");
+
+                yield return Frames(3);
+                Assert.That(offeredTheScreen + playedOnTheHud, Is.EqualTo(2), "Nothing plays the card again.");
+                Assert.That(beats.Count(beat => beat.Kind == CeremonyBeatKind.Opened), Is.EqualTo(1), "One card opened: " + string.Join(", ", beats));
+                Assert.That(director.IsCeremonyStaged, Is.False);
+                Assert.That(player.HasActivityOwner, Is.False, "The player has their body back.");
+                Assert.That(director.Snapshot.revision, Is.EqualTo(installed.revision), "Nothing was written.");
+                Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "The house's world outlives the stage.");
+            }
+            finally { takeover.BeatReached -= Record; }
             takeover.Cancel();
             yield return Frames(2);
         }

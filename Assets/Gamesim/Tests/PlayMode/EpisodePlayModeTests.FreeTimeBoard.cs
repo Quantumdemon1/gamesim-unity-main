@@ -724,9 +724,9 @@ namespace Gamesim.Tests.PlayMode
                 yield return null; yield return null;
 
                 // An option answered by a press at its point, preferring one over something on the board
-                // that commits; the board comes back under that point.
-                var tiles = beats[0].choices.Where(choice => !choice.lapse)
-                    .Select(choice => ButtonWithCaption(EpisodeHud.EventChoiceCaption(choice.label))).ToList();
+                // that commits - letting the moment pass is an answer too, and its tile can be the one
+                // over a way to buy time; the board comes back under that point.
+                var tiles = beats[0].choices.Select(choice => ButtonWithCaption(EpisodeHud.EventChoiceCaption(choice.label))).ToList();
                 var tile = tiles.FirstOrDefault(each => committing.Any(control => control.Item2.Contains(ScreenCentre(each))));
                 if (tile == null) tile = tiles[0];
                 var point = ScreenCentre(tile);

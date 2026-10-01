@@ -47,7 +47,9 @@ namespace Gamesim.Tests.PlayMode
             yield return OpenFreeTime();
             var state = director.Snapshot;
             Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
-            Assume.That(director.IsFreeTimeBoard, Is.True, "The fixture's free time has nothing that keeps the old column over it.");
+            Assume.That(state.houseEvents.Any(item => !item.resolved && !item.IsStory), Is.False,
+                "The fixture's free time has no legacy house event, which keeps its band.");
+            Assert.That(director.IsFreeTimeBoard, Is.True, "Free time is the board.");
             var panel = ActiveRect("Episode panel");
             var head = ActiveRect(EpisodeHud.ScreenHeadName);
             Assert.That(head, Is.Not.Null, "The screen has its budget card, under the head's name.");

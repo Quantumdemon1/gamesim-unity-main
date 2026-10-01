@@ -310,9 +310,10 @@ namespace Gamesim.Presentation
             lines.Add(SenseLine(mine.sense));
         }
 
-        /// <summary>Game Sense so far in a line, for the seam: the strategy face and the chances taken.</summary>
+        /// <summary>Game Sense so far in a line, for the seam: the strategy face and the chances taken, and when the player's season ended if it has.</summary>
         public static string SenseLine(YourWeek.Sense sense) =>
-            "Game Sense so far: strategy " + sense.strategy + ", chances taken " + sense.taken + " of " + sense.offered + ".";
+            "Game Sense so far: strategy " + sense.strategy + ", chances taken " + sense.taken + " of " + sense.offered + "."
+            + (sense.Ended != null ? " " + sense.Ended : "");
 
         // ---------------------------------------------------------------- the head of the week
 
@@ -794,26 +795,31 @@ namespace Gamesim.Presentation
             return height + 4f;
         }
 
+        /// <summary>The Game Sense card's subtitle: what its number is built from, and what waits for the season's end.</summary>
+        public const string SenseSubtitle = "Built from what you can see. Competition odds, plans made against you and how the house sees you count only when the season ends.";
+
         /// <summary>
         /// GAME SENSE SO FAR: the season report's verdict in the parts the player can already see -
         /// the strategy face, made of public and player-owned rows, and the chances taken - then the
-        /// week's own rows with their points. The number itself, and the competitions and social
-        /// faces, rest on odds and on how the house sees the player, and wait for the season's end.
+        /// week's own rows with their points: the power, their ballot, their chances and calls, and a
+        /// competition thrown or fought from the block. The number itself, the odds every other
+        /// competition row is weighed by, another Head of Household's plan and how the house sees the
+        /// player wait for the season's end, and the subtitle says so. After the player's season ended,
+        /// the number holds where it stood and the card says when it ended instead of listing rows.
         /// </summary>
         private float SenseCard(RectTransform body, YourWeek.Sense sense, float x, float y, float width)
         {
             const float pad = 16f;
             var card = EndScreenKit.Box(SenseName, body, x, y, width, 10f);
-            float h = pad + EndScreenKit.Heading(card, "Game Sense so far", "From your own record. Competitions and social are scored when the season ends.",
-                "bulb", pad, pad, width - pad * 2f);
+            float h = pad + EndScreenKit.Heading(card, "Game Sense so far", SenseSubtitle, "bulb", pad, pad, width - pad * 2f);
             float half = (width - pad * 2f - 12f) * .5f;
             Stat(card, "STRATEGY", sense.strategy.ToString(CultureInfo.InvariantCulture), UiTheme.Positive, pad, h, half);
             Stat(card, "CHANCES TAKEN", sense.taken + " of " + sense.offered, sense.offered == 0 || sense.taken * 2 >= sense.offered ? UiTheme.Positive : UiTheme.Danger,
                 pad + half + 12f, h, half);
             h += 66f;
-            if (sense.rows.Count == 0)
+            if (sense.Ended != null || sense.rows.Count == 0)
             {
-                var none = EndScreenKit.Text("None", card, "No rows of your own this week.", 14f, UiTheme.Muted, pad, h, width - pad * 2f, 20f);
+                var none = EndScreenKit.Text("None", card, sense.Ended ?? "No rows of your own this week.", 14f, UiTheme.Muted, pad, h, width - pad * 2f, 20f);
                 h += EndScreenKit.Wrapped(none, width - pad * 2f) + 6f;
             }
             foreach (var note in sense.rows)

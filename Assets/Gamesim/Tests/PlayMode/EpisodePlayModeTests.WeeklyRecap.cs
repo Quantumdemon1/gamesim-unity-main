@@ -124,9 +124,11 @@ namespace Gamesim.Tests.PlayMode
         /// YOUR WEEK (ACTIONS-DEALS-ALLIANCES-PLAN V4) on the recap. A week closed by the engine, with
         /// what the player held pinned as fixtures in the rows the engine writes: a claim the reveal
         /// bore out and one it did not, a deal the other side kept, a promise the player broke, and a
-        /// call one ally followed and one would not. The Your week tab shows every line the reader
-        /// judged behind its verdict chip, and Game Sense so far; every line fits its card at both
-        /// text sizes, the seam carries the same lines, and reading it commits nothing.
+        /// call one ally followed and one did not, judged by the ballots the reveal read. The Your
+        /// week tab shows every line the reader judged behind its verdict chip, and Game Sense so far;
+        /// every line fits its card at both text sizes, the seam carries the same lines, and reading it
+        /// commits nothing. Photographed at both text sizes in the 16:9 frame and the 4:3 one the
+        /// recap was laid out for.
         /// </summary>
         [UnityTest]
         public IEnumerator WeeklyRecap_YourWeekShowsWhatTheWeekMadeOfWhatYouHeld()
@@ -143,15 +145,24 @@ namespace Gamesim.Tests.PlayMode
             var partner = state.Find(ballot.voterId);
             RelationshipLedger.Record(state, state.playerId, partner.id, YourWeek.DealKept, 18, partner.name + " honoured a vote to evict with " + you.name + ".");
             var promised = others.FirstOrDefault() ?? state.Find(spared);
+            state.promises.Add(new PromiseState { id = "promise-your-week", fromId = state.playerId, toId = promised.id, targetId = spared,
+                kind = PromiseKind.Vote, status = PromiseStatus.Broken, week = week, expiresWeek = week });
             state.memories.Add(new MemoryState { ownerId = state.playerId, subjectId = promised.id, text = you.name + " broke a Vote promise.", week = week, isPrivate = true });
-            var allies = state.contestants.Where(c => !c.isPlayer && c.status == ContestantStatus.Active).Take(2).ToList();
-            state.alliances.Add(new AllianceState { id = "alliance-your-week", name = "The Recap Pact", members = new List<string> { state.playerId, allies[0].id, allies[1].id }, active = true });
             string evicted = state.ledger.power.Single(p => p.week == week).evicteeId;
             string called = evicted != state.playerId ? evicted : state.nominees.First(id => id != state.playerId);
+            // The week is still on screen, so the reveal's ballots judge the call: one member who voted
+            // out who was called and one who did not, or, where the vote gave nobody of either, one who
+            // did not vote and stands as they said at the call.
+            var active = state.contestants.Where(c => !c.isPlayer && c.status == ContestantStatus.Active).ToList();
+            string BallotOf(string id) => state.votes.FirstOrDefault(vote => vote.voterId == id)?.targetId;
+            var follower = active.FirstOrDefault(c => BallotOf(c.id) == called) ?? active.First(c => BallotOf(c.id) == null);
+            var defector = active.FirstOrDefault(c => c.id != follower.id && BallotOf(c.id) != null && BallotOf(c.id) != called)
+                ?? active.First(c => c.id != follower.id && BallotOf(c.id) == null);
+            state.alliances.Add(new AllianceState { id = "alliance-your-week", name = "The Recap Pact", members = new List<string> { state.playerId, follower.id, defector.id }, active = true });
             state.ledger.calls.Add(new BlocCallRow
             {
                 week = week, allianceId = "alliance-your-week", callerId = state.playerId, targetId = called,
-                followed = new List<string> { allies[0].id }, defected = new List<string> { allies[1].id },
+                followed = new List<string> { follower.id }, defected = new List<string> { defector.id },
             });
 
             var mine = YourWeek.Build(state, week);
@@ -159,6 +170,9 @@ namespace Gamesim.Tests.PlayMode
             foreach (var verdict in new[] { YourWeek.Verdicts.Right, YourWeek.Verdicts.Wrong, YourWeek.Verdicts.Kept, YourWeek.Verdicts.Broken,
                          YourWeek.Verdicts.Followed, YourWeek.Verdicts.Defected })
                 Assert.That(verdicts, Does.Contain(verdict), "The fixture holds a line the week judged " + verdict + ".");
+            foreach (var member in mine.calls.Where(line => line.kind == YourWeek.Kinds.Member))
+                Assert.That(member.basis, Is.EqualTo(BallotOf(member.aboutId) != null ? YourWeek.Bases.Ballot : YourWeek.Bases.Call),
+                    "A member who voted is judged by the ballot the reveal read; one who did not, by what they said at the call.");
             string before = JsonUtility.ToJson(state);
 
             foreach (bool larger in new[] { false, true })
@@ -189,6 +203,7 @@ namespace Gamesim.Tests.PlayMode
                     if (line.verdict != null) Assert.That(words, Does.Contain(WeeklyRecapScreen.VerdictWord(line.verdict)), where + line.text);
                 }
                 Assert.That(words, Does.Contain("STRATEGY").And.Contain(mine.sense.strategy.ToString()), where + "Game Sense so far, in the part the player can see.");
+                Assert.That(words, Does.Contain(WeeklyRecapScreen.SenseSubtitle), where + "and what waits for the season's end.");
                 Assert.That(words, Does.Not.Contain("SOCIAL").And.Not.Contain("GAME SENSE"), where + "neither the number nor the faces that rest on what the house keeps to itself.");
                 // Each judged line's verdict is the chip on its own row.
                 foreach (var row in body.GetComponentsInChildren<RectTransform>().Where(rect => rect.name == WeeklyRecapScreen.VerdictRowName))
@@ -206,7 +221,11 @@ namespace Gamesim.Tests.PlayMode
                     // The tab is the foot of the card's scroll: bring it into view, as a player reading it would.
                     var scroll = screen.GetComponentsInChildren<ScrollRect>().LastOrDefault(item => item.isActiveAndEnabled);
                     if (scroll != null) { scroll.verticalNormalizedPosition = 0f; Canvas.ForceUpdateCanvases(); }
-                    yield return CaptureFraming(larger ? "weekly-recap-your-week-large" : "weekly-recap-your-week");
+                    string name = larger ? "weekly-recap-your-week-large" : "weekly-recap-your-week";
+                    yield return CaptureFraming(name);
+                    // The batch canvas is 4:3, and the recap is laid out for the canvas it opened on:
+                    // the 4:3 frame shows that layout whole, where the 16:9 one crops what overflows it.
+                    yield return CaptureFraming(name + "-4x3", width: 1200, height: 900);
                 }
                 screen.Hide();
                 yield return null;

@@ -12,12 +12,16 @@ namespace Gamesim.Simulation
     /// <para><b>Only what the player can know after the reveal.</b> The reveal reads every ballot
     /// aloud, so a claim is judged against a ballot the whole house heard, and the whip count against
     /// the evictee. A deal or a promise is judged by the outcome line the player was told, in the words
-    /// they were told it: for a deal, the player's own copy of that line on their record with the other
-    /// party (which outlasts the log's cap); for a promise, the log line and the player's own memory of
-    /// it. A call is judged by who the player was told followed and who would not. Game Sense is the
-    /// verdict's own notes, the known ones only (<see cref="GameSense.Note.known"/>): its strategy face
-    /// is made of public and player-owned rows, while its competitions face rests on odds and its
-    /// social face on how the house sees the player, neither of which anybody is shown mid-season.</para>
+    /// they were told it, in the week it was told: for a deal, the player's own copy of that line on
+    /// their record with the other party, which outlasts the log; for a promise, the log line, which
+    /// keeps the house's last 256 lines, and the player's own memory of it, which keeps their last 30.
+    /// A promise from a week both have rolled past is not on the list, so a review of an early week in
+    /// a long season can show fewer promises than that week ended. A call is judged, in the week still
+    /// on screen, by the ballots the reveal read; in an earlier week, whose ballots are gone, by what
+    /// each member said at the call. Game Sense is the verdict's own notes, the known ones only
+    /// (<see cref="GameSense.Note.known"/>): its strategy face is made of public and player-owned
+    /// rows, while its competitions face rests on odds and its social face on how the house sees the
+    /// player, neither of which anybody is shown mid-season.</para>
     ///
     /// <para>Plain data read from committed state: nothing here rolls, writes or changes an outcome.
     /// The plays and threads the player advanced are not repeated here: the recap's acts already list
@@ -40,6 +44,12 @@ namespace Gamesim.Simulation
             public const string WhipCount = "whip count", Claim = "claim", Deal = "deal", Promise = "promise", Call = "call", Member = "member";
         }
 
+        /// <summary>What a call member's verdict rests on: the ballot the reveal read, or what they said at the call.</summary>
+        public static class Bases
+        {
+            public const string Ballot = "ballot", Call = "call";
+        }
+
         /// <summary>The most rows of the week's Game Sense the recap prints.</summary>
         public const int SenseRowLimit = 6;
 
@@ -55,6 +65,8 @@ namespace Gamesim.Simulation
             public string aboutId;
             /// <summary>Who kept or broke a deal or promise; null where a pair held or fell out together, and for the other kinds.</summary>
             public string byId;
+            /// <summary>For a call's member, what the verdict rests on (<see cref="Bases"/>); null for the other kinds.</summary>
+            public string basis;
 
             public override string ToString() => verdict == null ? text : text + " · " + verdict;
         }
@@ -62,12 +74,17 @@ namespace Gamesim.Simulation
         /// <summary>Game Sense so far, in the parts the player can already see.</summary>
         public sealed class Sense
         {
-            /// <summary>The strategy face through the week, from the known notes alone.</summary>
+            /// <summary>The strategy face through the week, from the known notes alone; held at the week the player's season ended.</summary>
             public int strategy = (int)GameSense.Base;
-            /// <summary>The chances the season had offered through the week, and how many were taken.</summary>
+            /// <summary>The chances the season had offered through the week, and how many were taken; held as the strategy face is.</summary>
             public int offered, taken;
-            /// <summary>The week's own known notes of the strategy and competitions faces, as the verdict wrote them.</summary>
+            /// <summary>The week's own known notes of the strategy and competitions faces, as the verdict wrote them; none after the player's season ended.</summary>
             public List<GameSense.Note> rows = new List<GameSense.Note>();
+            /// <summary>The week the player's season ended, when this week came after it; 0 otherwise.</summary>
+            public int endedWeek;
+
+            /// <summary>"Your season ended in week 4.", for a week after the player left; null otherwise.</summary>
+            public string Ended => endedWeek > 0 ? "Your season ended in week " + endedWeek + "." : null;
         }
 
         public sealed class Week
@@ -231,9 +248,15 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The promises that ended this week with the player as a party, as they were told it: the
-        /// week's outcome lines logged to them, and the same words in their own memory, which outlasts
-        /// the log's cap. Each outcome is written once to each, so whichever kept more of the week
-        /// holds all of it.
+        /// week's outcome lines logged to them, and the same words in their own memory. Each outcome is
+        /// written once to each, so whichever kept more of the week holds all of it - but the log keeps
+        /// only the house's last 256 lines and the memory only the player's last 30, so a week both
+        /// have rolled past has lost its promise lines, and a review of it shows fewer than it ended.
+        ///
+        /// <para>A memory is not always a party's. Every witness of a broken promise remembers it in
+        /// the same words, the promisee's own shape, so a remembered line counts only as many times as
+        /// the player was a party to a promise that could have ended so that week: its kind, ended as
+        /// the line says, made by the one it names to the other of the pair, and binding that week.</para>
         /// </summary>
         private static void Promises(EpisodeState s, int week, List<Line> lines)
         {
@@ -248,9 +271,24 @@ namespace Gamesim.Simulation
                 .Where(x => ReadPromise(s, x.text, x.partner, out _, out _, out _)).ToList();
             foreach (var outcome in told.Concat(remembered).Distinct().ToList())
             {
-                int times = Math.Max(told.Count(x => x == outcome), remembered.Count(x => x == outcome));
-                for (int i = 0; i < times; i++) lines.Add(PromiseLine(s, outcome.text, outcome.partner));
+                int heard = told.Count(x => x == outcome);
+                int recalled = Math.Min(remembered.Count(x => x == outcome), PromisesItCouldBe(s, week, outcome.text, outcome.partner));
+                for (int i = 0; i < Math.Max(heard, recalled); i++) lines.Add(PromiseLine(s, outcome.text, outcome.partner));
             }
+        }
+
+        /// <summary>
+        /// How many promises the player was a party to that an outcome line could be: of its kind,
+        /// ended as it says, made by the one it names to the other of the pair, and binding in
+        /// <paramref name="week"/> - made by then, and not lapsed before it.
+        /// </summary>
+        private static int PromisesItCouldBe(EpisodeState s, int week, string text, string partnerId)
+        {
+            if (!ReadPromise(s, text, partnerId, out string fromId, out PromiseKind kind, out bool kept)) return 0;
+            string toId = fromId == s.playerId ? partnerId : s.playerId;
+            var ended = kept ? PromiseStatus.Fulfilled : PromiseStatus.Broken;
+            return s.promises.Count(p => p.fromId == fromId && p.toId == toId && p.kind == kind && p.status == ended
+                && p.week <= week && (p.expiresWeek == 0 || week <= p.expiresWeek));
         }
 
         private static Line PromiseLine(EpisodeState s, string text, string partner)
@@ -294,9 +332,17 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- calls
 
-        /// <summary>Each call the player made this week: its own line, then who followed it and who would not, as they were told at the call.</summary>
+        /// <summary>
+        /// Each call the player made this week: its own line, then each member who could vote. In the
+        /// week still on screen the reveal has read every ballot aloud, and those ballots are the
+        /// verdict: followed if they voted out who was called, defected if not, whatever they said at
+        /// the call. An earlier week's ballots are gone with its turn, so its members stand as they
+        /// said at the call. Each line says which it rests on.
+        /// </summary>
         private static void Calls(EpisodeState s, int week, PowerRow power, bool revealed, List<Line> lines)
         {
+            // The live week's ballots, once the reveal has read them; never a ballot still private.
+            bool ballots = revealed && week == s.week && s.evictionResolved;
             foreach (var call in s.ledger.calls.Where(c => c.week == week && c.callerId == s.playerId))
             {
                 string pact = s.alliances.FirstOrDefault(a => a.id == call.allianceId)?.name ?? "your alliance";
@@ -305,10 +351,28 @@ namespace Gamesim.Simulation
                     : power.evicteeId == call.targetId ? ", and " + target + " went home."
                     : ", and " + target + " stayed.";
                 lines.Add(new Line { kind = Kinds.Call, text = "You called it in " + pact + ": evict " + target + after });
-                foreach (var id in call.followed)
-                    lines.Add(new Line { kind = Kinds.Member, verdict = Verdicts.Followed, aboutId = id, text = Who(s, id) + " followed your call." });
-                foreach (var id in call.defected)
-                    lines.Add(new Line { kind = Kinds.Member, verdict = Verdicts.Defected, aboutId = id, text = Who(s, id) + " would not follow your call." });
+                foreach (var id in call.followed.Concat(call.defected))
+                {
+                    bool said = call.followed.Contains(id);
+                    var vote = ballots ? s.votes.FirstOrDefault(v => v.voterId == id) : null;
+                    var line = new Line { kind = Kinds.Member, aboutId = id };
+                    if (vote != null)
+                    {
+                        bool voted = vote.targetId == call.targetId;
+                        line.verdict = voted ? Verdicts.Followed : Verdicts.Defected;
+                        line.basis = Bases.Ballot;
+                        string ballot = voted ? "voted out " + target : "voted to evict " + Whom(s, vote.targetId);
+                        line.text = Who(s, id) + (said ? " was with you at the call, " + (voted ? "and " : "then ") + ballot + "."
+                            : " was not with you at the call, " + (voted ? "then " + ballot + " anyway." : "and " + ballot + "."));
+                    }
+                    else
+                    {
+                        line.verdict = said ? Verdicts.Followed : Verdicts.Defected;
+                        line.basis = Bases.Call;
+                        line.text = Who(s, id) + (said ? " was with you at the call." : " was not with you at the call.");
+                    }
+                    lines.Add(line);
+                }
             }
         }
 
@@ -316,25 +380,44 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Game Sense through the week in the parts the player can see: the strategy face from the
-        /// known notes, the chances taken, and the week's own known notes. The number itself and the
-        /// competitions and social faces wait for the season's end.
+        /// known notes, the chances taken, and the week's own known notes, a competition thrown or
+        /// fought from the block among them. The number itself, the competitions and social faces, and
+        /// another Head of Household's plan wait for the season's end, so the face shown can still move
+        /// at the finale by that plan's row; the recap's subtitle says so.
         /// </summary>
         private static Sense SenseSoFar(EpisodeState s, int week)
         {
             var sense = new Sense();
+            // The weeks after the player's season ended are the house's, not theirs: the verdict at the
+            // end still writes the power of each ("you stayed off the block"), but so far holds where it
+            // stood the week they left, and no week after it has rows of theirs.
+            int ended = SeasonEnded(s);
+            bool gone = ended > 0 && week > ended;
+            int through = gone ? ended : week;
             // A play still running has been neither taken up nor let pass yet: the verdict, which reads
             // a season that is over, counts an unanswered one as let pass, which it is not until it closes.
             var running = new HashSet<string>((s.storylines ?? new List<StorylineState>())
                 .Where(cycle => StorylineStatus.Running(cycle.status)).Select(cycle => cycle.id), StringComparer.Ordinal);
             var known = GameSense.Evaluate(s).notes
-                .Where(n => n.known && n.week <= week && !(n.rowKind == "opportunity" && n.rowId != null && running.Contains(n.rowId))).ToList();
+                .Where(n => n.known && n.week <= through && !(n.rowKind == "opportunity" && n.rowId != null && running.Contains(n.rowId))).ToList();
             sense.strategy = GameSense.Face(known, GameSense.Strategy);
-            var chances = s.ledger.opportunities.Where(o => o.week <= week).ToList();
+            var chances = s.ledger.opportunities.Where(o => o.week <= through).ToList();
             sense.offered = chances.Count;
             sense.taken = chances.Count(o => o.response == OpportunityResponse.Taken);
+            sense.endedWeek = gone ? ended : 0;
             // The social face's notes carry the week a pact or bond began, not a week's event.
-            sense.rows = known.Where(n => n.week == week && n.face != GameSense.Social).Take(SenseRowLimit).ToList();
+            if (!gone) sense.rows = known.Where(n => n.week == week && n.face != GameSense.Social).Take(SenseRowLimit).ToList();
             return sense;
+        }
+
+        /// <summary>The week the player's season ended - the week they were evicted, or production removed them - or 0 while they are still in it.</summary>
+        public static int SeasonEnded(EpisodeState s)
+        {
+            var you = s?.Find(s.playerId);
+            if (you == null || you.status == ContestantStatus.Active || you.status == ContestantStatus.Winner || you.status == ContestantStatus.RunnerUp) return 0;
+            int evicted = s.ledger?.power?.Where(p => p.evicteeId == s.playerId).Select(p => p.week).DefaultIfEmpty(0).Min() ?? 0;
+            if (evicted > 0) return evicted;
+            return s.story?.removals?.FirstOrDefault(r => r.contestantId == s.playerId)?.week ?? 0;
         }
 
         /// <summary>A Game Sense note without the "Week 3: " it opens with, which a week's own recap does not need.</summary>

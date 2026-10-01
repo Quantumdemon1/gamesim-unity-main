@@ -166,19 +166,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(reads[1].text, Is.EqualTo("Overheard: " + npcs[3].name + " is voting you out, and voted that way."));
         }
 
+        /// <summary>An earlier week's ballots are gone with its turn: its call stands as each member said at the call, and says so.</summary>
         [Test]
         public void ACallWithADefectorSaysWhoFollowedAndWhoDidNot()
         {
             var s = Fresh();
             s.week = 2;
             var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
-            s.alliances.Add(new AllianceState { id = "alliance-test", name = "The Test Pact", members = new List<string> { s.playerId, npcs[3].id, npcs[4].id }, active = true });
-            s.ledger.power.Add(new PowerRow { week = 1, hohId = npcs[0].id, evicteeId = npcs[1].id, nominees = new List<string> { npcs[1].id, npcs[2].id }, tally = new List<int> { 2, 1 } });
-            s.ledger.calls.Add(new BlocCallRow
-            {
-                week = 1, allianceId = "alliance-test", callerId = s.playerId, targetId = npcs[1].id,
-                followed = new List<string> { npcs[3].id }, defected = new List<string> { npcs[4].id },
-            });
+            CallFixture(s, npcs, 1);
 
             var calls = YourWeek.Build(s, 1).calls;
             Assert.That(calls, Has.Count.EqualTo(3), "The call, then each member.");
@@ -187,11 +182,52 @@ namespace Gamesim.Tests.EditMode
             Assert.That(calls[0].text, Is.EqualTo("You called it in The Test Pact: evict " + npcs[1].name + ", and " + npcs[1].name + " went home."));
             Assert.That(calls[1].verdict, Is.EqualTo(YourWeek.Verdicts.Followed));
             Assert.That(calls[1].aboutId, Is.EqualTo(npcs[3].id));
-            Assert.That(calls[1].text, Is.EqualTo(npcs[3].name + " followed your call."));
+            Assert.That(calls[1].basis, Is.EqualTo(YourWeek.Bases.Call));
+            Assert.That(calls[1].text, Is.EqualTo(npcs[3].name + " was with you at the call."));
             Assert.That(calls[2].verdict, Is.EqualTo(YourWeek.Verdicts.Defected));
             Assert.That(calls[2].aboutId, Is.EqualTo(npcs[4].id));
-            Assert.That(calls[2].text, Is.EqualTo(npcs[4].name + " would not follow your call."));
+            Assert.That(calls[2].basis, Is.EqualTo(YourWeek.Bases.Call));
+            Assert.That(calls[2].text, Is.EqualTo(npcs[4].name + " was not with you at the call."));
             Assert.That(YourWeek.Build(s, 2).calls, Is.Empty, "A call is its own week's.");
+        }
+
+        /// <summary>
+        /// In the week still on screen the reveal has read every ballot aloud, and the ballot is the
+        /// verdict: a member who would not commit at the call and voted out who was called followed
+        /// it, and one who said they were in and voted the other way did not. A ballot the reveal has
+        /// not read yet is nobody's to judge by.
+        /// </summary>
+        [Test]
+        public void ALiveWeeksCallIsJudgedByTheBallotsTheRevealRead()
+        {
+            var s = Fresh();
+            var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
+            CallFixture(s, npcs, 1);
+            s.evictionResolved = true;
+            s.votes.Add(new VoteState { voterId = npcs[3].id, targetId = npcs[2].id, reason = "fixture" });
+            s.votes.Add(new VoteState { voterId = npcs[4].id, targetId = npcs[1].id, reason = "fixture" });
+
+            var members = YourWeek.Build(s, 1).calls.Where(l => l.kind == YourWeek.Kinds.Member).ToList();
+            Assert.That(members.Select(l => l.basis), Is.All.EqualTo(YourWeek.Bases.Ballot), "The live week is judged by its ballots.");
+            Assert.That(members[0].aboutId, Is.EqualTo(npcs[3].id));
+            Assert.That(members[0].verdict, Is.EqualTo(YourWeek.Verdicts.Defected), "In at the call, and voted the other way.");
+            Assert.That(members[0].text, Is.EqualTo(npcs[3].name + " was with you at the call, then voted to evict " + npcs[2].name + "."));
+            Assert.That(members[1].aboutId, Is.EqualTo(npcs[4].id));
+            Assert.That(members[1].verdict, Is.EqualTo(YourWeek.Verdicts.Followed), "Defected at the call, and voted the caller's way.");
+            Assert.That(members[1].text, Is.EqualTo(npcs[4].name + " was not with you at the call, then voted out " + npcs[1].name + " anyway."));
+
+            // Before the reveal the ballots are private, and the members stand as they said at the call.
+            s.evictionResolved = false;
+            s.ledger.power.Clear();
+            Assert.That(YourWeek.Build(s, 1).calls.Where(l => l.kind == YourWeek.Kinds.Member).Select(l => l.basis), Is.All.EqualTo(YourWeek.Bases.Call));
+
+            // Once the week has turned, its ballots are gone with it.
+            CallFixture(s, npcs, 1, callAgain: false);
+            s.week = 2;
+            s.votes.Clear();
+            var earlier = YourWeek.Build(s, 1).calls.Where(l => l.kind == YourWeek.Kinds.Member).ToList();
+            Assert.That(earlier.Select(l => l.basis), Is.All.EqualTo(YourWeek.Bases.Call));
+            Assert.That(earlier.Select(l => l.verdict), Is.EqualTo(new[] { YourWeek.Verdicts.Followed, YourWeek.Verdicts.Defected }), "As they said at the call.");
         }
 
         [Test]
@@ -234,13 +270,14 @@ namespace Gamesim.Tests.EditMode
             Assert.That(word.Select(l => l.aboutId), Is.All.EqualTo(npc.id));
         }
 
-        /// <summary>The log keeps 256 lines; the player's own memory of a promise's end outlasts it, and the two are never counted twice.</summary>
+        /// <summary>The log keeps 256 lines; the player's own memory of a promise's end can outlast it, and the two are never counted twice.</summary>
         [Test]
         public void APromiseIsJudgedFromTheLogOrThePlayersOwnMemory()
         {
             var s = Fresh();
             var npc = s.contestants.First(c => !c.isPlayer);
             string mine = s.Find(s.playerId).name + " fulfilled a Safety promise.";
+            s.promises.Add(new PromiseState { id = "promise-kept", fromId = s.playerId, toId = npc.id, kind = PromiseKind.Safety, status = PromiseStatus.Fulfilled, week = 1, expiresWeek = 2 });
             s.memories.Add(new MemoryState { ownerId = s.playerId, subjectId = npc.id, text = mine, week = 1, isPrivate = true });
             var kept = YourWeek.Build(s, 1).word.Single();
             Assert.That(kept.verdict, Is.EqualTo(YourWeek.Verdicts.Kept));
@@ -254,6 +291,74 @@ namespace Gamesim.Tests.EditMode
             var broken = YourWeek.Build(s, 1).word.Single(l => l.verdict == YourWeek.Verdicts.Broken);
             Assert.That(broken.byId, Is.EqualTo(npc.id));
             Assert.That(broken.text, Is.EqualTo(npc.name + " broke their final two promise to you."));
+        }
+
+        /// <summary>
+        /// Every witness of a broken promise remembers it in the promisee's own words, as
+        /// EpisodeEngine.SettlePromise writes it. The player's memory as a witness is not a promise to
+        /// them: only a promise they were a party to, one that could have ended so that week, puts a
+        /// line on their week.
+        /// </summary>
+        [Test]
+        public void AWitnesssMemoryOfABrokenPromiseIsNotAPromiseToYou()
+        {
+            var s = Fresh();
+            s.week = 2;
+            var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
+            string said = npcs[0].name + " broke a Safety promise.";
+            // The promise, ended at a nomination: its two parties' memories, the line to the two of
+            // them, and the player as a witness who heard.
+            s.promises.Add(new PromiseState { id = "promise-theirs", fromId = npcs[0].id, toId = npcs[1].id, kind = PromiseKind.Safety, status = PromiseStatus.Broken, week = 1, expiresWeek = 2 });
+            s.memories.Add(new MemoryState { ownerId = npcs[1].id, subjectId = npcs[0].id, text = said, week = 2, isPrivate = true });
+            s.memories.Add(new MemoryState { ownerId = npcs[0].id, subjectId = npcs[1].id, text = said, week = 2, isPrivate = true });
+            s.events.Add(Line(s, "promise-outcome", said, npcs[0].id, npcs[1].id));
+            s.memories.Add(new MemoryState { ownerId = s.playerId, subjectId = npcs[0].id, text = said, week = 2, isPrivate = true });
+            Assert.That(YourWeek.Build(s, 2).word, Is.Empty, "The player heard it as a witness; it was never their promise.");
+
+            // A promise of theirs that could not have ended that week - made after it, or lapsed before it - is not it either.
+            s.promises.Add(new PromiseState { id = "promise-later", fromId = npcs[0].id, toId = s.playerId, kind = PromiseKind.Safety, status = PromiseStatus.Broken, week = 3, expiresWeek = 4 });
+            s.promises.Add(new PromiseState { id = "promise-lapsed", fromId = npcs[0].id, toId = s.playerId, kind = PromiseKind.Safety, status = PromiseStatus.Broken, week = 1, expiresWeek = 1 });
+            Assert.That(YourWeek.Build(s, 2).word, Is.Empty);
+
+            // Had the player been a party to such a promise that week, the same memory is theirs.
+            s.promises.Add(new PromiseState { id = "promise-yours", fromId = npcs[0].id, toId = s.playerId, kind = PromiseKind.Safety, status = PromiseStatus.Broken, week = 1, expiresWeek = 2 });
+            var yours = YourWeek.Build(s, 2).word.Single();
+            Assert.That(yours.verdict, Is.EqualTo(YourWeek.Verdicts.Broken));
+            Assert.That(yours.text, Is.EqualTo(npcs[0].name + " broke their safety promise to you."));
+        }
+
+        /// <summary>
+        /// The same, as the engine's own reveal writes it: a houseguest breaks a vote promise to another
+        /// at the vote, and the player, warm on the one wronged, is among the witnesses who hear.
+        /// </summary>
+        [Test]
+        public void AWitnessOfABrokenPromiseAtTheEnginesRevealHasNoPromiseLine()
+        {
+            for (uint seed = 31; seed < 91; seed++)
+            {
+                var s = AtTheVote(seed);
+                int week = s.week;
+                var promiser = NpcVoters(s).OrderByDescending(v => EpisodeEngine.ProjectBallot(s, v.id).margin).First();
+                string spared = s.nominees.First(id => id != EpisodeEngine.ProjectBallot(s, promiser.id).selectedNomineeId);
+                var promisee = s.Active.First(c => !c.isPlayer && c.id != promiser.id);
+                SetScore(s, s.playerId, promisee.id, 80);
+                s.promises.Add(new PromiseState
+                {
+                    id = "promise-npc-your-week", fromId = promiser.id, toId = promisee.id, targetId = spared, kind = PromiseKind.Vote,
+                    status = PromiseStatus.Active, week = week, expiresWeek = week,
+                });
+                var after = Reveal(s, s.nominees[0]);
+                if (after.promises.Single(p => p.id == "promise-npc-your-week").status != PromiseStatus.Broken) continue;
+                string said = promiser.name + " broke a Vote promise.";
+                if (!after.memories.Any(m => m.ownerId == after.playerId && m.week == week && m.subjectId == promiser.id && m.text == said)) continue;
+
+                Assert.That(after.events.Any(e => e.kind == "promise-outcome" && e.text == said && e.audienceIds.Contains(after.playerId)), Is.False,
+                    "The line went to the two of them alone.");
+                Assert.That(YourWeek.Build(after, week).word.Where(l => l.kind == YourWeek.Kinds.Promise), Is.Empty,
+                    "A witness's memory is not a promise to the player.");
+                return;
+            }
+            Assert.Fail("No seed had a broken promise the player witnessed.");
         }
 
         /// <summary>A deal or promise between two other houseguests is theirs: their records, their lines, their memories.</summary>
@@ -302,9 +407,50 @@ namespace Gamesim.Tests.EditMode
 
             Assert.That(sense.strategy, Is.EqualTo(50 - 4), "On the block: the known strategy rows alone.");
             Assert.That(full.strategy, Is.EqualTo(50 - 4 + 8), "The verdict at the end counts the backdoor dodged as well.");
+            Assert.That(new GameSense.Note().known, Is.False, "A note nobody has decided about stays out of the recap.");
             Assert.That(full.notes.Where(n => n.rowKind == "standing" || n.rowKind == "grudge" || n.rowKind == "bond" || n.rowKind == "memory").All(n => !n.known), Is.True);
             Assert.That(full.notes.Where(n => n.rowKind == "ballot" || n.rowKind == "opportunity" || n.rowKind == "call").All(n => n.known), Is.True);
             Assert.That(YourWeek.RowText(sense.rows.Single(n => n.text.Contains("on the block"))), Is.EqualTo("You were on the block."), "A week's own recap drops its week.");
+        }
+
+        /// <summary>
+        /// After the player's season ended, the house's weeks are not theirs: a juror stays off the
+        /// block by not being in the house and asks nobody about a vote they do not cast. The verdict
+        /// at the end still writes those weeks; so far holds where it stood the week they left, and
+        /// says when that was.
+        /// </summary>
+        [Test]
+        public void AfterYourSeasonEndedTheNumberHoldsAndTheWeeksHaveNoRowsOfYours()
+        {
+            var s = Fresh();
+            s.week = 3;
+            var npcs = s.contestants.Where(c => !c.isPlayer).ToList();
+            s.Find(s.playerId).status = ContestantStatus.Jury;
+            s.ledger.power.Add(new PowerRow { week = 1, hohId = npcs[0].id, evicteeId = npcs[1].id, nominees = new List<string> { npcs[1].id, npcs[2].id }, tally = new List<int> { 2, 1 } });
+            s.ledger.power.Add(new PowerRow { week = 2, hohId = npcs[2].id, evicteeId = s.playerId, nominees = new List<string> { s.playerId, npcs[3].id }, tally = new List<int> { 2, 0 } });
+            s.ledger.power.Add(new PowerRow { week = 3, hohId = npcs[3].id, evicteeId = npcs[4].id, nominees = new List<string> { npcs[4].id, npcs[0].id }, tally = new List<int> { 1, 0 } });
+            s.ledger.opportunities.Add(new OpportunityRow { id = "read-3", kind = OpportunityKinds.Read, week = 3, response = OpportunityResponse.Ignored, outcome = OpportunityOutcome.NotApplicable });
+            Assert.That(YourWeek.SeasonEnded(s), Is.EqualTo(2));
+
+            var left = YourWeek.Build(s, 2).sense;
+            Assert.That(left.endedWeek, Is.EqualTo(0), "The week they left is still theirs.");
+            Assert.That(left.Ended, Is.Null);
+            Assert.That(left.rows.Select(YourWeek.RowText), Does.Contain("You went out without seeing it coming."));
+            Assert.That(left.strategy, Is.EqualTo(50 + 3 - 6));
+
+            var after = YourWeek.Build(s, 3).sense;
+            Assert.That(after.rows, Is.Empty, "No row of theirs in a week they were not in the house for.");
+            Assert.That(after.endedWeek, Is.EqualTo(2));
+            Assert.That(after.Ended, Is.EqualTo("Your season ended in week 2."));
+            Assert.That(after.strategy, Is.EqualTo(left.strategy), "The number holds where it stood when they left.");
+            Assert.That(after.offered, Is.EqualTo(left.offered), "and so do the chances.");
+
+            var verdict = GameSense.Evaluate(s);
+            Assert.That(verdict.notes.Any(n => n.week == 3 && n.text.Contains("you stayed off the block")), Is.True, "The verdict at the end is the verdict it was.");
+            Assert.That(verdict.notes.Any(n => n.week == 3 && n.text.Contains("you asked nobody")), Is.True);
+
+            s.Find(s.playerId).status = ContestantStatus.Active;
+            Assert.That(YourWeek.SeasonEnded(s), Is.EqualTo(0), "A player still in the house has a season still going.");
         }
 
         [Test]
@@ -415,6 +561,25 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.That(engine.Snapshot.evictionResolved, Is.True, "The vote was revealed.");
             return engine.Snapshot;
+        }
+
+        /// <summary>
+        /// A pact of the player and the fourth and fifth houseguests, the week's power with the second
+        /// evicted over the third, and the player's call to evict the second: the fourth was in at the
+        /// call and the fifth was not.
+        /// </summary>
+        private static void CallFixture(EpisodeState s, List<ContestantState> npcs, int week, bool callAgain = true)
+        {
+            if (s.alliances.All(a => a.id != "alliance-test"))
+                s.alliances.Add(new AllianceState { id = "alliance-test", name = "The Test Pact", members = new List<string> { s.playerId, npcs[3].id, npcs[4].id }, active = true });
+            if (s.ledger.power.All(p => p.week != week))
+                s.ledger.power.Add(new PowerRow { week = week, hohId = npcs[0].id, evicteeId = npcs[1].id, nominees = new List<string> { npcs[1].id, npcs[2].id }, tally = new List<int> { 2, 1 } });
+            if (!callAgain) return;
+            s.ledger.calls.Add(new BlocCallRow
+            {
+                week = week, allianceId = "alliance-test", callerId = s.playerId, targetId = npcs[1].id,
+                followed = new List<string> { npcs[3].id }, defected = new List<string> { npcs[4].id },
+            });
         }
 
         private static void SetScore(EpisodeState s, string from, string to, double score)

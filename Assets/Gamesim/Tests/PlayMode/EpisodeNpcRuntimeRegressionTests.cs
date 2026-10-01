@@ -342,9 +342,17 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             string network = Visible();
 
+            // The alliances page, whose whole subject is pacts: the unwitnessed one has no card there either.
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
+            yield return null;
+            yield return null;
+            string alliances = Visible();
+            Assert.That(alliances, Does.Contain(EpisodeDirector.NoSuspectedCopy), "The page says it knows of no other pact.");
+            Assert.That(SuspectedAllianceCards(), Is.Zero, "No card for a pact the player never witnessed.");
+
             // A leak may not appear on ANY page. Asking once of one page would be weaker than the
             // single question this used to ask of a notebook that rendered everything at once.
-            foreach (var page in new[] { story, network, people })
+            foreach (var page in new[] { story, network, people, alliances })
             {
                 Assert.That(page, Does.Not.Contain(forbiddenNarrative));
                 Assert.That(page, Does.Not.Contain(secretAlliance));
@@ -352,7 +360,24 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(director.ObservedNpcConversation, Is.Empty);
             AssertEquivalent(fixture, director.Snapshot);
+
+            // And the alliances page at the larger text: a layout that moves is no way round the gate.
+            yield return ApplyTextSize(true);
+            director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances);
+            yield return null;
+            yield return null;
+            string larger = Visible();
+            Assert.That(larger, Does.Not.Contain(secretAlliance));
+            Assert.That(larger, Does.Contain(EpisodeDirector.NoSuspectedCopy));
+            Assert.That(SuspectedAllianceCards(), Is.Zero);
+            director.ClosePanels();
+            yield return null;
+            yield return ApplyTextSize(false);
         }
+
+        /// <summary>How many cards of other houseguests' pacts the screen carries.</summary>
+        private int SuspectedAllianceCards() => director.GetComponentsInChildren<RectTransform>()
+            .Count(rect => rect.gameObject.activeInHierarchy && rect.name.StartsWith(EpisodeHud.SuspectedCardPrefix, StringComparison.Ordinal));
 
         private IEnumerator WaitForNpcRuntimeBinding()
         {

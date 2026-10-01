@@ -462,6 +462,9 @@ namespace Gamesim.Episode
         /// find it, and a number that moves every time the relationship does would make the control
         /// unfindable. Showing it at all is the reference's choice — it puts the odds on the screen
         /// rather than making the player guess.</para>
+        ///
+        /// <para>The odds are the player's read of the houseguest (<see cref="KnownOdds"/>), never
+        /// the roll's own number, and the table says so above its first row.</para>
         /// </summary>
         private void DealPanel(EpisodeState state, ContestantState npc)
         {
@@ -471,16 +474,27 @@ namespace Gamesim.Episode
                 string id = offer.id;
                 hud.Heading("AN OFFER FROM " + npc.name.ToUpperInvariant());
                 hud.Paragraph(DealSentence(state, offer));
-                hud.Tag(hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
-                        () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal)),
-                    Category(EpisodeCommandKind.RespondToDeal));
+                // A locked yes is not a strategic move the player can make, so it carries no category.
+                var accept = OfferAccept(state, offer);
+                if (accept.interactable) hud.Tag(accept, Category(EpisodeCommandKind.RespondToDeal));
                 hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
                     () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"));
             }
 
             var offers = PlayerDeals.Available(state, npc.id);
-            if (offers.Count == 0) return;
+            if (offers.Count == 0)
+            {
+                // Past the season's deal ceiling every row below went without a word (X10). How the
+                // ceiling counts is wave B's to change; the table says why it is empty.
+                if (PastTheDealCeiling(state))
+                {
+                    hud.Heading("WHAT YOU COULD PUT TO " + npc.name.ToUpperInvariant());
+                    hud.Paragraph(DealCeilingLine);
+                }
+                return;
+            }
             hud.Heading("WHAT YOU COULD PUT TO " + npc.name.ToUpperInvariant());
+            OddsAreYourRead(state, npc);
             foreach (string type in offers)
             {
                 string kind = type;
@@ -557,16 +571,45 @@ namespace Gamesim.Episode
         /// stops. And it stays out of the caption, because the caption is how a test and a screen
         /// reader find the button, and a number that moves with the relationship would make it
         /// unfindable.</para>
+        ///
+        /// <para>The player's read, not the roll's number (ACTIONS-DEALS-ALLIANCES-PLAN V6). The roll
+        /// reads how the houseguest privately sees the player, the person a deal is about and the
+        /// pacts they are secretly in; shown per row, it let a player compare "against A, B, C" and
+        /// read off whom they like and who they are secretly with. The roll is unchanged, so the
+        /// answer can differ from the word.</para>
         /// </summary>
-        private static string Chance(EpisodeState state, string npcId, string type, string about)
+        private static string Chance(EpisodeState state, string npcId, string type, string about) =>
+            KnownOdds.Deal(state, npcId, type, about).word;
+
+        /// <summary>The line above a table of chances: whose read they are, and that they are not a promise.</summary>
+        public static string OddsReadLine(string first) => "Each chance is your own read of " + first + ", not a promise.";
+
+        /// <summary>What follows it when the read has nothing behind it, beside the unknowns chip.</summary>
+        public const string LittleToGoOnLine = "You have little to go on: no read on them, nothing said about the vote, little history.";
+
+        /// <summary>
+        /// Above the odds, what they are: the player's own read of the houseguest, not a promise -
+        /// and, when the player has no read of them, no claim from them and little history with
+        /// them, a chip and a line that say how little the read has to go on. Once a render: a
+        /// conversation that draws the plea's chances and the deal table's explains them above the
+        /// first, and the second says nothing more (<see cref="EpisodeHud.ExplainOdds"/>).
+        /// </summary>
+        private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {
-            double chance = PlayerDeals.AcceptanceChance(state, npcId, type, about);
-            if (chance >= 75) return "likely";
-            if (chance >= 55) return "favourable";
-            if (chance >= 45) return "about even";
-            if (chance >= 25) return "a stretch";
-            return "unlikely";
+            bool little = KnownOdds.Unknowns(state, npc.id) == KnownOdds.Many;
+            hud.ExplainOdds(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : ""), little);
         }
+
+        /// <summary>
+        /// Why the deal table is empty: the season has reached <see cref="PlayerDeals.PlayerDealCeiling"/>.
+        /// It counts every deal the season has written, as the refusal does, so nothing new can be
+        /// put to anybody (X10; the count itself is wave B's).
+        /// </summary>
+        public const string DealCeilingLine = "No new deal can be put to anybody: the season has reached its limit of deals.";
+
+        /// <summary>Whether the deal table is empty because the season has reached its deal ceiling: the refusal <see cref="PlayerDeals.CanPropose"/> makes before any other.</summary>
+        public static bool PastTheDealCeiling(EpisodeState state) =>
+            state != null && state.week >= state.dealRulesStartWeek && state.deals.Count >= PlayerDeals.PlayerDealCeiling;
 
         /// <summary>What the houseguest is actually asking for, in words.</summary>
         private static string DealSentence(EpisodeState state, DealState offer)

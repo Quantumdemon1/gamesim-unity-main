@@ -704,7 +704,7 @@ namespace Gamesim.Episode
             Canvas.ForceUpdateCanvases();
             relationshipRoot = RelationshipWeb.Build(content, state, FontScale, font, Portrait,
                 id => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Network), modalScroll.viewport.rect.height,
-                modalScroll.viewport.rect.width);
+                modalScroll.viewport.rect.width, () => director.ShowNotebookSection(EpisodeDirector.NotebookSection.Alliances));
             // The graph is the notebook's entry view. Its explanatory heading belongs after the
             // complete graph instead of consuming the top of its only visible viewport.
             relationshipRoot.SetAsFirstSibling();

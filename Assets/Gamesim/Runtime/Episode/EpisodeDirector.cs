@@ -660,6 +660,8 @@ namespace Gamesim.Episode
             if (focusedNpc != null) conversationIntent = null;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
+            // The finale page's open reason goes with the panel too.
+            ForgetFinaleView();
             // The nomination's view goes with the panel, which opens again on the week's current step,
             // and so does free time's: its board opens again on its root and its first page.
             ForgetNominationView();
@@ -711,6 +713,9 @@ namespace Gamesim.Episode
         public static string StatusLine(EpisodeState state, EpisodeEvent visible)
         {
             if (visible == null) return null;
+            // The finale's commit says the season is complete (UI-UX-PASS-PLAN decision 13); the
+            // engine's "Gamesim winner: X!" stays as logged, and the page says who won.
+            if (visible.kind == "winner") return SeasonCompleteToast;
             return visible.kind == "phase" ? PhaseLine(visible.phase, visible.week) : StoryText.Log(state, visible);
         }
 
@@ -1467,6 +1472,9 @@ namespace Gamesim.Episode
             // Free time is a board on the strategy stage too (EpisodeDirector.FreeTimeBoard.cs), on
             // the panel's own glass: Pack 8 has no free-time shell.
             else if (FreeTimeBoardBeat(state)) hud.StrategyStage(null);
+            // And so is the finale page, in the campaign's neutral shell: Pack 9 brings cards, not a
+            // shell of its own (EpisodeDirector.FinalePage.cs).
+            else if (FinalePageBeat(state)) hud.StrategyStage(PackArt.Pack8CampaignShell);
             else hud.SetActivityLayout(EpisodeHud.ActivityLayout.Stage);
             // The phase and week now live in the panel's fixed header band, which stays on screen
             // while this content scrolls. Repeating them as the first line of the scroll was the
@@ -1488,30 +1496,9 @@ namespace Gamesim.Episode
             { if (FinalCaseIfOpen(state) || JuryHouseIfOpen(state)) return; hud.JuryQuestioning(state, () => { FinalCaseDoor(state); JuryHouseDoor(state); }); return; }
             if (state.phase == EpisodePhase.FinalSpeeches)
             { if (FinalCaseIfOpen(state) || JuryHouseIfOpen(state)) return; hud.FinalSpeech(state); FinalCaseDoor(state); JuryHouseDoor(state); return; }
-            if (state.phase == EpisodePhase.Finished)
-            {
-                hud.Paragraph("Winner: " + state.Find(state.winnerId).name + ". Runner-up: " + state.Find(state.runnerUpId).name + ".");
-                // The verdict, in a line; the season report has the whole of it.
-                hud.Paragraph(SeasonReport.GameSenseLine(state));
-                // The jury's reasons, one line each, from the ballots the engine recorded.
-                var ballots = SeasonReport.JuryBallots(state);
-                if (ballots.Count > 0)
-                {
-                    hud.Heading("HOW THE JURY VOTED");
-                    foreach (var ballot in ballots) hud.Paragraph(ballot.Line);
-                }
-                hud.Paragraph("Your choices and votes are preserved in the notebook. Starting another season keeps this one's save.");
-                // Every way on, as buttons: this was a sentence pointing at Settings, and a
-                // finished season has nothing else to do.
-                hud.Action("Season report", ShowSeasonReport);
-                hud.Action(SeasonReport.NewSeasonCaption, NewSeason);
-                hud.Action("Review the season", OpenJournal);
-                hud.Action(SeasonReport.MainMenuCaption, OpenMainMenu);
-                // And two ways back into the night: the vote read again, and the jury's questions
-                // (EpisodeDirector.Finale.cs; MOCKUP-PASS-PLAN M4).
-                FinaleRecordControls(state);
-                return;
-            }
+            // The season over: the finale page on the strategy stage, or the jury's questions as its
+            // step (EpisodeDirector.FinalePage.cs; UI-UX-PASS-PLAN F0).
+            if (state.phase == EpisodePhase.Finished) { FinalePage(state); return; }
             if (EpisodeEngine.IsCompetition(state.phase))
             {
                 if (!state.competitionResolved)

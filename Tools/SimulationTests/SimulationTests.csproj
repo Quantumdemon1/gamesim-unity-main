@@ -78,6 +78,7 @@
     <Compile Include="$(EditMode)HouseEventSourceTests.cs" />
     <Compile Include="$(EditMode)HouseEventTests.cs" />
     <Compile Include="$(EditMode)IntroductionTests.cs" />
+    <Compile Include="$(EditMode)MoveInNightTests.cs" />
     <Compile Include="$(EditMode)JuryVotingTests.cs" />
     <Compile Include="$(EditMode)NpcAllianceTests.cs" />
     <Compile Include="$(EditMode)NpcDealTests.cs" />

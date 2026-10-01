@@ -26,10 +26,11 @@ namespace Gamesim.Tests.PlayMode
         /// The strategy screen now open is on the strategy stage: most of the frame, the whole of it
         /// from under the top bar to the foot and from the rail's column to the edge, clear of the
         /// rail and of the status line it moved under the rail, which says all of its words there;
-        /// the way on pinned once and nothing else pinned beside it; the scroll clear of it; and the
-        /// hidden hint still true of the scroll.
+        /// the way on pinned once and nothing else pinned beside it but the footer's
+        /// <paramref name="secondary"/> when the screen has one (free time's "Stay in the house");
+        /// the scroll clear of them; and the hidden hint still true of the scroll.
         /// </summary>
-        private void AssertOnTheStrategyStage(string wayOn, string where)
+        private void AssertOnTheStrategyStage(string wayOn, string where, string secondary = null)
         {
             Canvas.ForceUpdateCanvases();
             var hud = director.GetComponentInChildren<EpisodeHud>();
@@ -62,11 +63,21 @@ namespace Gamesim.Tests.PlayMode
             var pinned = panel.Cast<Transform>().Select(child => child.GetComponent<Button>())
                 .Where(button => button != null && button.IsActive() && button.name != "Close  [Esc]")
                 .Select(button => button.name).ToArray();
-            Assert.That(pinned, Is.EqualTo(new[] { wayOn }), where + " pins one way on, and only it.");
+            Assert.That(pinned, Is.EquivalentTo(secondary == null ? new[] { wayOn } : new[] { wayOn, secondary }),
+                where + " pins one way on" + (secondary == null ? ", and only it." : " and its secondary, and only them."));
             var onward = ButtonWithCaption(wayOn);
             Assert.That(onward.transform.parent, Is.SameAs(panel), "'" + wayOn + "' is pinned to the panel, not in its scroll.");
             AssertInside(stage, (RectTransform)onward.transform, "'" + wayOn + "'");
             AssertScrollClearOfPinned(panel, onward);
+            if (secondary != null)
+            {
+                var aside = ButtonWithCaption(secondary);
+                Assert.That(aside.transform.parent, Is.SameAs(panel), "'" + secondary + "' is pinned to the panel, not in its scroll.");
+                AssertInside(stage, (RectTransform)aside.transform, "'" + secondary + "'");
+                AssertScrollClearOfPinned(panel, aside);
+                Assert.That(ScreenRect((RectTransform)aside.transform).Overlaps(ScreenRect((RectTransform)onward.transform)), Is.False,
+                    "'" + secondary + "' and '" + wayOn + "' share the footer's row without meeting.");
+            }
 
             var content = ActiveRect("Episode content");
             var hint = panel.Find(EpisodeHud.PanelHintName);

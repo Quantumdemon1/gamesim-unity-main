@@ -34,33 +34,47 @@ namespace Gamesim.Tests.PlayMode
         private static string Words(RectTransform root) =>
             string.Join("\n", root.GetComponentsInChildren<TMP_Text>().Where(t => t.gameObject.activeInHierarchy).Select(t => t.text));
 
+        /// <summary>
+        /// The board's root (ACTIONS-DEALS-ALLIANCES-PLAN F1, mockup 87): the budget card under the
+        /// head's old name leads with FREE TIME and the actions left, with what moving on loses in it
+        /// rather than under the way on; the play, the threads and where the player is stay in view
+        /// beside the decision - the play in the hero, the threads on the story strip, the room in the
+        /// footer - and the house's cards and the moves are rows of the board.
+        /// </summary>
         [UnityTest]
         public IEnumerator FreeTime_LeadsWithTheActionsLeftAndKeepsItsContextBesideTheDecision()
         {
             yield return OpenFreeTime();
             var state = director.Snapshot;
             Assume.That(state.phase, Is.EqualTo(EpisodePhase.Social), "The fixture opens in free time.");
+            Assume.That(director.IsFreeTimeBoard, Is.True, "The fixture's free time has nothing that keeps the old column over it.");
             var panel = ActiveRect("Episode panel");
             var head = ActiveRect(EpisodeHud.ScreenHeadName);
-            Assert.That(head, Is.Not.Null, "The screen has a head.");
+            Assert.That(head, Is.Not.Null, "The screen has its budget card, under the head's name.");
             int left = Mathf.Max(0, EpisodeEngine.SocialActionBudget(state) - EpisodeEngine.SocialActionsSpent(state));
-            Assert.That(Words(head), Does.Contain("FREE TIME").And.Contain(EpisodeDirector.ActionsLeftHeadline(left)),
-                "The head says the screen's name and how many actions are left.");
-            // The two columns: the cards and the tiles in the main one, the context beside them.
-            var main = ActiveRect(EpisodeHud.MainColumnName);
-            var side = ActiveRect(EpisodeHud.SideColumnName);
-            Assert.That(main, Is.Not.Null, "A main column,");
-            Assert.That(side, Is.Not.Null, "and a side column.");
-            Assert.That(ActiveRect(EpisodeHud.HouseCardsName).IsChildOf(main), Is.True, "The house's cards are the decision, in the main column.");
-            Assert.That(ActiveRect(EpisodeHud.HouseMovesName).IsChildOf(main), Is.True, "The moves that name nobody are beside them.");
-            foreach (var name in new[] { EpisodeHud.LocationCardName, EpisodeHud.CurrentPlayCardName, EpisodeHud.ThreadsCardName })
+            var labels = head.GetComponentsInChildren<TMP_Text>().ToList();
+            Assert.That(Words(head), Does.Contain("FREE TIME"), "The card says the screen's name,");
+            Assert.That(labels.Single(text => text.name == EpisodeHud.ActionsLeftCountName).text, Is.EqualTo(left.ToString()), "how many actions are left, large,");
+            Assert.That(labels.Single(text => text.name == EpisodeHud.ActionsLeftWordName).text, Is.EqualTo(left == 1 ? "ACTION LEFT" : "ACTIONS LEFT"));
+            Assert.That(labels.Single(text => text.name == EpisodeHud.BudgetRuleName).text, Is.EqualTo(EpisodeDirector.BudgetRule(state)), "the week's rule,");
+            Assert.That(labels.Single(text => text.name == EpisodeHud.BudgetCopyName).text, Is.EqualTo(EpisodeDirector.FreeTimeCostCopy), "and what costs an action.");
+            // The board's rows: the hero, the story strip, the cards and the moves.
+            var board = ActiveRect(EpisodeHud.FreeTimeBoardName);
+            Assert.That(board, Is.Not.Null, "Free time is one board.");
+            Assert.That(ActiveRect(EpisodeHud.HouseCardsName).IsChildOf(board), Is.True, "The house's cards are the decision, on the board.");
+            Assert.That(ActiveRect(EpisodeHud.HouseMovesName).IsChildOf(board), Is.True, "The moves that name nobody are under them.");
+            var hero = ActiveRect(EpisodeHud.FreeTimeHeroName);
+            Assert.That(head.IsChildOf(board), Is.True, "The budget card is on the board,");
+            Assert.That(Mathf.Abs(ScreenRect(head).yMax - ScreenRect(hero).yMax), Is.LessThan(1f), "beside the hero,");
+            Assert.That(ScreenRect(head).xMin, Is.GreaterThanOrEqualTo(ScreenRect(hero).xMax - .5f), "on its right.");
+            // The story session's ask: the play and the threads stay in view while actions are spent.
+            foreach (var name in new[] { EpisodeHud.CurrentPlayCardName, EpisodeHud.ThreadsCardName })
             {
                 var card = ActiveRect(name);
                 Assert.That(card, Is.Not.Null, name + " is on the screen,");
-                Assert.That(card.IsChildOf(side), Is.True, name + " in the side column.");
+                Assert.That(card.IsChildOf(board), Is.True, name + " on the board.");
             }
-            if (ScreenRect(panel).width >= 900f)
-                Assert.That(ScreenRect(side).xMin, Is.GreaterThanOrEqualTo(ScreenRect(main).xMax - 1f), "The side column stands to the right of the main one.");
+            Assert.That(ActiveRect(EpisodeHud.ThreadsCardName).IsChildOf(ActiveRect(EpisodeHud.StoryStripName)), Is.True, "The threads are on the story strip.");
             // Each card's name is its own control: it opens their screen. "Talk to X" stays the shortcut.
             var cards = ActiveRect(EpisodeHud.HouseCardsName);
             foreach (var actor in state.Active.Where(c => !c.isPlayer))
@@ -68,18 +82,25 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(cards.GetComponentsInChildren<Button>(true).Any(b => b.name == actor.name), Is.True, actor.name + "'s name opens their screen.");
                 Assert.That(ButtonWithCaption(EpisodeHud.CastTalkCaption(actor.name.Split(' ')[0])).transform.IsChildOf(cards), Is.True);
             }
-            // The way on is pinned, and what it costs is said under it.
+            // The way on is pinned; what moving on costs is said in the budget card, not under it.
             var begin = ButtonWithCaption("Begin the next competition");
             Assert.That(begin.transform.parent, Is.SameAs(panel), "The way on is pinned.");
-            var note = panel.Find(EpisodeHud.PinnedNoteName);
+            Assert.That(panel.Find(EpisodeHud.PinnedNoteName), Is.Null, "Nothing is wedged under the way on.");
+            var note = labels.SingleOrDefault(text => text.name == EpisodeHud.UnusedActionsNoteName);
             if (left > 0)
             {
-                Assert.That(note, Is.Not.Null, "The unused actions are said under the way on.");
-                Assert.That(note.GetComponent<TMP_Text>().text, Is.EqualTo(EpisodeDirector.UnusedActionsNote(state)));
-                Assert.That(ScreenRect((RectTransform)note).yMax, Is.LessThanOrEqualTo(ScreenRect((RectTransform)begin.transform).yMin + .5f), "under it.");
+                Assert.That(note, Is.Not.Null, "The unused actions are said in the budget card.");
+                Assert.That(note.text, Is.EqualTo(EpisodeDirector.UnusedActionsNote(state)));
             }
             else Assert.That(note, Is.Null, "Nothing is lost when nothing is left.");
+            // Where the player is, in the footer's strip, unless a storyline moving on lets pass outranks it.
+            var strip = ActiveRect(EpisodeHud.StrategyStripName);
+            Assert.That(strip, Is.Not.Null, "The footer has its strip.");
+            var where = strip.GetComponentsInChildren<TMP_Text>().Single();
+            Assert.That(new[] { EpisodeHud.LocationCardName, EpisodeHud.FreeTimeTipName, EpisodeDirector.AdvanceWarningName }, Does.Contain(where.name),
+                "The strip says where the player is, a tip, or what moving on lets pass: '" + where.text + "'.");
             AssertClearOfTheChrome(panel);
+            AssertEveryLabelDraws(board, "Free time's board");
             if (Application.isBatchMode) yield return CaptureFraming("free-time-screen");
             director.ClosePanels();
             yield return null;

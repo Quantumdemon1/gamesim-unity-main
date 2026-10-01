@@ -28,6 +28,11 @@ namespace Gamesim.Episode
     ///
     /// <para>Nothing here reads anything the player is not entitled to, commits anything on its
     /// own, or changes a caption: every control keeps the name a test finds it by.</para>
+    ///
+    /// <para>The root is drawn as a board on the strategy stage now (EpisodeDirector.FreeTimeBoard.cs,
+    /// the owner's mockup 87). This column is still free time under a legacy house event, at the
+    /// Final 3's Endgame Preparation and for a player watching from outside the house, and the
+    /// houseguest's screen is still this one.</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -155,6 +160,10 @@ namespace Gamesim.Episode
         /// What the week gives, in a line under the meter: under the windows, which window this is
         /// and that its seats do not carry; under the old pool, the pool's rule. Null when no window
         /// is open.
+        ///
+        /// <para>Move-in night is the week's free-time window too, but nobody has been evicted yet,
+        /// so it says what the night has - its seats, which are gone once the first competition
+        /// begins - rather than calling itself 'After the eviction'.</para>
         /// </summary>
         public static string BudgetRule(EpisodeState state)
         {
@@ -162,6 +171,11 @@ namespace Gamesim.Episode
                 return "The house gives you half its number in actions each week, so the budget tightens as people leave.";
             int window = EpisodeEngine.Window(state);
             if (window == Windows.None) return null;
+            if (EpisodeEngine.IsFirstNight(state))
+            {
+                int tonight = EpisodeEngine.WindowSeats(state, window);
+                return tonight + (tonight == 1 ? " action tonight; it does not" : " actions tonight; they do not") + " carry into the week.";
+            }
             return Windows.Names[window] + ". What you do not spend here does not carry to the next window.";
         }
 
@@ -408,10 +422,13 @@ namespace Gamesim.Episode
                     Corner = "Low risk", CornerTint = UiTheme.Allied, Glyph = "chat", Foot = "Cost: 1 action",
                     Choose = () => TalkWithIntent(id, null),
                 },
+                // What asking really costs and risks: what they have heard spends an action, and a
+                // read - or, while there is a vote, the question about it - is free once a week; none
+                // of them can turn on the player beyond a read they notice.
                 new EpisodeHud.MoveTile
                 {
-                    Caption = AskForInformationCaption, Description = "Try to learn what " + first + " knows or is planning.",
-                    Corner = "Medium risk", CornerTint = UiTheme.Joke, Glyph = "eye", Foot = "Cost: 1 action",
+                    Caption = AskForInformationCaption, Description = "Ask what " + first + " has heard for an action, or read them for free once a week.",
+                    Corner = "Low risk", CornerTint = UiTheme.Allied, Glyph = "eye", Foot = "Cost: 1 action, or free",
                     Choose = () => TalkWithIntent(id, IntentAsk),
                 },
                 new EpisodeHud.MoveTile

@@ -8,11 +8,11 @@ using UnityEngine;
 namespace Gamesim.Episode
 {
     /// <summary>
-    /// Talking somewhere (PACK8-PASS-PLAN C3). Asked to talk to a houseguest - a click on them, the
-    /// cast strip's Talk, a voter's or a house card's - the player and they go to the nearest free
-    /// talk spot in their room, then in the player's: two seats on the couches or at the long table,
-    /// or a venue's two marks. Both arrive, they sit - or turn to each other - and the panel opens.
-    /// Closing the panel gets both up at their seats and lets the place go.
+    /// Talking somewhere (PACK8-PASS-PLAN C3). Asked to talk to a houseguest - a click on them, E
+    /// beside them, the cast strip's Talk, a voter's or a house card's - the player and they go to
+    /// the nearest free talk spot in their room, then in the player's: two seats on the couches or
+    /// at the long table, or a venue's two marks. Both arrive, they sit - or turn to each other -
+    /// and the panel opens. Closing the panel gets both up at their seats and lets the place go.
     ///
     /// <para>Presentation only: it commits nothing, saves nothing and draws on no generator, and
     /// the conversation it opens is the one <see cref="TryOpenNpc"/> always opened. Anything that
@@ -72,9 +72,12 @@ namespace Gamesim.Episode
         /// </summary>
         private bool TryWalkToTalkSpot(HouseNpc npc)
         {
-            if (!TalkSpotsAllowed || npc == null || player == null || npcMeetings == null || !npcMeetings.IsReady || npcWorldFailed
-                || npcDiagnosticsSuspended || player.HasActivityOwner || OpeningOwnsHouse || IsCeremonyStaged || walkingOutId != null
-                || competitionArenaStaging || projected == null || projected.Find(npc.Id)?.status != ContestantStatus.Active) return false;
+            // The player's own state is checked here as well as by the click, because E comes here
+            // through Interact, which does not ask it.
+            if (!TalkSpotsAllowed || npc == null || player == null || !playerIsActive || challengeActive || blockedRecovery
+                || npcMeetings == null || !npcMeetings.IsReady || npcWorldFailed || npcDiagnosticsSuspended || player.HasActivityOwner
+                || OpeningOwnsHouse || IsCeremonyStaged || walkingOutId != null || competitionArenaStaging || projected == null
+                || projected.Find(npc.Id)?.status != ContestantStatus.Active) return false;
             // A new errand replaces a walk to a spot still under way, as it replaces any other walk.
             if (talkSpot != null && !talkSpotOpen) EndTalkSpot();
             if (talkSpot != null || !npcMeetings.TryReserveTalkSpot(npc.Id, player, out var spot, out _)) return false;
@@ -90,6 +93,23 @@ namespace Gamesim.Episode
             message = "Heading over to " + npc.DisplayName;
             Render();
             return true;
+        }
+
+        /// <summary>
+        /// E's Talk (<see cref="Interact"/>). The prompt says the same words as a click on the
+        /// houseguest, so the key goes the same way: to a talk spot where the house can. Pressed
+        /// again on the houseguest already being walked to one, it lets the place go and opens the
+        /// conversation where they are, the walk ended with it, as a second click does. Anything
+        /// else opens where they are, as E always did: a walk over to them still under way, which E
+        /// has always cut short, a house that has no free place, and every press in a batch run or
+        /// under reduced motion.
+        /// </summary>
+        private void TalkOnInteract(HouseNpc npc)
+        {
+            bool again = talkSpot != null && !talkSpotOpen && talkSpot.NpcId == npc.Id;
+            if (again) EndTalkSpot();
+            else if (headingToNpcId != npc.Id && TryWalkToTalkSpot(npc)) return;
+            if (TryOpenNpc(npc.Id) && again) { CancelTravel(); player.StopHere(); }
         }
 
         /// <summary>

@@ -523,7 +523,8 @@ namespace Gamesim.Episode
                     if (!TryOpenPhasePanel() && target != null) TryOpenNpc(target.Id);
                     break;
                 case InteractTarget.Talk:
-                    TryOpenNpc(target.Id);
+                    // E says what a click on them says, so it asks for a talk spot as a click does.
+                    TalkOnInteract(target);
                     break;
                 case InteractTarget.StepIn:
                     StepIntoWalkIn();

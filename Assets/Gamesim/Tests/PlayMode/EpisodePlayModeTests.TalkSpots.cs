@@ -9,6 +9,7 @@ using Gamesim.Persistence;
 using Gamesim.Presentation;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
@@ -100,8 +101,30 @@ namespace Gamesim.Tests.PlayMode
             var npcSeat = npc.GetComponent<HouseSeatPresentation>();
             var mySeat = player.GetComponent<HouseSeatPresentation>();
             if (spot.Seated)
+            {
                 Assert.That(npcSeat != null && npcSeat.Active && mySeat != null && mySeat.Active, Is.True,
                     "At two seats both sit down before the panel opens.");
+                // The two-shot looks into a pair sitting the same way from the side they face, not at
+                // their backs - unless a houseguest stands where that camera would be, when the rig
+                // takes the other side. Read on the frame it opened, before anybody has moved far.
+                var faces = Quaternion.Euler(0f, spot.NpcPlace.Facing, 0f) * Vector3.forward
+                    + Quaternion.Euler(0f, spot.PlayerPlace.Facing, 0f) * Vector3.forward;
+                if (faces.sqrMagnitude >= 1f)
+                {
+                    var across = npc.transform.position - player.transform.position;
+                    across.y = 0f;
+                    var front = Vector3.Cross(Vector3.up, across).normalized;
+                    if (Vector3.Dot(front, faces) < 0f) front = -front;
+                    var eye = (spot.NpcPlace.Position + spot.PlayerPlace.Position) * .5f
+                        + front * HouseCameraRig.TwoShotDistance * Mathf.Cos(HouseCameraRig.TwoShotPitch * Mathf.Deg2Rad);
+                    bool somebodyThere = SceneComponents<HouseNpc>().Any(other => other != npc && other.gameObject.activeInHierarchy
+                        && FlatDistance(other.transform.position, eye) < HouseCameraRig.TwoShotClearance + 1.5f);
+                    var looking = Quaternion.Euler(0f, cameraRig.Yaw, 0f) * Vector3.forward;
+                    Assert.That(Vector3.Dot(looking, front) < 0f || somebodyThere, Is.True,
+                        "The two-shot frames a seated pair from the side they face. Seats face " + spot.NpcPlace.Facing.ToString("0")
+                        + " and " + spot.PlayerPlace.Facing.ToString("0") + ", the camera looks along " + cameraRig.Yaw.ToString("0") + ".");
+                }
+            }
 
             float settle = Time.realtimeSinceStartup + 3f;
             while (spot.Seated && Time.realtimeSinceStartup < settle)
@@ -118,8 +141,13 @@ namespace Gamesim.Tests.PlayMode
                     "Both seats are on furniture.");
                 Assert.That(npcSeat != null && npcSeat.Active && npcSeat.Settled && npcVisual.IsSeated, Is.True, "The houseguest sits on their seat,");
                 Assert.That(mySeat != null && mySeat.Active && mySeat.Settled && mine.IsSeated, Is.True, "and the player on theirs,");
-                Assert.That(FlatDistance(npcSeat.VisualFeet, spot.NpcPlace.Position), Is.LessThan(.3f), "each body on its seat,");
-                Assert.That(FlatDistance(mySeat.VisualFeet, spot.PlayerPlace.Position), Is.LessThan(.3f), "not beside it,");
+                // At the hips where the rig has them, as the ceremony tests measure a sitter: the sit
+                // fits the hips to the cushion, which leaves the visual root off the seat by the pose's
+                // own offset. Half a metre is still well inside the 0.9 m between a pair's seats.
+                var npcHips = HipsOf(npc);
+                var myHips = HipsOf(player);
+                Assert.That(FlatDistance(npcHips != null ? npcHips.position : npcSeat.VisualFeet, spot.NpcPlace.Position), Is.LessThan(.5f), "each body on its seat,");
+                Assert.That(FlatDistance(myHips != null ? myHips.position : mySeat.VisualFeet, spot.PlayerPlace.Position), Is.LessThan(.5f), "not beside it,");
                 Assert.That(FlatDistance(npc.transform.position, spot.NpcPlace.Approach), Is.LessThan(.3f), "while the roots wait on the approaches,");
                 Assert.That(FlatDistance(player.transform.position, spot.PlayerStands), Is.LessThan(.45f), "the player's included.");
                 Assert.That(Mathf.Abs(Mathf.DeltaAngle(npcVisual.FacingYaw, spot.NpcPlace.Facing)), Is.LessThan(.01f), "Each faces the way its seat does.");
@@ -211,6 +239,64 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(spot.Released && coordinator.Talk == null, Is.True, "and lets the place go.");
             Assert.That(director.WalkingToId, Is.Null);
             Reset();
+            yield return null;
+        }
+
+        /// <summary>
+        /// A houseguest with nothing else to do, and the player put beside them where E names them:
+        /// on the baked floor, in sight of them, with nobody nearer and nothing else E would do first.
+        /// </summary>
+        private HouseNpc BesideAFreeHouseguest(HouseMeetingCoordinator coordinator)
+        {
+            var free = SceneComponents<HouseNpc>()
+                .Where(body => body.gameObject.activeInHierarchy && coordinator.TryGetMotion(body.Id, out var motion) && motion.LeaseId == null)
+                .OrderBy(body => (body.transform.position - player.transform.position).sqrMagnitude).ToList();
+            foreach (var npc in free)
+                for (int direction = 0; direction < 8; direction++)
+                {
+                    float angle = direction * Mathf.PI / 4f;
+                    var candidate = npc.transform.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.7f;
+                    if (!NavMesh.SamplePosition(candidate, out var hit, .5f, player.Agent.areaMask) || !player.Agent.Warp(hit.position)) continue;
+                    player.Agent.ResetPath();
+                    Physics.SyncTransforms();
+                    // What E would do from here, and to whom: the director's own choice, read through its seam.
+                    var chosen = new object[] { null };
+                    if (NpcInvoke("ChooseInteraction", chosen).ToString() == "Talk" && ReferenceEquals(chosen[0], npc)) return npc;
+                }
+            Assert.Fail("No place beside a houseguest with nothing else to do where E would talk to them.");
+            return null;
+        }
+
+        /// <summary>
+        /// E beside a houseguest says what a click on them says, and goes the same way: to a talk
+        /// spot. Pressed again on the one already on the way, the place is let go and the
+        /// conversation opens where they are, the walk to the place ended with it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TalkSpots_EBesideAHouseguestGoesToAPlaceAndPressedAgainTalksWhereTheyAre()
+        {
+            yield return WaitForNpcRuntimeBinding();
+            AskForTheTalkSpots();
+            var coordinator = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            var npc = BesideAFreeHouseguest(coordinator);
+
+            director.Interact();
+            yield return null;
+            var spot = director.CurrentTalkSpot;
+            Assert.That(spot, Is.Not.Null, "E sends the two to a place to talk, as a click on them does: " + coordinator.LastFailure);
+            Assert.That(spot.NpcId, Is.EqualTo(npc.Id));
+            Assert.That(director.WalkingToId, Is.EqualTo(npc.Id), "The walk is the walk to them.");
+            Assert.That(director.TalkingToId, Is.Null, "Nothing opens before both are there.");
+
+            Assert.That((bool)NpcInvoke("CanTalk", npc), Is.True, "A frame on, they are still in reach of E.");
+            director.Interact();
+            yield return null;
+            Assert.That(director.TalkingToId, Is.EqualTo(npc.Id), "Pressed again, E talks where they are,");
+            Assert.That(director.CurrentTalkSpot, Is.Null, "nobody walks to the place any more,");
+            Assert.That(spot.Released && coordinator.Talk == null, Is.True, "the place is let go,");
+            Assert.That(director.WalkingToId, Is.Null, "and the walk with it:");
+            Assert.That(player.Agent.hasPath, Is.False, "the player does not walk on to the place once the conversation closes.");
+            director.ClosePanels();
             yield return null;
         }
 

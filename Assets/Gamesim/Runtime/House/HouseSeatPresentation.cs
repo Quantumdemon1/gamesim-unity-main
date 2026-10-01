@@ -68,6 +68,12 @@ namespace Gamesim.House
         public Vector3 VisualFocus => head!=null ? head.position : (body!=null ? body.position : transform.position)+Vector3.up*1.35f;
         public Vector3 VisualFeet => body!=null ? new Vector3(body.position.x,transform.position.y,body.position.z) : transform.position;
 
+        /// <summary>
+        /// The way the seat faces while the body sits on it, or NaN when it is not sitting there:
+        /// for the two-shot, which frames a pair sitting side by side from the side they face.
+        /// </summary>
+        public float SeatFacing => Active && !exiting && mode==HouseAnchorPose.Seat ? anchorFacing : float.NaN;
+
         /// <summary>Only a current, settled, owned body can supply a seated observation endpoint.</summary>
         public bool TryGetWitnessPoint(out Vector3 point)
         {

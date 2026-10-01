@@ -27,6 +27,19 @@ namespace Gamesim.Simulation
             public string face, text, rowKind, rowId;
             public double points;
             public int week;
+
+            /// <summary>
+            /// Whether the player could already know everything the note rests on, mid-season: a
+            /// row that is public (the power, the count) or the player's own (their ballot and read,
+            /// their deals, pleas, plays and calls). False for a note that rests on what the house
+            /// keeps to itself: the odds a competition was won against (every competitor's strength),
+            /// an NPC's backdoor plan, how the house sees the player, why a pact ended, a grudge, a
+            /// bond, a houseguest's memory. False until a note's writer says otherwise, so a note
+            /// added later stays out of the weekly recap until somebody has decided it can be known.
+            /// The verdict at the end counts every note either way; the weekly recap shows only the
+            /// known ones (<see cref="YourWeek"/>).
+            /// </summary>
+            public bool known;
         }
 
         public sealed class Report
@@ -54,11 +67,12 @@ namespace Gamesim.Simulation
             return report;
         }
 
-        private static int Face(List<Note> notes, string face) =>
+        /// <summary>A face from these notes: the middle, moved by every note of that face, held to 0-100.</summary>
+        public static int Face(IEnumerable<Note> notes, string face) =>
             (int)Math.Round(Math.Max(0, Math.Min(100, Base + notes.Where(n => n.face == face).Sum(n => n.points))));
 
-        private static void Add(List<Note> notes, string face, double points, string text, string rowKind, string rowId, int week) =>
-            notes.Add(new Note { face = face, points = Math.Round(points, 1), text = text, rowKind = rowKind, rowId = rowId, week = week });
+        private static void Add(List<Note> notes, string face, double points, string text, string rowKind, string rowId, int week, bool known = false) =>
+            notes.Add(new Note { face = face, points = Math.Round(points, 1), text = text, rowKind = rowKind, rowId = rowId, week = week, known = known });
 
         // ---------------------------------------------------------------- competitions
 
@@ -72,6 +86,8 @@ namespace Gamesim.Simulation
                 bool final = row.kind.StartsWith("FinalHoH", StringComparison.Ordinal);
                 string what = final ? "the final HoH" : row.kind == "Veto" ? "the veto" : "the HoH";
                 string odds = "one in " + Math.Max(1, Math.Round(1 / Math.Max(0.02, row.expectedWin))).ToString("0");
+                // The odds are every competitor's strength, which nobody in the house is shown: a
+                // note weighed by them is not known until the season's end.
                 switch (row.entry)
                 {
                     case CompetitionEntry.Played:
@@ -80,19 +96,19 @@ namespace Gamesim.Simulation
                         {
                             double points = (1 - row.expectedWin) * 30 + (onTheBlock && row.kind == "Veto" ? 10 : 0) + (final ? 10 : 0);
                             Add(notes, Competitions, points, "Week " + row.week + ": you won " + what + " against " + odds + " odds"
-                                + (onTheBlock && row.kind == "Veto" ? ", from the block" : "") + ".", "competition", row.week + ":" + row.kind, row.week);
+                                + (onTheBlock && row.kind == "Veto" ? ", from the block" : "") + ".", "competition", row.week + ":" + row.kind, row.week, known: false);
                         }
                         else if (onTheBlock && row.kind == "Veto" && row.performance >= 0.75)
                             Add(notes, Competitions, -8, "Week " + row.week + ": you gave the veto everything from the block and finished " + Ordinal(row.placement) + " of " + row.field + ".",
-                                "competition", row.week + ":" + row.kind, row.week);
+                                "competition", row.week + ":" + row.kind, row.week, known: true);
                         else
                             Add(notes, Competitions, -row.expectedWin * 6, "Week " + row.week + ": " + Ordinal(row.placement) + " of " + row.field + " in " + what + ".",
-                                "competition", row.week + ":" + row.kind, row.week);
+                                "competition", row.week + ":" + row.kind, row.week, known: false);
                         break;
                     case CompetitionEntry.Thrown:
                         bool nominatedAfter = power != null && (power.nominees.Contains(s.playerId) || power.replacementId == s.playerId);
                         Add(notes, Competitions, nominatedAfter ? -12 : 8, "Week " + row.week + ": you threw " + what
-                            + (nominatedAfter ? ", and went up that week." : ", and stayed off the block."), "competition", row.week + ":" + row.kind, row.week);
+                            + (nominatedAfter ? ", and went up that week." : ", and stayed off the block."), "competition", row.week + ":" + row.kind, row.week, known: true);
                         break;
                 }
             }
@@ -111,71 +127,77 @@ namespace Gamesim.Simulation
             {
                 string id = "power:" + power.week;
                 bool nominated = power.nominees.Contains(s.playerId) || power.savedId == s.playerId;
+                // The week's power is public, and the player's own plan is theirs.
                 if (power.hohId == s.playerId)
                 {
-                    Add(notes, Strategy, 4, "Week " + power.week + ": you held the Head of Household.", "power", id, power.week);
+                    Add(notes, Strategy, 4, "Week " + power.week + ": you held the Head of Household.", "power", id, power.week, known: true);
                     if (power.backdoorTargetId != null)
                         Add(notes, Strategy, power.backdoorResult == "made" ? 10 : -4, "Week " + power.week + ": your backdoor of " + Name(s, power.backdoorTargetId)
-                            + (power.backdoorResult == "made" ? " was made." : power.backdoorResult == "survived" ? " went up and survived." : " never went up."), "power", id, power.week);
+                            + (power.backdoorResult == "made" ? " was made." : power.backdoorResult == "survived" ? " went up and survived." : " never went up."), "power", id, power.week, known: true);
                 }
                 else if (power.evicteeId != s.playerId)
                 {
-                    if (!nominated) Add(notes, Strategy, 3 + (you != null && you.hohWins + you.vetoWins > 0 ? 2 : 0), "Week " + power.week + ": you stayed off the block.", "power", id, power.week);
-                    else if (power.savedId == s.playerId) Add(notes, Strategy, 6, "Week " + power.week + ": you were on the block, and the veto took you off.", "power", id, power.week);
-                    else Add(notes, Strategy, -4, "Week " + power.week + ": you were on the block.", "power", id, power.week);
+                    if (!nominated) Add(notes, Strategy, 3 + (you != null && you.hohWins + you.vetoWins > 0 ? 2 : 0), "Week " + power.week + ": you stayed off the block.", "power", id, power.week, known: true);
+                    else if (power.savedId == s.playerId) Add(notes, Strategy, 6, "Week " + power.week + ": you were on the block, and the veto took you off.", "power", id, power.week, known: true);
+                    else Add(notes, Strategy, -4, "Week " + power.week + ": you were on the block.", "power", id, power.week, known: true);
                 }
                 if (power.vetoHolderId == s.playerId && power.vetoUsed && power.savedId != s.playerId)
                     Add(notes, Strategy, s.alliances.Any(a => a.members.Contains(s.playerId) && a.members.Contains(power.savedId ?? "")) ? 6 : 2,
-                        "Week " + power.week + ": you used the veto on " + Name(s, power.savedId) + ".", "power", id, power.week);
+                        "Week " + power.week + ": you used the veto on " + Name(s, power.savedId) + ".", "power", id, power.week, known: true);
+                // Another Head of Household's plan is theirs: the house saw who went up, not what was meant.
                 if (power.backdoorTargetId == s.playerId && power.hohId != s.playerId)
                     Add(notes, Strategy, power.backdoorResult == "made" ? -12 : 8, "Week " + power.week + ": a backdoor was planned for you"
-                        + (power.backdoorResult == "made" ? ", and it worked." : ", and you dodged it."), "power", id, power.week);
+                        + (power.backdoorResult == "made" ? ", and it worked." : ", and you dodged it."), "power", id, power.week, known: false);
+                // The player's own ballot and the read it was cast on, against the public count.
                 var ballot = s.ledger.ballots.LastOrDefault(b => b.week == power.week && b.voterId == s.playerId);
                 if (ballot != null)
                 {
                     if (ballot.readBefore != null)
                         Add(notes, Strategy, ballot.correct ? 5 : -5, "Week " + power.week + ": your whip count said " + Name(s, ballot.readBefore) + " would go, and "
-                            + (ballot.correct ? "they did." : Name(s, power.evicteeId) + " went."), "ballot", "ballot:" + power.week, power.week);
+                            + (ballot.correct ? "they did." : Name(s, power.evicteeId) + " went."), "ballot", "ballot:" + power.week, power.week, known: true);
                     Add(notes, Strategy, ballot.targetId == power.evicteeId ? 2 : -1, "Week " + power.week + ": you voted "
-                        + (ballot.targetId == power.evicteeId ? "with the house." : "against the house."), "ballot", "ballot:" + power.week, power.week);
+                        + (ballot.targetId == power.evicteeId ? "with the house." : "against the house."), "ballot", "ballot:" + power.week, power.week, known: true);
                 }
                 if (power.evicteeId == s.playerId && (ballot == null || ballot.readBefore != power.evicteeId))
-                    Add(notes, Strategy, -6, "Week " + power.week + ": you went out without seeing it coming.", "power", id, power.week);
+                    Add(notes, Strategy, -6, "Week " + power.week + ": you went out without seeing it coming.", "power", id, power.week, known: true);
             }
+            // The player's own chances: what they were offered and what they did with it, an offer
+            // left in a conversation included.
             foreach (var chance in s.ledger.opportunities)
             {
                 string when = "Week " + chance.week + ": ";
                 switch (chance.kind)
                 {
                     case OpportunityKinds.Read:
-                        if (chance.response == OpportunityResponse.Ignored) Add(notes, Strategy, -2, when + "a vote to read, and you asked nobody.", "opportunity", chance.id, chance.week);
+                        if (chance.response == OpportunityResponse.Ignored) Add(notes, Strategy, -2, when + "a vote to read, and you asked nobody.", "opportunity", chance.id, chance.week, known: true);
                         break;
                     case OpportunityKinds.Deal:
-                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 4, when + "a deal kept (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
-                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -5, when + "a deal broken (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
-                        else if (chance.response == OpportunityResponse.Expired) Add(notes, Strategy, -1, when + "an offer left on the table (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
-                        else if (chance.response == OpportunityResponse.Taken) Add(notes, Strategy, 1, when + "a deal made (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
+                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 4, when + "a deal kept (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -5, when + "a deal broken (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        else if (chance.response == OpportunityResponse.Expired) Add(notes, Strategy, -1, when + "an offer left on the table (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        else if (chance.response == OpportunityResponse.Taken) Add(notes, Strategy, 1, when + "a deal made (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         break;
                     case OpportunityKinds.Plea:
                     case OpportunityKinds.Lobby:
                         Add(notes, Strategy, chance.outcome == OpportunityOutcome.Won ? 3 : chance.note != null && chance.note.EndsWith(LobbyResponse.Hostile, StringComparison.Ordinal) ? -3 : -1,
-                            when + "a plea " + (chance.outcome == OpportunityOutcome.Won ? "heard" : "turned down") + " (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
+                            when + "a plea " + (chance.outcome == OpportunityOutcome.Won ? "heard" : "turned down") + " (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         break;
                     case OpportunityKinds.Play:
-                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 6, when + "a play won (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
-                        else if (chance.outcome == OpportunityOutcome.Part) Add(notes, Strategy, 3, when + "a play half won (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
-                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -2, when + "a play lost (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
+                        if (chance.outcome == OpportunityOutcome.Won) Add(notes, Strategy, 6, when + "a play won (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        else if (chance.outcome == OpportunityOutcome.Part) Add(notes, Strategy, 3, when + "a play half won (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
+                        else if (chance.outcome == OpportunityOutcome.Lost) Add(notes, Strategy, -2, when + "a play lost (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         else if (chance.response == OpportunityResponse.Expired || chance.response == OpportunityResponse.Ignored)
-                            Add(notes, Strategy, -2, when + "a play let pass (" + Source(chance) + ").", "opportunity", chance.id, chance.week);
+                            Add(notes, Strategy, -2, when + "a play let pass (" + Source(chance) + ").", "opportunity", chance.id, chance.week, known: true);
                         break;
                 }
             }
+            // The player's calls: who said they were in at the call, and whether the target went.
             foreach (var call in s.ledger.calls)
             {
                 var power = s.ledger.power.FirstOrDefault(p => p.week == call.week);
                 double points = call.followed.Count * 2 - call.defected.Count + (power != null && power.evicteeId == call.targetId ? 6 : 0);
                 Add(notes, Strategy, points, "Week " + call.week + ": you called the vote in your alliance; " + call.followed.Count + " followed, " + call.defected.Count + " did not"
-                    + (power != null && power.evicteeId == call.targetId ? ", and " + Name(s, call.targetId) + " went." : "."), "call", call.allianceId + ":" + call.week, call.week);
+                    + (power != null && power.evicteeId == call.targetId ? ", and " + Name(s, call.targetId) + " went." : "."), "call", call.allianceId + ":" + call.week, call.week, known: true);
             }
         }
 
@@ -191,34 +213,39 @@ namespace Gamesim.Simulation
                 views.Add(npc.status == ContestantStatus.Active || npc.status == ContestantStatus.Winner || npc.status == ContestantStatus.RunnerUp || departed == null
                     ? s.Score(npc.id, s.playerId) : departed.score);
             }
+            // The social face is the house's view of the player, which nobody is shown while the
+            // season runs: only a pact that still stands, or one that ended because somebody left the
+            // house, rests on something public. Why a pact soured, a bond, a grudge and a houseguest's
+            // memory are the house's own.
             if (views.Count > 0)
             {
                 double mean = views.Average();
-                Add(notes, Social, mean * 0.5, "How the house sees you, on average: " + (mean >= 0 ? "+" : "") + mean.ToString("0") + ".", "standing", "house", s.week);
+                Add(notes, Social, mean * 0.5, "How the house sees you, on average: " + (mean >= 0 ? "+" : "") + mean.ToString("0") + ".", "standing", "house", s.week, known: false);
             }
             foreach (var row in s.ledger.alliances)
             {
                 var alliance = s.alliances.FirstOrDefault(a => a.id == row.id);
                 if (alliance == null || !alliance.members.Contains(s.playerId)) continue;
                 string others = string.Join(", ", alliance.members.Where(id => id != s.playerId).Select(id => Name(s, id)));
-                if (row.endedWeek == 0) Add(notes, Social, 4, "Your alliance with " + others + " held to the end.", "alliance", row.id, row.startedWeek);
-                else if (row.why.EndsWith("/turned", StringComparison.Ordinal)) Add(notes, Social, -6, "Week " + row.endedWeek + ": your alliance with " + others + " turned on you.", "alliance", row.id, row.endedWeek);
-                else if (row.why.EndsWith("/soured", StringComparison.Ordinal)) Add(notes, Social, -3, "Week " + row.endedWeek + ": your alliance with " + others + " soured.", "alliance", row.id, row.endedWeek);
-                else if (row.endedWeek - row.startedWeek >= 3) Add(notes, Social, 2, "Your alliance with " + others + " lasted " + (row.endedWeek - row.startedWeek) + " weeks.", "alliance", row.id, row.endedWeek);
+                if (row.endedWeek == 0) Add(notes, Social, 4, "Your alliance with " + others + " held to the end.", "alliance", row.id, row.startedWeek, known: true);
+                else if (row.why.EndsWith("/turned", StringComparison.Ordinal)) Add(notes, Social, -6, "Week " + row.endedWeek + ": your alliance with " + others + " turned on you.", "alliance", row.id, row.endedWeek, known: false);
+                else if (row.why.EndsWith("/soured", StringComparison.Ordinal)) Add(notes, Social, -3, "Week " + row.endedWeek + ": your alliance with " + others + " soured.", "alliance", row.id, row.endedWeek, known: false);
+                else if (row.endedWeek - row.startedWeek >= 3) Add(notes, Social, 2, "Your alliance with " + others + " lasted " + (row.endedWeek - row.startedWeek) + " weeks.", "alliance", row.id, row.endedWeek,
+                    known: row.why.EndsWith("/left-house", StringComparison.Ordinal));
             }
             if (s.story != null)
             {
                 foreach (var bond in s.story.bonds.Where(b => b.endedWeek == 0 && (b.aId == s.playerId || b.bId == s.playerId)))
                 {
                     string other = bond.aId == s.playerId ? bond.bId : bond.aId;
-                    if (bond.kind == BondKinds.Nemesis) Add(notes, Social, -4, Name(s, other) + " is your nemesis.", "bond", bond.id, bond.sinceWeek);
-                    else Add(notes, Social, 4, Name(s, other) + " is your " + bond.kind.Replace('-', ' ') + ".", "bond", bond.id, bond.sinceWeek);
+                    if (bond.kind == BondKinds.Nemesis) Add(notes, Social, -4, Name(s, other) + " is your nemesis.", "bond", bond.id, bond.sinceWeek, known: false);
+                    else Add(notes, Social, 4, Name(s, other) + " is your " + bond.kind.Replace('-', ' ') + ".", "bond", bond.id, bond.sinceWeek, known: false);
                 }
                 foreach (var grudge in s.story.grudges.Where(g => g.targetId == s.playerId && g.severity >= 20))
-                    Add(notes, Social, -3, Name(s, grudge.holderId) + " still holds " + (grudge.cause ?? "a grudge") + " against you.", "grudge", grudge.holderId, grudge.originWeek);
+                    Add(notes, Social, -3, Name(s, grudge.holderId) + " still holds " + (grudge.cause ?? "a grudge") + " against you.", "grudge", grudge.holderId, grudge.originWeek, known: false);
             }
             int caught = s.memories.Count(m => m.subjectId == s.playerId && m.text.Contains("found out what you were telling"));
-            if (caught > 0) Add(notes, Social, -5 * caught, caught == 1 ? "A lie of yours was found out." : caught + " lies of yours were found out.", "memory", "lies", s.week);
+            if (caught > 0) Add(notes, Social, -5 * caught, caught == 1 ? "A lie of yours was found out." : caught + " lies of yours were found out.", "memory", "lies", s.week, known: false);
         }
 
         private static string Source(OpportunityRow chance) => string.IsNullOrEmpty(chance.source) ? chance.kind : chance.source.Split(':')[0].Replace('_', ' ').Replace('-', ' ');

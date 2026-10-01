@@ -1032,6 +1032,8 @@ namespace Gamesim.Episode
             public const string Story = "Section · story";
             /// <summary>The notebook's own page: what you have on each houseguest (EpisodeDirector.Notes.cs). Not a rail row; "Notebook [J]" opens it.</summary>
             public const string Notes = "Section · notes";
+            /// <summary>Your pacts and the ones you know of (EpisodeDirector.Alliances.cs). Not a rail row; the relationship web's door opens it.</summary>
+            public const string Alliances = "Section · alliances";
         }
 
         /// <summary>
@@ -1237,7 +1239,8 @@ namespace Gamesim.Episode
                 // house activities in their foot; the others keep the notebook's title and the
                 // command at their top, where the web's layout and the activities tests expect it.
                 bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
-                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes;
+                    || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes
+                    || journalSection == NotebookSection.Alliances;
                 if (kitPage)
                 {
                     var head = NotebookPageHead(journalSection);
@@ -1276,6 +1279,10 @@ namespace Gamesim.Episode
                 else if (journalSection == NotebookSection.Notes)
                 {
                     RenderNotebookNotes(state);
+                }
+                else if (journalSection == NotebookSection.Alliances)
+                {
+                    RenderNotebookAlliances(state);
                 }
                 else
                 {

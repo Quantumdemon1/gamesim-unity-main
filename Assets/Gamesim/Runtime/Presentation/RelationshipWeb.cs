@@ -18,7 +18,9 @@ namespace Gamesim.Presentation
     /// relationships directionally and the two directions routinely disagree, so every edge here is
     /// the player's outbound score, and the column never reads an NPC's feelings, their private
     /// alliances or a promise the player is not party to. Selecting a houseguest changes which
-    /// facts about the player's own record are in view; it does not open theirs.</para>
+    /// facts about the player's own record are in view; it does not open theirs. The one line drawn
+    /// between two others is a pact the player has evidence of (<see cref="AllianceRead.SuspectedPairs"/>):
+    /// what the player heard, never what either of them feels.</para>
     ///
     /// <para>The selection lives here rather than in the director because it is presentation
     /// state: it survives the HUD's per-render rebuild, and it resets on its own when the season
@@ -32,6 +34,14 @@ namespace Gamesim.Presentation
         public const string LegendName = "Relationship legend";
         public const string EdgeName = "Edge";
         public const string DetailsScrollName = "Relationship detail scroll";
+        /// <summary>
+        /// The dashed line between two houseguests whose pact the player has evidence of
+        /// (<see cref="AllianceRead.SuspectedPairs"/>). Not an <see cref="EdgeName"/>: an edge is the
+        /// player's own reading of somebody, and this is the one line the web draws between two others.
+        /// </summary>
+        public const string SuspectedMarkerName = "Suspected pact";
+        /// <summary>The column's door to the notebook's alliances page, under the player's counts.</summary>
+        public const string AlliancesDoorCaption = "Your alliances";
 
         public const string TitleCopy = "RELATIONSHIP WEB";
         public const string StrapCopy = "See how everyone in the house really connects.";
@@ -341,12 +351,13 @@ namespace Gamesim.Presentation
         /// Builds the section into <paramref name="parent"/>: the web on the left, the column on
         /// the right, sized by their own content so the notebook's scroll takes the taller of the
         /// two. <paramref name="select"/> is raised after a node is pressed and the selection has
-        /// been recorded, so the caller can repaint.
+        /// been recorded, so the caller can repaint. <paramref name="openAlliances"/>, when given,
+        /// is the column's door to the alliances page.
         /// </summary>
         public static RectTransform Build(
             Transform parent, EpisodeState state, float scale, TMP_FontAsset font,
             Func<string, Texture> portrait, Action<string> select, float availableHeight = float.PositiveInfinity,
-            float availableWidth = float.PositiveInfinity)
+            float availableWidth = float.PositiveInfinity, Action openAlliances = null)
         {
             var root = new GameObject(RootName, typeof(RectTransform)).GetComponent<RectTransform>();
             root.SetParent(parent, false);
@@ -361,7 +372,7 @@ namespace Gamesim.Presentation
             var focus = SelectedFor(state);
             var shape = Measure(state, scale, availableWidth, availableHeight);
             Graph(root, state, focus, scale, font, portrait, select, shape);
-            Column(root, state, focus, scale, font, portrait, shape.Height);
+            Column(root, state, focus, scale, font, portrait, shape.Height, openAlliances);
             Filters(root,state,scale,font,select,shape.TabsBeside);
             return root;
         }
@@ -472,6 +483,16 @@ namespace Gamesim.Presentation
             for (int i = 0; i < others.Count; i++)
                 Edge(hub, Vector2.zero, Ring(all.IndexOf(others[i]), all.Count, radius, shape.Stretch), KindOf(state, others[i].id),
                     state.Score(state.playerId, others[i].id), scale);
+            // Then the pacts the player has evidence of, between two houseguests both in view: only
+            // the pairs AllianceRead returns, so a pact the player has not heard of draws nothing.
+            foreach (var (first, second) in AllianceRead.SuspectedPairs(state))
+            {
+                var a = others.FirstOrDefault(actor => actor.id == first);
+                var b = others.FirstOrDefault(actor => actor.id == second);
+                if (a == null || b == null) continue;
+                SuspectedMarker(hub, Ring(all.IndexOf(a), all.Count, radius, shape.Stretch),
+                    Ring(all.IndexOf(b), all.Count, radius, shape.Stretch), scale);
+            }
 
             string focusId = focus != null ? focus.id : null;
             for (int i = 0; i < others.Count; i++)
@@ -529,6 +550,31 @@ namespace Gamesim.Presentation
             {
                 Segment(edge, 0f, length, weight, colour);
             }
+        }
+
+        /// <summary>
+        /// A pact the player has evidence of, between two faces on the ring: a dashed line in the
+        /// secrets' purple, thin, under the faces - a mark of what the player heard, never a reading
+        /// of what either of them feels. Its dashes are short and its gaps long, so it never reads as
+        /// the key's red distrust.
+        /// </summary>
+        private static void SuspectedMarker(RectTransform hub, Vector2 from, Vector2 to, float scale)
+        {
+            var delta = to - from;
+            float length = delta.magnitude;
+            if (length <= 1f) return;
+            float weight = 2f * scale;
+            var tint = new Color(UiTheme.Strategic.r, UiTheme.Strategic.g, UiTheme.Strategic.b, .85f);
+            var marker = new GameObject(SuspectedMarkerName, typeof(RectTransform)).GetComponent<RectTransform>();
+            marker.SetParent(hub, false);
+            marker.anchorMin = new Vector2(.5f, .5f); marker.anchorMax = new Vector2(.5f, .5f);
+            marker.pivot = new Vector2(0f, .5f);
+            marker.anchoredPosition = from;
+            marker.sizeDelta = new Vector2(length, weight);
+            marker.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+            float dash = 6f * scale, gap = 7f * scale;
+            for (float at = 0f; at < length; at += dash + gap)
+                Segment(marker, at, Mathf.Min(dash, length - at), weight, tint);
         }
 
         private static void Segment(RectTransform edge, float at, float length, float weight, Color colour)
@@ -778,7 +824,7 @@ namespace Gamesim.Presentation
 
         private static void Column(
             RectTransform root, EpisodeState state, ContestantState focus, float scale, TMP_FontAsset font,
-            Func<string, Texture> portrait, float height)
+            Func<string, Texture> portrait, float height, Action openAlliances = null)
         {
             var scrollRoot=HudPrimitives.Fill(DetailsScrollName,root,new Color(0,0,0,0),UiTheme.GlassRadius);
             scrollRoot.GetComponent<Image>().raycastTarget=true;
@@ -836,6 +882,8 @@ namespace Gamesim.Presentation
 
             if (isPlayer)
             {
+                // Under the player's own counts, the way to every pact behind the Alliances figure.
+                if (openAlliances != null) AlliancesDoor(column, scale, font, openAlliances);
                 var allies = Allies(state);
                 SectionHeading(column, AlliesHeading, allies.Count, scale, font);
                 if (allies.Count == 0) Note(column, "No one yet.", scale, font);
@@ -905,6 +953,45 @@ namespace Gamesim.Presentation
                         entry.impactScore >= 0 ? UiTheme.Allied : UiTheme.Conflict,
                         Localisation.Text("Week") + " " + entry.week + " · " + entry.description, scale, font);
             }
+        }
+
+        /// <summary>
+        /// The column's door to the notebook's alliances page: a quiet glass row with the pact mark,
+        /// its caption and a chevron saying it leads somewhere. The caption is the control's name and
+        /// its key; nothing is ever appended to it.
+        /// </summary>
+        private static void AlliancesDoor(RectTransform column, float scale, TMP_FontAsset font, Action open)
+        {
+            var row = Row(column, 42f * scale);
+            var rect = HudPrimitives.Fill(AlliancesDoorCaption, row, UiTheme.GlassFill, 8);
+            rect.anchorMin = new Vector2(0f, .5f); rect.anchorMax = new Vector2(1f, .5f); rect.pivot = new Vector2(.5f, .5f);
+            rect.anchoredPosition = Vector2.zero; rect.sizeDelta = new Vector2(0f, 36f * scale);
+            UiTheme.AddBorder(rect, 8, new Color(UiTheme.Hairline.r, UiTheme.Hairline.g, UiTheme.Hairline.b, .45f));
+            var ground = rect.GetComponent<Image>();
+            ground.raycastTarget = true;
+            var button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = ground;
+            button.onClick.AddListener(() => open());
+            float lead = 12f * scale;
+            var glyph = UiTheme.Icon("handshake");
+            if (glyph != null)
+            {
+                var mark = new GameObject("Door mark", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                mark.rectTransform.SetParent(rect, false);
+                mark.rectTransform.anchorMin = mark.rectTransform.anchorMax = new Vector2(0f, .5f);
+                mark.rectTransform.pivot = new Vector2(0f, .5f);
+                mark.rectTransform.anchoredPosition = new Vector2(12f * scale, 0f);
+                mark.rectTransform.sizeDelta = new Vector2(16f * scale, 16f * scale);
+                mark.sprite = glyph; mark.color = UiTheme.AccentDeep; mark.preserveAspect = true; mark.raycastTarget = false;
+                lead = 36f * scale;
+            }
+            var label = Text(rect, AlliancesDoorCaption, 13, UiTheme.Paper, UiTheme.Weight.Medium, scale, font, TextAlignmentOptions.MidlineLeft);
+            label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(lead, 0f); label.rectTransform.offsetMax = new Vector2(-30f * scale, 0f);
+            var chevron = HudPrimitives.Chevron(rect, UiTheme.Accent, 10f * scale);
+            chevron.anchorMin = chevron.anchorMax = new Vector2(1f, .5f);
+            chevron.pivot = new Vector2(.5f, .5f);
+            chevron.anchoredPosition = new Vector2(-16f * scale, 0f);
         }
 
         private static void DetailsScrollButton(RectTransform parent,ScrollRect scroll,string caption,int slot,int direction,float scale,TMP_FontAsset font)

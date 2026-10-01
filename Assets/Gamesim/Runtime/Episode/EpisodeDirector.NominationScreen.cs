@@ -329,6 +329,7 @@ namespace Gamesim.Episode
             }
             hud.WearNominationPrimary(hud.PinnedAction("Continue episode", () => Commit(state, EpisodeCommandKind.Advance)));
             AdvanceWarning(state);
+            MovingOnCosts(state);
             hud.PinnedNote(NominationUpNext(state, hoh), null, false);
         }
 

@@ -156,12 +156,40 @@ namespace Gamesim.Tests.PlayMode
             return card.GetComponentsInChildren<TMP_Text>().Single(text => text.name == "Value").text;
         }
 
-        /// <summary>The footer strip's words, whichever they are: what comes next, or what moving on lets pass.</summary>
+        /// <summary>
+        /// The footer strip's words, whichever they are: what comes next, or what moving on lets pass.
+        /// Never what moving on costs, which is a line of its own under what comes next.
+        /// </summary>
         private TMP_Text FooterWords()
         {
             var strip = ActiveRect(EpisodeHud.StrategyStripName);
             Assert.That(strip, Is.Not.Null, "The footer has its strip.");
-            return strip.GetComponentsInChildren<TMP_Text>().Single();
+            return strip.GetComponentsInChildren<TMP_Text>().Single(label => label.name != EpisodeDirector.MovingOnCostsName);
+        }
+
+        /// <summary>
+        /// The outcome's cost (ACTIONS-DEALS-ALLIANCES-PLAN V2): continuing moves the week on to the
+        /// veto's window, and under the week's windows this one's seats do not carry. The fixture
+        /// spent none of them, so the strip says so on a line of its own, under what comes next,
+        /// and both lines say all of their words.
+        /// </summary>
+        private void AssertOutcomeCost(string where)
+        {
+            var state = director.Snapshot;
+            Assert.That(WaitingOnYou.AdvanceNote(state), Is.EqualTo(EpisodeEngine.AfterHoHSeats + " unused actions will be lost."),
+                where + ": continuing closes the window the fixture spent none of.");
+            var strip = ActiveRect(EpisodeHud.StrategyStripName);
+            var cost = strip.GetComponentsInChildren<TMP_Text>().Single(label => label.name == EpisodeDirector.MovingOnCostsName);
+            Assert.That(cost.text, Is.EqualTo(WaitingOnYou.AdvanceNote(state)), where + ": what continuing costs");
+            Assert.That(cost.color, Is.EqualTo(UiTheme.Warning), where + ": in the warning colour,");
+            var next = FooterWords();
+            Assert.That(ScreenRect(cost.rectTransform).yMax, Is.LessThanOrEqualTo(ScreenRect(next.rectTransform).yMin + .5f),
+                where + ": on its own line under what comes next.");
+            foreach (var line in new[] { next, cost })
+            {
+                line.ForceMeshUpdate();
+                Assert.That(line.isTextOverflowing, Is.False, where + ": '" + line.text + "' says all of its words.");
+            }
         }
 
         /// <summary>
@@ -532,10 +560,12 @@ namespace Gamesim.Tests.PlayMode
                     if (block != NominationBlock.Player)
                     {
                         Assert.That(FooterWords().text, Is.EqualTo("Up next: the Power of Veto player selection. The Head of Household and both nominees play by right."), where);
+                        AssertOutcomeCost(where);
                         return;
                     }
                     Assert.That(StatusValue("OBJECTIVE"), Is.EqualTo("Get off the block"), where);
                     Assert.That(FooterWords().text, Is.EqualTo("Up next: the Power of Veto player selection. Nominees play by right."), where);
+                    AssertOutcomeCost(where);
                     var own = faces.Find("Face · " + you.name).Cast<Transform>().Select(child => child.GetComponent<TMP_Text>()).First(text => text != null);
                     Assert.That(own.text, Is.EqualTo(HudPrimitives.WithYou(you.name, true)), where + ": the player's face says it is theirs, and keeps the name it is found by.");
                 });

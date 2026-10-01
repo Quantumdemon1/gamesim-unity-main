@@ -76,10 +76,11 @@ namespace Gamesim.Tests.PlayMode
             string report = StageReport();
             foreach (var id in block)
                 Assert.That(report, Does.Contain("  " + id + " -> " + CeremonySeating.HotSeat + " "), id + " has a red chair:\n" + report);
-            Assert.That(report, Does.Contain("  " + holder + " -> " + CeremonySeating.GallerySeat + " 0 "),
-                "The holder takes the U's middle base seat, facing the red chairs:\n" + report);
-            Assert.That(report, Does.Contain("  " + hoh + " -> " + CeremonySeating.GallerySeat + " 1 "),
-                "and the Head of Household the seat beside them:\n" + report);
+            // The two middle seats go by the side each comes from, so neither walks past the other's place.
+            string middle0 = " -> " + CeremonySeating.GallerySeat + " 0 ", middle1 = " -> " + CeremonySeating.GallerySeat + " 1 ";
+            Assert.That((report.Contains("  " + holder + middle0) && report.Contains("  " + hoh + middle1))
+                || (report.Contains("  " + holder + middle1) && report.Contains("  " + hoh + middle0)), Is.True,
+                "The holder and the Head of Household take the U's two middle base seats, facing the red chairs:\n" + report);
             Assert.That(report, Does.Not.Contain(" -> " + CeremonySeating.LivingMark + " "), "Nobody stands in a house the U seats.");
 
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,

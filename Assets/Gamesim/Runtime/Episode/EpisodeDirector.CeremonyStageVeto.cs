@@ -71,9 +71,9 @@ namespace Gamesim.Episode
 
             /// <summary>
             /// The veto meeting's places (decision 5): the block before the meeting in the red chairs
-            /// by id, the player included and a holder on the block too; the holder on the U's first
-            /// gallery seat - the base's middle, facing the red chairs across the low table - and the
-            /// Head of Household on the next; everyone else in cast order, standing marks only past
+            /// by id, the player included and a holder on the block too; the holder and the Head of
+            /// Household on the U's two middle base seats, facing the red chairs across the low table,
+            /// each on the side they come from; everyone else in cast order, standing marks only past
             /// the seats, as the eviction does. Nothing is keyed to the outcome.
             /// </summary>
             private bool AssignVeto(List<string> active, out string reason)
@@ -112,10 +112,39 @@ namespace Gamesim.Episode
                     var next = NextMark();
                     if (next != null) Place(id, next);
                 }
-                Seat(state.vetoHolderId);
-                Seat(state.hohId);
+                // The holder and the Head of Household share the U's two middle seats, and which
+                // of them takes which is by the side they come from, not by role: both seats are
+                // approached along the same lane in front of the base, so the one heading for the
+                // far seat would otherwise walk into the other's parked root and stand there.
+                // Measured on 2026-10-01: a holder coming in from the east stopped 0.4 m behind the
+                // Head of Household parked on the east seat and never sat down.
+                string first = state.vetoHolderId, second = state.hohId;
+                if (FromTheFarSide(first, second, gallery)) { first = state.hohId; second = state.vetoHolderId; }
+                Seat(first);
+                Seat(second);
                 foreach (var id in active) Seat(id);
                 return true;
+            }
+
+            /// <summary>
+            /// Whether the first of two houseguests should take the second of the next two gallery
+            /// seats: true when both still need a seat and the first stands nearer the second seat's
+            /// side of the pair than the other does, so neither walks past the other's place.
+            /// </summary>
+            private bool FromTheFarSide(string first, string second, List<HouseInteractionAnchor> gallery)
+            {
+                int next = placeOf.Values.Count(place => place != null && gallery.Contains(place));
+                if (gallery.Count < next + 2 || string.IsNullOrEmpty(first) || string.IsNullOrEmpty(second) || first == second
+                    || placeOf.ContainsKey(first) || placeOf.ContainsKey(second)) return false;
+                var a = director.BodyFor(first);
+                var b = director.BodyFor(second);
+                if (a == null || b == null) return false;
+                Vector3 seatA = gallery[next].Position, seatB = gallery[next + 1].Position;
+                Vector3 across = seatB - seatA;
+                across.y = 0f;
+                if (across.sqrMagnitude < 0.0001f) return false;
+                // Along the line from the first seat to the second: the one further along it takes the second.
+                return Vector3.Dot(a.position - seatA, across) > Vector3.Dot(b.position - seatA, across);
             }
 
             /// <summary>

@@ -22,8 +22,9 @@ namespace Gamesim.Simulation
     /// <list type="bullet">
     /// <item>their view of the player: the player's own reading of them, held inside the band a
     /// current read put them in (<see cref="PresumedView"/>);</item>
-    /// <item>their view of anybody else: the band the player last learned for the pair - read, told
-    /// or overheard - while it is current (<see cref="Band"/>);</item>
+    /// <item>their view of anybody else: the middle of the band the player last learned for the
+    /// pair - read, told or overheard - while it is current (<see cref="Band"/>,
+    /// <see cref="BandScore"/>), read on the roll's own lines;</item>
     /// <item>a pact with anybody else: only one the player knows of (<see cref="KnownPact"/>),
     /// counted however it ended, because a pact the player is not in ends on scores the player
     /// never sees;</item>
@@ -86,15 +87,18 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The chance shown beside a proposal to this houseguest: <see cref="PlayerDeals.AcceptanceChance"/>
-        /// term for term, in its order, each hidden term swapped for what the player has.
+        /// term for term and line for line, in its order, each hidden term swapped for what the
+        /// player has. Where the player knows every term the roll reads, the two are equal; a
+        /// test holds them so (KnownOddsTests), so a change to the roll that is not made here fails.
         /// </summary>
         public static Estimate Deal(EpisodeState s, string npcId, string type, string aboutId)
         {
             var npc = s?.Find(npcId);
             if (npc == null) return new Estimate();
             var e = Start(s, npcId);
-            double view = PresumedView(s, npcId);
-            double chance = PlayerDeals.RelationshipChance(view);
+            double relationship = PresumedView(s, npcId);
+
+            double chance = PlayerDeals.RelationshipChance(relationship);
 
             if (type == DealKind.InformationSharing || type == DealKind.Partnership) chance += 10;
             else if (type == DealKind.FinalTwo || type == DealKind.VetoUse || type == DealKind.AllianceInvite) chance -= 10;
@@ -112,12 +116,12 @@ namespace Gamesim.Simulation
                     chance += 10;
             }
 
-            if (type == DealKind.TargetAgreement && aboutId != null && aboutId != npcId)
+            if (type == DealKind.TargetAgreement && aboutId != null)
             {
-                About(s, e, npcId, aboutId, out string band, out bool pact);
-                if (pact) chance -= 40;
-                if (band == Cold) chance += 20;
-                else if (band == Warm) chance -= 30;
+                if (KnownPact(s, npcId, aboutId)) chance -= 40;
+                double? toTarget = Toward(s, e, npcId, aboutId);
+                if (toTarget < -20) chance += 20;
+                else if (toTarget > 30) chance -= 30;
             }
 
             chance += PlayerDeals.TraitModifier(npc.traits, type);
@@ -128,42 +132,28 @@ namespace Gamesim.Simulation
 
             if (type == DealKind.VoteSave)
             {
-                if (aboutId == s.playerId)
+                if (aboutId != null)
                 {
-                    // Of the player, the presumed view on the roll's own lines.
-                    if (view >= 50) chance += 20;
-                    else if (view < 0) chance -= 20;
+                    double? toTarget = Toward(s, e, npcId, aboutId);
+                    if (toTarget >= 50) chance += 20;
+                    else if (toTarget < 0) chance -= 20;
                 }
-                else if (aboutId != null && aboutId != npcId)
-                {
-                    About(s, e, npcId, aboutId, out string band, out _);
-                    if (band == Warm) chance += 20;
-                    else if (band == Cold) chance -= 20;
-                }
-                else if (aboutId == null && nominated) chance -= 10;
+                else if (nominated) chance -= 10;
             }
 
             if (type == DealKind.VoteEvict && aboutId != null)
             {
-                if (aboutId == s.playerId)
-                {
-                    if (view < -20) chance += 25;
-                    else if (view > 50) chance -= 30;
-                }
-                else if (aboutId != npcId)
-                {
-                    About(s, e, npcId, aboutId, out string band, out _);
-                    if (band == Cold) chance += 25;
-                    else if (band == Warm) chance -= 30;
-                }
-                if (Has(npc, "Loyal") && view >= 80) chance += 15;
+                double? toTarget = Toward(s, e, npcId, aboutId);
+                if (toTarget < -20) chance += 25;
+                else if (toTarget > 50) chance -= 30;
+                if (Has(npc, "Loyal") && relationship >= 80) chance += 15;
                 if (Has(npc, "Strategic")) chance += 10;
             }
 
             if (type == DealKind.FinalTwo)
             {
-                if (view < 50) chance -= 25;
-                if (s.Active.Count() > NpcDeals.EndgameSize && view < 80) chance -= 15;
+                if (relationship < 50) chance -= 25;
+                if (s.Active.Count() > NpcDeals.EndgameSize && relationship < 80) chance -= 15;
             }
 
             if (type == DealKind.Partnership && allied) chance += 15;
@@ -175,7 +165,8 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The chance shown beside one way of putting a plea: <see cref="StrategyRules.Chance"/> term
-        /// for term, each hidden term swapped for what the player has.
+        /// for term and line for line, each hidden term swapped for what the player has. Held equal
+        /// to the roll where the player knows every term, as <see cref="Deal"/> is.
         /// </summary>
         public static Estimate Plea(EpisodeState s, string deciderId, string ask, string subjectId, string approach)
         {
@@ -191,38 +182,31 @@ namespace Gamesim.Simulation
                 case LobbyAsk.Vote:
                     if (KnownPact(s, deciderId, s.playerId)) chance += 15;
                     string other = s.nominees.FirstOrDefault(id => id != s.playerId);
-                    if (other != null)
-                    {
-                        About(s, e, deciderId, other, out string band, out bool pact);
-                        if (pact) chance -= 20;
-                        else if (band == Warm) chance -= 15;
-                    }
+                    if (other != null && KnownPact(s, deciderId, other)) chance -= 20;
+                    else if (other != null && Toward(s, e, deciderId, other) > 30) chance -= 15;
                     break;
                 case LobbyAsk.Target:
-                    if (subjectId != null && subjectId != deciderId)
-                    {
-                        About(s, e, deciderId, subjectId, out string band, out bool pact);
-                        if (pact) chance -= 40;
-                        if (band == Cold) chance += 20;
-                        else if (band == Warm) chance -= 30;
-                    }
+                    if (KnownPact(s, deciderId, subjectId)) chance -= 40;
+                    double? toTarget = Toward(s, e, deciderId, subjectId);
+                    if (toTarget < -20) chance += 20;
+                    else if (toTarget > 30) chance -= 30;
                     break;
                 case LobbyAsk.Save:
-                    if (subjectId != null && subjectId != s.playerId && subjectId != deciderId)
+                    if (subjectId != s.playerId)
                     {
-                        About(s, e, deciderId, subjectId, out string band, out _);
-                        if (band == Warm) chance += 20;
-                        else if (band == Cold) chance -= 20;
+                        double? toNominee = Toward(s, e, deciderId, subjectId);
+                        if (toNominee >= 50) chance += 20;
+                        else if (toNominee < 0) chance -= 20;
                     }
                     break;
                 case LobbyAsk.Keep:
-                    bool keptAlly = false;
-                    foreach (string nominee in s.nominees.Where(id => id != deciderId))
-                    {
-                        About(s, e, deciderId, nominee, out _, out bool pact);
-                        keptAlly |= pact;
-                    }
-                    if (keptAlly) chance -= 30;
+                    // The roll's EpisodeState.Allied has no a != b guard, so a veto holder who is
+                    // also on the block reads as keeping an ally whenever they are in any active
+                    // pact at all (StrategyRules.Chance's Keep line asks Allied(holder, holder)).
+                    // KnownPact keeps the same shape, so the shown odds take that term too - but only
+                    // for a pact the player knows of.
+                    if (s.nominees.Any(id => KnownPact(s, deciderId, id))) chance -= 30;
+                    foreach (string nominee in s.nominees.Where(id => id != deciderId)) Note(s, e, deciderId, nominee);
                     break;
             }
             return Finish(e, chance);
@@ -274,11 +258,35 @@ namespace Gamesim.Simulation
         /// it stands, which the player is told; anybody else's counts once the player knows of it
         /// (<see cref="FinalistRead.AllianceCertainty"/>), however it has ended since, because it
         /// ends on scores the player never sees and saying so would be the leak this closes.
+        ///
+        /// <para>The shape of <see cref="EpisodeState.Allied"/>, which the roll asks, down to its
+        /// missing a != b guard: with <paramref name="a"/> and <paramref name="b"/> the same
+        /// houseguest it asks whether they are in any pact the player knows of, as Allied asks
+        /// whether they are in any pact at all (the Keep plea's quirk, in <see cref="Plea"/>).</para>
         /// </summary>
         public static bool KnownPact(EpisodeState s, string a, string b) =>
-            s?.alliances != null && !string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b) && a != b
+            s?.alliances != null && !string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b)
             && s.alliances.Any(x => x.members.Contains(a) && x.members.Contains(b)
                 && (x.members.Contains(s.playerId) ? x.active : FinalistRead.AllianceCertainty(s, x) != null));
+
+        /// <summary>
+        /// A learned band as one score the roll's own comparisons read, so every line stays where
+        /// the roll draws it (over 30, at least 50, over 50, under -20, under nought) instead of
+        /// each band being mapped onto each term by hand. The score is the middle of what the band
+        /// allows on the roll's scale of -100 to 100 (<see cref="WebRules.ClampScore"/>): warm runs
+        /// from 25 to 100, so 62.5; not sure lies either side of nought, so 0; cold runs from -100 to
+        /// -25, so -62.5. The player was told the band and nothing about where in it the pair stand,
+        /// so its middle is the fair guess.
+        ///
+        /// <para>What it means on each line: warm clears every upper line and cold every lower one;
+        /// not sure clears none, though a pair the player heard were "careful with each other" may
+        /// sit a point under nought, where the roll's line for saving a nominee falls.</para>
+        /// </summary>
+        public static double BandScore(string band) =>
+            band == Warm ? (WarmLine + ScoreCeiling) / 2 : band == Cold ? (ColdLine + ScoreFloor) / 2 : 0;
+
+        /// <summary>The scale a relationship score lives on: <see cref="WebRules.ClampScore"/>'s.</summary>
+        private const double ScoreFloor = -100, ScoreCeiling = 100;
 
         /// <summary>Whether the player holds a current read of how this houseguest sees them.</summary>
         public static bool HasRead(EpisodeState s, string npcId) => Band(s, npcId, s?.playerId) != null;
@@ -313,12 +321,27 @@ namespace Gamesim.Simulation
             read = HasRead(s, npcId), claim = HasClaim(s, npcId), history = History(s, npcId),
         };
 
-        /// <summary>What the player knows of where a houseguest stands with somebody else: a band, a pact, or neither.</summary>
-        private static void About(EpisodeState s, Estimate e, string fromId, string aboutId, out string band, out bool pact)
+        /// <summary>
+        /// How one houseguest sees somebody, as a score the roll's comparisons can read, or null when
+        /// the player has nothing on it - and no comparison holds for a null, as no term would for a
+        /// view the player never learned. The player's presumed view of them when it is the player;
+        /// nought when it is themselves or nobody, which is what the roll reads there too; the
+        /// middle of a band the player learned; otherwise nothing.
+        /// </summary>
+        private static double? Toward(EpisodeState s, Estimate e, string fromId, string aboutId)
         {
-            band = Band(s, fromId, aboutId);
-            pact = KnownPact(s, fromId, aboutId);
-            if (band == null && !pact) e.aboutKnown = false;
+            Note(s, e, fromId, aboutId);
+            if (string.IsNullOrEmpty(aboutId) || aboutId == fromId) return 0;
+            if (aboutId == s.playerId) return PresumedView(s, fromId);
+            string band = Band(s, fromId, aboutId);
+            return band == null ? (double?)null : BandScore(band);
+        }
+
+        /// <summary>Marks the estimate when the player knows nothing of where a houseguest stands with the person an ask is about: no band, no pact.</summary>
+        private static void Note(EpisodeState s, Estimate e, string fromId, string aboutId)
+        {
+            if (string.IsNullOrEmpty(aboutId) || aboutId == fromId || aboutId == s.playerId) return;
+            if (Band(s, fromId, aboutId) == null && !KnownPact(s, fromId, aboutId)) e.aboutKnown = false;
         }
 
         private static Estimate Finish(Estimate e, double chance)

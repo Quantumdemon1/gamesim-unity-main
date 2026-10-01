@@ -130,10 +130,11 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// An offer's accept. For a nominee's veto ask once the player has given another nominee
-        /// their word on the veto this week, the same control greyed under a line saying why: the
-        /// veto saves one of them, so a second yes is a word that cannot be kept (X13). Nothing is
-        /// answered for the player - the decline beside it stays as it was, and the greyed control
-        /// commits nothing even if something presses it.
+        /// their word on the veto this week, the same caption drawn locked, under a line saying why
+        /// and what becomes of the offer: the veto saves one of them, so a second yes is a word that
+        /// cannot be kept (X13). Nothing is answered for the player - declining would cost them a
+        /// little with the nominee, and that is theirs to choose - so the decline beside it stays as
+        /// it was, and an offer left alone lapses as any other does.
         /// </summary>
         private Button OfferAccept(EpisodeState state, DealState offer)
         {
@@ -142,10 +143,8 @@ namespace Gamesim.Episode
             if (promised == null)
                 return hud.ActionFor(id, EpisodeHud.DealAcceptCaption,
                     () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: EpisodeEngine.AcceptDeal));
-            hud.Paragraph(VetoSavesOneLine(state.Find(promised).name));
-            var greyed = hud.ActionFor(id, EpisodeHud.DealAcceptCaption, () => { });
-            greyed.interactable = false;
-            return greyed;
+            hud.Paragraph(VetoSavesOneLine(state, promised, offer.proposerId));
+            return hud.LockedAction(EpisodeHud.DealAcceptCaption);
         }
 
         /// <summary>
@@ -159,9 +158,20 @@ namespace Gamesim.Episode
                         && state.nominees.Contains(d.proposerId))
                     .Select(d => d.proposerId).FirstOrDefault();
 
-        /// <summary>Above the other nominee's greyed accept, once the player has said yes to one veto ask.</summary>
-        public static string VetoSavesOneLine(string promisedName) =>
-            "The veto can only save one of them, and you have already given " + promisedName + " your word.";
+        /// <summary>
+        /// Above the other nominee's locked accept, once the player has said yes to one veto ask: why
+        /// it is locked, and both ways the offer can still end. Turned down, it is the player's no;
+        /// left alone, it lapses - at the veto decision from the strategy windows, which expires every
+        /// unanswered veto ask, and at the end of the week before them, as every offer does.
+        /// </summary>
+        public static string VetoSavesOneLine(EpisodeState state, string promisedId, string askingId)
+        {
+            string promised = state?.Find(promisedId)?.name ?? "somebody";
+            string asking = FinalistRead.FirstName(state?.Find(askingId)?.name ?? "them");
+            string lapses = StrategyRules.Apply(state) && !state.vetoResolved ? "at the meeting" : "at the end of the week";
+            return "The veto can only save one of them, and you have already given " + promised + " your word. Turn "
+                + asking + " down, or the offer lapses " + lapses + ".";
+        }
 
         /// <summary>
         /// A houseguest who came to the player, waiting on an answer. Drawn before the week's

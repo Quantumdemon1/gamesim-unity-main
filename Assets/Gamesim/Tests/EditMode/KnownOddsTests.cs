@@ -168,6 +168,98 @@ namespace Gamesim.Tests.EditMode
                 "The player is told when their own pact falls apart, so theirs counts only while it stands.");
         }
 
+        [Test]
+        public void AHolderOnTheBlockInAPactReadsAsKeepingAnAllyOnlyOnceThePlayerKnowsOfThePact()
+        {
+            var s = AtMeeting(Season(35));
+            var holder = Plain(s.Find(s.nominees[0]));
+            s.vetoHolderId = holder.id;
+            string free = Npcs(s)[4].id;
+            double Shown() => KnownOdds.Plea(s, holder.id, LobbyAsk.Keep, null, LobbyApproach.Strategic).chance;
+            double Rolled() => StrategyRules.Chance(s, holder.id, LobbyAsk.Keep, null, LobbyApproach.Strategic);
+            double clear = Shown();
+            Assert.That(Rolled(), Is.EqualTo(clear), "Nobody in a pact: the two agree.");
+
+            var pact = Pact(s, "away-from-the-block", holder.id, free);
+            Assert.That(Rolled(), Is.EqualTo(clear - 30),
+                "The roll's Allied has no a != b guard: a holder on the block in any pact reads as keeping an ally.");
+            Assert.That(Shown(), Is.EqualTo(clear), "A pact the player has not heard of moves nothing on screen.");
+
+            Fact(s, pact, holder.id, free, s.playerId);
+            Assert.That(Shown(), Is.EqualTo(clear - 30), "Once the player knows of it, the shown odds take the roll's term as the roll does.");
+            Assert.That(Shown(), Is.EqualTo(Rolled()));
+        }
+
+        // ---------------------------------------------------------------- the roll's own lines
+
+        [Test]
+        public void ABandIsReadAtItsMiddleOnTheRollsOwnLines()
+        {
+            Assert.That(KnownOdds.BandScore(KnownOdds.Warm), Is.EqualTo(62.5), "Warm runs from 25 to 100.");
+            Assert.That(KnownOdds.BandScore(KnownOdds.Unsure), Is.EqualTo(0), "Not sure lies either side of nought.");
+            Assert.That(KnownOdds.BandScore(KnownOdds.Cold), Is.EqualTo(-62.5), "Cold runs from -100 to -25.");
+
+            var s = AtMeeting(Season(33));
+            var holder = Plain(s.Find(s.vetoHolderId));
+            string first = s.nominees[0], second = s.nominees[1];
+            double Shown(string nominee) => KnownOdds.Plea(s, holder.id, LobbyAsk.Save, nominee, LobbyApproach.Strategic).chance;
+            double Rolled(string nominee) => StrategyRules.Chance(s, holder.id, LobbyAsk.Save, nominee, LobbyApproach.Strategic);
+
+            // Warm, but under the roll's line for saving a friend: the player heard warm, and warm's
+            // middle is over it.
+            Set(s, holder.id, first, 30);
+            Learn(s, holder.id, first, ClaimSource.Overheard, 30);
+            Assert.That(Rolled(first), Is.EqualTo(50), "Thirty is under the roll's fifty.");
+            Assert.That(Shown(first), Is.EqualTo(70), "The band's middle, not the number behind it, is over it.");
+
+            // Not sure, but a point under the roll's line for a nominee they would not save: not
+            // sure's middle is not.
+            Set(s, holder.id, second, -10);
+            Learn(s, holder.id, second, ClaimSource.Overheard, -10);
+            Assert.That(Rolled(second), Is.EqualTo(30), "Minus ten is under the roll's nought.");
+            Assert.That(Shown(second), Is.EqualTo(50), "Not sure's middle is nought, which is not under it.");
+        }
+
+        /// <summary>
+        /// Where the player knows every term the roll reads, the shown chance IS the roll's, for
+        /// every kind of deal with and without a subject and every plea. The roll changes in wave B;
+        /// a change made there and not here fails this. Three turns of the bands, so every pair is
+        /// warm, not sure and cold in one of them and every line the roll draws is crossed.
+        /// </summary>
+        [Test]
+        public void WhereThePlayerKnowsEveryTermTheRollReadsTheShownChanceIsTheRoll()
+        {
+            foreach (bool campaign in new[] { false, true })
+            foreach (int turn in new[] { 0, 1, 2 })
+            {
+                var s = KnownThroughout(Season(34), campaign, turn);
+                var subjects = s.Active.Select(c => c.id).Append(null).ToList();
+                string where = (campaign ? "the campaign" : "the veto meeting") + ", turn " + turn;
+                int checkedOdds = 0;
+                foreach (var npc in Npcs(s))
+                {
+                    foreach (string kind in DealKind.All)
+                        foreach (string about in subjects)
+                        {
+                            Assert.That(KnownOdds.Deal(s, npc.id, kind, about).chance,
+                                Is.EqualTo(PlayerDeals.AcceptanceChance(s, npc.id, kind, about)).Within(1e-9),
+                                where + ": " + npc.name + ", " + kind + " about " + (about ?? "nobody"));
+                            checkedOdds++;
+                        }
+                    foreach (string ask in LobbyAsk.All)
+                        foreach (string approach in Approaches)
+                            foreach (string subject in subjects)
+                            {
+                                Assert.That(KnownOdds.Plea(s, npc.id, ask, subject, approach).chance,
+                                    Is.EqualTo(StrategyRules.Chance(s, npc.id, ask, subject, approach)).Within(1e-9),
+                                    where + ": " + npc.name + ", " + ask + "/" + approach + " about " + (subject ?? "nobody"));
+                                checkedOdds++;
+                            }
+                }
+                Assert.That(checkedOdds, Is.EqualTo(Npcs(s).Count * subjects.Count * (DealKind.All.Length + LobbyAsk.All.Length * Approaches.Length)));
+            }
+        }
+
         // ---------------------------------------------------------------- what the player has
 
         [Test]
@@ -392,6 +484,56 @@ namespace Gamesim.Tests.EditMode
             s.phase = EpisodePhase.Nomination;
             s.hohId = Npcs(s)[0].id;
             s.nominees.Clear();
+            return s;
+        }
+
+        /// <summary>
+        /// A week in which the player knows every term the roll reads. How each houseguest sees the
+        /// player is the player's own reading of them, spread across the roll's tiers; every view of
+        /// anybody else is one the player learned, at its band's middle; every pact is one the
+        /// player knows of, a houseguest on the block among them; and nothing on anybody's private
+        /// ledger is about the player, so its trust term is neutral. At the veto meeting, or the
+        /// campaign with the player on the block; <paramref name="turn"/> turns which pair is in
+        /// which band. The first houseguest is Loyal and Strategic and the warmest, so the roll's
+        /// terms for those are crossed too.
+        /// </summary>
+        private static EpisodeState KnownThroughout(EpisodeState s, bool campaign, int turn)
+        {
+            var npcs = Npcs(s);
+            AtMeeting(s);
+            if (campaign)
+            {
+                s.phase = EpisodePhase.Campaign;
+                s.vetoResolved = true;
+                s.nominees = new List<string> { s.playerId, npcs[1].id };
+            }
+            npcs[0].traits = new List<string> { "Loyal", "Strategic" };
+            double[] readings = { 85, 55, 20, -5, -30, -70, 40 };
+            double[] middles = { KnownOdds.BandScore(KnownOdds.Warm), KnownOdds.BandScore(KnownOdds.Unsure), KnownOdds.BandScore(KnownOdds.Cold) };
+            for (int i = 0; i < npcs.Count; i++)
+            {
+                Set(s, s.playerId, npcs[i].id, readings[i % readings.Length]);
+                Set(s, npcs[i].id, s.playerId, readings[i % readings.Length]);
+                for (int j = 0; j < npcs.Count; j++)
+                {
+                    if (i == j) continue;
+                    double middle = middles[(i + 2 * j + turn) % middles.Length];
+                    Set(s, npcs[i].id, npcs[j].id, middle);
+                    Learn(s, npcs[i].id, npcs[j].id, ClaimSource.Overheard, middle);
+                }
+            }
+            Pact(s, "ours", s.playerId, npcs[5].id);
+            Fact(s, Pact(s, "theirs", npcs[1].id, npcs[4].id), npcs[1].id, npcs[4].id, s.playerId);
+            s.deals.Add(new DealState
+            {
+                id = "deal-broken", type = DealKind.Partnership, proposerId = s.playerId, recipientId = npcs[6].id,
+                status = DealStatus.Broken, week = s.week, trustImpact = DealTrust.Medium,
+            });
+            s.deals.Add(new DealState
+            {
+                id = "deal-standing", type = DealKind.SafetyAgreement, proposerId = npcs[0].id, recipientId = s.playerId,
+                status = DealStatus.Active, week = s.week, trustImpact = DealTrust.High,
+            });
             return s;
         }
 

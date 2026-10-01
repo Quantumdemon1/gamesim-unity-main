@@ -452,7 +452,9 @@ namespace Gamesim.Episode
                 string id = offer.id;
                 hud.Heading("AN OFFER FROM " + npc.name.ToUpperInvariant());
                 hud.Paragraph(DealSentence(state, offer));
-                hud.Tag(OfferAccept(state, offer), Category(EpisodeCommandKind.RespondToDeal));
+                // A locked yes is not a strategic move the player can make, so it carries no category.
+                var accept = OfferAccept(state, offer);
+                if (accept.interactable) hud.Tag(accept, Category(EpisodeCommandKind.RespondToDeal));
                 hud.ActionFor(id, EpisodeHud.DealDeclineCaption,
                     () => Commit(state, EpisodeCommandKind.RespondToDeal, id, text: "decline"));
             }
@@ -566,13 +568,14 @@ namespace Gamesim.Episode
         /// <summary>
         /// Above the odds, what they are: the player's own read of the houseguest, not a promise -
         /// and, when the player has no read of them, no claim from them and little history with
-        /// them, a chip and a line that say how little the read has to go on.
+        /// them, a chip and a line that say how little the read has to go on. Once a render: a
+        /// conversation that draws the plea's chances and the deal table's explains them above the
+        /// first, and the second says nothing more (<see cref="EpisodeHud.ExplainOdds"/>).
         /// </summary>
         private void OddsAreYourRead(EpisodeState state, ContestantState npc)
         {
             bool little = KnownOdds.Unknowns(state, npc.id) == KnownOdds.Many;
-            if (little) hud.UnknownsChip();
-            hud.OddsNote(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : ""));
+            hud.ExplainOdds(OddsReadLine(FinalistRead.FirstName(npc.name)) + (little ? " " + LittleToGoOnLine : ""), little);
         }
 
         /// <summary>

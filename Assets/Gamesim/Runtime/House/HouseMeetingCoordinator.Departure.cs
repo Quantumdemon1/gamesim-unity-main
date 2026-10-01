@@ -70,8 +70,12 @@ namespace Gamesim.House
             return true;
         }
 
-        /// <summary>Sends the houseguest walking out somewhere new, letting go of wherever they were going.</summary>
-        public bool RouteDeparture(Vector3 destination, out string reason)
+        /// <summary>
+        /// Sends the houseguest walking out somewhere new, letting go of wherever they were going,
+        /// at <paramref name="speed"/> metres a second, or the house's own pace for zero: a staged
+        /// eviction's walk is slow while it is in frame (MOCKUP-PASS-PLAN M19).
+        /// </summary>
+        public bool RouteDeparture(Vector3 destination, out string reason, float speed = 0f)
         {
             reason = null;
             if (departing == null || departing.motion == null || !departing.motion.IsBound)
@@ -84,7 +88,19 @@ namespace Gamesim.House
             if (!motion.TryReserveAndPath(token, destination))
             { reason = "There is no route out for " + departing.npc.DisplayName + "."; return false; }
             departureToken = token;
+            // After the route is taken: releasing the last leg's route put the house's pace back.
+            if (speed > 0f) motion.SetSpeed(speed);
             return true;
+        }
+
+        /// <summary>
+        /// Changes the pace of the walk out under way, metres a second, or back to the house's own
+        /// for zero: the walk is slow in frame and the house's pace out of it. Ending the walk out
+        /// releases its route, which puts the house's pace back whatever this last said.
+        /// </summary>
+        public void SetDepartureSpeed(float speed)
+        {
+            if (departing?.motion != null && departureToken != null) departing.motion.SetSpeed(speed);
         }
 
         public bool DepartureArrived() =>

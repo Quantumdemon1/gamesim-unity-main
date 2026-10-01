@@ -102,52 +102,90 @@ namespace Gamesim.Tests.EditMode
                 "A jury the room can hold is placed whole.");
         }
 
+        /// <summary>
+        /// The goodbye's tone is what the player knows of how the evicted leave things with them
+        /// (MOCKUP-PASS-PLAN decision 6A, PACK8-PASS-PLAN C2): a deal between them, the player's own
+        /// vote or nomination against them, the player's vote to keep them. It was their hidden
+        /// feeling toward the player, which the line gave away as they left for the jury.
+        /// </summary>
         [Test]
         public void TheGoodbyeAtTheDoorIsHowTheyLeaveThingsWithYou()
         {
             var state = ContentCatalog.Create(5);
-            var leaving = state.contestants.First(c => !c.isPlayer && c.name.Contains(" "));
+            var named = state.contestants.Where(c => !c.isPlayer && c.name.Contains(" ")).ToList();
+            Assert.That(named.Count, Is.GreaterThanOrEqualTo(3), "Three houseguests with a first name to say goodbye by.");
+            var leaving = named[0];
+            var other = named[1];
+            var hoh = named[2];
             string first = leaving.name.Split(' ')[0];
             const string after = " They'll be waiting in the jury house.";
+            const string neutral = " walks to the door without looking back.";
+            const string warm = " gives you one last look before walking out the door.";
+            const string cold = " glares at you from the doorway.";
+            const string dealt = " pauses at the door and turns to you…";
+            leaving.status = ContestantStatus.Jury;
+            state.hohId = hoh.id;
+            state.nominees = new List<string> { leaving.id, other.id };
+            state.votes.Clear();
+            state.deals.Clear();
+            string Line() => EpisodeDirector.GoodbyeLine(state, leaving.id);
+            EpisodeDirector.GoodbyeKind Tone() => EpisodeDirector.GoodbyeTone(state, leaving.id);
             void Feels(double score)
             {
                 var edge = state.relationships.FirstOrDefault(r => r.fromId == leaving.id && r.toId == state.playerId);
                 if (edge == null) state.relationships.Add(edge = new RelationshipState { fromId = leaving.id, toId = state.playerId });
                 edge.score = score;
             }
-            // The player's own view of them does not decide it: how the evicted feels leaving does.
-            var mine = state.relationships.FirstOrDefault(r => r.fromId == state.playerId && r.toId == leaving.id);
-            if (mine == null) state.relationships.Add(mine = new RelationshipState { fromId = state.playerId, toId = leaving.id });
-            mine.score = 80;
 
-            Feels(19);
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " walks to the door without looking back." + after));
-            Feels(20);
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " gives you one last look before walking out the door." + after),
-                "Warmth toward you is a last look,");
-            Feels(-20);
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after), "and a grudge a glare.");
-            Feels(-19);
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " walks to the door without looking back." + after));
+            // How they feel about the player decides nothing: the player cannot know it.
+            foreach (double score in new[] { 80d, 20d, 0d, -20d, -80d })
+            {
+                Feels(score);
+                Assert.That(Line(), Is.EqualTo(first + neutral + after), "Their hidden feeling of " + score + " is not the player's to read.");
+                Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
+            }
 
-            Feels(-60);
+            // The player's own ballot is.
+            var ballot = new VoteState { voterId = state.playerId, targetId = leaving.id };
+            state.votes.Add(ballot);
+            Assert.That(Line(), Is.EqualTo(first + cold + after), "Your vote to evict them is a glare,");
+            Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Cold));
+            ballot.targetId = other.id;
+            Assert.That(Line(), Is.EqualTo(first + warm + after), "and your vote to keep them a last look.");
+            Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Warm));
+            state.votes.Clear();
+            state.votes.Add(new VoteState { voterId = other.id, targetId = leaving.id });
+            Assert.That(Line(), Is.EqualTo(first + neutral + after), "Somebody else's vote is not yours.");
+
+            // So is putting them on the block.
+            state.hohId = state.playerId;
+            Assert.That(Line(), Is.EqualTo(first + cold + after), "Your nomination of them is a glare.");
+            state.hohId = hoh.id;
+
             var deal = new DealState { id = "d", type = DealKind.FinalTwo, proposerId = leaving.id, recipientId = state.playerId,
                 status = DealStatus.Proposed, week = 1 };
             state.deals.Add(deal);
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after),
-                "An offer never taken up is not a deal between you,");
+            Assert.That(Line(), Is.EqualTo(first + neutral + after), "An offer never taken up is not a deal between you,");
             deal.status = DealStatus.Active;
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " pauses at the door and turns to you…" + after),
-                "but a deal is, whatever they feel, whoever proposed it.");
+            Assert.That(Line(), Is.EqualTo(first + dealt + after), "but a deal is, whoever proposed it,");
+            Assert.That(Tone(), Is.EqualTo(EpisodeDirector.GoodbyeKind.Dealt));
+            state.votes.Add(new VoteState { voterId = state.playerId, targetId = leaving.id });
+            Assert.That(Line(), Is.EqualTo(first + dealt + after), "whatever your ballot said.");
+            state.votes.Clear();
             deal.proposerId = state.playerId; deal.recipientId = leaving.id;
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " pauses at the door and turns to you…" + after));
+            Assert.That(Line(), Is.EqualTo(first + dealt + after));
             deal.status = DealStatus.Broken;
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after), "A broken one is not.");
-            deal.status = DealStatus.Active; deal.recipientId = state.contestants.First(c => !c.isPlayer && c.id != leaving.id).id;
-            Assert.That(EpisodeDirector.GoodbyeLine(state, leaving.id), Is.EqualTo(first + " glares at you from the doorway." + after),
-                "Nor is a deal you made with somebody else.");
+            Assert.That(Line(), Is.EqualTo(first + neutral + after), "A broken one is not.");
+            deal.status = DealStatus.Active; deal.recipientId = other.id;
+            Assert.That(Line(), Is.EqualTo(first + neutral + after), "Nor is a deal you made with somebody else.");
+            state.deals.Clear();
+
+            // Only a juror is going to the jury house.
+            leaving.status = ContestantStatus.Evicted;
+            Assert.That(Line(), Is.EqualTo(first + neutral), "Somebody out before the jury is not waiting in the jury house.");
 
             Assert.That(EpisodeDirector.GoodbyeLine(state, "nobody"), Is.Empty);
+            Assert.That(EpisodeDirector.GoodbyeTone(state, "nobody"), Is.EqualTo(EpisodeDirector.GoodbyeKind.Neutral));
         }
 
         private static EpisodeState Finale(int jurors, bool playerSecond)

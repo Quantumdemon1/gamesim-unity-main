@@ -181,26 +181,35 @@ namespace Gamesim.Episode
         private void RenderNotebookWord(EpisodeState state)
         {
             hud.PageDoor(BackToYourNotesCaption, () => ShowNotebookSection(NotebookSection.Notes));
-            // The mark exists in every state: it is what the notebook scrolls to.
-            hud.Mark(NotebookSection.Word);
+            // The mark exists in every state: it is what the notebook scrolls to. The door stands in
+            // the page's head, not the column, so the mark goes on the column's first element.
             var all = CommitmentsRead.Of(state);
             if (all.Count == 0)
+            {
                 hud.EmptyState("No commitments", PackArt.KitEmptyPrivate, "Nobody has your word yet, and you have nobody's.",
                     "Promises, deals, loyalty oaths and the calls you make in an alliance land here as you make them.");
+                hud.Mark(NotebookSection.Word);
+            }
             else
             {
-                WordSection(state, "STILL OPEN", EpisodeHud.WordOpenCardPrefix, all.Where(c => c.IsOpen).ToList());
-                WordSection(state, "SETTLED", EpisodeHud.WordSettledCardPrefix, all.Where(c => !c.IsOpen).ToList());
+                var open = all.Where(c => c.IsOpen).ToList();
+                WordSection(state, "STILL OPEN", EpisodeHud.WordOpenCardPrefix, open, mark: true);
+                WordSection(state, "SETTLED", EpisodeHud.WordSettledCardPrefix, all.Where(c => !c.IsOpen).ToList(), mark: open.Count == 0);
             }
             hud.NotebookFooter("Only what you are a party to, from the season's own record. Who broke a deal is said only where the record shows it.",
                 "House activities", OpenHouseActivities);
         }
 
-        /// <summary>One section of the page: its eyebrow and a card for each houseguest with something in it, in the house's order.</summary>
-        private void WordSection(EpisodeState state, string heading, string prefix, List<CommitmentsRead.Commitment> items)
+        /// <summary>
+        /// One section of the page: its eyebrow and a card for each houseguest with something in it,
+        /// in the house's order. The first section drawn carries the page's mark on its eyebrow
+        /// (<paramref name="mark"/>); a section with nothing in it draws nothing and marks nothing.
+        /// </summary>
+        private void WordSection(EpisodeState state, string heading, string prefix, List<CommitmentsRead.Commitment> items, bool mark)
         {
             if (items.Count == 0) return;
             hud.Eyebrow(heading + " · " + items.Count, UiTheme.Muted);
+            if (mark) hud.Mark(NotebookSection.Word);
             foreach (var actor in state.contestants.Where(c => !c.isPlayer))
             {
                 var theirs = items.Where(c => c.withId == actor.id).ToList();

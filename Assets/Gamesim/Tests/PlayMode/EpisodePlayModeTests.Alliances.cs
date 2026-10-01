@@ -37,7 +37,9 @@ namespace Gamesim.Tests.PlayMode
                 for (int guard = 0; guard < 300; guard++)
                 {
                     var current = engine.Snapshot;
-                    if (current.week >= 2 && current.phase == EpisodePhase.Social && current.pendingDiary == null
+                    // The week turns as free time ends, so the first eviction's free time is still week
+                    // one: 'after an eviction' is somebody gone, not the week's number.
+                    if (current.phase == EpisodePhase.Social && current.pendingDiary == null
                         && current.Find(current.playerId).status == ContestantStatus.Active
                         && current.Active.Count(c => !c.isPlayer) >= 4
                         && current.contestants.Any(c => !c.isPlayer && c.status != ContestantStatus.Active))

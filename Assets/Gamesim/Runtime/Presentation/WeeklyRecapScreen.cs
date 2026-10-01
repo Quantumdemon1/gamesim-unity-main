@@ -763,12 +763,12 @@ namespace Gamesim.Presentation
         /// </summary>
         private float VerdictRow(RectTransform card, YourWeek.Line line, float x, float y, float width)
         {
-            const float chip = 104f, chipHeight = 22f, face = 24f;
+            const float chip = 108f, chipHeight = 24f, face = 24f;
             var row = EndScreenKit.Box(VerdictRowName, card, x, y, width, 28f);
             float textX = 0f;
             if (line.verdict != null)
             {
-                EndScreenKit.Pill(row, VerdictWord(line.verdict), VerdictTint(line.verdict), 0f, 3f, chip, chipHeight);
+                EndScreenKit.Pill(row, VerdictWord(line.verdict), VerdictTint(line.verdict), 0f, 2f, chip, chipHeight);
                 textX = chip + 10f;
             }
             else
@@ -820,7 +820,7 @@ namespace Gamesim.Presentation
             {
                 var row = EndScreenKit.Box("Sense row", card, pad, h, width - pad * 2f, 28f);
                 var tint = note.points > 0 ? UiTheme.Positive : note.points < 0 ? UiTheme.Danger : UiTheme.Muted;
-                EndScreenKit.Pill(row, note.points.ToString("+0;-0;0", CultureInfo.InvariantCulture), tint, 0f, 3f, 56f, 22f);
+                EndScreenKit.Pill(row, note.points.ToString("+0;-0;0", CultureInfo.InvariantCulture), tint, 0f, 2f, 56f, 24f);
                 var words = EndScreenKit.Text("Line", row, YourWeek.RowText(note), 14f, new Color(UiTheme.Paper.r, UiTheme.Paper.g, UiTheme.Paper.b, .92f),
                     66f, 4f, width - pad * 2f - 66f, 20f);
                 float rowHeight = Mathf.Max(28f, EndScreenKit.Wrapped(words, width - pad * 2f - 66f) + 8f);

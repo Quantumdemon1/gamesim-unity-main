@@ -599,7 +599,9 @@ namespace Gamesim.Presentation
                 label.rectTransform.anchorMax = new Vector2(.5f, 1f);
                 label.rectTransform.pivot = new Vector2(.5f, 1f);
                 label.rectTransform.anchoredPosition = new Vector2(0f, -(portrait + 8f * scale));
-                label.rectTransform.sizeDelta = new Vector2(slot, 22f * scale);
+                // 1.35 of the type: Inter's line is 1.21 of its size and the 22 box was 1.29, drawn
+                // only because a name has few descenders; the chip below keeps a unit of air.
+                label.rectTransform.sizeDelta = new Vector2(slot, 23f * scale);
 
                 if (string.IsNullOrEmpty(subject.Badge)) continue;
 

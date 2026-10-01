@@ -652,14 +652,19 @@ namespace Gamesim.Presentation
                 ControlsY = controlsY; ControlsH = controlsH; ControlsPt = controlsPt; GlassX = glassX; GlassY = glassY; Ring = ring;
             }
 
-            /// <summary>The HUD's card: 880 wide, the two faces 104 across at the standard text size.</summary>
+            /// <summary>
+            /// The HUD's card: 880 wide, the two faces 104 across at the standard text size. The
+            /// title's, the names' and the figures' boxes are 1.3 of their type and a little over
+            /// (63 for 48, 25 for 19, 76 for 58): they were 1.24 to 1.26, which Inter's 1.21 line
+            /// drew only because caps and digits have no descenders (UI-UX-PASS-PLAN N0).
+            /// </summary>
             public static Frame Hud(float s)
             {
                 const float portrait = 104f;
                 float top = 100f + portrait;
                 return new Frame(false, 880f * s, (top + 296f) * s, portrait * s, 300f * s,
-                    0f, 22f * s, 15f * s, -26f * s, 60f * s, 48f * s, -100f * s,
-                    -(top + 14f) * s, 24f * s, 19f * s, -(top + 36f) * s, 72f * s, 58f * s, -(top + 104f) * s, 18f * s, 12f * s,
+                    0f, 22f * s, 15f * s, -26f * s, 63f * s, 48f * s, -100f * s,
+                    -(top + 14f) * s, 25f * s, 19f * s, -(top + 36f) * s, 76f * s, 58f * s, -(top + 104f) * s, 18f * s, 12f * s,
                     62f * s, -(100f + portrait * 0.4f) * s, 22f * s, -(top + 130f) * s, 20f * s, 11f * s, 20f * s,
                     -(top + 60f) * s, 56f * s, 24f * s, 70f * s, 12f * s, -(top + 156f) * s, 22f * s, 16f * s,
                     -(top + 184f) * s, 26f * s, 18f * s, -(top + 218f) * s, 560f * s, 44f * s, 22f * s,
@@ -670,15 +675,22 @@ namespace Gamesim.Presentation
             /// The living room's screen: its whole face, the two faces 160 across at the sides with
             /// their counts 84 high under them, the roster between them (<see cref="ScreenBoard"/>),
             /// and a small VS disc over the roster. The HOH chip goes under the figure it marks,
-            /// since beside it would run off the face. The foot is as it was.
+            /// since beside it would run off the face. The foot has the HUD's margin (UI-UX-PASS-PLAN
+            /// N0): the controls line at the key ceremony's 26 points in a 36 box, −740 to −776, where
+            /// it was 13 points in an 18 box ending on the edge; above it the banner at 34 points in
+            /// 46 (−692 to −738), the host's line (−650 to −690), the progress line (−612 to −648) and
+            /// the pips' row at its own height (−582 to −610), two units under the roster's seventh
+            /// row at a full house. The eyebrow (21 points in 28) starts 3 % of the face's height
+            /// inside its top and ends where the title (63 points in 82) starts, and the title ends
+            /// where THE VOTE starts: no two rows' boxes cross.
             /// </summary>
             public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 160f, 220f,
-                -16f, 36f, 26f, -52f, 84f, 64f, -176f,
+                -24f, 28f, 21f, -52f, 82f, 63f, -176f,
                 -354f, 40f, 28f, -394f, 110f, 84f, float.NaN, 0f, 0f,
-                56f, -174f, 22f, -590f, 40f, 24f, 40f,
-                -508f, 96f, 40f, 0f, 26f, -636f, 36f, 26f,
-                -676f, 40f, 30f, -724f, 720f, 56f, 40f,
-                -782f, 18f, 13f, 0f, 0f, 6f, 470f);
+                56f, -174f, 22f, -582f, 28f, 24f, 40f,
+                -508f, 96f, 40f, 0f, 26f, -612f, 36f, 26f,
+                -650f, 40f, 30f, -692f, 720f, 46f, 34f,
+                -740f, 36f, 26f, 0f, 0f, 6f, 470f);
         }
 
         /// <summary>

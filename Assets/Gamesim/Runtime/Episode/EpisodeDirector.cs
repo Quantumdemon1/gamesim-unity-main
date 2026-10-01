@@ -1032,6 +1032,8 @@ namespace Gamesim.Episode
             public const string Story = "Section · story";
             /// <summary>The notebook's own page: what you have on each houseguest (EpisodeDirector.Notes.cs). Not a rail row; "Notebook [J]" opens it.</summary>
             public const string Notes = "Section · notes";
+            /// <summary>Your pacts and the ones you know of (EpisodeDirector.Alliances.cs). Not a rail row; the relationship web's door opens it.</summary>
+            public const string Alliances = "Section · alliances";
             /// <summary>Your word: every commitment you are a party to (EpisodeDirector.YourWord.cs). Not a rail row; the notes page opens it.</summary>
             public const string Word = "Section · word";
         }
@@ -1240,6 +1242,7 @@ namespace Gamesim.Episode
                 // command at their top, where the web's layout and the activities tests expect it.
                 bool kitPage = journalSection == NotebookSection.Rooms || journalSection == NotebookSection.People
                     || journalSection == NotebookSection.Votes || journalSection == NotebookSection.Notes
+                    || journalSection == NotebookSection.Alliances
                     || journalSection == NotebookSection.Word;
                 if (kitPage)
                 {
@@ -1279,6 +1282,10 @@ namespace Gamesim.Episode
                 else if (journalSection == NotebookSection.Notes)
                 {
                     RenderNotebookNotes(state);
+                }
+                else if (journalSection == NotebookSection.Alliances)
+                {
+                    RenderNotebookAlliances(state);
                 }
                 else if (journalSection == NotebookSection.Word)
                 {
@@ -1611,6 +1618,7 @@ namespace Gamesim.Episode
             string advance = state.phase == EpisodePhase.Social ? "Begin the next competition"
                 : state.phase == EpisodePhase.Campaign ? "Close campaigning and open voting" : "Continue episode";
             AdvanceWarning(state);
+            MovingOnCosts(state);
             // Pinned under the scroll, where it is always seen - except under a house event, whose
             // choices keep the panel and the priority; the way on stays inline after them there.
             if (hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Standard || hud.CurrentActivityLayout == EpisodeHud.ActivityLayout.Stage

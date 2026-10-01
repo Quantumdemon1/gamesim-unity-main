@@ -214,6 +214,7 @@ namespace Gamesim.Episode
             if (section == NotebookSection.People) return ("Houseguests", "People, their status, and your own recorded trust in each \u2014 separate at a glance");
             if (section == NotebookSection.Votes) return ("The vote", "Recorded eviction results, and only the ballot information available to your character");
             if (section == NotebookSection.Notes) return ("Your notes", "What your character has on each houseguest — their word, what they told you, what you read, and what they put to you");
+            if (section == NotebookSection.Alliances) return ("Alliances", "Your own pacts in full, and the others you have heard of — only what your character has seen or been told");
             if (section == NotebookSection.Word) return ("Your word", "Every promise, deal, oath and call you are a party to — what it binds, until when, and how it ended");
             return (null, null);
         }
